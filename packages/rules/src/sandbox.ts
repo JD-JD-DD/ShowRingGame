@@ -1,175 +1,187 @@
-import { getClusterEntryQuote } from "../engines/economy.engine";
+import {
+  buildRegNumber,
+  createBreedingAttempt,
+  resolvePregnancyCheck,
+  resolveWhelp,
+  type BreedingDog,
+} from "../engines/breeding.engine";
+import {
+  GESTATION_HOURS,
+  MIN_BREED_AGE_HOURS,
+  PREG_CHECK_HOURS,
+  WHELPING_COOLDOWN_HOURS,
+} from "../constants/lifecycle.constants";
 
-/**
- * Simple helper to print section headers clearly in terminal output.
- */
 function printHeader(title: string): void {
   console.log("\n========================================");
   console.log(title);
   console.log("========================================");
 }
 
-/**
- * Scenario 1:
- * Two dogs, moderate travel, enough money.
- */
-function runScenarioBasicAffordable(): void {
-  printHeader("SCENARIO 1: BASIC AFFORDABLE ENTRY");
+const now = 5000;
 
-  const quote = getClusterEntryQuote({
-    homeDistrict: 3,
-    clusterDistrict: 7,
-    ledgerBalance: 1000,
-    dogs: [
-      {
-        dogId: "dog-1",
-        dogName: "Rex",
-        breed: "Weimaraner",
-        sex: "Dog",
-        points: 8,
-        selectedShowDays: [1, 2, 3],
-      },
-      {
-        dogId: "dog-2",
-        dogName: "Luna",
-        breed: "Weimaraner",
-        sex: "Bitch",
-        points: 2,
-        selectedShowDays: [1, 2],
-      },
-    ],
+const validSire: BreedingDog = {
+  dogId: "dog-sire-001",
+  breedCode2: "WI",
+  birthEpoch: now - MIN_BREED_AGE_HOURS - 500,
+  sex: "M",
+  status: "ALIVE",
+};
+
+const validDam: BreedingDog = {
+  dogId: "dog-dam-001",
+  breedCode2: "WI",
+  birthEpoch: now - MIN_BREED_AGE_HOURS - 300,
+  sex: "F",
+  status: "ALIVE",
+};
+
+const underageDam: BreedingDog = {
+  dogId: "dog-dam-002",
+  breedCode2: "WI",
+  birthEpoch: now - MIN_BREED_AGE_HOURS + 10,
+  sex: "F",
+  status: "ALIVE",
+};
+
+const wrongBreedDam: BreedingDog = {
+  dogId: "dog-dam-003",
+  breedCode2: "GS",
+  birthEpoch: now - MIN_BREED_AGE_HOURS - 100,
+  sex: "F",
+  status: "ALIVE",
+};
+
+function runScenarioValidBreedingAttempt(): void {
+  printHeader("SCENARIO 1: VALID BREEDING ATTEMPT");
+
+  const attempt = createBreedingAttempt({
+    attemptId: "attempt-001",
+    currentEpoch: now,
+    sire: validSire,
+    dam: validDam,
+    rngSeed: 12345,
   });
 
-  console.log(JSON.stringify(quote, null, 2));
+  console.log(JSON.stringify(attempt, null, 2));
 }
 
-/**
- * Scenario 2:
- * Four dogs should trigger handler fee.
- */
-function runScenarioHandlerTriggered(): void {
-  printHeader("SCENARIO 2: HANDLER TRIGGERED AT 4 DOGS");
+function runScenarioUnderageDamFails(): void {
+  printHeader("SCENARIO 2: UNDERAGE DAM FAILS");
 
-  const quote = getClusterEntryQuote({
-    homeDistrict: 3,
-    clusterDistrict: 7,
-    ledgerBalance: 2000,
-    dogs: [
-      {
-        dogId: "dog-1",
-        dogName: "Rex",
-        breed: "Weimaraner",
-        sex: "Dog",
-        points: 8,
-        selectedShowDays: [1, 2],
-      },
-      {
-        dogId: "dog-2",
-        dogName: "Luna",
-        breed: "Weimaraner",
-        sex: "Bitch",
-        points: 2,
-        selectedShowDays: [1, 2],
-      },
-      {
-        dogId: "dog-3",
-        dogName: "Jett",
-        breed: "Weimaraner",
-        sex: "Dog",
-        points: 0,
-        selectedShowDays: [1],
-      },
-      {
-        dogId: "dog-4",
-        dogName: "Echo",
-        breed: "Weimaraner",
-        sex: "Bitch",
-        points: 0,
-        selectedShowDays: [1, 2, 3],
-      },
-    ],
+  try {
+    createBreedingAttempt({
+      attemptId: "attempt-002",
+      currentEpoch: now,
+      sire: validSire,
+      dam: underageDam,
+      rngSeed: 12345,
+    });
+
+    console.log("ERROR: scenario should have failed");
+  } catch (err) {
+    console.log((err as Error).message);
+  }
+}
+
+function runScenarioBreedMismatchFails(): void {
+  printHeader("SCENARIO 3: BREED MISMATCH FAILS");
+
+  try {
+    createBreedingAttempt({
+      attemptId: "attempt-003",
+      currentEpoch: now,
+      sire: validSire,
+      dam: wrongBreedDam,
+      rngSeed: 12345,
+    });
+
+    console.log("ERROR: scenario should have failed");
+  } catch (err) {
+    console.log((err as Error).message);
+  }
+}
+
+function runScenarioPregnancyMiss(): void {
+  printHeader("SCENARIO 4: PREGNANCY CHECK FAILS");
+
+  const attempt = createBreedingAttempt({
+    attemptId: "attempt-004",
+    currentEpoch: now,
+    sire: validSire,
+    dam: validDam,
+    rngSeed: 22222,
   });
 
-  console.log(JSON.stringify(quote, null, 2));
-}
-
-/**
- * Scenario 3:
- * Player cannot afford the trip.
- */
-function runScenarioCannotAfford(): void {
-  printHeader("SCENARIO 3: INSUFFICIENT LEDGER BALANCE");
-
-  const quote = getClusterEntryQuote({
-    homeDistrict: 1,
-    clusterDistrict: 15,
-    ledgerBalance: 100,
-    dogs: [
-      {
-        dogId: "dog-1",
-        dogName: "Rex",
-        breed: "Weimaraner",
-        sex: "Dog",
-        points: 8,
-        selectedShowDays: [1, 2, 3, 4],
-      },
-      {
-        dogId: "dog-2",
-        dogName: "Luna",
-        breed: "Weimaraner",
-        sex: "Bitch",
-        points: 2,
-        selectedShowDays: [1, 2, 3, 4],
-      },
-    ],
+  const checked = resolvePregnancyCheck({
+    attempt,
+    currentEpoch: now + PREG_CHECK_HOURS,
+    conceptionRate: 0.75,
+    conceptionRoll: 0.90,
   });
 
-  console.log(JSON.stringify(quote, null, 2));
+  console.log(JSON.stringify(checked, null, 2));
 }
 
-/**
- * Scenario 4:
- * No selected days should produce zero entries.
- */
-function runScenarioNoEntries(): void {
-  printHeader("SCENARIO 4: NO ACTUAL ENTRIES SELECTED");
+function runScenarioPregnancySuccessAndWhelp(): void {
+  printHeader("SCENARIO 5: PREGNANCY SUCCESS AND WHELP");
 
-  const quote = getClusterEntryQuote({
-    homeDistrict: 5,
-    clusterDistrict: 5,
-    ledgerBalance: 500,
-    dogs: [
-      {
-        dogId: "dog-1",
-        dogName: "Rex",
-        breed: "Weimaraner",
-        sex: "Dog",
-        points: 8,
-        selectedShowDays: [],
-      },
-      {
-        dogId: "dog-2",
-        dogName: "Luna",
-        breed: "Weimaraner",
-        sex: "Bitch",
-        points: 2,
-        selectedShowDays: [],
-      },
-    ],
+  const attempt = createBreedingAttempt({
+    attemptId: "attempt-005",
+    currentEpoch: now,
+    sire: validSire,
+    dam: validDam,
+    rngSeed: 67890,
   });
 
-  console.log(JSON.stringify(quote, null, 2));
+  const pregnant = resolvePregnancyCheck({
+    attempt,
+    currentEpoch: now + PREG_CHECK_HOURS,
+    conceptionRate: 0.75,
+    conceptionRoll: 0.10,
+  });
+
+  const outcome = resolveWhelp({
+    attempt: pregnant,
+    currentEpoch: now + GESTATION_HOURS,
+    litterId: "litter-001",
+    pupCount: 3,
+    serial7: "1234567",
+    puppySexes: ["M", "F", "F"],
+    puppyDogIds: ["pup-001", "pup-002", "pup-003"],
+  });
+
+  console.log("Attempt:");
+  console.log(JSON.stringify(outcome.attempt, null, 2));
+
+  console.log("Litter:");
+  console.log(JSON.stringify(outcome.litter, null, 2));
+
+  console.log("Puppies:");
+  console.log(JSON.stringify(outcome.puppies, null, 2));
+
+  console.log("Dam repro update:");
+  console.log(JSON.stringify(outcome.damReproUpdate, null, 2));
+
+  console.log("Expected cooldown until:");
+  console.log(now + GESTATION_HOURS + WHELPING_COOLDOWN_HOURS);
 }
 
-/**
- * Main runner.
- * Add or remove scenarios here as needed.
- */
+function runScenarioBuildRegNumbers(): void {
+  printHeader("SCENARIO 6: REG NUMBER GENERATION");
+
+  console.log(buildRegNumber("WI", "1234567", 1));
+  console.log(buildRegNumber("WI", "1234567", 2));
+  console.log(buildRegNumber("WI", "1234567", 3));
+}
+
 function main(): void {
-  runScenarioBasicAffordable();
-  runScenarioHandlerTriggered();
-  runScenarioCannotAfford();
-  runScenarioNoEntries();
+  runScenarioValidBreedingAttempt();
+  runScenarioUnderageDamFails();
+  runScenarioBreedMismatchFails();
+  runScenarioPregnancyMiss();
+  runScenarioPregnancySuccessAndWhelp();
+  runScenarioBuildRegNumbers();
 }
 
 main();

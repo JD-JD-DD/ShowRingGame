@@ -3,7 +3,17 @@ import {
   GESTATION_HOURS,
   MIN_BREED_AGE_HOURS,
   PREG_CHECK_HOURS,
+  WHELPING_COOLDOWN_HOURS,
 } from "../constants/lifecycle.constants";
+import {
+  BREED_CODE2_REGEX,
+  LITTER_ORDER_PAD,
+  LITTER_SERIAL_LENGTH,
+} from "../constants/breed.constants";
+import {
+  MAX_LITTER_SIZE,
+  MIN_LITTER_SIZE,
+} from "../constants/litter.constants";
 import { ageHours } from "../src/time";
 import type { DogStatus, Sex } from "../src/lifecycle";
 
@@ -11,7 +21,8 @@ export type BreedingAttemptStatus =
   | "INITIATED"
   | "CHECKED_NOT_PREGNANT"
   | "PREGNANT"
-  | "WHELPED";
+  | "WHELPED"
+  | "FAILED";
 
 export type PregnancyState = "NOT_PREGNANT" | "PREGNANT" | "POST_WHELP";
 
@@ -44,7 +55,7 @@ export type BreedingAttempt = {
 export type Litter = {
   litterId: string;
   breedCode2: BreedCode2;
-  serial6: string;
+  serial7: string;
   bornEpoch: number;
   sireId: string;
   damId: string;
@@ -62,10 +73,16 @@ export type PuppyRecord = {
   status: DogStatus;
 };
 
+export type DamReproUpdate = {
+  isPregnant: boolean;
+  whelpingCooldownUntil: number | null;
+};
+
 export type WhelpOutcome = {
   attempt: BreedingAttempt;
   litter: Litter;
   puppies: PuppyRecord[];
+  damReproUpdate: DamReproUpdate;
 };
 
 export type ValidationResult = {
@@ -79,13 +96,15 @@ export type CreateBreedingAttemptInput = {
   sire: BreedingDog;
   dam: BreedingDog;
   rngSeed: number;
+  damIsPregnant?: boolean;
+  damCooldownUntil?: number | null;
 };
 
 export type PregnancyCheckInput = {
   attempt: BreedingAttempt;
   currentEpoch: number;
   conceptionRate: number;
-  conceptionRoll: number; // expected 0.0 <= roll < 1.0
+  conceptionRoll: number;
 };
 
 export type WhelpInput = {
@@ -93,13 +112,18 @@ export type WhelpInput = {
   currentEpoch: number;
   litterId: string;
   pupCount: number;
-  serial6: string;
+  serial7: string;
   puppySexes: Sex[];
   puppyDogIds: string[];
 };
 
 function isValidBreedCode2(code: string): boolean {
-  return /^[A-Z]{2}$/.test(code);
+  return BREED_CODE2_REGEX.test(code);
+}
+
+function isValidSerial7(serial7: string): boolean {
+  const pattern = new RegExp(`^\\d{${LITTER_SERIAL_LENGTH}}$`);
+  return pattern.test(serial7);
 }
 
 function assertFiniteInteger(value: number, label: string): void {
@@ -124,28 +148,44 @@ export function canBreedSire(currentEpoch: number, sire: BreedingDog): boolean {
   if (sire.sex !== "M") return false;
   if (sire.status !== "ALIVE") return false;
 
-  const h = ageHours(currentEpoch, sire.birthEpoch);
-  return h >= MIN_BREED_AGE_HOURS;
+  const age = ageHours(currentEpoch, sire.birthEpoch);
+  return age >= MIN_BREED_AGE_HOURS;
 }
 
 export function canBreedDam(
   currentEpoch: number,
   dam: BreedingDog,
-  options: { isPregnant?: boolean } = {}
+  options: {
+    isPregnant?: boolean;
+    cooldownUntil?: number | null;
+  } = {}
 ): boolean {
   if (dam.sex !== "F") return false;
   if (dam.status !== "ALIVE") return false;
   if (options.isPregnant) return false;
 
-  const h = ageHours(currentEpoch, dam.birthEpoch);
-  return h >= MIN_BREED_AGE_HOURS && h <= DAM_MAX_BREED_AGE_HOURS;
+  const age = ageHours(currentEpoch, dam.birthEpoch);
+  if (age < MIN_BREED_AGE_HOURS) return false;
+  if (age > DAM_MAX_BREED_AGE_HOURS) return false;
+
+  if (
+    options.cooldownUntil != null &&
+    currentEpoch < options.cooldownUntil
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 export function validateBreedingPair(
   currentEpoch: number,
   sire: BreedingDog,
   dam: BreedingDog,
-  options: { damIsPregnant?: boolean } = {}
+  options: {
+    damIsPregnant?: boolean;
+    damCooldownUntil?: number | null;
+  } = {}
 ): ValidationResult {
   const reasons: string[] = [];
 
@@ -169,7 +209,12 @@ export function validateBreedingPair(
     reasons.push("Sire is not breeding-eligible.");
   }
 
-  if (!canBreedDam(currentEpoch, dam, { isPregnant: options.damIsPregnant })) {
+  if (
+    !canBreedDam(currentEpoch, dam, {
+      isPregnant: options.damIsPregnant,
+      cooldownUntil: options.damCooldownUntil,
+    })
+  ) {
     reasons.push("Dam is not breeding-eligible.");
   }
 
@@ -182,12 +227,24 @@ export function validateBreedingPair(
 export function createBreedingAttempt(
   input: CreateBreedingAttemptInput
 ): BreedingAttempt {
-  const { attemptId, currentEpoch, sire, dam, rngSeed } = input;
+  const {
+    attemptId,
+    currentEpoch,
+    sire,
+    dam,
+    rngSeed,
+    damIsPregnant,
+    damCooldownUntil,
+  } = input;
 
   assertFiniteInteger(currentEpoch, "currentEpoch");
   assertFiniteInteger(rngSeed, "rngSeed");
 
-  const validation = validateBreedingPair(currentEpoch, sire, dam);
+  const validation = validateBreedingPair(currentEpoch, sire, dam, {
+    damIsPregnant,
+    damCooldownUntil,
+  });
+
   if (!validation.ok) {
     throw new Error(
       `Cannot create breeding attempt: ${validation.reasons.join(" ")}`
@@ -220,7 +277,12 @@ export function resolvePregnancyCheck(
   assertRoll(conceptionRate, "conceptionRate");
   assertRoll(conceptionRoll, "conceptionRoll");
 
-  if (attempt.status === "CHECKED_NOT_PREGNANT" || attempt.status === "PREGNANT" || attempt.status === "WHELPED") {
+  if (
+    attempt.status === "CHECKED_NOT_PREGNANT" ||
+    attempt.status === "PREGNANT" ||
+    attempt.status === "WHELPED" ||
+    attempt.status === "FAILED"
+  ) {
     return attempt;
   }
 
@@ -238,7 +300,10 @@ export function resolvePregnancyCheck(
   };
 }
 
-export function canWhelp(attempt: BreedingAttempt, currentEpoch: number): boolean {
+export function canWhelp(
+  attempt: BreedingAttempt,
+  currentEpoch: number
+): boolean {
   if (attempt.status !== "PREGNANT") return false;
   if (attempt.isPregnant !== true) return false;
   return currentEpoch >= attempt.dueEpoch;
@@ -246,29 +311,35 @@ export function canWhelp(attempt: BreedingAttempt, currentEpoch: number): boolea
 
 export function buildRegNumber(
   breedCode2: string,
-  serial6: string,
+  serial7: string,
   litterOrder: number
 ): string {
   if (!isValidBreedCode2(breedCode2)) {
     throw new Error("breedCode2 must be two uppercase letters.");
   }
 
-  if (!/^\d{6}$/.test(serial6)) {
-    throw new Error("serial6 must be exactly 6 digits.");
+  if (!isValidSerial7(serial7)) {
+    throw new Error(`serial7 must be exactly ${LITTER_SERIAL_LENGTH} digits.`);
   }
 
   if (!Number.isInteger(litterOrder) || litterOrder < 1 || litterOrder > 99) {
     throw new Error("litterOrder must be an integer between 1 and 99.");
   }
 
-  return `${breedCode2}${serial6}${String(litterOrder).padStart(2, "0")}`;
+  return `${breedCode2}${serial7}${String(litterOrder).padStart(
+    LITTER_ORDER_PAD,
+    "0"
+  )}`;
 }
 
-export function generateSerial6(random01: () => number): string {
+export function generateSerial7(random01: () => number): string {
   const roll = random01();
   assertRoll(roll, "random01()");
-  const value = Math.floor(roll * 1_000_000);
-  return String(value).padStart(6, "0");
+
+  const max = 10 ** LITTER_SERIAL_LENGTH;
+  const value = Math.floor(roll * max);
+
+  return String(value).padStart(LITTER_SERIAL_LENGTH, "0");
 }
 
 export function resolveWhelp(input: WhelpInput): WhelpOutcome {
@@ -277,13 +348,19 @@ export function resolveWhelp(input: WhelpInput): WhelpOutcome {
     currentEpoch,
     litterId,
     pupCount,
-    serial6,
+    serial7,
     puppySexes,
     puppyDogIds,
   } = input;
 
   assertFiniteInteger(currentEpoch, "currentEpoch");
   assertPositiveInt(pupCount, "pupCount");
+
+  if (pupCount < MIN_LITTER_SIZE || pupCount > MAX_LITTER_SIZE) {
+    throw new Error(
+      `pupCount must be between ${MIN_LITTER_SIZE} and ${MAX_LITTER_SIZE}.`
+    );
+  }
 
   if (attempt.status === "WHELPED") {
     throw new Error("Attempt already whelped.");
@@ -293,8 +370,8 @@ export function resolveWhelp(input: WhelpInput): WhelpOutcome {
     throw new Error("Attempt is not ready to whelp.");
   }
 
-  if (!/^\d{6}$/.test(serial6)) {
-    throw new Error("serial6 must be exactly 6 digits.");
+  if (!isValidSerial7(serial7)) {
+    throw new Error(`serial7 must be exactly ${LITTER_SERIAL_LENGTH} digits.`);
   }
 
   if (puppySexes.length !== pupCount) {
@@ -308,7 +385,7 @@ export function resolveWhelp(input: WhelpInput): WhelpOutcome {
   const litter: Litter = {
     litterId,
     breedCode2: attempt.breedCode2,
-    serial6,
+    serial7,
     bornEpoch: currentEpoch,
     sireId: attempt.sireId,
     damId: attempt.damId,
@@ -322,7 +399,7 @@ export function resolveWhelp(input: WhelpInput): WhelpOutcome {
       dogId: puppyDogIds[index],
       litterId,
       litterOrder,
-      regNumber: buildRegNumber(attempt.breedCode2, serial6, litterOrder),
+      regNumber: buildRegNumber(attempt.breedCode2, serial7, litterOrder),
       breedCode2: attempt.breedCode2,
       birthEpoch: currentEpoch,
       sex: puppySexes[index],
@@ -341,10 +418,16 @@ export function resolveWhelp(input: WhelpInput): WhelpOutcome {
     attempt: updatedAttempt,
     litter,
     puppies,
+    damReproUpdate: {
+      isPregnant: false,
+      whelpingCooldownUntil: currentEpoch + WHELPING_COOLDOWN_HOURS,
+    },
   };
 }
 
-export function getPregnancyState(attempt: BreedingAttempt | null): PregnancyState {
+export function getPregnancyState(
+  attempt: BreedingAttempt | null
+): PregnancyState {
   if (!attempt) return "NOT_PREGNANT";
   if (attempt.status === "WHELPED") return "POST_WHELP";
   if (attempt.status === "PREGNANT") return "PREGNANT";
