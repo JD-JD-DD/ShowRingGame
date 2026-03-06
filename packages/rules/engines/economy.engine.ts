@@ -19,10 +19,15 @@
  *   district → distance tier → travel cost
  */
 
-import { BASE_TRAVEL_COST, TRAVEL_COST_PER_DOG } from "../constants/economy.constants";
-import { DistanceTier } from "../constants/geography.constants";
+import {
+  BASE_TRAVEL_COST,
+  TRAVEL_COST_PER_DOG,
+  ENTRY_FEE_PER_SHOW,
+  CLUSTER_HANDLER_FEE,
+  HANDLER_THRESHOLD_DOGS
+} from "../constants/economy.constants";
 import { getDistrictDistanceTier } from "../src/geography";
-
+import { DistanceTier } from "../constants/geography.constants";
 
 /**
  * TravelCostBreakdown
@@ -174,4 +179,149 @@ export function calculateBaseTravelCost(
     showDistrict,
     0
   ).kennelTravelCost;
+}
+
+
+/**
+ * Represents one dog's current cluster selection from the UI.
+ *
+ * selectedShowDays is an array of day/show identifiers.
+ * For v1, these can just be numbers.
+ *
+ * Example:
+ * [1, 2, 4] means entered on days 1, 2, and 4 of the cluster.
+ */
+export type ClusterEntryDogSelection = {
+  dogId: string;
+  dogName: string;
+  breed: string;
+  sex: "Dog" | "Bitch";
+  points?: number; // only relevant if not yet a champion
+  selectedShowDays: number[];
+};
+
+/**
+ * Full quote request built from the player's current UI selections.
+ */
+export type ClusterEntryQuoteInput = {
+  homeDistrict: number;
+  clusterDistrict: number;
+  ledgerBalance: number;
+  dogs: ClusterEntryDogSelection[];
+};
+
+/**
+ * Full quote returned to the UI for display and affordability checks.
+ */
+export type ClusterEntryQuote = {
+  dogsEntered: number;
+  totalEntries: number;
+
+  travel: TravelCostBreakdown;
+  entryFees: number;
+  handlerFee: number;
+
+  totalCost: number;
+  ledgerBalance: number;
+  ledgerBalanceAfterEntry: number;
+  shortfall: number;
+  canAfford: boolean;
+};
+
+
+/**
+ * Builds a live entry quote for the currently selected cluster entries.
+ *
+ * This function is intended to be called repeatedly by the UI whenever
+ * the player checks or unchecks dogs or show days.
+ *
+ * It does NOT create entries or debit the ledger.
+ * It only returns a quote.
+ */
+export function getClusterEntryQuote(
+  input: ClusterEntryQuoteInput
+): ClusterEntryQuote {
+  /**
+   * Only count dogs that actually have at least one selected show day.
+   */
+  const enteredDogs = input.dogs.filter(
+    (dog) => dog.selectedShowDays.length > 0
+  );
+
+  /**
+   * Number of unique dogs entered in the cluster.
+   *
+   * Used for:
+   * - per-dog travel cost
+   * - handler threshold logic
+   */
+  const dogsEntered = enteredDogs.length;
+
+  /**
+   * Total number of individual show entries across all selected dogs.
+   *
+   * Example:
+   * - 2 dogs entered for 3 days each = 6 total entries
+   */
+  const totalEntries = enteredDogs.reduce(
+    (sum, dog) => sum + dog.selectedShowDays.length,
+    0
+  );
+
+  /**
+   * Travel cost is based on unique dogs traveling, not number of show entries.
+   */
+  const travel = getTravelCostBreakdown(
+    input.homeDistrict,
+    input.clusterDistrict,
+    dogsEntered
+  );
+
+  /**
+   * Entry fees are charged per dog per selected show day.
+   */
+  const entryFees = totalEntries * ENTRY_FEE_PER_SHOW;
+
+  /**
+   * Handler fee applies once the threshold number of dogs is reached.
+   *
+   * V1 rule: flat fee per cluster quote.
+   */
+  const handlerFee =
+    dogsEntered >= HANDLER_THRESHOLD_DOGS ? CLUSTER_HANDLER_FEE : 0;
+
+  /**
+   * Final cost of this proposed cluster entry.
+   */
+  const totalCost = travel.totalCost + entryFees + handlerFee;
+
+  /**
+   * Ledger result after entry would be submitted.
+   */
+  const ledgerBalanceAfterEntry = input.ledgerBalance - totalCost;
+
+  /**
+   * Shortfall is useful for UI display if the player cannot afford the trip.
+   */
+  const shortfall = ledgerBalanceAfterEntry < 0
+    ? Math.abs(ledgerBalanceAfterEntry)
+    : 0;
+
+  /**
+   * Whether the player can successfully submit this entry.
+   */
+  const canAfford = ledgerBalanceAfterEntry >= 0;
+
+  return {
+    dogsEntered,
+    totalEntries,
+    travel,
+    entryFees,
+    handlerFee,
+    totalCost,
+    ledgerBalance: input.ledgerBalance,
+    ledgerBalanceAfterEntry,
+    shortfall,
+    canAfford,
+  };
 }

@@ -1,10 +1,10 @@
 import {
-  PUPPY_SALE_MIN_AGE,
-  MIN_SHOW_AGE,
-  MIN_BREED_AGE,
-  AGE_DEATH_START,
-  MAX_SHOW_AGE
-} from "./constants";
+  PUPPY_SALE_MIN_AGE_HOURS,
+  MIN_SHOW_AGE_HOURS,
+  MIN_BREED_AGE_HOURS,
+  AGE_DEATH_START_HOURS,
+  MAX_SHOW_AGE_HOURS
+} from "../constants/lifecycle.constants";
 import { ageHours } from "./time";
 
 export type Sex = "M" | "F";
@@ -32,30 +32,33 @@ export type LifeStage = "PUPPY" | "JUNIOR" | "ADULT" | "VETERAN" | "SENIOR";
  * Derive a coarse life stage based on age.
  * You can refine these boundaries later without touching API/UI.
  */
-export function lifeStage(now: Date, birthAt: Date): LifeStage {
-  const h = ageHours(now, birthAt);
+export function lifeStage(
+  currentEpoch: number,
+  birthEpoch: number
+): LifeStage {
+  const h = ageHours(currentEpoch, birthEpoch);
 
-  if (h < MIN_SHOW_AGE) return "PUPPY";
-  if (h < MIN_BREED_AGE) return "JUNIOR";
-  if (h < AGE_DEATH_START) return "ADULT";
+  if (h < MIN_SHOW_AGE_HOURS) return "PUPPY";
+  if (h < MIN_BREED_AGE_HOURS) return "JUNIOR";
+  if (h < AGE_DEATH_START_HOURS) return "ADULT";
 
   // once death-risk begins, the dog is effectively senior/veteran-aged
   // If you later add a true "veteran" age threshold, split it here.
-  if (h <= MAX_SHOW_AGE) return "VETERAN";
+  if (h <= MAX_SHOW_AGE_HOURS) return "VETERAN";
 
   return "SENIOR";
 }
 
-export function canSellPuppy(now: Date, birthAt: Date, status: DogStatus): boolean {
+export function canSellPuppy(currentEpoch: number, birthEpoch: number, status: DogStatus): boolean {
   if (status !== "ALIVE") return false;
-  return ageHours(now, birthAt) >= PUPPY_SALE_MIN_AGE;
+  return ageHours(currentEpoch, birthEpoch) >= PUPPY_SALE_MIN_AGE_HOURS;
 }
 
-export function canEnterShows(now: Date, birthAt: Date, status: DogStatus): boolean {
+export function canEnterShows(currentEpoch: number, birthEpoch: number, status: DogStatus): boolean {
   if (status !== "ALIVE") return false;
 
-  const h = ageHours(now, birthAt);
-  return h >= MIN_SHOW_AGE && h <= MAX_SHOW_AGE;
+  const h = ageHours(currentEpoch, birthEpoch);
+  return h >= MIN_SHOW_AGE_HOURS && h <= MAX_SHOW_AGE_HOURS;
 }
 
 /**
@@ -66,16 +69,16 @@ export function canEnterShows(now: Date, birthAt: Date, status: DogStatus): bool
  * When you decide it, add DAM_MAX_BREED_AGE to constants and enforce it here.
  */
 export function canBreed(
-  now: Date,
-  birthAt: Date,
+  currentEpoch: number,
+  birthEpoch: number,
   status: DogStatus,
   sex: Sex,
   repro: ReproState = {}
 ): boolean {
   if (status !== "ALIVE") return false;
 
-  const h = ageHours(now, birthAt);
-  if (h < MIN_BREED_AGE) return false;
+  const h = ageHours(currentEpoch, birthEpoch);
+  if (h < MIN_BREED_AGE_HOURS) return false;
 
   // If dog is too old to show, you may still allow breeding.
   // Policy choice: keep breeding allowed past MAX_SHOW_AGE unless you add caps.
@@ -95,21 +98,21 @@ export function canBreed(
  * A single function that UI/API can call to get all lifecycle info at once.
  */
 export function getLifecycleFlags(args: {
-  now: Date;
-  birthAt: Date;
+  currentEpoch: number,
+  birthEpoch: number,
   status: DogStatus;
   sex: Sex;
   repro?: ReproState;
 }) {
-  const { now, birthAt, status, sex, repro } = args;
-  const h = ageHours(now, birthAt);
+  const {currentEpoch, birthEpoch, status, sex, repro } = args;
+  const h = ageHours(currentEpoch, birthEpoch);
 
   return {
     ageHours: h,
-    stage: lifeStage(now, birthAt),
-    canShow: canEnterShows(now, birthAt, status),
-    canBreed: canBreed(now, birthAt, status, sex, repro),
-    canSell: canSellPuppy(now, birthAt, status),
-    isDeathRiskAge: h >= AGE_DEATH_START
+    stage: lifeStage(currentEpoch, birthEpoch),
+    canShow: canEnterShows(currentEpoch, birthEpoch, status),
+    canBreed: canBreed(currentEpoch, birthEpoch, status, sex, repro),
+    canSell: canSellPuppy(currentEpoch, birthEpoch, status),
+    isDeathRiskAge: h >= AGE_DEATH_START_HOURS
   };
 }
