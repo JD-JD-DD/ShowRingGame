@@ -15,6 +15,7 @@ export const BASE_TRAVEL_COST: Record<number, number> = {
   7: 3500,
 };
 
+export const TRAVEL_COST_PER_DOG = 50;
 
 // TBD
 export const ENTRY_FEE = 0 // TBD

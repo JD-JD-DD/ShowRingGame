@@ -1,28 +1,80 @@
-// tier system definition
+
+/**
+ * DistanceTier represents the relative travel distance between two districts.
+ *
+ * These values are NOT miles or kilometers. They are abstract tiers used
+ * by the economy engine to determine travel costs, fatigue, etc.
+ *
+ * Lower number = closer districts
+ * Higher number = farther travel
+ *
+ * These tiers correspond to the DISTRICT_DISTANCE_MATRIX values.
+ */
 export enum DistanceTier {
-  Home = 0,
-  Nearby = 1,
-  Neighboring = 2,
-  Regional = 3,
-  Far = 4,
-  LongDistance = 5,
-  Remote = 6,
-  Isolated = 7
+  Home = 0,          // Same district
+  Nearby = 1,        // Adjacent district
+  Neighboring = 2,   // Short regional travel
+  Regional = 3,      // Moderate travel
+  Far = 4,           // Cross-country style travel
+  LongDistance = 5,  // Very long travel
+  Remote = 6,        // Difficult travel areas
+  Isolated = 7       // Extreme travel (AK / HI / PR type cases)
 }
 
-// define labels
+/**
+ * Human-readable labels for each DistanceTier.
+ *
+ * These are intended for UI display only.
+ * Example:
+ *
+ *   Travel Tier: Regional
+ *
+ * The economy engine should NOT rely on these strings for logic.
+ * Always use the numeric DistanceTier values for calculations.
+ */
 export const DISTANCE_TIER_LABEL: Record<DistanceTier, string> = {
   [DistanceTier.Home]: "Home",
   [DistanceTier.Nearby]: "Nearby",
   [DistanceTier.Neighboring]: "Neighboring",
   [DistanceTier.Regional]: "Regional",
   [DistanceTier.Far]: "Far",
-  [DistanceTier.LongDistance]: "LongDistance",
+  [DistanceTier.LongDistance]: "Long Distance",
   [DistanceTier.Remote]: "Remote",
   [DistanceTier.Isolated]: "Isolated"
 };
 
-// 2D array; district 1 = index 0
+/**
+ * DISTRICT_DISTANCE_MATRIX
+ *
+ * 15 × 15 matrix defining travel distance tiers between districts.
+ *
+ * Row = origin district
+ * Column = destination district
+ *
+ * IMPORTANT:
+ * District numbers in the game are 1-based (1–15),
+ * but arrays in TypeScript are 0-based.
+ *
+ * Therefore:
+ *
+ *   districtIndex = districtNumber - 1
+ *
+ * Example:
+ *
+ *   District 1 → District 4
+ *
+ *   matrix[0][3]
+ *
+ * This matrix MUST remain symmetrical:
+ *
+ *   distance(A,B) == distance(B,A)
+ *
+ * Diagonal must always be 0 because travel within the same district
+ * does not incur inter-district travel cost.
+ *
+ * The geography helper functions should be used to access this matrix
+ * instead of reading it directly elsewhere in the codebase.
+ */
 export const DISTRICT_DISTANCE_MATRIX: number[][] = [
   [0,1,1,2,2,3,3,4,4,5,5,6,6,7,7],
   [1,0,1,1,2,2,3,3,4,4,5,5,6,6,7],

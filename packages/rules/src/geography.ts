@@ -1,5 +1,5 @@
 
-
+import { DISTANCE_TIER_LABEL, DistanceTier } from "../constants/geography.constants";
 import { DISTRICT_DISTANCE_MATRIX } from "../constants/geography.constants";
 
 // helper, how far apart are districts
@@ -19,4 +19,13 @@ export function getDistrictDistanceTier(
   const toIndex = toDistrict - 1;
 
   return DISTRICT_DISTANCE_MATRIX[fromIndex][toIndex];
+}
+
+
+/**
+ * Returns the human readable name for a distance tier.
+ * Example: 3 → "Regional"
+ */
+export function getDistanceTierLabel(tier: DistanceTier): string {
+  return DISTANCE_TIER_LABEL[tier];
 }
