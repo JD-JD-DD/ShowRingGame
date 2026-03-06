@@ -1,7 +1,7 @@
 // Calendar structure
 
-export const SHOWDOG_WEEK_HOURS = 7
-export const SHOWDOG_YEAR_HOURS = 365
+export const SHOW_WEEK_HOURS = 7
+export const SHOW_YEAR_HOURS = 365
 
 export const ANNUAL_EVENT_HOUR_IN_YEAR = 364
 
