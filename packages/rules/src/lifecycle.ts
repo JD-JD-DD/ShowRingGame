@@ -3,7 +3,8 @@ import {
   MIN_SHOW_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
   AGE_DEATH_START_HOURS,
-  MAX_SHOW_AGE_HOURS
+  MAX_SHOW_AGE_HOURS,
+  DAM_MAX_BREED_AGE_HOURS,
 } from "../constants/lifecycle.constants";
 import { ageHours } from "./time";
 
@@ -23,7 +24,10 @@ export type DogStatus =
  */
 export type ReproState = {
   isPregnant?: boolean;
-  whelpingCooldownUntil?: Date | null;
+  // breedingAttemptId?: string
+  // pregCheckEpoch?: number
+  // dueEpoch?: number
+  whelpingCooldownUntil?: number | null;
 };
 
 export type LifeStage = "PUPPY" | "JUNIOR" | "ADULT" | "VETERAN" | "SENIOR";
@@ -80,13 +84,14 @@ export function canBreed(
   const h = ageHours(currentEpoch, birthEpoch);
   if (h < MIN_BREED_AGE_HOURS) return false;
 
-  // If dog is too old to show, you may still allow breeding.
-  // Policy choice: keep breeding allowed past MAX_SHOW_AGE unless you add caps.
-  // For dams, you likely will add a max breeding age later.
   if (sex === "F") {
+    if (h > DAM_MAX_BREED_AGE_HOURS) return false;
     if (repro.isPregnant) return false;
 
-    if (repro.whelpingCooldownUntil && now < repro.whelpingCooldownUntil) {
+    if (
+      repro.whelpingCooldownUntil !== undefined &&
+      currentEpoch < repro.whelpingCooldownUntil
+    ) {
       return false;
     }
   }
