@@ -7,6 +7,7 @@ import {
   MAX_LITTER_SIZE,
   MIN_LITTER_SIZE,
 } from "../constants/litter.constants";
+import { DogTraits } from "./dog.engine";
 import type { Sex } from "../src/lifecycle";
 import { createDogFromLitter, type Dog } from "./dog.engine";
 
@@ -29,6 +30,8 @@ export type CreateLitterInput = {
   pupCount: number;
   puppyDogIds: string[];
   puppySexes: Sex[];
+  sireTraits: DogTraits;
+  damTraits: DogTraits;
   random01?: () => number;
 };
 
@@ -147,6 +150,8 @@ export function createLitter(input: CreateLitterInput): LitterWithDogs {
       litterOrder,
       sireId: input.sireId,
       damId: input.damId,
+      sireTraits: input.sireTraits,
+      damTraits: input.damTraits,
       random01,
     });
   });

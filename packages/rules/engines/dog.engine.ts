@@ -3,6 +3,7 @@ import {
   TRAIT_MIN,
 } from "../constants/genetics.constants";
 import { getLifecycleFlags, type DogStatus, type Sex } from "../src/lifecycle";
+import { generatePuppyTraits } from "./trait.engine";
 
 export type DogTraits = {
   head: number;
@@ -52,6 +53,8 @@ export type CreateDogFromLitterInput = {
   sireId: string;
   damId: string;
   status?: DogStatus;
+  sireTraits: DogTraits
+  damTraits: DogTraits
   random01?: () => number;
 };
 
@@ -118,7 +121,11 @@ export function createDogFromLitter(
     litterOrder: input.litterOrder,
     sireId: input.sireId,
     damId: input.damId,
-    traits: generateRandomTraits(random01),
+    traits: generatePuppyTraits({
+      sireTraits: input.sireTraits,
+      damTraits: input.damTraits,
+      random01,
+    }),
   };
 }
 

@@ -6,18 +6,7 @@ import {
   MUTATION_RATE,
 } from "../constants/genetics.constants";
 
-export type DogTraits = {
-  head: number;
-  forequarters: number;
-  hindquarters: number;
-  gait: number;
-  coat: number;
-  size: number;
-  temperament: number;
-  show_shine: number;
-  feet: number;
-  topline: number;
-};
+import type { DogTraits } from "./dog.engine";
 
 export type GeneratePuppyTraitsInput = {
   sireTraits: DogTraits;
