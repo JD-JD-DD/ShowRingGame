@@ -21,6 +21,6 @@ export const TRAIT_IDEAL = 10
 
 
 // TBD
-export const TRAIT_VARIANCE = 0 // TBD
-export const INHERITANCE_WEIGHT = 0 // TBD
-export const MUTATION_RATE = 0 // TBD
+export const TRAIT_VARIANCE = 2
+export const INHERITANCE_WEIGHT = 0.25
+export const MUTATION_RATE = 0.02
