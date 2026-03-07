@@ -7,7 +7,7 @@ export default function Home() {
 
       <br />
 
-      <a href="/generate-dog">Generate Test Dog</a>
+      <a href="/generate-dog">Go to Generate Test Dog page</a>
     </main>
   );
 }

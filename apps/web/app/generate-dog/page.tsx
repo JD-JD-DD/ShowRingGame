@@ -48,7 +48,7 @@ export default function GenerateDogPage() {
 
   return (
     <main style={{ padding: "40px", fontFamily: "sans-serif" }}>
-      <h1>Generate Dog</h1>
+      <h1>Click Here to Generate Dog</h1>
 
       <button
         onClick={handleGenerateDog}
@@ -59,7 +59,7 @@ export default function GenerateDogPage() {
           marginBottom: "24px",
         }}
       >
-        Generate Dog
+        Click Here to Generate Dog
       </button>
 
       {!dog && <p>Dog output will appear here.</p>}
