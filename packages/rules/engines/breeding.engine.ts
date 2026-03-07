@@ -5,17 +5,10 @@ import {
   PREG_CHECK_HOURS,
   WHELPING_COOLDOWN_HOURS,
 } from "../constants/lifecycle.constants";
-import {
-  BREED_CODE2_REGEX,
-  LITTER_ORDER_PAD,
-  LITTER_SERIAL_LENGTH,
-} from "../constants/breed.constants";
-import {
-  MAX_LITTER_SIZE,
-  MIN_LITTER_SIZE,
-} from "../constants/litter.constants";
 import { ageHours } from "../src/time";
 import type { DogStatus, Sex } from "../src/lifecycle";
+import { createLitter, type LitterWithDogs } from "./litter.engine";
+import type { Dog } from "./dog.engine";
 
 export type BreedingAttemptStatus =
   | "INITIATED"
@@ -26,11 +19,9 @@ export type BreedingAttemptStatus =
 
 export type PregnancyState = "NOT_PREGNANT" | "PREGNANT" | "POST_WHELP";
 
-export type BreedCode2 = string;
-
 export type BreedingDog = {
   dogId: string;
-  breedCode2: BreedCode2;
+  breedCode2: string;
   birthEpoch: number;
   sex: Sex;
   status: DogStatus;
@@ -40,7 +31,7 @@ export type BreedingAttempt = {
   attemptId: string;
   sireId: string;
   damId: string;
-  breedCode2: BreedCode2;
+  breedCode2: string;
   createdEpoch: number;
   pregCheckEpoch: number;
   dueEpoch: number;
@@ -52,37 +43,9 @@ export type BreedingAttempt = {
   status: BreedingAttemptStatus;
 };
 
-export type Litter = {
-  litterId: string;
-  breedCode2: BreedCode2;
-  serial7: string;
-  bornEpoch: number;
-  sireId: string;
-  damId: string;
-  pupCount: number;
-};
-
-export type PuppyRecord = {
-  dogId: string;
-  litterId: string;
-  litterOrder: number;
-  regNumber: string;
-  breedCode2: BreedCode2;
-  birthEpoch: number;
-  sex: Sex;
-  status: DogStatus;
-};
-
 export type DamReproUpdate = {
   isPregnant: boolean;
   whelpingCooldownUntil: number | null;
-};
-
-export type WhelpOutcome = {
-  attempt: BreedingAttempt;
-  litter: Litter;
-  puppies: PuppyRecord[];
-  damReproUpdate: DamReproUpdate;
 };
 
 export type ValidationResult = {
@@ -107,24 +70,22 @@ export type PregnancyCheckInput = {
   conceptionRoll: number;
 };
 
-export type WhelpInput = {
+export type ResolveWhelpInput = {
   attempt: BreedingAttempt;
   currentEpoch: number;
   litterId: string;
   pupCount: number;
-  serial7: string;
   puppySexes: Sex[];
   puppyDogIds: string[];
+  random01?: () => number;
 };
 
-function isValidBreedCode2(code: string): boolean {
-  return BREED_CODE2_REGEX.test(code);
-}
-
-function isValidSerial7(serial7: string): boolean {
-  const pattern = new RegExp(`^\\d{${LITTER_SERIAL_LENGTH}}$`);
-  return pattern.test(serial7);
-}
+export type WhelpOutcome = {
+  attempt: BreedingAttempt;
+  litter: LitterWithDogs["litter"];
+  puppies: Dog[];
+  damReproUpdate: DamReproUpdate;
+};
 
 function assertFiniteInteger(value: number, label: string): void {
   if (!Number.isFinite(value) || !Number.isInteger(value)) {
@@ -135,12 +96,6 @@ function assertFiniteInteger(value: number, label: string): void {
 function assertRoll(value: number, label: string): void {
   if (!Number.isFinite(value) || value < 0 || value >= 1) {
     throw new Error(`${label} must be >= 0 and < 1.`);
-  }
-}
-
-function assertPositiveInt(value: number, label: string): void {
-  if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`${label} must be a positive integer.`);
   }
 }
 
@@ -162,20 +117,17 @@ export function canBreedDam(
 ): boolean {
   if (dam.sex !== "F") return false;
   if (dam.status !== "ALIVE") return false;
-  if (options.isPregnant) return false;
-
-  const age = ageHours(currentEpoch, dam.birthEpoch);
-  if (age < MIN_BREED_AGE_HOURS) return false;
-  if (age > DAM_MAX_BREED_AGE_HOURS) return false;
-
+  if (options.isPregnant === true) return false;
   if (
     options.cooldownUntil != null &&
+    Number.isFinite(options.cooldownUntil) &&
     currentEpoch < options.cooldownUntil
   ) {
     return false;
   }
 
-  return true;
+  const age = ageHours(currentEpoch, dam.birthEpoch);
+  return age >= MIN_BREED_AGE_HOURS && age <= DAM_MAX_BREED_AGE_HOURS;
 }
 
 export function validateBreedingPair(
@@ -189,24 +141,16 @@ export function validateBreedingPair(
 ): ValidationResult {
   const reasons: string[] = [];
 
-  if (!isValidBreedCode2(sire.breedCode2)) {
-    reasons.push("Sire breedCode2 is invalid.");
-  }
-
-  if (!isValidBreedCode2(dam.breedCode2)) {
-    reasons.push("Dam breedCode2 is invalid.");
-  }
-
   if (sire.dogId === dam.dogId) {
     reasons.push("Sire and dam cannot be the same dog.");
   }
 
   if (sire.breedCode2 !== dam.breedCode2) {
-    reasons.push("Breed mismatch.");
+    reasons.push("Cross-breed breeding is not allowed in v1.");
   }
 
   if (!canBreedSire(currentEpoch, sire)) {
-    reasons.push("Sire is not breeding-eligible.");
+    reasons.push("Sire is not eligible to breed.");
   }
 
   if (
@@ -215,7 +159,7 @@ export function validateBreedingPair(
       cooldownUntil: options.damCooldownUntil,
     })
   ) {
-    reasons.push("Dam is not breeding-eligible.");
+    reasons.push("Dam is not eligible to breed.");
   }
 
   return {
@@ -238,7 +182,6 @@ export function createBreedingAttempt(
   } = input;
 
   assertFiniteInteger(currentEpoch, "currentEpoch");
-  assertFiniteInteger(rngSeed, "rngSeed");
 
   const validation = validateBreedingPair(currentEpoch, sire, dam, {
     damIsPregnant,
@@ -309,58 +252,18 @@ export function canWhelp(
   return currentEpoch >= attempt.dueEpoch;
 }
 
-export function buildRegNumber(
-  breedCode2: string,
-  serial7: string,
-  litterOrder: number
-): string {
-  if (!isValidBreedCode2(breedCode2)) {
-    throw new Error("breedCode2 must be two uppercase letters.");
-  }
-
-  if (!isValidSerial7(serial7)) {
-    throw new Error(`serial7 must be exactly ${LITTER_SERIAL_LENGTH} digits.`);
-  }
-
-  if (!Number.isInteger(litterOrder) || litterOrder < 1 || litterOrder > 99) {
-    throw new Error("litterOrder must be an integer between 1 and 99.");
-  }
-
-  return `${breedCode2}${serial7}${String(litterOrder).padStart(
-    LITTER_ORDER_PAD,
-    "0"
-  )}`;
-}
-
-export function generateSerial7(random01: () => number): string {
-  const roll = random01();
-  assertRoll(roll, "random01()");
-
-  const max = 10 ** LITTER_SERIAL_LENGTH;
-  const value = Math.floor(roll * max);
-
-  return String(value).padStart(LITTER_SERIAL_LENGTH, "0");
-}
-
-export function resolveWhelp(input: WhelpInput): WhelpOutcome {
+export function resolveWhelp(input: ResolveWhelpInput): WhelpOutcome {
   const {
     attempt,
     currentEpoch,
     litterId,
     pupCount,
-    serial7,
     puppySexes,
     puppyDogIds,
+    random01,
   } = input;
 
   assertFiniteInteger(currentEpoch, "currentEpoch");
-  assertPositiveInt(pupCount, "pupCount");
-
-  if (pupCount < MIN_LITTER_SIZE || pupCount > MAX_LITTER_SIZE) {
-    throw new Error(
-      `pupCount must be between ${MIN_LITTER_SIZE} and ${MAX_LITTER_SIZE}.`
-    );
-  }
 
   if (attempt.status === "WHELPED") {
     throw new Error("Attempt already whelped.");
@@ -370,41 +273,16 @@ export function resolveWhelp(input: WhelpInput): WhelpOutcome {
     throw new Error("Attempt is not ready to whelp.");
   }
 
-  if (!isValidSerial7(serial7)) {
-    throw new Error(`serial7 must be exactly ${LITTER_SERIAL_LENGTH} digits.`);
-  }
-
-  if (puppySexes.length !== pupCount) {
-    throw new Error("puppySexes length must equal pupCount.");
-  }
-
-  if (puppyDogIds.length !== pupCount) {
-    throw new Error("puppyDogIds length must equal pupCount.");
-  }
-
-  const litter: Litter = {
+  const { litter, puppies } = createLitter({
     litterId,
     breedCode2: attempt.breedCode2,
-    serial7,
     bornEpoch: currentEpoch,
     sireId: attempt.sireId,
     damId: attempt.damId,
     pupCount,
-  };
-
-  const puppies: PuppyRecord[] = Array.from({ length: pupCount }, (_, index) => {
-    const litterOrder = index + 1;
-
-    return {
-      dogId: puppyDogIds[index],
-      litterId,
-      litterOrder,
-      regNumber: buildRegNumber(attempt.breedCode2, serial7, litterOrder),
-      breedCode2: attempt.breedCode2,
-      birthEpoch: currentEpoch,
-      sex: puppySexes[index],
-      status: "ALIVE",
-    };
+    puppySexes,
+    puppyDogIds,
+    random01,
   });
 
   const updatedAttempt: BreedingAttempt = {
