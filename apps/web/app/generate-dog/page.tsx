@@ -1,61 +1,57 @@
 "use client";
 
 import { useState } from "react";
+import { createFoundationDog, type Dog } from "@showring/rules";
 
-type TestDog = {
-  breed: string;
-  sex: "M" | "F";
-  regNumber: string;
-  traits: {
-    head: number;
-    forequarters: number;
-    hindquarters: number;
-    gait: number;
-    coat: number;
-    size: number;
-    temperament: number;
-    show_shine: number;
-    feet: number;
-    topline: number;
-  };
-};
-
-function randTrait(): number {
-  return Math.floor(Math.random() * 21);
+function randomSex(): "M" | "F" {
+  return Math.random() < 0.5 ? "M" : "F";
 }
 
-function generateTestDog(): TestDog {
-  const litterSerial = String(Math.floor(Math.random() * 10_000_000)).padStart(7, "0");
-  const litterOrder = String(Math.floor(Math.random() * 12) + 1).padStart(2, "0");
+function randomBreedCode2(): string {
+  return "WV";
+}
 
-  return {
-    breed: "Wirehaired Vizsla",
-    sex: Math.random() < 0.5 ? "M" : "F",
-    regNumber: `WV${litterSerial}${litterOrder}`,
-    traits: {
-      head: randTrait(),
-      forequarters: randTrait(),
-      hindquarters: randTrait(),
-      gait: randTrait(),
-      coat: randTrait(),
-      size: randTrait(),
-      temperament: randTrait(),
-      show_shine: randTrait(),
-      feet: randTrait(),
-      topline: randTrait(),
-    },
-  };
+function generateSerial7(): string {
+  return String(Math.floor(Math.random() * 10_000_000)).padStart(7, "0");
+}
+
+function generateRegNumber(breedCode2: string): string {
+  const serial7 = generateSerial7();
+  const litterOrder = "01";
+  return `${breedCode2}${serial7}${litterOrder}`;
+}
+
+function generateDogId(): string {
+  return `DOG-${crypto.randomUUID()}`;
+}
+
+function currentEpochHour(): number {
+  return Math.floor(Date.now() / (1000 * 60 * 60));
 }
 
 export default function GenerateDogPage() {
-  const [dog, setDog] = useState<TestDog | null>(null);
+  const [dog, setDog] = useState<Dog | null>(null);
+
+  function handleGenerateDog() {
+    const breedCode2 = randomBreedCode2();
+
+    const newDog = createFoundationDog({
+      dogId: generateDogId(),
+      regNumber: generateRegNumber(breedCode2),
+      breedCode2,
+      birthEpoch: currentEpochHour(),
+      sex: randomSex(),
+    });
+
+    setDog(newDog);
+  }
 
   return (
     <main style={{ padding: "40px", fontFamily: "sans-serif" }}>
-      <h1>Generate Dog (Test)</h1>
+      <h1>Generate Dog</h1>
 
       <button
-        onClick={() => setDog(generateTestDog())}
+        onClick={handleGenerateDog}
         style={{
           padding: "10px 16px",
           fontSize: "16px",
@@ -70,11 +66,13 @@ export default function GenerateDogPage() {
 
       {dog && (
         <div style={{ marginTop: "16px" }}>
-          <p><strong>Breed:</strong> {dog.breed}</p>
-          <p><strong>Sex:</strong> {dog.sex}</p>
+          <p><strong>Dog ID:</strong> {dog.dogId}</p>
           <p><strong>Reg Number:</strong> {dog.regNumber}</p>
+          <p><strong>Breed Code:</strong> {dog.breedCode2}</p>
+          <p><strong>Sex:</strong> {dog.sex}</p>
+          <p><strong>Status:</strong> {dog.status}</p>
 
-          <h2 style={{ marginTop: "24px" }}>Traits</h2>
+          <h2 style={{ marginTop: "24px" }}>Hidden Traits</h2>
           <ul>
             <li>Head: {dog.traits.head}</li>
             <li>Forequarters: {dog.traits.forequarters}</li>
@@ -89,7 +87,6 @@ export default function GenerateDogPage() {
           </ul>
 
           <br />
-
           <a href="/">Back Home</a>
         </div>
       )}

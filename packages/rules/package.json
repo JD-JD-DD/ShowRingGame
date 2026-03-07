@@ -1,17 +1,7 @@
 {
-  "name": "rules",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-  "test:quote": "ts-node --project tsconfig.json src/testQuote.ts"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "packageManager": "pnpm@10.30.3",
-  "devDependencies": {
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
-  }
+  "name": "@showring/rules",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts"
 }
