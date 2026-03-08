@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   createBreedingAttempt,
   resolvePregnancyCheck,
@@ -39,6 +39,39 @@ type LitterResult = {
   puppies: Dog[];
 };
 
+function TraitList({ dog, title }: { dog: Dog; title: string }) {
+  return (
+    <div
+      style={{
+        border: "1px solid #ccc",
+        borderRadius: "8px",
+        padding: "16px",
+        minWidth: "280px",
+        textAlign: "left",
+      }}
+    >
+      <h2 style={{ marginTop: 0 }}>{title}</h2>
+      <p><strong>Dog ID:</strong> {dog.dogId}</p>
+      <p><strong>Reg Number:</strong> {dog.regNumber}</p>
+      <p><strong>Sex:</strong> {dog.sex}</p>
+
+      <h3 style={{ marginBottom: "8px" }}>Traits</h3>
+      <ul style={{ marginTop: 0 }}>
+        <li>Head: {dog.traits.head}</li>
+        <li>Forequarters: {dog.traits.forequarters}</li>
+        <li>Hindquarters: {dog.traits.hindquarters}</li>
+        <li>Gait: {dog.traits.gait}</li>
+        <li>Coat: {dog.traits.coat}</li>
+        <li>Size: {dog.traits.size}</li>
+        <li>Temperament: {dog.traits.temperament}</li>
+        <li>Show Shine: {dog.traits.show_shine}</li>
+        <li>Feet: {dog.traits.feet}</li>
+        <li>Topline: {dog.traits.topline}</li>
+      </ul>
+    </div>
+  );
+}
+
 export default function GenerateLitterPage() {
   const [sireId, setSireId] = useState(sampleSires[0]?.dogId ?? "");
   const [damId, setDamId] = useState(sampleDams[0]?.dogId ?? "");
@@ -46,15 +79,22 @@ export default function GenerateLitterPage() {
   const [result, setResult] = useState<LitterResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const selectedSire = useMemo(
+    () => sampleSires.find((dog) => dog.dogId === sireId) ?? null,
+    [sireId]
+  );
+
+  const selectedDam = useMemo(
+    () => sampleDams.find((dog) => dog.dogId === damId) ?? null,
+    [damId]
+  );
+
   function handleGenerateLitter() {
     setError(null);
     setResult(null);
 
     try {
-      const sire = sampleSires.find((dog) => dog.dogId === sireId);
-      const dam = sampleDams.find((dog) => dog.dogId === damId);
-
-      if (!sire || !dam) {
+      if (!selectedSire || !selectedDam) {
         throw new Error("Please select a valid sire and dam.");
       }
 
@@ -65,8 +105,8 @@ export default function GenerateLitterPage() {
       const attempt = createBreedingAttempt({
         attemptId: generateId("ATTEMPT"),
         currentEpoch: currentEpochHour(),
-        sire,
-        dam,
+        sire: selectedSire,
+        dam: selectedDam,
         rngSeed: Math.floor(Math.random() * 1_000_000),
       });
 
@@ -89,8 +129,8 @@ export default function GenerateLitterPage() {
         pupCount,
         puppySexes,
         puppyDogIds,
-        sireTraits: sire.traits,
-        damTraits: dam.traits,
+        sireTraits: selectedSire.traits,
+        damTraits: selectedDam.traits,
         random01,
       });
 
@@ -182,7 +222,20 @@ export default function GenerateLitterPage() {
         </label>
       </div>
 
-      <br />
+      {(selectedSire || selectedDam) && (
+        <div
+          style={{
+            marginTop: "30px",
+            display: "flex",
+            gap: "20px",
+            justifyContent: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          {selectedSire && <TraitList dog={selectedSire} title="Selected Sire" />}
+          {selectedDam && <TraitList dog={selectedDam} title="Selected Dam" />}
+        </div>
+      )}
 
       <button
         onClick={handleGenerateLitter}
@@ -194,7 +247,7 @@ export default function GenerateLitterPage() {
           border: "1px solid white",
           background: "black",
           color: "white",
-          marginTop: "10px",
+          marginTop: "30px",
         }}
       >
         Generate Litter
@@ -208,7 +261,7 @@ export default function GenerateLitterPage() {
 
       {!error && !result && (
         <p style={{ marginTop: "30px" }}>
-          Litter output will appear here.
+          Select parents, review their traits, and generate a litter.
         </p>
       )}
 
@@ -218,7 +271,8 @@ export default function GenerateLitterPage() {
             marginTop: "40px",
             textAlign: "left",
             display: "inline-block",
-            maxWidth: "800px",
+            maxWidth: "900px",
+            width: "100%",
           }}
         >
           <h2>Litter Summary</h2>
