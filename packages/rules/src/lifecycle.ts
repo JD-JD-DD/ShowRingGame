@@ -89,7 +89,7 @@ export function canBreed(
     if (repro.isPregnant) return false;
 
     if (
-      repro.whelpingCooldownUntil !== undefined &&
+      repro.whelpingCooldownUntil != null &&
       currentEpoch < repro.whelpingCooldownUntil
     ) {
       return false;
