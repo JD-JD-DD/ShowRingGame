@@ -1,0 +1,214 @@
+import type { Dog } from "../engines/dog.engine";
+
+const NOW = Math.floor(Date.now() / (1000 * 60 * 60));
+
+export const sampleSires: Dog[] = [
+{
+  dogId: "DOG-WV-0000011",
+  regNumber: "WV000001101",
+  breedCode2: "WV",
+  birthEpoch: NOW - 1000,
+  sex: "M",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    head: 14,
+    forequarters: 12,
+    hindquarters: 15,
+    gait: 16,
+    coat: 11,
+    size: 10,
+    temperament: 13,
+    show_shine: 14,
+    feet: 12,
+    topline: 15
+  }
+
+  
+},
+
+{
+  dogId: "DOG-WV-0000003",
+  regNumber: "WV000000303",
+  breedCode2: "WV",
+  birthEpoch: NOW - 2500,
+  sex: "M",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    head: 3,
+    forequarters: 7,
+    hindquarters: 5,
+    gait: 6,
+    coat: 1,
+    size: 10,
+    temperament: 3,
+    show_shine: 4,
+    feet: 2,
+    topline: 5
+  }
+},
+
+{
+  dogId: "DOG-WV-0057001",
+  regNumber: "WV005700105",
+  breedCode2: "WV",
+  birthEpoch: NOW -3000,
+  sex: "M",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    head: 9,
+    forequarters: 11,
+    hindquarters: 11,
+    gait: 9,
+    coat: 11,
+    size: 10,
+    temperament: 11,
+    show_shine: 9,
+    feet: 12,
+    topline: 11
+  }
+},
+
+{
+  dogId: "DOG-WV-0770001",
+  regNumber: "WV077000103",
+  breedCode2: "WV",
+  birthEpoch: NOW - 1500,
+  sex: "M",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    head: 7,
+    forequarters: 7,
+    hindquarters: 7,
+    gait: 16,
+    coat: 11,
+    size: 10,
+    temperament: 13,
+    show_shine: 12,
+    feet: 12,
+    topline: 12
+  }
+}
+
+];
+
+
+export const sampleDams: Dog[] = [
+{
+  dogId: "DOG-WV-0000022",
+  regNumber: "WV000002202",
+  breedCode2: "WV",
+  birthEpoch: NOW - 1200,
+  sex: "F",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    head: 14,
+    forequarters: 12,
+    hindquarters: 15,
+    gait: 16,
+    coat: 11,
+    size: 10,
+    temperament: 13,
+    show_shine: 14,
+    feet: 12,
+    topline: 15
+  }
+
+  
+},
+
+{
+  dogId: "DOG-WV-0000004",
+  regNumber: "WV000000404",
+  breedCode2: "WV",
+  birthEpoch: NOW - 1700,
+  sex: "F",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    head: 13,
+    forequarters: 7,
+    hindquarters: 15,
+    gait: 16,
+    coat: 11,
+    size: 10,
+    temperament: 13,
+    show_shine: 14,
+    feet: 12,
+    topline: 15
+  }
+},
+
+{
+  dogId: "DOG-WV-0068002",
+  regNumber: "WV006800206",
+  breedCode2: "WV",
+  birthEpoch: NOW - 1500,
+  sex: "F",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    head: 9,
+    forequarters: 11,
+    hindquarters: 11,
+    gait: 9,
+    coat: 11,
+    size: 10,
+    temperament: 11,
+    show_shine: 9,
+    feet: 12,
+    topline: 11
+  }
+},
+
+{
+  dogId: "DOG-WV-0880002",
+  regNumber: "WV088000204",
+  breedCode2: "WV",
+  birthEpoch: NOW - 2500,
+  sex: "F",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    head: 1,
+    forequarters: 1,
+    hindquarters: 7,
+    gait: 16,
+    coat: 11,
+    size: 10,
+    temperament: 1,
+    show_shine: 1,
+    feet: 1,
+    topline: 1
+  }
+}
+
+];
