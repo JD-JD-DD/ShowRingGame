@@ -210,7 +210,82 @@ export const sampleDams: Dog[] = [
     feet: 1,
     topline: 1
   }
-}
+},
+
+{
+  dogId: "BrightEyes Almost Perfect",
+  regNumber: "WV000000404",
+  breedCode2: "WV",
+  birthEpoch: NOW - 1700,
+  sex: "F",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    head: 10,
+    forequarters: 9,
+    hindquarters: 10,
+    gait: 10,
+    coat: 10,
+    size: 10,
+    temperament: 9,
+    show_shine: 9,
+    feet: 10,
+    topline: 10
+  }
+},
+
+{
+  dogId: "Jasper's One at a Time",
+  regNumber: "WV000000404",
+  breedCode2: "WV",
+  birthEpoch: NOW - 1700,
+  sex: "F",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    head: 1,
+    forequarters: 1,
+    hindquarters: 1,
+    gait: 1,
+    coat: 1,
+    size: 1,
+    temperament: 1,
+    show_shine: 1,
+    feet: 1,
+    topline: 1
+  }
+},
+
+{
+  dogId: "Jasper's Top End",
+  regNumber: "WV000000404",
+  breedCode2: "WV",
+  birthEpoch: NOW - 1700,
+  sex: "F",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    head: 19,
+    forequarters: 19,
+    hindquarters: 19,
+    gait: 19,
+    coat: 19,
+    size: 19,
+    temperament: 19,
+    show_shine: 19,
+    feet: 19,
+    topline: 19
+  }
+},
 
 ];
 
