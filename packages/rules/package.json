@@ -1,7 +1,6 @@
 {
   "name": "@showring/rules",
   "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "main": "./index.ts"
+  "main": "src/index.ts",
+  "type": "module"
 }
