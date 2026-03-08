@@ -5,7 +5,7 @@ const NOW = Math.floor(Date.now() / (1000 * 60 * 60));
 
 export const sampleSires: Dog[] = [
 {
-  dogId: "DOG-WV-0000011",
+  dogId: "Novel's Great Experiment",
   regNumber: "WV000001101",
   breedCode2: "WV",
   birthEpoch: NOW - 1000,
@@ -32,7 +32,7 @@ export const sampleSires: Dog[] = [
 },
 
 {
-  dogId: "DOG-WV-0000003",
+  dogId: "Novel's Make it Happen",
   regNumber: "WV000000303",
   breedCode2: "WV",
   birthEpoch: NOW - 2500,
@@ -57,7 +57,7 @@ export const sampleSires: Dog[] = [
 },
 
 {
-  dogId: "DOG-WV-0057001",
+  dogId: "ShowCase Ribbon Winner",
   regNumber: "WV005700105",
   breedCode2: "WV",
   birthEpoch: NOW -3000,
@@ -82,7 +82,7 @@ export const sampleSires: Dog[] = [
 },
 
 {
-  dogId: "DOG-WV-0770001",
+  dogId: "HollowHills Get 'Em",
   regNumber: "WV077000103",
   breedCode2: "WV",
   birthEpoch: NOW - 1500,
@@ -111,7 +111,7 @@ export const sampleSires: Dog[] = [
 
 export const sampleDams: Dog[] = [
 {
-  dogId: "DOG-WV-0000022",
+  dogId: "HollowHills Better and Better",
   regNumber: "WV000002202",
   breedCode2: "WV",
   birthEpoch: NOW - 1200,
@@ -138,7 +138,7 @@ export const sampleDams: Dog[] = [
 },
 
 {
-  dogId: "DOG-WV-0000004",
+  dogId: "Novel's Happy Go Lucky",
   regNumber: "WV000000404",
   breedCode2: "WV",
   birthEpoch: NOW - 1700,
@@ -163,7 +163,7 @@ export const sampleDams: Dog[] = [
 },
 
 {
-  dogId: "DOG-WV-0068002",
+  dogId: "ShowCase Go Girl",
   regNumber: "WV006800206",
   breedCode2: "WV",
   birthEpoch: NOW - 1500,
@@ -188,7 +188,7 @@ export const sampleDams: Dog[] = [
 },
 
 {
-  dogId: "DOG-WV-0880002",
+  dogId: "ShowCase Checkers",
   regNumber: "WV088000204",
   breedCode2: "WV",
   birthEpoch: NOW - 2500,
