@@ -42,17 +42,38 @@ export default function Home() {
 
       <br />
 
-      <a href="/generate-dog">
-        <button
-          style={{
-            fontSize: "20px",
-            padding: "12px 24px",
-            cursor: "pointer",
-          }}
-        >
-          ENTER
-        </button>
-      </a>
+      <div
+        style={{
+          display: "flex",
+          gap: "16px",
+          justifyContent: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <a href="/generate-dog">
+          <button
+            style={{
+              fontSize: "20px",
+              padding: "12px 24px",
+              cursor: "pointer",
+            }}
+          >
+            GENERATE DOG
+          </button>
+        </a>
+
+        <a href="/generate-litter">
+          <button
+            style={{
+              fontSize: "20px",
+              padding: "12px 24px",
+              cursor: "pointer",
+            }}
+          >
+            GENERATE LITTER
+          </button>
+        </a>
+      </div>
     </main>
   );
 }

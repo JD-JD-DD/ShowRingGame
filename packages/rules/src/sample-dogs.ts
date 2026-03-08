@@ -1,3 +1,4 @@
+
 import type { Dog } from "../engines/dog.engine";
 
 const NOW = Math.floor(Date.now() / (1000 * 60 * 60));
@@ -212,3 +213,5 @@ export const sampleDams: Dog[] = [
 }
 
 ];
+
+export const sampleDogs: Dog[] = [...sampleSires, ...sampleDams];
