@@ -8,7 +8,7 @@ import {
 import { ageHours } from "../src/time";
 import type { DogStatus, Sex } from "../src/lifecycle";
 import { createLitter, type LitterWithDogs } from "./litter.engine";
-import type { Dog } from "./dog.engine";
+import type { Dog, DogTraits } from "./dog.engine";
 
 export type BreedingAttemptStatus =
   | "INITIATED"
@@ -77,6 +77,8 @@ export type ResolveWhelpInput = {
   pupCount: number;
   puppySexes: Sex[];
   puppyDogIds: string[];
+  sireTraits: DogTraits;
+  damTraits: DogTraits;
   random01?: () => number;
 };
 
@@ -273,17 +275,19 @@ export function resolveWhelp(input: ResolveWhelpInput): WhelpOutcome {
     throw new Error("Attempt is not ready to whelp.");
   }
 
-  const { litter, puppies } = createLitter({
-    litterId,
-    breedCode2: attempt.breedCode2,
-    bornEpoch: currentEpoch,
-    sireId: attempt.sireId,
-    damId: attempt.damId,
-    pupCount,
-    puppySexes,
-    puppyDogIds,
-    random01,
-  });
+const { litter, puppies } = createLitter({
+  litterId,
+  breedCode2: attempt.breedCode2,
+  bornEpoch: currentEpoch,
+  sireId: attempt.sireId,
+  damId: attempt.damId,
+  pupCount,
+  puppySexes,
+  puppyDogIds,
+  sireTraits: input.sireTraits,
+  damTraits: input.damTraits,
+  random01,
+});
 
   const updatedAttempt: BreedingAttempt = {
     ...attempt,
