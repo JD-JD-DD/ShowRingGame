@@ -46,26 +46,40 @@ export default function GenerateDogPage() {
     setDog(newDog);
   }
 
-  return (
-    <main style={{ padding: "40px", fontFamily: "sans-serif" }}>
-      <h1>Click to Generate Dog</h1>
+return (
+    <main
+      style={{
+        padding: "40px",
+        fontFamily: "sans-serif",
+        textAlign: "center",
+      }}
+    >
+      <h1>Generate Test Dog</h1>
 
       <button
         onClick={handleGenerateDog}
         style={{
-          padding: "10px 16px",
-          fontSize: "16px",
+          padding: "14px 28px",
+          fontSize: "18px",
           cursor: "pointer",
-          marginBottom: "24px",
+          borderRadius: "6px",
+          border: "1px solid white",
+          background: "black",
+          color: "white",
+          marginTop: "20px",
         }}
       >
-        Click to Generate Dog
+        Generate Dog
       </button>
 
-      {!dog && <p>Dog output will appear here.</p>}
+      {!dog && (
+        <p style={{ marginTop: "30px" }}>
+          Dog output will appear here.
+        </p>
+      )}
 
       {dog && (
-        <div style={{ marginTop: "16px" }}>
+        <div style={{ marginTop: "40px", textAlign: "left", display: "inline-block" }}>
           <p><strong>Dog ID:</strong> {dog.dogId}</p>
           <p><strong>Reg Number:</strong> {dog.regNumber}</p>
           <p><strong>Breed Code:</strong> {dog.breedCode2}</p>
@@ -87,6 +101,7 @@ export default function GenerateDogPage() {
           </ul>
 
           <br />
+
           <a href="/">Back Home</a>
         </div>
       )}
