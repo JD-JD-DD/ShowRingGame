@@ -1,8 +1,9 @@
 import {
   sampleDogs,
-  sampleJudges,
-  rankDogsByJudgeWeights,
-} from "./index";
+  sampleJudges, } from "./index";
+
+import { rankDogsByJudgeWeights } from "../engines/judging.engine";
+
 
 function formatNumber(value: number): string {
   return value.toFixed(2);

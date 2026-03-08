@@ -5,18 +5,9 @@ import {
 import { getLifecycleFlags, type DogStatus, type Sex } from "../src/lifecycle";
 import { generatePuppyTraits } from "./trait.engine";
 
-export type DogTraits = {
-  head: number;
-  forequarters: number;
-  hindquarters: number;
-  gait: number;
-  coat: number;
-  size: number;
-  temperament: number;
-  show_shine: number;
-  feet: number;
-  topline: number;
-};
+import type { TraitKey } from "../constants/genetics.constants"
+
+export type DogTraits = Record<TraitKey, number>
 
 export type Dog = {
   dogId: string;

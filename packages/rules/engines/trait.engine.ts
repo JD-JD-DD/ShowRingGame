@@ -1,9 +1,12 @@
+// how traits are inherited
+
 import {
   TRAIT_MAX,
   TRAIT_MIN,
   TRAIT_VARIANCE,
   INHERITANCE_WEIGHT,
   MUTATION_RATE,
+  TRAIT_KEYS
 } from "../constants/genetics.constants";
 
 import type { DogTraits } from "./dog.engine";
@@ -95,39 +98,19 @@ function deriveSingleTrait(
 export function generatePuppyTraits(
   input: GeneratePuppyTraitsInput
 ): DogTraits {
-  const random01 = input.random01 ?? Math.random;
-  const { sireTraits, damTraits } = input;
 
-  return {
-    head: deriveSingleTrait(sireTraits.head, damTraits.head, random01),
-    forequarters: deriveSingleTrait(
-      sireTraits.forequarters,
-      damTraits.forequarters,
+  const random01 = input.random01 ?? Math.random
+  const { sireTraits, damTraits } = input
+
+  const puppyTraits = {} as DogTraits
+
+  for (const trait of TRAIT_KEYS) {
+    puppyTraits[trait] = deriveSingleTrait(
+      sireTraits[trait],
+      damTraits[trait],
       random01
-    ),
-    hindquarters: deriveSingleTrait(
-      sireTraits.hindquarters,
-      damTraits.hindquarters,
-      random01
-    ),
-    gait: deriveSingleTrait(sireTraits.gait, damTraits.gait, random01),
-    coat: deriveSingleTrait(sireTraits.coat, damTraits.coat, random01),
-    size: deriveSingleTrait(sireTraits.size, damTraits.size, random01),
-    temperament: deriveSingleTrait(
-      sireTraits.temperament,
-      damTraits.temperament,
-      random01
-    ),
-    show_shine: deriveSingleTrait(
-      sireTraits.show_shine,
-      damTraits.show_shine,
-      random01
-    ),
-    feet: deriveSingleTrait(sireTraits.feet, damTraits.feet, random01),
-    topline: deriveSingleTrait(
-      sireTraits.topline,
-      damTraits.topline,
-      random01
-    ),
-  };
+    )
+  }
+
+  return puppyTraits
 }

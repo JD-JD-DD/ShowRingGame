@@ -8,6 +8,7 @@ export * from "../engines/clock.engine";
 // export * from "../engines/death.engine";
 export * from "../engines/economy.engine";
 // export * from "../engines/health.engine";
-// export * from "../engines/judging.engine";
+export * from "../engines/judging.engine";
+export * from "../engines/judge.engine";
 
 
