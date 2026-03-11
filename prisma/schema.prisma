@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Sex {
@@ -132,11 +131,10 @@ model Kennel {
 }
 
 model Breed {
-  id        String   @id @default(cuid())
-  code2     String   @unique
-  name      String   @unique
+  code2     String @id
+  name      String @unique
   groupName String?
-  isActive  Boolean  @default(true)
+  isActive  Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -147,11 +145,11 @@ model Breed {
 }
 
 model Dog {
-  id                String            @id @default(cuid())
+  id                String            @id
   regNumber         String            @unique
   callName          String?
   registeredName    String?
-  breedId           String
+  breedCode2        String
   currentKennelId   String?
   bredByKennelId    String?
   sireId            String?
@@ -159,8 +157,8 @@ model Dog {
   litterId          String?
   litterOrder       Int?
   sex               Sex
-  birthAt           DateTime
-  deathAt           DateTime?
+  birthEpoch        Int
+  deathEpoch        Int?
   lifecycleState    DogLifecycleState @default(ALIVE)
   marketState       DogMarketState    @default(NOT_FOR_SALE)
   originType        DogOriginType
@@ -193,7 +191,7 @@ model Dog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  breed         Breed    @relation(fields: [breedId], references: [id])
+  breed      Breed @relation(fields: [breedCode2], references: [code2])
   currentKennel Kennel?  @relation("CurrentOwnerDogs", fields: [currentKennelId], references: [id])
   bredByKennel  Kennel?  @relation("BredByKennelDogs", fields: [bredByKennelId], references: [id])
 
@@ -218,7 +216,7 @@ model Dog {
   titleProgress      DogTitleProgress?
   healthTests        HealthTestRecord[]
 
-  @@index([breedId])
+  @@index([breedCode2])
   @@index([currentKennelId])
   @@index([bredByKennelId])
   @@index([sireId])
@@ -229,7 +227,7 @@ model Dog {
 }
 
 model Judge {
-  id        String   @id @default(cuid())
+  id        String   @id
   name      String
   style     String?
   isActive  Boolean  @default(true)
@@ -253,12 +251,12 @@ model Judge {
 }
 
 model BreedingAttempt {
-  id                String                 @id @default(cuid())
+  id                String                 @id
   sireId            String
   damId             String
-  createdAt         DateTime               @default(now())
-  pregCheckAt       DateTime?
-  dueAt             DateTime?
+  createdEpoch         Int               @default(now())
+  pregCheckEpoch       Int?
+  dueEpoch             Int?
   status            BreedingAttemptStatus  @default(PENDING)
   litterId          String?                @unique
   rngSeed           Int?
@@ -278,8 +276,8 @@ model BreedingAttempt {
 }
 
 model Litter {
-  id                String   @id @default(cuid())
-  breedId           String
+  id                String   @id
+  breedCode2        String
   serial7           Int
   bornAt            DateTime
   sireId            String
@@ -289,7 +287,7 @@ model Litter {
   bredByKennelId    String?
   createdAt         DateTime @default(now())
 
-  breed            Breed            @relation(fields: [breedId], references: [id])
+  breed Breed @relation(fields: [breedCode2], references: [code2])
   sire             Dog              @relation("LitterSire", fields: [sireId], references: [id])
   dam              Dog              @relation("LitterDam", fields: [damId], references: [id])
   breedingAttempt  BreedingAttempt? @relation(fields: [breedingAttemptId], references: [id])
@@ -297,7 +295,7 @@ model Litter {
 
   puppies Dog[]
 
-  @@unique([breedId, serial7])
+  @@unique([breedCode2, serial7])
   @@index([sireId])
   @@index([damId])
   @@index([bredByKennelId])
@@ -349,7 +347,7 @@ model ShowEntry {
   showDayId            String
   dogId                String
   kennelId             String
-  breedId              String
+  breedCode2              String
   entryStatus          ShowEntryStatus @default(ENTERED)
   enteredAt            DateTime        @default(now())
   feeCharged           Int
@@ -360,7 +358,7 @@ model ShowEntry {
   showDay ShowDay @relation(fields: [showDayId], references: [id])
   dog     Dog     @relation(fields: [dogId], references: [id])
   kennel  Kennel  @relation(fields: [kennelId], references: [id])
-  breed   Breed   @relation(fields: [breedId], references: [id])
+  breed   Breed   @relation(fields: [breedCode2], references: [id])
 
   showResult         ShowResult?
   ledgerTransactions LedgerTransaction[]
@@ -368,7 +366,7 @@ model ShowEntry {
   @@unique([showDayId, dogId])
   @@index([dogId])
   @@index([kennelId])
-  @@index([breedId])
+  @@index([breedCode2])
   @@index([entryStatus])
 }
 
@@ -377,7 +375,7 @@ model ShowResult {
   showEntryId                String   @unique
   showDayId                  String
   dogId                      String
-  breedId                    String
+  breedCode2                    String
   judgeId                    String
   finalRank                  Int?
   placementCode              String?
@@ -399,7 +397,7 @@ model ShowResult {
 
   @@index([showDayId])
   @@index([dogId])
-  @@index([breedId])
+  @@index([breedCode2])
   @@index([judgeId])
   @@index([pointsAwarded])
 }
