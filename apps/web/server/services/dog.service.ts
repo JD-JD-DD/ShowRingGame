@@ -1,10 +1,15 @@
 import { prisma } from "../../lib/prisma";
-import { createFoundationDog, type Dog as EngineDog, type CreateFoundationDogInput } from "../../../../../packages/rules/engines/dog.engine";
-import { DogLifecycleState, DogMarketState, DogOriginType, Sex } from "@prisma/client";
-
-function epochHourToDate(epoch: number): Date {
-  return new Date(epoch * 60 * 60 * 1000);
-}
+import {
+  createFoundationDog,
+  type Dog as EngineDog,
+  type CreateFoundationDogInput,
+} from ",,/,,/,,/,,/../engines/dog.engine.ts";
+import {
+  DogLifecycleState,
+  DogMarketState,
+  DogOriginType,
+  Sex,
+} from "@prisma/client";
 
 function mapSex(sex: "M" | "F"): Sex {
   return sex === "M" ? Sex.M : Sex.F;
@@ -21,21 +26,23 @@ function mapLifecycleState(status: string): DogLifecycleState {
     case "RETIRED":
       return DogLifecycleState.RETIRED;
     default:
-      return DogLifecycleState.ALIVE;
+      throw new Error(`Unsupported dog lifecycle state: ${status}`);
   }
 }
 
-async function getBreedIdByCode2(breedCode2: string): Promise<string> {
+function mapOriginType(isFoundation?: boolean): DogOriginType {
+  return isFoundation ? DogOriginType.FOUNDATION : DogOriginType.PLAYER_BRED;
+}
+
+async function ensureBreedExists(breedCode2: string): Promise<void> {
   const breed = await prisma.breed.findUnique({
     where: { code2: breedCode2 },
-    select: { id: true },
+    select: { code2: true },
   });
 
   if (!breed) {
     throw new Error(`Breed not found for code2: ${breedCode2}`);
   }
-
-  return breed.id;
 }
 
 export async function saveEngineDog(args: {
@@ -44,32 +51,44 @@ export async function saveEngineDog(args: {
   bredByKennelId?: string;
   isFoundation?: boolean;
 }) {
-  const breedId = await getBreedIdByCode2(args.dog.breedCode2);
+  const { dog, currentKennelId, bredByKennelId, isFoundation } = args;
+
+  await ensureBreedExists(dog.breedCode2);
 
   return prisma.dog.create({
     data: {
-      regNumber: args.dog.regNumber,
-      breedId,
-      currentKennelId: args.currentKennelId ?? null,
-      bredByKennelId: args.bredByKennelId ?? null,
-      sex: mapSex(args.dog.sex),
-      birthAt: epochHourToDate(args.dog.birthEpoch),
-      lifecycleState: mapLifecycleState(args.dog.status),
+      id: dog.dogId,
+      regNumber: dog.regNumber,
+      breedCode2: dog.breedCode2,
+      currentKennelId: currentKennelId ?? null,
+      bredByKennelId: bredByKennelId ?? null,
+      sireId: dog.sireId ?? null,
+      damId: dog.damId ?? null,
+      litterId: dog.litterId ?? null,
+      litterOrder: dog.litterOrder ?? null,
+      sex: mapSex(dog.sex),
+      birthEpoch: dog.birthEpoch,
+      deathEpoch: null,
+      lifecycleState: mapLifecycleState(dog.status),
       marketState: DogMarketState.NOT_FOR_SALE,
-      originType: args.isFoundation ? DogOriginType.FOUNDATION : DogOriginType.PLAYER_BRED,
-      isFoundation: args.isFoundation ?? false,
+      originType: mapOriginType(isFoundation),
+      isFoundation: isFoundation ?? false,
+      coiPercent: null,
+      coiGenerationDepth: null,
+      visibleTitlePrefix: null,
+      visibleTitleSuffix: null,
+      notesPublic: null,
 
-      litterOrder: args.dog.litterOrder,
-      traitHead: args.dog.traits.head,
-      traitForequarters: args.dog.traits.forequarters,
-      traitHindquarters: args.dog.traits.hindquarters,
-      traitGait: args.dog.traits.gait,
-      traitCoat: args.dog.traits.coat,
-      traitSize: args.dog.traits.size,
-      traitTemperament: args.dog.traits.temperament,
-      traitShowShine: args.dog.traits.show_shine,
-      traitFeet: args.dog.traits.feet,
-      traitTopline: args.dog.traits.topline,
+      traitHead: dog.traits.head,
+      traitForequarters: dog.traits.forequarters,
+      traitHindquarters: dog.traits.hindquarters,
+      traitGait: dog.traits.gait,
+      traitCoat: dog.traits.coat,
+      traitSize: dog.traits.size,
+      traitTemperament: dog.traits.temperament,
+      traitShowShine: dog.traits.show_shine,
+      traitFeet: dog.traits.feet,
+      traitTopline: dog.traits.topline,
 
       ringObedience: 0,
       muscleTone: 0,
