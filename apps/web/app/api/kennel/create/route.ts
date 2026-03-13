@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 
 const STARTER_FUNDS = 25000;
+const DISTRICT_COUNT = 15;
 
 function makeSlug(input: string): string {
   return input
@@ -16,6 +17,47 @@ function makeSlug(input: string): string {
 
 function getCurrentEpoch(): number {
   return Math.floor(Date.now() / (1000 * 60 * 60));
+}
+
+async function chooseHomeDistrict(): Promise<number> {
+  const districtCounts = await db.kennel.groupBy({
+    by: ["homeDistrict"],
+    where: {
+      isNpc: false,
+      homeDistrict: {
+        not: null,
+      },
+    },
+    _count: {
+      homeDistrict: true,
+    },
+  });
+
+  const counts = new Map<number, number>();
+
+  for (let district = 1; district <= DISTRICT_COUNT; district += 1) {
+    counts.set(district, 0);
+  }
+
+  for (const row of districtCounts) {
+    if (row.homeDistrict !== null) {
+      counts.set(row.homeDistrict, row._count.homeDistrict);
+    }
+  }
+
+  let minCount = Number.POSITIVE_INFINITY;
+  for (const count of counts.values()) {
+    if (count < minCount) {
+      minCount = count;
+    }
+  }
+
+  const leastPopulatedDistricts = Array.from(counts.entries())
+    .filter(([, count]) => count === minCount)
+    .map(([district]) => district);
+
+  const randomIndex = Math.floor(Math.random() * leastPopulatedDistricts.length);
+  return leastPopulatedDistricts[randomIndex]!;
 }
 
 export async function POST(request: Request) {
@@ -40,7 +82,10 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const name = String(body.name ?? "").trim();
-    const homeDistrict = Number(body.homeDistrict);
+    const publicSlogan =
+      typeof body.publicSlogan === "string" && body.publicSlogan.trim()
+        ? body.publicSlogan.trim()
+        : null;
 
     if (!name) {
       return NextResponse.json(
@@ -49,14 +94,8 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!Number.isInteger(homeDistrict) || homeDistrict < 1 || homeDistrict > 15) {
-      return NextResponse.json(
-        { error: "homeDistrict must be an integer from 1 to 15." },
-        { status: 400 }
-      );
-    }
-
     const slugBase = makeSlug(name);
+
     if (!slugBase) {
       return NextResponse.json(
         { error: "Kennel name must contain letters or numbers." },
@@ -86,24 +125,31 @@ export async function POST(request: Request) {
       });
 
       if (!existingSlug) break;
+
       slug = `${slugBase}-${counter}`;
       counter += 1;
     }
 
-    const result = await db.$transaction(async (tx) => {
-      const kennel = await tx.kennel.create({
+    const homeDistrict = await chooseHomeDistrict();
+
+    const kennel = await db.$transaction(async (tx) => {
+      const createdKennel = await tx.kennel.create({
         data: {
           userId,
           name,
           slug,
           homeDistrict,
+          publicSlogan,
           balance: STARTER_FUNDS,
+          reputationScore: 0,
+          isNpc: false,
         },
         select: {
           id: true,
           name: true,
           slug: true,
           homeDistrict: true,
+          publicSlogan: true,
           balance: true,
           reputationScore: true,
         },
@@ -111,7 +157,7 @@ export async function POST(request: Request) {
 
       await tx.ledgerTransaction.create({
         data: {
-          kennelId: kennel.id,
+          kennelId: createdKennel.id,
           transactionType: LedgerTransactionType.STARTER_FUNDS,
           amount: STARTER_FUNDS,
           balanceAfter: STARTER_FUNDS,
@@ -120,18 +166,22 @@ export async function POST(request: Request) {
         },
       });
 
-      return kennel;
+      return createdKennel;
     });
 
     return NextResponse.json({
       ok: true,
-      kennel: result,
+      kennel,
       nextPath: "/kennel",
     });
   } catch (error) {
     console.error("POST /api/kennel/create failed:", error);
+
     return NextResponse.json(
-      { error: "Failed to create kennel." },
+      {
+        error: "Failed to create kennel.",
+        detail: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   }

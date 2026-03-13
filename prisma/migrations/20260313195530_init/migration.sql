@@ -2,7 +2,7 @@
 CREATE TYPE "Sex" AS ENUM ('M', 'F');
 
 -- CreateEnum
-CREATE TYPE "DogLifecycleState" AS ENUM ('ALIVE', 'DECEASED', 'SOLD', 'RETIRED');
+CREATE TYPE "DogLifecycleState" AS ENUM ('ALIVE', 'DECEASED', 'TRANSFERRED', 'RETIRED');
 
 -- CreateEnum
 CREATE TYPE "DogMarketState" AS ENUM ('NOT_FOR_SALE', 'LISTED_PLAYER', 'LISTED_NPC', 'SOLD_PENDING_TRANSFER');
@@ -11,13 +11,13 @@ CREATE TYPE "DogMarketState" AS ENUM ('NOT_FOR_SALE', 'LISTED_PLAYER', 'LISTED_N
 CREATE TYPE "DogOriginType" AS ENUM ('FOUNDATION', 'PLAYER_BRED', 'NPC_BRED', 'IMPORTED');
 
 -- CreateEnum
-CREATE TYPE "BreedingAttemptStatus" AS ENUM ('PENDING', 'FAILED', 'CONFIRMED', 'WHELPED', 'CANCELLED');
+CREATE TYPE "BreedingAttemptStatus" AS ENUM ('INITIATED', 'CHECKED_NOT_PREGNANT', 'PREGNANT', 'WHELPED', 'FAILED', 'CANCELLED');
 
 -- CreateEnum
 CREATE TYPE "ShowClusterStatus" AS ENUM ('SCHEDULED', 'OPEN', 'CLOSED', 'COMPLETE', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "ShowDayStatus" AS ENUM ('SCHEDULED', 'ENTRY_CLOSED', 'JUDGING', 'PUBLISHED', 'CANCELLED');
+CREATE TYPE "ShowDayStatus" AS ENUM ('SCHEDULED', 'ENTRY_OPEN', 'ENTRY_LOCKED', 'JUDGING', 'RESULTS_PUBLISHED', 'CANCELLED');
 
 -- CreateEnum
 CREATE TYPE "ShowEntryStatus" AS ENUM ('ENTERED', 'WITHDRAWN', 'INELIGIBLE', 'ABSENT', 'JUDGED');
@@ -35,7 +35,8 @@ CREATE TYPE "LedgerTransactionType" AS ENUM ('STARTER_FUNDS', 'SHOW_ENTRY_FEE', 
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
-    "displayName" TEXT NOT NULL,
+    "passwordHash" TEXT NOT NULL,
+    "displayName" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -49,7 +50,8 @@ CREATE TABLE "Kennel" (
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "isNpc" BOOLEAN NOT NULL DEFAULT false,
-    "homeDistrictId" TEXT,
+    "homeDistrict" INTEGER,
+    "balance" INTEGER NOT NULL DEFAULT 0,
     "reputationScore" INTEGER NOT NULL DEFAULT 0,
     "publicSlogan" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -60,7 +62,6 @@ CREATE TABLE "Kennel" (
 
 -- CreateTable
 CREATE TABLE "Breed" (
-    "id" TEXT NOT NULL,
     "code2" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "groupName" TEXT,
@@ -68,7 +69,7 @@ CREATE TABLE "Breed" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Breed_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Breed_pkey" PRIMARY KEY ("code2")
 );
 
 -- CreateTable
@@ -77,16 +78,16 @@ CREATE TABLE "Dog" (
     "regNumber" TEXT NOT NULL,
     "callName" TEXT,
     "registeredName" TEXT,
-    "breedId" TEXT NOT NULL,
-    "currentKennelId" TEXT,
-    "bredByKennelId" TEXT,
+    "breedCode2" TEXT NOT NULL,
+    "ownerKennelId" TEXT,
+    "breederKennelId" TEXT,
     "sireId" TEXT,
     "damId" TEXT,
     "litterId" TEXT,
     "litterOrder" INTEGER,
     "sex" "Sex" NOT NULL,
-    "birthAt" TIMESTAMP(3) NOT NULL,
-    "deathAt" TIMESTAMP(3),
+    "birthEpoch" INTEGER NOT NULL,
+    "deathEpoch" INTEGER,
     "lifecycleState" "DogLifecycleState" NOT NULL DEFAULT 'ALIVE',
     "marketState" "DogMarketState" NOT NULL DEFAULT 'NOT_FOR_SALE',
     "originType" "DogOriginType" NOT NULL,
@@ -122,7 +123,7 @@ CREATE TABLE "Judge" (
     "name" TEXT NOT NULL,
     "style" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "homeDistrictId" TEXT,
+    "homeDistrict" INTEGER,
     "weightTypeExpression" DOUBLE PRECISION NOT NULL,
     "weightStructureBalance" DOUBLE PRECISION NOT NULL,
     "weightMovement" DOUBLE PRECISION NOT NULL,
@@ -140,10 +141,14 @@ CREATE TABLE "BreedingAttempt" (
     "id" TEXT NOT NULL,
     "sireId" TEXT NOT NULL,
     "damId" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "pregCheckAt" TIMESTAMP(3),
-    "dueAt" TIMESTAMP(3),
-    "status" "BreedingAttemptStatus" NOT NULL DEFAULT 'PENDING',
+    "breedCode2" TEXT NOT NULL,
+    "createdEpoch" INTEGER NOT NULL,
+    "pregCheckEpoch" INTEGER,
+    "dueEpoch" INTEGER,
+    "checkedEpoch" INTEGER,
+    "isPregnant" BOOLEAN,
+    "whelpedEpoch" INTEGER,
+    "status" "BreedingAttemptStatus" NOT NULL DEFAULT 'INITIATED',
     "litterId" TEXT,
     "rngSeed" INTEGER,
     "createdByKennelId" TEXT,
@@ -156,13 +161,12 @@ CREATE TABLE "BreedingAttempt" (
 -- CreateTable
 CREATE TABLE "Litter" (
     "id" TEXT NOT NULL,
-    "breedId" TEXT NOT NULL,
-    "serial7" INTEGER NOT NULL,
-    "bornAt" TIMESTAMP(3) NOT NULL,
+    "breedCode2" TEXT NOT NULL,
+    "serial7" TEXT NOT NULL,
+    "bornEpoch" INTEGER NOT NULL,
     "sireId" TEXT NOT NULL,
     "damId" TEXT NOT NULL,
     "pupCount" INTEGER NOT NULL,
-    "breedingAttemptId" TEXT,
     "bredByKennelId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -174,11 +178,11 @@ CREATE TABLE "ShowCluster" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "year" INTEGER NOT NULL,
-    "districtId" TEXT NOT NULL,
-    "startHour" INTEGER NOT NULL,
-    "endHour" INTEGER NOT NULL,
-    "entryOpenAt" TIMESTAMP(3) NOT NULL,
-    "entryCloseAt" TIMESTAMP(3) NOT NULL,
+    "district" INTEGER NOT NULL,
+    "startEpoch" INTEGER NOT NULL,
+    "endEpoch" INTEGER NOT NULL,
+    "entryOpenEpoch" INTEGER NOT NULL,
+    "entryCloseEpoch" INTEGER NOT NULL,
     "status" "ShowClusterStatus" NOT NULL DEFAULT 'SCHEDULED',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -189,11 +193,11 @@ CREATE TABLE "ShowCluster" (
 CREATE TABLE "ShowDay" (
     "id" TEXT NOT NULL,
     "clusterId" TEXT NOT NULL,
-    "showHour" INTEGER NOT NULL,
+    "scheduledEpoch" INTEGER NOT NULL,
     "dayIndex" INTEGER NOT NULL,
     "judgeId" TEXT NOT NULL,
     "status" "ShowDayStatus" NOT NULL DEFAULT 'SCHEDULED',
-    "resultsPublishedAt" TIMESTAMP(3),
+    "publishedAtEpoch" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "ShowDay_pkey" PRIMARY KEY ("id")
@@ -205,9 +209,9 @@ CREATE TABLE "ShowEntry" (
     "showDayId" TEXT NOT NULL,
     "dogId" TEXT NOT NULL,
     "kennelId" TEXT NOT NULL,
-    "breedId" TEXT NOT NULL,
+    "breedCode2" TEXT NOT NULL,
     "entryStatus" "ShowEntryStatus" NOT NULL DEFAULT 'ENTERED',
-    "enteredAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "enteredAtEpoch" INTEGER NOT NULL,
     "feeCharged" INTEGER NOT NULL,
     "handlerUsed" BOOLEAN NOT NULL DEFAULT false,
     "conditioningSnapshot" INTEGER,
@@ -222,7 +226,7 @@ CREATE TABLE "ShowResult" (
     "showEntryId" TEXT NOT NULL,
     "showDayId" TEXT NOT NULL,
     "dogId" TEXT NOT NULL,
-    "breedId" TEXT NOT NULL,
+    "breedCode2" TEXT NOT NULL,
     "judgeId" TEXT NOT NULL,
     "finalRank" INTEGER,
     "placementCode" TEXT,
@@ -232,7 +236,7 @@ CREATE TABLE "ShowResult" (
     "pointsAwarded" INTEGER NOT NULL DEFAULT 0,
     "isMajor" BOOLEAN NOT NULL DEFAULT false,
     "uniqueKennelsInCompetition" INTEGER,
-    "publishedAt" TIMESTAMP(3) NOT NULL,
+    "publishedAtEpoch" INTEGER NOT NULL,
     "scoringVersion" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -246,7 +250,7 @@ CREATE TABLE "LedgerTransaction" (
     "transactionType" "LedgerTransactionType" NOT NULL,
     "amount" INTEGER NOT NULL,
     "balanceAfter" INTEGER,
-    "occurredAt" TIMESTAMP(3) NOT NULL,
+    "occurredAtEpoch" INTEGER NOT NULL,
     "dogId" TEXT,
     "litterId" TEXT,
     "showClusterId" TEXT,
@@ -268,9 +272,9 @@ CREATE TABLE "DogListing" (
     "askingPrice" INTEGER NOT NULL,
     "listingType" TEXT NOT NULL,
     "status" "DogListingStatus" NOT NULL DEFAULT 'ACTIVE',
-    "listedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "expiresAt" TIMESTAMP(3),
-    "soldAt" TIMESTAMP(3),
+    "listedAtEpoch" INTEGER NOT NULL,
+    "expiresAtEpoch" INTEGER,
+    "soldAtEpoch" INTEGER,
     "buyerKennelId" TEXT,
     "descriptionPublic" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -298,8 +302,8 @@ CREATE TABLE "HealthTestRecord" (
     "dogId" TEXT NOT NULL,
     "testTypeCode" TEXT NOT NULL,
     "resultCode" TEXT NOT NULL,
-    "revealedAt" TIMESTAMP(3),
-    "recordedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "revealedAtEpoch" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "isPublic" BOOLEAN NOT NULL DEFAULT true,
     "notes" TEXT,
 
@@ -308,6 +312,9 @@ CREATE TABLE "HealthTestRecord" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Kennel_userId_key" ON "Kennel"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Kennel_name_key" ON "Kennel"("name");
@@ -319,10 +326,7 @@ CREATE UNIQUE INDEX "Kennel_slug_key" ON "Kennel"("slug");
 CREATE INDEX "Kennel_userId_idx" ON "Kennel"("userId");
 
 -- CreateIndex
-CREATE INDEX "Kennel_homeDistrictId_idx" ON "Kennel"("homeDistrictId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Breed_code2_key" ON "Breed"("code2");
+CREATE INDEX "Kennel_homeDistrict_idx" ON "Kennel"("homeDistrict");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Breed_name_key" ON "Breed"("name");
@@ -331,13 +335,13 @@ CREATE UNIQUE INDEX "Breed_name_key" ON "Breed"("name");
 CREATE UNIQUE INDEX "Dog_regNumber_key" ON "Dog"("regNumber");
 
 -- CreateIndex
-CREATE INDEX "Dog_breedId_idx" ON "Dog"("breedId");
+CREATE INDEX "Dog_breedCode2_idx" ON "Dog"("breedCode2");
 
 -- CreateIndex
-CREATE INDEX "Dog_currentKennelId_idx" ON "Dog"("currentKennelId");
+CREATE INDEX "Dog_ownerKennelId_idx" ON "Dog"("ownerKennelId");
 
 -- CreateIndex
-CREATE INDEX "Dog_bredByKennelId_idx" ON "Dog"("bredByKennelId");
+CREATE INDEX "Dog_breederKennelId_idx" ON "Dog"("breederKennelId");
 
 -- CreateIndex
 CREATE INDEX "Dog_sireId_idx" ON "Dog"("sireId");
@@ -358,7 +362,7 @@ CREATE INDEX "Dog_marketState_idx" ON "Dog"("marketState");
 CREATE INDEX "Judge_isActive_idx" ON "Judge"("isActive");
 
 -- CreateIndex
-CREATE INDEX "Judge_homeDistrictId_idx" ON "Judge"("homeDistrictId");
+CREATE INDEX "Judge_homeDistrict_idx" ON "Judge"("homeDistrict");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "BreedingAttempt_litterId_key" ON "BreedingAttempt"("litterId");
@@ -370,13 +374,13 @@ CREATE INDEX "BreedingAttempt_sireId_idx" ON "BreedingAttempt"("sireId");
 CREATE INDEX "BreedingAttempt_damId_idx" ON "BreedingAttempt"("damId");
 
 -- CreateIndex
+CREATE INDEX "BreedingAttempt_breedCode2_idx" ON "BreedingAttempt"("breedCode2");
+
+-- CreateIndex
 CREATE INDEX "BreedingAttempt_createdByKennelId_idx" ON "BreedingAttempt"("createdByKennelId");
 
 -- CreateIndex
 CREATE INDEX "BreedingAttempt_status_idx" ON "BreedingAttempt"("status");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Litter_breedingAttemptId_key" ON "Litter"("breedingAttemptId");
 
 -- CreateIndex
 CREATE INDEX "Litter_sireId_idx" ON "Litter"("sireId");
@@ -388,10 +392,10 @@ CREATE INDEX "Litter_damId_idx" ON "Litter"("damId");
 CREATE INDEX "Litter_bredByKennelId_idx" ON "Litter"("bredByKennelId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Litter_breedId_serial7_key" ON "Litter"("breedId", "serial7");
+CREATE UNIQUE INDEX "Litter_breedCode2_serial7_key" ON "Litter"("breedCode2", "serial7");
 
 -- CreateIndex
-CREATE INDEX "ShowCluster_districtId_idx" ON "ShowCluster"("districtId");
+CREATE INDEX "ShowCluster_district_idx" ON "ShowCluster"("district");
 
 -- CreateIndex
 CREATE INDEX "ShowCluster_year_idx" ON "ShowCluster"("year");
@@ -401,6 +405,9 @@ CREATE INDEX "ShowCluster_status_idx" ON "ShowCluster"("status");
 
 -- CreateIndex
 CREATE INDEX "ShowDay_judgeId_idx" ON "ShowDay"("judgeId");
+
+-- CreateIndex
+CREATE INDEX "ShowDay_scheduledEpoch_idx" ON "ShowDay"("scheduledEpoch");
 
 -- CreateIndex
 CREATE INDEX "ShowDay_status_idx" ON "ShowDay"("status");
@@ -415,7 +422,7 @@ CREATE INDEX "ShowEntry_dogId_idx" ON "ShowEntry"("dogId");
 CREATE INDEX "ShowEntry_kennelId_idx" ON "ShowEntry"("kennelId");
 
 -- CreateIndex
-CREATE INDEX "ShowEntry_breedId_idx" ON "ShowEntry"("breedId");
+CREATE INDEX "ShowEntry_breedCode2_idx" ON "ShowEntry"("breedCode2");
 
 -- CreateIndex
 CREATE INDEX "ShowEntry_entryStatus_idx" ON "ShowEntry"("entryStatus");
@@ -433,7 +440,7 @@ CREATE INDEX "ShowResult_showDayId_idx" ON "ShowResult"("showDayId");
 CREATE INDEX "ShowResult_dogId_idx" ON "ShowResult"("dogId");
 
 -- CreateIndex
-CREATE INDEX "ShowResult_breedId_idx" ON "ShowResult"("breedId");
+CREATE INDEX "ShowResult_breedCode2_idx" ON "ShowResult"("breedCode2");
 
 -- CreateIndex
 CREATE INDEX "ShowResult_judgeId_idx" ON "ShowResult"("judgeId");
@@ -457,7 +464,7 @@ CREATE INDEX "LedgerTransaction_showEntryId_idx" ON "LedgerTransaction"("showEnt
 CREATE INDEX "LedgerTransaction_counterpartyKennelId_idx" ON "LedgerTransaction"("counterpartyKennelId");
 
 -- CreateIndex
-CREATE INDEX "LedgerTransaction_occurredAt_idx" ON "LedgerTransaction"("occurredAt");
+CREATE INDEX "LedgerTransaction_occurredAtEpoch_idx" ON "LedgerTransaction"("occurredAtEpoch");
 
 -- CreateIndex
 CREATE INDEX "LedgerTransaction_transactionType_idx" ON "LedgerTransaction"("transactionType");
@@ -490,13 +497,13 @@ CREATE UNIQUE INDEX "HealthTestRecord_dogId_testTypeCode_key" ON "HealthTestReco
 ALTER TABLE "Kennel" ADD CONSTRAINT "Kennel_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Dog" ADD CONSTRAINT "Dog_breedId_fkey" FOREIGN KEY ("breedId") REFERENCES "Breed"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Dog" ADD CONSTRAINT "Dog_breedCode2_fkey" FOREIGN KEY ("breedCode2") REFERENCES "Breed"("code2") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Dog" ADD CONSTRAINT "Dog_currentKennelId_fkey" FOREIGN KEY ("currentKennelId") REFERENCES "Kennel"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Dog" ADD CONSTRAINT "Dog_ownerKennelId_fkey" FOREIGN KEY ("ownerKennelId") REFERENCES "Kennel"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Dog" ADD CONSTRAINT "Dog_bredByKennelId_fkey" FOREIGN KEY ("bredByKennelId") REFERENCES "Kennel"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Dog" ADD CONSTRAINT "Dog_breederKennelId_fkey" FOREIGN KEY ("breederKennelId") REFERENCES "Kennel"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Dog" ADD CONSTRAINT "Dog_sireId_fkey" FOREIGN KEY ("sireId") REFERENCES "Dog"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -517,16 +524,16 @@ ALTER TABLE "BreedingAttempt" ADD CONSTRAINT "BreedingAttempt_damId_fkey" FOREIG
 ALTER TABLE "BreedingAttempt" ADD CONSTRAINT "BreedingAttempt_createdByKennelId_fkey" FOREIGN KEY ("createdByKennelId") REFERENCES "Kennel"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Litter" ADD CONSTRAINT "Litter_breedId_fkey" FOREIGN KEY ("breedId") REFERENCES "Breed"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "BreedingAttempt" ADD CONSTRAINT "BreedingAttempt_litterId_fkey" FOREIGN KEY ("litterId") REFERENCES "Litter"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Litter" ADD CONSTRAINT "Litter_breedCode2_fkey" FOREIGN KEY ("breedCode2") REFERENCES "Breed"("code2") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Litter" ADD CONSTRAINT "Litter_sireId_fkey" FOREIGN KEY ("sireId") REFERENCES "Dog"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Litter" ADD CONSTRAINT "Litter_damId_fkey" FOREIGN KEY ("damId") REFERENCES "Dog"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Litter" ADD CONSTRAINT "Litter_breedingAttemptId_fkey" FOREIGN KEY ("breedingAttemptId") REFERENCES "BreedingAttempt"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Litter" ADD CONSTRAINT "Litter_bredByKennelId_fkey" FOREIGN KEY ("bredByKennelId") REFERENCES "Kennel"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -547,7 +554,7 @@ ALTER TABLE "ShowEntry" ADD CONSTRAINT "ShowEntry_dogId_fkey" FOREIGN KEY ("dogI
 ALTER TABLE "ShowEntry" ADD CONSTRAINT "ShowEntry_kennelId_fkey" FOREIGN KEY ("kennelId") REFERENCES "Kennel"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ShowEntry" ADD CONSTRAINT "ShowEntry_breedId_fkey" FOREIGN KEY ("breedId") REFERENCES "Breed"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ShowEntry" ADD CONSTRAINT "ShowEntry_breedCode2_fkey" FOREIGN KEY ("breedCode2") REFERENCES "Breed"("code2") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ShowResult" ADD CONSTRAINT "ShowResult_showEntryId_fkey" FOREIGN KEY ("showEntryId") REFERENCES "ShowEntry"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -559,7 +566,7 @@ ALTER TABLE "ShowResult" ADD CONSTRAINT "ShowResult_showDayId_fkey" FOREIGN KEY 
 ALTER TABLE "ShowResult" ADD CONSTRAINT "ShowResult_dogId_fkey" FOREIGN KEY ("dogId") REFERENCES "Dog"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ShowResult" ADD CONSTRAINT "ShowResult_breedId_fkey" FOREIGN KEY ("breedId") REFERENCES "Breed"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "ShowResult" ADD CONSTRAINT "ShowResult_breedCode2_fkey" FOREIGN KEY ("breedCode2") REFERENCES "Breed"("code2") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ShowResult" ADD CONSTRAINT "ShowResult_judgeId_fkey" FOREIGN KEY ("judgeId") REFERENCES "Judge"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

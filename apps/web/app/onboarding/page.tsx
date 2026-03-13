@@ -1,9 +1,23 @@
-export default function OnboardingPage() {
-  return (
-    <div style={{ padding: 40 }}>
-      <h1>Welcome to ShowRing Game</h1>
-      <p>Your account has been created.</p>
-      <p>Next step: create your kennel.</p>
-    </div>
-  );
+import { redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { getSessionUserId } from "@/lib/session";
+import OnboardingForm from "./OnboardingForm";
+
+export default async function OnboardingPage() {
+  const userId = await getSessionUserId();
+
+  if (!userId) {
+    redirect("/login");
+  }
+
+  const kennel = await db.kennel.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+
+  if (kennel) {
+    redirect("/kennel");
+  }
+
+  return <OnboardingForm />;
 }

@@ -1,23 +1,58 @@
-import { fail, ok } from '@/lib/http';
-import { getSession } from '@/lib/session';
-import { getKennelForUser } from '@/server/services/kennel.service';
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { getSessionUserId } from "@/lib/session";
 
 export async function GET() {
-  const session = await getSession();
-  if (!session) return fail('Unauthorized.', 401);
+  try {
+    const userId = await getSessionUserId();
 
-  const kennel = await getKennelForUser(session.userId);
-  if (!kennel) return fail('Kennel not found.', 404, { hasKennel: false });
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
 
-  return ok({
-    kennel: {
-      id: kennel.id,
-      name: kennel.name,
-      slug: kennel.slug,
-      balance: kennel.balance,
-      homeDistrictId: kennel.homeDistrictId,
-      createdAt: kennel.createdAt,
-      dogCount: kennel._count.ownedDogs,
-    },
-  });
+    const kennel = await db.kennel.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        homeDistrict: true,
+        publicSlogan: true,
+        balance: true,
+        reputationScore: true,
+        _count: {
+          select: {
+            ownedDogs: true,
+          },
+        },
+      },
+    });
+
+    if (!kennel) {
+      return NextResponse.json({ kennel: null }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      kennel: {
+        id: kennel.id,
+        name: kennel.name,
+        slug: kennel.slug,
+        homeDistrict: kennel.homeDistrict,
+        publicSlogan: kennel.publicSlogan,
+        balance: kennel.balance,
+        reputationScore: kennel.reputationScore,
+        dogCount: kennel._count.ownedDogs,
+      },
+    });
+  } catch (error) {
+    console.error("GET /api/kennel/me failed:", error);
+
+    return NextResponse.json(
+      {
+        error: "Failed to load kennel.",
+        detail: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
 }
