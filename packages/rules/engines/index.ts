@@ -10,5 +10,7 @@ export * from "../engines/economy.engine";
 // export * from "../engines/health.engine";
 export * from "../engines/judging.engine";
 export * from "../engines/judge.engine";
+export * from "./engines/foundationDog.engine";
+
 
 

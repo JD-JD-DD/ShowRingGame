@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
+import LogoutButton from "@/components/LogoutButton";
 
 export default async function KennelPage() {
   const userId = await getSessionUserId();
@@ -30,6 +31,8 @@ export default async function KennelPage() {
       <h1>{kennel.name}</h1>
       <p>District: {kennel.homeDistrict}</p>
       <p>Balance: ${kennel.balance}</p>
+
+      <LogoutButton />
     </main>
   );
 }

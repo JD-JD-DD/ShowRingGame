@@ -71,4 +71,6 @@ export async function getSessionUserId(): Promise<string | null> {
 
   const payload = decodeSession(token);
   return payload?.userId ?? null;
+
+  
 }
