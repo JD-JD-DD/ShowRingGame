@@ -1,36 +1,52 @@
-import { fail, ok } from '@/lib/http';
-import { getSession } from '@/lib/session';
-import { db } from '@/lib/db';
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { getSessionUserId } from "@/lib/session";
 
 export async function GET() {
-  const session = await getSession();
-  if (!session) return fail('Unauthorized.', 401);
+  try {
+    const userId = await getSessionUserId();
 
-  const user = await db.user.findUnique({
-    where: { id: session.userId },
-    select: {
-      id: true,
-      email: true,
-      displayName: true,
-      kennels: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const kennel = await db.kennel.findUnique({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        homeDistrict: true,
+        balance: true,
+        reputationScore: true,
+        _count: {
+          select: {
+            ownedDogs: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!user) return fail('Unauthorized.', 401);
+    if (!kennel) {
+      return NextResponse.json({ kennel: null }, { status: 404 });
+    }
 
-  return ok({
-    user: {
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-    },
-    hasKennel: user.kennels.length > 0,
-    kennel: user.kennels[0] ?? null,
-  });
+    return NextResponse.json({
+      kennel: {
+        id: kennel.id,
+        name: kennel.name,
+        slug: kennel.slug,
+        homeDistrict: kennel.homeDistrict,
+        balance: kennel.balance,
+        reputationScore: kennel.reputationScore,
+        dogCount: kennel._count.ownedDogs,
+      },
+    });
+  } catch (error) {
+    console.error("GET /api/kennel/me failed:", error);
+    return NextResponse.json(
+      { error: "Failed to load kennel." },
+      { status: 500 }
+    );
+  }
 }

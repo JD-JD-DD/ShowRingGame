@@ -1,76 +1,74 @@
-import { SignJWT, jwtVerify } from 'jose';
-import { cookies } from 'next/headers';
+import { createHmac } from "node:crypto";
+import { cookies } from "next/headers";
 
-const SESSION_COOKIE_NAME = 'showring_session';
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 14; // 14 days
+const SESSION_COOKIE_NAME = "showring_session";
+const SESSION_SECRET = process.env.SESSION_SECRET || "dev-only-change-me";
 
 type SessionPayload = {
   userId: string;
-  email: string;
+  issuedAt: number;
 };
 
-function getSecret(): Uint8Array {
-  const secret = process.env.SESSION_SECRET;
-
-  if (!secret || secret.length < 32) {
-    throw new Error('SESSION_SECRET must be set and at least 32 characters long.');
-  }
-
-  return new TextEncoder().encode(secret);
+function base64UrlEncode(value: string): string {
+  return Buffer.from(value, "utf8").toString("base64url");
 }
 
-export async function createSession(payload: SessionPayload): Promise<string> {
-  return await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime(`${SESSION_MAX_AGE_SECONDS}s`)
-    .sign(getSecret());
+function base64UrlDecode(value: string): string {
+  return Buffer.from(value, "base64url").toString("utf8");
 }
 
-export async function verifySession(token: string): Promise<SessionPayload | null> {
+function sign(value: string): string {
+  return createHmac("sha256", SESSION_SECRET).update(value).digest("base64url");
+}
+
+function encodeSession(payload: SessionPayload): string {
+  const body = base64UrlEncode(JSON.stringify(payload));
+  const signature = sign(body);
+  return `${body}.${signature}`;
+}
+
+function decodeSession(token: string): SessionPayload | null {
+  const [body, signature] = token.split(".");
+
+  if (!body || !signature) return null;
+  if (sign(body) !== signature) return null;
+
   try {
-    const { payload } = await jwtVerify(token, getSecret());
-
-    if (typeof payload.userId !== 'string' || typeof payload.email !== 'string') {
-      return null;
-    }
-
-    return {
-      userId: payload.userId,
-      email: payload.email,
-    };
+    const parsed = JSON.parse(base64UrlDecode(body)) as SessionPayload;
+    if (!parsed.userId) return null;
+    return parsed;
   } catch {
     return null;
   }
 }
 
-export async function setSessionCookie(token: string): Promise<void> {
-  const cookieStore = await cookies();
+export async function createSession(userId: string): Promise<void> {
+  const store = await cookies();
+  const token = encodeSession({
+    userId,
+    issuedAt: Date.now(),
+  });
 
-  cookieStore.set(SESSION_COOKIE_NAME, token, {
+  store.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: SESSION_MAX_AGE_SECONDS,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
   });
 }
 
-export async function clearSessionCookie(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, '', {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: 0,
-  });
+export async function clearSession(): Promise<void> {
+  const store = await cookies();
+  store.delete(SESSION_COOKIE_NAME);
 }
 
-export async function getSession(): Promise<SessionPayload | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+export async function getSessionUserId(): Promise<string | null> {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE_NAME)?.value;
 
   if (!token) return null;
-  return verifySession(token);
+
+  const payload = decodeSession(token);
+  return payload?.userId ?? null;
 }

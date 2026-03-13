@@ -1,25 +1,67 @@
-import { createSession, setSessionCookie } from '@/lib/session';
-import { fail, ok } from '@/lib/http';
-import { signupUser } from '@/server/services/auth.service';
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { createSession } from "@/lib/session";
+import { hashPassword, normalizeEmail } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const result = await signupUser(body);
+    const email = normalizeEmail(body.email ?? "");
+    const password = String(body.password ?? "");
+    const displayName =
+      typeof body.displayName === "string" ? body.displayName.trim() : null;
 
-    const token = await createSession({
-      userId: result.user.id,
-      email: result.user.email,
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: "Email and password are required." },
+        { status: 400 }
+      );
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters." },
+        { status: 400 }
+      );
+    }
+
+    const existing = await db.user.findUnique({
+      where: { email },
+      select: { id: true },
     });
 
-    await setSessionCookie(token);
+    if (existing) {
+      return NextResponse.json(
+        { error: "An account with that email already exists." },
+        { status: 409 }
+      );
+    }
 
-    return ok({
-      user: result.user,
-      hasKennel: result.hasKennel,
+    const user = await db.user.create({
+      data: {
+        email,
+        passwordHash: hashPassword(password),
+        displayName,
+      },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+      },
+    });
+
+    await createSession(user.id);
+
+    return NextResponse.json({
+      ok: true,
+      user,
+      nextPath: "/onboarding",
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to sign up.';
-    return fail(message, 400);
+    console.error("POST /api/auth/signup failed:", error);
+    return NextResponse.json(
+      { error: "Failed to create account." },
+      { status: 500 }
+    );
   }
 }
