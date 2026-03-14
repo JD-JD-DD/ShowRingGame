@@ -135,10 +135,12 @@ model Kennel {
 }
 
 model Breed {
-  code2     String   @id
-  name      String   @unique
-  groupName String?
-  isActive  Boolean  @default(true)
+  code2          String   @id
+  name           String   @unique
+  groupName      String?
+  isActive       Boolean  @default(false)
+  releaseVersion Int?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

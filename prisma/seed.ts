@@ -1,9 +1,8 @@
-import "dotenv/config";
+import { PrismaClient } from "@prisma/client";
 import fs from "node:fs";
 import path from "node:path";
 
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+const prisma = new PrismaClient();
 
 type BreedRow = {
   breed_name: string;
@@ -13,26 +12,11 @@ type BreedRow = {
   release_version: string;
 };
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not set.");
-}
-
-const adapter = new PrismaPg({
-  connectionString,
-});
-
-const prisma = new PrismaClient({
-  adapter,
-  log: ["warn", "error"],
-});
-
 async function main() {
   const filePath = path.join(process.cwd(), "prisma/data/breeds.csv");
 
   const raw = fs.readFileSync(filePath, "utf8");
-  const lines = raw.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const lines = raw.split(/\r?\n/).filter(Boolean);
 
   lines.shift(); // remove header
 
@@ -74,11 +58,9 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error("SEED FAILED:", e);
+    console.error(e);
     process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
   });
-
-  

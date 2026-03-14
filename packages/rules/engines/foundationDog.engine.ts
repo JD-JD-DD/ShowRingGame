@@ -9,10 +9,8 @@ import {
   JUDGING_CATEGORIES,
   type JudgingCategory,
 } from "../constants/judging.constants";
-
-export type Sex = "M" | "F";
-
-export type DogTraits = Record<TraitKey, number>;
+import type { Dog, DogTraits } from "./dog.engine";
+import type { Sex } from "../src/lifecycle";
 
 export type VisibleCategories = {
   typeExpression: number;
@@ -34,9 +32,9 @@ export type FoundationBreedBaseline = {
 };
 
 export type CreateFoundationDogEngineInput = {
-  breedCode2: string;
-  regNumber: string;
   dogId: string;
+  regNumber: string;
+  breedCode2: string;
   birthEpoch: number;
   sex?: Sex;
   callName: string;
@@ -45,21 +43,16 @@ export type CreateFoundationDogEngineInput = {
 };
 
 export type FoundationDogEngineResult = {
-  dogId: string;
-  regNumber: string;
-  breedCode2: string;
-  birthEpoch: number;
-  sex: Sex;
+  dog: Dog;
   callName: string;
   qualityBand: FoundationQualityBand;
-  traits: DogTraits;
   visibleCategories: VisibleCategories;
   suggestedPrice: number;
 };
 
 const FOUNDATION_STANDARD_WEIGHT = 0.60;
 const FOUNDATION_NICE_WEIGHT = 0.30;
-// remaining 0.10 => rough
+// Remaining 0.10 => rough
 
 const STANDARD_OFFSET = 1.0;
 const NICE_OFFSET = 0.5;
@@ -75,11 +68,14 @@ function clampTrait(value: number): number {
   return Math.max(TRAIT_MIN, Math.min(TRAIT_MAX, Math.round(value)));
 }
 
-function average(values: number[]): number {
+function average(values: readonly number[]): number {
   if (values.length === 0) return 0;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+/**
+ * Returns a random number between min and max.
+ */
 function randomBetween(random01: () => number, min: number, max: number): number {
   return min + (max - min) * random01();
 }
@@ -116,21 +112,31 @@ function buildTargetMeans(
   band: FoundationQualityBand
 ): DogTraits {
   const offset = getBandOffset(band);
-
   const target = {} as DogTraits;
 
   for (const traitKey of TRAIT_KEYS) {
-    target[traitKey] = baseline[traitKey] - offset;
+    target[traitKey] = Math.max(TRAIT_MIN, baseline[traitKey] - offset);
   }
 
   return target;
+}
+
+function shuffleTraitKeys(random01: () => number): TraitKey[] {
+  const values = [...TRAIT_KEYS];
+
+  for (let i = values.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random01() * (i + 1));
+    [values[i], values[j]] = [values[j], values[i]];
+  }
+
+  return values;
 }
 
 function buildTraitBiasProfile(random01: () => number): {
   boostedTraits: Set<TraitKey>;
   loweredTraits: Set<TraitKey>;
 } {
-  const shuffled = [...TRAIT_KEYS].sort(() => random01() - 0.5);
+  const shuffled = shuffleTraitKeys(random01);
 
   const boostedCount = 2 + Math.floor(random01() * 3); // 2..4
   const loweredCount = 2 + Math.floor(random01() * 3); // 2..4
@@ -186,17 +192,21 @@ function mapCategoryKey(category: JudgingCategory): keyof VisibleCategories {
   }
 }
 
+/**
+ * Keep this helper aligned with the judging category map.
+ * Raw traits stay hidden; UI and API should use these derived values.
+ */
 export function deriveVisibleCategoriesFromTraits(
   traits: DogTraits
 ): VisibleCategories {
-  const visibleCategories = {
+  const visibleCategories: VisibleCategories = {
     typeExpression: 0,
     structureBalance: 0,
     movement: 0,
     coatPresentation: 0,
     temperamentRingBehavior: 0,
     conditioningHandling: 0,
-  } satisfies VisibleCategories;
+  };
 
   for (const category of JUDGING_CATEGORIES) {
     const traitKeys = CATEGORY_TRAIT_MAP[category];
@@ -295,6 +305,34 @@ function isTooWeakCandidate(
   );
 }
 
+function scoreCandidatePenalty(
+  traits: DogTraits,
+  baseline: DogTraits
+): number {
+  const visibleCategories = deriveVisibleCategoriesFromTraits(traits);
+
+  let penalty = 0;
+
+  if (isTooFlat(traits)) penalty += 100;
+
+  const aboveMeanPlusOne = countTraitsAboveThreshold(traits, baseline, 1);
+  const belowMeanMinusTwo = countTraitsBelowThreshold(traits, baseline, 2);
+  const visibleStrongCount = Object.values(visibleCategories).filter(
+    (value) => value >= 11.5
+  ).length;
+  const visibleAppealingCount = Object.values(visibleCategories).filter(
+    (value) => value >= 10.0
+  ).length;
+
+  penalty += aboveMeanPlusOne * 10;
+  penalty += belowMeanMinusTwo * 10;
+
+  if (visibleStrongCount > 2) penalty += 25;
+  if (visibleAppealingCount < 1) penalty += 25;
+
+  return penalty;
+}
+
 function isValidFoundationCandidate(
   traits: DogTraits,
   baseline: DogTraits
@@ -316,16 +354,24 @@ function generateFoundationTraits(
 ): DogTraits {
   const targetMeans = buildTargetMeans(baseline, band);
 
+  let bestCandidate: DogTraits | null = null;
+  let bestPenalty = Number.POSITIVE_INFINITY;
+
   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
     const candidate = generateCandidateTraits(targetMeans, random01);
 
     if (isValidFoundationCandidate(candidate, baseline)) {
       return candidate;
     }
+
+    const penalty = scoreCandidatePenalty(candidate, baseline);
+    if (penalty < bestPenalty) {
+      bestPenalty = penalty;
+      bestCandidate = candidate;
+    }
   }
 
-  // Fallback if rerolls never hit a valid pattern.
-  return generateCandidateTraits(targetMeans, random01);
+  return bestCandidate ?? generateCandidateTraits(targetMeans, random01);
 }
 
 function calculateSuggestedPrice(
@@ -364,15 +410,24 @@ export function createFoundationDogProfile(
   const visibleCategories = deriveVisibleCategoriesFromTraits(traits);
   const suggestedPrice = calculateSuggestedPrice(visibleCategories, qualityBand);
 
-  return {
+  const dog: Dog = {
     dogId: input.dogId,
     regNumber: input.regNumber,
     breedCode2: input.breedCode2,
     birthEpoch: input.birthEpoch,
     sex,
+    status: "ALIVE",
+    litterId: null,
+    litterOrder: null,
+    sireId: null,
+    damId: null,
+    traits,
+  };
+
+  return {
+    dog,
     callName: input.callName,
     qualityBand,
-    traits,
     visibleCategories,
     suggestedPrice,
   };
