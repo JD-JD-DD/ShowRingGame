@@ -9,17 +9,17 @@ Boxer,BX,Working,TRUE,1
 Rottweiler,RT,Working,TRUE,1
 Leonberger,LB,Working,TRUE,1
 Staffordshire Bull Terrier,SB,Terrier,TRUE,1
-Bedlington Terrier,BO,Terrier,FALSE,1
-Norwich Terrier,NW,Terrier,FALSE,1
-Chihuahua,CH,Toy,FALSE,1
-Italian Greyhound,IG,Toy,FALSE,1
-Brussels Griffon,BQ,Toy,FALSE,1
-Poodle Standard,PS,Non-Sporting,FALSE,1
-Bulldog,BD,Non-Sporting,FALSE,1
-French Bulldog,FB,Non-Sporting,FALSE,1
-German Shepherd Dog,GM,Herding,FALSE,1
-Border Collie,BC,Herding,FALSE,1
-Australian Shepherd,AS,Herding,FALSE,1
+Bedlington Terrier,BO,Terrier,TRUE,1
+Norwich Terrier,NW,Terrier,TRUE,1
+Chihuahua,CH,Toy,TRUE,1
+Italian Greyhound,IG,Toy,TRUE,1
+Brussels Griffon,BQ,Toy,TRUE,1
+Poodle Standard,PS,Non-Sporting,TRUE,1
+Bulldog,BD,Non-Sporting,TRUE,1
+French Bulldog,FB,Non-Sporting,TRUE,1
+German Shepherd Dog,GM,Herding,TRUE,1
+Border Collie,BC,Herding,TRUE,1
+Australian Shepherd,AS,Herding,TRUE,1
 Chesapeake Bay Retriever,CB,Sporting,FALSE,2
 Vizsla,VZ,Sporting,FALSE,2
 Weimaraner,WM,Sporting,FALSE,2

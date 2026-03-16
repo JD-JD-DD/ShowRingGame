@@ -57,16 +57,15 @@ export async function signupUser(input: unknown): Promise<{ user: SafeUser; hasK
       id: true,
       email: true,
       displayName: true,
-      kennels: {
+      kennel: {
         select: { id: true },
-        take: 1,
       },
     },
   });
 
   return {
     user: toSafeUser(user),
-    hasKennel: user.kennels.length > 0,
+    hasKennel: !!user.kennel,
   };
 }
 
@@ -80,9 +79,9 @@ export async function loginUser(input: unknown): Promise<{ user: SafeUser; hasKe
       email: true,
       displayName: true,
       passwordHash: true,
-      kennels: {
+      kennel: {
         select: { id: true },
-        take: 1,
+      
       },
     },
   });
@@ -98,6 +97,6 @@ export async function loginUser(input: unknown): Promise<{ user: SafeUser; hasKe
 
   return {
     user: toSafeUser(user),
-    hasKennel: user.kennels.length > 0,
+    hasKennel: !!user.kennel,
   };
 }

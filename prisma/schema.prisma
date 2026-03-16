@@ -148,6 +148,8 @@ model Breed {
   litters     Litter[]
   showEntries ShowEntry[]
   showResults ShowResult[]
+
+  @@index([releaseVersion])
 }
 
 model Dog {

@@ -1,5 +1,3 @@
-// apps/web/server/services/foundationDog.service.ts
-
 import { randomUUID } from "node:crypto";
 
 import { db } from "@/lib/db";
@@ -20,14 +18,19 @@ import {
 } from "../../../../packages/rules/constants/lifecycle.constants";
 import { SHOW_WEEK_HOURS } from "../../../../packages/rules/constants/time.constants";
 
-const FOUNDATION_TARGET_INVENTORY = 10;
-const FOUNDATION_REFILL_TRIGGER = 6;
-const FOUNDATION_REFILL_BATCH = 6;
-
-const FOUNDATION_FIXED_PRICE = 1500;
 const FOUNDATION_LISTING_TYPE = "FOUNDATION";
 const FOUNDATION_DESCRIPTION_PUBLIC = "Foundation dog available for purchase.";
-const FOUNDATION_REFRESH_HOURS = 3 * SHOW_WEEK_HOURS;
+
+/**
+ * New beta market policy:
+ * - dense breeds keep 2 active foundation listings
+ * - thin breeds keep 4 active foundation listings
+ * - listings sit for 7 in-game weeks = 49 real hours
+ * - if one sells, replacement is generated immediately
+ */
+const FOUNDATION_DENSE_TARGET = 2;
+const FOUNDATION_THIN_TARGET = 4;
+const FOUNDATION_LISTING_HOURS = 7 * SHOW_WEEK_HOURS;
 
 const LIVE_BASELINE_MIN_SAMPLE = 8;
 
@@ -35,10 +38,27 @@ const FOUNDATION_MIN_AGE_HOURS = MIN_SHOW_AGE_HOURS + 30;
 const FOUNDATION_MAX_AGE_HOURS = MIN_BREED_AGE_HOURS + 365;
 
 /**
- * 1–20 trait scale, 10 = ideal.
- * This is only a fallback center point when there is not enough live
- * breed data yet. The engine still applies offsets, variance, and
- * validation rules after this baseline.
+ * Thin/dense decision:
+ * A breed is "thin" if player supply is sparse.
+ * Otherwise it is "dense".
+ */
+const THIN_ACTIVE_PLAYER_LISTING_MAX = 1;
+const THIN_RECENT_PLAYER_SALES_MAX = 2;
+
+/**
+ * Pricing:
+ * Foundation dogs should generally price slightly above actual player sale prices
+ * when enough player sales exist. Otherwise fall back to engine suggested price.
+ */
+const PLAYER_SALE_LOOKBACK_HOURS = 12 * SHOW_WEEK_HOURS;
+const MIN_PLAYER_SALES_FOR_DYNAMIC_PRICE = 3;
+const FOUNDATION_PRICE_PREMIUM_MULTIPLIER = 1.12;
+const FOUNDATION_PRICE_MIN_FLOOR = 1500;
+const FOUNDATION_PRICE_MAX_CEILING = 6000;
+
+/**
+ * 1-20 trait scale, 10 = ideal.
+ * Fallback center point when there is not enough live breed data yet.
  */
 const GLOBAL_FALLBACK_BASELINE: DogTraits = {
   head: 10,
@@ -88,6 +108,17 @@ type MarketDogRecord = HiddenTraitRecord & {
   birthEpoch: number;
 };
 
+type BreedFoundationPolicy = {
+  targetInventory: number;
+  listingHours: number;
+  marketDensity: "THIN" | "DENSE";
+};
+
+type RecentPlayerSaleStats = {
+  completedSalesCount: number;
+  meanCompletedSalePrice: number | null;
+};
+
 function average(values: readonly number[]): number {
   if (values.length === 0) return 0;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -95,6 +126,17 @@ function average(values: readonly number[]): number {
 
 function randomIntInclusive(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function roundToNicePrice(value: number): number {
+  return Math.round(value / 50) * 50;
+}
+
+function clampPrice(value: number): number {
+  return Math.max(
+    FOUNDATION_PRICE_MIN_FLOOR,
+    Math.min(FOUNDATION_PRICE_MAX_CEILING, value)
+  );
 }
 
 function buildFoundationCallName(breedCode2: string): string {
@@ -231,6 +273,108 @@ async function generateUniqueFoundationIdentity(
   throw new Error("Unable to generate unique foundation registration number.");
 }
 
+async function countActivePlayerListingsByBreed(
+  breedCode2: string
+): Promise<number> {
+  return db.dogListing.count({
+    where: {
+      sellerType: "PLAYER",
+      status: "ACTIVE",
+      dog: {
+        breedCode2,
+      },
+    },
+  });
+}
+
+async function getRecentPlayerSaleStats(args: {
+  breedCode2: string;
+  currentEpoch: number;
+}): Promise<RecentPlayerSaleStats> {
+  const { breedCode2, currentEpoch } = args;
+
+  const sales = await db.dogListing.findMany({
+    where: {
+      sellerType: "PLAYER",
+      status: "SOLD",
+      soldAtEpoch: {
+        gte: currentEpoch - PLAYER_SALE_LOOKBACK_HOURS,
+      },
+      dog: {
+        breedCode2,
+      },
+    },
+    select: {
+      askingPrice: true,
+    },
+  });
+
+  if (sales.length === 0) {
+    return {
+      completedSalesCount: 0,
+      meanCompletedSalePrice: null,
+    };
+  }
+
+  return {
+    completedSalesCount: sales.length,
+    meanCompletedSalePrice: Number(
+      average(sales.map((sale) => sale.askingPrice)).toFixed(2)
+    ),
+  };
+}
+
+async function getFoundationPolicyForBreed(args: {
+  breedCode2: string;
+  currentEpoch: number;
+}): Promise<BreedFoundationPolicy> {
+  const { breedCode2, currentEpoch } = args;
+
+  const [activePlayerListings, recentPlayerSales] = await Promise.all([
+    countActivePlayerListingsByBreed(breedCode2),
+    getRecentPlayerSaleStats({ breedCode2, currentEpoch }),
+  ]);
+
+  const isThinBreed =
+    activePlayerListings <= THIN_ACTIVE_PLAYER_LISTING_MAX &&
+    recentPlayerSales.completedSalesCount <= THIN_RECENT_PLAYER_SALES_MAX;
+
+  return {
+    targetInventory: isThinBreed
+      ? FOUNDATION_THIN_TARGET
+      : FOUNDATION_DENSE_TARGET,
+    listingHours: FOUNDATION_LISTING_HOURS,
+    marketDensity: isThinBreed ? "THIN" : "DENSE",
+  };
+}
+
+async function calculateFoundationAskingPrice(args: {
+  breedCode2: string;
+  currentEpoch: number;
+  suggestedPrice: number;
+}): Promise<number> {
+  const { breedCode2, currentEpoch, suggestedPrice } = args;
+
+  const recentPlayerSales = await getRecentPlayerSaleStats({
+    breedCode2,
+    currentEpoch,
+  });
+
+  if (
+    recentPlayerSales.completedSalesCount >= MIN_PLAYER_SALES_FOR_DYNAMIC_PRICE &&
+    recentPlayerSales.meanCompletedSalePrice !== null
+  ) {
+    return clampPrice(
+      roundToNicePrice(
+        recentPlayerSales.meanCompletedSalePrice *
+          FOUNDATION_PRICE_PREMIUM_MULTIPLIER
+      )
+    );
+  }
+
+  return clampPrice(roundToNicePrice(suggestedPrice));
+}
+
 async function createOneFoundationDog(args: {
   breedCode2: string;
   currentEpoch: number;
@@ -249,6 +393,12 @@ async function createOneFoundationDog(args: {
     birthEpoch: pickFoundationBirthEpoch(currentEpoch),
     callName: buildFoundationCallName(breedCode2),
     breedBaseline,
+  });
+
+  const askingPrice = await calculateFoundationAskingPrice({
+    breedCode2,
+    currentEpoch,
+    suggestedPrice: generated.suggestedPrice,
   });
 
   await db.$transaction(async (tx) => {
@@ -292,11 +442,11 @@ async function createOneFoundationDog(args: {
         dogId: createdDog.id,
         sellerKennelId: null,
         sellerType: "SYSTEM",
-        askingPrice: FOUNDATION_FIXED_PRICE,
+        askingPrice,
         listingType: FOUNDATION_LISTING_TYPE,
         status: "ACTIVE",
         listedAtEpoch: currentEpoch,
-        expiresAtEpoch: currentEpoch + FOUNDATION_REFRESH_HOURS,
+        expiresAtEpoch: currentEpoch + FOUNDATION_LISTING_HOURS,
         descriptionPublic: FOUNDATION_DESCRIPTION_PUBLIC,
       },
     });
@@ -314,8 +464,8 @@ export async function expireStaleFoundationListings(args: {
       sellerType: "SYSTEM",
       listingType: FOUNDATION_LISTING_TYPE,
       status: "ACTIVE",
-      listedAtEpoch: {
-        lte: currentEpoch - FOUNDATION_REFRESH_HOURS,
+      expiresAtEpoch: {
+        lte: currentEpoch,
       },
       dog: {
         ownerKennelId: null,
@@ -391,16 +541,16 @@ export async function ensureFoundationInventoryForBreed(args: {
     breedCode2,
   });
 
-  const currentCount = await countUnsoldFoundationDogsByBreed(breedCode2);
+  const [currentCount, policy] = await Promise.all([
+    countUnsoldFoundationDogsByBreed(breedCode2),
+    getFoundationPolicyForBreed({ breedCode2, currentEpoch }),
+  ]);
 
-  if (currentCount >= FOUNDATION_REFILL_TRIGGER) {
+  if (currentCount >= policy.targetInventory) {
     return;
   }
 
-  const createCount = Math.min(
-    FOUNDATION_REFILL_BATCH,
-    FOUNDATION_TARGET_INVENTORY - currentCount
-  );
+  const createCount = policy.targetInventory - currentCount;
 
   for (let index = 0; index < createCount; index += 1) {
     await createOneFoundationDog({
@@ -463,7 +613,11 @@ export async function listFoundationDogs(args: {
         ...(breedCode2 ? { breedCode2 } : {}),
       },
     },
-    orderBy: [{ listedAtEpoch: "asc" }, { askingPrice: "asc" }],
+    orderBy: [
+      { dog: { breedCode2: "asc" } },
+      { listedAtEpoch: "asc" },
+      { askingPrice: "asc" },
+    ],
     select: {
       id: true,
       askingPrice: true,
@@ -559,7 +713,6 @@ export async function getFoundationDogById(args: {
     currentEpoch,
   });
 }
-
 export async function buyFoundationDog(args: {
   dogId: string;
   kennelId: string;
@@ -567,7 +720,7 @@ export async function buyFoundationDog(args: {
 }): Promise<FoundationDogMarketDto> {
   const { dogId, kennelId, currentEpoch } = args;
 
-  const purchased = await db.$transaction(async (tx) => {
+  const purchasedDogId = await db.$transaction(async (tx) => {
     const kennel = await tx.kennel.findUnique({
       where: { id: kennelId },
       select: {
@@ -600,22 +753,9 @@ export async function buyFoundationDog(args: {
         dog: {
           select: {
             id: true,
-            callName: true,
             regNumber: true,
             breedCode2: true,
-            sex: true,
-            birthEpoch: true,
             ownerKennelId: true,
-            traitHead: true,
-            traitForequarters: true,
-            traitHindquarters: true,
-            traitGait: true,
-            traitCoat: true,
-            traitSize: true,
-            traitTemperament: true,
-            traitShowShine: true,
-            traitFeet: true,
-            traitTopline: true,
           },
         },
       },
@@ -671,19 +811,51 @@ export async function buyFoundationDog(args: {
       },
     });
 
-    return {
-      listingId: listing.id,
-      askingPrice: listing.askingPrice,
-      dog: listing.dog,
-    };
+    return listing.dog.id;
   });
 
-  return toFoundationDogMarketDto({
-    listingId: purchased.listingId,
-    price: purchased.askingPrice,
-    dog: purchased.dog,
+  const purchasedDog = await db.dog.findUnique({
+    where: { id: purchasedDogId },
+    select: {
+      id: true,
+      callName: true,
+      regNumber: true,
+      breedCode2: true,
+      sex: true,
+      birthEpoch: true,
+      traitHead: true,
+      traitForequarters: true,
+      traitHindquarters: true,
+      traitGait: true,
+      traitCoat: true,
+      traitSize: true,
+      traitTemperament: true,
+      traitShowShine: true,
+      traitFeet: true,
+      traitTopline: true,
+    },
+  });
+
+  if (!purchasedDog) {
+    throw new Error("Purchased dog not found after sale.");
+  }
+
+  await ensureFoundationInventoryForBreed({
+    breedCode2: purchasedDog.breedCode2,
     currentEpoch,
   });
-}
 
+  return {
+    listingId: "sold",
+    dogId: purchasedDog.id,
+    callName: purchasedDog.callName,
+    regNumber: purchasedDog.regNumber,
+    breedCode2: purchasedDog.breedCode2,
+    sex: purchasedDog.sex,
+    birthEpoch: purchasedDog.birthEpoch,
+    ageHours: Math.max(0, currentEpoch - purchasedDog.birthEpoch),
+    price: 0,
+    visibleCategories: getVisibleCategoriesFromDogRecord(purchasedDog),
+  };
+}
 

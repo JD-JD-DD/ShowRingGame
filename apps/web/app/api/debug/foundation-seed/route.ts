@@ -1,5 +1,6 @@
 import { ok, fail } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { db } from "@/lib/db";
 import { seedFoundationDogsForBreed } from "@/server/services/foundationDog.service";
 
 export async function POST(request: Request) {
@@ -19,18 +20,34 @@ export async function POST(request: Request) {
     const breedCode2 =
       typeof body === "object" &&
       body !== null &&
-      typeof (body as any).breedCode2 === "string"
-        ? (body as any).breedCode2.trim()
+      typeof (body as { breedCode2?: unknown }).breedCode2 === "string"
+        ? (body as { breedCode2: string }).breedCode2.trim().toUpperCase()
         : null;
 
     if (!breedCode2) {
       return fail("breedCode2 is required.", 400);
     }
 
+    const countRaw =
+      typeof body === "object" && body !== null
+        ? (body as { count?: unknown }).count
+        : undefined;
+
     const count =
-      typeof (body as any).count === "number"
-        ? (body as any).count
+      typeof countRaw === "number" &&
+      Number.isInteger(countRaw) &&
+      countRaw > 0
+        ? countRaw
         : 10;
+
+    const breed = await db.breed.findUnique({
+      where: { code2: breedCode2 },
+      select: { code2: true, name: true, isActive: true },
+    });
+
+    if (!breed) {
+      return fail(`Breed ${breedCode2} does not exist.`, 404);
+    }
 
     const currentEpoch = getCurrentEpoch();
 
@@ -43,6 +60,7 @@ export async function POST(request: Request) {
     return ok({
       message: "Foundation dogs seeded.",
       breedCode2,
+      breedName: breed.name,
       count,
       currentEpoch,
     });
@@ -51,3 +69,4 @@ export async function POST(request: Request) {
     return fail("Unable to seed foundation dogs.", 500);
   }
 }
+

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { db } from '@/lib/db';
+import { getCurrentEpoch } from "@/lib/gameClock";
 
 const createKennelSchema = z.object({
   name: z.string().trim().min(2).max(60),
@@ -39,6 +40,7 @@ function getDefaultHomeDistrict(): number {
 
 export async function createKennelForUser(userId: string, input: unknown) {
   const parsed = createKennelSchema.parse(input);
+  const currentEpoch = getCurrentEpoch();
 
   const existingKennel = await db.kennel.findFirst({
     where: { userId },
@@ -46,14 +48,14 @@ export async function createKennelForUser(userId: string, input: unknown) {
   });
 
   if (existingKennel) {
-    throw new Error('This account already has a kennel.');
+    throw new Error("This account already has a kennel.");
   }
 
   const name = parsed.name.trim();
   const baseSlug = slugify(name);
 
   if (!baseSlug) {
-    throw new Error('Kennel name must contain letters or numbers.');
+    throw new Error("Kennel name must contain letters or numbers.");
   }
 
   const duplicateName = await db.kennel.findUnique({
@@ -62,7 +64,7 @@ export async function createKennelForUser(userId: string, input: unknown) {
   });
 
   if (duplicateName) {
-    throw new Error('That kennel name is already taken.');
+    throw new Error("That kennel name is already taken.");
   }
 
   let slug = baseSlug;
@@ -83,14 +85,14 @@ export async function createKennelForUser(userId: string, input: unknown) {
         name,
         slug,
         balance: starterFunds,
-        homeDistrictId: String(homeDistrict),
+        homeDistrict,
       },
       select: {
         id: true,
         name: true,
         slug: true,
         balance: true,
-        homeDistrictId: true,
+        homeDistrict: true,
         createdAt: true,
       },
     });
@@ -98,11 +100,11 @@ export async function createKennelForUser(userId: string, input: unknown) {
     await tx.ledgerTransaction.create({
       data: {
         kennelId: createdKennel.id,
-        transactionType: 'STARTER_FUNDS',
+        transactionType: "STARTER_FUNDS",
         amount: starterFunds,
         balanceAfter: starterFunds,
-        occurredAt: new Date(),
-        memo: 'Starter funds granted at kennel creation.',
+        occurredAtEpoch: currentEpoch,
+        memo: "Starter funds granted at kennel creation.",
       },
     });
 
@@ -120,7 +122,7 @@ export async function getKennelForUser(userId: string) {
       name: true,
       slug: true,
       balance: true,
-      homeDistrictId: true,
+      homeDistrict: true,
       createdAt: true,
       _count: {
         select: {
