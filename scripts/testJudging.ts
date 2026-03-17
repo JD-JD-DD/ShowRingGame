@@ -1,8 +1,8 @@
 import {
   sampleDogs,
-  sampleJudges, } from "./index";
+  sampleJudges, } from "../packages/rules/src/index";
 
-import { rankDogsByJudgeWeights } from "../engines/judging.engine";
+import { rankDogsByJudgeWeights } from "../packages/rules/engines/judging.engine";
 
 
 function formatNumber(value: number): string {
