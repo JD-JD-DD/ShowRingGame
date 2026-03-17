@@ -6,17 +6,17 @@ import {
   deriveVisibleCategoriesFromTraits,
   type FoundationBreedBaseline,
   type VisibleCategories,
-} from "../../../../packages/rules/engines/foundationDog.engine";
-import type { DogTraits } from "../../../../packages/rules/engines/dog.engine";
+} from "@showring/rules";
+import type { DogTraits } from "@showring/rules";
 import {
   buildRegNumber,
   generateSerial7,
-} from "../../../../packages/rules/engines/litter.engine";
+} from "@showring/rules";
 import {
   MIN_BREED_AGE_HOURS,
   MIN_SHOW_AGE_HOURS,
-} from "../../../../packages/rules/constants/lifecycle.constants";
-import { SHOW_WEEK_HOURS } from "../../../../packages/rules/constants/time.constants";
+} from "@showring/rules";
+import { SHOW_WEEK_HOURS } from "@showring/rules";
 
 const FOUNDATION_LISTING_TYPE = "FOUNDATION";
 const FOUNDATION_DESCRIPTION_PUBLIC = "Foundation dog available for purchase.";

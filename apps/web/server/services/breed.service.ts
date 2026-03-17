@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { CURRENT_BREED_RELEASE } from "../../../../packages/rules/constants/release.constants";
+import { CURRENT_BREED_RELEASE } from "@showring/rules";
 
 export async function getReleasedBreedCodes(): Promise<string[]> {
   const breeds = await db.breed.findMany({

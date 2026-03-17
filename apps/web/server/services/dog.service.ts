@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import type { Dog as EngineDog } from "../../../../packages/rules/engines/dog.engine";
+import type { Dog as EngineDog } from "@showring/rules";
 import { DogLifecycleState, DogMarketState, DogOriginType, Sex } from "@prisma/client";
 
 function mapSex(sex: "M" | "F"): Sex {
