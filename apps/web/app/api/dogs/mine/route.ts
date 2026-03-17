@@ -5,7 +5,19 @@ import { db } from "@/lib/db";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { deriveVisibleCategoriesFromTraits } from "../../../../../../packages/rules/engines/foundationDog.engine";
 
-function toVisibleCategories(dog: {
+type MineDog = {
+  id: string;
+  callName: string | null;
+  regNumber: string;
+  breedCode2: string;
+  sex: string;
+  birthEpoch: number;
+  marketState: string;
+  originType: string;
+  isFoundation: boolean;
+  breed: {
+    name: string;
+  };
   traitHead: number;
   traitForequarters: number;
   traitHindquarters: number;
@@ -16,7 +28,9 @@ function toVisibleCategories(dog: {
   traitShowShine: number;
   traitFeet: number;
   traitTopline: number;
-}) {
+};
+
+function toVisibleCategories(dog: MineDog) {
   return deriveVisibleCategoriesFromTraits({
     head: dog.traitHead,
     forequarters: dog.traitForequarters,
@@ -47,7 +61,7 @@ export async function GET() {
 
     const currentEpoch = getCurrentEpoch();
 
-    const dogs = await db.dog.findMany({
+    const dogs: MineDog[] = await db.dog.findMany({
       where: {
         ownerKennelId: kennel.id,
         lifecycleState: "ALIVE",
@@ -90,7 +104,7 @@ export async function GET() {
         homeDistrict: kennel.homeDistrict,
         dogCount: dogs.length,
       },
-      dogs: dogs.map((dog) => ({
+      dogs: dogs.map((dog: MineDog) => ({
         dogId: dog.id,
         callName: dog.callName,
         regNumber: dog.regNumber,
