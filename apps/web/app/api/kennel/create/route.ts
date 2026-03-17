@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
+import { Prisma } from "@prisma/client";
 
 const STARTER_FUNDS = 25000;
 const DISTRICT_COUNT = 15;
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
 
     const homeDistrict = await chooseHomeDistrict();
 
-    const kennel = await db.$transaction(async (tx) => {
+    const kennel = await db.$transaction(async (tx: Prisma.TransactionClient) => {
       const createdKennel = await tx.kennel.create({
         data: {
           userId,
