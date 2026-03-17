@@ -11,7 +11,7 @@
   
   "dependencies": {
   "@prisma/client": "6.19.0",
-  "@showring/rules": "workspace:*",
+  "@showring/rules": "file:../../packages/rules",
   "next": "16.1.6",
   "pg": "^8.20.0",
   "react": "19.2.3",

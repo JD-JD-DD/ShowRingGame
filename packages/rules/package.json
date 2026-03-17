@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "main": "src/index.ts",
-  "scripts": {
-    "sandbox": "tsx src/sandbox.ts",
-    "testQuote": "tsx src/testQuote.ts",
-    "testJudging": "tsx src/testJudging.ts"
+  "exports": {
+  ".": "./src/index.ts"
   },
+
+  
   "devDependencies": {
     "tsx": "^4.21.0"
   }
