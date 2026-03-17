@@ -3,7 +3,7 @@ import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { db } from "@/lib/db";
 import { getKennelForUser } from "@/server/services/kennel.service";
-import { deriveVisibleCategoriesFromTraits } from "../../../../../../packages/rules/engines/foundationDog.engine";
+import { deriveVisibleCategoriesFromTraits } from "@showring/rules";
 
 type MineDog = {
   id: string;
