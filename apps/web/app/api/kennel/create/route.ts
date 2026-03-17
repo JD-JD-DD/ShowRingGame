@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { LedgerTransactionType } from "@prisma/client";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 
@@ -158,7 +157,7 @@ export async function POST(request: Request) {
       await tx.ledgerTransaction.create({
         data: {
           kennelId: createdKennel.id,
-          transactionType: LedgerTransactionType.STARTER_FUNDS,
+          transactionType: "STARTER_FUNDS",
           amount: STARTER_FUNDS,
           balanceAfter: STARTER_FUNDS,
           occurredAtEpoch: getCurrentEpoch(),
