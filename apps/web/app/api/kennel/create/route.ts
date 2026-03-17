@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
-import { Prisma } from "@prisma/client";
+
+type KennelCreateTx = {
+  kennel: typeof db.kennel;
+  ledgerTransaction: typeof db.ledgerTransaction;
+};
 
 const STARTER_FUNDS = 25000;
 const DISTRICT_COUNT = 15;
@@ -132,42 +136,42 @@ export async function POST(request: Request) {
 
     const homeDistrict = await chooseHomeDistrict();
 
-    const kennel = await db.$transaction(async (tx: Prisma.TransactionClient) => {
-      const createdKennel = await tx.kennel.create({
-        data: {
-          userId,
-          name,
-          slug,
-          homeDistrict,
-          publicSlogan,
-          balance: STARTER_FUNDS,
-          reputationScore: 0,
-          isNpc: false,
-        },
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          homeDistrict: true,
-          publicSlogan: true,
-          balance: true,
-          reputationScore: true,
-        },
-      });
+const kennel = await db.$transaction(async (tx: KennelCreateTx) => {
+  const createdKennel = await tx.kennel.create({
+    data: {
+      userId,
+      name,
+      slug,
+      homeDistrict,
+      publicSlogan,
+      balance: STARTER_FUNDS,
+      reputationScore: 0,
+      isNpc: false,
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      homeDistrict: true,
+      publicSlogan: true,
+      balance: true,
+      reputationScore: true,
+    },
+  });
 
-      await tx.ledgerTransaction.create({
-        data: {
-          kennelId: createdKennel.id,
-          transactionType: "STARTER_FUNDS",
-          amount: STARTER_FUNDS,
-          balanceAfter: STARTER_FUNDS,
-          occurredAtEpoch: getCurrentEpoch(),
-          memo: "Starter funds for new kennel creation",
-        },
-      });
+  await tx.ledgerTransaction.create({
+    data: {
+      kennelId: createdKennel.id,
+      transactionType: "STARTER_FUNDS",
+      amount: STARTER_FUNDS,
+      balanceAfter: STARTER_FUNDS,
+      occurredAtEpoch: getCurrentEpoch(),
+      memo: "Starter funds for new kennel creation",
+    },
+  });
 
-      return createdKennel;
-    });
+  return createdKennel;
+});
 
     return NextResponse.json({
       ok: true,
