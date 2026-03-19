@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { CURRENT_BREED_RELEASE } from "@showring/rules";
 
 export async function getReleasedBreedCodes(): Promise<string[]> {
-  const breeds = await db.breed.findMany({
+  const breeds: Array<{ code2: string }> = await db.breed.findMany({
     where: {
       isActive: true,
       releaseVersion: {
