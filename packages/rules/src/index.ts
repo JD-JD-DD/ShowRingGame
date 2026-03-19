@@ -1,5 +1,5 @@
-export * from "../engines";
-export * from "../constants";
+export * from "../engines/index";
+export * from "../constants/index";
 export * from "./sample-dogs";
 export * from "./sample-judges";
 export * from "./time";
