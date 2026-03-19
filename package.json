@@ -5,8 +5,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "prisma generate && pnpm --filter web build"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
@@ -19,13 +18,11 @@
   "devDependencies": {
     "@types/pg": "^8.18.0",
     "next": "16.1.6",
-    "prisma": "6.19.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@prisma/client": "6.19.0",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.3.1",
     "pg": "^8.20.0"
