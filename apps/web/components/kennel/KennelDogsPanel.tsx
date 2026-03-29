@@ -5,6 +5,18 @@ import { useEffect, useState } from "react";
 
 type VisibleCategories = Record<string, number>;
 
+type BreedingCardStatus = {
+  label:
+    | "Open"
+    | "Pending Pregnancy Confirmation"
+    | "Pregnant"
+    | "Whelped"
+    | "Available for Stud"
+    | "Not Eligible";
+  pregCheckInHours: number | null;
+  dueInHours: number | null;
+};
+
 type KennelDogDto = {
   dogId: string;
   callName: string | null;
@@ -14,10 +26,12 @@ type KennelDogDto = {
   sex: "M" | "F";
   birthEpoch: number;
   ageHours: number;
+  lifecycleState: string;
   marketState: string;
   originType: string;
   isFoundation: boolean;
   visibleCategories: VisibleCategories;
+  breedingCardStatus: BreedingCardStatus;
 };
 
 type KennelSummary = {
@@ -25,7 +39,7 @@ type KennelSummary = {
   name: string;
   slug: string;
   balance: number;
-  homeDistrict: string;
+  homeDistrict: string | number | null;
   dogCount: number;
 };
 
@@ -57,6 +71,48 @@ function formatCategoryName(key: string): string {
 function scoreToBarWidth(value: number): string {
   const safe = Math.max(0, Math.min(20, Number(value) || 0));
   return `${(safe / 20) * 100}%`;
+}
+
+function formatCountdown(hours: number | null): string | null {
+  if (hours == null) return null;
+  if (hours <= 0) return "Now";
+  return `${hours}d`;
+}
+
+function getBreedingStatusStyles(label: BreedingCardStatus["label"]): string {
+  switch (label) {
+    case "Pregnant":
+      return "border-emerald-300/20 bg-emerald-500/10";
+    case "Pending Pregnancy Confirmation":
+      return "border-amber-300/20 bg-amber-500/10";
+    case "Whelped":
+      return "border-sky-300/20 bg-sky-500/10";
+    case "Available for Stud":
+      return "border-indigo-300/20 bg-indigo-500/10";
+    case "Not Eligible":
+      return "border-rose-300/20 bg-rose-500/10";
+    case "Open":
+    default:
+      return "border-fuchsia-300/20 bg-fuchsia-500/10";
+  }
+}
+
+function getBreedingStatusTextStyles(label: BreedingCardStatus["label"]): string {
+  switch (label) {
+    case "Pregnant":
+      return "text-emerald-100";
+    case "Pending Pregnancy Confirmation":
+      return "text-amber-100";
+    case "Whelped":
+      return "text-sky-100";
+    case "Available for Stud":
+      return "text-indigo-100";
+    case "Not Eligible":
+      return "text-rose-100";
+    case "Open":
+    default:
+      return "text-fuchsia-100";
+  }
 }
 
 export default function KennelDogsPanel() {
@@ -161,6 +217,36 @@ export default function KennelDogsPanel() {
                   </div>
                 </div>
 
+                <div
+                  className={`mb-5 rounded-2xl border px-4 py-3 ${getBreedingStatusStyles(
+                    dog.breedingCardStatus.label
+                  )}`}
+                >
+                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                    Breeding Status
+                  </div>
+                  <div
+                    className={`mt-1 text-sm font-semibold ${getBreedingStatusTextStyles(
+                      dog.breedingCardStatus.label
+                    )}`}
+                  >
+                    {dog.breedingCardStatus.label}
+                  </div>
+
+                  {dog.breedingCardStatus.pregCheckInHours !== null ? (
+                    <div className="mt-2 text-xs text-purple-100/80">
+                      Pregnancy check:{" "}
+                      {formatCountdown(dog.breedingCardStatus.pregCheckInHours)}
+                    </div>
+                  ) : null}
+
+                  {dog.breedingCardStatus.dueInHours !== null ? (
+                    <div className="mt-1 text-xs text-purple-100/80">
+                      Whelp due: {formatCountdown(dog.breedingCardStatus.dueInHours)}
+                    </div>
+                  ) : null}
+                </div>
+
                 <div className="mb-5 grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
                     <div className="text-xs uppercase tracking-wide text-purple-200">
@@ -244,3 +330,4 @@ export default function KennelDogsPanel() {
     </section>
   );
 }
+

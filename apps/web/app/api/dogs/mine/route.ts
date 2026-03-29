@@ -3,15 +3,20 @@ import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { db } from "@/lib/db";
 import { getKennelForUser } from "@/server/services/kennel.service";
-import { deriveVisibleCategoriesFromTraits } from "@showring/rules";
+import {
+  DAM_MAX_BREED_AGE_HOURS,
+  MIN_BREED_AGE_HOURS,
+  deriveVisibleCategoriesFromTraits,
+} from "@showring/rules";
 
 type MineDog = {
   id: string;
   callName: string | null;
   regNumber: string;
   breedCode2: string;
-  sex: string;
+  sex: "M" | "F";
   birthEpoch: number;
+  lifecycleState: string;
   marketState: string;
   originType: string;
   isFoundation: boolean;
@@ -28,6 +33,32 @@ type MineDog = {
   traitShowShine: number;
   traitFeet: number;
   traitTopline: number;
+  breedingAttemptsAsDam: Array<{
+    id: string;
+    status:
+      | "INITIATED"
+      | "CHECKED_NOT_PREGNANT"
+      | "PREGNANT"
+      | "WHELPED"
+      | "FAILED"
+      | "CANCELLED";
+    createdEpoch: number;
+    pregCheckEpoch: number | null;
+    dueEpoch: number | null;
+    whelpedEpoch: number | null;
+  }>;
+};
+
+type BreedingCardStatus = {
+  label:
+    | "Open"
+    | "Pending Pregnancy Confirmation"
+    | "Pregnant"
+    | "Whelped"
+    | "Available for Stud"
+    | "Not Eligible";
+  pregCheckInHours: number | null;
+  dueInHours: number | null;
 };
 
 function toVisibleCategories(dog: MineDog) {
@@ -43,6 +74,85 @@ function toVisibleCategories(dog: MineDog) {
     feet: dog.traitFeet,
     topline: dog.traitTopline,
   });
+}
+
+function getBreedingCardStatus(
+  dog: MineDog,
+  currentEpoch: number
+): BreedingCardStatus {
+  const ageHours = Math.max(0, currentEpoch - dog.birthEpoch);
+  const isAlive = dog.lifecycleState === "ALIVE";
+  const oldEnough = ageHours >= MIN_BREED_AGE_HOURS;
+  const notTooOldIfFemale =
+    dog.sex === "F" ? ageHours <= DAM_MAX_BREED_AGE_HOURS : true;
+
+  const isEligible = isAlive && oldEnough && notTooOldIfFemale;
+
+  if (!isEligible) {
+    return {
+      label: "Not Eligible",
+      pregCheckInHours: null,
+      dueInHours: null,
+    };
+  }
+
+  if (dog.sex === "M") {
+    return {
+      label: "Available for Stud",
+      pregCheckInHours: null,
+      dueInHours: null,
+    };
+  }
+
+  const activeDamAttempt =
+    dog.breedingAttemptsAsDam.find(
+      (attempt) =>
+        attempt.status === "PREGNANT" || attempt.status === "INITIATED"
+    ) ?? null;
+
+  if (activeDamAttempt?.status === "PREGNANT") {
+    return {
+      label: "Pregnant",
+      pregCheckInHours: null,
+      dueInHours:
+        activeDamAttempt.dueEpoch == null
+          ? null
+          : Math.max(0, activeDamAttempt.dueEpoch - currentEpoch),
+    };
+  }
+
+  if (activeDamAttempt?.status === "INITIATED") {
+    return {
+      label: "Pending Pregnancy Confirmation",
+      pregCheckInHours:
+        activeDamAttempt.pregCheckEpoch == null
+          ? null
+          : Math.max(0, activeDamAttempt.pregCheckEpoch - currentEpoch),
+      dueInHours: null,
+    };
+  }
+
+  const recentWhelpedAttempt =
+    dog.breedingAttemptsAsDam.find(
+      (attempt) =>
+        attempt.status === "WHELPED" &&
+        attempt.whelpedEpoch !== null &&
+        currentEpoch - attempt.whelpedEpoch <= 7
+    ) ?? null;
+
+  if (recentWhelpedAttempt) {
+    return {
+      label: "Whelped",
+      pregCheckInHours: null,
+      dueInHours: null,
+    };
+  }
+
+  return {
+    label: "Open",
+    pregCheckInHours: null,
+    dueInHours: null,
+  };
 }
 
 export async function GET() {
@@ -74,6 +184,7 @@ export async function GET() {
         breedCode2: true,
         sex: true,
         birthEpoch: true,
+        lifecycleState: true,
         marketState: true,
         originType: true,
         isFoundation: true,
@@ -92,6 +203,18 @@ export async function GET() {
         traitShowShine: true,
         traitFeet: true,
         traitTopline: true,
+        breedingAttemptsAsDam: {
+          orderBy: [{ createdEpoch: "desc" }],
+          take: 5,
+          select: {
+            id: true,
+            status: true,
+            createdEpoch: true,
+            pregCheckEpoch: true,
+            dueEpoch: true,
+            whelpedEpoch: true,
+          },
+        },
       },
     });
 
@@ -104,7 +227,7 @@ export async function GET() {
         homeDistrict: kennel.homeDistrict,
         dogCount: dogs.length,
       },
-      dogs: dogs.map((dog: MineDog) => ({
+      dogs: dogs.map((dog) => ({
         dogId: dog.id,
         callName: dog.callName,
         regNumber: dog.regNumber,
@@ -113,10 +236,12 @@ export async function GET() {
         sex: dog.sex,
         birthEpoch: dog.birthEpoch,
         ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
+        lifecycleState: dog.lifecycleState,
         marketState: dog.marketState,
         originType: dog.originType,
         isFoundation: dog.isFoundation,
         visibleCategories: toVisibleCategories(dog),
+        breedingCardStatus: getBreedingCardStatus(dog, currentEpoch),
       })),
     });
   } catch (error) {

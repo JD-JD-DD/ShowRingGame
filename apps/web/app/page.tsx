@@ -178,7 +178,7 @@ export default async function HomePage() {
               <p className="mt-3 text-sm leading-7 text-purple-100/75">
                 <strong>Time Moves Fast Here</strong>
                 <br /><br />
-                In ShowRing Game, time doesn't wait.
+                In the Show Ring Game, time doesn't wait.
                 <br /><br />
                 Every real hour is a full in-game day, and shows don't just happen 
                 once a day—they roll through the day in waves.
