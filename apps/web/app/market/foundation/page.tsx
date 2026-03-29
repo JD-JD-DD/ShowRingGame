@@ -155,7 +155,7 @@ export default function FoundationMarketPage() {
               <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75 sm:text-base">
                 These are system-generated dogs available to start or strengthen your
                 kennel. Players see visible ring categories only. Hidden structural
-                traits remain private. :contentReference[oaicite:1]{index=1}
+                traits remain private.
               </p>
             </div>
 
