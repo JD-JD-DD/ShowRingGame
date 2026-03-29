@@ -192,7 +192,8 @@ export default function FoundationMarketPage() {
                   Buying Goal
                 </div>
                 <div className="mt-2 text-sm font-medium text-white">
-                  Find useful stock, not perfect stock
+                  Find useful stock, not perfect stock.
+                  Reminder: Dogs purchased in Alpha may be reset for Beta version
                 </div>
               </div>
 

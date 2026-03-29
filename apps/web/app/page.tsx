@@ -59,7 +59,7 @@ export default async function HomePage() {
         <section className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-[32px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(50,26,71,0.9),rgba(24,12,35,0.92))] p-8 shadow-[0_24px_70px_rgba(0,0,0,0.38)]">
             <div className="mb-4 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
-              Early Beta
+              Early Beta. Reminder: Alpha game-dogs will likely be reset for Beta version.
             </div>
 
             <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
