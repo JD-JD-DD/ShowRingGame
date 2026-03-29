@@ -56,12 +56,19 @@ export default async function KennelPage() {
           </div>
         </div>
       </section>
-      <div className="mb-6 flex gap-4">
+      <div className="mb-6 flex flex-wrap gap-4">
+        <Link
+          href="/"
+          className="rounded-md border border-purple-500 px-5 py-2 text-sm font-semibold text-purple-200 hover:bg-purple-950/40"
+        >
+          Home
+        </Link>
+
         <Link
           href="/market/foundation"
           className="rounded-md bg-purple-700 px-5 py-2 text-sm font-semibold text-white hover:bg-purple-600"
         >
-           Buy Foundation Dogs
+          Market
         </Link>
       </div>
 
