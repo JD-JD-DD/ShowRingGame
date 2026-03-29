@@ -79,6 +79,7 @@ export type FoundationDogMarketDto = {
   callName: string | null;
   regNumber: string;
   breedCode2: string;
+  breedName: string;
   sex: "M" | "F";
   birthEpoch: number;
   ageHours: number;
@@ -106,6 +107,9 @@ type MarketDogRecord = HiddenTraitRecord & {
   breedCode2: string;
   sex: "M" | "F";
   birthEpoch: number;
+  breed: {
+    name: string;
+  };
 };
 
 type BreedFoundationPolicy = {
@@ -183,16 +187,17 @@ function toFoundationDogMarketDto(args: {
   const { listingId, price, dog, currentEpoch } = args;
 
   return {
-    listingId,
-    dogId: dog.id,
-    callName: dog.callName,
-    regNumber: dog.regNumber,
-    breedCode2: dog.breedCode2,
-    sex: dog.sex,
-    birthEpoch: dog.birthEpoch,
-    ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
-    price,
-    visibleCategories: getVisibleCategoriesFromDogRecord(dog),
+  listingId,
+  dogId: dog.id,
+  callName: dog.callName,
+  regNumber: dog.regNumber,
+  breedCode2: dog.breedCode2,
+  breedName: dog.breed.name,
+  sex: dog.sex,
+  birthEpoch: dog.birthEpoch,
+  ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
+  price,
+  visibleCategories: getVisibleCategoriesFromDogRecord(dog),
   };
 }
 
@@ -629,6 +634,11 @@ export async function listFoundationDogs(args: {
           breedCode2: true,
           sex: true,
           birthEpoch: true,
+          breed: {
+            select: {
+             name: true,
+            },
+          },
           traitHead: true,
           traitForequarters: true,
           traitHindquarters: true,
@@ -687,6 +697,11 @@ export async function getFoundationDogById(args: {
           breedCode2: true,
           sex: true,
           birthEpoch: true,
+          breed: {
+            select: {
+              name: true,
+            },
+          },
           traitHead: true,
           traitForequarters: true,
           traitHindquarters: true,
@@ -823,6 +838,11 @@ export async function buyFoundationDog(args: {
       breedCode2: true,
       sex: true,
       birthEpoch: true,
+      breed: {
+        select: {
+          name: true,
+        },
+      },
       traitHead: true,
       traitForequarters: true,
       traitHindquarters: true,
@@ -851,6 +871,7 @@ export async function buyFoundationDog(args: {
     callName: purchasedDog.callName,
     regNumber: purchasedDog.regNumber,
     breedCode2: purchasedDog.breedCode2,
+    breedName: purchasedDog.breed.name,
     sex: purchasedDog.sex,
     birthEpoch: purchasedDog.birthEpoch,
     ageHours: Math.max(0, currentEpoch - purchasedDog.birthEpoch),

@@ -11,6 +11,7 @@ type FoundationDogMarketDto = {
   callName: string | null;
   regNumber: string;
   breedCode2: string;
+  breedName: string;
   sex: "M" | "F";
   birthEpoch: number;
   ageHours: number;
@@ -200,7 +201,11 @@ export default function FoundationMarketPage() {
                   Market Rule
                 </div>
                 <div className="mt-2 text-sm font-medium text-white">
-                  Foundation dogs stay below elite bred dogs
+                  Foundation dogs will be available in relation to the number of 
+                  players dogs available. Foundation dogs are meant to supplement 
+                  a kennel. Think of it as an import, not a starter. Dog prices will 
+                  fluctuate based on the current market price of dogs offered and sold 
+                  by players.
                 </div>
               </div>
             </div>
@@ -276,8 +281,8 @@ export default function FoundationMarketPage() {
                 <div className="border-b border-white/10 bg-[linear-gradient(90deg,rgba(124,58,237,0.22),rgba(255,255,255,0.02))] px-6 py-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-xs uppercase tracking-[0.18em] text-purple-200">
-                        {dog.breedCode2}
+                      <div className="text-sm font-medium text-purple-200">
+                        {dog.breedName} <span className="text-purple-100/60">({dog.breedCode2})</span>
                       </div>
                       <h2 className="mt-2 text-2xl font-bold text-white">
                         {dog.callName ?? "Unnamed"}
