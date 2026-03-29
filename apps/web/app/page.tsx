@@ -176,7 +176,21 @@ export default async function HomePage() {
             <div className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(124,58,237,0.18),rgba(255,255,255,0.04))] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
               <h2 className="text-xl font-semibold text-white">Design Direction</h2>
               <p className="mt-3 text-sm leading-7 text-purple-100/75">
-                Placeholder
+                <strong>Time Moves Fast Here</strong>
+                <br /><br />
+                In ShowRing Game, time doesn't wait.
+                <br /><br />
+                Every real hour is a full in-game day, and shows don't just happen 
+                once a day—they roll through the day in waves.
+                <br /><br />
+                Weekend clusters can run multiple shows back-to-back, especially 
+                on long weekends. That means you might see several shows happen 
+                in just a few hours, not all at once.
+                <br /><br />
+                If you're not paying attention, you won't miss a day…<br />
+                you'll miss a weekend.
+                <br /><br />
+                Plan ahead. Watch the schedule. Stay in the ring.
               </p>
 
               <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
