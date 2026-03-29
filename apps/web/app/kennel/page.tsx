@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import LogoutButton from "@/components/LogoutButton";
 import KennelDogsPanel from "@/components/kennel/KennelDogsPanel";
+import Link from "next/link";
 
 export default async function KennelPage() {
   const userId = await getSessionUserId();
@@ -55,6 +56,15 @@ export default async function KennelPage() {
           </div>
         </div>
       </section>
+      <div className="mb-6 flex gap-4">
+        <Link
+          href="/market/foundation"
+          className="rounded-md bg-purple-700 px-5 py-2 text-sm font-semibold text-white hover:bg-purple-600"
+        >
+           Buy Foundation Dogs
+        </Link>
+      </div>
+
 
       <div className="mb-8">
         <LogoutButton />
