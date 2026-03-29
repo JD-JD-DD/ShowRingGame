@@ -176,21 +176,18 @@ export default async function HomePage() {
             <div className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(124,58,237,0.18),rgba(255,255,255,0.04))] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
               <h2 className="text-xl font-semibold text-white">Design Direction</h2>
               <p className="mt-3 text-sm leading-7 text-purple-100/75">
-                This version keeps the purple identity, gives the site more
-                presence, and sets up a stronger visual shell for kennel,
-                market, and dog-detail pages.
+                Placeholder
               </p>
 
               <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
-                  Next step after home
+                  Next step 
                 </div>
                 <div className="mt-2 text-base font-semibold text-white">
                   My Kennel dashboard
                 </div>
                 <p className="mt-2 text-sm leading-6 text-purple-100/70">
-                  We’ll turn it into the command center: kennel summary, quick
-                  actions, recent dogs, and direct path into market and dog pages.
+                  The command center
                 </p>
               </div>
             </div>
