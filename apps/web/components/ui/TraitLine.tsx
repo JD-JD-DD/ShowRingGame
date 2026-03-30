@@ -68,6 +68,7 @@ export default function TraitLine({
 
       <div className="mt-1 flex items-center justify-between text-[11px] uppercase tracking-wide text-purple-100/50">
         <span>{leftLabel}</span>
+        <span className="text-emerald-300/80">10</span>
         <span>{rightLabel}</span>
       </div>
     </div>
