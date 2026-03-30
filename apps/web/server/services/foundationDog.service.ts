@@ -17,6 +17,7 @@ import {
   MIN_SHOW_AGE_HOURS,
 } from "@showring/rules";
 import { SHOW_WEEK_HOURS } from "@showring/rules";
+import { applyBetaBalanceTopUp } from "@/lib/betaEconomy";
 
 const FOUNDATION_LISTING_TYPE = "FOUNDATION";
 const FOUNDATION_DESCRIPTION_PUBLIC = "Foundation dog available for purchase.";
@@ -914,6 +915,11 @@ export async function buyFoundationDog(args: {
 
   await ensureFoundationInventoryForBreed({
     breedCode2: purchasedDog.breedCode2,
+    currentEpoch,
+  });
+
+  await applyBetaBalanceTopUp({
+    kennelId,
     currentEpoch,
   });
 
