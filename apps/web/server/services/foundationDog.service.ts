@@ -34,7 +34,7 @@ const FOUNDATION_LISTING_HOURS = 7 * SHOW_WEEK_HOURS;
 
 const LIVE_BASELINE_MIN_SAMPLE = 8;
 
-const FOUNDATION_MIN_AGE_HOURS = MIN_SHOW_AGE_HOURS + 30;
+const FOUNDATION_MIN_AGE_HOURS = MIN_BREED_AGE_HOURS;
 const FOUNDATION_MAX_AGE_HOURS = MIN_BREED_AGE_HOURS + 365;
 
 /**
@@ -72,6 +72,31 @@ const GLOBAL_FALLBACK_BASELINE: DogTraits = {
   feet: 10,
   topline: 10,
 };
+
+const FOUNDATION_MIN_ACTIVE_FEMALES = 2;
+
+export async function countUnsoldFoundationFemalesByBreed(
+  breedCode2: string
+): Promise<number> {
+  return db.dog.count({
+    where: {
+      breedCode2,
+      sex: "F",
+      originType: "FOUNDATION",
+      isFoundation: true,
+      marketState: "LISTED_NPC",
+      ownerKennelId: null,
+      lifecycleState: "ALIVE",
+      listings: {
+        some: {
+          sellerType: "SYSTEM",
+          listingType: FOUNDATION_LISTING_TYPE,
+          status: "ACTIVE",
+        },
+      },
+    },
+  });
+}
 
 export type FoundationDogMarketDto = {
   listingId: string;
@@ -380,11 +405,13 @@ async function calculateFoundationAskingPrice(args: {
   return clampPrice(roundToNicePrice(suggestedPrice));
 }
 
+
 async function createOneFoundationDog(args: {
   breedCode2: string;
   currentEpoch: number;
+  forcedSex?: "M" | "F";
 }): Promise<void> {
-  const { breedCode2, currentEpoch } = args;
+  const { breedCode2, currentEpoch, forcedSex } = args;
 
   const breedBaseline = await getLiveBreedBaseline(breedCode2);
   const { regNumber, litterOrder } = await generateUniqueFoundationIdentity(
@@ -399,6 +426,8 @@ async function createOneFoundationDog(args: {
     callName: buildFoundationCallName(breedCode2),
     breedBaseline,
   });
+
+  const finalSex = forcedSex ?? generated.dog.sex;
 
   const askingPrice = await calculateFoundationAskingPrice({
     breedCode2,
@@ -419,7 +448,7 @@ async function createOneFoundationDog(args: {
         damId: null,
         litterId: null,
         litterOrder,
-        sex: generated.dog.sex,
+        sex: finalSex,
         birthEpoch: generated.dog.birthEpoch,
         lifecycleState: "ALIVE",
         marketState: "LISTED_NPC",
@@ -546,21 +575,34 @@ export async function ensureFoundationInventoryForBreed(args: {
     breedCode2,
   });
 
-  const [currentCount, policy] = await Promise.all([
+  const [currentCount, currentFemaleCount, policy] = await Promise.all([
     countUnsoldFoundationDogsByBreed(breedCode2),
+    countUnsoldFoundationFemalesByBreed(breedCode2),
     getFoundationPolicyForBreed({ breedCode2, currentEpoch }),
   ]);
 
-  if (currentCount >= policy.targetInventory) {
+  const femalesNeeded = Math.max(
+    0,
+    FOUNDATION_MIN_ACTIVE_FEMALES - currentFemaleCount
+  );
+
+  if (
+    currentCount >= policy.targetInventory &&
+    femalesNeeded === 0
+  ) {
     return;
   }
 
-  const createCount = policy.targetInventory - currentCount;
+  const createCount = Math.max(
+    policy.targetInventory - currentCount,
+    femalesNeeded
+  );
 
   for (let index = 0; index < createCount; index += 1) {
     await createOneFoundationDog({
       breedCode2,
       currentEpoch,
+      forcedSex: index < femalesNeeded ? "F" : undefined,
     });
   }
 }
@@ -584,10 +626,20 @@ export async function seedFoundationDogsForBreed(args: {
 }): Promise<void> {
   const { breedCode2, currentEpoch, count } = args;
 
+  const currentFemaleCount = await countUnsoldFoundationFemalesByBreed(
+    breedCode2
+  );
+
+  const femalesNeeded = Math.max(
+    0,
+    FOUNDATION_MIN_ACTIVE_FEMALES - currentFemaleCount
+  );
+
   for (let index = 0; index < count; index += 1) {
     await createOneFoundationDog({
       breedCode2,
       currentEpoch,
+      forcedSex: index < femalesNeeded ? "F" : undefined,
     });
   }
 }
@@ -879,4 +931,3 @@ export async function buyFoundationDog(args: {
     visibleCategories: getVisibleCategoriesFromDogRecord(purchasedDog),
   };
 }
-
