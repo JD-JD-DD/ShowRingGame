@@ -28,8 +28,8 @@ export default function TraitLine({
   min = 0,
   max = 20,
   ideal = 10,
-  leftLabel = "Weak",
-  rightLabel = "Strong",
+  leftLabel = "0",
+  rightLabel = "20",
 }: TraitLineProps) {
   const safeValue = clamp(value, min, max);
   const safeIdeal = clamp(ideal, min, max);
@@ -40,10 +40,10 @@ export default function TraitLine({
 
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-        <span className="text-purple-100/85">{label}</span>
+      <div className="mb-1 text-sm">
+        <span className="text-purple-100/85">{label} </span>
         <span className="font-semibold text-white">{safeValue.toFixed(1)}</span>
-      </div>
+    </div>
 
       <div className="relative mt-2 h-6">
         {/* baseline line */}
