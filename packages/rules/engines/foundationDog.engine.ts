@@ -113,13 +113,27 @@ function getBandOffset(band: FoundationQualityBand): number {
 
 function buildTargetMeans(
   baseline: DogTraits,
-  band: FoundationQualityBand
+  band: FoundationQualityBand,
+  random01: () => number
 ): DogTraits {
   const offset = getBandOffset(band);
   const target = {} as DogTraits;
 
   for (const traitKey of TRAIT_KEYS) {
-    target[traitKey] = Math.max(TRAIT_MIN, baseline[traitKey] - offset);
+    const ideal = 10;
+
+    if (baseline[traitKey] === ideal) {
+      const direction = random01() < 0.5 ? -1 : 1;
+      target[traitKey] = clampTrait(ideal + direction * offset);
+    } else if (baseline[traitKey] < ideal) {
+      target[traitKey] = clampTrait(
+        baseline[traitKey] + (random01() < 0.6 ? -offset : offset * 0.5)
+      );
+    } else {
+      target[traitKey] = clampTrait(
+        baseline[traitKey] + (random01() < 0.6 ? offset : -offset * 0.5)
+      );
+    }
   }
 
   return target;
@@ -606,7 +620,7 @@ function generateFoundationTraits(
   band: FoundationQualityBand,
   random01: () => number
 ): DogTraits {
-  const targetMeans = buildTargetMeans(baseline, band);
+  const targetMeans = buildTargetMeans(baseline, band, random01);
   let bestCandidate: DogTraits | null = null;
   let bestScore = Number.NEGATIVE_INFINITY;
 

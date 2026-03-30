@@ -306,7 +306,7 @@ export default function KennelDogsPanel() {
 
                         <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
                           <div
-                            className="h-full rounded-full bg-[linear-gradient(90deg,#7c3aed,#a855f7)]"
+                            className="h-full rounded-full bg-[linear-gradient(90deg,#dc2626,#facc15,#22c55e,#facc15,#dc2626)]"
                             style={{
                               width: scoreToBarWidth(
                                 typeof value === "number" ? value : Number(value)

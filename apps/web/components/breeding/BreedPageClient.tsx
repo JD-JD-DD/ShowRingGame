@@ -321,7 +321,7 @@ export default function BreedPageClient({
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="w-full rounded-2xl bg-[linear-gradient(135deg,#7c3aed,#a855f7)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
+            className="w-full rounded-2xl bg-[linear-gradient(90deg,#dc2626,#facc15,#22c55e,#facc15,#dc2626)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {submitting ? "Creating Breeding..." : "Confirm Breeding"}
           </button>
