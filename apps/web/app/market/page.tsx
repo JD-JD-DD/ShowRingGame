@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import TraitLine from "@/components/ui/TraitLine";
 
 type VisibleCategories = Record<string, number>;
 
@@ -31,6 +32,18 @@ type BuyDogResponse = {
   error?: string;
 };
 
+type BreedCatalogDto = {
+  code2: string;
+  name: string;
+  groupName: string | null;
+};
+
+type BreedCatalogResponse = {
+  ok: boolean;
+  breeds?: BreedCatalogDto[];
+  error?: string;
+};
+
 function formatAge(ageHours: number): string {
   const weeks = Math.floor(ageHours / 7);
   const years = Math.floor(weeks / 52);
@@ -53,27 +66,82 @@ function formatCategoryName(key: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function scoreToBarWidth(value: number): string {
-  const safe = Math.max(0, Math.min(20, value));
-  return `${(safe / 20) * 100}%`;
-}
+export default function MarketPage() {
+  const [breedCatalog, setBreedCatalog] = useState<BreedCatalogDto[]>([]);
+  const [loadingBreeds, setLoadingBreeds] = useState(true);
 
-export default function FoundationMarketPage() {
+  const [groupFilter, setGroupFilter] = useState("");
+  const [breedSearch, setBreedSearch] = useState("");
+  const [selectedBreedCode2, setSelectedBreedCode2] = useState("");
+
   const [dogs, setDogs] = useState<FoundationDogMarketDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [buyingDogId, setBuyingDogId] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [breedFilter, setBreedFilter] = useState("");
+  const [loadingDogs, setLoadingDogs] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  async function loadDogs(selectedBreed?: string) {
-    setLoading(true);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [buyingDogId, setBuyingDogId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadBreedCatalog() {
+      setLoadingBreeds(true);
+
+      try {
+        const res = await fetch("/api/breeds/catalog", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const data: BreedCatalogResponse = await res.json();
+
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || "Failed to load breeds.");
+        }
+
+        setBreedCatalog(data.breeds ?? []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load breeds.");
+      } finally {
+        setLoadingBreeds(false);
+      }
+    }
+
+    loadBreedCatalog();
+  }, []);
+
+  const groupOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        breedCatalog
+          .map((breed) => breed.groupName)
+          .filter((group): group is string => !!group)
+      )
+    ).sort();
+  }, [breedCatalog]);
+
+  const filteredBreeds = useMemo(() => {
+    return breedCatalog
+      .filter((breed) =>
+        groupFilter ? breed.groupName === groupFilter : true
+      )
+      .filter((breed) =>
+        breedSearch.trim()
+          ? breed.name.toLowerCase().includes(breedSearch.trim().toLowerCase())
+          : true
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [breedCatalog, groupFilter, breedSearch]);
+
+  async function loadDogs(breedCode2: string) {
+    setLoadingDogs(true);
     setError(null);
+    setMessage(null);
+    setHasSearched(true);
 
     try {
-      const query = selectedBreed?.trim()
-        ? `?breedCode2=${encodeURIComponent(selectedBreed.trim().toUpperCase())}`
-        : "";
+      const query = `?breedCode2=${encodeURIComponent(
+        breedCode2.trim().toUpperCase()
+      )}`;
 
       const res = await fetch(`/api/foundation-dogs${query}`, {
         method: "GET",
@@ -83,35 +151,35 @@ export default function FoundationMarketPage() {
       const data: FoundationDogsResponse = await res.json();
 
       if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Failed to load foundation dogs.");
+        throw new Error(data.error || "Failed to load dogs.");
       }
 
       setDogs(data.dogs ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load market.");
+      setError(err instanceof Error ? err.message : "Failed to load dogs.");
       setDogs([]);
     } finally {
-      setLoading(false);
+      setLoadingDogs(false);
     }
   }
 
-  useEffect(() => {
-    loadDogs();
-  }, []);
+  async function handleBrowseDogs() {
+    if (!selectedBreedCode2) {
+      setError("Please choose a breed first.");
+      return;
+    }
 
-  const breedOptions = useMemo(() => {
-    return Array.from(new Set(dogs.map((dog) => dog.breedCode2))).sort();
-  }, [dogs]);
-
-  async function handleApplyBreedFilter() {
-    setMessage(null);
-    await loadDogs(breedFilter);
+    await loadDogs(selectedBreedCode2);
   }
 
-  async function handleClearBreedFilter() {
-    setBreedFilter("");
+  async function handleClear() {
+    setGroupFilter("");
+    setBreedSearch("");
+    setSelectedBreedCode2("");
+    setDogs([]);
+    setHasSearched(false);
+    setError(null);
     setMessage(null);
-    await loadDogs();
   }
 
   async function handleBuy(dog: FoundationDogMarketDto) {
@@ -131,7 +199,10 @@ export default function FoundationMarketPage() {
       }
 
       setMessage(`Purchased ${dog.callName ?? dog.regNumber} (${dog.breedCode2}).`);
-      await loadDogs(breedFilter);
+
+      if (selectedBreedCode2) {
+        await loadDogs(selectedBreedCode2);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Purchase failed.");
     } finally {
@@ -144,18 +215,23 @@ export default function FoundationMarketPage() {
       <div className="mx-auto max-w-7xl">
         <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+            <div className="max-w-3xl">
               <div className="mb-3 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
-                Foundation Market
+                The Market
               </div>
 
               <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Browse foundation dogs
+                Browse dogs available for purchase
               </h1>
 
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75 sm:text-base">
-                These are system-generated dogs available to start or strengthen your
-                kennel.
+              <p className="mt-3 text-sm leading-7 text-purple-100/75 sm:text-base">
+                This is the central marketplace for dogs in ShowRing Game.
+                Right now, available listings are primarily foundation dogs,
+                but this space is intended to become the main market for all dogs offered for sale.
+              </p>
+
+              <p className="mt-3 text-sm leading-7 text-purple-100/75 sm:text-base">
+                To begin, choose a breed. You can type a breed name or select one from the dropdown below.
               </p>
             </div>
 
@@ -166,90 +242,86 @@ export default function FoundationMarketPage() {
               >
                 Back to My Kennel
               </Link>
-
-              <Link
-                href="/dogs"
-                className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-              >
-                Dogs Directory
-              </Link>
             </div>
           </div>
         </section>
 
-        <section className="mb-6 rounded-[24px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(50,26,71,0.78),rgba(24,12,35,0.88))] p-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
-          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Current Listings
-                </div>
-                <div className="mt-2 text-2xl font-bold text-white">{dogs.length}</div>
-              </div>
+        <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur">
+          <h2 className="mb-4 text-lg font-semibold text-white">
+            Find a Breed
+          </h2>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Buying Goal
-                </div>
-                <div className="mt-2 text-sm font-medium text-white">
-                  Find useful stock, not perfect stock.
-                  Reminder: Dogs purchased in Alpha may be reset for Beta version
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Market Rule
-                </div>
-                <div className="mt-2 text-sm font-medium text-white">
-                  Foundation dogs will be available in relation to the number of 
-                  players dogs available. Foundation dogs are meant to supplement 
-                  a kennel. Think of it as an import, not a starter. Dog prices will 
-                  fluctuate based on the current market price of dogs offered and sold 
-                  by players.
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="breedFilter"
-                  className="text-sm font-medium text-purple-100"
+          {loadingBreeds ? (
+            <p className="text-sm text-purple-100/60">Loading breeds...</p>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_auto_auto] lg:items-end">
+              <div>
+                <label className="mb-1 block text-xs uppercase tracking-wide text-purple-100/60">
+                  Group
+                </label>
+                <select
+                  value={groupFilter}
+                  onChange={(e) => {
+                    setGroupFilter(e.target.value);
+                    setSelectedBreedCode2("");
+                  }}
+                  className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
                 >
-                  Filter by breed code
+                  <option value="">All Groups</option>
+                  {groupOptions.map((group) => (
+                    <option key={group} value={group}>
+                      {group}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs uppercase tracking-wide text-purple-100/60">
+                  Search Breed Name
                 </label>
                 <input
-                  id="breedFilter"
                   type="text"
-                  list="foundation-breeds"
-                  value={breedFilter}
-                  onChange={(e) => setBreedFilter(e.target.value.toUpperCase())}
-                  placeholder="Enter breed code"
-                  className="rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-purple-100/40"
+                  value={breedSearch}
+                  onChange={(e) => setBreedSearch(e.target.value)}
+                  placeholder="Type breed name..."
+                  className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-purple-100/40"
                 />
-                <datalist id="foundation-breeds">
-                  {breedOptions.map((breedCode2) => (
-                    <option key={breedCode2} value={breedCode2} />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs uppercase tracking-wide text-purple-100/60">
+                  Breed
+                </label>
+                <select
+                  value={selectedBreedCode2}
+                  onChange={(e) => setSelectedBreedCode2(e.target.value)}
+                  className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+                >
+                  <option value="">Select a breed</option>
+                  {filteredBreeds.map((breed) => (
+                    <option key={breed.code2} value={breed.code2}>
+                      {breed.name}
+                    </option>
                   ))}
-                </datalist>
+                </select>
               </div>
 
               <button
-                onClick={handleApplyBreedFilter}
+                onClick={handleBrowseDogs}
                 className="rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-500"
               >
-                Apply
+                Browse Dogs
               </button>
 
               <button
-                onClick={handleClearBreedFilter}
+                onClick={handleClear}
                 className="rounded-xl border border-purple-300/25 bg-white/5 px-4 py-2.5 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
               >
                 Clear
               </button>
             </div>
-          </div>
+          )}
         </section>
 
         {message ? (
@@ -264,14 +336,18 @@ export default function FoundationMarketPage() {
           </div>
         ) : null}
 
-        {loading ? (
-          <div className="rounded-[28px] border border-white/10 bg-white/5 p-8 text-sm text-purple-100/75 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
-            Loading foundation dogs...
-          </div>
+        {!selectedBreedCode2 && !hasSearched ? (
+          <section className="rounded-[28px] border border-white/10 bg-white/5 px-6 py-10 text-center text-sm text-purple-100/60 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+            Select a breed above to view available dogs.
+          </section>
+        ) : loadingDogs ? (
+          <section className="rounded-[28px] border border-white/10 bg-white/5 p-8 text-sm text-purple-100/75 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+            Loading dogs for {selectedBreedCode2}...
+          </section>
         ) : dogs.length === 0 ? (
-          <div className="rounded-[28px] border border-white/10 bg-white/5 p-8 text-sm text-purple-100/75 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
-            No foundation dogs are available right now.
-          </div>
+          <section className="rounded-[28px] border border-white/10 bg-white/5 p-8 text-sm text-purple-100/75 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+            No dogs are currently available for that breed.
+          </section>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {dogs.map((dog) => (
@@ -283,7 +359,8 @@ export default function FoundationMarketPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="text-sm font-medium text-purple-200">
-                        {dog.breedName} <span className="text-purple-100/60">({dog.breedCode2})</span>
+                        {dog.breedName}{" "}
+                        <span className="text-purple-100/60">({dog.breedCode2})</span>
                       </div>
                       <h2 className="mt-2 text-2xl font-bold text-white">
                         {dog.callName ?? "Unnamed"}
@@ -330,23 +407,16 @@ export default function FoundationMarketPage() {
 
                     <div className="space-y-3">
                       {Object.entries(dog.visibleCategories).map(([key, value]) => (
-                        <div key={key}>
-                          <div className="mb-1 flex items-center justify-between gap-3 text-xs">
-                            <span className="text-purple-100/80">
-                              {formatCategoryName(key)}
-                            </span>
-                            <span className="font-semibold text-white">
-                              {value.toFixed(1)}
-                            </span>
-                          </div>
-
-                          <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
-                            <div
-                              className="h-full rounded-full bg-[linear-gradient(90deg,#7c3aed,#a855f7)]"
-                              style={{ width: scoreToBarWidth(value) }}
-                            />
-                          </div>
-                        </div>
+                        <TraitLine
+                          key={key}
+                          label={formatCategoryName(key)}
+                          value={value}
+                          min={0}
+                          max={20}
+                          ideal={10}
+                          leftLabel="0"
+                          rightLabel="20"
+                        />
                       ))}
                     </div>
                   </div>
@@ -376,4 +446,3 @@ export default function FoundationMarketPage() {
     </main>
   );
 }
-

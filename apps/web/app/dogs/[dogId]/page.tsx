@@ -301,11 +301,10 @@ export default async function DogPage({ params }: PageProps) {
         <section className="mb-8 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
             <h2 className="text-2xl font-semibold text-white">
-              Visible Ring Categories
+              Visible Trait Categories
             </h2>
             <p className="mt-2 text-sm leading-7 text-purple-100/70">
-              These are the player-facing show characteristics derived from the
-              dog's hidden structure and presentation model.
+              PLACEHOLDER
             </p>
 
             <div className="mt-6 space-y-4">
