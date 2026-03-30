@@ -11,6 +11,7 @@ import {
   MIN_BREED_AGE_HOURS,
   MIN_SHOW_AGE_HOURS,
 } from "@showring/rules";
+import TraitLine from "@/components/ui/TraitLine";
 
 type PageProps = {
   params: Promise<{
@@ -40,10 +41,6 @@ function formatCategoryName(key: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function scoreToBarWidth(value: number): string {
-  const safe = Math.max(0, Math.min(20, value));
-  return `${(safe / 20) * 100}%`;
-}
 
 export default async function DogPage({ params }: PageProps) {
   const { dogId } = await params;
@@ -308,28 +305,21 @@ export default async function DogPage({ params }: PageProps) {
             </h2>
             <p className="mt-2 text-sm leading-7 text-purple-100/70">
               These are the player-facing show characteristics derived from the
-              dog’s hidden structure and presentation model.
+              dog's hidden structure and presentation model.
             </p>
 
             <div className="mt-6 space-y-4">
               {categoryEntries.map(([key, value]) => (
-                <div key={key}>
-                  <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-                    <span className="text-purple-100/85">
-                      {formatCategoryName(key)}
-                    </span>
-                    <span className="font-semibold text-white">
-                      {value.toFixed(1)}
-                    </span>
-                  </div>
-
-                  <div className="h-3 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-[linear-gradient(90deg,#7c3aed,#a855f7)]"
-                      style={{ width: scoreToBarWidth(value) }}
-                    />
-                  </div>
-                </div>
+                <TraitLine
+                  key={key}
+                  label={formatCategoryName(key)}
+                  value={value}
+                  min={0}
+                  max={20}
+                  ideal={10}
+                  leftLabel="Poor"
+                  rightLabel="Poor"
+                />
               ))}
             </div>
           </div>
