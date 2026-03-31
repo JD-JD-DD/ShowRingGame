@@ -416,7 +416,7 @@ export default function KennelDogsPanel() {
                     direction={sortDirection}
                     onClick={() => toggleSort("movement")}
                   >
-                    Movement
+                    Move.
                   </SortButton>
                 </th>
                 <th className="px-4 py-2">
@@ -434,7 +434,7 @@ export default function KennelDogsPanel() {
                     direction={sortDirection}
                     onClick={() => toggleSort("temperamentRingBehavior")}
                   >
-                    Temperament
+                    Temp.
                   </SortButton>
                 </th>
                 <th className="px-4 py-2">
@@ -443,7 +443,7 @@ export default function KennelDogsPanel() {
                     direction={sortDirection}
                     onClick={() => toggleSort("conditioningHandling")}
                   >
-                    Conditioning
+                    Cond.
                   </SortButton>
                 </th>
                 <th className="px-4 py-2">Breed Status</th>
