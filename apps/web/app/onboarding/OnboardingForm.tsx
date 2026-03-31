@@ -56,7 +56,8 @@ export default function OnboardingForm() {
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Valor Kennels"
+            maxLength={45}
+            placeholder="Show Ring Game"
             required
             style={{ padding: "10px" }}
           />
