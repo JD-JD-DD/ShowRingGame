@@ -69,6 +69,7 @@ export default function OnboardingForm() {
             value={publicSlogan}
             onChange={(e) => setPublicSlogan(e.target.value)}
             placeholder="Built for the purple"
+            maxLength={75}
             style={{ padding: "10px" }}
           />
         </label>
