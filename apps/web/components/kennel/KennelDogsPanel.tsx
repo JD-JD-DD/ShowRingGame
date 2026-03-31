@@ -65,6 +65,10 @@ type SortKey =
   | "temperamentRingBehavior"
   | "conditioningHandling";
 
+function goToDog(dogId: string) {
+  router.push(`/dogs/${dogId}`);
+}
+
 function formatAge(ageHours: number): string {
   const weeks = Math.floor(ageHours / 7);
   const years = Math.floor(weeks / 52);
@@ -433,38 +437,43 @@ export default function KennelDogsPanel() {
               {filteredDogs.map((dog) => (
                 <tr
                   key={dog.dogId}
-                  onClick={() => router.push(`/dogs/${dog.dogId}`)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      router.push(`/dogs/${dog.dogId}`);
-                    }
-                  }}
-                  tabIndex={0}
-                  className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none transition hover:border-purple-300/30 hover:bg-white/8 focus:border-purple-300/40 focus:bg-white/8"
+                  className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
                 >
-                  <td className="rounded-l-2xl px-4 py-4 text-white">
+                  <td
+                    className="rounded-l-2xl px-4 py-4 text-white cursor-pointer hover:bg-white/5"
+                    onClick={() => goToDog(dog.dogId)}
+                  >
                     <div className="font-semibold">{dog.breedName}</div>
                     <div className="text-xs text-purple-100/55">{dog.breedCode2}</div>
                   </td>
 
-                  <td className="px-4 py-4 text-white">
+                  <td
+                    className="px-4 py-4 text-white cursor-pointer hover:bg-white/5"
+                    onClick={() => goToDog(dog.dogId)}
+                  >
                     <div className="font-semibold">{getDogDisplayName(dog)}</div>
                     <div className="text-xs text-purple-100/55">{dog.regNumber}</div>
                   </td>
 
-                  <td className="px-4 py-4 text-white">{dog.sex}</td>
-                  <td className="px-4 py-4 text-white">{formatAge(dog.ageHours)}</td>
+                  <td
+                    className="px-4 py-4 text-white cursor-pointer hover:bg-white/5"
+                    onClick={() => goToDog(dog.dogId)}
+                  >
+                    {dog.sex}
+                  </td>
 
-                  <td className="px-4 py-4"><StatCell value={dog.visibleCategories.typeExpression ?? 0} /></td>
-                  <td className="px-4 py-4"><StatCell value={dog.visibleCategories.structureBalance ?? 0} /></td>
-                  <td className="px-4 py-4"><StatCell value={dog.visibleCategories.movement ?? 0} /></td>
-                  <td className="px-4 py-4"><StatCell value={dog.visibleCategories.coatPresentation ?? 0} /></td>
-                  <td className="px-4 py-4"><StatCell value={dog.visibleCategories.temperamentRingBehavior ?? 0} /></td>
-                  <td className="px-4 py-4"><StatCell value={dog.visibleCategories.conditioningHandling ?? 0} /></td>
+                  <td
+                    className="px-4 py-4 text-white cursor-pointer hover:bg-white/5"
+                    onClick={() => goToDog(dog.dogId)}
+                  >
+                    {formatAge(dog.ageHours)}
+                  </td>
 
-                  <td className="px-4 py-4 text-xs text-purple-100/80">
-                    {dog.breedingCardStatus.label}
+                  <td
+                    className="px-4 py-4 cursor-pointer hover:bg-white/5"
+                    onClick={() => goToDog(dog.dogId)}
+                  >
+                    <StatCell value={dog.visibleCategories.typeExpression ?? 0} />
                   </td>
 
                   <td className="rounded-r-2xl px-4 py-4">
