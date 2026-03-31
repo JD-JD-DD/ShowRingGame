@@ -275,14 +275,6 @@ function generateCandidateTraits(
 }
 
 
-function traitDistanceFromIdeal(value: number, ideal = 10): number {
-  return Math.abs(value - ideal);
-}
-
-function traitQualityFromIdeal(value: number, ideal = 10): number {
-  return Math.max(0, 10 - traitDistanceFromIdeal(value, ideal));
-}
-
 function mapCategoryKey(category: JudgingCategory): keyof VisibleCategories {
   switch (category) {
     case "TYPE_EXPRESSION":
@@ -305,8 +297,9 @@ function mapCategoryKey(category: JudgingCategory): keyof VisibleCategories {
  * Raw traits stay hidden; UI and API should use these derived values.
  *
  * IMPORTANT:
- * Hidden trait values are distance-from-ideal traits where 10 is ideal.
- * Visible categories should therefore reflect closeness to 10, not raw magnitude.
+ * Visible categories remain on the same 0–20 scale as hidden traits,
+ * with 10 as ideal. They preserve whether the category appears under
+ * or over ideal, while still hiding the exact raw trait breakdown.
  */
 export function deriveVisibleCategoriesFromTraits(
   traits: DogTraits
@@ -322,144 +315,14 @@ export function deriveVisibleCategoriesFromTraits(
 
   for (const category of JUDGING_CATEGORIES) {
     const traitKeys = CATEGORY_TRAIT_MAP[category];
-    const qualityValues = traitKeys.map((traitKey) =>
-      traitQualityFromIdeal(traits[traitKey])
-    );
+    const values = traitKeys.map((traitKey) => traits[traitKey]);
+    const score = Number(average(values).toFixed(1));
 
-    const score = Number(average(qualityValues).toFixed(1));
     visibleCategories[mapCategoryKey(category)] = score;
   }
 
   return visibleCategories;
 }
-
-// function countTraitsAboveThreshold(
-//   traits: DogTraits,
-//   baseline: DogTraits,
-//   threshold: number
-// ): number {
-//   let count = 0;
-
-//   for (const traitKey of TRAIT_KEYS) {
-//     if (traits[traitKey] > baseline[traitKey] + threshold) {
-//       count += 1;
-//     }
-//   }
-
-//   return count;
-// }
-
-// function countTraitsBelowThreshold(
-//   traits: DogTraits,
-//   baseline: DogTraits,
-//   threshold: number
-// ): number {
-//   let count = 0;
-
-//   for (const traitKey of TRAIT_KEYS) {
-//     if (traits[traitKey] < baseline[traitKey] - threshold) {
-//       count += 1;
-//     }
-//   }
-
-//   return count;
-// }
-
-// function isTooFlat(traits: DogTraits): boolean {
-//   const values = TRAIT_KEYS.map((traitKey) => traits[traitKey]);
-//   const min = Math.min(...values);
-//   const max = Math.max(...values);
-
-//   return max - min <= 1;
-// }
-
-// function isEliteCandidate(
-//   traits: DogTraits,
-//   baseline: DogTraits,
-//   visibleCategories: VisibleCategories
-// ): boolean {
-//   const aboveMeanPlusOne = countTraitsAboveThreshold(traits, baseline, 1);
-//   const visibleStrongCount = Object.values(visibleCategories).filter(
-//     (value) => value >= 11.5
-//   ).length;
-
-//   const traitSum = TRAIT_KEYS.reduce((sum, traitKey) => sum + traits[traitKey], 0);
-//   const baselineSum = TRAIT_KEYS.reduce(
-//     (sum, traitKey) => sum + baseline[traitKey],
-//     0
-//   );
-
-//   return (
-//     aboveMeanPlusOne > 3 ||
-//     visibleStrongCount > 2 ||
-//     traitSum > baselineSum - 1
-//   );
-// }
-
-// function isTooWeakCandidate(
-//   traits: DogTraits,
-//   baseline: DogTraits,
-//   visibleCategories: VisibleCategories
-// ): boolean {
-//   const belowMeanMinusTwo = countTraitsBelowThreshold(traits, baseline, 2);
-//   const visibleAppealingCount = Object.values(visibleCategories).filter(
-//     (value) => value >= 10.0
-//   ).length;
-
-//   const traitSum = TRAIT_KEYS.reduce((sum, traitKey) => sum + traits[traitKey], 0);
-//   const baselineSum = TRAIT_KEYS.reduce(
-//     (sum, traitKey) => sum + baseline[traitKey],
-//     0
-//   );
-
-//   return (
-//     belowMeanMinusTwo > 3 ||
-//     visibleAppealingCount < 1 ||
-//     traitSum < baselineSum - 18
-//   );
-// }
-
-// function scoreCandidatePenalty(
-//   traits: DogTraits,
-//   baseline: DogTraits
-// ): number {
-//   const visibleCategories = deriveVisibleCategoriesFromTraits(traits);
-
-//   let penalty = 0;
-
-//   if (isTooFlat(traits)) penalty += 100;
-
-//   const aboveMeanPlusOne = countTraitsAboveThreshold(traits, baseline, 1);
-//   const belowMeanMinusTwo = countTraitsBelowThreshold(traits, baseline, 2);
-//   const visibleStrongCount = Object.values(visibleCategories).filter(
-//     (value) => value >= 11.5
-//   ).length;
-//   const visibleAppealingCount = Object.values(visibleCategories).filter(
-//     (value) => value >= 10.0
-//   ).length;
-
-//   penalty += aboveMeanPlusOne * 10;
-//   penalty += belowMeanMinusTwo * 10;
-
-//   if (visibleStrongCount > 2) penalty += 25;
-//   if (visibleAppealingCount < 1) penalty += 25;
-
-//   return penalty;
-// }
-
-// function isValidFoundationCandidate(
-//   traits: DogTraits,
-//   baseline: DogTraits
-// ): boolean {
-//   if (isTooFlat(traits)) return false;
-
-//   const visibleCategories = deriveVisibleCategoriesFromTraits(traits);
-
-//   if (isEliteCandidate(traits, baseline, visibleCategories)) return false;
-//   if (isTooWeakCandidate(traits, baseline, visibleCategories)) return false;
-
-//   return true;
-// }
 
 function countTraitsInRange(
   traits: DogTraits,
