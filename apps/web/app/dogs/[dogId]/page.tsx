@@ -294,6 +294,17 @@ export default async function DogPage({ params }: PageProps) {
                   </button>
                 </form>
               ) : null}
+
+              {isOwnedByCurrentKennel && isAlive ? (
+                <form action={`/api/dogs/${dog.id}/rehome`} method="post">
+                  <button
+                    type="submit"
+                    className="w-full rounded-2xl border border-red-300/25 bg-red-500/10 px-5 py-3 text-center text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
+                  >
+                    Re-Home Dog
+                  </button>
+                </form>
+              ) : null}
             </div>
           </div>
         </section>
