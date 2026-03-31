@@ -116,28 +116,77 @@ function buildTargetMeans(
   band: FoundationQualityBand,
   random01: () => number
 ): DogTraits {
-  const offset = getBandOffset(band);
   const target = {} as DogTraits;
 
   for (const traitKey of TRAIT_KEYS) {
     const ideal = 10;
 
-    if (baseline[traitKey] === ideal) {
-      const direction = random01() < 0.5 ? -1 : 1;
-      target[traitKey] = clampTrait(ideal + direction * offset);
-    } else if (baseline[traitKey] < ideal) {
-      target[traitKey] = clampTrait(
-        baseline[traitKey] + (random01() < 0.6 ? -offset : offset * 0.5)
-      );
-    } else {
-      target[traitKey] = clampTrait(
-        baseline[traitKey] + (random01() < 0.6 ? offset : -offset * 0.5)
-      );
+    const breedMean = baseline[traitKey];
+
+    // How far breed is from ideal
+    const deviationFromIdeal = breedMean - ideal;
+
+    // Estimate plausible spread based on breed deviation
+    const magnitude = Math.max(1.5, Math.min(3.5, Math.abs(deviationFromIdeal) + 1));
+
+    // Slight band influence (NICE slightly tighter, ROUGH slightly wider)
+    let spreadAdjustment = 0;
+    switch (band) {
+      case "NICE_FOUNDATION":
+        spreadAdjustment = -0.2;
+        break;
+      case "ROUGH_FOUNDATION":
+        spreadAdjustment = +0.6;
+        break;
     }
+
+    const finalSpread = magnitude + spreadAdjustment;
+
+    // Bias toward underrepresented side of ideal
+    let bias = 0;
+    if (Math.abs(deviationFromIdeal) > 0.5) {
+      bias = deviationFromIdeal > 0 ? -0.5 : 0.5;
+    }
+
+    // Sample around ideal (NOT breed mean)
+    const sampled =
+      ideal +
+      randomBetween(random01, -finalSpread, finalSpread) +
+      bias * random01();
+
+    target[traitKey] = clampTrait(sampled);
   }
 
   return target;
 }
+
+// function buildTargetMeans(
+//   baseline: DogTraits,
+//   band: FoundationQualityBand,
+//   random01: () => number
+// ): DogTraits {
+//   const offset = getBandOffset(band);
+//   const target = {} as DogTraits;
+
+//   for (const traitKey of TRAIT_KEYS) {
+//     const ideal = 10;
+
+//     if (baseline[traitKey] === ideal) {
+//       const direction = random01() < 0.5 ? -1 : 1;
+//       target[traitKey] = clampTrait(ideal + direction * offset);
+//     } else if (baseline[traitKey] < ideal) {
+//       target[traitKey] = clampTrait(
+//         baseline[traitKey] + (random01() < 0.6 ? -offset : offset * 0.5)
+//       );
+//     } else {
+//       target[traitKey] = clampTrait(
+//         baseline[traitKey] + (random01() < 0.6 ? offset : -offset * 0.5)
+//       );
+//     }
+//   }
+
+//   return target;
+// }
 
 function shuffleTraitKeys(random01: () => number): TraitKey[] {
   const values = [...TRAIT_KEYS];
@@ -149,23 +198,6 @@ function shuffleTraitKeys(random01: () => number): TraitKey[] {
 
   return values;
 }
-
-// function buildTraitBiasProfile(random01: () => number): {
-//   boostedTraits: Set<TraitKey>;
-//   loweredTraits: Set<TraitKey>;
-// } {
-//   const shuffled = shuffleTraitKeys(random01);
-
-//   const boostedCount = 2 + Math.floor(random01() * 3); // 2..4
-//   const loweredCount = 2 + Math.floor(random01() * 3); // 2..4
-
-//   const boostedTraits = new Set<TraitKey>(shuffled.slice(0, boostedCount));
-//   const loweredTraits = new Set<TraitKey>(
-//     shuffled.slice(boostedCount, boostedCount + loweredCount)
-//   );
-
-//   return { boostedTraits, loweredTraits };
-// }
 
 function moveTowardIdeal(
   value: number,
@@ -242,75 +274,6 @@ function generateCandidateTraits(
   return traits;
 }
 
-// function generateCandidateTraits(
-//   targetMeans: DogTraits,
-//   random01: () => number
-// ): DogTraits {
-//   const { boostedTraits, loweredTraits } = buildTraitBiasProfile(random01);
-//   const traits = {} as DogTraits;
-
-//   for (const traitKey of TRAIT_KEYS) {
-//     let value =
-//       targetMeans[traitKey] +
-//       randomBetween(random01, -TRAIT_ROLL_VARIANCE, TRAIT_ROLL_VARIANCE);
-
-//     if (boostedTraits.has(traitKey)) {
-//       value += randomBetween(random01, 0.4, 1.0);
-//     }
-
-//     if (loweredTraits.has(traitKey)) {
-//       value -= randomBetween(random01, 0.4, 1.0);
-//     }
-
-//     traits[traitKey] = clampTrait(value);
-//   }
-
-//   return traits;
-// }
-
-// function mapCategoryKey(category: JudgingCategory): keyof VisibleCategories {
-//   switch (category) {
-//     case "TYPE_EXPRESSION":
-//       return "typeExpression";
-//     case "STRUCTURE_BALANCE":
-//       return "structureBalance";
-//     case "MOVEMENT":
-//       return "movement";
-//     case "COAT_PRESENTATION":
-//       return "coatPresentation";
-//     case "TEMPERAMENT_RING_BEHAVIOR":
-//       return "temperamentRingBehavior";
-//     case "CONDITIONING_HANDLING":
-//       return "conditioningHandling";
-//   }
-// }
-
-// /**
-//  * Keep this helper aligned with the judging category map.
-//  * Raw traits stay hidden; UI and API should use these derived values.
-//  */
-// export function deriveVisibleCategoriesFromTraits(
-//   traits: DogTraits
-// ): VisibleCategories {
-//   const visibleCategories: VisibleCategories = {
-//     typeExpression: 0,
-//     structureBalance: 0,
-//     movement: 0,
-//     coatPresentation: 0,
-//     temperamentRingBehavior: 0,
-//     conditioningHandling: 0,
-//   };
-
-//   for (const category of JUDGING_CATEGORIES) {
-//     const traitKeys = CATEGORY_TRAIT_MAP[category];
-//     const values = traitKeys.map((traitKey) => traits[traitKey]);
-//     const score = Number(average(values).toFixed(1));
-
-//     visibleCategories[mapCategoryKey(category)] = score;
-//   }
-
-//   return visibleCategories;
-// }
 
 function traitDistanceFromIdeal(value: number, ideal = 10): number {
   return Math.abs(value - ideal);
@@ -587,33 +550,6 @@ function isFoundationCandidateAcceptable(traits: DogTraits): boolean {
 
   return true;
 }
-
-// function generateFoundationTraits(
-//   baseline: DogTraits,
-//   band: FoundationQualityBand,
-//   random01: () => number
-// ): DogTraits {
-//   const targetMeans = buildTargetMeans(baseline, band);
-
-//   let bestCandidate: DogTraits | null = null;
-//   let bestPenalty = Number.POSITIVE_INFINITY;
-
-//   for (let attempt = 0; attempt < MAX_GENERATION_ATTEMPTS; attempt += 1) {
-//     const candidate = generateCandidateTraits(targetMeans, random01);
-
-//     if (isValidFoundationCandidate(candidate, baseline)) {
-//       return candidate;
-//     }
-
-//     const penalty = scoreCandidatePenalty(candidate, baseline);
-//     if (penalty < bestPenalty) {
-//       bestPenalty = penalty;
-//       bestCandidate = candidate;
-//     }
-//   }
-
-//   return bestCandidate ?? generateCandidateTraits(targetMeans, random01);
-// }
 
 function generateFoundationTraits(
   baseline: DogTraits,
