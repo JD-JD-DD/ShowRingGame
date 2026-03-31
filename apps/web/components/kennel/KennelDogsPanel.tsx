@@ -404,7 +404,7 @@ export default function KennelDogsPanel() {
                     direction={sortDirection}
                     onClick={() => toggleSort("structureBalance")}
                   >
-                    Structure
+                    Struct.
                   </SortButton>
                 </th>
                 <th className="px-3 py-2">
