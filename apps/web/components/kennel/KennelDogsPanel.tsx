@@ -2,9 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-
-const router = useRouter();
 
 type VisibleCategories = Record<string, number>;
 
@@ -64,10 +61,6 @@ type SortKey =
   | "coatPresentation"
   | "temperamentRingBehavior"
   | "conditioningHandling";
-
-function goToDog(dogId: string) {
-  router.push(`/dogs/${dogId}`);
-}
 
 function formatAge(ageHours: number): string {
   const weeks = Math.floor(ageHours / 7);
@@ -150,7 +143,9 @@ function SortButton({
       }`}
     >
       <span>{children}</span>
-      <span className="text-[10px]">{active ? (direction === "asc" ? "▲" : "▼") : "↕"}</span>
+      <span className="text-[10px]">
+        {active ? (direction === "asc" ? "▲" : "▼") : "↕"}
+      </span>
     </button>
   );
 }
@@ -188,7 +183,9 @@ export default function KennelDogsPanel() {
 
         setDogs(data.dogs ?? []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load kennel dogs.");
+        setError(
+          err instanceof Error ? err.message : "Failed to load kennel dogs."
+        );
       } finally {
         setLoading(false);
       }
@@ -208,6 +205,7 @@ export default function KennelDogsPanel() {
 
     const list = dogs.filter((dog) => {
       const name = getDogDisplayName(dog).toLowerCase();
+
       const breedMatch = breedFilter ? dog.breedName === breedFilter : true;
       const sexMatch = sexFilter ? dog.sex === sexFilter : true;
       const searchMatch =
@@ -222,10 +220,18 @@ export default function KennelDogsPanel() {
         : true;
 
       const showEligibleMatch = onlyShowEligible
-        ? dog.ageHours >= 182 && dog.ageHours <= 3840 && dog.lifecycleState === "ALIVE"
+        ? dog.ageHours >= 182 &&
+          dog.ageHours <= 3840 &&
+          dog.lifecycleState === "ALIVE"
         : true;
 
-      return breedMatch && sexMatch && searchMatch && breedableMatch && showEligibleMatch;
+      return (
+        breedMatch &&
+        sexMatch &&
+        searchMatch &&
+        breedableMatch &&
+        showEligibleMatch
+      );
     });
 
     list.sort((a, b) => {
@@ -244,7 +250,16 @@ export default function KennelDogsPanel() {
     });
 
     return list;
-  }, [dogs, breedFilter, sexFilter, search, onlyBreedable, onlyShowEligible, sortKey, sortDirection]);
+  }, [
+    dogs,
+    breedFilter,
+    sexFilter,
+    search,
+    onlyBreedable,
+    onlyShowEligible,
+    sortKey,
+    sortDirection,
+  ]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -263,7 +278,9 @@ export default function KennelDogsPanel() {
           <div className="text-sm font-semibold uppercase tracking-[0.18em] text-purple-200">
             My Dogs
           </div>
-          <h2 className="mt-2 text-2xl font-semibold text-white">Kennel Roster</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-white">
+            Kennel Roster
+          </h2>
           <p className="mt-2 text-sm leading-7 text-purple-100/70">
             Sort, filter, and compare your dogs in one working roster.
           </p>
@@ -335,9 +352,10 @@ export default function KennelDogsPanel() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-[1320px] w-full border-separate border-spacing-y-2 text-sm">
+          <table className="min-w-[1460px] w-full border-separate border-spacing-y-2 text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+                <th className="px-4 py-2 text-right">Open</th>
                 <th className="px-4 py-2">
                   <SortButton
                     active={sortKey === "breed"}
@@ -439,63 +457,68 @@ export default function KennelDogsPanel() {
                   key={dog.dogId}
                   className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
                 >
-                  <td
-                    className="rounded-l-2xl px-4 py-4 text-white cursor-pointer hover:bg-white/5"
-                    onClick={() => goToDog(dog.dogId)}
-                  >
+                  <td className="px-4 py-4 text-right">
+                    <Link
+                      href={`/dogs/${dog.dogId}`}
+                      className="inline-flex rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
+                    >
+                      Open
+                    </Link>
+                  </td>
+
+                  <td className="px-4 py-4 text-white">
                     <div className="font-semibold">{dog.breedName}</div>
-                    <div className="text-xs text-purple-100/55">{dog.breedCode2}</div>
+                    <div className="text-xs text-purple-100/55">
+                      {dog.breedCode2}
+                    </div>
                   </td>
 
-                  <td
-                    className="px-4 py-4 text-white cursor-pointer hover:bg-white/5"
-                    onClick={() => goToDog(dog.dogId)}
-                  >
+                  <td className="px-4 py-4 text-white">
                     <div className="font-semibold">{getDogDisplayName(dog)}</div>
-                    <div className="text-xs text-purple-100/55">{dog.regNumber}</div>
+                    <div className="text-xs text-purple-100/55">
+                      {dog.regNumber}
+                    </div>
                   </td>
 
-                  <td
-                    className="px-4 py-4 text-white cursor-pointer hover:bg-white/5"
-                    onClick={() => goToDog(dog.dogId)}
-                  >
-                    {dog.sex}
-                  </td>
-
-                  <td
-                    className="px-4 py-4 text-white cursor-pointer hover:bg-white/5"
-                    onClick={() => goToDog(dog.dogId)}
-                  >
+                  <td className="px-4 py-4 text-white">{dog.sex}</td>
+                  <td className="px-4 py-4 text-white">
                     {formatAge(dog.ageHours)}
                   </td>
 
-                  <td
-                    className="px-4 py-4 cursor-pointer hover:bg-white/5"
-                    onClick={() => goToDog(dog.dogId)}
-                  >
+                  <td className="px-4 py-4">
                     <StatCell value={dog.visibleCategories.typeExpression ?? 0} />
                   </td>
+                  <td className="px-4 py-4">
+                    <StatCell value={dog.visibleCategories.structureBalance ?? 0} />
+                  </td>
+                  <td className="px-4 py-4">
+                    <StatCell value={dog.visibleCategories.movement ?? 0} />
+                  </td>
+                  <td className="px-4 py-4">
+                    <StatCell value={dog.visibleCategories.coatPresentation ?? 0} />
+                  </td>
+                  <td className="px-4 py-4">
+                    <StatCell
+                      value={dog.visibleCategories.temperamentRingBehavior ?? 0}
+                    />
+                  </td>
+                  <td className="px-4 py-4">
+                    <StatCell
+                      value={dog.visibleCategories.conditioningHandling ?? 0}
+                    />
+                  </td>
 
-                  <td className="rounded-r-2xl px-4 py-4">
-                    <div
-                      className="flex justify-end gap-2"
-                      onClick={(event) => event.stopPropagation()}
-                      onKeyDown={(event) => event.stopPropagation()}
+                  <td className="px-4 py-4 text-xs text-purple-100/80">
+                    {dog.breedingCardStatus.label}
+                  </td>
+
+                  <td className="px-4 py-4 text-right">
+                    <Link
+                      href={`/breed?dogId=${dog.dogId}`}
+                      className="inline-flex rounded-xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500"
                     >
-                      <Link
-                        href={`/dogs/${dog.dogId}`}
-                        className="rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
-                      >
-                        View
-                      </Link>
-
-                      <Link
-                        href={`/breed?dogId=${dog.dogId}`}
-                        className="rounded-xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500"
-                      >
-                        Breed
-                      </Link>
-                    </div>
+                      Breed
+                    </Link>
                   </td>
                 </tr>
               ))}
@@ -506,4 +529,3 @@ export default function KennelDogsPanel() {
     </section>
   );
 }
-
