@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+const router = useRouter();
 
 type VisibleCategories = Record<string, number>;
 
@@ -430,7 +433,15 @@ export default function KennelDogsPanel() {
               {filteredDogs.map((dog) => (
                 <tr
                   key={dog.dogId}
-                  className="rounded-2xl border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                  onClick={() => router.push(`/dogs/${dog.dogId}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      router.push(`/dogs/${dog.dogId}`);
+                    }
+                  }}
+                  tabIndex={0}
+                  className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none transition hover:border-purple-300/30 hover:bg-white/8 focus:border-purple-300/40 focus:bg-white/8"
                 >
                   <td className="rounded-l-2xl px-4 py-4 text-white">
                     <div className="font-semibold">{dog.breedName}</div>
@@ -457,7 +468,11 @@ export default function KennelDogsPanel() {
                   </td>
 
                   <td className="rounded-r-2xl px-4 py-4">
-                    <div className="flex justify-end gap-2">
+                    <div
+                      className="flex justify-end gap-2"
+                      onClick={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
                       <Link
                         href={`/dogs/${dog.dogId}`}
                         className="rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10"

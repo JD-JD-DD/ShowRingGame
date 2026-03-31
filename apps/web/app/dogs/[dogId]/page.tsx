@@ -304,7 +304,7 @@ export default async function DogPage({ params }: PageProps) {
               Visible Trait Categories
             </h2>
             <p className="mt-2 text-sm leading-7 text-purple-100/70">
-              PLACEHOLDER
+              Player-facing trait summaries shown on a 0–20 scale, with 10 as ideal.
             </p>
 
             <div className="mt-6 space-y-4">
