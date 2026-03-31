@@ -117,7 +117,7 @@ function colorClassForVisibleValue(value: number): string {
 
 function StatCell({ value }: { value: number }) {
   return (
-    <div className={`font-semibold ${colorClassForVisibleValue(value)}`}>
+    <div className={`text-sm font-semibold ${colorClassForVisibleValue(value)}`}>
       {value.toFixed(1)}
     </div>
   );
@@ -209,10 +209,7 @@ export default function KennelDogsPanel() {
       const breedMatch = breedFilter ? dog.breedName === breedFilter : true;
       const sexMatch = sexFilter ? dog.sex === sexFilter : true;
       const searchMatch =
-        !q ||
-        name.includes(q) ||
-        dog.regNumber.toLowerCase().includes(q) ||
-        dog.breedName.toLowerCase().includes(q);
+        !q || name.includes(q) || dog.breedName.toLowerCase().includes(q);
 
       const breedableMatch = onlyBreedable
         ? dog.breedingCardStatus.label === "Open" ||
@@ -272,8 +269,8 @@ export default function KennelDogsPanel() {
   }
 
   return (
-    <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+      <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <div className="text-sm font-semibold uppercase tracking-[0.18em] text-purple-200">
             My Dogs
@@ -291,7 +288,7 @@ export default function KennelDogsPanel() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name, reg #, breed..."
+            placeholder="Search name or breed..."
             className="rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-purple-100/40"
           />
 
@@ -352,11 +349,11 @@ export default function KennelDogsPanel() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-[1460px] w-full border-separate border-spacing-y-2 text-sm">
+          <table className="min-w-[1180px] w-full border-separate border-spacing-y-2 text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
-                <th className="px-4 py-2 text-right">Open</th>
-                <th className="px-4 py-2">
+                <th className="px-3 py-2 text-right">Open</th>
+                <th className="px-3 py-2">
                   <SortButton
                     active={sortKey === "breed"}
                     direction={sortDirection}
@@ -365,7 +362,7 @@ export default function KennelDogsPanel() {
                     Breed
                   </SortButton>
                 </th>
-                <th className="px-4 py-2">
+                <th className="px-3 py-2">
                   <SortButton
                     active={sortKey === "name"}
                     direction={sortDirection}
@@ -374,7 +371,7 @@ export default function KennelDogsPanel() {
                     Dog
                   </SortButton>
                 </th>
-                <th className="px-4 py-2">
+                <th className="px-3 py-2">
                   <SortButton
                     active={sortKey === "sex"}
                     direction={sortDirection}
@@ -383,7 +380,7 @@ export default function KennelDogsPanel() {
                     Sex
                   </SortButton>
                 </th>
-                <th className="px-4 py-2">
+                <th className="px-3 py-2">
                   <SortButton
                     active={sortKey === "age"}
                     direction={sortDirection}
@@ -392,7 +389,7 @@ export default function KennelDogsPanel() {
                     Age
                   </SortButton>
                 </th>
-                <th className="px-4 py-2">
+                <th className="px-3 py-2">
                   <SortButton
                     active={sortKey === "typeExpression"}
                     direction={sortDirection}
@@ -401,7 +398,7 @@ export default function KennelDogsPanel() {
                     Type
                   </SortButton>
                 </th>
-                <th className="px-4 py-2">
+                <th className="px-3 py-2">
                   <SortButton
                     active={sortKey === "structureBalance"}
                     direction={sortDirection}
@@ -410,7 +407,7 @@ export default function KennelDogsPanel() {
                     Structure
                   </SortButton>
                 </th>
-                <th className="px-4 py-2">
+                <th className="px-3 py-2">
                   <SortButton
                     active={sortKey === "movement"}
                     direction={sortDirection}
@@ -419,7 +416,7 @@ export default function KennelDogsPanel() {
                     Move.
                   </SortButton>
                 </th>
-                <th className="px-4 py-2">
+                <th className="px-3 py-2">
                   <SortButton
                     active={sortKey === "coatPresentation"}
                     direction={sortDirection}
@@ -428,7 +425,7 @@ export default function KennelDogsPanel() {
                     Coat
                   </SortButton>
                 </th>
-                <th className="px-4 py-2">
+                <th className="px-3 py-2">
                   <SortButton
                     active={sortKey === "temperamentRingBehavior"}
                     direction={sortDirection}
@@ -437,7 +434,7 @@ export default function KennelDogsPanel() {
                     Temp.
                   </SortButton>
                 </th>
-                <th className="px-4 py-2">
+                <th className="px-3 py-2">
                   <SortButton
                     active={sortKey === "conditioningHandling"}
                     direction={sortDirection}
@@ -446,8 +443,7 @@ export default function KennelDogsPanel() {
                     Cond.
                   </SortButton>
                 </th>
-                <th className="px-4 py-2">Breed Status</th>
-                <th className="px-4 py-2 text-right">Actions</th>
+                <th className="px-3 py-2">Status</th>
               </tr>
             </thead>
 
@@ -457,68 +453,53 @@ export default function KennelDogsPanel() {
                   key={dog.dogId}
                   className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
                 >
-                  <td className="px-4 py-4 text-right">
+                  <td className="px-3 py-3 text-right">
                     <Link
                       href={`/dogs/${dog.dogId}`}
-                      className="inline-flex rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
+                      className="inline-flex rounded-xl border border-purple-300/25 bg-white/5 px-3 py-1.5 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
                     >
                       Open
                     </Link>
                   </td>
 
-                  <td className="px-4 py-4 text-white">
-                    <div className="font-semibold">{dog.breedName}</div>
-                    <div className="text-xs text-purple-100/55">
-                      {dog.breedCode2}
-                    </div>
+                  <td className="px-3 py-3 text-white font-medium">
+                    {dog.breedName}
                   </td>
 
-                  <td className="px-4 py-4 text-white">
-                    <div className="font-semibold">{getDogDisplayName(dog)}</div>
-                    <div className="text-xs text-purple-100/55">
-                      {dog.regNumber}
-                    </div>
+                  <td className="px-3 py-3 text-white font-medium">
+                    {getDogDisplayName(dog)}
                   </td>
 
-                  <td className="px-4 py-4 text-white">{dog.sex}</td>
-                  <td className="px-4 py-4 text-white">
+                  <td className="px-3 py-3 text-white">{dog.sex}</td>
+                  <td className="px-3 py-3 text-white">
                     {formatAge(dog.ageHours)}
                   </td>
 
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-3">
                     <StatCell value={dog.visibleCategories.typeExpression ?? 0} />
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-3">
                     <StatCell value={dog.visibleCategories.structureBalance ?? 0} />
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-3">
                     <StatCell value={dog.visibleCategories.movement ?? 0} />
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-3">
                     <StatCell value={dog.visibleCategories.coatPresentation ?? 0} />
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-3">
                     <StatCell
                       value={dog.visibleCategories.temperamentRingBehavior ?? 0}
                     />
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-3">
                     <StatCell
                       value={dog.visibleCategories.conditioningHandling ?? 0}
                     />
                   </td>
 
-                  <td className="px-4 py-4 text-xs text-purple-100/80">
+                  <td className="px-3 py-3 text-xs text-purple-100/80 whitespace-nowrap">
                     {dog.breedingCardStatus.label}
-                  </td>
-
-                  <td className="px-4 py-4 text-right">
-                    <Link
-                      href={`/breed?dogId=${dog.dogId}`}
-                      className="inline-flex rounded-xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500"
-                    >
-                      Breed
-                    </Link>
                   </td>
                 </tr>
               ))}
