@@ -6,10 +6,12 @@ import TraitLine from "@/components/ui/TraitLine";
 
 type VisibleCategories = Record<string, number>;
 
-type FoundationDogMarketDto = {
+type MarketDogDto = {
   listingId: string;
   dogId: string;
+  displayName: string;
   callName: string | null;
+  registeredName: string | null;
   regNumber: string;
   breedCode2: string;
   breedName: string;
@@ -17,18 +19,23 @@ type FoundationDogMarketDto = {
   birthEpoch: number;
   ageHours: number;
   price: number;
+  sellerType: "PLAYER" | "NPC" | "SYSTEM";
+  sellerKennelName: string | null;
+  listingType: string;
+  isOwnedByCurrentKennel: boolean;
   visibleCategories: VisibleCategories;
 };
 
-type FoundationDogsResponse = {
+type MarketDogsResponse = {
   ok: boolean;
-  dogs?: FoundationDogMarketDto[];
+  dogs?: MarketDogDto[];
   error?: string;
 };
 
 type BuyDogResponse = {
   ok: boolean;
-  dog?: FoundationDogMarketDto;
+  dog?: MarketDogDto;
+  dogId?: string;
   error?: string;
 };
 
@@ -74,7 +81,7 @@ export default function MarketPage() {
   const [breedSearch, setBreedSearch] = useState("");
   const [selectedBreedCode2, setSelectedBreedCode2] = useState("");
 
-  const [dogs, setDogs] = useState<FoundationDogMarketDto[]>([]);
+  const [dogs, setDogs] = useState<MarketDogDto[]>([]);
   const [loadingDogs, setLoadingDogs] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -143,12 +150,12 @@ export default function MarketPage() {
         breedCode2.trim().toUpperCase()
       )}`;
 
-      const res = await fetch(`/api/foundation-dogs${query}`, {
+      const res = await fetch(`/api/market-dogs${query}`, {
         method: "GET",
         cache: "no-store",
       });
 
-      const data: FoundationDogsResponse = await res.json();
+      const data: MarketDogsResponse = await res.json();
 
       if (!res.ok || !data.ok) {
         throw new Error(data.error || "Failed to load dogs.");
@@ -182,13 +189,13 @@ export default function MarketPage() {
     setMessage(null);
   }
 
-  async function handleBuy(dog: FoundationDogMarketDto) {
+  async function handleBuy(dog: MarketDogDto) {
     setBuyingDogId(dog.dogId);
     setError(null);
     setMessage(null);
 
     try {
-      const res = await fetch(`/api/foundation-dogs/${dog.dogId}/buy`, {
+      const res = await fetch(`/api/market-dogs/${dog.listingId}/buy`, {
         method: "POST",
       });
 
@@ -198,7 +205,7 @@ export default function MarketPage() {
         throw new Error(data.error || "Purchase failed.");
       }
 
-      setMessage(`Purchased ${dog.callName ?? dog.regNumber} (${dog.breedCode2}).`);
+      setMessage(`Purchased ${dog.displayName} (${dog.breedCode2}).`);
 
       if (selectedBreedCode2) {
         await loadDogs(selectedBreedCode2);
@@ -226,8 +233,7 @@ export default function MarketPage() {
 
               <p className="mt-3 text-sm leading-7 text-purple-100/75 sm:text-base">
                 This is the central marketplace for dogs in ShowRing Game.
-                Right now, available listings are primarily foundation dogs,
-                but this space is intended to become the main market for all dogs offered for sale.
+                Browse foundation dogs and player-listed dogs offered for sale.
               </p>
 
               <p className="mt-3 text-sm leading-7 text-purple-100/75 sm:text-base">
@@ -363,7 +369,7 @@ export default function MarketPage() {
                         <span className="text-purple-100/60">({dog.breedCode2})</span>
                       </div>
                       <h2 className="mt-2 text-2xl font-bold text-white">
-                        {dog.callName ?? "Unnamed"}
+                        {dog.displayName}
                       </h2>
                       <div className="mt-2 text-sm text-purple-100/70">
                         {dog.regNumber}
@@ -400,6 +406,17 @@ export default function MarketPage() {
                     </div>
                   </div>
 
+                  <div className="mb-5 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm">
+                    <div className="text-xs uppercase tracking-wide text-purple-200">
+                      Seller
+                    </div>
+                    <div className="mt-1 font-medium text-white">
+                      {dog.sellerType === "SYSTEM"
+                        ? "Foundation Market"
+                        : dog.sellerKennelName ?? "Player Kennel"}
+                    </div>
+                  </div>
+
                   <div>
                     <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-purple-200">
                       Visible Ring Categories
@@ -431,10 +448,14 @@ export default function MarketPage() {
 
                     <button
                       onClick={() => handleBuy(dog)}
-                      disabled={buyingDogId === dog.dogId}
+                      disabled={buyingDogId === dog.dogId || dog.isOwnedByCurrentKennel}
                       className="flex-1 rounded-2xl border border-purple-300/25 bg-white/5 px-3 py-3 text-xs font-semibold text-purple-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {buyingDogId === dog.dogId ? "Buying..." : "Buy Dog"}
+                      {dog.isOwnedByCurrentKennel
+                        ? "Your Listing"
+                        : buyingDogId === dog.dogId
+                          ? "Buying..."
+                          : "Buy Dog"}
                     </button>
                   </div>
                 </div>
