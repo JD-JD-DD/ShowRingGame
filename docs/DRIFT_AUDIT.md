@@ -1996,3 +1996,388 @@ Recommended next code changes:
 Recommended next audit section:
 
 - Show Entry and Judging Flow, because dog-page `Enter Show`, puppy/open/veteran class rules, and judging already intersect with the lifecycle distinctions clarified here.
+
+---
+
+# 7. Show Entry and Judging Flow
+
+Status: **Mostly greenfield; schema and rules scaffolding exist**
+
+MasterFile anchors:
+
+- `MasterFile4_3.md`, "3.1 Judging System"
+- `MasterFile4_3.md`, "3.3 Titles & Championship System"
+- `MasterFile4_3.md`, "4.5 Show Entry Rules"
+- `MasterFile4_3.md`, "4.7 Show History"
+- `MasterFile4_3.md`, "6.4 Show Entry Page"
+
+Design framing:
+
+- The game has two major playable halves:
+  - breeder path: genetics, breeding, litters, puppy/player market
+  - show path: buying dogs, entering shows, earning placements/titles, building prestige
+- Either path should be playable on its own.
+- Best long-term gameplay should reward using both:
+  - breeding creates promising dogs
+  - showing proves those dogs
+  - results/titles affect prestige, demand, and market value
+
+Audit framing:
+
+- This is not mainly a drift audit yet.
+- The show side is mostly an implementation-readiness audit.
+- The MasterFile contains the intended show-side structure, but the web routes and services are mostly placeholders.
+
+## 7.1 Schema and Data Model
+
+Status: **Good scaffold**
+
+Evidence:
+
+- `apps/web/prisma/schema.prisma`
+  - `Judge`
+  - `ShowCluster`
+  - `ShowDay`
+  - `ShowEntry`
+  - `ShowResult`
+  - `DogTitleProgress`
+  - `LedgerTransaction` supports `showClusterId` and `showEntryId`
+- Show enums exist:
+  - `ShowClusterStatus`
+  - `ShowDayStatus`
+  - `ShowEntryStatus`
+- `ShowEntry` has useful MVP fields:
+  - dog, kennel, breed
+  - entry status
+  - fee charged
+  - handler used
+  - conditioning/fatigue snapshots
+- `ShowResult` can store:
+  - rank/placement
+  - base/final score
+  - points
+  - major flag
+  - unique kennels in competition
+  - scoring version
+
+Assessment:
+
+- The data model can support a real show loop.
+- The model already anticipates title progression, points, judges, results, and financial ledger records.
+- There is not yet a `ClusterAttendance` model even though the MasterFile describes kennel-level cluster attendance.
+- Current show-entry states are simpler than the MasterFile's `DRAFT/SUBMITTED/CLOSED/JUDGING_LOCKED/RESULT_POSTED/ARCHIVED` flow.
+
+Recommendation:
+
+- Keep the current Prisma scaffold for MVP unless cluster attendance becomes necessary immediately.
+- Build the first show-entry service against `ShowCluster`, `ShowDay`, `ShowEntry`, `LedgerTransaction`, and `ShowResult`.
+- Decide whether cluster attendance is a separate model or inferred from submitted entries for MVP.
+
+## 7.2 Routes, Pages, and APIs
+
+Status: **Placeholder**
+
+Evidence:
+
+- `apps/web/app/shows/page.tsx`
+  - returns `null`.
+- `apps/web/app/shows/[showId]/page.tsx`
+  - returns `null`.
+- `apps/web/app/shows/[showId]/results/page.tsx`
+  - returns `null`.
+- Show API routes currently return placeholder success:
+  - `apps/web/app/api/shows/route.ts`
+  - `apps/web/app/api/shows/showId/route.ts`
+  - `apps/web/app/api/shows/showId/enter/route.ts`
+  - `apps/web/app/api/shows/showId/results/route.ts`
+  - `apps/web/app/api/admin/shows/seed/route.ts`
+  - `apps/web/app/api/admin/shows/[showId]/judge/route.ts`
+- `apps/web/server/services/show.service.ts`
+  - empty file.
+- `apps/web/server/mappers/show.mapper.ts`
+  - empty file.
+
+Assessment:
+
+- No user-facing show workflow currently exists.
+- `Enter Show` on the dog page links to `/shows`, but `/shows` renders nothing.
+- The API endpoints are shells and do not currently:
+  - list clusters
+  - return show detail
+  - quote entry cost
+  - validate entries
+  - create entries
+  - debit ledger
+  - judge shows
+  - return results
+
+Recommendation:
+
+- Build `/shows` as the first usable show-side surface.
+- Make `/shows` show open/upcoming clusters and give the player a clear path into entry planning.
+- Replace placeholder APIs with service-backed endpoints as each workflow is implemented.
+
+## 7.3 Show Entry Rules and Eligibility
+
+Status: **Partial constants; no entry implementation**
+
+Evidence:
+
+- `packages/rules/constants/lifecycle.constants.ts`
+  - `MIN_SHOW_AGE_HOURS = 182`
+  - `MAX_SHOW_AGE_HOURS = 3840`
+  - `VETERAN_START_HOURS = 3240`
+- `packages/rules/src/lifecycle.ts`
+  - `canEnterShows()` checks alive state and age range.
+  - `lifeStage()` currently mixes death-risk/veteran concepts, already flagged in lifecycle audit.
+- `apps/web/app/dogs/[dogId]/page.tsx`
+  - enables `Enter Show` based on ownership, alive state, and show-age range.
+
+MasterFile intent:
+
+- Show entry is campaign planning:
+  - browse calendar
+  - select cluster
+  - select shows
+  - select eligible dogs
+  - review fees
+  - submit entries
+- Rules must enforce:
+  - one show per dog per day
+  - hidden entries before judging
+  - affordability
+  - handler requirements
+  - geography/travel restrictions
+  - entry deadlines
+
+Assessment:
+
+- Basic show-age constants exist.
+- Entry class logic does not exist yet.
+- Puppy/open/veteran class ranges still need final decisions.
+- The dog page's `Enter Show` button is a broad placeholder and does not route to a specific entry planner.
+- No service currently validates ownership, lifecycle placement, retirement, deceased status, show age, duplicate entry, entry lock, or affordability for actual show entries.
+
+Recommendation:
+
+- Add explicit show helpers:
+  - `canEnterShow()`
+  - `getShowEntryClass()`
+  - `getShowEligibilityReason()`
+- Keep show class eligibility separate from dog age stage and death risk.
+- Decide puppy/open/veteran class boundaries before building class placement.
+- For MVP, the dog page `Enter Show` can route to `/shows?dogId=...` so the show planner can pin or preselect that dog, matching the improved breed flow.
+
+## 7.4 Entry Economics and Travel
+
+Status: **Rules engine exists; not wired**
+
+Evidence:
+
+- `packages/rules/engines/economy.engine.ts`
+  - `getTravelCostBreakdown()`
+  - `calculateTripTravelCost()`
+  - `getClusterEntryQuote()`
+- Quote inputs support:
+  - home district
+  - cluster district
+  - ledger balance
+  - selected dogs and show days
+- Quote output supports:
+  - dogs entered
+  - total entries
+  - travel
+  - entry fees
+  - handler fee
+  - total cost
+  - projected balance
+  - shortfall
+  - affordability
+- `LedgerTransactionType` includes:
+  - `SHOW_ENTRY_FEE`
+  - `TRAVEL_COST`
+  - `HANDLER_FEE`
+
+Assessment:
+
+- The quote math is one of the stronger show-side pieces.
+- It is not connected to UI or persistence.
+- There is no submitted-entry transaction flow.
+
+Recommendation:
+
+- Use `getClusterEntryQuote()` as the live quote engine for the show-entry page.
+- On submit, create `ShowEntry` rows and ledger transactions in one transaction.
+- Preserve fee breakdown data in `LedgerTransaction.metadataJson` or a future entry-batch/attendance model.
+
+## 7.5 Judging Engine
+
+Status: **Useful core, missing full show semantics**
+
+Evidence:
+
+- `packages/rules/engines/judge.engine.ts`
+  - creates judges with category weights and style bias.
+  - supported styles include balanced, type, structure, movement, presentation, temperament.
+- `packages/rules/engines/judging.engine.ts`
+  - derives show characteristics from dog traits.
+  - scores dogs against ideal-centered category values.
+  - applies judge category weights.
+  - ranks dogs by base score.
+- `packages/rules/constants/judging.constants.ts`
+  - defines six judging categories.
+  - maps traits to categories.
+  - defines judge weight variation.
+  - defines ring randomness and breed essential constants, but those are not applied in the current judging engine.
+- `packages/rules/src/sample-judges.ts`
+  - contains one sample judge.
+
+MasterFile intent:
+
+- Judging should evaluate six universal categories.
+- Judge preferences should affect weighting.
+- Controlled randomness should prevent deterministic outcomes.
+- Breed essential checks may add bonuses, penalties, eliminations, or DQs.
+- Results should lead to placements, points, titles, prestige, and market effects.
+
+Assessment:
+
+- The core scoring engine is a good first piece.
+- It now aligns better with the 0-20, 10-is-ideal trait model because scoring uses `scoreValueAgainstIdeal()`.
+- It does not yet include:
+  - dog-day/ring randomness
+  - fatigue/conditioning beyond genetic `show_shine`
+  - breed essential rules
+  - class structure
+  - Winners Dog/Bitch
+  - Best of Winners
+  - Best of Breed/Opposite
+  - group/BIS
+  - points or title progression
+  - persistence to `ShowResult`
+
+Recommendation:
+
+- Keep the current ideal-centered scoring as the base.
+- Add a show judging service that:
+  - loads entries for a show day
+  - groups entries by breed/sex/class
+  - scores each dog with the assigned judge
+  - determines placements and point awards
+  - persists `ShowResult`
+  - updates `DogTitleProgress`
+- Delay breed essential and group/BIS until breed-level shows work.
+
+## 7.6 Titles and Championship
+
+Status: **Schema prepared; implementation missing**
+
+Evidence:
+
+- `apps/web/prisma/schema.prisma`
+  - `DogTitleProgress` exists.
+  - dog rows include `visibleTitlePrefix` and `visibleTitleSuffix`.
+- `docs/DogTitles.md`
+  - title reference exists in the working tree but is currently untracked.
+- No title service was found.
+- No point calculation service was found.
+- No code currently updates `DogTitleProgress`, `visibleTitlePrefix`, or `visibleTitleSuffix`.
+
+MasterFile intent:
+
+- CH progression:
+  - 15 points
+  - 2 majors
+  - 3 judges
+- GCH progression:
+  - champion required
+  - 25 GCH points
+  - 3 majors
+  - 3 judges
+- Higher GCH tiers exist.
+- Points depend on same-sex class competition, BOW, BOB, BOS, and unique kennel/major logic.
+
+Assessment:
+
+- Title progression is not implemented.
+- The schema can store a simple progress object but may need richer history for judge diversity and major tracking.
+- The point system is complex enough that it should be its own rules/service layer, not buried in UI code.
+
+Recommendation:
+
+- Build title progression after basic show judging and result persistence.
+- Start with CH only before GCH tiers.
+- Store enough result history to audit point awards and judge diversity.
+- Use visible title prefix/suffix only after result-derived progression is reliable.
+
+## 7.7 Show History and Visibility
+
+Status: **Not implemented**
+
+MasterFile intent:
+
+- Entries are hidden until judging begins.
+- Results become permanent after judging.
+- Show history supports campaign planning, prestige, rankings, and title progression.
+
+Current code:
+
+- Results route/page are placeholders.
+- `ShowResult` schema exists.
+- No result listing or history UI was found.
+
+Assessment:
+
+- There is no current show history surface.
+- The schema is ready for permanent result records.
+
+Recommendation:
+
+- Build result visibility rules at the same time as judging persistence.
+- For MVP:
+  - hide entries until judging/status threshold
+  - show permanent breed/show-day results after publish
+  - link result rows back to dog pages
+
+## 7.8 Overall Verdict
+
+Status: **Ready for first implementation pass**
+
+What is working:
+
+- Show-related schema is mostly present.
+- Judge and judging rules engines exist.
+- Entry quote economics exist.
+- Dog page has a placeholder `Enter Show` action.
+- Title-progress schema fields exist.
+
+Main gaps:
+
+- Show pages render nothing.
+- Show APIs are placeholders.
+- Show service and mapper are empty.
+- No cluster/calendar listing.
+- No entry planner UI.
+- No entry validation service.
+- No ledger debit for entry/travel/handler costs.
+- No judging persistence.
+- No show class logic.
+- No point/title system.
+- No show history/results UI.
+
+Recommended first code build order:
+
+1. Build read-only `/shows` list for open/upcoming clusters.
+2. Add show detail/entry planner page.
+3. Add eligible dog filtering and `/shows?dogId=...` preselection.
+4. Wire `getClusterEntryQuote()` into the entry planner.
+5. Implement submit-entry service with affordability and one-show-per-dog-per-day validation.
+6. Seed or generate sample clusters/judges.
+7. Implement simple breed-level judging persistence.
+8. Add results page.
+9. Add CH point progression.
+10. Add title display updates.
+
+Recommended next audit section:
+
+- Show-side implementation plan, if we want to break this greenfield work into small Vercel-buildable tasks.

@@ -154,6 +154,79 @@ Status: audited; implementation pass needed
   - reserve transferred/sold for ownership changes to another kennel
   - add a retire action after retirement couch semantics are implemented
 
+### 6. Player Dog Market and Sales
+
+Status: todo; strategy/design needed before implementation
+
+- Build market support for player-owned dog listings, not just foundation dogs.
+- Let users list eligible owned dogs for sale from the dog page or kennel page.
+- Market should show both:
+  - foundation/system dogs
+  - player-listed dogs
+- Player selling flow needs decisions:
+  - asking-price freedom vs suggested-price guardrails
+  - listing fee, expiry, and relisting rules
+  - whether stale failed listings affect market guidance
+  - how dog quality, breed scarcity, sex, age, titles, show results, fertility, and recent sales affect suggested price
+  - how foundation pricing avoids undercutting player listings too aggressively
+- Sale transaction behavior:
+  - transfer `ownerKennelId` to buyer
+  - record ledger transactions for buyer and seller
+  - mark listing sold
+  - update dog `marketState`
+  - preserve dog page, pedigree, litter links, and historical data
+- Eligibility/policy blockers:
+  - block or decide sale behavior for pregnant bitches before allowing pregnant sales
+  - block deceased, retired, and forever-home dogs
+  - decide whether post-sale dogs remain visible to previous owner through litter/pedigree/history only
+- Puppy sales should use the same listing foundation once puppy naming and sale age rules are ready.
+
+### 7. Show Entry and Judging Flow
+
+Status: audited; mostly greenfield implementation
+
+- Broad roadmap: `docs/SHOW_IMPLEMENTATION_PLAN.md`
+- Current state:
+  - show schema exists for judges, clusters, show days, entries, results, and title progress
+  - judge and judging rules engines exist
+  - entry quote/travel economy engine exists
+  - `/shows` pages currently render nothing
+  - show API routes are placeholders
+  - show service and mapper files are empty
+- First implementation pass:
+  - build read-only `/shows` list for open/upcoming clusters
+  - build show detail/entry planner page
+  - make dog page `Enter Show` route to the planner with optional `/shows?dogId=...` preselection
+  - add eligible dog filtering for show entries
+  - add explicit show helpers:
+    - `canEnterShow()`
+    - `getShowEntryClass()`
+    - `getShowEligibilityReason()`
+  - decide puppy/open/veteran class age ranges before class placement is implemented
+  - wire `getClusterEntryQuote()` into the entry planner
+  - implement submit-entry service:
+    - ownership check
+    - alive/retired/deceased/forever-home placement check
+    - show age check
+    - duplicate same-day entry check
+    - entry-lock/deadline check
+    - affordability check
+    - ledger transactions for entry/travel/handler fees
+  - seed or generate sample clusters and judges
+  - implement simple breed-level judging persistence
+  - add results page and permanent show history
+  - add CH point progression after results are reliable
+- Later show-side systems:
+  - Winners Dog / Winners Bitch
+  - Best of Winners
+  - Best of Breed / Best of Opposite
+  - majors and unique kennel checks
+  - GCH and higher title ladders
+  - breed essential rules
+  - group/BIS layers
+  - conditioning/fatigue effects
+  - market/prestige effects from show wins
+
 ## Lifecycle/Status Model
 
 - Keep show entry class separate from dog age stage.
