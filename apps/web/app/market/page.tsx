@@ -421,10 +421,10 @@ export default function MarketPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 flex gap-3">
+                  <div className="mt-6 flex items-stretch gap-3">
                     <Link
                       href={`/dogs/${dog.dogId}`}
-                      className="flex-1 rounded-2xl border border-purple-300/25 bg-white/5 px-4 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                      className="flex-[1.45] rounded-2xl bg-purple-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
                     >
                       View Dog
                     </Link>
@@ -432,7 +432,7 @@ export default function MarketPage() {
                     <button
                       onClick={() => handleBuy(dog)}
                       disabled={buyingDogId === dog.dogId}
-                      className="flex-1 rounded-2xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex-1 rounded-2xl border border-purple-300/25 bg-white/5 px-3 py-3 text-xs font-semibold text-purple-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {buyingDogId === dog.dogId ? "Buying..." : "Buy Dog"}
                     </button>
