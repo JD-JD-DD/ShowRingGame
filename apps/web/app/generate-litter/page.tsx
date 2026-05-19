@@ -98,8 +98,8 @@ export default function GenerateLitterPage() {
         throw new Error("Please select a valid sire and dam.");
       }
 
-      if (!Number.isInteger(pupCount) || pupCount < 1 || pupCount > 12) {
-        throw new Error("Puppy count must be between 1 and 12.");
+      if (!Number.isInteger(pupCount) || pupCount < 2 || pupCount > 14) {
+        throw new Error("Puppy count must be between 2 and 14.");
       }
 
       const attempt = createBreedingAttempt({
@@ -208,8 +208,8 @@ export default function GenerateLitterPage() {
           <br />
           <input
             type="number"
-            min={1}
-            max={12}
+            min={2}
+            max={14}
             value={pupCount}
             onChange={(e) => setPupCount(Number(e.target.value))}
             style={{

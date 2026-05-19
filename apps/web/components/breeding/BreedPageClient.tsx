@@ -26,8 +26,8 @@ type Props = {
 };
 
 const BREEDING_FEE = 500;
-const PREG_CHECK_HOURS = 30;
-const GESTATION_HOURS = 60;
+const USUAL_PREG_CHECK_DAYS = 28;
+const USUAL_GESTATION_DAYS = 56;
 
 function dogDisplayName(dog: DogCardDto) {
   return dog.callName || dog.registeredName || dog.regNumber;
@@ -43,6 +43,12 @@ function ageLabel(ageHours: number) {
 
 function sexLabel(sex: "M" | "F") {
   return sex === "M" ? "Dog" : "Bitch";
+}
+
+function formatGameDays(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? `${value} game days`
+    : "soon";
 }
 
 function reasonDogUnavailable(dog: DogCardDto) {
@@ -119,8 +125,11 @@ export default function BreedPageClient({
         return;
       }
 
+      const attempt = data?.attempt;
       setSuccessMessage(
-        `Breeding created. Pregnancy check in ${PREG_CHECK_HOURS} days, due in ${GESTATION_HOURS} days.`
+        `Breeding created. Pregnancy check in ${formatGameDays(
+          attempt?.hoursUntilPregCheck
+        )}, due in ${formatGameDays(attempt?.hoursUntilDue)}.`
       );
     } catch {
       setErrorMessage("Something went wrong while creating the breeding.");
@@ -292,10 +301,12 @@ export default function BreedPageClient({
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-purple-100/80">
-            <div>Pregnancy check: {PREG_CHECK_HOURS} days</div>
-            <div className="mt-2">Expected whelping: {GESTATION_HOURS} days</div>
+            <div>Pregnancy check: usually {USUAL_PREG_CHECK_DAYS} game days</div>
+            <div className="mt-2">
+              Expected whelping: usually {USUAL_GESTATION_DAYS} game days
+            </div>
             <div className="mt-2 text-purple-200/90">
-              COI quote and pedigree tools can slot here next.
+              Timing can vary by one or two days.
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 // litter limits
-export const MAX_LITTER_SIZE = 12
-export const MIN_LITTER_SIZE = 1
+export const MAX_LITTER_SIZE = 14
+export const MIN_LITTER_SIZE = 2
 
 
 // TBD

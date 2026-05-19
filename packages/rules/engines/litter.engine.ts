@@ -100,6 +100,38 @@ export function generateSerial7(random01: () => number): string {
   return String(value).padStart(LITTER_SERIAL_LENGTH, "0");
 }
 
+function clampLitterSize(value: number): number {
+  return Math.min(MAX_LITTER_SIZE, Math.max(MIN_LITTER_SIZE, value));
+}
+
+export function rollLitterSize(random01: () => number = Math.random): number {
+  const bandRoll = random01();
+  assertRoll(bandRoll, "litterSizeBandRoll");
+
+  const offsetMagnitude =
+    bandRoll < 0.7
+      ? 0
+      : bandRoll < 0.8
+        ? 1
+        : bandRoll < 0.875
+          ? 2
+          : bandRoll < 0.925
+            ? 3
+            : bandRoll < 0.965
+              ? 4
+              : bandRoll < 0.99
+                ? 5
+                : 6;
+
+  if (offsetMagnitude === 0) return 8;
+
+  const signRoll = random01();
+  assertRoll(signRoll, "litterSizeSignRoll");
+
+  const signedOffset = signRoll < 0.5 ? -offsetMagnitude : offsetMagnitude;
+  return clampLitterSize(8 + signedOffset);
+}
+
 export function createLitter(input: CreateLitterInput): LitterWithDogs {
   const random01 = input.random01 ?? Math.random;
 

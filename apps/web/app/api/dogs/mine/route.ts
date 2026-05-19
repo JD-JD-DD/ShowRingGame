@@ -3,11 +3,14 @@ import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { db } from "@/lib/db";
 import { getKennelForUser } from "@/server/services/kennel.service";
+import { resolveBreedingProgressForKennel } from "@/server/services/breeding.service";
 import {
   DAM_MAX_BREED_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
   deriveVisibleCategoriesFromTraits,
 } from "@showring/rules";
+
+const RECENT_BREEDING_RESULT_HOURS = 14;
 
 type MineDog = {
   id: string;
@@ -45,6 +48,7 @@ type MineDog = {
     createdEpoch: number;
     pregCheckEpoch: number | null;
     dueEpoch: number | null;
+    checkedEpoch: number | null;
     whelpedEpoch: number | null;
   }>;
 };
@@ -54,6 +58,7 @@ type BreedingCardStatus = {
     | "Open"
     | "Pending Pregnancy Confirmation"
     | "Pregnant"
+    | "Did Not Take"
     | "Whelped"
     | "Available for Stud"
     | "Not Eligible";
@@ -137,12 +142,28 @@ function getBreedingCardStatus(
       (attempt) =>
         attempt.status === "WHELPED" &&
         attempt.whelpedEpoch !== null &&
-        currentEpoch - attempt.whelpedEpoch <= 7
+        currentEpoch - attempt.whelpedEpoch <= RECENT_BREEDING_RESULT_HOURS
     ) ?? null;
 
   if (recentWhelpedAttempt) {
     return {
       label: "Whelped",
+      pregCheckInHours: null,
+      dueInHours: null,
+    };
+  }
+
+  const recentNotPregnantAttempt =
+    dog.breedingAttemptsAsDam.find(
+      (attempt) =>
+        attempt.status === "CHECKED_NOT_PREGNANT" &&
+        attempt.checkedEpoch !== null &&
+        currentEpoch - attempt.checkedEpoch <= RECENT_BREEDING_RESULT_HOURS
+    ) ?? null;
+
+  if (recentNotPregnantAttempt) {
+    return {
+      label: "Did Not Take",
       pregCheckInHours: null,
       dueInHours: null,
     };
@@ -170,6 +191,7 @@ export async function GET() {
     }
 
     const currentEpoch = getCurrentEpoch();
+    await resolveBreedingProgressForKennel({ kennelId: kennel.id, currentEpoch });
 
     const dogs: MineDog[] = await db.dog.findMany({
       where: {
@@ -212,6 +234,7 @@ export async function GET() {
             createdEpoch: true,
             pregCheckEpoch: true,
             dueEpoch: true,
+            checkedEpoch: true,
             whelpedEpoch: true,
           },
         },

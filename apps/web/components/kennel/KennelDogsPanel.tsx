@@ -10,6 +10,7 @@ type BreedingCardStatus = {
     | "Open"
     | "Pending Pregnancy Confirmation"
     | "Pregnant"
+    | "Did Not Take"
     | "Whelped"
     | "Available for Stud"
     | "Not Eligible";
@@ -113,6 +114,26 @@ function colorClassForVisibleValue(value: number): string {
   if (distance <= 4) return "text-yellow-300";
   if (distance <= 6) return "text-orange-300";
   return "text-red-300";
+}
+
+function formatBreedingStatus(status: BreedingCardStatus): string {
+  if (
+    status.label === "Pregnant" &&
+    typeof status.dueInHours === "number" &&
+    Number.isFinite(status.dueInHours)
+  ) {
+    return `Pregnant, due in ${status.dueInHours}d`;
+  }
+
+  if (
+    status.label === "Pending Pregnancy Confirmation" &&
+    typeof status.pregCheckInHours === "number" &&
+    Number.isFinite(status.pregCheckInHours)
+  ) {
+    return `Check in ${status.pregCheckInHours}d`;
+  }
+
+  return status.label;
 }
 
 function StatCell({ value }: { value: number }) {
@@ -499,7 +520,7 @@ export default function KennelDogsPanel() {
                   </td>
 
                   <td className="px-3 py-3 text-xs text-purple-100/80 whitespace-nowrap">
-                    {dog.breedingCardStatus.label}
+                    {formatBreedingStatus(dog.breedingCardStatus)}
                   </td>
                 </tr>
               ))}

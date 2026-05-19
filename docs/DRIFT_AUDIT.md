@@ -648,3 +648,917 @@ Recommended next code changes:
 Recommended next audit section:
 
 - Dog Lifecycle, because age eligibility, breeding eligibility, pregnancy, whelping, sale eligibility, and lifecycle states affect both market and litter behavior.
+
+---
+
+# 3. Dog Lifecycle
+
+Master-file anchors:
+
+- `MasterFile4_3.md`, "2.2 Dog Lifecycle"
+
+Canonical intent:
+
+- Lifecycle gates puppy sale eligibility, show eligibility, breeding eligibility, pregnancy, aging, retirement, and death.
+- All timing uses ShowDog epoch-hour thresholds.
+- Key constants:
+  - `PUPPY_SALE_MIN_AGE_HOURS = 56`
+  - `MIN_SHOW_AGE_HOURS = 182`
+  - `MIN_BREED_AGE_HOURS = 730`
+  - `PREG_CHECK_HOURS = 30`
+  - `GESTATION_HOURS = 60`
+  - `DAM_MAX_BREED_AGE_HOURS = 2520`
+  - `AGE_DEATH_START_HOURS = 2880`
+  - `VETERAN_START_HOURS = 3240`
+  - `MAX_SHOW_AGE_HOURS = 3840`
+- Derived life stages:
+  - `PUPPY`
+  - `JUNIOR`
+  - `ADULT`
+  - `VETERAN`
+  - `RETIRED`
+- Permanent/availability states:
+  - `DECEASED`
+  - `FOREVER_HOME`
+  - `TRANSFERRED`
+- Master file says lifecycle stage should be derived from timestamps, not stored directly.
+
+## 3.1 Age and Eligibility Constants
+
+Status: **Partially implemented / clarified by design discussion**
+
+Evidence:
+
+- `packages/rules/constants/lifecycle.constants.ts`
+  - `PUPPY_SALE_MIN_AGE_HOURS = 56` aligns.
+  - `MIN_SHOW_AGE_HOURS = 182` aligns.
+  - `MIN_BREED_AGE_HOURS = 2 * SHOW_YEAR_HOURS = 730` aligns because `SHOW_YEAR_HOURS = 365`.
+  - `AGE_DEATH_START_HOURS = 2880` aligns.
+  - `VETERAN_START_HOURS = 3240` aligns.
+  - `MAX_SHOW_AGE_HOURS = 3840` aligns.
+  - `PREG_CHECK_HOURS = 4 * SHOW_WEEK_HOURS = 28`, but master says 30.
+  - `GESTATION_HOURS = 8 * SHOW_WEEK_HOURS = 56`, but master says 60.
+  - `DAM_MAX_BREED_AGE_HOURS = 7 * SHOW_YEAR_HOURS = 2555`, but master says 2520.
+- `apps/web/server/services/breeding.service.ts`
+  - Now uses a rules-package timing helper when creating breeding attempts.
+- `apps/web/components/breeding/BreedPageClient.tsx`
+  - Now displays usual 28/56 timing and the actual rolled timing returned by the API after a breeding is created.
+
+Assessment:
+
+- Puppy sale, show age, breed age, death risk, veteran start, and max show age are aligned.
+- Pregnancy check and gestation have been reconciled in code, but the master file text is now stale:
+  - rules package says 28/56
+  - web service/UI now use rules-package variable timing around 28/56
+  - master says 30/60
+  - updated design direction is variable timing around 28/56
+- Dam cutoff is close but not exact:
+  - rules package says 2555 because 7 * 365
+  - master says 2520
+- Duplicated timing constants in the web service/client were removed during the lifecycle pass.
+
+Recommendation:
+
+- Keep the rules package as the single source of truth for breeding timing.
+- Replace fixed pregnancy timing with a deterministic seeded timing roll:
+  - 80%: pregnancy check at 28, whelping due at 56
+  - 15%: pregnancy check at 27 or 29, whelping due at 55 or 57
+  - 5%: pregnancy check at 26 or 30, whelping due at 54 or 58
+- Timing variation should be determined when the breeding attempt is created and stored as `pregCheckEpoch` and `dueEpoch`.
+- Decision needed: exact male/female breeding age-out thresholds.
+
+Resolved direction:
+
+- Use variable timing centered on 28/56, not fixed 30/60.
+- Keep timing deterministic after creation so the user can see due dates reliably.
+
+## 3.2 Derived Life Stage
+
+Status: **Needs redesign / clarified by design discussion**
+
+Master-file lifecycle stage algorithm:
+
+```txt
+if ageHours < MIN_SHOW_AGE
+    state = PUPPY
+else if ageHours < MIN_BREED_AGE
+    state = JUNIOR
+else if ageHours < VETERAN_START
+    state = ADULT
+else if ageHours < MAX_SHOW_AGE
+    state = VETERAN
+else
+    state = RETIRED
+```
+
+Current code:
+
+- `packages/rules/src/lifecycle.ts`
+  - `lifeStage()` returns `PUPPY`, `JUNIOR`, `ADULT`, `VETERAN`, or `SENIOR`.
+  - It uses `AGE_DEATH_START_HOURS` as the adult/veteran boundary.
+  - It returns `SENIOR` after max show age, not `RETIRED`.
+
+Assessment:
+
+- This conflicts with the master file:
+  - veteran should start at `VETERAN_START_HOURS = 3240`, not `AGE_DEATH_START_HOURS = 2880`.
+  - post-show-age should be `RETIRED`, not `SENIOR`, if we follow the master file.
+- The code comment says veteran age can be refined later, so this appears to be an older placeholder.
+- Updated design discussion clarifies that `VETERAN`, `SENIOR`, and `RETIRED` are not the same kind of state:
+  - `VETERAN` belongs to the show-entry system and means the dog can enter veteran classes.
+  - `SENIOR` belongs to the death-risk/aging system.
+  - `RETIRED` is a user-chosen kennel state that removes show/breeding functionality while keeping the dog in the kennel.
+- Veteran and senior may begin at the same age threshold, but they are separate derived classifications from separate engines.
+
+Recommendation:
+
+- Stop treating one `lifeStage()` value as responsible for every lifecycle concept.
+- Consider separate helpers:
+  - `getShowEntryClass()` for show-entry classes such as puppy, open/adult, and veteran.
+  - `getDogAgeStage()` for puppy/adult/senior gameplay aging.
+  - `getAgingRiskStage()` for senior/death-risk logic.
+  - stored user-chosen `retired` state for retirement couch behavior.
+- Decision needed: the exact shared threshold where veteran show eligibility and senior death-risk begin.
+
+## 3.3 Stored Lifecycle State vs Derived Stage
+
+Status: **Needs schema/API redesign**
+
+Master-file statement:
+
+- "Lifecycle state itself is never stored directly. It is always computed from age."
+
+Current code:
+
+- `apps/web/prisma/schema.prisma`
+  - Stores `Dog.lifecycleState` as enum:
+    - `ALIVE`
+    - `DECEASED`
+    - `TRANSFERRED`
+    - `RETIRED`
+- `packages/rules/src/lifecycle.ts`
+  - `DogStatus` is similarly:
+    - `ALIVE`
+    - `RETIRED`
+    - `DECEASED`
+    - `TRANSFERRED`
+- Age stage is separately derived by `lifeStage()`.
+
+Assessment:
+
+- The code is not storing age stage like `PUPPY`, `JUNIOR`, `ADULT`, or `VETERAN`.
+- It stores an availability/status flag: alive, retired, transferred, deceased.
+- That may be better database design than storing a fully derived age stage.
+- The drift is mostly vocabulary:
+  - master file uses "lifecycle state" for both derived age stage and durable terminal/ownership states.
+  - code uses `lifecycleState` for durable availability state.
+- Updated design discussion clarifies a better separation:
+  - biological status should be `ALIVE` or `DECEASED`
+  - sold/transferred should be represented by owner kennel change plus ledger/listing history, not as a biological lifecycle state
+  - retired should be a user-chosen active-kennel state that moves the dog to a retirement couch
+  - forever home should remove the dog from active kennel play while preserving the dog page/pedigree
+
+Recommendation:
+
+- Do not rush a database rename.
+- In future docs/code, distinguish:
+  - **vitalStatus**: biological status (`ALIVE`, `DECEASED`)
+  - **kennelPlacement** or similar: active kennel, retirement couch, forever home
+  - **ownership**: represented by `ownerKennelId`
+  - **show age class**: derived from age and show rules
+  - **aging risk stage**: derived from age and death-risk rules
+- Decision needed: whether to evolve the current Prisma enum in place or introduce new fields/migrations later.
+
+## 3.4 Missing FOREVER_HOME State
+
+Status: **Drift / design direction clarified**
+
+Evidence:
+
+- Master file includes `FOREVER_HOME`.
+- Prisma `DogLifecycleState` does not include `FOREVER_HOME`.
+- Rules `DogStatus` does not include `FOREVER_HOME`.
+- `apps/web/app/api/dogs/[dogId]/rehome/route.ts` maps rehoming to `TRANSFERRED`.
+
+Assessment:
+
+- Current implementation treats "re-home dog" as `TRANSFERRED`.
+- Master file says `FOREVER_HOME` means removed from active play and preserved in pedigree.
+- Those are semantically different:
+  - `TRANSFERRED` implies ownership changed.
+  - `FOREVER_HOME` implies the dog leaves the active game economy but remains historical.
+- Updated design discussion:
+  - `FOREVER_HOME` should remove the dog from the user's kennel page.
+  - The dog page should remain accessible through pedigrees/litters.
+  - The dog should have no functionality and cannot be brought back into play.
+  - Ideally the dog may still age and die, but a better near-term design is a static forever-home dog page showing breed, pedigree, stats, and forever-home status.
+
+Recommendation:
+
+- Use `FOREVER_HOME` for voluntary remove-from-active-play.
+- Do not use `TRANSFERRED` for forever-home rehoming.
+- Reserve ownership change for sales/transfers through `ownerKennelId` and ledger/listing records.
+
+## 3.5 Show Eligibility
+
+Status: **MVP gap / partial alignment**
+
+Evidence:
+
+- `packages/rules/src/lifecycle.ts`
+  - `canEnterShows()` checks:
+    - status is `ALIVE`
+    - age is between `MIN_SHOW_AGE_HOURS` and `MAX_SHOW_AGE_HOURS`
+- `apps/web/app/dogs/[dogId]/page.tsx`
+  - Displays show eligibility based on age and alive state.
+- Shows pages/API are currently placeholders:
+  - `apps/web/app/shows/page.tsx` returns null.
+  - `apps/web/app/api/shows/showId/enter/route.ts` returns `{ ok: true }`.
+  - `apps/web/server/services/show.service.ts` is empty.
+
+Assessment:
+
+- The rule helper is aligned.
+- The dog page displays eligibility.
+- Actual show-entry enforcement is not implemented yet.
+
+Recommendation:
+
+- Treat as MVP gap.
+- When show entry is implemented, use the rules lifecycle helper or equivalent server-side check.
+- Master edge case says eligibility should be determined at show start time, not necessarily at entry time; this should be included when show entries become real.
+
+## 3.6 Breeding Eligibility
+
+Status: **Partially working / needs cooldown and single-source cleanup**
+
+Evidence:
+
+- `packages/rules/src/lifecycle.ts`
+  - `canBreed()` enforces alive state, min breeding age, female max age, pregnancy state, and cooldown.
+- `packages/rules/engines/breeding.engine.ts`
+  - `canBreedSire()` and `canBreedDam()` enforce sex, alive state, min age, dam cutoff, pregnancy, and cooldown.
+- `apps/web/server/services/breeding.service.ts`
+  - Enforces ownership, alive state, same breed, opposite sex, min breed age, dam max age, and no active dam conflict.
+- `apps/web/app/breed/page.tsx`
+  - Displays breeding eligibility based on alive state, min breed age, female max age, and active dam attempts with status `INITIATED` or `PREGNANT`.
+- `apps/web/app/dogs/[dogId]/page.tsx`
+  - Displays breed button/status based on ownership, alive state, min breed age, and female max age.
+  - Does not check active pregnancy/pending attempt for the dog-page button.
+- `apps/web/app/api/dogs/mine/route.ts`
+  - Kennel roster displays breeding card status from alive state, age, active/recent dam attempts, and recent result statuses.
+- `apps/web/prisma/schema.prisma`
+  - `Dog` has `deathEpoch` and `lifecycleState`.
+  - `BreedingAttempt` has `status`, `checkedEpoch`, `isPregnant`, and `whelpedEpoch`.
+  - There is no persisted `whelpingCooldownUntil` field.
+
+Assessment:
+
+- Core server-side breeding creation is mostly aligned and blocks the most important invalid attempts.
+- The web service is the current source of truth at creation time, but it does not use rules `canBreed()` or `canBreedDam()` directly; it duplicates the age logic.
+- The breed page, dog page, kennel roster, rules helpers, and service all calculate eligibility slightly differently.
+- Whelping cooldown exists in rules but is not persisted or enforced in the web service after whelping.
+  - Current rules constant: `WHELPING_COOLDOWN_HOURS = 270`, noted as about 9 months.
+- `resolveWhelp()` returns `damReproUpdate.whelpingCooldownUntil`, but the web service does not store that value or derive future eligibility from the latest whelped attempt.
+- `CHECKED_NOT_PREGNANT` is not treated as an active conflict in the web service or breed page, which matches the desired design that the bitch can be bred again immediately if otherwise eligible.
+- The current female breeding cutoff is close to, but not exactly, the master file:
+  - code: `DAM_MAX_BREED_AGE_HOURS = 7 * 365 = 2555`
+  - master file: `DAM_MAX_BREED_AGE_HOURS = 2520`
+- There is no male breeding age-out yet.
+- There is no explicit senior-stage breeding block yet beyond the female max age.
+- Retired/deceased/transferred dogs are blocked because code requires `lifecycleState === "ALIVE"`.
+- `FOREVER_HOME` does not exist yet, so it cannot be checked.
+
+Eligibility check matrix:
+
+| Case | Current server create behavior | Current UI behavior | Audit result |
+| --- | --- | --- | --- |
+| Wrong owner | blocked | dog generally not selectable from breed page | working |
+| Same dog selected twice | blocked | not specifically prevented before submit | server works; UI can improve |
+| Same sex pair | blocked | selectable controls separate sire/dam by sex | working |
+| Different breed | blocked | UI filters and warns for mismatch | working |
+| Too young | blocked | shown disabled/not eligible | working |
+| Female over max age | blocked | shown disabled/not eligible | working, but cutoff value needs decision |
+| Male over future max age | not blocked | not blocked | missing pending male cutoff decision |
+| Pending pregnancy check | blocked through active dam conflict | breed page disables; dog page may still show breed button | server works; dog page display drift |
+| Pregnant | blocked through active dam conflict | breed page disables; kennel status shows pregnant; dog page may still show breed button | server works; dog page display drift |
+| Did not take | not blocked | recent roster label shows result, then dog returns open | working as desired |
+| Post-whelp cooldown | not blocked after recent whelp window | not shown as cooldown | missing |
+| Retired/deceased/transferred | blocked because not `ALIVE` | generally excluded/disabled | works for current enum |
+| Forever home | no state exists | no state exists | missing |
+- Updated design discussion:
+  - dogs and bitches should have different age-out thresholds for breeding.
+  - there should be a status/condition that makes dogs ineligible to breed at a certain age.
+  - retired dogs should be ineligible for breeding regardless of biological age.
+
+Recommendation:
+
+- Make one shared eligibility helper the source of truth for service/API/UI presentation.
+- Have server-side creation call the shared helper, or at least call the same lower-level rule functions used by the UI DTO builders.
+- Add male and female breeding age-out thresholds when the exact values are decided.
+- Resolve the female max age mismatch: keep 2555 as 7 game years or change to the master-file 2520.
+- Implement post-whelp cooldown, either by:
+  - deriving from latest `WHELPED` attempt plus `WHELPING_COOLDOWN_HOURS`
+  - or persisting `whelpingCooldownUntil` on the dog/repro state.
+- Add a visible post-whelp cooldown countdown so the breeder can see when a bitch becomes eligible to breed again.
+- Update the dog page breed button to reflect active pregnancy/pending attempts and future cooldown, not only age.
+- Do not apply a cooldown to `CHECKED_NOT_PREGNANT`; a bitch should be breedable again immediately after a pregnancy check does not take, assuming she otherwise meets age/status eligibility.
+
+## 3.7 Pregnancy and Gestation
+
+Status: **Partially implemented**
+
+Evidence:
+
+- Master file says:
+  - pregnancy check after 30 hours
+  - gestation 60 hours
+- `packages/rules/constants/lifecycle.constants.ts` says:
+  - pregnancy check 28 hours
+  - gestation 56 hours
+- `apps/web/server/services/breeding.service.ts` says:
+  - new attempts use `rollBreedingTiming()` from the rules package
+  - the rolled values are stored as `pregCheckEpoch` and `dueEpoch`
+- `apps/web/components/breeding/BreedPageClient.tsx` says:
+  - pregnancy check usually 28 game days
+  - expected whelping usually 56 game days
+  - actual rolled timing is shown after attempt creation
+
+Assessment:
+
+- Updated design direction supersedes fixed 30/60:
+  - base timing should be 28/56
+  - most pregnancies use 28/56
+  - a minority vary by 1-2 days to mimic real-life variation
+
+Implemented in first lifecycle pass:
+
+- Added a seeded pregnancy timing helper to the rules package.
+- Store the rolled `pregCheckEpoch` and `dueEpoch` on `BreedingAttempt`.
+- Use those stored values for breeding-page confirmation, kennel roster due dates, and backend resolution.
+- Kennel roster loading now calls the breeding progress resolver so pregnancy checks/whelping can advance when the player opens the kennel.
+
+Remaining recommendation:
+
+- Do not recompute timing differently after the attempt is created.
+- Add a fuller notification/dashboard panel if the roster status is not enough.
+
+Current behavior check:
+
+- Pregnancy check resolution is implemented in `apps/web/server/services/breeding.service.ts`.
+- It runs when `resolveBreedingProgressForKennel()` is called.
+- That resolver is called by:
+  - `/api/dogs/mine`
+  - `listBreedingsForKennel()`
+  - `listLittersForKennel()`
+  - `getLitterForKennel()`
+- If the user never hits an endpoint that calls the resolver, pregnancy status may not advance immediately.
+- `PREGNANT` is visible on kennel/breeding cards.
+- `CHECKED_NOT_PREGNANT` is now surfaced on the kennel roster for a short recent-results window.
+
+UX requirement:
+
+- The user should be able to see at a glance:
+  - which bitches are pregnant
+  - which recent breedings did not take
+  - due date for pregnant bitches
+- A notification or kennel dashboard panel should summarize pregnancy check outcomes.
+- "Did not take" should remain visible for a short recent-results window rather than disappearing immediately.
+
+Open UX decision:
+
+- Due date display can be in game time or real time.
+- Game-time display fits the simulation vocabulary.
+- Real-time display is easier for the player to know when to check back.
+- Best likely design: show both in compact form, e.g. "Due in 56 game days (about 56 real hours)" or a real timestamp tooltip.
+
+## 3.8 Death, Retirement, and Aging Risk
+
+Status: **MVP gap / design clarified**
+
+Evidence:
+
+- `packages/rules/constants/lifecycle.constants.ts` defines `AGE_DEATH_START_HOURS`.
+- `packages/rules/src/lifecycle.ts` exposes `isDeathRiskAge`.
+- `packages/rules/engines/death.engine.ts` is empty.
+- No service appears to process death risk.
+- `deathEpoch` exists on `Dog` in Prisma but is not used in observed flows.
+
+Assessment:
+
+- Constants and schema are prepared for death/aging.
+- Death risk curve and retirement processing are not implemented.
+- Updated design discussion:
+  - `SENIOR` belongs to death-risk logic, not show logic.
+  - Senior/death risk may begin at the same age as veteran show eligibility, but the systems are separate.
+  - Retired is a user-chosen kennel placement/status, not a natural age class.
+  - Retired dogs stay in the user's kennel but move to a retirement couch and lose functionality.
+  - Retired dogs should continue to age and eventually move to memorial/memorium when deceased.
+  - Deceased dogs should leave the main kennel page and be visible through a memorial/memorium section and dog pages with no functionality.
+
+Recommendation:
+
+- Leave as MVP gap unless aging/death is a near-term gameplay priority.
+- When implemented, do not expose death probability to players, per master file.
+- Add a future retirement couch and memorial section.
+
+## 3.9 Puppy Sale Eligibility
+
+Status: **MVP gap / not yet wired**
+
+Evidence:
+
+- `packages/rules/src/lifecycle.ts` has `canSellPuppy()`.
+- Current visible sale flow focuses on foundation dog purchase and rehome.
+- Player dog listing/sale workflow is not yet implemented in the observed UI/service paths.
+
+Assessment:
+
+- Rule helper exists and aligns with the master file.
+- Player puppy sale enforcement appears future work.
+
+Recommendation:
+
+- Use `canSellPuppy()` when player listings are implemented.
+
+## 3.10 UI Visibility
+
+Status: **Needs UI simplification and pregnancy visibility**
+
+Master-file UI says players should see:
+
+- age
+- lifecycle stage
+- show eligibility
+- breeding eligibility
+- pregnancy status
+- due date
+
+Current code:
+
+- Dog page shows:
+  - age
+  - stored lifecycle state (`ALIVE`, etc.)
+  - show eligibility
+  - breeding eligibility
+- Kennel dog panel/API shows:
+  - age
+  - stored lifecycle state
+  - breeding card status including pregnant/pending/whelped for dams
+  - pregnancy check/due countdowns in the API DTO
+- Litter pages show puppy lifecycle state and age.
+
+Gaps:
+
+- Dog page does not show derived life stage (`PUPPY`, `JUNIOR`, `ADULT`, `VETERAN`, `RETIRED`).
+- Dog page does not show pregnancy status/due date for a dam, even though kennel cards can.
+- UI currently displays `ALIVE` as "Lifecycle", which is technically an activity state, not the player's expected age stage.
+- Updated design direction:
+  - UI does not need to show `ALIVE`.
+  - If the dog is in the active kennel and not in retirement couch or memorium, the player can infer it is usable.
+  - Show entry eligibility and breeding eligibility should mainly be communicated through available/disabled buttons, using red/green or active/inactive treatment.
+  - Avoid redundant text labels for eligibility when the action buttons already communicate it.
+  - Pregnancy due date should be shown.
+
+Recommendation:
+
+- Do not show `ALIVE` as a prominent user-facing status.
+- Add retirement couch and memorium sections later.
+- Keep eligibility communication action-oriented through buttons.
+- Add pregnancy status/due date to dog page for dams.
+
+## 3.11 Overall Verdict
+
+Status: **Core gates exist, but lifecycle vocabulary and timing need cleanup**
+
+What is working:
+
+- Age gates for puppy sale, show, and breeding exist in the rules package.
+- Breeding eligibility is mostly enforced server-side.
+- Dog and kennel pages show age and eligibility.
+- Death/retirement schema fields exist for future work.
+
+Main drift / decisions:
+
+- Rules package pregnancy/gestation constants are 28/56, while master text still says 30/60; current design decision is variable timing around 28/56.
+- Pregnancy timing now uses seeded variable timing around 28/56 for new attempts.
+- Pregnancy check works and the kennel roster now triggers it, but a fuller notification/dashboard panel may still be useful.
+- Veteran, senior, and retired are separate concepts and should not be collapsed into one stage.
+- Prisma currently stores `lifecycleState`; design direction now favors separating vital status, kennel placement, ownership, show age class, and aging risk.
+- `FOREVER_HOME` is missing and rehome currently maps to `TRANSFERRED`, which is not the desired final meaning.
+- Show entry enforcement, death risk, retirement, and puppy sales are MVP gaps.
+- Dog page needs derived life stage and pregnancy/due-date visibility.
+
+Recommended next code changes:
+
+1. Add dog-page pregnancy status/due date for dams, preferably with both game-time and real-time clarity.
+2. Add a dedicated notification or dashboard summary if the kennel roster status is not enough.
+3. Add post-whelp breeding cooldown enforcement and a countdown to eligibility; use the current `WHELPING_COOLDOWN_HOURS = 270` rule unless superseded.
+4. Decide sex-specific breeding age-out thresholds for dogs and bitches.
+5. Redesign lifecycle terminology before schema changes:
+   - vital status: alive/deceased
+   - kennel placement: active/retirement couch/forever home
+   - ownership: owner kennel
+   - show entry class: puppy/open/veteran
+   - dog age stage: puppy/adult/senior
+   - aging risk stage: senior/death risk
+6. Defer death processing and show-entry enforcement until those systems are actively built.
+
+Recommended next audit section:
+
+- Breeding and Litters, because timing, pregnancy state, whelping, and litter creation are the next layer built on lifecycle.
+
+## 3.12 Lifecycle Stage and Status Decision Matrix
+
+Status: **Design direction clarified / code changes deferred**
+
+Current source shape:
+
+- `packages/rules/src/lifecycle.ts`
+  - `lifeStage()` derives `PUPPY`, `JUNIOR`, `ADULT`, `VETERAN`, `SENIOR`.
+  - `DogStatus` stores/accepts `ALIVE`, `RETIRED`, `DECEASED`, `TRANSFERRED`.
+- `apps/web/prisma/schema.prisma`
+  - `DogLifecycleState` stores `ALIVE`, `DECEASED`, `TRANSFERRED`, `RETIRED`.
+- `apps/web/app/dogs/[dogId]/page.tsx`
+  - Shows `Status: ALIVE` and a `Lifecycle` card, which is not the intended user-facing vocabulary.
+- `apps/web/app/api/dogs/[dogId]/rehome/route.ts`
+  - Rehome currently sets `ownerKennelId = null` and `lifecycleState = TRANSFERRED`.
+
+Assessment:
+
+- The program currently mixes derived age stage and durable dog status under lifecycle wording.
+- This is understandable early scaffolding, but it is now a design risk because:
+  - `ALIVE` is a biological/vital state, not something the UI needs to announce on active kennel dogs.
+  - `RETIRED` is user-chosen kennel placement, not an automatic age class.
+  - `VETERAN` is a show-entry class, not a death-risk status.
+  - `SENIOR` is an aging/death-risk stage, not necessarily a show status.
+  - `TRANSFERRED` should mean ownership changed to another kennel, not forever-home removal.
+  - `FOREVER_HOME` does not exist in code yet.
+
+Decision matrix:
+
+| Concept | Intended meaning | Derived or stored | Current code fit | Player-facing destination |
+| --- | --- | --- | --- | --- |
+| Vital status | Alive or deceased | Stored | `lifecycleState` partly fits | Active kennel or memorium |
+| Show entry class | Puppy, open/adult, veteran | Derived at show entry time | Not implemented; MasterFile has AKC-like judging/points but class age ranges are not yet explicit | Show entry rules/UI |
+| Dog age stage | Puppy, adult, senior | Derived from age | `lifeStage()` partly fits but mixes show/death terms | Breeding/show eligibility and lifecycle UI |
+| Aging risk stage | Senior/death-risk eligible | Derived from age | `isDeathRiskAge` exists; engine missing | Hidden death-risk engine |
+| Retirement couch | User chooses no show/breeding functionality | Stored placement/status | `RETIRED` exists but needs semantics | Retirement couch section |
+| Sold/transferred | Ownership changes to another kennel | Stored through owner kennel plus ledger/history | `TRANSFERRED` exists but is overloaded | New owner kennel |
+| Forever home | Leaves active play permanently, preserved historically | Stored placement/status | Missing | Not in kennel; visible through litter/pedigree/dog page |
+| Deceased/memorium | Dog dies and becomes historical only | Stored vital status plus death epoch | `DECEASED` and `deathEpoch` exist | Memorium section |
+
+Decisions so far:
+
+- Do not show `ALIVE` as a prominent UI status for active kennel dogs.
+- Keep active kennel dogs functionally defined by where they appear and which actions are enabled.
+- Show and breed eligibility should be communicated primarily by available/disabled action buttons.
+- Show entry class and dog age stage are separate sections that can follow similar age thresholds but drive different engines.
+- Show entry classes should follow the AKC-like show-entry/judging model when show entry is built:
+  - puppy
+  - open/adult
+  - veteran
+- The MasterFile currently describes AKC-like judging and point mechanics, including same-sex class competition, Winners Dog/Bitch, Best of Winners, Best of Breed/Opposite calculations, majors, and entry hiding. It does not yet provide explicit Puppy/Open/Veteran class age ranges, so those should be decided during show-entry work.
+- Dog age stages for non-show lifecycle logic should be:
+  - puppy: ineligible for breeding
+  - adult: eligible to breed if otherwise qualified
+  - senior: unable to breed and subject to death risk
+- Veteran and senior may start at a similar age, but they must remain separate systems:
+  - veteran belongs to show entry class eligibility
+  - senior belongs to breeding eligibility, aging, death risk, and death
+- Retired should be a user-chosen state that moves the dog to a retirement couch and disables show/breed actions.
+- Retired dogs should continue aging and eventually become deceased.
+- Forever-home dogs should leave active play permanently and not be restorable.
+- Sold/transferred dogs should continue functioning for the new owner; the old owner sees the financial record/history, not the dog in their active kennel.
+- Dogs of any age stage may be sold, forever-homed, or sent to the retirement couch if the relevant player action is allowed.
+- Alive and deceased represent whether the dog object is active in the game world or a historical/memorium placeholder.
+
+Deferred code todos:
+
+1. Rename or split lifecycle concepts in code once the schema migration path is chosen.
+2. Replace user-facing `Lifecycle: ALIVE` with age class/placement-aware UI.
+3. Add a retirement action and retirement couch view.
+4. Add a memorium view for deceased dogs.
+5. Add `FOREVER_HOME` semantics instead of using `TRANSFERRED` for rehome.
+6. Reserve `TRANSFERRED` for actual ownership changes through sale/transfer flows.
+7. Split rule helpers into clearer names:
+   - show entry class/eligibility
+   - dog age stage
+   - breeding eligibility
+   - aging risk
+   - kennel placement
+   - vital status
+
+Open decisions:
+
+- Exact male breeding age-out threshold.
+- Exact female breeding age-out threshold if different from current `DAM_MAX_BREED_AGE_HOURS`.
+- Whether retired dogs should be completely hidden from breeding/show pages or shown disabled with a retirement label.
+- Whether forever-home dogs continue to age/death-process or become a static historical record.
+
+---
+
+# 4. Breeding and Litters
+
+Master-file anchors:
+
+- `MasterFile4_3.md`, "4. Time and Epoch Naming Standard"
+- `MasterFile4_3.md`, "5.3 Litter Parentage"
+- `MasterFile4_3.md`, "5.4 Breeding Events"
+- `MasterFile4_3.md`, "2.2 Dog Lifecycle", BreedingAttempt/Litter objects and edge cases
+- `MasterFile4_3.md`, "6.5 Whelping / Litter Page"
+
+Canonical intent:
+
+- `BreedingAttempt` tracks:
+  - breeding timing
+  - pregnancy check
+  - gestation
+  - litter resolution
+- `Litter` tracks:
+  - birth timing
+  - puppy count
+  - parentage
+- Simulation fields use integer epochs:
+  - `createdEpoch`
+  - `pregCheckEpoch`
+  - `dueEpoch`
+  - `checkedEpoch`
+  - `whelpedEpoch`
+  - `bornEpoch`
+- Registration format:
+  - `<breedCode2><serial7><litterOrder2>`
+- Whelping/litter page should manage:
+  - pregnancies
+  - litters
+  - puppies
+  - puppy sales
+  - puppy listings
+  - forever-home flow
+  - pricing management
+  - naming/call names/registered names
+
+## 4.1 Current Implementation
+
+Status: **Core happy path exists**
+
+Evidence:
+
+- `packages/rules/engines/breeding.engine.ts`
+  - creates breeding attempts
+  - resolves pregnancy checks
+  - resolves whelping
+  - returns litter and puppy objects
+- `packages/rules/engines/litter.engine.ts`
+  - validates breed code, serial, puppy count, puppy ids, and puppy sexes
+  - generates `serial7`
+  - builds puppy registration numbers in the expected format
+  - creates puppy dog objects with sire/dam/litter/order data
+- `apps/web/server/services/breeding.service.ts`
+  - creates breeding attempts for a kennel
+  - resolves due pregnancy checks
+  - resolves due whelping
+  - writes `Litter`
+  - writes puppy `Dog` rows
+  - updates the `BreedingAttempt` to `WHELPED`
+- `apps/web/server/services/litter.service.ts`
+  - lists litters visible to the kennel
+  - gets litter detail visible to the kennel
+  - resolves breeding progress before loading litter views
+- `apps/web/app/litters/page.tsx`
+  - shows active breedings and whelped litters
+- `apps/web/app/litters/[litterId]/page.tsx`
+  - shows litter parents, counts, puppies, registration numbers, and visible categories
+
+Assessment:
+
+- The main happy path works:
+  - create breeding
+  - wait for pregnancy check
+  - possibly become pregnant
+  - wait for due date
+  - create litter
+  - create puppies
+  - show litter/list/detail pages
+- Epoch naming is mostly aligned with the MasterFile.
+- Parentage and puppy registration structure are aligned.
+- The litter service now gives players a visible place to review litters, which fixed an earlier visibility gap.
+
+## 4.2 Pregnancy Resolution and Whelping Triggers
+
+Status: **Working but endpoint-triggered**
+
+Current behavior:
+
+- Pregnancy check and whelping are resolved by `resolveBreedingProgressForKennel()`.
+- The resolver is called by:
+  - kennel dog API
+  - breeding list service
+  - litter list service
+  - litter detail service
+
+Assessment:
+
+- This is acceptable for MVP because opening kennel/breeding/litter pages advances the state.
+- It is not a global scheduler/tick processor.
+- If no relevant endpoint is visited, due checks/whelping wait until the next resolver call.
+- This is fine for the current web app, but should be documented as a lazy-resolution model.
+
+Recommendation:
+
+- Keep lazy resolution for now.
+- Later, consider a scheduled/tick processor only if gameplay requires pregnancies to resolve without player page visits.
+- Make sure all pages that display breeding/pregnancy state call the resolver first.
+
+## 4.3 Litter Size and Puppy Generation
+
+Status: **Updated / functional**
+
+Evidence:
+
+- Rules constants:
+  - `MIN_LITTER_SIZE = 2`
+  - `MAX_LITTER_SIZE = 14`
+  - `DEFAULT_LITTER_SIZE_DISTRIBUTION = 0 // TBD`
+  - `LITTER_VARIATION = 0 // TBD`
+  - `STILLBIRTH_RATE = 0 // TBD`
+- Rules package `rollLitterSize()` now returns 2-14 puppies with a distribution centered on 8.
+- Web service now calls the rules package litter-size roller.
+- Puppy sex is seeded around 50/50.
+- Puppy traits are generated from sire/dam through the litter/trait engine.
+
+Assessment:
+
+- Puppy generation works.
+- The current litter-size distribution is:
+  - 70% at 8
+  - 10% at +/- 1
+  - 7.5% at +/- 2
+  - 5% at +/- 3
+  - 4% at +/- 4
+  - 2.5% at +/- 5
+  - 1% at +/- 6
+- This produces a full 2-14 puppy range.
+- The rules package still advertises litter-size/stillbirth constants as TBD.
+- No stillbirth/reproductive complication logic exists.
+- The MasterFile mentions breeding outcomes as random, but does not appear to define breed-specific litter size yet.
+
+Recommendation:
+
+- Keep current pup count distribution for MVP unless gameplay testing says otherwise.
+- Defer stillbirth/reproductive complications unless the design explicitly wants them.
+
+## 4.4 Registration Numbers and Serial Collisions
+
+Status: **Aligned with small robustness gap**
+
+Evidence:
+
+- Master format:
+  - `<breedCode2><serial7><litterOrder2>`
+- `packages/rules/engines/litter.engine.ts`
+  - implements `buildRegNumber()`
+  - validates `breedCode2`
+  - validates `serial7`
+  - pads litter order to two digits
+- Prisma:
+  - `Dog.regNumber` is unique
+  - `Litter` has unique `(breedCode2, serial7)`
+
+Assessment:
+
+- Registration format is aligned.
+- Serial collisions should be rare, but the whelping flow does not retry if `serial7` collides with an existing litter for the same breed.
+- A unique constraint would reject the write, causing whelping resolution to fail for that attempt.
+
+Recommendation:
+
+- Add a retry path around litter serial generation before this becomes large-scale.
+- Keep unique constraints.
+
+## 4.5 Visibility and Access
+
+Status: **Mostly aligned for MVP**
+
+Evidence:
+
+- `litter.service.ts` makes a litter visible when:
+  - the kennel bred the litter, or
+  - the kennel owns at least one puppy in the litter.
+- Litter detail links to sire, dam, and puppy dog pages.
+
+Assessment:
+
+- This is good for breeder history and future sold-puppy visibility.
+- Once sales/transfers exist, owners of puppies should be able to see litter context.
+- Once forever-home exists, dog pages should remain visible through litter/pedigree paths without functionality.
+
+Recommendation:
+
+- Keep this visibility model.
+- When forever-home/memorium pages are implemented, keep litter/pedigree access to historical dogs.
+
+## 4.6 Missing Whelping/Litter Page Features
+
+Status: **MVP gaps**
+
+MasterFile says the Whelping/Litter Page should support:
+
+- pregnancies
+- litters
+- puppies
+- puppy sales
+- puppy listings
+- forever-home flow
+- pricing management
+- call names
+- registered names
+
+Current implementation:
+
+- Shows active pregnancies.
+- Shows whelped litters.
+- Shows puppies and visible categories.
+- Links puppy dog pages.
+- Does not support puppy listing/sale actions.
+- Does not support forever-home actions.
+- Does not support pricing management.
+- Does not support naming puppies from the litter page.
+
+Recommendation:
+
+- Treat as future feature work after lifecycle/status semantics are settled.
+- Prioritize puppy naming and sale/listing flow once player puppy market work begins.
+- Do not build forever-home here until `FOREVER_HOME` semantics are added.
+
+## 4.7 Edge Cases
+
+Status: **Known gaps**
+
+MasterFile edge cases:
+
+- Dog dies during pregnancy:
+  - litter fails
+  - breeding attempt closes
+- Dog sold while pregnant:
+  - pregnancy remains attached to dog
+- Dog dies during show entry:
+  - entry voided
+
+Current behavior:
+
+- Death risk/death processing is not implemented, so death during pregnancy is not handled.
+- Pregnant dog sale/transfer is not fully implemented.
+- Current whelping assigns puppies to `createdByKennelId`, not necessarily the dam's current owner.
+- Current resolver queries attempts by `createdByKennelId`; a future pregnant transfer may require resolving attempts by current dam owner or global due attempt processing.
+
+Assessment:
+
+- Edge cases are acceptable as MVP gaps today.
+- The sold-while-pregnant behavior must be revisited before pregnant dog transfers/sales become possible.
+- The desired policy is that pregnancy remains attached to the dog, so ownership of puppies likely needs a deliberate rule:
+  - puppies follow current dam owner at whelping, or
+  - puppies follow breeding creator by contract.
+- Current implementation implicitly chooses breeding creator, not dog-attached ownership.
+
+Recommendation:
+
+- Block sale/transfer of pregnant dogs until the ownership rule is decided, or implement the chosen rule before allowing pregnant transfers.
+- Add death-during-pregnancy handling when death risk is implemented.
+- Add show-entry death handling when show entries are implemented.
+
+## 4.8 Overall Verdict
+
+Status: **Happy path working; lifecycle/economy edges pending**
+
+What is working:
+
+- Breeding attempts are created.
+- Pregnancy checks resolve.
+- Whelping creates litter and puppies.
+- Litter parentage and registration numbers are present.
+- Litter list/detail UI exists.
+- Active pregnancies are visible on the litter page.
+
+Main gaps:
+
+- Post-whelp breeding cooldown is returned by rules but not enforced/stored/derived in web.
+- Litter-size distribution now lives in rules package, centered on 8 with a 2-14 range.
+- Serial collision retry is missing.
+- Puppy sale/listing/pricing/forever-home flows are missing.
+- Puppy naming from litter page is missing.
+- Death during pregnancy is missing.
+- Pregnant dog transfer/sale policy is undecided and current code would not match "pregnancy attached to dog" if ownership should follow dam.
+
+Recommended next code changes:
+
+1. Finish breeding eligibility cleanup and post-whelp cooldown before adding more litter actions.
+2. Add dog-page pregnancy and litter context for dams.
+3. Add puppy naming flow on litter detail.
+4. Plan puppy sale/listing/pricing once market pricing strategy is decided.
+5. Decide pregnant dog transfer/sale policy before allowing that flow.
+6. Tune pup count distribution later if gameplay testing suggests a different feel.
+
+Recommended next audit section:
+
+- Death Risk and Deceased Stage, because it directly affects pregnancy edge cases, retired dogs, memorium pages, and lifecycle state cleanup.

@@ -3,13 +3,12 @@ import {
   DAM_MAX_BREED_AGE_HOURS,
   deriveVisibleCategoriesFromTraits,
   MIN_BREED_AGE_HOURS,
+  rollBreedingTiming,
+  rollLitterSize,
   resolvePregnancyCheck,
   resolveWhelp,
 } from "@showring/rules";
 import { randomUUID } from "node:crypto";
-
-const PREG_CHECK_HOURS = 30;
-const GESTATION_HOURS = 60;
 
 type DogForBreeding = {
   id: string;
@@ -98,18 +97,6 @@ function buildPuppySexes(seed: string, pupCount: number): Array<"M" | "F"> {
   return Array.from({ length: pupCount }, (_, index) =>
     seeded01(`${seed}:sex:${index}`) < 0.5 ? "M" : "F"
   );
-}
-
-function rollPupCount(seed: string): number {
-  const roll = seeded01(`${seed}:pup-count`);
-
-  if (roll < 0.08) return 2;
-  if (roll < 0.22) return 3;
-  if (roll < 0.48) return 4;
-  if (roll < 0.74) return 5;
-  if (roll < 0.90) return 6;
-  if (roll < 0.97) return 7;
-  return 8;
 }
 
 function requireRngSeed(seed: number | null): number {
@@ -414,7 +401,12 @@ export async function resolveBreedingProgressForKennel(args: {
         }
 
         const rngSeed = requireRngSeed(fresh.rngSeed);
-        const pupCount = rollPupCount(String(rngSeed));
+        let pupCountNoiseIndex = 0;
+        const pupCount = rollLitterSize(() => {
+          const value = seeded01(`${rngSeed}:pup-count:${pupCountNoiseIndex}`);
+          pupCountNoiseIndex += 1;
+          return value;
+        });
         const puppyDogIds = Array.from({ length: pupCount }, () => randomUUID());
         const puppySexes = buildPuppySexes(String(rngSeed), pupCount);
         let noiseIndex = 0;
@@ -647,19 +639,27 @@ export async function createBreedingAttemptForKennel(args: {
     throw new Error("That dam already has an active breeding in progress.");
   }
 
+  const rngSeed = Math.floor(Math.random() * 1_000_000);
+  let timingNoiseIndex = 0;
+  const timing = rollBreedingTiming(() => {
+    const value = seeded01(`${rngSeed}:timing:${timingNoiseIndex}`);
+    timingNoiseIndex += 1;
+    return value;
+  });
+
   const attempt = await db.breedingAttempt.create({
     data: {
       sireId: sire.id,
       damId: dam.id,
       breedCode2: sire.breedCode2,
       createdEpoch: currentEpoch,
-      pregCheckEpoch: currentEpoch + PREG_CHECK_HOURS,
-      dueEpoch: currentEpoch + GESTATION_HOURS,
+      pregCheckEpoch: currentEpoch + timing.pregCheckDelayHours,
+      dueEpoch: currentEpoch + timing.gestationHours,
       checkedEpoch: null,
       isPregnant: null,
       status: "INITIATED",
       createdByKennelId: kennelId,
-      rngSeed: Math.floor(Math.random() * 1_000_000),
+      rngSeed,
       studFeeAmount: 0,
       notes: "Beta breeding attempt created from breeding page.",
     },

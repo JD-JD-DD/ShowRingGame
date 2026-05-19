@@ -61,6 +61,12 @@ export type CreateBreedingAttemptInput = {
   rngSeed: number;
   damIsPregnant?: boolean;
   damCooldownUntil?: number | null;
+  random01?: () => number;
+};
+
+export type BreedingTiming = {
+  pregCheckDelayHours: number;
+  gestationHours: number;
 };
 
 export type PregnancyCheckInput = {
@@ -99,6 +105,30 @@ function assertRoll(value: number, label: string): void {
   if (!Number.isFinite(value) || value < 0 || value >= 1) {
     throw new Error(`${label} must be >= 0 and < 1.`);
   }
+}
+
+function signedOffset(random01: () => number, magnitude: number): number {
+  if (magnitude === 0) return 0;
+
+  const roll = random01();
+  assertRoll(roll, "timingOffsetRoll");
+
+  return roll < 0.5 ? -magnitude : magnitude;
+}
+
+export function rollBreedingTiming(
+  random01: () => number = Math.random
+): BreedingTiming {
+  const roll = random01();
+  assertRoll(roll, "timingRoll");
+
+  const offsetMagnitude = roll < 0.8 ? 0 : roll < 0.95 ? 1 : 2;
+
+  return {
+    pregCheckDelayHours:
+      PREG_CHECK_HOURS + signedOffset(random01, offsetMagnitude),
+    gestationHours: GESTATION_HOURS + signedOffset(random01, offsetMagnitude),
+  };
 }
 
 export function canBreedSire(currentEpoch: number, sire: BreedingDog): boolean {
@@ -181,9 +211,11 @@ export function createBreedingAttempt(
     rngSeed,
     damIsPregnant,
     damCooldownUntil,
+    random01,
   } = input;
 
   assertFiniteInteger(currentEpoch, "currentEpoch");
+  const timing = rollBreedingTiming(random01);
 
   const validation = validateBreedingPair(currentEpoch, sire, dam, {
     damIsPregnant,
@@ -202,8 +234,8 @@ export function createBreedingAttempt(
     damId: dam.dogId,
     breedCode2: sire.breedCode2,
     createdEpoch: currentEpoch,
-    pregCheckEpoch: currentEpoch + PREG_CHECK_HOURS,
-    dueEpoch: currentEpoch + GESTATION_HOURS,
+    pregCheckEpoch: currentEpoch + timing.pregCheckDelayHours,
+    dueEpoch: currentEpoch + timing.gestationHours,
     checkedEpoch: null,
     isPregnant: null,
     whelpedEpoch: null,
