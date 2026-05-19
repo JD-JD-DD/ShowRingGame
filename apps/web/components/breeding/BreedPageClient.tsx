@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import TraitLine from "@/components/ui/TraitLine";
 
 type VisibleCategories = Record<string, number>;
 
@@ -77,23 +76,49 @@ function sortedByAgeThenName(dogs: DogCardDto[]) {
   });
 }
 
-function TraitSummary({ dog, compact = false }: { dog: DogCardDto; compact?: boolean }) {
+function markerColor(value: number) {
+  const distance = Math.abs(value - 10);
+
+  if (distance <= 0.5) return "#22c55e";
+  if (distance <= 2) return "#84cc16";
+  if (distance <= 4) return "#eab308";
+  if (distance <= 6) return "#f97316";
+  return "#dc2626";
+}
+
+function MiniTraitSummary({ dog }: { dog: DogCardDto }) {
   const entries = Object.entries(dog.visibleCategories);
 
   return (
-    <div className={compact ? "space-y-2" : "space-y-3"}>
-      {entries.map(([key, value]) => (
-        <TraitLine
-          key={key}
-          label={formatCategoryName(key)}
-          value={value}
-          min={0}
-          max={20}
-          ideal={10}
-          leftLabel="Poor"
-          rightLabel="Poor"
-        />
-      ))}
+    <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+      {entries.map(([key, value]) => {
+        const safeValue = Math.max(0, Math.min(20, value));
+        const valuePercent = (safeValue / 20) * 100;
+
+        return (
+          <div key={key} className="min-w-0">
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="truncate text-purple-100/75">
+                {formatCategoryName(key)}
+              </span>
+              <span className="font-semibold text-white">
+                {safeValue.toFixed(1)}
+              </span>
+            </div>
+            <div className="relative mt-1 h-3">
+              <div className="absolute left-0 right-0 top-1/2 h-[2px] -translate-y-1/2 rounded bg-white/20" />
+              <div className="absolute left-1/2 top-0 h-3 w-[2px] -translate-x-1/2 rounded bg-emerald-300/80" />
+              <div
+                className="absolute top-1/2 h-3 w-[5px] -translate-x-1/2 -translate-y-1/2 rounded-sm shadow-[0_0_0_1px_rgba(255,255,255,0.24)]"
+                style={{
+                  left: `${valuePercent}%`,
+                  backgroundColor: markerColor(safeValue),
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -116,7 +141,7 @@ function DogSummaryHeader({ dog }: { dog: DogCardDto }) {
 
 function DogMeta({ dog }: { dog: DogCardDto }) {
   return (
-    <div className="mt-4 grid gap-2 text-sm text-purple-100/80 sm:grid-cols-2">
+    <div className="mt-3 grid gap-2 text-sm text-purple-100/80 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
       <div>Breed: {dog.breedName}</div>
       <div>Age: {ageLabel(dog.ageHours)}</div>
     </div>
@@ -127,27 +152,27 @@ function AnchoredDogCard({ dog }: { dog: DogCardDto }) {
   const unavailable = reasonDogUnavailable(dog);
 
   return (
-    <section className="sticky top-4 z-20 rounded-[28px] border border-purple-300/25 bg-[linear-gradient(180deg,rgba(42,22,58,0.98),rgba(20,10,30,0.98))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
+    <section className="z-20 rounded-2xl border border-purple-300/25 bg-[linear-gradient(180deg,rgba(42,22,58,0.98),rgba(20,10,30,0.98))] p-4 shadow-[0_18px_44px_rgba(0,0,0,0.35)] lg:col-span-3 lg:sticky lg:top-4">
       <div className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
         Selected Dog
       </div>
-      <div className="mt-4">
+      <div className="mt-3">
         <DogSummaryHeader dog={dog} />
         <DogMeta dog={dog} />
       </div>
 
       {unavailable ? (
-        <div className="mt-4 rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-200">
+        <div className="mt-3 rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-200">
           {unavailable}
         </div>
       ) : (
-        <div className="mt-4 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-200">
+        <div className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-200">
           Eligible
         </div>
       )}
 
-      <div className="mt-5">
-        <TraitSummary dog={dog} compact />
+      <div className="mt-4">
+        <MiniTraitSummary dog={dog} />
       </div>
     </section>
   );
@@ -175,8 +200,8 @@ function MateCard({
       <DogSummaryHeader dog={dog} />
       <DogMeta dog={dog} />
 
-      <div className="mt-4 rounded-2xl border border-white/10 bg-black/15 p-3">
-        <TraitSummary dog={dog} compact />
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-3">
+        <MiniTraitSummary dog={dog} />
       </div>
     </button>
   );
@@ -204,18 +229,18 @@ function SummaryCard({
   onSubmit: () => void;
 }) {
   return (
-    <aside className="sticky top-4 rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+    <aside className="rounded-2xl border border-purple-300/15 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] xl:sticky xl:top-4">
       <h2 className="text-xl font-semibold text-white">Breeding Summary</h2>
 
-      <div className="mt-6 space-y-4">
-        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+      <div className="mt-5 space-y-3">
+        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
           <div className="text-xs uppercase tracking-wide text-purple-200">
             Kennel
           </div>
           <div className="mt-1 text-sm font-medium text-white">{kennelName}</div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
           <div className="text-xs uppercase tracking-wide text-purple-200">
             Sire
           </div>
@@ -224,7 +249,7 @@ function SummaryCard({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
           <div className="text-xs uppercase tracking-wide text-purple-200">
             Dam
           </div>
@@ -233,7 +258,7 @@ function SummaryCard({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-purple-100/80">Breeding fee</span>
             <span className="font-semibold text-white">
@@ -248,7 +273,7 @@ function SummaryCard({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-purple-100/80">
+        <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-purple-100/80">
           <div>Pregnancy check: usually {USUAL_PREG_CHECK_DAYS} game days</div>
           <div className="mt-2">
             Expected whelping: usually {USUAL_GESTATION_DAYS} game days
@@ -259,13 +284,13 @@ function SummaryCard({
         </div>
 
         {errorMessage && (
-          <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
             {errorMessage}
           </div>
         )}
 
         {successMessage && (
-          <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
             {successMessage}
           </div>
         )}
@@ -274,7 +299,7 @@ function SummaryCard({
           type="button"
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="w-full rounded-2xl bg-[linear-gradient(90deg,#dc2626,#facc15,#22c55e,#facc15,#dc2626)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full rounded-xl bg-[linear-gradient(90deg,#dc2626,#facc15,#22c55e,#facc15,#dc2626)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {submitting ? "Creating Breeding..." : "Confirm Breeding"}
         </button>
@@ -411,10 +436,10 @@ export default function BreedPageClient({
         : "No eligible dogs of this breed are available.";
 
     return (
-      <div className="grid gap-6 lg:grid-cols-[minmax(280px,420px),minmax(0,1fr),minmax(280px,360px)]">
+      <div className="grid gap-5 lg:grid-cols-12">
         <AnchoredDogCard dog={anchorDog} />
 
-        <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+        <section className="rounded-2xl border border-purple-300/15 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] lg:col-span-6 xl:col-span-6">
           <h2 className="text-xl font-semibold text-white">{mateLabel}</h2>
           <p className="mt-2 text-sm leading-7 text-purple-100/70">
             Eligible {anchorDog.breedName} mates from your kennel.
@@ -431,24 +456,26 @@ export default function BreedPageClient({
                 />
               ))
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-6 text-sm text-purple-100/70">
+              <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-6 text-sm text-purple-100/70">
                 {emptyLabel}
               </div>
             )}
           </div>
         </section>
 
-        <SummaryCard
-          kennelName={kennelName}
-          kennelBalance={kennelBalance}
-          selectedSire={selectedSire}
-          selectedDam={selectedDam}
-          canSubmit={canSubmit}
-          submitting={submitting}
-          errorMessage={errorMessage}
-          successMessage={successMessage}
-          onSubmit={handleSubmit}
-        />
+        <div className="lg:col-span-3">
+          <SummaryCard
+            kennelName={kennelName}
+            kennelBalance={kennelBalance}
+            selectedSire={selectedSire}
+            selectedDam={selectedDam}
+            canSubmit={canSubmit}
+            submitting={submitting}
+            errorMessage={errorMessage}
+            successMessage={successMessage}
+            onSubmit={handleSubmit}
+          />
+        </div>
       </div>
     );
   }
