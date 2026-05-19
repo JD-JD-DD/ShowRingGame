@@ -70,6 +70,13 @@ export default async function KennelPage() {
         >
           Market
         </Link>
+
+        <Link
+          href="/litters"
+          className="rounded-md border border-emerald-400/40 px-5 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-950/40"
+        >
+          Litters
+        </Link>
       </div>
 
 

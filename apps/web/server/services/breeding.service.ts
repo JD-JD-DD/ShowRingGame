@@ -3,7 +3,10 @@ import {
   DAM_MAX_BREED_AGE_HOURS,
   deriveVisibleCategoriesFromTraits,
   MIN_BREED_AGE_HOURS,
+  resolvePregnancyCheck,
+  resolveWhelp,
 } from "@showring/rules";
+import { randomUUID } from "node:crypto";
 
 const PREG_CHECK_HOURS = 30;
 const GESTATION_HOURS = 60;
@@ -31,6 +34,106 @@ type DogForBreeding = {
   traitFeet: number;
   traitTopline: number;
 };
+
+type AttemptForResolution = {
+  id: string;
+  sireId: string;
+  damId: string;
+  breedCode2: string;
+  createdEpoch: number;
+  pregCheckEpoch: number | null;
+  dueEpoch: number | null;
+  checkedEpoch: number | null;
+  whelpedEpoch: number | null;
+  isPregnant: boolean | null;
+  status:
+    | "INITIATED"
+    | "CHECKED_NOT_PREGNANT"
+    | "PREGNANT"
+    | "WHELPED"
+    | "FAILED"
+    | "CANCELLED";
+  rngSeed: number | null;
+  createdByKennelId: string | null;
+  sire: {
+    id: string;
+    traitHead: number;
+    traitForequarters: number;
+    traitHindquarters: number;
+    traitGait: number;
+    traitCoat: number;
+    traitSize: number;
+    traitTemperament: number;
+    traitShowShine: number;
+    traitFeet: number;
+    traitTopline: number;
+  };
+  dam: {
+    id: string;
+    traitHead: number;
+    traitForequarters: number;
+    traitHindquarters: number;
+    traitGait: number;
+    traitCoat: number;
+    traitSize: number;
+    traitTemperament: number;
+    traitShowShine: number;
+    traitFeet: number;
+    traitTopline: number;
+  };
+};
+
+function seeded01(seed: string): number {
+  let hash = 2166136261;
+
+  for (let i = 0; i < seed.length; i += 1) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return (hash >>> 0) / 4294967295;
+}
+
+function buildPuppySexes(seed: string, pupCount: number): Array<"M" | "F"> {
+  return Array.from({ length: pupCount }, (_, index) =>
+    seeded01(`${seed}:sex:${index}`) < 0.5 ? "M" : "F"
+  );
+}
+
+function rollPupCount(seed: string): number {
+  const roll = seeded01(`${seed}:pup-count`);
+
+  if (roll < 0.08) return 2;
+  if (roll < 0.22) return 3;
+  if (roll < 0.48) return 4;
+  if (roll < 0.74) return 5;
+  if (roll < 0.90) return 6;
+  if (roll < 0.97) return 7;
+  return 8;
+}
+
+function requireRngSeed(seed: number | null): number {
+  if (seed === null) {
+    throw new Error("Breeding attempt is missing its rngSeed.");
+  }
+
+  return seed;
+}
+
+function mapTraits(dog: AttemptForResolution["sire"]) {
+  return {
+    head: dog.traitHead,
+    forequarters: dog.traitForequarters,
+    hindquarters: dog.traitHindquarters,
+    gait: dog.traitGait,
+    coat: dog.traitCoat,
+    size: dog.traitSize,
+    temperament: dog.traitTemperament,
+    show_shine: dog.traitShowShine,
+    feet: dog.traitFeet,
+    topline: dog.traitTopline,
+  };
+}
 
 function getAgeHours(currentEpoch: number, birthEpoch: number): number {
   return Math.max(0, currentEpoch - birthEpoch);
@@ -102,22 +205,306 @@ export async function resolveBreedingProgressForKennel(args: {
 }) {
   const { kennelId, currentEpoch } = args;
 
-  await db.breedingAttempt.updateMany({
+  const dueAttempts: AttemptForResolution[] = await db.breedingAttempt.findMany({
     where: {
       createdByKennelId: kennelId,
-      status: "INITIATED",
-      isPregnant: null,
-      pregCheckEpoch: {
-        not: null,
-        lte: currentEpoch,
+      OR: [
+        {
+          status: "INITIATED",
+          pregCheckEpoch: {
+            not: null,
+            lte: currentEpoch,
+          },
+        },
+        {
+          status: "PREGNANT",
+          dueEpoch: {
+            not: null,
+            lte: currentEpoch,
+          },
+        },
+      ],
+    },
+    orderBy: [{ createdEpoch: "asc" }],
+    select: {
+      id: true,
+      sireId: true,
+      damId: true,
+      breedCode2: true,
+      createdEpoch: true,
+      pregCheckEpoch: true,
+      dueEpoch: true,
+      checkedEpoch: true,
+      whelpedEpoch: true,
+      isPregnant: true,
+      status: true,
+      rngSeed: true,
+      createdByKennelId: true,
+      sire: {
+        select: {
+          id: true,
+          traitHead: true,
+          traitForequarters: true,
+          traitHindquarters: true,
+          traitGait: true,
+          traitCoat: true,
+          traitSize: true,
+          traitTemperament: true,
+          traitShowShine: true,
+          traitFeet: true,
+          traitTopline: true,
+        },
+      },
+      dam: {
+        select: {
+          id: true,
+          traitHead: true,
+          traitForequarters: true,
+          traitHindquarters: true,
+          traitGait: true,
+          traitCoat: true,
+          traitSize: true,
+          traitTemperament: true,
+          traitShowShine: true,
+          traitFeet: true,
+          traitTopline: true,
+        },
       },
     },
-    data: {
-      status: "PREGNANT",
-      isPregnant: true,
-      checkedEpoch: currentEpoch,
-    },
   });
+
+  for (const attempt of dueAttempts) {
+    if (
+      attempt.status === "INITIATED" &&
+      attempt.pregCheckEpoch !== null &&
+      attempt.pregCheckEpoch <= currentEpoch
+    ) {
+      await db.$transaction(async (tx) => {
+        const fresh = await tx.breedingAttempt.findUnique({
+          where: { id: attempt.id },
+          select: {
+            id: true,
+            sireId: true,
+            damId: true,
+            breedCode2: true,
+            createdEpoch: true,
+            pregCheckEpoch: true,
+            dueEpoch: true,
+            checkedEpoch: true,
+            whelpedEpoch: true,
+            isPregnant: true,
+            status: true,
+            rngSeed: true,
+            litterId: true,
+          },
+        });
+
+        if (
+          !fresh ||
+          fresh.status !== "INITIATED" ||
+          fresh.checkedEpoch !== null ||
+          fresh.pregCheckEpoch === null ||
+          fresh.dueEpoch === null
+        ) {
+          return;
+        }
+
+        const rngSeed = requireRngSeed(fresh.rngSeed);
+        const conceptionRoll = seeded01(`${rngSeed}:pregcheck`);
+
+        const resolved = resolvePregnancyCheck({
+          attempt: {
+            attemptId: fresh.id,
+            sireId: fresh.sireId,
+            damId: fresh.damId,
+            breedCode2: fresh.breedCode2,
+            createdEpoch: fresh.createdEpoch,
+            pregCheckEpoch: fresh.pregCheckEpoch,
+            dueEpoch: fresh.dueEpoch,
+            checkedEpoch: fresh.checkedEpoch,
+            whelpedEpoch: fresh.whelpedEpoch,
+            isPregnant: fresh.isPregnant,
+            status: fresh.status,
+            litterId: fresh.litterId ?? null,
+            rngSeed,
+          },
+          currentEpoch,
+          conceptionRate: 0.75,
+          conceptionRoll,
+        });
+
+        await tx.breedingAttempt.update({
+          where: { id: fresh.id },
+          data: {
+            status: resolved.status,
+            checkedEpoch: resolved.checkedEpoch,
+            isPregnant: resolved.isPregnant,
+          },
+        });
+      });
+    }
+  }
+
+  for (const attempt of dueAttempts) {
+    if (
+      attempt.status === "PREGNANT" &&
+      attempt.dueEpoch !== null &&
+      attempt.dueEpoch <= currentEpoch
+    ) {
+      await db.$transaction(async (tx) => {
+        const fresh = await tx.breedingAttempt.findUnique({
+          where: { id: attempt.id },
+          select: {
+            id: true,
+            sireId: true,
+            damId: true,
+            breedCode2: true,
+            createdEpoch: true,
+            pregCheckEpoch: true,
+            dueEpoch: true,
+            checkedEpoch: true,
+            whelpedEpoch: true,
+            isPregnant: true,
+            status: true,
+            rngSeed: true,
+            litterId: true,
+            createdByKennelId: true,
+            sire: {
+              select: {
+                id: true,
+                traitHead: true,
+                traitForequarters: true,
+                traitHindquarters: true,
+                traitGait: true,
+                traitCoat: true,
+                traitSize: true,
+                traitTemperament: true,
+                traitShowShine: true,
+                traitFeet: true,
+                traitTopline: true,
+              },
+            },
+            dam: {
+              select: {
+                id: true,
+                traitHead: true,
+                traitForequarters: true,
+                traitHindquarters: true,
+                traitGait: true,
+                traitCoat: true,
+                traitSize: true,
+                traitTemperament: true,
+                traitShowShine: true,
+                traitFeet: true,
+                traitTopline: true,
+              },
+            },
+          },
+        });
+
+        if (
+          !fresh ||
+          fresh.status !== "PREGNANT" ||
+          fresh.isPregnant !== true ||
+          fresh.dueEpoch === null ||
+          fresh.whelpedEpoch !== null ||
+          fresh.litterId !== null
+        ) {
+          return;
+        }
+
+        const rngSeed = requireRngSeed(fresh.rngSeed);
+        const pupCount = rollPupCount(String(rngSeed));
+        const puppyDogIds = Array.from({ length: pupCount }, () => randomUUID());
+        const puppySexes = buildPuppySexes(String(rngSeed), pupCount);
+        let noiseIndex = 0;
+
+        const outcome = resolveWhelp({
+          attempt: {
+            attemptId: fresh.id,
+            sireId: fresh.sireId,
+            damId: fresh.damId,
+            breedCode2: fresh.breedCode2,
+            createdEpoch: fresh.createdEpoch,
+            pregCheckEpoch: fresh.pregCheckEpoch ?? 0,
+            dueEpoch: fresh.dueEpoch,
+            checkedEpoch: fresh.checkedEpoch,
+            whelpedEpoch: fresh.whelpedEpoch,
+            isPregnant: fresh.isPregnant,
+            litterId: fresh.litterId,
+            status: fresh.status,
+            rngSeed,
+          },
+          currentEpoch,
+          litterId: randomUUID(),
+          pupCount,
+          puppyDogIds,
+          puppySexes,
+          sireTraits: mapTraits(fresh.sire),
+          damTraits: mapTraits(fresh.dam),
+          random01: () => {
+            const value = seeded01(`${rngSeed}:whelp:${noiseIndex}`);
+            noiseIndex += 1;
+            return value;
+          },
+        });
+
+        await tx.litter.create({
+          data: {
+            id: outcome.litter.litterId,
+            bredByKennelId: fresh.createdByKennelId,
+            sireId: outcome.litter.sireId,
+            damId: outcome.litter.damId,
+            breedCode2: outcome.litter.breedCode2,
+            serial7: outcome.litter.serial7,
+            bornEpoch: outcome.litter.bornEpoch,
+            pupCount: outcome.litter.pupCount,
+          },
+        });
+
+        await tx.dog.createMany({
+          data: outcome.puppies.map((puppy) => ({
+            id: puppy.dogId,
+            ownerKennelId: fresh.createdByKennelId,
+            breederKennelId: fresh.createdByKennelId,
+            callName: null,
+            registeredName: null,
+            regNumber: puppy.regNumber,
+            breedCode2: puppy.breedCode2,
+            sex: puppy.sex,
+            birthEpoch: puppy.birthEpoch,
+            lifecycleState: "ALIVE",
+            marketState: "NOT_FOR_SALE",
+            originType: "PLAYER_BRED",
+            isFoundation: false,
+            sireId: puppy.sireId,
+            damId: puppy.damId,
+            litterId: puppy.litterId,
+            litterOrder: puppy.litterOrder,
+            traitHead: puppy.traits.head,
+            traitForequarters: puppy.traits.forequarters,
+            traitHindquarters: puppy.traits.hindquarters,
+            traitGait: puppy.traits.gait,
+            traitCoat: puppy.traits.coat,
+            traitSize: puppy.traits.size,
+            traitTemperament: puppy.traits.temperament,
+            traitShowShine: puppy.traits.show_shine,
+            traitFeet: puppy.traits.feet,
+            traitTopline: puppy.traits.topline,
+          })),
+        });
+
+        await tx.breedingAttempt.update({
+          where: { id: fresh.id },
+          data: {
+            status: "WHELPED",
+            whelpedEpoch: currentEpoch,
+            litterId: outcome.litter.litterId,
+          },
+        });
+      });
+    }
+  }
 }
 
 export async function listBreedingsForKennel(args: {
