@@ -29,13 +29,14 @@ Status: audited; implementation pass needed
 - Next implementation pass:
   - create or centralize one breeding eligibility helper for service/API/UI
   - update dog page eligibility display to use active breeding state
-  - when a player clicks `Breed Dog` from a dog page, the breed page should:
-    - pin the clicked dog at the top as the selected dog
-    - show only eligible dogs of the same breed and opposite sex as possible mates
-    - hide ineligible dogs from the mate list rather than showing every dog disabled
-    - keep visible trait/category sliders on the selected dog and eligible mate cards
   - implement post-whelp cooldown by deriving from latest whelped attempt or persisting `whelpingCooldownUntil`
   - keep `CHECKED_NOT_PREGNANT` immediately breedable if otherwise eligible
+- Implemented first pass:
+  - when a player clicks `Breed Dog` from a dog page, the breed page now honors `/breed?dogId=...`
+  - the clicked dog is pinned at the top/side as the selected dog
+  - eligible same-breed opposite-sex mates are shown
+  - ineligible dogs are hidden from the mate list
+  - visible trait/category sliders appear on the selected dog and mate cards
 
 Original audit checklist:
 
@@ -129,6 +130,29 @@ Status: audited; implementation later
     - 1% at +/- 6
   - tune later if gameplay testing suggests a different feel
 - Add death-during-pregnancy handling when death risk/deceased logic is implemented.
+
+### 5. Kennel/Dog Page UI and Actions
+
+Status: audited; implementation pass needed
+
+- Dog page:
+  - remove or replace raw user-facing `ALIVE`/`Lifecycle` display for normal active dogs
+  - show pregnancy state, pregnancy check countdown, or due countdown when applicable
+  - make the `Breed Dog` button use the same eligibility logic as the breeding service
+  - disable or hide breeding when the dog is pending, pregnant, post-whelp cooldown, senior, retired, deceased, or forever-homed
+  - make deceased/forever-home dog pages historical-only with no gameplay actions
+- Breed page from dog page:
+  - first pass implemented: `/breed?dogId=...` is honored, the clicked dog is pinned/preselected, only eligible same-breed opposite-sex mates are listed, and trait sliders are shown
+  - later pass: make this use the final shared eligibility helper once post-whelp cooldown, senior male age-out, retired, deceased, and forever-home states are centralized
+- Kennel page:
+  - keep the main roster as active usable dogs
+  - add retirement couch view later
+  - add memorium view later
+  - replace local breedable/show filters with shared eligibility DTOs when helpers are centralized
+- Actions and placement:
+  - rename or replace `Re-Home Dog` with final `Forever Home` behavior
+  - reserve transferred/sold for ownership changes to another kennel
+  - add a retire action after retirement couch semantics are implemented
 
 ## Lifecycle/Status Model
 

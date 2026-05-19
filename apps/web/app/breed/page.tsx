@@ -3,8 +3,20 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import BreedPageClient from "@/components/breeding/BreedPageClient";
-import { MIN_BREED_AGE_HOURS, DAM_MAX_BREED_AGE_HOURS } from "@showring/rules";
+import {
+  DAM_MAX_BREED_AGE_HOURS,
+  MIN_BREED_AGE_HOURS,
+  deriveVisibleCategoriesFromTraits,
+} from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
+
+type PageProps = {
+  searchParams?: Promise<{
+    dogId?: string | string[];
+  }>;
+};
+
+type VisibleCategories = Record<string, number>;
 
 type DogCardDto = {
   id: string;
@@ -20,6 +32,7 @@ type DogCardDto = {
   ownerKennelName: string | null;
   isEligibleToBreed: boolean;
   inBreedingConflict: boolean;
+  visibleCategories: VisibleCategories;
 };
 
 function getDogDisplayName(dog: {
@@ -30,7 +43,12 @@ function getDogDisplayName(dog: {
   return dog.callName || dog.registeredName || dog.regNumber;
 }
 
-export default async function BreedPage() {
+function firstQueryValue(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
+export default async function BreedPage({ searchParams }: PageProps) {
   const userId = await getSessionUserId();
 
   if (!userId) {
@@ -51,6 +69,8 @@ export default async function BreedPage() {
   }
 
   const currentEpoch = getCurrentEpoch();
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const initialDogId = firstQueryValue(resolvedSearchParams.dogId);
 
   const dogs = await db.dog.findMany({
     where: {
@@ -65,6 +85,16 @@ export default async function BreedPage() {
       sex: true,
       birthEpoch: true,
       lifecycleState: true,
+      traitHead: true,
+      traitForequarters: true,
+      traitHindquarters: true,
+      traitGait: true,
+      traitCoat: true,
+      traitSize: true,
+      traitTemperament: true,
+      traitShowShine: true,
+      traitFeet: true,
+      traitTopline: true,
       breed: {
         select: {
           name: true,
@@ -110,6 +140,18 @@ export default async function BreedPage() {
       ownerKennelName: dog.ownerKennel?.name ?? null,
       isEligibleToBreed: alive && oldEnough && notTooOldIfFemale && !inBreedingConflict,
       inBreedingConflict,
+      visibleCategories: deriveVisibleCategoriesFromTraits({
+        head: dog.traitHead,
+        forequarters: dog.traitForequarters,
+        hindquarters: dog.traitHindquarters,
+        gait: dog.traitGait,
+        coat: dog.traitCoat,
+        size: dog.traitSize,
+        temperament: dog.traitTemperament,
+        show_shine: dog.traitShowShine,
+        feet: dog.traitFeet,
+        topline: dog.traitTopline,
+      }),
     };
   });
 
@@ -145,6 +187,7 @@ export default async function BreedPage() {
         kennelName={kennel.name}
         kennelBalance={kennel.balance}
         dogs={dogCards}
+        initialDogId={initialDogId}
       />
 
       <div className="mt-8">

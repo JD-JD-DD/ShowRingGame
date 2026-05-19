@@ -1802,3 +1802,197 @@ Recommended next code changes:
 Recommended next audit section:
 
 - Kennel/Dog Page UI and actions, because many lifecycle decisions now need to appear as action buttons, retirement couch/memorium sections, dog-page pregnancy status, and improved breed-page filtering.
+
+---
+
+# 6. Kennel/Dog Page UI and Actions
+
+Status: **Partially implemented; action semantics need cleanup**
+
+MasterFile anchors:
+
+- `MasterFile4_3.md`, "6.1 Dog Page"
+- `MasterFile4_3.md`, "6.4 Show Entry Page"
+- `MasterFile4_3.md`, "6.5 Whelping / Litter Page"
+- `MasterFile4_3.md`, "Dog Page Before Purchase"
+
+MasterFile intent:
+
+- The Dog Page is the central object page for a dog.
+- The server assembles identity, ownership, conditioning, visible judging categories, pedigree summary, sale state, pregnancy state, and allowed actions.
+- Allowed actions are computed from ownership, age, lifecycle state, breeding status, show-entry status, and market state.
+- The Dog Page displays simulation outcomes from other systems rather than performing simulation itself.
+- The kennel page should let the player scan and act on their dogs without exposing raw internal state names.
+
+Current design decisions from audit discussion:
+
+- The UI does not need to show `ALIVE` for normal kennel dogs.
+- If a dog is in the active kennel and not in the memorium or retirement couch, it is usable by the player.
+- Show entry eligibility and breeding eligibility should primarily be communicated by available or unavailable action buttons.
+- Pregnancy should be visible enough that the user can tell at a glance which bitches are pregnant, pending a check, or did not take.
+- Retirement couch, memorium, forever-home, and sold/transferred are different placement outcomes and should not be collapsed into one lifecycle label.
+
+## 6.1 Kennel Roster
+
+Status: **Mostly useful MVP**
+
+Evidence:
+
+- `apps/web/app/kennel/page.tsx`
+  - renders the kennel summary and `KennelDogsPanel`.
+- `apps/web/app/api/dogs/mine/route.ts`
+  - calls `resolveBreedingProgressForKennel()` before loading dogs.
+  - filters to `ownerKennelId: kennel.id` and `lifecycleState: "ALIVE"`.
+  - returns visible categories and a `breedingCardStatus`.
+- `apps/web/components/kennel/KennelDogsPanel.tsx`
+  - shows sortable columns for breed, dog, sex, age, visible trait categories, and breeding status.
+  - supports filters for breed, sex, breedable, and show eligible.
+  - formats pregnancy state as `Pregnant, due in Xd`.
+  - formats pending checks as `Check in Xd`.
+
+Assessment:
+
+- The active kennel roster is already a good working surface.
+- Filtering out non-alive dogs matches the decision that deceased dogs should leave the active kennel page.
+- The breeding status column is already close to the desired "at a glance" pregnancy view.
+- The page does not yet include retirement couch or memorium sections.
+- The show-eligible filter uses local age/lifecycle logic instead of a shared eligibility helper.
+- The breedable filter depends on card labels, so it may drift when post-whelp cooldown, retired, forever-home, and senior male age-out are added.
+
+Recommendation:
+
+- Keep the active kennel roster as the main "usable dogs" list.
+- Add separate retirement couch and memorium views later.
+- Replace local show/breedable filtering with shared eligibility DTOs once those helpers are centralized.
+- Keep pregnancy status on the roster, and consider a small dashboard/notification summary only if the roster is not enough in testing.
+
+## 6.2 Dog Page
+
+Status: **Strong page shell; action and status display need refinement**
+
+Evidence:
+
+- `apps/web/app/dogs/[dogId]/page.tsx`
+  - loads dog identity, owner, breeder, sire, dam, visible categories, conditioning values, market listing, and active action buttons.
+  - gates `Breed Dog` by owner, alive state, minimum breeding age, and female max breeding age.
+  - gates `Enter Show` by owner, alive state, and show-age range.
+  - shows `Buy for` when a foundation listing is active.
+  - shows `Re-Home Dog` for owned alive dogs.
+  - displays raw `Status: {dog.lifecycleState}` and a `Lifecycle` card.
+
+Assessment:
+
+- The dog page is already close to the MasterFile page shape.
+- Showing raw `ALIVE` is not helpful for normal active dogs.
+- The `Breed Dog` button can still appear for a bitch who is pending pregnancy confirmation or pregnant, because the dog page does not query active breeding attempts.
+- The `Breeding Eligibility` card is age-only and can disagree with the real service checks.
+- The dog page does not show pregnancy status or due/check timing.
+- The page does not yet distinguish active, retired, forever-home, transferred/sold, and deceased page modes.
+- A deceased dog could be loaded by direct link, but the page is not yet styled or constrained as historical-only.
+
+Recommendation:
+
+- Remove or replace raw `ALIVE`/`Lifecycle` display on normal active dogs.
+- Add a placement-aware status display:
+  - active kennel: no redundant alive label
+  - pregnant/pending/did-not-take: breeding state and due/check timing
+  - retired: retirement couch state
+  - deceased: memorium/historical state
+  - forever-home: permanent inactive placement
+  - transferred/sold: current owner kennel
+- Make the Dog Page use the same breeding eligibility helper or DTO as the breeding service.
+- Disable or hide `Breed Dog` when the bitch is pending, pregnant, post-whelp cooldown, senior, retired, deceased, or forever-homed.
+- Keep dog pages accessible by direct pedigree/litter links even when no actions are available.
+
+## 6.3 Breed Page Flow
+
+Status: **First-pass dog-page flow implemented**
+
+Evidence:
+
+- `apps/web/app/dogs/[dogId]/page.tsx`
+  - links to `/breed?dogId=${dog.id}`.
+- `apps/web/app/breed/page.tsx`
+  - now reads the `dogId` query parameter.
+  - loads all dogs owned by the kennel.
+  - marks each dog `isEligibleToBreed` using local age/alive/conflict logic.
+  - derives visible category values for the breed page.
+- `apps/web/components/breeding/BreedPageClient.tsx`
+  - pins the dog from `/breed?dogId=...` as the selected dog.
+  - lists eligible same-breed opposite-sex mates for the pinned dog.
+  - hides ineligible dogs from the pinned-dog mate list.
+  - shows visible trait/category sliders for the pinned dog and mate cards.
+  - preserves a general breeding selector when no `dogId` is supplied.
+
+Assessment:
+
+- The dog-page action flow now matches the intended "breed this dog" experience.
+- The page still uses local eligibility logic, so it should eventually move to a shared breeding eligibility helper.
+- Post-whelp cooldown, retired, forever-home, senior male age-out, and final status semantics are not yet represented in one centralized helper.
+
+Recommendation:
+
+- Use the same centralized breeding eligibility logic as the service and dog page.
+
+## 6.4 Actions and Placement Semantics
+
+Status: **Needs terminology and state cleanup**
+
+Evidence:
+
+- `apps/web/app/api/dogs/[dogId]/rehome/route.ts`
+  - requires ownership and `lifecycleState === "ALIVE"`.
+  - sets `ownerKennelId: null`, `marketState: "NOT_FOR_SALE"`, and `lifecycleState: "TRANSFERRED"`.
+- Current schema includes `TRANSFERRED`, but not the clarified `FOREVER_HOME` placement.
+- No retirement couch route or action was found.
+- No memorium route was found.
+
+Assessment:
+
+- Current `Re-Home Dog` behaves more like the desired forever-home action, but stores it as `TRANSFERRED`.
+- Clarified design says sold/transferred should mean ownership changes to another kennel.
+- Forever-home should remove the dog from active player use permanently and should not be reversible.
+- Retire should keep the dog in the user's kennel but remove functionality.
+- Deceased should preserve the historical dog page and remove all gameplay actions.
+
+Recommendation:
+
+- Rename or replace `Re-Home Dog` with `Forever Home` when the status model is ready.
+- Reserve `TRANSFERRED`/sold for real ownership changes.
+- Add a user-chosen retire action that moves the dog to the retirement couch.
+- Add memorium for deceased dogs.
+- Treat placement state as separate from biological age stage wherever possible.
+
+## 6.5 Overall Verdict
+
+Status: **Good foundation; next code pass should reduce drift in user-facing actions**
+
+What is working:
+
+- Kennel roster exists and is useful.
+- Dog page shows the key identity, trait, ownership, and pedigree data.
+- Dog page actions are mostly owner/alive gated.
+- Pregnancy due/check status now appears in the kennel roster.
+- Foundation purchase from dog page exists.
+
+Main gaps:
+
+- Raw `ALIVE`/`Lifecycle` text is still user-facing.
+- Dog page breeding eligibility can disagree with actual breeding service checks.
+- Dog page does not show pregnancy status.
+- Breed page dog-page flow is now implemented, but still needs shared eligibility logic.
+- Re-home/forever-home/transfer semantics are not yet clean.
+- Retirement couch and memorium routes are missing.
+
+Recommended next code changes:
+
+1. Centralize breeding eligibility into one helper/DTO used by service, dog page, breed page, and kennel roster.
+2. Update the dog page to remove raw `ALIVE` display and show pregnancy/placement-aware status.
+3. Update the dog page `Breed Dog` button to respect active breeding attempts and cooldown.
+4. Move the breed page's local eligibility checks to the shared eligibility helper once it exists.
+5. Add retirement couch and memorium routes after the state model is settled.
+6. Replace `Re-Home Dog` with final forever-home behavior after schema/status decisions.
+
+Recommended next audit section:
+
+- Show Entry and Judging Flow, because dog-page `Enter Show`, puppy/open/veteran class rules, and judging already intersect with the lifecycle distinctions clarified here.
