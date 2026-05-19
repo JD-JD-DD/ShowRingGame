@@ -2,6 +2,7 @@
 
 import {
   TRAIT_MAX,
+  TRAIT_IDEAL,
   TRAIT_MIN,
   TRAIT_VARIANCE,
   INHERITANCE_WEIGHT,
@@ -10,6 +11,7 @@ import {
 } from "../constants/genetics.constants";
 
 import type { DogTraits } from "./dog.engine";
+import { allValuesExactlyIdeal } from "./idealScoring.engine";
 
 export type GeneratePuppyTraitsInput = {
   sireTraits: DogTraits;
@@ -110,6 +112,11 @@ export function generatePuppyTraits(
       damTraits[trait],
       random01
     )
+  }
+
+  if (allValuesExactlyIdeal(TRAIT_KEYS.map((trait) => puppyTraits[trait]))) {
+    const trait = TRAIT_KEYS[Math.floor(random01() * TRAIT_KEYS.length)]
+    puppyTraits[trait] = random01() < 0.5 ? TRAIT_IDEAL - 1 : TRAIT_IDEAL + 1
   }
 
   return puppyTraits

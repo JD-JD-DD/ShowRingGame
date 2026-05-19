@@ -11,6 +11,13 @@ import {
 } from "../constants/judging.constants";
 import type { Dog, DogTraits } from "./dog.engine";
 import type { Sex } from "../src/lifecycle";
+import {
+  allValuesExactlyIdeal,
+  averageIdealDistance,
+  averageIdealScore,
+  countValuesNearIdeal,
+  scoreValueAgainstIdeal,
+} from "./idealScoring.engine";
 
 export type VisibleCategories = {
   typeExpression: number;
@@ -364,19 +371,22 @@ function traitSpread(traits: DogTraits): number {
 function isFoundationCandidateAcceptable(traits: DogTraits): boolean {
   const visible = deriveVisibleCategoriesFromTraits(traits);
   const categoryValues = Object.values(visible);
+  const traitValues = TRAIT_KEYS.map((traitKey) => traits[traitKey]);
 
   const eliteTraitCount = countEliteTraits(traits);
   const poorTraitCount = countPoorTraits(traits);
   const extremeFaultCount = countExtremeFaultTraits(traits);
   const spread = traitSpread(traits);
 
-  const strongVisibleCategoryCount = categoryValues.filter(
-    (value) => value >= 8.5
+  const nearIdealVisibleCategoryCount = countValuesNearIdeal(categoryValues, 0.75);
+
+  const severeVisibleFaultCategoryCount = categoryValues.filter(
+    (value) => scoreValueAgainstIdeal(value) <= 9
   ).length;
 
-  const collapsedVisibleCategoryCount = categoryValues.filter(
-    (value) => value <= 4.5
-  ).length;
+  if (allValuesExactlyIdeal(traitValues)) {
+    return false;
+  }
 
   // Reject flat dogs
   if (spread < 2.5) {
@@ -389,7 +399,7 @@ function isFoundationCandidateAcceptable(traits: DogTraits): boolean {
   }
 
   // Reject accidental superdogs
-  if (strongVisibleCategoryCount > 2) {
+  if (nearIdealVisibleCategoryCount > 3) {
     return false;
   }
 
@@ -402,12 +412,12 @@ function isFoundationCandidateAcceptable(traits: DogTraits): boolean {
     return false;
   }
 
-  if (collapsedVisibleCategoryCount >= 4) {
+  if (severeVisibleFaultCategoryCount >= 4) {
     return false;
   }
 
   // Require at least something appealing
-  if (categoryValues.every((value) => value < 5.5)) {
+  if (averageIdealScore(categoryValues) < 10) {
     return false;
   }
 
@@ -431,15 +441,19 @@ function generateFoundationTraits(
     }
 
     const visible = deriveVisibleCategoriesFromTraits(candidate);
-    const visibleAverage = average(Object.values(visible));
+    const categoryValues = Object.values(visible);
+    const visibleQuality = averageIdealScore(categoryValues);
+    const visibleFaultPressure = averageIdealDistance(categoryValues);
     const spread = traitSpread(candidate);
 
     const score =
-      visibleAverage +
-      spread -
-      countExtremeFaultTraits(candidate) * 2 -
+      visibleQuality -
+      visibleFaultPressure +
+      Math.min(spread, 6) * 0.4 -
+      countExtremeFaultTraits(candidate) * 3 -
       countPoorTraits(candidate) * 1.5 -
-      Math.max(0, countEliteTraits(candidate) - 4) * 2;
+      Math.max(0, countEliteTraits(candidate) - 4) * 3 -
+      Math.max(0, countValuesNearIdeal(categoryValues, 0.75) - 3) * 2;
 
     if (score > bestScore) {
       bestScore = score;
@@ -454,7 +468,7 @@ function calculateSuggestedPrice(
   visibleCategories: VisibleCategories,
   band: FoundationQualityBand
 ): number {
-  const visibleAverage = average(Object.values(visibleCategories));
+  const visibleQuality = averageIdealScore(Object.values(visibleCategories));
 
   let bandAdjustment = 0;
   switch (band) {
@@ -470,7 +484,7 @@ function calculateSuggestedPrice(
       break;
   }
 
-  const scoreAdjustment = Math.round((visibleAverage - 10) * PRICE_STEP * 2);
+  const scoreAdjustment = Math.round((visibleQuality - 14) * PRICE_STEP);
   return Math.max(1000, PRICE_BASE + bandAdjustment + scoreAdjustment);
 }
 

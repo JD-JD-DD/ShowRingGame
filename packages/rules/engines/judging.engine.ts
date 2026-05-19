@@ -7,6 +7,7 @@ import {
   CATEGORY_TRAIT_MAP,
   type JudgingCategory,
 } from "../constants/judging.constants";
+import { scoreValueAgainstIdeal } from "./idealScoring.engine";
 
 export type ShowCharacteristics = Record<JudgingCategory, number>;
 export type WeightedCategoryScores = Record<JudgingCategory, number>;
@@ -54,8 +55,9 @@ export function scoreDogByJudgeWeights(args: {
   let baseScore = 0;
 
   for (const category of JUDGING_CATEGORIES) {
+    const idealScore = scoreValueAgainstIdeal(characteristics[category]);
     const categoryScore =
-      characteristics[category] * judge.categoryWeights[category];
+      idealScore * judge.categoryWeights[category];
 
     weightedCategoryScores[category] = categoryScore;
     baseScore += categoryScore;
