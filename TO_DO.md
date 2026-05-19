@@ -180,6 +180,14 @@ Status: todo; strategy/design needed before implementation
   - block deceased, retired, and forever-home dogs
   - decide whether post-sale dogs remain visible to previous owner through litter/pedigree/history only
 - Puppy sales should use the same listing foundation once puppy naming and sale age rules are ready.
+- Add a stud dog market/page:
+  - users can offer eligible male dogs for public stud service
+  - owner sets a whole-dollar stud fee
+  - other players can browse available studs by breed
+  - breeding flow can select a public stud and charge the buyer/pay the stud owner
+  - enforce male ownership, breed compatibility, age/breeding eligibility, retired/deceased/forever-home exclusions, and any future per-dog breeding cooldown or use limits
+  - record `STUD_FEE_IN` and `STUD_FEE_OUT` ledger transactions
+  - decide whether stud listings use `DogListing`, a separate `StudListing`, or a breeding-contract model before implementation
 
 ### 7. Show Entry and Judging Flow
 
