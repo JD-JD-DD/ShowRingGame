@@ -40,7 +40,7 @@ export default function RegisterDogNameForm({
           maxLength={45}
           required
           className="mt-2 w-full rounded-xl border border-purple-300/20 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-purple-100/35 focus:border-purple-300/50"
-          placeholder="Enter a profile name"
+          placeholder="Register Your Dog's Name"
         />
       </label>
       <button

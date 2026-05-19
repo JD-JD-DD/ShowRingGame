@@ -98,6 +98,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (name.length > 45) {
+      return NextResponse.json(
+        { error: "Kennel name must be 45 characters or fewer." },
+        { status: 400 }
+      );
+    }
+
     const slugBase = makeSlug(name);
 
     if (!slugBase) {
