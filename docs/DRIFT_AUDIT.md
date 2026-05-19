@@ -358,8 +358,9 @@ Current code:
 - `apps/web/server/services/foundationDog.service.ts`
   - Uses `FOUNDATION_DENSE_TARGET = 2`.
   - Uses `FOUNDATION_THIN_TARGET = 4`.
+  - Uses `FOUNDATION_MIN_ACTIVE_MALES = 1`.
   - Uses live player listings and recent player sales to decide whether a breed is thin or dense.
-  - Creates enough dogs to reach target inventory, plus enough females to satisfy `FOUNDATION_MIN_ACTIVE_FEMALES = 2`.
+  - Creates enough dogs to reach target inventory, plus enough females to satisfy `FOUNDATION_MIN_ACTIVE_FEMALES = 2` and enough males to satisfy `FOUNDATION_MIN_ACTIVE_MALES = 1`.
   - Expires foundation listings after 7 in-game weeks.
   - Replaces sold inventory immediately by calling `ensureFoundationInventoryForBreed()` after purchase.
 
@@ -370,16 +371,17 @@ Assessment:
   - 10 dogs per breed across many released breeds could flood the market and database.
   - Thin/dense targets are more responsive to actual player supply.
   - Ensuring at least 2 active females supports breeding availability.
+  - Ensuring at least 1 active male prevents the market from showing only bitches.
   - Listing expiry prevents stale market stock.
 
 Risk:
 
-- Dense breeds may feel understocked with only 2 foundation dogs.
+- Dense breeds may feel understocked with only 2 foundation dogs, but the sex floors now make the effective minimum 3 when both floors are needed.
 - The master file's shopping psychology expects enough choice to hunt for "a nice one"; 2 dogs may feel thin.
 
 Recommendation:
 
-- Keep the tested 4/2 thin/dense inventory policy with the female floor.
+- Keep the tested 4/2 thin/dense inventory policy with female and male floors.
 - Treat the master-file 10/6/+6 rule as superseded by playtesting.
 - Continue watching whether dense breeds feel too sparse as player population grows.
 
@@ -632,7 +634,7 @@ What is working:
 
 Main drift / decisions:
 
-- Inventory policy is no longer 10/6/+6; current code uses thin/dense targets of 4/2 plus a female floor, and this is accepted as better from testing.
+- Inventory policy is no longer 10/6/+6; current code uses thin/dense targets of 4/2 plus female and male floors, and this is accepted as better from testing.
 - Live baseline fallback lacks breed template baselines.
 - Literal "breed mean minus offset" should not be used under the 10-ideal model; use ideal-centered quality instead.
 - Direct buy from the market card is acceptable if visually secondary to dog-page evaluation.
@@ -640,7 +642,7 @@ Main drift / decisions:
 
 Recommended next code changes:
 
-1. Keep 4/2 thin/dense foundation inventory with the female floor.
+1. Keep 4/2 thin/dense foundation inventory with female and male floors.
 2. Keep quick-buy, but preserve dog-page evaluation as the primary user path.
 3. Brainstorm market pricing and player selling price strategy before changing pricing code.
 4. Later, add breed template baselines for better no-population fallback.
@@ -1562,3 +1564,241 @@ Recommended next code changes:
 Recommended next audit section:
 
 - Death Risk and Deceased Stage, because it directly affects pregnancy edge cases, retired dogs, memorium pages, and lifecycle state cleanup.
+
+---
+
+# 5. Death Risk and Deceased Stage
+
+Master-file anchors:
+
+- `MasterFile4_3.md`, "2.2 Dog Lifecycle"
+- `MasterFile4_3.md`, Dog Lifecycle states and edge cases
+- `MasterFile4_3.md`, UI visibility rules for death probability
+
+Canonical intent:
+
+- Lifecycle creates emotional stakes and prevents immortal super-dogs.
+- Death risk begins when:
+  - `ageHours >= AGE_DEATH_START_HOURS`
+  - current master value: `AGE_DEATH_START_HOURS = 2880`
+- Daily death probability should increase gradually after death-risk age.
+- Exact mortality curve is TBD in the MasterFile.
+- Players should not see:
+  - death probability
+  - internal mortality curves
+- `DECEASED` means immutable historical record.
+- Deceased dogs should not remain active game objects for gameplay functions.
+- Edge cases:
+  - dog dies during pregnancy: litter fails and breeding attempt closes
+  - dog dies during show entry: entry voided
+  - retired dogs should continue aging and eventually become deceased
+
+## 5.1 Current Code and Schema Support
+
+Status: **Schema prepared / engine missing**
+
+Evidence:
+
+- `packages/rules/constants/lifecycle.constants.ts`
+  - `AGE_DEATH_START_HOURS = 2880`
+- `packages/rules/src/lifecycle.ts`
+  - imports `AGE_DEATH_START_HOURS`
+  - exposes `isDeathRiskAge` through `getLifecycleFlags()`
+  - uses death-risk age as part of its current mixed `lifeStage()` logic
+- `packages/rules/engines/death.engine.ts`
+  - exists but is empty
+- `packages/rules/engines/index.ts`
+  - has death engine export commented out
+- `apps/web/prisma/schema.prisma`
+  - `Dog.deathEpoch Int?`
+  - `Dog.lifecycleState DogLifecycleState @default(ALIVE)`
+  - enum includes `DECEASED`
+- `apps/web/server/services/dog.service.ts`
+  - can map engine dog status `DECEASED` to Prisma `DogLifecycleState.DECEASED`
+
+Assessment:
+
+- The database can represent deceased dogs.
+- The rules constants can identify when death risk begins.
+- There is no death-risk curve.
+- There is no death resolution engine.
+- There is no web service that marks dogs deceased.
+- `deathEpoch` is currently unused.
+
+Recommendation:
+
+- Implement death as its own engine/service, separate from show veteran logic.
+- Do not overload `lifeStage()` for death risk.
+- Keep death probability hidden from UI.
+
+## 5.2 Current UI and Query Behavior
+
+Status: **Partially aligned by filtering, but no memorium**
+
+Evidence:
+
+- `apps/web/app/api/dogs/mine/route.ts`
+  - filters kennel roster dogs to `lifecycleState: "ALIVE"`.
+- `apps/web/app/dogs/[dogId]/page.tsx`
+  - can load a dog by id without requiring active ownership.
+  - gates actions through ownership and `lifecycleState === "ALIVE"`.
+  - still displays raw `Status: {dog.lifecycleState}` and `Lifecycle`.
+- `apps/web/components/kennel/KennelDogsPanel.tsx`
+  - only receives dogs returned by `/api/dogs/mine`, so deceased dogs are not in the current main kennel roster.
+- No memorium/memorial route was found.
+
+Assessment:
+
+- If a dog were marked `DECEASED`, it would disappear from the main kennel roster because the API filters `ALIVE`.
+- The dog page would still be accessible by direct link, which is useful for pedigree/history.
+- The dog page is not yet designed as historical-only for deceased dogs.
+- There is no memorium section where the user can find deceased dogs.
+- The project currently uses the spelling "memorium" in planning discussion; decide whether UI should say "Memorium" or "Memorial" before building routes.
+
+Recommendation:
+
+- Add a memorium/memorial page that lists deceased dogs for a kennel.
+- Keep direct dog page access for deceased dogs.
+- Disable all gameplay actions for deceased dogs.
+- Replace raw `ALIVE`/`DECEASED` lifecycle display with placement-aware UI:
+  - active kennel dogs: no need to show `ALIVE`
+  - deceased dogs: show historical/memorium state clearly
+
+## 5.3 Death Processing Model
+
+Status: **Open design / implementation needed**
+
+Design choices:
+
+- Processing cadence:
+  - lazy resolution when kennel/dog pages load
+  - scheduled daily game tick
+  - hybrid model
+- Scope:
+  - only dogs owned by the current kennel when they load
+  - all active dogs globally
+  - active plus retired dogs
+  - forever-home dogs, if they continue aging
+- Curve:
+  - MasterFile only says daily probability increases gradually.
+  - Exact probability curve is still TBD.
+
+Assessment:
+
+- Lazy resolution matches the current pregnancy model and is simpler for MVP.
+- Death is more emotionally sensitive than pregnancy, so a visible "your dog died because you opened the page" feeling should be avoided.
+- A scheduled or deterministic daily check may feel fairer once the game has enough active users/data.
+- The first implementation can still be deterministic and seed-based to avoid repeated rerolls for the same dog/day.
+
+Recommendation:
+
+- Use a deterministic daily death check keyed by dog id and game day/epoch bucket.
+- Store `deathEpoch` when death occurs so the outcome is permanent.
+- Start with a conservative curve and tune later.
+- Process retired dogs.
+- Exclude forever-home dogs if the final forever-home design is static historical record; include them only if the design says they continue aging.
+
+## 5.4 Death Effects
+
+Status: **Needs implementation policy**
+
+On death, likely updates:
+
+- Set `Dog.lifecycleState = DECEASED`.
+- Set `Dog.deathEpoch = currentEpoch`.
+- Set `Dog.marketState = NOT_FOR_SALE`.
+- Cancel or close active player listing records.
+- Remove dog from active kennel roster.
+- Remove dog from breed/show eligibility.
+- Prevent fatigue/conditioning changes.
+- Preserve dog page, pedigree links, litter links, titles, and historical results.
+
+Pregnancy edge case:
+
+- MasterFile says if a dog dies during pregnancy:
+  - litter fails
+  - breeding attempt closes
+- Current code has no death processor, so this is not handled.
+- Needed behavior:
+  - if dam dies while `INITIATED` or `PREGNANT`, close attempt as failed/cancelled and no litter is created.
+  - if sire dies after breeding but before whelping, policy needs decision; the MasterFile edge case says "dog dies during pregnancy" but does not specify sire vs dam.
+
+Show-entry edge case:
+
+- MasterFile says dog death before judging voids entry.
+- Show-entry implementation is currently placeholder, so this waits for show entry work.
+
+Recommendation:
+
+- In death service, explicitly check active breeding attempts and show entries before/while marking deceased.
+- Prioritize dam death behavior because it affects litter creation.
+- Decide sire-death behavior during pregnancy before implementation.
+
+## 5.5 Senior Stage and Breeding Cutoff
+
+Status: **Design decision needed**
+
+Current model:
+
+- `AGE_DEATH_START_HOURS = 2880`.
+- `VETERAN_START_HOURS = 3240`.
+- Current `lifeStage()` begins veteran-ish logic at death-risk age, then returns `SENIOR` after max show age.
+- Current breeding cutoff:
+  - female cutoff uses `DAM_MAX_BREED_AGE_HOURS`.
+  - male cutoff does not exist.
+
+Clarified design direction:
+
+- Show entry classes and dog age stages are different systems.
+- Dog age stages:
+  - puppy: cannot breed
+  - adult: can breed if otherwise eligible
+  - senior: cannot breed and enters death-risk logic
+- Veteran belongs to show entry, not death risk.
+
+Recommendation:
+
+- Decide whether senior begins at `AGE_DEATH_START_HOURS = 2880` or another threshold.
+- Make senior-stage breeding cutoff explicit for both sexes.
+- Keep veteran class threshold in show-entry rules.
+- Rename/split helper functions before implementing death:
+  - `getDogAgeStage()`
+  - `isDeathRiskAge()`
+  - `canBreed()`
+  - `getShowEntryClass()`
+
+## 5.6 Overall Verdict
+
+Status: **Not implemented; schema ready**
+
+What is working:
+
+- Schema can store `DECEASED` and `deathEpoch`.
+- Rules constants define death-risk start.
+- Active kennel roster already filters to alive dogs.
+- Dog page actions are mostly gated by alive state.
+
+Main gaps:
+
+- No death-risk engine.
+- No death processor/service.
+- No mortality curve.
+- No memorium/memorial page.
+- No historical-only deceased dog page treatment.
+- No death during pregnancy handling.
+- No death during show-entry handling.
+- No senior-stage breed cutoff for males.
+- Current helper naming still mixes veteran/senior/death concepts.
+
+Recommended next code changes:
+
+1. Decide senior/death-risk threshold and mortality curve.
+2. Split lifecycle helpers so death risk is separate from show veteran class.
+3. Implement a deterministic death-risk engine.
+4. Add a service to mark dogs deceased and set `deathEpoch`.
+5. Add death-during-pregnancy handling before allowing death processing on pregnant dams.
+6. Add memorium/memorial page and historical-only dog page treatment.
+
+Recommended next audit section:
+
+- Kennel/Dog Page UI and actions, because many lifecycle decisions now need to appear as action buttons, retirement couch/memorium sections, dog-page pregnancy status, and improved breed-page filtering.

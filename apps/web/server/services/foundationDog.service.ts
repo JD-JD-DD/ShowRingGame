@@ -26,6 +26,7 @@ const FOUNDATION_DESCRIPTION_PUBLIC = "Foundation dog available for purchase.";
  * New beta market policy:
  * - dense breeds keep 2 active foundation listings
  * - thin breeds keep 4 active foundation listings
+ * - each breed keeps at least 2 females and 1 male available
  * - listings sit for 7 in-game weeks = 49 real hours
  * - if one sells, replacement is generated immediately
  */
@@ -75,6 +76,7 @@ const GLOBAL_FALLBACK_BASELINE: DogTraits = {
 };
 
 const FOUNDATION_MIN_ACTIVE_FEMALES = 2;
+const FOUNDATION_MIN_ACTIVE_MALES = 1;
 
 export async function countUnsoldFoundationFemalesByBreed(
   breedCode2: string
@@ -83,6 +85,29 @@ export async function countUnsoldFoundationFemalesByBreed(
     where: {
       breedCode2,
       sex: "F",
+      originType: "FOUNDATION",
+      isFoundation: true,
+      marketState: "LISTED_NPC",
+      ownerKennelId: null,
+      lifecycleState: "ALIVE",
+      listings: {
+        some: {
+          sellerType: "SYSTEM",
+          listingType: FOUNDATION_LISTING_TYPE,
+          status: "ACTIVE",
+        },
+      },
+    },
+  });
+}
+
+export async function countUnsoldFoundationMalesByBreed(
+  breedCode2: string
+): Promise<number> {
+  return db.dog.count({
+    where: {
+      breedCode2,
+      sex: "M",
       originType: "FOUNDATION",
       isFoundation: true,
       marketState: "LISTED_NPC",
@@ -379,6 +404,35 @@ async function getFoundationPolicyForBreed(args: {
   };
 }
 
+function getEffectiveFoundationTarget(policy: BreedFoundationPolicy): number {
+  return Math.max(
+    policy.targetInventory,
+    FOUNDATION_MIN_ACTIVE_FEMALES + FOUNDATION_MIN_ACTIVE_MALES
+  );
+}
+
+function buildForcedFoundationSexes(args: {
+  femalesNeeded: number;
+  malesNeeded: number;
+  totalCount: number;
+}): Array<"M" | "F" | undefined> {
+  const forcedSexes: Array<"M" | "F" | undefined> = [];
+
+  for (let index = 0; index < args.femalesNeeded; index += 1) {
+    forcedSexes.push("F");
+  }
+
+  for (let index = 0; index < args.malesNeeded; index += 1) {
+    forcedSexes.push("M");
+  }
+
+  while (forcedSexes.length < args.totalCount) {
+    forcedSexes.push(undefined);
+  }
+
+  return forcedSexes;
+}
+
 async function calculateFoundationAskingPrice(args: {
   breedCode2: string;
   currentEpoch: number;
@@ -576,34 +630,48 @@ export async function ensureFoundationInventoryForBreed(args: {
     breedCode2,
   });
 
-  const [currentCount, currentFemaleCount, policy] = await Promise.all([
+  const [currentCount, currentFemaleCount, currentMaleCount, policy] =
+    await Promise.all([
     countUnsoldFoundationDogsByBreed(breedCode2),
     countUnsoldFoundationFemalesByBreed(breedCode2),
+    countUnsoldFoundationMalesByBreed(breedCode2),
     getFoundationPolicyForBreed({ breedCode2, currentEpoch }),
   ]);
 
+  const targetInventory = getEffectiveFoundationTarget(policy);
   const femalesNeeded = Math.max(
     0,
     FOUNDATION_MIN_ACTIVE_FEMALES - currentFemaleCount
   );
+  const malesNeeded = Math.max(
+    0,
+    FOUNDATION_MIN_ACTIVE_MALES - currentMaleCount
+  );
 
   if (
-    currentCount >= policy.targetInventory &&
-    femalesNeeded === 0
+    currentCount >= targetInventory &&
+    femalesNeeded === 0 &&
+    malesNeeded === 0
   ) {
     return;
   }
 
   const createCount = Math.max(
-    policy.targetInventory - currentCount,
-    femalesNeeded
+    targetInventory - currentCount,
+    femalesNeeded + malesNeeded
   );
 
-  for (let index = 0; index < createCount; index += 1) {
+  const forcedSexes = buildForcedFoundationSexes({
+    femalesNeeded,
+    malesNeeded,
+    totalCount: createCount,
+  });
+
+  for (const forcedSex of forcedSexes) {
     await createOneFoundationDog({
       breedCode2,
       currentEpoch,
-      forcedSex: index < femalesNeeded ? "F" : undefined,
+      forcedSex,
     });
   }
 }
@@ -627,20 +695,31 @@ export async function seedFoundationDogsForBreed(args: {
 }): Promise<void> {
   const { breedCode2, currentEpoch, count } = args;
 
-  const currentFemaleCount = await countUnsoldFoundationFemalesByBreed(
-    breedCode2
-  );
+  const [currentFemaleCount, currentMaleCount] = await Promise.all([
+    countUnsoldFoundationFemalesByBreed(breedCode2),
+    countUnsoldFoundationMalesByBreed(breedCode2),
+  ]);
 
   const femalesNeeded = Math.max(
     0,
     FOUNDATION_MIN_ACTIVE_FEMALES - currentFemaleCount
   );
+  const malesNeeded = Math.max(
+    0,
+    FOUNDATION_MIN_ACTIVE_MALES - currentMaleCount
+  );
 
-  for (let index = 0; index < count; index += 1) {
+  const forcedSexes = buildForcedFoundationSexes({
+    femalesNeeded,
+    malesNeeded,
+    totalCount: count,
+  });
+
+  for (const forcedSex of forcedSexes) {
     await createOneFoundationDog({
       breedCode2,
       currentEpoch,
-      forcedSex: index < femalesNeeded ? "F" : undefined,
+      forcedSex,
     });
   }
 }

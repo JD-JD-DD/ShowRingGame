@@ -61,19 +61,35 @@ Original audit checklist:
 
 ### 2. Death Risk and Deceased Stage
 
-Status: next design/code section
+Status: audited; implementation pass needed
 
 - Define the senior/death-risk age threshold.
+- Decide the mortality curve; MasterFile only says daily death probability increases gradually.
 - Implement death-risk engine or service.
-- Decide how often death risk is processed.
+- Prefer deterministic daily checks keyed by dog/day so the same day is not rerolled repeatedly.
+- Decide how often death risk is processed:
+  - lazy page-load resolution
+  - scheduled game tick
+  - hybrid
 - Ensure death risk is hidden from users.
 - On death:
   - set dog as deceased
   - record death epoch
+  - set market state to not for sale
+  - close/cancel active listings
   - remove dog from active kennel pages
   - remove all show/breeding/market functionality
   - preserve dog page as historical only
   - show dog in memorium section
+- Add death-during-pregnancy handling before death processing can affect pregnant dams:
+  - if dam dies while pending/pregnant, close attempt and prevent litter creation
+  - decide sire-death behavior during pregnancy
+- Add death-during-show-entry handling when show entries are implemented.
+- Split lifecycle helpers before or during implementation:
+  - dog age stage
+  - death risk
+  - show entry class
+  - breeding eligibility
 - Decide whether forever-home dogs continue aging/death-processing or become static historical records.
 - Retired dogs should continue aging and eventually become deceased.
 
@@ -132,6 +148,10 @@ Status: audited; implementation later
 
 ## Later
 
+- Keep foundation market stocked with both sexes:
+  - at least 2 active foundation females per breed
+  - at least 1 active foundation male per breed
+  - dense breed base target is 2, but sex floors make the effective minimum 3 when needed
 - Replace user-facing `ALIVE`/`Lifecycle` text with better age/placement/status UI.
 - Add retirement couch view.
 - Add memorium view.
