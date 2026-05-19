@@ -11,11 +11,15 @@ import {
   MIN_BREED_AGE_HOURS,
   MIN_SHOW_AGE_HOURS,
 } from "@showring/rules";
+import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
 import TraitLine from "@/components/ui/TraitLine";
 
 type PageProps = {
   params: Promise<{
     dogId: string;
+  }>;
+  searchParams?: Promise<{
+    nameError?: string | string[];
   }>;
 };
 
@@ -41,9 +45,15 @@ function formatCategoryName(key: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function firstQueryValue(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
 
-export default async function DogPage({ params }: PageProps) {
+export default async function DogPage({ params, searchParams }: PageProps) {
   const { dogId } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const nameError = firstQueryValue(resolvedSearchParams.nameError);
   const userId = await getSessionUserId();
 
   if (!userId) {
@@ -112,6 +122,7 @@ export default async function DogPage({ params }: PageProps) {
         select: {
           id: true,
           callName: true,
+          registeredName: true,
           regNumber: true,
         },
       },
@@ -119,6 +130,7 @@ export default async function DogPage({ params }: PageProps) {
         select: {
           id: true,
           callName: true,
+          registeredName: true,
           regNumber: true,
         },
       },
@@ -189,7 +201,8 @@ export default async function DogPage({ params }: PageProps) {
     (dog.sex === "M" || ageHours <= DAM_MAX_BREED_AGE_HOURS);
 
   const displayName =
-    dog.callName || dog.registeredName || dog.regNumber || "Unnamed Dog";
+    dog.registeredName || dog.callName || dog.regNumber || "Unnamed Dog";
+  const canNameDog = isOwnedByCurrentKennel && !dog.registeredName?.trim();
 
   const categoryEntries = Object.entries(visibleCategories);
 
@@ -215,6 +228,13 @@ export default async function DogPage({ params }: PageProps) {
               <div className="mt-3 text-sm text-purple-100/70">
                 {dog.regNumber}
               </div>
+
+              {canNameDog ? (
+                <RegisterDogNameForm
+                  action={`/api/dogs/${dog.id}/rename`}
+                  nameError={nameError}
+                />
+              ) : null}
 
               {(dog.visibleTitlePrefix || dog.visibleTitleSuffix) && (
                 <div className="mt-3 text-sm text-purple-100/80">
@@ -482,7 +502,9 @@ export default async function DogPage({ params }: PageProps) {
                 <div className="mt-1 text-sm font-medium text-white">
                   {dog.sire ? (
                     <Link href={`/dogs/${dog.sire.id}`} className="hover:underline">
-                      {dog.sire.callName ?? dog.sire.regNumber}
+                      {dog.sire.registeredName ??
+                        dog.sire.callName ??
+                        dog.sire.regNumber}
                     </Link>
                   ) : (
                     "Unknown"
@@ -497,7 +519,9 @@ export default async function DogPage({ params }: PageProps) {
                 <div className="mt-1 text-sm font-medium text-white">
                   {dog.dam ? (
                     <Link href={`/dogs/${dog.dam.id}`} className="hover:underline">
-                      {dog.dam.callName ?? dog.dam.regNumber}
+                      {dog.dam.registeredName ??
+                        dog.dam.callName ??
+                        dog.dam.regNumber}
                     </Link>
                   ) : (
                     "Unknown"

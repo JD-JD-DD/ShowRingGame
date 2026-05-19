@@ -15,6 +15,7 @@ const RECENT_BREEDING_RESULT_HOURS = 14;
 type MineDog = {
   id: string;
   callName: string | null;
+  registeredName: string | null;
   regNumber: string;
   breedCode2: string;
   sex: "M" | "F";
@@ -202,6 +203,7 @@ export async function GET() {
       select: {
         id: true,
         callName: true,
+        registeredName: true,
         regNumber: true,
         breedCode2: true,
         sex: true,
@@ -253,6 +255,7 @@ export async function GET() {
       dogs: dogs.map((dog) => ({
         dogId: dog.id,
         callName: dog.callName,
+        registeredName: dog.registeredName,
         regNumber: dog.regNumber,
         breedCode2: dog.breedCode2,
         breedName: dog.breed.name,

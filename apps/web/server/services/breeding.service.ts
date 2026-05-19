@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 type DogForBreeding = {
   id: string;
   callName: string | null;
+  registeredName: string | null;
   regNumber: string;
   breedCode2: string;
   sex: "M" | "F";
@@ -155,12 +156,21 @@ function getVisibleCategories(dog: DogForBreeding) {
   });
 }
 
+function displayDogName(dog: {
+  registeredName?: string | null;
+  callName: string | null;
+  regNumber: string;
+}) {
+  return dog.registeredName || dog.callName || dog.regNumber;
+}
+
 async function getDogForBreeding(dogId: string): Promise<DogForBreeding | null> {
   return db.dog.findUnique({
     where: { id: dogId },
     select: {
       id: true,
       callName: true,
+      registeredName: true,
       regNumber: true,
       breedCode2: true,
       sex: true,
@@ -536,6 +546,7 @@ export async function listBreedingsForKennel(args: {
         select: {
           id: true,
           callName: true,
+          registeredName: true,
           regNumber: true,
         },
       },
@@ -543,6 +554,7 @@ export async function listBreedingsForKennel(args: {
         select: {
           id: true,
           callName: true,
+          registeredName: true,
           regNumber: true,
         },
       },
@@ -560,8 +572,8 @@ export async function listBreedingsForKennel(args: {
     checkedEpoch: attempt.checkedEpoch,
     isPregnant: attempt.isPregnant,
     status: attempt.status,
-    sireName: attempt.sire.callName ?? attempt.sire.regNumber,
-    damName: attempt.dam.callName ?? attempt.dam.regNumber,
+    sireName: displayDogName(attempt.sire),
+    damName: displayDogName(attempt.dam),
     hoursUntilPregCheck:
       attempt.pregCheckEpoch !== null
         ? Math.max(0, attempt.pregCheckEpoch - currentEpoch)
@@ -610,13 +622,13 @@ export async function createBreedingAttemptForKennel(args: {
 
   if (!isBreedAgeEligible(primaryDog, currentEpoch)) {
     throw new Error(
-      `${primaryDog.callName ?? primaryDog.regNumber} is not breeding eligible.`
+      `${displayDogName(primaryDog)} is not breeding eligible.`
     );
   }
 
   if (!isBreedAgeEligible(mateDog, currentEpoch)) {
     throw new Error(
-      `${mateDog.callName ?? mateDog.regNumber} is not breeding eligible.`
+      `${displayDogName(mateDog)} is not breeding eligible.`
     );
   }
 
@@ -677,8 +689,8 @@ export async function createBreedingAttemptForKennel(args: {
 
   return {
     ...attempt,
-    sireName: sire.callName ?? sire.regNumber,
-    damName: dam.callName ?? dam.regNumber,
+    sireName: displayDogName(sire),
+    damName: displayDogName(dam),
     sireVisibleCategories: getVisibleCategories(sire),
     damVisibleCategories: getVisibleCategories(dam),
     hoursUntilPregCheck: Math.max(0, attempt.pregCheckEpoch! - currentEpoch),

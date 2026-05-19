@@ -40,7 +40,7 @@ function getDogDisplayName(dog: {
   registeredName: string | null;
   regNumber: string;
 }) {
-  return dog.callName || dog.registeredName || dog.regNumber;
+  return dog.registeredName || dog.callName || dog.regNumber;
 }
 
 function firstQueryValue(value: string | string[] | undefined): string | null {

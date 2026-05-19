@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 type VisibleCategories = Record<string, number>;
@@ -34,7 +35,7 @@ const USUAL_PREG_CHECK_DAYS = 28;
 const USUAL_GESTATION_DAYS = 56;
 
 function dogDisplayName(dog: DogCardDto) {
-  return dog.callName || dog.registeredName || dog.regNumber;
+  return dog.registeredName || dog.callName || dog.regNumber;
 }
 
 function ageLabel(ageHours: number) {
@@ -53,12 +54,6 @@ function formatCategoryName(key: string): string {
   return key
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function formatGameDays(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value)
-    ? `${value} game days`
-    : "soon";
 }
 
 function reasonDogUnavailable(dog: DogCardDto) {
@@ -216,6 +211,7 @@ function SummaryCard({
   submitting,
   errorMessage,
   successMessage,
+  redirecting,
   onSubmit,
 }: {
   kennelName: string;
@@ -226,6 +222,7 @@ function SummaryCard({
   submitting: boolean;
   errorMessage: string;
   successMessage: string;
+  redirecting: boolean;
   onSubmit: () => void;
 }) {
   return (
@@ -298,10 +295,14 @@ function SummaryCard({
         <button
           type="button"
           onClick={onSubmit}
-          disabled={!canSubmit}
+          disabled={!canSubmit || redirecting}
           className="w-full rounded-xl bg-[linear-gradient(90deg,#dc2626,#facc15,#22c55e,#facc15,#dc2626)] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {submitting ? "Creating Breeding..." : "Confirm Breeding"}
+          {redirecting
+            ? "Confirmed"
+            : submitting
+              ? "Creating Breeding..."
+              : "Confirm Breeding"}
         </button>
       </div>
     </aside>
@@ -314,6 +315,7 @@ export default function BreedPageClient({
   dogs,
   initialDogId,
 }: Props) {
+  const router = useRouter();
   const initialDog = dogs.find((dog) => dog.id === initialDogId) ?? null;
   const [sireId, setSireId] = useState<string>(
     initialDog?.sex === "M" ? initialDog.id : ""
@@ -322,6 +324,7 @@ export default function BreedPageClient({
     initialDog?.sex === "F" ? initialDog.id : ""
   );
   const [submitting, setSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [successMessage, setSuccessMessage] = useState<string>("");
 
@@ -391,6 +394,7 @@ export default function BreedPageClient({
     if (!selectedSire || !selectedDam) return;
 
     setSubmitting(true);
+    setRedirecting(false);
     setErrorMessage("");
     setSuccessMessage("");
 
@@ -413,16 +417,20 @@ export default function BreedPageClient({
         return;
       }
 
-      const attempt = data?.attempt;
-      setSuccessMessage(
-        `Breeding created. Pregnancy check in ${formatGameDays(
-          attempt?.hoursUntilPregCheck
-        )}, due in ${formatGameDays(attempt?.hoursUntilDue)}.`
-      );
+      const returnDogId = anchorDog?.id ?? selectedDam.id ?? selectedSire.id;
+
+      setRedirecting(true);
+      setSuccessMessage("Confirmed. Returning to the dog page...");
+
+      window.setTimeout(() => {
+        router.push(`/dogs/${returnDogId}`);
+      }, 900);
     } catch {
       setErrorMessage("Something went wrong while creating the breeding.");
     } finally {
-      setSubmitting(false);
+      if (!redirecting) {
+        setSubmitting(false);
+      }
     }
   }
 
@@ -473,6 +481,7 @@ export default function BreedPageClient({
             submitting={submitting}
             errorMessage={errorMessage}
             successMessage={successMessage}
+            redirecting={redirecting}
             onSubmit={handleSubmit}
           />
         </div>
@@ -539,6 +548,7 @@ export default function BreedPageClient({
         submitting={submitting}
         errorMessage={errorMessage}
         successMessage={successMessage}
+        redirecting={redirecting}
         onSubmit={handleSubmit}
       />
     </div>

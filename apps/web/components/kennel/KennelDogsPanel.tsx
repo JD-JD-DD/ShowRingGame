@@ -21,6 +21,7 @@ type BreedingCardStatus = {
 type KennelDogDto = {
   dogId: string;
   callName: string | null;
+  registeredName: string | null;
   regNumber: string;
   breedCode2: string;
   breedName: string;
@@ -76,7 +77,7 @@ function formatAge(ageHours: number): string {
 }
 
 function getDogDisplayName(dog: KennelDogDto): string {
-  return dog.callName?.trim() || dog.regNumber;
+  return dog.registeredName?.trim() || dog.callName?.trim() || dog.regNumber;
 }
 
 function valueForSort(dog: KennelDogDto, key: SortKey): string | number {

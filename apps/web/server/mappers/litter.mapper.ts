@@ -105,7 +105,7 @@ export type LitterDetailDto = LitterListItemDto & {
 };
 
 function displayDogName(dog: ParentDogInput): string {
-  return dog.callName || dog.registeredName || dog.regNumber;
+  return dog.registeredName || dog.callName || dog.regNumber;
 }
 
 function mapParent(dog: ParentDogInput): LitterParentDto {
