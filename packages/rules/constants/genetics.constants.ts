@@ -7,8 +7,7 @@ export const TRAIT_MAX = 20
 export const TRAIT_IDEAL = 10
 
 
-export const TRAIT_VARIANCE = 2
-export const INHERITANCE_WEIGHT = 0.25
+export const TRAIT_VARIANCE = 1.1
 export const MUTATION_RATE = 0.02
 
 // ===============================

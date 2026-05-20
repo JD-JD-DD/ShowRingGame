@@ -61,22 +61,25 @@ const FOUNDATION_STANDARD_WEIGHT = 0.60;
 const FOUNDATION_NICE_WEIGHT = 0.30;
 // Remaining 0.10 => rough
 
-const STANDARD_OFFSET = 1.0;
-const NICE_OFFSET = 0.5;
-const ROUGH_OFFSET = 1.75;
+const STANDARD_HIDDEN_SPREAD = 4.5;
+const NICE_HIDDEN_SPREAD = 3.25;
+const ROUGH_HIDDEN_SPREAD = 5.75;
 
-const TRAIT_ROLL_VARIANCE = 1.25;
+const STANDARD_EXTREME_TRAIT_CHANCE = 0.1;
+const NICE_EXTREME_TRAIT_CHANCE = 0.04;
+const ROUGH_EXTREME_TRAIT_CHANCE = 0.18;
+
+const EXTREME_MIN_DISTANCE = 6.5;
+const EXTREME_MAX_DISTANCE = 9.25;
+
+const TRAIT_ROLL_VARIANCE = 1.75;
 const MAX_GENERATION_ATTEMPTS = 40;
 
 const PRICE_BASE = 1800;
 const PRICE_STEP = 75;
 
-// function clampTrait(value: number): number {
-//   return Math.max(TRAIT_MIN, Math.min(TRAIT_MAX, Math.round(value)));
-// }
-
 function clampTrait(value: number): number {
-  return Math.max(TRAIT_MIN, Math.min(TRAIT_MAX, value));
+  return Math.max(TRAIT_MIN, Math.min(TRAIT_MAX, Math.round(value)));
 }
 
 function average(values: readonly number[]): number {
@@ -109,12 +112,24 @@ function pickQualityBand(random01: () => number): FoundationQualityBand {
 function getBandOffset(band: FoundationQualityBand): number {
   switch (band) {
     case "NICE_FOUNDATION":
-      return NICE_OFFSET;
+      return NICE_HIDDEN_SPREAD;
     case "ROUGH_FOUNDATION":
-      return ROUGH_OFFSET;
+      return ROUGH_HIDDEN_SPREAD;
     case "STANDARD_FOUNDATION":
     default:
-      return STANDARD_OFFSET;
+      return STANDARD_HIDDEN_SPREAD;
+  }
+}
+
+function getBandExtremeChance(band: FoundationQualityBand): number {
+  switch (band) {
+    case "NICE_FOUNDATION":
+      return NICE_EXTREME_TRAIT_CHANCE;
+    case "ROUGH_FOUNDATION":
+      return ROUGH_EXTREME_TRAIT_CHANCE;
+    case "STANDARD_FOUNDATION":
+    default:
+      return STANDARD_EXTREME_TRAIT_CHANCE;
   }
 }
 
@@ -124,30 +139,13 @@ function buildTargetMeans(
   random01: () => number
 ): DogTraits {
   const target = {} as DogTraits;
+  const spread = getBandOffset(band);
+  const extremeChance = getBandExtremeChance(band);
 
   for (const traitKey of TRAIT_KEYS) {
     const ideal = 10;
-
     const breedMean = baseline[traitKey];
-
-    // How far breed is from ideal
     const deviationFromIdeal = breedMean - ideal;
-
-    // Estimate plausible spread based on breed deviation
-    const magnitude = Math.max(1.5, Math.min(3.5, Math.abs(deviationFromIdeal) + 1));
-
-    // Slight band influence (NICE slightly tighter, ROUGH slightly wider)
-    let spreadAdjustment = 0;
-    switch (band) {
-      case "NICE_FOUNDATION":
-        spreadAdjustment = -0.2;
-        break;
-      case "ROUGH_FOUNDATION":
-        spreadAdjustment = +0.6;
-        break;
-    }
-
-    const finalSpread = magnitude + spreadAdjustment;
 
     // Bias toward underrepresented side of ideal
     let bias = 0;
@@ -155,11 +153,30 @@ function buildTargetMeans(
       bias = deviationFromIdeal > 0 ? -0.5 : 0.5;
     }
 
-    // Sample around ideal (NOT breed mean)
-    const sampled =
-      ideal +
-      randomBetween(random01, -finalSpread, finalSpread) +
-      bias * random01();
+    let sampled: number;
+
+    if (random01() < extremeChance) {
+      const direction =
+        Math.abs(deviationFromIdeal) > 0.5
+          ? deviationFromIdeal > 0
+            ? -1
+            : 1
+          : random01() < 0.5
+            ? -1
+            : 1;
+
+      sampled =
+        ideal +
+        direction *
+          randomBetween(random01, EXTREME_MIN_DISTANCE, EXTREME_MAX_DISTANCE);
+    } else {
+      // Sample around ideal (NOT breed mean), but with enough width that
+      // hidden genotype can carry real risk behind a smoother phenotype.
+      sampled =
+        ideal +
+        randomBetween(random01, -spread, spread) +
+        bias * random01();
+    }
 
     target[traitKey] = clampTrait(sampled);
   }
