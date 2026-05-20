@@ -32,26 +32,33 @@ const quickStart = [
   "Watch Litters for pregnancy checks, due dates, and puppies.",
 ];
 
-const playerFaq = [
+const beginnerTips = [
+  "Start with a small number of dogs.",
+  "Pay attention to visible category strengths.",
+  "Breed for balance, not perfection.",
+  "Plan for future generations.",
+];
+
+const miniFaq = [
   {
-    question: "What kind of game is this?",
+    question: "How does breeding work?",
     answer:
-      "A kennel management game about buying dogs, breeding thoughtfully, building lines, and preparing for the show ring.",
+      "Select an eligible sire and dam, submit the breeding, wait for the pregnancy check, then follow the litter through whelping.",
   },
   {
-    question: "Why do dog traits feel uncertain?",
+    question: "Are foundation dogs all the same quality?",
     answer:
-      "You see phenotype: visible ring categories. The hidden genotype underneath is wider, so two dogs that look similar can produce different litters.",
+      "No. Some have standout strengths, others have faults to breed around. Finding useful starting dogs is part of the game.",
   },
   {
-    question: "How does the market matter?",
+    question: "Are dog stats random?",
     answer:
-      "The market is where you buy foundation stock, list dogs for sale, and start shaping the value of your kennel's breeding program.",
+      "Each dog has hidden inherited traits. You see visible show categories, but the exact genetic values stay private.",
   },
   {
-    question: "Where is the long game?",
+    question: "How does time work?",
     answer:
-      "Puppies grow into campaign dogs, breeding dogs, veterans, and eventually retired or historical dogs. A kennel becomes a record of choices over generations.",
+      "One real-life hour is one in-game day, so aging, pregnancy checks, gestation, and future show schedules move quickly.",
   },
 ];
 
@@ -210,23 +217,50 @@ export default async function HomePage() {
 
         <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-            <h2 className="text-xl font-semibold text-white">
-              Mini FAQ
-            </h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {playerFaq.map((item) => (
-                <div
-                  key={item.question}
-                  className="rounded-2xl border border-white/10 bg-black/20 p-4"
-                >
-                  <h3 className="text-sm font-semibold text-white">
-                    {item.question}
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-purple-100/72">
-                    {item.answer}
-                  </p>
-                </div>
-              ))}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-semibold text-white">
+                Mini FAQ
+              </h2>
+              <Link
+                href="/faq"
+                className="rounded-xl border border-purple-300/25 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              >
+                Full FAQ
+              </Link>
+            </div>
+
+            <div className="mt-4 grid gap-4 xl:grid-cols-[0.82fr_1.18fr]">
+              <div className="rounded-2xl border border-purple-300/20 bg-purple-500/10 p-4">
+                <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-purple-100">
+                  Quick Beginner Tips
+                </h3>
+                <ul className="mt-3 space-y-2">
+                  {beginnerTips.map((tip) => (
+                    <li
+                      key={tip}
+                      className="text-sm leading-6 text-purple-100/78"
+                    >
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {miniFaq.map((item) => (
+                  <div
+                    key={item.question}
+                    className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                  >
+                    <h3 className="text-sm font-semibold text-white">
+                      {item.question}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-purple-100/72">
+                      {item.answer}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
