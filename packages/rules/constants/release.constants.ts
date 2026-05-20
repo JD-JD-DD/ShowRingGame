@@ -1,4 +1,2 @@
 
-export const CURRENT_BREED_RELEASE = 1; // release version, managine dogs available to users.
-
-// ?? TO DO is playable will need to be changed??
+export const CURRENT_BREED_RELEASE = 2; // Highest breed release version available to players.

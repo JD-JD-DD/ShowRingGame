@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { CURRENT_BREED_RELEASE } from "@showring/rules";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -33,6 +34,10 @@ async function main() {
   });
 
   for (const row of rows) {
+    const releaseVersion = Number(row.release_version.trim()) || null;
+    const isReleased =
+      releaseVersion !== null && releaseVersion <= CURRENT_BREED_RELEASE;
+
     await prisma.breed.upsert({
       where: {
         code2: row.code2.trim(),
@@ -40,15 +45,15 @@ async function main() {
       update: {
         name: row.breed_name.trim(),
         groupName: row.group.trim(),
-        isActive: row.playable.trim().toUpperCase() === "TRUE",
-        releaseVersion: Number(row.release_version.trim()) || null,
+        isActive: isReleased,
+        releaseVersion,
       },
       create: {
         code2: row.code2.trim(),
         name: row.breed_name.trim(),
         groupName: row.group.trim(),
-        isActive: row.playable.trim().toUpperCase() === "TRUE",
-        releaseVersion: Number(row.release_version.trim()) || null,
+        isActive: isReleased,
+        releaseVersion,
       },
     });
   }

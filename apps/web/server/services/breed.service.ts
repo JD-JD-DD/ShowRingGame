@@ -4,7 +4,6 @@ import { CURRENT_BREED_RELEASE } from "@showring/rules";
 export async function getReleasedBreedCodes(): Promise<string[]> {
   const breeds: Array<{ code2: string }> = await db.breed.findMany({
     where: {
-      isActive: true,
       releaseVersion: {
         lte: CURRENT_BREED_RELEASE,
       },
