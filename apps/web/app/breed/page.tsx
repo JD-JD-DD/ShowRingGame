@@ -172,12 +172,21 @@ export default async function BreedPage({ searchParams }: PageProps) {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-purple-300/15 bg-white/5 px-5 py-4">
-          <div className="text-xs uppercase tracking-wide text-purple-200">
-            Kennel Balance
-          </div>
-          <div className="mt-1 text-xl font-semibold text-white">
-            ${kennel.balance.toLocaleString()}
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/kennel"
+            className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+          >
+            Back to My Kennel
+          </Link>
+
+          <div className="rounded-2xl border border-purple-300/15 bg-white/5 px-5 py-4">
+            <div className="text-xs uppercase tracking-wide text-purple-200">
+              Kennel Balance
+            </div>
+            <div className="mt-1 text-xl font-semibold text-white">
+              ${kennel.balance.toLocaleString()}
+            </div>
           </div>
         </div>
       </div>

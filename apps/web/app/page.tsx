@@ -2,23 +2,58 @@ import Image from "next/image";
 import Link from "next/link";
 import { getSessionUserId } from "@/lib/session";
 
+const availableNow = [
+  {
+    title: "Foundation and Player Market",
+    body: "Browse released breeds, compare visible ring categories, buy foundation dogs, and shop player-listed dogs.",
+    href: "/market",
+    action: "Open Market",
+  },
+  {
+    title: "Kennel Dashboard",
+    body: "Review your dogs, pregnancy status, breeding eligibility, market state, and current kennel balance.",
+    href: "/kennel",
+    action: "My Kennel",
+  },
+  {
+    title: "Breeding and Litters",
+    body: "Plan same-breed pairings, create breeding attempts, follow pregnancy timing, and review whelped litters.",
+    href: "/litters",
+    action: "View Litters",
+  },
+];
+
+const quickStart = [
+  "Create an account and establish your kennel.",
+  "Choose a released breed and buy foundation stock.",
+  "Open each dog page to review visible category summaries.",
+  "Register permanent dog names when you are ready.",
+  "Use Breed Dog from a dog page to plan eligible pairings.",
+  "Watch Litters for pregnancy checks, due dates, and puppies.",
+];
+
+const betaNotes = [
+  "Released breeds currently include levels 1 and 2.",
+  "Hidden genotype is wider than visible phenotype, so litter outcomes carry risk.",
+  "Player dog listings are live, with price editing and cancellation.",
+  "Show entry and judging are planned as the next major gameplay side.",
+];
+
 export default async function HomePage() {
   const userId = await getSessionUserId();
 
   return (
     <main className="min-h-screen px-6 py-8 text-white">
       <div className="mx-auto flex max-w-7xl flex-col">
-        <header className="mb-10 flex flex-col gap-6 rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
-              <Image
-                src="/logo.png"
-                alt="ShowRing Game"
-                fill
-                className="object-contain object-left"
-                priority
-              />
-            </div>
+        <header className="mb-8 flex flex-col gap-6 rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur md:flex-row md:items-center md:justify-between">
+          <div className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
+            <Image
+              src="/logo.png"
+              alt="ShowRing Game"
+              fill
+              className="object-contain object-left"
+              priority
+            />
           </div>
 
           <nav className="flex flex-wrap items-center gap-3 text-sm">
@@ -46,7 +81,7 @@ export default async function HomePage() {
                   Go to My Kennel
                 </Link>
                 <Link
-                  href="/market/foundation"
+                  href="/market"
                   className="rounded-full border border-purple-300/30 bg-white/5 px-5 py-2.5 font-semibold text-purple-100 transition hover:bg-white/10"
                 >
                   Browse Market
@@ -56,156 +91,183 @@ export default async function HomePage() {
           </nav>
         </header>
 
-        <section className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[32px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(50,26,71,0.9),rgba(24,12,35,0.92))] p-8 shadow-[0_24px_70px_rgba(0,0,0,0.38)]">
-            <div className="mb-4 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
-              Early Beta. Reminder: Alpha game-dogs will likely be reset for Beta version.
+        <section className="mb-8 rounded-[32px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(50,26,71,0.94),rgba(24,12,35,0.96))] p-7 shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:p-8">
+          <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+            <div>
+              <div className="mb-4 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+                Alpha build. Dogs may reset before beta.
+              </div>
+
+              <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+                Start a kennel, study the dogs, and build your first line.
+              </h1>
+
+              <p className="mt-5 max-w-3xl text-base leading-7 text-purple-100/78 sm:text-lg sm:leading-8">
+                ShowRing Game is currently strongest as a breeder and market
+                simulation. Buy dogs, evaluate visible phenotype, breed litters,
+                list dogs for sale, and watch hidden genotype show up in the
+                next generation.
+              </p>
+
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                {!userId ? (
+                  <>
+                    <Link
+                      href="/signup"
+                      className="rounded-2xl bg-purple-600 px-6 py-4 text-center text-sm font-semibold text-white shadow-lg shadow-purple-900/30 transition hover:bg-purple-500"
+                    >
+                      Create Your Kennel
+                    </Link>
+                    <Link
+                      href="/login"
+                      className="rounded-2xl border border-purple-300/25 bg-white/5 px-6 py-4 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                    >
+                      Sign In
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/kennel"
+                      className="rounded-2xl bg-purple-600 px-6 py-4 text-center text-sm font-semibold text-white shadow-lg shadow-purple-900/30 transition hover:bg-purple-500"
+                    >
+                      Enter My Kennel
+                    </Link>
+                    <Link
+                      href="/market"
+                      className="rounded-2xl border border-purple-300/25 bg-white/5 px-6 py-4 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                    >
+                      Browse Dogs
+                    </Link>
+                    <Link
+                      href="/litters"
+                      className="rounded-2xl border border-purple-300/25 bg-white/5 px-6 py-4 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                    >
+                      View Litters
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
 
-            <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Build a kennel. Buy dogs. Breed the next great winner.
-            </h1>
-
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-purple-100/85">
-              ShowRing Game is a browser-based dog show simulation built around
-              kennel strategy, breeding programs, market decisions, and long-term
-              competition.
-            </p>
-
-            <p className="mt-4 max-w-2xl text-base leading-7 text-purple-100/70">
-              Start your account, establish your kennel, buy foundation dogs,
-              and begin building a line that can compete, reproduce, and shape
-              the future of your program.
-            </p>
-
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              {!userId ? (
-                <>
-                  <Link
-                    href="/signup"
-                    className="rounded-2xl bg-purple-600 px-6 py-4 text-center text-sm font-semibold text-white shadow-lg shadow-purple-900/30 transition hover:bg-purple-500"
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-5">
+              <h2 className="text-xl font-semibold text-white">
+                Quick Start
+              </h2>
+              <ol className="mt-4 space-y-3">
+                {quickStart.map((step, index) => (
+                  <li
+                    key={step}
+                    className="grid grid-cols-[2.25rem_1fr] gap-3 text-sm leading-6 text-purple-100/75"
                   >
-                    Create Your Kennel
-                  </Link>
-                  <Link
-                    href="/login"
-                    className="rounded-2xl border border-purple-300/25 bg-white/5 px-6 py-4 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-                  >
-                    Sign In
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/kennel"
-                    className="rounded-2xl bg-purple-600 px-6 py-4 text-center text-sm font-semibold text-white shadow-lg shadow-purple-900/30 transition hover:bg-purple-500"
-                  >
-                    Enter My Kennel
-                  </Link>
-                  <Link
-                    href="/market/foundation"
-                    className="rounded-2xl border border-purple-300/25 bg-white/5 px-6 py-4 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-                  >
-                    View Foundation Dogs
-                  </Link>
-                </>
-              )}
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full border border-purple-300/25 bg-purple-500/10 text-sm font-semibold text-purple-100">
+                      {index + 1}
+                    </span>
+                    <span className="pt-1.5">{step}</span>
+                  </li>
+                ))}
+              </ol>
             </div>
+          </div>
+        </section>
 
-            <div className="mt-10 grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                <div className="text-sm font-semibold uppercase tracking-wide text-purple-200">
-                  01
-                </div>
-                <h2 className="mt-3 text-lg font-semibold text-white">
-                  Create a Kennel
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-purple-100/70">
-                  Set up your account, receive starter funds, and establish your
-                  place in the game world.
-                </p>
-              </div>
+        <section className="mb-8">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-sm uppercase tracking-[0.22em] text-purple-300/80">
+                Available Now
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">
+                Current playable systems
+              </h2>
+            </div>
+            {userId ? (
+              <Link
+                href="/breed"
+                className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              >
+                Plan a Breeding
+              </Link>
+            ) : null}
+          </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                <div className="text-sm font-semibold uppercase tracking-wide text-purple-200">
-                  02
-                </div>
-                <h2 className="mt-3 text-lg font-semibold text-white">
-                  Buy Foundation Dogs
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-purple-100/70">
-                  Browse available dogs, compare visible ring categories, and
-                  choose the stock that will anchor your program.
+          <div className="grid gap-5 md:grid-cols-3">
+            {availableNow.map((item) => (
+              <article
+                key={item.title}
+                className="rounded-[24px] border border-purple-300/15 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+              >
+                <h3 className="text-lg font-semibold text-white">
+                  {item.title}
+                </h3>
+                <p className="mt-3 min-h-[5.25rem] text-sm leading-7 text-purple-100/72">
+                  {item.body}
                 </p>
-              </div>
+                <Link
+                  href={userId ? item.href : "/login"}
+                  className="mt-5 inline-flex rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-500"
+                >
+                  {userId ? item.action : "Log In"}
+                </Link>
+              </article>
+            ))}
+          </div>
+        </section>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                <div className="text-sm font-semibold uppercase tracking-wide text-purple-200">
-                  03
+        <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+            <h2 className="text-xl font-semibold text-white">
+              What to test first
+            </h2>
+            <div className="mt-4 space-y-3">
+              {betaNotes.map((note) => (
+                <div
+                  key={note}
+                  className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm leading-6 text-purple-100/75"
+                >
+                  {note}
                 </div>
-                <h2 className="mt-3 text-lg font-semibold text-white">
-                  Grow Your Program
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-purple-100/70">
-                  Breed future generations, enter shows, and develop a kennel
-                  with identity, depth, and long-term goals.
-                </p>
-              </div>
+              ))}
             </div>
           </div>
 
-          <aside className="flex flex-col gap-6">
-            <div className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-              <h2 className="text-xl font-semibold text-white">Current Beta Focus</h2>
-              <div className="mt-4 space-y-3">
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-sm font-medium text-purple-100">Accounts and kennel setup</div>
+          <div className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(124,58,237,0.16),rgba(255,255,255,0.04))] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+            <h2 className="text-xl font-semibold text-white">
+              Game Time
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-purple-100/75">
+              One real hour is one in-game day. Pregnancy checks, due dates,
+              aging, market movement, and future show calendars all use that
+              faster clock, so the kennel changes meaningfully across a normal
+              play session.
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="text-xs uppercase tracking-wide text-purple-200">
+                  Breeding
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-sm font-medium text-purple-100">Foundation dog purchasing</div>
+                <div className="mt-2 text-sm font-medium text-white">
+                  Check, whelp, evaluate
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-sm font-medium text-purple-100">Kennel roster viewing</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="text-xs uppercase tracking-wide text-purple-200">
+                  Market
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-sm font-medium text-purple-100">Dog pages, breeding, and show flow next</div>
+                <div className="mt-2 text-sm font-medium text-white">
+                  Buy, list, adjust
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="text-xs uppercase tracking-wide text-purple-200">
+                  Shows
+                </div>
+                <div className="mt-2 text-sm font-medium text-white">
+                  Coming next
                 </div>
               </div>
             </div>
-
-            <div className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(124,58,237,0.18),rgba(255,255,255,0.04))] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-              <h2 className="text-xl font-semibold text-white">Design Direction</h2>
-              <p className="mt-3 text-sm leading-7 text-purple-100/75">
-                <strong>Time Moves Fast Here</strong>
-                <br /><br />
-                In the Show Ring Game, time doesn't wait.
-                <br /><br />
-                Every real hour is a full in-game day, and shows don't just happen 
-                once a day—they roll through the day in waves.
-                <br /><br />
-                Weekend clusters can run multiple shows back-to-back, especially 
-                on long weekends. That means you might see several shows happen 
-                in just a few hours, not all at once.
-                <br /><br />
-                If you're not paying attention, you won't miss a day…<br />
-                you'll miss a weekend.
-                <br /><br />
-                Plan ahead. Watch the schedule. Stay in the ring.
-              </p>
-
-              <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
-                  Next step 
-                </div>
-                <div className="mt-2 text-base font-semibold text-white">
-                  My Kennel dashboard
-                </div>
-                <p className="mt-2 text-sm leading-6 text-purple-100/70">
-                  The command center
-                </p>
-              </div>
-            </div>
-          </aside>
+          </div>
         </section>
       </div>
     </main>
