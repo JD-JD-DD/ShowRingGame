@@ -32,11 +32,27 @@ const quickStart = [
   "Watch Litters for pregnancy checks, due dates, and puppies.",
 ];
 
-const betaNotes = [
-  "Released breeds currently include levels 1 and 2.",
-  "Hidden genotype is wider than visible phenotype, so litter outcomes carry risk.",
-  "Player dog listings are live, with price editing and cancellation.",
-  "Show entry and judging are planned as the next major gameplay side.",
+const playerFaq = [
+  {
+    question: "What kind of game is this?",
+    answer:
+      "A kennel management game about buying dogs, breeding thoughtfully, building lines, and preparing for the show ring.",
+  },
+  {
+    question: "Why do dog traits feel uncertain?",
+    answer:
+      "You see phenotype: visible ring categories. The hidden genotype underneath is wider, so two dogs that look similar can produce different litters.",
+  },
+  {
+    question: "How does the market matter?",
+    answer:
+      "The market is where you buy foundation stock, list dogs for sale, and start shaping the value of your kennel's breeding program.",
+  },
+  {
+    question: "Where is the long game?",
+    answer:
+      "Puppies grow into campaign dogs, breeding dogs, veterans, and eventually retired or historical dogs. A kennel becomes a record of choices over generations.",
+  },
 ];
 
 export default async function HomePage() {
@@ -95,7 +111,7 @@ export default async function HomePage() {
           <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
             <div>
               <div className="mb-4 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
-                Alpha build. Dogs may reset before beta.
+                Dog show and breeder simulation
               </div>
 
               <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
@@ -103,10 +119,7 @@ export default async function HomePage() {
               </h1>
 
               <p className="mt-5 max-w-3xl text-base leading-7 text-purple-100/78 sm:text-lg sm:leading-8">
-                ShowRing Game is currently strongest as a breeder and market
-                simulation. Buy dogs, evaluate visible phenotype, breed litters,
-                list dogs for sale, and watch hidden genotype show up in the
-                next generation.
+                The Show Ring Game: A Dog Show and Breeder Simulation
               </p>
 
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -172,25 +185,6 @@ export default async function HomePage() {
         </section>
 
         <section className="mb-8">
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-sm uppercase tracking-[0.22em] text-purple-300/80">
-                Available Now
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">
-                Current playable systems
-              </h2>
-            </div>
-            {userId ? (
-              <Link
-                href="/breed"
-                className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-              >
-                Plan a Breeding
-              </Link>
-            ) : null}
-          </div>
-
           <div className="grid gap-5 md:grid-cols-3">
             {availableNow.map((item) => (
               <article
@@ -214,18 +208,23 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+        <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
             <h2 className="text-xl font-semibold text-white">
-              What to test first
+              Mini FAQ
             </h2>
-            <div className="mt-4 space-y-3">
-              {betaNotes.map((note) => (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {playerFaq.map((item) => (
                 <div
-                  key={note}
-                  className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm leading-6 text-purple-100/75"
+                  key={item.question}
+                  className="rounded-2xl border border-white/10 bg-black/20 p-4"
                 >
-                  {note}
+                  <h3 className="text-sm font-semibold text-white">
+                    {item.question}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-purple-100/72">
+                    {item.answer}
+                  </p>
                 </div>
               ))}
             </div>
