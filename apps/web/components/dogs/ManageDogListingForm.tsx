@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 type ManageDogListingFormProps = {
   dogId: string;
   listingId: string;
@@ -19,6 +21,8 @@ export default function ManageDogListingForm({
   updateAction,
   cancelAction,
 }: ManageDogListingFormProps) {
+  const [isEditing, setIsEditing] = useState(false);
+
   function confirmCancel(event: React.FormEvent<HTMLFormElement>) {
     const confirmed = window.confirm(
       "Cancel this sale listing? The dog will be removed from the market."
@@ -38,42 +42,51 @@ export default function ManageDogListingForm({
         {formatMoney(currentPrice)}
       </div>
 
-      <form action={updateAction} method="post" className="mt-3">
-        <input type="hidden" name="dogId" value={dogId} />
-        <input type="hidden" name="listingId" value={listingId} />
-        <label className="block">
-          <span className="text-xs font-medium text-purple-100/65">
-            Change Price
-          </span>
-          <input
-            type="number"
-            name="askingPrice"
-            min={1}
-            step={1}
-            required
-            inputMode="numeric"
-            defaultValue={currentPrice}
-            className="mt-2 w-full rounded-xl border border-emerald-300/20 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/50"
-          />
-        </label>
+      {!isEditing ? (
         <button
-          type="submit"
-          className="mt-2 w-full rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+          type="button"
+          onClick={() => setIsEditing(true)}
+          className="mt-3 w-full rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
         >
-          Update Price
+          Edit Sale
         </button>
-      </form>
+      ) : null}
 
-      <form action={cancelAction} method="post" onSubmit={confirmCancel}>
-        <input type="hidden" name="dogId" value={dogId} />
-        <input type="hidden" name="listingId" value={listingId} />
-        <button
-          type="submit"
-          className="mt-2 w-full rounded-xl border border-red-300/25 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
-        >
-          Cancel Listing
-        </button>
-      </form>
+      {isEditing ? (
+        <>
+          <form action={updateAction} method="post" className="mt-3">
+            <input type="hidden" name="dogId" value={dogId} />
+            <input type="hidden" name="listingId" value={listingId} />
+            <input
+              type="number"
+              name="askingPrice"
+              min={1}
+              step={1}
+              required
+              inputMode="numeric"
+              defaultValue={currentPrice}
+              className="w-full rounded-xl border border-emerald-300/20 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/50"
+            />
+            <button
+              type="submit"
+              className="mt-2 w-full rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+            >
+              Update Price
+            </button>
+          </form>
+
+          <form action={cancelAction} method="post" onSubmit={confirmCancel}>
+            <input type="hidden" name="dogId" value={dogId} />
+            <input type="hidden" name="listingId" value={listingId} />
+            <button
+              type="submit"
+              className="mt-2 w-full rounded-xl border border-red-300/25 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
+            >
+              Cancel Listing
+            </button>
+          </form>
+        </>
+      ) : null}
     </div>
   );
 }

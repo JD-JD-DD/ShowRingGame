@@ -352,7 +352,7 @@ export default function MarketPage() {
           </section>
         ) : dogs.length === 0 ? (
           <section className="rounded-[28px] border border-white/10 bg-white/5 p-8 text-sm text-purple-100/75 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
-            No dogs are currently available for that breed.
+            Click Browse Dogs.
           </section>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
