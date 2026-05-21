@@ -11,6 +11,7 @@ import {
   MIN_BREED_AGE_HOURS,
   MIN_SHOW_AGE_HOURS,
   PUPPY_SALE_MIN_AGE_HOURS,
+  WHELPING_COOLDOWN_HOURS,
 } from "@showring/rules";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
@@ -141,6 +142,47 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           regNumber: true,
         },
       },
+      sireOf: {
+        orderBy: [{ birthEpoch: "desc" }, { regNumber: "asc" }],
+        select: {
+          id: true,
+          callName: true,
+          registeredName: true,
+          regNumber: true,
+          sex: true,
+        },
+      },
+      damOf: {
+        orderBy: [{ birthEpoch: "desc" }, { regNumber: "asc" }],
+        select: {
+          id: true,
+          callName: true,
+          registeredName: true,
+          regNumber: true,
+          sex: true,
+        },
+      },
+      breedingAttemptsAsDam: {
+        where: {
+          OR: [
+            {
+              status: {
+                in: ["INITIATED", "PREGNANT"],
+              },
+            },
+            {
+              status: "WHELPED",
+              whelpedEpoch: {
+                not: null,
+                gt: currentEpoch - WHELPING_COOLDOWN_HOURS,
+              },
+            },
+          ],
+        },
+        select: {
+          id: true,
+        },
+      },
       listings: {
         where: {
           status: "ACTIVE",
@@ -208,7 +250,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     isOwnedByCurrentKennel &&
     isAlive &&
     ageHours >= MIN_BREED_AGE_HOURS &&
-    (dog.sex === "M" || ageHours <= DAM_MAX_BREED_AGE_HOURS);
+    (dog.sex === "M" ||
+      (ageHours <= DAM_MAX_BREED_AGE_HOURS &&
+        dog.breedingAttemptsAsDam.length === 0));
 
   const displayName =
     dog.registeredName || dog.callName || dog.regNumber || "Unnamed Dog";
@@ -220,6 +264,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     dog.marketState === "NOT_FOR_SALE";
 
   const categoryEntries = Object.entries(visibleCategories);
+  const progeny = dog.sex === "M" ? dog.sireOf : dog.damOf;
 
   return (
     <main className="min-h-screen px-6 py-8 text-white">
@@ -479,10 +524,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     Breeding Eligibility
                   </div>
                   <div className="mt-1 text-sm font-medium text-white">
-                    {ageHours >= MIN_BREED_AGE_HOURS &&
-                    (dog.sex === "M" || ageHours <= DAM_MAX_BREED_AGE_HOURS)
-                      ? "Eligible"
-                      : "Not eligible"}
+                    {canBreed ? "Eligible" : "Not eligible"}
                   </div>
                 </div>
               </div>
@@ -573,6 +615,33 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 </div>
               </div>
             </div>
+          </section>
+
+          <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+            <h2 className="text-xl font-semibold text-white">Progeny</h2>
+
+            {progeny.length > 0 ? (
+              <div className="mt-4 grid gap-2">
+                {progeny.map((puppy) => (
+                  <Link
+                    key={puppy.id}
+                    href={`/dogs/${puppy.id}`}
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm transition hover:border-purple-300/35 hover:bg-white/10"
+                  >
+                    <span className="font-medium text-white">
+                      {puppy.registeredName ?? puppy.callName ?? puppy.regNumber}
+                    </span>
+                    <span className="shrink-0 text-purple-100/70">
+                      {puppy.sex}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
+                No progeny recorded.
+              </div>
+            )}
           </section>
 
           <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">

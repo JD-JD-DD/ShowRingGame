@@ -7,6 +7,7 @@ import { resolveBreedingProgressForKennel } from "@/server/services/breeding.ser
 import {
   DAM_MAX_BREED_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
+  WHELPING_COOLDOWN_HOURS,
   deriveVisibleCategoriesFromTraits,
 } from "@showring/rules";
 
@@ -61,10 +62,12 @@ type BreedingCardStatus = {
     | "Pregnant"
     | "Did Not Take"
     | "Whelped"
+    | "Post-Whelp Cooldown"
     | "Available for Stud"
     | "Not Eligible";
   pregCheckInHours: number | null;
   dueInHours: number | null;
+  cooldownInHours: number | null;
 };
 
 function toVisibleCategories(dog: MineDog) {
@@ -99,6 +102,7 @@ function getBreedingCardStatus(
       label: "Not Eligible",
       pregCheckInHours: null,
       dueInHours: null,
+      cooldownInHours: null,
     };
   }
 
@@ -107,6 +111,7 @@ function getBreedingCardStatus(
       label: "Available for Stud",
       pregCheckInHours: null,
       dueInHours: null,
+      cooldownInHours: null,
     };
   }
 
@@ -124,6 +129,7 @@ function getBreedingCardStatus(
         activeDamAttempt.dueEpoch == null
           ? null
           : Math.max(0, activeDamAttempt.dueEpoch - currentEpoch),
+      cooldownInHours: null,
     };
   }
 
@@ -135,22 +141,39 @@ function getBreedingCardStatus(
           ? null
           : Math.max(0, activeDamAttempt.pregCheckEpoch - currentEpoch),
       dueInHours: null,
+      cooldownInHours: null,
     };
   }
 
-  const recentWhelpedAttempt =
+  const latestWhelpedAttempt =
     dog.breedingAttemptsAsDam.find(
       (attempt) =>
         attempt.status === "WHELPED" &&
-        attempt.whelpedEpoch !== null &&
-        currentEpoch - attempt.whelpedEpoch <= RECENT_BREEDING_RESULT_HOURS
+        attempt.whelpedEpoch !== null
     ) ?? null;
+  const cooldownUntil =
+    latestWhelpedAttempt?.whelpedEpoch == null
+      ? null
+      : latestWhelpedAttempt.whelpedEpoch + WHELPING_COOLDOWN_HOURS;
 
-  if (recentWhelpedAttempt) {
+  if (cooldownUntil !== null && currentEpoch < cooldownUntil) {
+    return {
+      label: "Post-Whelp Cooldown",
+      pregCheckInHours: null,
+      dueInHours: null,
+      cooldownInHours: cooldownUntil - currentEpoch,
+    };
+  }
+
+  if (
+    latestWhelpedAttempt?.whelpedEpoch != null &&
+    currentEpoch - latestWhelpedAttempt.whelpedEpoch <= RECENT_BREEDING_RESULT_HOURS
+  ) {
     return {
       label: "Whelped",
       pregCheckInHours: null,
       dueInHours: null,
+      cooldownInHours: null,
     };
   }
 
@@ -167,6 +190,7 @@ function getBreedingCardStatus(
       label: "Did Not Take",
       pregCheckInHours: null,
       dueInHours: null,
+      cooldownInHours: null,
     };
   }
 
@@ -174,6 +198,7 @@ function getBreedingCardStatus(
     label: "Open",
     pregCheckInHours: null,
     dueInHours: null,
+    cooldownInHours: null,
   };
 }
 

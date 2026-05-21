@@ -32,6 +32,13 @@ export const TRAVEL_COST_MULTIPLIER = 0 // TBD
 export const ENTRY_FEE_PER_SHOW = 1;
 
 /**
+ * Flat fee charged when a player creates an in-kennel breeding.
+ *
+ * Public stud service fees will be separate and paid to the stud dog's owner.
+ */
+export const BREEDING_FEE = 500;
+
+/**
  * Flat handler fee applied when 4 or more dogs are entered in the cluster.
  *
  * V1 rule:

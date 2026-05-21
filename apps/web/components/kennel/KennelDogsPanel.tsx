@@ -12,10 +12,12 @@ type BreedingCardStatus = {
     | "Pregnant"
     | "Did Not Take"
     | "Whelped"
+    | "Post-Whelp Cooldown"
     | "Available for Stud"
     | "Not Eligible";
   pregCheckInHours: number | null;
   dueInHours: number | null;
+  cooldownInHours: number | null;
 };
 
 type KennelDogDto = {
@@ -132,6 +134,14 @@ function formatBreedingStatus(status: BreedingCardStatus): string {
     Number.isFinite(status.pregCheckInHours)
   ) {
     return `Check in ${status.pregCheckInHours}d`;
+  }
+
+  if (
+    status.label === "Post-Whelp Cooldown" &&
+    typeof status.cooldownInHours === "number" &&
+    Number.isFinite(status.cooldownInHours)
+  ) {
+    return `Cooldown ${status.cooldownInHours}d`;
   }
 
   return status.label;
@@ -394,19 +404,19 @@ export default function KennelDogsPanel() {
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_minmax(280px,1fr)_minmax(150px,0.7fr)_minmax(130px,0.7fr)_minmax(150px,0.8fr)]">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name or breed..."
-            className="rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-purple-100/40"
+            className="min-w-0 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-purple-100/40"
           />
 
           <select
             value={breedFilter}
             onChange={(e) => setBreedFilter(e.target.value)}
-            className="rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+            className="min-w-0 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
           >
             <option value="">All Breeds</option>
             {breedOptions.map((breed) => (
@@ -419,7 +429,7 @@ export default function KennelDogsPanel() {
           <select
             value={sexFilter}
             onChange={(e) => setSexFilter(e.target.value as "" | "M" | "F")}
-            className="rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+            className="min-w-0 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
           >
             <option value="">All Sexes</option>
             <option value="M">Dogs</option>

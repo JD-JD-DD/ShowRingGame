@@ -6,6 +6,7 @@ import BreedPageClient from "@/components/breeding/BreedPageClient";
 import {
   DAM_MAX_BREED_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
+  WHELPING_COOLDOWN_HOURS,
   deriveVisibleCategoriesFromTraits,
 } from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
@@ -99,12 +100,23 @@ export default async function BreedPage({ searchParams }: PageProps) {
       },
       breedingAttemptsAsDam: {
         where: {
-          status: {
-            in: ["INITIATED", "PREGNANT"],
-          },
+          OR: [
+            {
+              status: {
+                in: ["INITIATED", "PREGNANT"],
+              },
+            },
+            {
+              status: "WHELPED",
+              whelpedEpoch: {
+                not: null,
+                gt: currentEpoch - WHELPING_COOLDOWN_HOURS,
+              },
+            },
+          ],
         },
-        select: { id: true },
-        take: 1,
+        orderBy: [{ createdEpoch: "desc" }],
+        select: { id: true, status: true },
       },
     },
     orderBy: [{ breedCode2: "asc" }, { birthEpoch: "asc" }],
@@ -116,7 +128,8 @@ export default async function BreedPage({ searchParams }: PageProps) {
     const oldEnough = ageHours >= MIN_BREED_AGE_HOURS;
     const notTooOldIfFemale =
       dog.sex === "F" ? ageHours <= DAM_MAX_BREED_AGE_HOURS : true;
-    const inBreedingConflict = dog.sex === "F" && dog.breedingAttemptsAsDam.length > 0;
+    const inBreedingConflict =
+      dog.sex === "F" && dog.breedingAttemptsAsDam.length > 0;
 
     return {
       id: dog.id,

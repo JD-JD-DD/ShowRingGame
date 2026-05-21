@@ -37,6 +37,9 @@ Status: audited; implementation pass needed
   - eligible same-breed opposite-sex mates are shown
   - ineligible dogs are hidden from the mate list
   - visible trait/category sliders appear on the selected dog and mate cards
+  - breeding creation now charges the flat breeding fee server-side and records a ledger transaction
+  - post-whelp cooldown is now derived from the latest whelped attempt in the breed page, dog page, kennel roster, and server create path
+  - female max breeding age is enforced on the server create path and the current breeding UI paths
 
 Original audit checklist:
 
@@ -96,12 +99,14 @@ Status: audited; implementation pass needed
 
 ### 3. Post-Whelp Cooldown
 
-Status: todo, no behavior change yet
+Status: first pass implemented; polish/testing needed
 
 - Use current rule unless superseded: `WHELPING_COOLDOWN_HOURS = 270`.
-- Persist or derive the bitch's post-whelp cooldown.
-- Show countdown until breeding eligibility returns.
-- Do not apply cooldown after `CHECKED_NOT_PREGNANT`.
+- Done: derive the bitch's post-whelp cooldown from the latest `WHELPED` attempt.
+- Done: block breeding creation while cooldown is active.
+- Done: keep `CHECKED_NOT_PREGNANT` immediately breedable if otherwise eligible.
+- Done: show a kennel roster countdown while cooldown is active.
+- Next: add focused tests for active pregnancy, did-not-take, cooldown, and age-out cases.
 
 ### 4. Breeding and Litter Follow-Ups
 
@@ -138,8 +143,9 @@ Status: audited; implementation pass needed
 - Dog page:
   - remove or replace raw user-facing `ALIVE`/`Lifecycle` display for normal active dogs
   - show pregnancy state, pregnancy check countdown, or due countdown when applicable
-  - make the `Breed Dog` button use the same eligibility logic as the breeding service
-  - disable or hide breeding when the dog is pending, pregnant, post-whelp cooldown, senior, retired, deceased, or forever-homed
+  - done: make the `Breed Dog` button account for pending, pregnant, post-whelp cooldown, age, alive state, and ownership
+  - disable or hide breeding when the dog is senior, retired, deceased, or forever-homed once those final statuses are centralized
+  - done: list direct progeny on sire and dam pages with clickable dog links
   - make deceased/forever-home dog pages historical-only with no gameplay actions
 - Breed page from dog page:
   - first pass implemented: `/breed?dogId=...` is honored, the clicked dog is pinned/preselected, only eligible same-breed opposite-sex mates are listed, and trait sliders are shown
@@ -149,6 +155,7 @@ Status: audited; implementation pass needed
   - add retirement couch view later
   - add memorium view later
   - replace local breedable/show filters with shared eligibility DTOs when helpers are centralized
+  - done: widen the kennel roster filter controls so long breed names are easier to read
 - Actions and placement:
   - rename or replace `Re-Home Dog` with final `Forever Home` behavior
   - reserve transferred/sold for ownership changes to another kennel
@@ -188,6 +195,12 @@ Status: todo; strategy/design needed before implementation
   - enforce male ownership, breed compatibility, age/breeding eligibility, retired/deceased/forever-home exclusions, and any future per-dog breeding cooldown or use limits
   - record `STUD_FEE_IN` and `STUD_FEE_OUT` ledger transactions
   - decide whether stud listings use `DogListing`, a separate `StudListing`, or a breeding-contract model before implementation
+  - first UI target:
+    - dog page action: `Available for Stud`
+    - owner enters a whole-dollar stud fee
+    - bitch breed page keeps owned eligible males first, with a secondary `See Available Studs` action
+    - public studs list only same-breed eligible males from other kennels
+    - creating the breeding charges the bitch owner and pays the stud owner
 
 ### 7. Show Entry and Judging Flow
 

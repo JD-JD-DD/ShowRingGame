@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { BREEDING_FEE } from "@showring/rules";
 
 type VisibleCategories = Record<string, number>;
 
@@ -30,7 +31,6 @@ type Props = {
   initialDogId: string | null;
 };
 
-const BREEDING_FEE = 500;
 const USUAL_PREG_CHECK_DAYS = 28;
 const USUAL_GESTATION_DAYS = 56;
 

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import {
+  BREEDING_FEE,
   DAM_MAX_BREED_AGE_HOURS,
   deriveVisibleCategoriesFromTraits,
   MIN_BREED_AGE_HOURS,
@@ -7,6 +8,7 @@ import {
   rollLitterSize,
   resolvePregnancyCheck,
   resolveWhelp,
+  WHELPING_COOLDOWN_HOURS,
 } from "@showring/rules";
 import { randomUUID } from "node:crypto";
 
@@ -651,6 +653,32 @@ export async function createBreedingAttemptForKennel(args: {
     throw new Error("That dam already has an active breeding in progress.");
   }
 
+  const latestWhelpedAttempt = await db.breedingAttempt.findFirst({
+    where: {
+      damId: dam.id,
+      status: "WHELPED",
+      whelpedEpoch: {
+        not: null,
+      },
+    },
+    orderBy: {
+      whelpedEpoch: "desc",
+    },
+    select: {
+      whelpedEpoch: true,
+    },
+  });
+  const damCooldownUntil =
+    latestWhelpedAttempt?.whelpedEpoch == null
+      ? null
+      : latestWhelpedAttempt.whelpedEpoch + WHELPING_COOLDOWN_HOURS;
+
+  if (damCooldownUntil !== null && currentEpoch < damCooldownUntil) {
+    throw new Error(
+      `${displayDogName(dam)} is in post-whelp cooldown for ${damCooldownUntil - currentEpoch} more day(s).`
+    );
+  }
+
   const rngSeed = Math.floor(Math.random() * 1_000_000);
   let timingNoiseIndex = 0;
   const timing = rollBreedingTiming(() => {
@@ -659,32 +687,73 @@ export async function createBreedingAttemptForKennel(args: {
     return value;
   });
 
-  const attempt = await db.breedingAttempt.create({
-    data: {
-      sireId: sire.id,
-      damId: dam.id,
-      breedCode2: sire.breedCode2,
-      createdEpoch: currentEpoch,
-      pregCheckEpoch: currentEpoch + timing.pregCheckDelayHours,
-      dueEpoch: currentEpoch + timing.gestationHours,
-      checkedEpoch: null,
-      isPregnant: null,
-      status: "INITIATED",
-      createdByKennelId: kennelId,
-      rngSeed,
-      studFeeAmount: 0,
-      notes: "Beta breeding attempt created from breeding page.",
-    },
-    select: {
-      id: true,
-      sireId: true,
-      damId: true,
-      breedCode2: true,
-      createdEpoch: true,
-      pregCheckEpoch: true,
-      dueEpoch: true,
-      status: true,
-    },
+  const attempt = await db.$transaction(async (tx) => {
+    const kennel = await tx.kennel.findUnique({
+      where: { id: kennelId },
+      select: { id: true, balance: true },
+    });
+
+    if (!kennel) {
+      throw new Error("Kennel not found.");
+    }
+
+    if (kennel.balance < BREEDING_FEE) {
+      throw new Error("Insufficient funds for the breeding fee.");
+    }
+
+    const balanceAfter = kennel.balance - BREEDING_FEE;
+
+    await tx.kennel.update({
+      where: { id: kennel.id },
+      data: { balance: balanceAfter },
+    });
+
+    const createdAttempt = await tx.breedingAttempt.create({
+      data: {
+        sireId: sire.id,
+        damId: dam.id,
+        breedCode2: sire.breedCode2,
+        createdEpoch: currentEpoch,
+        pregCheckEpoch: currentEpoch + timing.pregCheckDelayHours,
+        dueEpoch: currentEpoch + timing.gestationHours,
+        checkedEpoch: null,
+        isPregnant: null,
+        status: "INITIATED",
+        createdByKennelId: kennelId,
+        rngSeed,
+        studFeeAmount: 0,
+        notes: "Beta breeding attempt created from breeding page.",
+      },
+      select: {
+        id: true,
+        sireId: true,
+        damId: true,
+        breedCode2: true,
+        createdEpoch: true,
+        pregCheckEpoch: true,
+        dueEpoch: true,
+        status: true,
+      },
+    });
+
+    await tx.ledgerTransaction.create({
+      data: {
+        kennelId: kennel.id,
+        transactionType: "BREEDING_FEE",
+        amount: -BREEDING_FEE,
+        balanceAfter,
+        occurredAtEpoch: currentEpoch,
+        dogId: dam.id,
+        memo: `Breeding fee for ${displayDogName(dam)} x ${displayDogName(sire)}.`,
+        metadataJson: {
+          sireId: sire.id,
+          damId: dam.id,
+          breedingAttemptId: createdAttempt.id,
+        },
+      },
+    });
+
+    return createdAttempt;
   });
 
   return {

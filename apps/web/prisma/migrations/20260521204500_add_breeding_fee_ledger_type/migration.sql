@@ -1,0 +1,1 @@
+ALTER TYPE "LedgerTransactionType" ADD VALUE IF NOT EXISTS 'BREEDING_FEE';
