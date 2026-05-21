@@ -87,12 +87,12 @@ function isEntryWindowOpen(args: {
   block: ShowBlockForEntry;
   currentEpoch: number;
 }): boolean {
-  const { block, currentEpoch } = args;
+  const { block } = args;
 
   return (
-    currentEpoch >= block.showDay.cluster.entryOpenEpoch &&
-    currentEpoch <= block.showDay.cluster.entryCloseEpoch &&
-    currentEpoch < block.startEpoch
+    block.showDay.cluster.status !== "COMPLETE" &&
+    block.showDay.status !== "RESULTS_PUBLISHED" &&
+    block.status !== "RESULTS_PUBLISHED"
   );
 }
 

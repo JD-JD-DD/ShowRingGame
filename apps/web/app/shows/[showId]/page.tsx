@@ -6,6 +6,7 @@ import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { listEligibleDogsByShowBlock } from "@/server/services/showEntry.service";
+import { ENTRY_FEE_PER_SHOW } from "@showring/rules";
 
 function formatShowDateTime(epoch: number): string {
   return epochToDate(epoch).toLocaleString("en-US", {
@@ -329,7 +330,7 @@ export default async function ShowDetailPage({
                                     type="submit"
                                     className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500"
                                   >
-                                    Enter
+                                    Enter ${ENTRY_FEE_PER_SHOW}
                                   </button>
                                 </form>
                               ) : (

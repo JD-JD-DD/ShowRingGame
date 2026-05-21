@@ -29,7 +29,7 @@ export const TRAVEL_COST_MULTIPLIER = 0 // TBD
  * Example:
  * 1 dog entered on 3 cluster days = 3 entries
  */
-export const ENTRY_FEE_PER_SHOW = 1;
+export const ENTRY_FEE_PER_SHOW = 25;
 
 /**
  * Flat fee charged when a player creates an in-kennel breeding.

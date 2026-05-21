@@ -230,6 +230,11 @@ Status: audited; mostly greenfield implementation
   - done: admin test route seeds entries through the real show entry service
   - done: `/shows/[showId]` lists eligible kennel dogs per judging block and submits real entries
   - done: `POST /api/shows/[showId]/enter` creates player show entries through the shared service
+  - done: show entry fee is `$25`, the entry button says `Enter $25`, and entries debit the kennel ledger/balance
+  - done: entry close timing is temporarily relaxed while show timing rules are still being designed
+  - done: `/ledger` page shows recent kennel ledger transactions
+  - done: a global UTC clock appears in the upper right of app pages
+  - later: decide the actual entry close timing and re-enable entry window enforcement
   - add a basic result page before awards/title progression
   - refine show detail/entry planner page with quote summaries and stronger entry feedback
   - then make dog page `Enter Show` route to the planner with optional `/shows?dogId=...` preselection

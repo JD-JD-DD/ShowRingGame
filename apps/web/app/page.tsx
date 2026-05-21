@@ -23,7 +23,7 @@ const availableNow = [
   },
   {
     title: "Show Calendar",
-    body: "Open seeded shows, review judging blocks, enter eligible kennel dogs, and run test judging.",
+    body: "Open seeded shows, review judging blocks, and enter eligible kennel dogs.",
     href: "/shows",
     action: "Enter Shows",
   },

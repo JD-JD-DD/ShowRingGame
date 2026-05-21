@@ -84,6 +84,13 @@ export default async function KennelPage() {
         >
           Shows
         </Link>
+
+        <Link
+          href="/ledger"
+          className="rounded-md border border-purple-300/40 px-5 py-2 text-sm font-semibold text-purple-100 hover:bg-purple-950/40"
+        >
+          Ledger
+        </Link>
       </div>
 
 

@@ -1,0 +1,86 @@
+division,breedName,sex,points,requiredDogs
+13,Barbets,dogs,1,2
+13,Barbets,dogs,2,3
+13,Barbets,dogs,3,4
+13,Barbets,dogs,4,5
+13,Barbets,dogs,5,6
+13,Barbets,bitches,1,2
+13,Barbets,bitches,2,3
+13,Barbets,bitches,3,4
+13,Barbets,bitches,4,5
+13,Barbets,bitches,5,6
+13,Bracchi Italiani,dogs,1,2
+13,Bracchi Italiani,dogs,2,3
+13,Bracchi Italiani,dogs,3,4
+13,Bracchi Italiani,dogs,4,5
+13,Bracchi Italiani,dogs,5,6
+13,Bracchi Italiani,bitches,1,2
+13,Bracchi Italiani,bitches,2,3
+13,Bracchi Italiani,bitches,3,4
+13,Bracchi Italiani,bitches,4,5
+13,Bracchi Italiani,bitches,5,6
+13,Brittanys,dogs,1,2
+13,Brittanys,dogs,2,3
+13,Brittanys,dogs,3,4
+13,Brittanys,dogs,4,5
+13,Brittanys,dogs,5,7
+13,Brittanys,bitches,1,2
+13,Brittanys,bitches,2,3
+13,Brittanys,bitches,3,4
+13,Brittanys,bitches,4,5
+13,Brittanys,bitches,5,6
+13,Lagotto Romagnolo,dogs,1,2
+13,Lagotto Romagnolo,dogs,2,3
+13,Lagotto Romagnolo,dogs,3,4
+13,Lagotto Romagnolo,dogs,4,5
+13,Lagotto Romagnolo,dogs,5,6
+13,Lagotto Romagnolo,bitches,1,2
+13,Lagotto Romagnolo,bitches,2,3
+13,Lagotto Romagnolo,bitches,3,4
+13,Lagotto Romagnolo,bitches,4,5
+13,Lagotto Romagnolo,bitches,5,6
+13,Nederlandse Kooikerhondjes,dogs,1,2
+13,Nederlandse Kooikerhondjes,dogs,2,3
+13,Nederlandse Kooikerhondjes,dogs,3,4
+13,Nederlandse Kooikerhondjes,dogs,4,5
+13,Nederlandse Kooikerhondjes,dogs,5,6
+13,Nederlandse Kooikerhondjes,bitches,1,2
+13,Nederlandse Kooikerhondjes,bitches,2,3
+13,Nederlandse Kooikerhondjes,bitches,3,4
+13,Nederlandse Kooikerhondjes,bitches,4,5
+13,Nederlandse Kooikerhondjes,bitches,5,6
+13,Pointers,dogs,1,2
+13,Pointers,dogs,2,3
+13,Pointers,dogs,3,4
+13,Pointers,dogs,4,5
+13,Pointers,dogs,5,6
+13,Pointers,bitches,1,2
+13,Pointers,bitches,2,3
+13,Pointers,bitches,3,4
+13,Pointers,bitches,4,5
+13,Pointers,bitches,5,6
+13,Pointers (German Shorthaired),dogs,1,2
+13,Pointers (German Shorthaired),dogs,2,3
+13,Pointers (German Shorthaired),dogs,3,4
+13,Pointers (German Shorthaired),dogs,4,5
+13,Pointers (German Shorthaired),dogs,5,6
+13,Pointers (German Shorthaired),bitches,1,2
+13,Pointers (German Shorthaired),bitches,2,4
+13,Pointers (German Shorthaired),bitches,3,6
+13,Pointers (German Shorthaired),bitches,4,7
+13,Pointers (German Shorthaired),bitches,5,8
+13,Retrievers (Golden),dogs,1,2
+13,Retrievers (Golden),dogs,2,6
+13,Retrievers (Golden),dogs,3,9
+13,Retrievers (Golden),dogs,4,10
+13,Retrievers (Golden),dogs,5,12
+13,Retrievers (Golden),bitches,1,2
+13,Retrievers (Golden),bitches,2,7
+13,Retrievers (Golden),bitches,3,12
+13,Retrievers (Golden),bitches,4,13
+13,Retrievers (Golden),bitches,5,16
+13,Retrievers (Labrador),dogs,1,2
+13,Retrievers (Labrador),dogs,2,6
+13,Retrievers (Labrador),dogs,3,9
+13,Retrievers (Labrador),dogs,4,10
+13,ALL OTHER BREEDS AND VARIETIES,bitches,5,6
