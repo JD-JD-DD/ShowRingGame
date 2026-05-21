@@ -30,12 +30,9 @@ export default async function ShowsPage({
 }: {
   searchParams: Promise<{
     dogIds?: string;
-    seeded?: string;
-    seededBlocks?: string;
-    seedError?: string;
   }>;
 }) {
-  const { dogIds, seeded, seededBlocks, seedError } = await searchParams;
+  const { dogIds } = await searchParams;
   const selectedDogIdsQuery = typeof dogIds === "string" ? dogIds : "";
   const showDetailQuery = selectedDogIdsQuery
     ? `?dogIds=${encodeURIComponent(selectedDogIdsQuery)}`
@@ -81,15 +78,6 @@ export default async function ShowsPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <form action="/api/admin/shows/seed" method="post">
-              <input type="hidden" name="redirectTo" value="/shows" />
-              <button
-                type="submit"
-                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
-              >
-                Seed Test Show
-              </button>
-            </form>
             <Link
               href="/kennel"
               className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
@@ -115,32 +103,11 @@ export default async function ShowsPage({
           </div>
         ) : null}
 
-        {seeded ? (
-          <div className="mt-3 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            Test show seeded
-            {seededBlocks ? ` with ${seededBlocks} judging block(s).` : "."}
-          </div>
-        ) : null}
-
-        {seedError ? (
-          <div className="mt-3 rounded-2xl border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-            {seedError}
-          </div>
-        ) : null}
       </section>
 
       {clusters.length === 0 ? (
         <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 text-sm text-purple-100/75">
-          <div>No shows have been seeded yet.</div>
-          <form action="/api/admin/shows/seed" method="post" className="mt-4">
-            <input type="hidden" name="redirectTo" value="/shows" />
-            <button
-              type="submit"
-              className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
-            >
-              Seed Test Show
-            </button>
-          </form>
+          <div>No upcoming shows are available yet.</div>
         </section>
       ) : (
         <div className="grid gap-6">

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   createBreedingAttempt,
@@ -317,7 +318,7 @@ export default function GenerateLitterPage() {
             </div>
           ))}
 
-          <a href="/">Back Home</a>
+          <Link href="/">Back Home</Link>
         </div>
       )}
     </main>

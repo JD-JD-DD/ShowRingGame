@@ -5,7 +5,6 @@ import fs from "node:fs";
 import path from "node:path";
 
 const SHOW_BLOCK_FILENAME = "partialshowblock.csv";
-const TEST_SHOW_LEAD_HOURS = 4;
 const ENTRY_OPEN_LEAD_HOURS = 14;
 
 type ShowBlockCsvRow = {
@@ -188,29 +187,6 @@ function getBlockStatus(args: { currentEpoch: number; startEpoch: number }) {
   return "ENTRY_LOCKED" as const;
 }
 
-function maybeAnchorRowsToTestWindow(
-  rows: ShowBlockCsvRow[],
-  currentEpoch: number
-): ShowBlockCsvRow[] {
-  if (rows.length === 0) {
-    return rows;
-  }
-
-  const earliestStart = Math.min(...rows.map((row) => row.startEpoch));
-
-  if (earliestStart <= currentEpoch + 365) {
-    return rows;
-  }
-
-  const offset = currentEpoch + TEST_SHOW_LEAD_HOURS - earliestStart;
-
-  return rows.map((row) => ({
-    ...row,
-    showDateEpoch: row.showDateEpoch + offset,
-    startEpoch: row.startEpoch + offset,
-  }));
-}
-
 export async function seedShowScheduleFromCsv(): Promise<{
   sourcePath: string;
   clusterCount: number;
@@ -222,10 +198,7 @@ export async function seedShowScheduleFromCsv(): Promise<{
 
   const currentEpoch = getCurrentEpoch();
   const sourcePath = resolveShowBlockPath();
-  const rows = maybeAnchorRowsToTestWindow(
-    parseShowBlockCsv(fs.readFileSync(sourcePath, "utf8")),
-    currentEpoch
-  );
+  const rows = parseShowBlockCsv(fs.readFileSync(sourcePath, "utf8"));
   const warnings: string[] = [];
 
   const breedCodes = [...new Set(rows.map((row) => row.breedCode2))];
@@ -275,7 +248,7 @@ export async function seedShowScheduleFromCsv(): Promise<{
   let showDayCount = 0;
   let judgingBlockCount = 0;
 
-  for (const [clusterKey, clusterRows] of rowsByCluster.entries()) {
+  for (const clusterRows of rowsByCluster.values()) {
     const firstRow = clusterRows[0];
 
     if (!firstRow) {

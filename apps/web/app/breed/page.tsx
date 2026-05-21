@@ -35,14 +35,6 @@ type DogCardDto = {
   visibleCategories: VisibleCategories;
 };
 
-function getDogDisplayName(dog: {
-  callName: string | null;
-  registeredName: string | null;
-  regNumber: string;
-}) {
-  return dog.registeredName || dog.callName || dog.regNumber;
-}
-
 function firstQueryValue(value: string | string[] | undefined): string | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;

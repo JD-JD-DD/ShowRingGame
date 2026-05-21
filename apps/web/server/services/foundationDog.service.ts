@@ -14,7 +14,6 @@ import {
 } from "@showring/rules";
 import {
   MIN_BREED_AGE_HOURS,
-  MIN_SHOW_AGE_HOURS,
 } from "@showring/rules";
 import { SHOW_WEEK_HOURS } from "@showring/rules";
 import { applyBetaBalanceTopUp } from "@/lib/betaEconomy";
