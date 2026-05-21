@@ -195,17 +195,27 @@ Status: audited; mostly greenfield implementation
 
 - Broad roadmap: `docs/SHOW_IMPLEMENTATION_PLAN.md`
 - Current state:
-  - show schema exists for judges, clusters, show days, entries, results, and title progress
+  - show schema exists for judges, clusters, show days, judging blocks, entries, results, and title progress
   - judge and judging rules engines exist
   - entry quote/travel economy engine exists
   - `/shows` pages currently render nothing
   - show API routes are placeholders
   - show service and mapper files are empty
 - First implementation pass:
-  - build read-only `/shows` list for open/upcoming clusters
-  - build show detail/entry planner page
-  - make dog page `Enter Show` route to the planner with optional `/shows?dogId=...` preselection
-  - add eligible dog filtering for show entries
+  - build the judging spine before the calendar/entry wrapper
+  - done: core rules produce base score, final score, controlled variance, tie-breaks, final rank, and placement code
+  - done: breed-level judging for all entries under one judge
+  - done: `ShowJudgingBlock` schema/migration supports ring, judge, breed, class type, start epoch, and block order
+  - done: first-pass block persistence creates simple `ShowResult` rows from entered dogs
+  - done: admin judging endpoint can publish one block by id
+  - done: show-day judging endpoint now rolls through its blocks
+  - done: judge panel seed path reads `docs/fulljudgepanel.csv`
+  - seed or generate show judging blocks from schedule data
+  - add a basic result page before awards/title progression
+  - then build read-only `/shows` list for open/upcoming clusters
+  - then build show detail/entry planner page
+  - then make dog page `Enter Show` route to the planner with optional `/shows?dogId=...` preselection
+  - then add eligible dog filtering for show entries
   - add explicit show helpers:
     - `canEnterShow()`
     - `getShowEntryClass()`
@@ -221,7 +231,6 @@ Status: audited; mostly greenfield implementation
     - affordability check
     - ledger transactions for entry/travel/handler fees
   - seed or generate sample clusters and judges
-  - implement simple breed-level judging persistence
   - add results page and permanent show history
   - add CH point progression after results are reliable
 - Later show-side systems:

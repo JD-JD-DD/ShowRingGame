@@ -2229,8 +2229,10 @@ Evidence:
   - maps traits to categories.
   - defines judge weight variation.
   - defines ring randomness and breed essential constants, but those are not applied in the current judging engine.
-- `packages/rules/src/sample-judges.ts`
-  - contains one sample judge.
+- `docs/fulljudgepanel.csv`
+  - is now the single judge roster source for seeded judge names and preferences.
+- `packages/rules/src/judge-roster.ts`
+  - parses and normalizes the full judge panel CSV for sandbox and seed paths.
 
 MasterFile intent:
 

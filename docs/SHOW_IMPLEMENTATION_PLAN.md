@@ -29,6 +29,7 @@ Already present:
   - judges
   - show clusters
   - show days
+  - show judging blocks
   - show entries
   - show results
   - dog title progress
@@ -36,6 +37,8 @@ Already present:
   - judge weights
   - judging category scoring
   - entry/travel/handler cost quotes
+- Judge roster source:
+  - `docs/fulljudgepanel.csv`
 - Dog page placeholder action:
   - `Enter Show`
 
@@ -47,10 +50,55 @@ Mostly missing:
 - entry planner UI
 - entry submission service
 - ledger debit flow
-- judging persistence
 - results page
 - show history
 - title progression
+
+## Updated Build Direction
+
+The first build pass should start with judging, not show entry.
+
+Reason:
+
+- judging is the rule engine that decides placements
+- awards and titles depend on those placements
+- show entry then becomes the scheduling, eligibility, money, calendar, and submission wrapper around the judging system
+
+Working order:
+
+```txt
+judging rules
+-> persisted results
+-> awards and title logic
+-> show entry eligibility and calendar
+-> entry money and live player workflow
+```
+
+This keeps the show side grounded in the actual competitive outcome before building the larger UI around it.
+
+## Judging Persistence Rules
+
+First pass implemented:
+
+- judging runs at the `ShowJudgingBlock` level
+- a block represents one breed/class/ring assignment under one judge
+- seeded judges should come from `docs/fulljudgepanel.csv`
+- a block can be judged from `ENTRY_LOCKED` or `JUDGING`
+- a block can also be judged at/after its start epoch if it has not been advanced out of `SCHEDULED` or `ENTRY_OPEN`
+- blocks in cancelled clusters or cancelled show days cannot be judged
+- cancelled blocks cannot be judged
+- published blocks are idempotent and return existing results instead of creating duplicates
+- any partial block result state is treated as an error until an explicit repair/admin flow exists
+- only `ENTERED` dogs that are still alive and still owned by the entering kennel are judged
+- entered dogs must match the block breed
+- invalid entered dogs are marked `INELIGIBLE`
+- eligible dogs are judged under the block's assigned judge
+- each judged entry receives one permanent `ShowResult`
+- judged entries move to `JUDGED`
+- the block moves to `RESULTS_PUBLISHED`
+- the show day moves to `RESULTS_PUBLISHED` once all its blocks are published or cancelled
+- the show cluster moves to `COMPLETE` once all show days are published or cancelled
+- first-pass judging records no AKC points, majors, awards, or titles yet
 
 ## Phase 1: Show Calendar and Cluster List
 
@@ -395,12 +443,18 @@ This integration should happen after both sides are individually playable.
 
 ## Recommended Immediate Build Slice
 
-When ready to start show implementation, begin with:
+Begin with the judging spine:
 
-1. Seed/generate a few upcoming show clusters.
+1. Strengthen the core judging engine so it produces base score, final score, controlled variance, tie-breaks, rank, and placement code.
+2. Add a breed-level judging function that can judge all entries for one breed under one judge.
+3. Add a service layer that can persist simple `ShowResult` rows from entered dogs.
+4. Build a basic results page that can display judged placements.
+5. Add awards and title progression only after the simple judged result loop is reliable.
+
+After that, build the player-facing show wrapper:
+
+1. Seed/generate upcoming show clusters.
 2. Build `/shows` list page.
-3. Build show detail page shell.
-4. Show eligible dogs without submit.
-5. Add quote preview.
-
-This gives the show side a visible UI without risking ledger, title, or judging complexity too early.
+3. Build show detail and entry planner.
+4. Add eligibility filtering.
+5. Add quote preview, ledger debits, and submitted entries.

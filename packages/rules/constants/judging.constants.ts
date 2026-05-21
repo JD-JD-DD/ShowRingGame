@@ -79,7 +79,7 @@ export const DEFAULT_CATEGORY_WEIGHTS: Record<JudgingCategory, number> = {
 
 // How strongly a judge can bias a category
 
-export const JUDGE_WEIGHT_VARIATION = 0.25
+export const JUDGE_WEIGHT_VARIATION = 0.25;
 // meaning a judge could weight something
 // between 0.75 and 1.25 of default
 
@@ -89,13 +89,15 @@ export const JUDGE_WEIGHT_VARIATION = 0.25
 
 // Small day-to-day performance variance
 
-export const DOG_DAY_VARIANCE = 0.05
-// ±5%
+export const DOG_DAY_VARIANCE = 0.05;
+// +/- 5%
 
 // Small randomness in ring outcome
 
-export const RING_RANDOMNESS = 0.03
-// ±3%
+export const RING_RANDOMNESS = 0.03;
+// +/- 3%
+
+export const JUDGING_SCORING_VERSION = "judging-v1";
 
 // ===============================
 // Breed Essential System

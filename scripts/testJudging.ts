@@ -1,8 +1,14 @@
 import {
+  FULL_JUDGE_PANEL_FILENAME,
+  judgeRosterRowToJudge,
+  parseJudgeRosterCsv,
   sampleDogs,
-  sampleJudges, } from "../packages/rules/src/index";
+} from "../packages/rules/src/index";
 
 import { rankDogsByJudgeWeights } from "../packages/rules/engines/judging.engine";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 
 function formatNumber(value: number): string {
@@ -10,7 +16,21 @@ function formatNumber(value: number): string {
 }
 
 function main(): void {
-  const judge = sampleJudges[0];
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+  const judgePanelPath = path.resolve(
+    scriptDir,
+    "..",
+    "docs",
+    FULL_JUDGE_PANEL_FILENAME
+  );
+  const judgeRows = parseJudgeRosterCsv(fs.readFileSync(judgePanelPath, "utf8"));
+  const firstJudgeRow = judgeRows[0];
+
+  if (!firstJudgeRow) {
+    throw new Error(`No judges found in ${judgePanelPath}.`);
+  }
+
+  const judge = judgeRosterRowToJudge(firstJudgeRow, "JUDGE-SANDBOX-001");
 
   if (!judge) {
     throw new Error("No sample judge found.");
@@ -28,6 +48,7 @@ function main(): void {
   console.log("======================================");
   console.log("JUDGING SANDBOX");
   console.log("======================================");
+  console.log(`Judge panel: ${judgePanelPath}`);
   console.log(`Judge: ${judge.name}`);
   console.log(`Style: ${judge.style}`);
   console.log("Category Weights:");
@@ -40,6 +61,12 @@ function main(): void {
     console.log(`Dog ID: ${result.dogId}`);
     console.log(`Reg Number: ${result.regNumber}`);
     console.log(`Base Score: ${formatNumber(result.baseScore)}`);
+    console.log(`Final Score: ${formatNumber(result.finalScore)}`);
+    console.log(
+      `Ring Variance: ${formatNumber(
+        result.dogDayAdjustment + result.ringRandomnessAdjustment
+      )}`
+    );
     console.log("");
 
     console.log("Derived Characteristics:");

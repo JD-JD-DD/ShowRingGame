@@ -59,6 +59,15 @@ enum ShowDayStatus {
   CANCELLED
 }
 
+enum ShowJudgingBlockStatus {
+  SCHEDULED
+  ENTRY_OPEN
+  ENTRY_LOCKED
+  JUDGING
+  RESULTS_PUBLISHED
+  CANCELLED
+}
+
 enum ShowEntryStatus {
   ENTERED
   WITHDRAWN
@@ -149,6 +158,7 @@ model Breed {
   litters     Litter[]
   showEntries ShowEntry[]
   showResults ShowResult[]
+  showJudgingBlocks ShowJudgingBlock[]
 
   @@index([releaseVersion])
 }
@@ -254,6 +264,7 @@ model Judge {
 
   showDays    ShowDay[]
   showResults ShowResult[]
+  showJudgingBlocks ShowJudgingBlock[]
 
   @@index([isActive])
   @@index([homeDistrict])
@@ -349,6 +360,7 @@ model ShowDay {
 
   showEntries ShowEntry[]
   showResults ShowResult[]
+  judgingBlocks ShowJudgingBlock[]
 
   @@unique([clusterId, dayIndex])
   @@index([judgeId])
@@ -356,9 +368,41 @@ model ShowDay {
   @@index([status])
 }
 
+model ShowJudgingBlock {
+  id               String                  @id @default(cuid())
+  showDayId        String
+  judgeId          String
+  breedCode2       String
+  ringNumber       Int
+  ringName         String?
+  startEpoch       Int
+  classType        String                  @default("REGULAR")
+  blockOrder       Int
+  entryCountHint   Int?
+  status           ShowJudgingBlockStatus  @default(SCHEDULED)
+  publishedAtEpoch Int?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  showDay ShowDay @relation(fields: [showDayId], references: [id])
+  judge   Judge   @relation(fields: [judgeId], references: [id])
+  breed   Breed   @relation(fields: [breedCode2], references: [code2])
+
+  showEntries ShowEntry[]
+  showResults ShowResult[]
+
+  @@unique([showDayId, ringNumber, blockOrder])
+  @@index([showDayId])
+  @@index([judgeId])
+  @@index([breedCode2])
+  @@index([startEpoch])
+  @@index([status])
+}
+
 model ShowEntry {
   id                   String          @id @default(cuid())
   showDayId            String
+  judgingBlockId       String?
   dogId                String
   kennelId             String
   breedCode2           String
@@ -370,6 +414,7 @@ model ShowEntry {
   fatigueSnapshot      Int?
 
   showDay ShowDay @relation(fields: [showDayId], references: [id])
+  judgingBlock ShowJudgingBlock? @relation(fields: [judgingBlockId], references: [id])
   dog     Dog     @relation(fields: [dogId], references: [id])
   kennel  Kennel  @relation(fields: [kennelId], references: [id])
   breed   Breed   @relation(fields: [breedCode2], references: [code2])
@@ -378,6 +423,7 @@ model ShowEntry {
   ledgerTransactions LedgerTransaction[]
 
   @@unique([showDayId, dogId])
+  @@index([judgingBlockId])
   @@index([dogId])
   @@index([kennelId])
   @@index([breedCode2])
@@ -388,6 +434,7 @@ model ShowResult {
   id                         String   @id @default(cuid())
   showEntryId                String   @unique
   showDayId                  String
+  judgingBlockId             String?
   dogId                      String
   breedCode2                 String
   judgeId                    String
@@ -405,11 +452,13 @@ model ShowResult {
 
   showEntry ShowEntry @relation(fields: [showEntryId], references: [id])
   showDay   ShowDay   @relation(fields: [showDayId], references: [id])
+  judgingBlock ShowJudgingBlock? @relation(fields: [judgingBlockId], references: [id])
   dog       Dog       @relation(fields: [dogId], references: [id])
   breed     Breed     @relation(fields: [breedCode2], references: [code2])
   judge     Judge     @relation(fields: [judgeId], references: [id])
 
   @@index([showDayId])
+  @@index([judgingBlockId])
   @@index([dogId])
   @@index([breedCode2])
   @@index([judgeId])
