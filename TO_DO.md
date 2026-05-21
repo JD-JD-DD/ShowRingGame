@@ -210,10 +210,15 @@ Status: audited; mostly greenfield implementation
   - done: admin judging endpoint can publish one block by id
   - done: show-day judging endpoint now rolls through its blocks
   - done: judge panel seed path reads `docs/fulljudgepanel.csv`
-  - seed or generate show judging blocks from schedule data
+  - done: seed path creates clusters, show days, and judging blocks from `docs/partialshowblock.csv`
+  - done: read-only `/shows` list for seeded clusters
+  - done: read-only `/shows/[showId]` detail page with day/block table
+  - done: show entry service validates eligibility, creates entries, charges entry fee, records ledger transaction, and snapshots conditioning/fatigue
+  - done: admin test route seeds entries through the real show entry service
+  - done: `/shows/[showId]` lists eligible kennel dogs per judging block and submits real entries
+  - done: `POST /api/shows/[showId]/enter` creates player show entries through the shared service
   - add a basic result page before awards/title progression
-  - then build read-only `/shows` list for open/upcoming clusters
-  - then build show detail/entry planner page
+  - refine show detail/entry planner page with quote summaries and stronger entry feedback
   - then make dog page `Enter Show` route to the planner with optional `/shows?dogId=...` preselection
   - then add eligible dog filtering for show entries
   - add explicit show helpers:

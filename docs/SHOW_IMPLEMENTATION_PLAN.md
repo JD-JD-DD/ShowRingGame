@@ -39,6 +39,8 @@ Already present:
   - entry/travel/handler cost quotes
 - Judge roster source:
   - `docs/fulljudgepanel.csv`
+- Test schedule source:
+  - `docs/partialshowblock.csv`
 - Dog page placeholder action:
   - `Enter Show`
 
@@ -53,6 +55,26 @@ Mostly missing:
 - results page
 - show history
 - title progression
+
+Current first-pass UI:
+
+- `/shows` lists seeded clusters, days, judging blocks, judges, and breeds.
+- `/shows/[showId]` shows the block table for one cluster and lets logged-in players enter eligible kennel dogs.
+- `POST /api/admin/shows/seed` seeds the full judge panel and test schedule blocks.
+- `POST /api/admin/shows/[showId]/seed-entries` creates test entries through the same service real player entries will use.
+- `POST /api/shows/[showId]/enter` creates player entries through the shared show entry service.
+
+Current show entry rules:
+
+- entries attach to both `showDayId` and `judgingBlockId`
+- dog must be owned by a kennel
+- dog must be alive and show-age eligible
+- dog breed must match the judging block breed code
+- entry must be inside the cluster entry window and before the block start
+- one dog can only enter once per show day
+- entry creation charges `ENTRY_FEE_PER_SHOW`
+- entry creation writes a `SHOW_ENTRY_FEE` ledger transaction
+- entry creation snapshots conditioning and fatigue at entry time
 
 ## Updated Build Direction
 
