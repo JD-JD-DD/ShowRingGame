@@ -37,6 +37,42 @@ export type JudgedEntryResult = JudgedDogBreakdown & {
   placementCode: string;
 };
 
+export type ShowAwardCode =
+  | "1"
+  | "2"
+  | "3"
+  | "4"
+  | "WD"
+  | "RWD"
+  | "WB"
+  | "RWB"
+  | "BOB"
+  | "BOS"
+  | "AOM";
+
+export type ShowAwardGroup =
+  | "DOG_CLASS"
+  | "BITCH_CLASS"
+  | "WINNERS"
+  | "BREED";
+
+export type JudgedShowAward = {
+  showEntryId?: string;
+  dogId: string;
+  awardCode: ShowAwardCode;
+  awardGroup: ShowAwardGroup;
+  sex: "M" | "F" | null;
+  rank: number | null;
+  pointsAwarded: number;
+  isMajor: boolean;
+  dogsInCompetition: number | null;
+};
+
+export type JudgedBreedBlock = {
+  results: JudgedEntryResult[];
+  awards: JudgedShowAward[];
+};
+
 function average(values: readonly number[]): number {
   if (values.length === 0) {
     return 0;
@@ -170,6 +206,172 @@ export function judgeBreedEntries(args: {
       finalRank: index + 1,
       placementCode: String(index + 1),
     }));
+}
+
+function getTemporaryAllBreedPoints(dogsInCompetition: number): number {
+  if (dogsInCompetition >= 7) return 5;
+  if (dogsInCompetition >= 6) return 4;
+  if (dogsInCompetition >= 5) return 3;
+  if (dogsInCompetition >= 4) return 2;
+  if (dogsInCompetition >= 3) return 1;
+  return 0;
+}
+
+function makeAward(args: {
+  result: JudgedEntryResult;
+  awardCode: ShowAwardCode;
+  awardGroup: ShowAwardGroup;
+  sex: "M" | "F" | null;
+  rank: number | null;
+  pointsAwarded?: number;
+  dogsInCompetition?: number | null;
+}): JudgedShowAward {
+  const pointsAwarded = args.pointsAwarded ?? 0;
+
+  return {
+    showEntryId: args.result.showEntryId,
+    dogId: args.result.dogId,
+    awardCode: args.awardCode,
+    awardGroup: args.awardGroup,
+    sex: args.sex,
+    rank: args.rank,
+    pointsAwarded,
+    isMajor: pointsAwarded >= 3,
+    dogsInCompetition: args.dogsInCompetition ?? null,
+  };
+}
+
+function buildSexClassAwards(args: {
+  results: JudgedEntryResult[];
+  sex: "M" | "F";
+}): JudgedShowAward[] {
+  const { results, sex } = args;
+  const awardGroup: ShowAwardGroup =
+    sex === "M" ? "DOG_CLASS" : "BITCH_CLASS";
+  const awards: JudgedShowAward[] = [];
+
+  for (const [index, result] of results.slice(0, 4).entries()) {
+    const rank = index + 1;
+
+    awards.push(
+      makeAward({
+        result,
+        awardCode: String(rank) as ShowAwardCode,
+        awardGroup,
+        sex,
+        rank,
+        dogsInCompetition: results.length,
+      })
+    );
+  }
+
+  return awards;
+}
+
+function buildWinnersAwards(args: {
+  results: JudgedEntryResult[];
+  sex: "M" | "F";
+}): JudgedShowAward[] {
+  const { results, sex } = args;
+  const winner = results[0];
+  const reserve = results[1];
+  const awards: JudgedShowAward[] = [];
+
+  if (winner) {
+    awards.push(
+      makeAward({
+        result: winner,
+        awardCode: sex === "M" ? "WD" : "WB",
+        awardGroup: "WINNERS",
+        sex,
+        rank: 1,
+        pointsAwarded: getTemporaryAllBreedPoints(results.length),
+        dogsInCompetition: results.length,
+      })
+    );
+  }
+
+  if (reserve) {
+    awards.push(
+      makeAward({
+        result: reserve,
+        awardCode: sex === "M" ? "RWD" : "RWB",
+        awardGroup: "WINNERS",
+        sex,
+        rank: 2,
+        dogsInCompetition: results.length,
+      })
+    );
+  }
+
+  return awards;
+}
+
+function buildBreedAwards(args: {
+  maleResults: JudgedEntryResult[];
+  femaleResults: JudgedEntryResult[];
+}): JudgedShowAward[] {
+  const breedCandidates = [args.maleResults[0], args.femaleResults[0]]
+    .filter((result): result is JudgedEntryResult => Boolean(result))
+    .sort(compareJudgedDogs);
+  const bestOfBreed = breedCandidates[0];
+  const bestOfOpposite = breedCandidates.find(
+    (result) => result.dogId !== bestOfBreed?.dogId
+  );
+  const awards: JudgedShowAward[] = [];
+
+  if (bestOfBreed) {
+    awards.push(
+      makeAward({
+        result: bestOfBreed,
+        awardCode: "BOB",
+        awardGroup: "BREED",
+        sex: null,
+        rank: 1,
+      })
+    );
+  }
+
+  if (bestOfOpposite) {
+    awards.push(
+      makeAward({
+        result: bestOfOpposite,
+        awardCode: "BOS",
+        awardGroup: "BREED",
+        sex: bestOfOpposite.dogId === args.maleResults[0]?.dogId ? "M" : "F",
+        rank: 2,
+      })
+    );
+  }
+
+  return awards;
+}
+
+export function judgeBreedBlock(args: {
+  entries: JudgingEntry[];
+  judge: Judge;
+  random01?: () => number;
+}): JudgedBreedBlock {
+  const results = judgeBreedEntries(args);
+  const maleResults = results.filter((result) => {
+    const entry = args.entries.find((candidate) => candidate.showEntryId === result.showEntryId);
+    return entry?.dog.sex === "M";
+  });
+  const femaleResults = results.filter((result) => {
+    const entry = args.entries.find((candidate) => candidate.showEntryId === result.showEntryId);
+    return entry?.dog.sex === "F";
+  });
+
+  return {
+    results,
+    awards: [
+      ...buildSexClassAwards({ results: maleResults, sex: "M" }),
+      ...buildSexClassAwards({ results: femaleResults, sex: "F" }),
+      ...buildWinnersAwards({ results: maleResults, sex: "M" }),
+      ...buildWinnersAwards({ results: femaleResults, sex: "F" }),
+      ...buildBreedAwards({ maleResults, femaleResults }),
+    ],
+  };
 }
 
 export function rankDogsByJudgeWeights(args: {

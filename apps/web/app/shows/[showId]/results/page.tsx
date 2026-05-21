@@ -20,36 +20,36 @@ function getDogDisplayName(dog: {
   return dog.registeredName || dog.callName || dog.regNumber;
 }
 
-function getAwardLabel(result: {
-  finalRank: number | null;
-  placementCode: string | null;
-}): string {
-  const placement = result.placementCode ?? "";
-  const numericPlacement = Number(placement);
-  const rank = result.finalRank ?? numericPlacement;
+const AWARD_SORT_ORDER: Record<string, number> = {
+  "1": 1,
+  "2": 2,
+  "3": 3,
+  "4": 4,
+  WD: 5,
+  WB: 5,
+  RWD: 6,
+  RWB: 6,
+  BOB: 7,
+  BOS: 8,
+  AOM: 9,
+};
 
-  if (Number.isFinite(numericPlacement)) {
-    return rank >= 1 && rank <= 4 ? String(rank) : "-";
-  }
+function sortAwards<T extends { awardCode: string; rank: number | null }>(
+  awards: T[]
+): T[] {
+  return [...awards].sort((a, b) => {
+    const orderDifference =
+      (AWARD_SORT_ORDER[a.awardCode] ?? 99) -
+      (AWARD_SORT_ORDER[b.awardCode] ?? 99);
 
-  return placement || "-";
+    if (orderDifference !== 0) return orderDifference;
+
+    return (a.rank ?? 99) - (b.rank ?? 99);
+  });
 }
 
-function getAwardPointsLabel(result: {
-  placementCode: string | null;
-  pointsAwarded: number;
-}): string | null {
-  const pointEligibleAwards = new Set(["WB", "WD", "BOB"]);
-
-  if (
-    !result.placementCode ||
-    !pointEligibleAwards.has(result.placementCode) ||
-    result.pointsAwarded <= 0
-  ) {
-    return null;
-  }
-
-  return `${result.pointsAwarded} ${result.pointsAwarded === 1 ? "pt" : "pts"}`;
+function formatPoints(pointsAwarded: number): string {
+  return `${pointsAwarded} ${pointsAwarded === 1 ? "pt" : "pts"}`;
 }
 
 function statusTone(status: string): string {
@@ -113,6 +113,14 @@ export default async function ShowResultsPage({
                   showEntry: {
                     include: {
                       kennel: { select: { name: true, slug: true } },
+                    },
+                  },
+                  showAwards: {
+                    select: {
+                      awardCode: true,
+                      rank: true,
+                      pointsAwarded: true,
+                      isMajor: true,
                     },
                   },
                 },
@@ -280,8 +288,7 @@ export default async function ShowResultsPage({
                           </thead>
                           <tbody>
                             {block.showResults.map((result) => {
-                              const awardLabel = getAwardLabel(result);
-                              const pointsLabel = getAwardPointsLabel(result);
+                              const awards = sortAwards(result.showAwards);
 
                               return (
                                 <tr
@@ -289,13 +296,24 @@ export default async function ShowResultsPage({
                                   className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
                                 >
                                   <td className="rounded-l-2xl px-3 py-3">
-                                    <div className="inline-flex min-w-10 items-center justify-center gap-2 rounded-full border border-sky-300/25 bg-sky-500/10 px-3 py-1 font-semibold text-sky-100">
-                                      <span>{awardLabel}</span>
-                                      {pointsLabel ? (
-                                        <span className="font-bold text-white">
-                                          {pointsLabel}
-                                        </span>
-                                      ) : null}
+                                    <div className="flex min-w-24 flex-wrap gap-2">
+                                      {awards.length > 0 ? (
+                                        awards.map((award) => (
+                                          <span
+                                            key={`${result.id}-${award.awardCode}`}
+                                            className="inline-flex items-center justify-center gap-2 rounded-full border border-sky-300/25 bg-sky-500/10 px-3 py-1 font-semibold text-sky-100"
+                                          >
+                                            <span>{award.awardCode}</span>
+                                            {award.pointsAwarded > 0 ? (
+                                              <span className="font-bold text-white">
+                                                {formatPoints(award.pointsAwarded)}
+                                              </span>
+                                            ) : null}
+                                          </span>
+                                        ))
+                                      ) : (
+                                        <span className="text-purple-100/45">-</span>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="px-3 py-3">

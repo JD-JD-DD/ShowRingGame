@@ -158,6 +158,7 @@ model Breed {
   litters     Litter[]
   showEntries ShowEntry[]
   showResults ShowResult[]
+  showAwards  ShowAward[]
   showJudgingBlocks ShowJudgingBlock[]
 
   @@index([releaseVersion])
@@ -230,6 +231,7 @@ model Dog {
 
   showEntries        ShowEntry[]
   showResults        ShowResult[]
+  showAwards         ShowAward[]
   ledgerTransactions LedgerTransaction[]
   listings           DogListing[]
   titleProgress      DogTitleProgress?
@@ -264,6 +266,7 @@ model Judge {
 
   showDays    ShowDay[]
   showResults ShowResult[]
+  showAwards  ShowAward[]
   showJudgingBlocks ShowJudgingBlock[]
 
   @@index([isActive])
@@ -360,6 +363,7 @@ model ShowDay {
 
   showEntries ShowEntry[]
   showResults ShowResult[]
+  showAwards  ShowAward[]
   judgingBlocks ShowJudgingBlock[]
 
   @@unique([clusterId, dayIndex])
@@ -390,6 +394,7 @@ model ShowJudgingBlock {
 
   showEntries ShowEntry[]
   showResults ShowResult[]
+  showAwards  ShowAward[]
 
   @@unique([showDayId, ringNumber, blockOrder])
   @@index([showDayId])
@@ -420,6 +425,7 @@ model ShowEntry {
   breed   Breed   @relation(fields: [breedCode2], references: [code2])
 
   showResult         ShowResult?
+  showAwards         ShowAward[]
   ledgerTransactions LedgerTransaction[]
 
   @@unique([showDayId, dogId])
@@ -456,12 +462,52 @@ model ShowResult {
   dog       Dog       @relation(fields: [dogId], references: [id])
   breed     Breed     @relation(fields: [breedCode2], references: [code2])
   judge     Judge     @relation(fields: [judgeId], references: [id])
+  showAwards ShowAward[]
 
   @@index([showDayId])
   @@index([judgingBlockId])
   @@index([dogId])
   @@index([breedCode2])
   @@index([judgeId])
+  @@index([pointsAwarded])
+}
+
+model ShowAward {
+  id                         String   @id @default(cuid())
+  showResultId               String?
+  showEntryId                String
+  showDayId                  String
+  judgingBlockId             String?
+  dogId                      String
+  breedCode2                 String
+  judgeId                    String
+  awardCode                  String
+  awardGroup                 String
+  sex                        Sex?
+  rank                       Int?
+  pointsAwarded              Int      @default(0)
+  isMajor                    Boolean  @default(false)
+  dogsInCompetition          Int?
+  uniqueKennelsInCompetition Int?
+  publishedAtEpoch           Int
+  createdAt                  DateTime @default(now())
+
+  showResult ShowResult? @relation(fields: [showResultId], references: [id])
+  showEntry  ShowEntry   @relation(fields: [showEntryId], references: [id])
+  showDay    ShowDay     @relation(fields: [showDayId], references: [id])
+  judgingBlock ShowJudgingBlock? @relation(fields: [judgingBlockId], references: [id])
+  dog        Dog         @relation(fields: [dogId], references: [id])
+  breed      Breed       @relation(fields: [breedCode2], references: [code2])
+  judge      Judge       @relation(fields: [judgeId], references: [id])
+
+  @@index([showResultId])
+  @@index([showEntryId])
+  @@index([showDayId])
+  @@index([judgingBlockId])
+  @@index([dogId])
+  @@index([breedCode2])
+  @@index([judgeId])
+  @@index([awardCode])
   @@index([pointsAwarded])
 }
 

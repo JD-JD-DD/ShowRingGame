@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import {
   JUDGING_SCORING_VERSION,
-  judgeBreedEntries,
+  judgeBreedBlock,
   mapJudgeRosterStyleToJudgeStyle,
   type Dog as EngineDog,
   type Judge as EngineJudge,
@@ -338,45 +338,88 @@ export async function judgeShowBlock(args: {
       eligibleEntries.map((entry) => entry.kennelId)
     ).size;
     const engineJudge = toEngineJudge(block.judge);
-    const judgedResults = judgeBreedEntries({
+    const judgedBlock = judgeBreedBlock({
       judge: engineJudge,
       entries: eligibleEntries.map((entry) => ({
         showEntryId: entry.id,
         dog: toEngineDog(entry),
       })),
     });
-    const resultsToCreate: Prisma.ShowResultCreateManyInput[] = [];
+    const resultIdByShowEntryId = new Map<string, string>();
     const judgedEntryIds: string[] = [];
+    const pointsByShowEntryId = new Map<string, number>();
 
-    for (const result of judgedResults) {
+    for (const award of judgedBlock.awards) {
+      if (!award.showEntryId || award.pointsAwarded <= 0) {
+        continue;
+      }
+
+      pointsByShowEntryId.set(
+        award.showEntryId,
+        (pointsByShowEntryId.get(award.showEntryId) ?? 0) + award.pointsAwarded
+      );
+    }
+
+    for (const result of judgedBlock.results) {
       if (!result.showEntryId) {
         continue;
       }
 
       judgedEntryIds.push(result.showEntryId);
-      resultsToCreate.push({
-        showEntryId: result.showEntryId,
+      const pointsAwarded = pointsByShowEntryId.get(result.showEntryId) ?? 0;
+      const createdResult = await tx.showResult.create({
+        data: {
+          showEntryId: result.showEntryId,
+          showDayId: block.showDayId,
+          judgingBlockId,
+          dogId: result.dogId,
+          breedCode2: block.breedCode2,
+          judgeId: block.judgeId,
+          finalRank: result.finalRank,
+          placementCode: result.placementCode,
+          baseScore: result.baseScore,
+          finalScore: result.finalScore,
+          pointsAwarded,
+          isMajor: pointsAwarded >= 3,
+          uniqueKennelsInCompetition,
+          publishedAtEpoch: currentEpoch,
+          scoringVersion: JUDGING_SCORING_VERSION,
+        },
+        select: { id: true },
+      });
+
+      resultIdByShowEntryId.set(result.showEntryId, createdResult.id);
+    }
+
+    const awardsToCreate: Prisma.ShowAwardCreateManyInput[] = [];
+
+    for (const award of judgedBlock.awards) {
+      if (!award.showEntryId) {
+        continue;
+      }
+
+      awardsToCreate.push({
+        showResultId: resultIdByShowEntryId.get(award.showEntryId),
+        showEntryId: award.showEntryId,
         showDayId: block.showDayId,
         judgingBlockId,
-        dogId: result.dogId,
+        dogId: award.dogId,
         breedCode2: block.breedCode2,
         judgeId: block.judgeId,
-        finalRank: result.finalRank,
-        placementCode: result.placementCode,
-        baseScore: result.baseScore,
-        finalScore: result.finalScore,
-        pointsAwarded: 0,
-        isMajor: false,
+        awardCode: award.awardCode,
+        awardGroup: award.awardGroup,
+        sex: award.sex,
+        rank: award.rank,
+        pointsAwarded: award.pointsAwarded,
+        isMajor: award.isMajor,
+        dogsInCompetition: award.dogsInCompetition,
         uniqueKennelsInCompetition,
         publishedAtEpoch: currentEpoch,
-        scoringVersion: JUDGING_SCORING_VERSION,
       });
     }
 
-    if (resultsToCreate.length > 0) {
-      await tx.showResult.createMany({
-        data: resultsToCreate,
-      });
+    if (awardsToCreate.length > 0) {
+      await tx.showAward.createMany({ data: awardsToCreate });
     }
 
     if (judgedEntryIds.length > 0) {
