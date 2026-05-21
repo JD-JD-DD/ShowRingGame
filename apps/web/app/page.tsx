@@ -21,6 +21,12 @@ const availableNow = [
     href: "/litters",
     action: "View Litters",
   },
+  {
+    title: "Show Calendar",
+    body: "Open seeded shows, review judging blocks, enter eligible kennel dogs, and run test judging.",
+    href: "/shows",
+    action: "Enter Shows",
+  },
 ];
 
 const quickStart = [
@@ -192,7 +198,7 @@ export default async function HomePage() {
         </section>
 
         <section className="mb-8">
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             {availableNow.map((item) => (
               <article
                 key={item.title}

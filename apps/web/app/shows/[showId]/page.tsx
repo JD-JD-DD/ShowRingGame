@@ -50,10 +50,20 @@ export default async function ShowDetailPage({
     entryError?: string;
     entryMessage?: string;
     dogIds?: string;
+    judged?: string;
+    judgedEntries?: string;
+    judgeError?: string;
   }>;
 }) {
   const { showId } = await params;
-  const { entryError, entryMessage, dogIds } = await searchParams;
+  const {
+    entryError,
+    entryMessage,
+    dogIds,
+    judged,
+    judgedEntries,
+    judgeError,
+  } = await searchParams;
   const selectedDogIds = new Set(
     typeof dogIds === "string" && dogIds.trim()
       ? dogIds
@@ -156,6 +166,19 @@ export default async function ShowDetailPage({
         {entryError ? (
           <div className="mt-5 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
             {entryError}
+          </div>
+        ) : null}
+
+        {judged ? (
+          <div className="mt-5 rounded-2xl border border-sky-300/25 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+            Judging complete
+            {judgedEntries ? ` for ${judgedEntries} entered dog(s).` : "."}
+          </div>
+        ) : null}
+
+        {judgeError ? (
+          <div className="mt-5 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {judgeError}
           </div>
         ) : null}
 
@@ -264,7 +287,29 @@ export default async function ShowDetailPage({
                             </span>
                           </td>
                           <td className="rounded-r-2xl px-3 py-3">
-                            {kennel ? (
+                            <div className="flex min-w-[300px] flex-col gap-2">
+                              {block._count.showEntries > 0 &&
+                              block.status !== "RESULTS_PUBLISHED" &&
+                              block.status !== "CANCELLED" ? (
+                                <form
+                                  action={`/api/admin/show-blocks/${block.id}/judge`}
+                                  method="post"
+                                >
+                                  <input
+                                    type="hidden"
+                                    name="redirectTo"
+                                    value={`/shows/${cluster.id}`}
+                                  />
+                                  <button
+                                    type="submit"
+                                    className="w-full rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
+                                  >
+                                    Run Judging
+                                  </button>
+                                </form>
+                              ) : null}
+
+                              {kennel ? (
                               eligibleDogs.length > 0 ? (
                                 <form
                                   action={`/api/shows/${cluster.id}/enter`}
@@ -307,6 +352,7 @@ export default async function ShowDetailPage({
                                 Log in
                               </Link>
                             )}
+                            </div>
                           </td>
                         </tr>
                       );
