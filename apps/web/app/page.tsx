@@ -215,7 +215,7 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <section>
           <div className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold text-white">
@@ -260,44 +260,6 @@ export default async function HomePage() {
                     </p>
                   </div>
                 ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(124,58,237,0.16),rgba(255,255,255,0.04))] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-            <h2 className="text-xl font-semibold text-white">
-              Game Time
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-purple-100/75">
-              One real hour is one in-game day. Pregnancy checks, due dates,
-              aging, market movement, and future show calendars all use that
-              faster clock, so the kennel changes meaningfully across a normal
-              play session.
-            </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Breeding
-                </div>
-                <div className="mt-2 text-sm font-medium text-white">
-                  Check, whelp, evaluate
-                </div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Market
-                </div>
-                <div className="mt-2 text-sm font-medium text-white">
-                  Buy, list, adjust
-                </div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Shows
-                </div>
-                <div className="mt-2 text-sm font-medium text-white">
-                  Coming next
-                </div>
               </div>
             </div>
           </div>

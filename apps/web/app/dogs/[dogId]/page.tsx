@@ -10,6 +10,7 @@ import {
   MAX_SHOW_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
   MIN_SHOW_AGE_HOURS,
+  PUPPY_SALE_MIN_AGE_HOURS,
 } from "@showring/rules";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
@@ -215,6 +216,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const canOfferForSale =
     isOwnedByCurrentKennel &&
     isAlive &&
+    ageHours >= PUPPY_SALE_MIN_AGE_HOURS &&
     dog.marketState === "NOT_FOR_SALE";
 
   const categoryEntries = Object.entries(visibleCategories);

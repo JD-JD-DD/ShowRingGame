@@ -175,7 +175,10 @@ function SortButton({
 export default function KennelDogsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [dogs, setDogs] = useState<KennelDogDto[]>([]);
+  const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   const [breedFilter, setBreedFilter] = useState("");
   const [sexFilter, setSexFilter] = useState<"" | "M" | "F">("");
@@ -215,6 +218,12 @@ export default function KennelDogsPanel() {
 
     loadDogs();
   }, []);
+
+  useEffect(() => {
+    setSelectedDogIds((current) =>
+      current.filter((dogId) => dogs.some((dog) => dog.dogId === dogId))
+    );
+  }, [dogs]);
 
   const breedOptions = useMemo(() => {
     return Array.from(new Set(dogs.map((dog) => dog.breedName))).sort((a, b) =>
@@ -280,6 +289,18 @@ export default function KennelDogsPanel() {
     sortDirection,
   ]);
 
+  const selectedDogs = useMemo(() => {
+    const selected = new Set(selectedDogIds);
+    return dogs.filter((dog) => selected.has(dog.dogId));
+  }, [dogs, selectedDogIds]);
+
+  const selectedDogsQuery = selectedDogIds.join(",");
+  const canBulkRehome =
+    selectedDogs.length > 0 &&
+    selectedDogs.every(
+      (dog) => dog.lifecycleState === "ALIVE" && dog.marketState === "NOT_FOR_SALE"
+    );
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
       setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
@@ -288,6 +309,74 @@ export default function KennelDogsPanel() {
 
     setSortKey(key);
     setSortDirection(key === "age" ? "desc" : "asc");
+  }
+
+  function toggleDogSelection(dogId: string) {
+    setSelectedDogIds((current) =>
+      current.includes(dogId)
+        ? current.filter((selectedDogId) => selectedDogId !== dogId)
+        : [...current, dogId]
+    );
+  }
+
+  function toggleVisibleSelection() {
+    const visibleIds = filteredDogs.map((dog) => dog.dogId);
+    const visibleIdSet = new Set(visibleIds);
+    const allVisibleSelected =
+      visibleIds.length > 0 &&
+      visibleIds.every((dogId) => selectedDogIds.includes(dogId));
+
+    if (allVisibleSelected) {
+      setSelectedDogIds((current) =>
+        current.filter((dogId) => !visibleIdSet.has(dogId))
+      );
+      return;
+    }
+
+    setSelectedDogIds((current) => Array.from(new Set([...current, ...visibleIds])));
+  }
+
+  async function rehomeSelectedDogs() {
+    if (!canBulkRehome || bulkActionLoading) {
+      return;
+    }
+
+    setBulkActionLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/dogs/bulk-rehome", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ dogIds: selectedDogIds }),
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        rehomedCount?: number;
+        dogIds?: string[];
+        error?: string;
+      };
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Failed to re-home selected dogs.");
+      }
+
+      const rehomedIds = new Set(data.dogIds ?? selectedDogIds);
+      setDogs((current) =>
+        current.filter((dog) => !rehomedIds.has(dog.dogId))
+      );
+      setSelectedDogIds([]);
+      setMessage(`Re-homed ${data.rehomedCount ?? rehomedIds.size} dog(s).`);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to re-home selected dogs."
+      );
+    } finally {
+      setBulkActionLoading(false);
+    }
   }
 
   return (
@@ -357,6 +446,43 @@ export default function KennelDogsPanel() {
         </div>
       </div>
 
+      {message ? (
+        <div className="mb-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          {message}
+        </div>
+      ) : null}
+
+      {selectedDogIds.length > 0 ? (
+        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-purple-300/15 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-purple-100/80">
+            {selectedDogIds.length} selected
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/shows?dogIds=${encodeURIComponent(selectedDogsQuery)}`}
+              className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500"
+            >
+              Show Entry
+            </Link>
+            <button
+              type="button"
+              onClick={rehomeSelectedDogs}
+              disabled={!canBulkRehome || bulkActionLoading}
+              className="rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {bulkActionLoading ? "Re-Homing..." : "Re-Home Selected"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDogIds([])}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {loading ? (
         <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-6 text-sm text-purple-100/70">
           Loading kennel dogs...
@@ -371,9 +497,18 @@ export default function KennelDogsPanel() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-[1180px] w-full border-separate border-spacing-y-2 text-sm">
+          <table className="min-w-[1240px] w-full border-separate border-spacing-y-2 text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+                <th className="px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={toggleVisibleSelection}
+                    className="text-purple-200/80 transition hover:text-white"
+                  >
+                    Select
+                  </button>
+                </th>
                 <th className="px-3 py-2 text-right">Open</th>
                 <th className="px-3 py-2">
                   <SortButton
@@ -475,6 +610,14 @@ export default function KennelDogsPanel() {
                   key={dog.dogId}
                   className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
                 >
+                  <td className="rounded-l-2xl px-3 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedDogIds.includes(dog.dogId)}
+                      onChange={() => toggleDogSelection(dog.dogId)}
+                      aria-label={`Select ${getDogDisplayName(dog)}`}
+                    />
+                  </td>
                   <td className="px-3 py-3 text-right">
                     <Link
                       href={`/dogs/${dog.dogId}`}
@@ -520,7 +663,7 @@ export default function KennelDogsPanel() {
                     />
                   </td>
 
-                  <td className="px-3 py-3 text-xs text-purple-100/80 whitespace-nowrap">
+                  <td className="rounded-r-2xl px-3 py-3 text-xs text-purple-100/80 whitespace-nowrap">
                     {formatBreedingStatus(dog.breedingCardStatus)}
                   </td>
                 </tr>

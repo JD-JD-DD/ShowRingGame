@@ -49,10 +49,19 @@ export default async function ShowDetailPage({
   searchParams: Promise<{
     entryError?: string;
     entryMessage?: string;
+    dogIds?: string;
   }>;
 }) {
   const { showId } = await params;
-  const { entryError, entryMessage } = await searchParams;
+  const { entryError, entryMessage, dogIds } = await searchParams;
+  const selectedDogIds = new Set(
+    typeof dogIds === "string" && dogIds.trim()
+      ? dogIds
+          .split(",")
+          .map((dogId) => dogId.trim())
+          .filter(Boolean)
+      : []
+  );
   const currentEpoch = getCurrentEpoch();
   const userId = await getSessionUserId();
   const kennel = userId ? await getKennelForUser(userId) : null;
@@ -149,6 +158,13 @@ export default async function ShowDetailPage({
             {entryError}
           </div>
         ) : null}
+
+        {selectedDogIds.size > 0 ? (
+          <div className="mt-5 rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-100/80">
+            Showing eligible entries from {selectedDogIds.size} selected kennel
+            dog{selectedDogIds.size === 1 ? "" : "s"}.
+          </div>
+        ) : null}
       </section>
 
       <div className="grid gap-6">
@@ -195,7 +211,10 @@ export default async function ShowDetailPage({
                   </thead>
                   <tbody>
                     {day.judgingBlocks.map((block) => {
-                      const eligibleDogs = eligibleDogsByBlock[block.id] ?? [];
+                      const eligibleDogs = (eligibleDogsByBlock[block.id] ?? []).filter(
+                        (dog) =>
+                          selectedDogIds.size === 0 || selectedDogIds.has(dog.dogId)
+                      );
 
                       return (
                         <tr

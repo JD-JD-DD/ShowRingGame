@@ -25,7 +25,16 @@ function statusTone(status: string): string {
   }
 }
 
-export default async function ShowsPage() {
+export default async function ShowsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ dogIds?: string }>;
+}) {
+  const { dogIds } = await searchParams;
+  const selectedDogIdsQuery = typeof dogIds === "string" ? dogIds : "";
+  const showDetailQuery = selectedDogIdsQuery
+    ? `?dogIds=${encodeURIComponent(selectedDogIdsQuery)}`
+    : "";
   const currentEpoch = getCurrentEpoch();
   const clusters = await db.showCluster.findMany({
     orderBy: [{ startEpoch: "asc" }, { name: "asc" }],
@@ -85,6 +94,12 @@ export default async function ShowsPage() {
         <div className="mt-5 inline-flex rounded-2xl border border-purple-300/20 bg-black/20 px-4 py-2 text-sm text-purple-100/80">
           Current game epoch: {currentEpoch.toLocaleString()}
         </div>
+
+        {selectedDogIdsQuery ? (
+          <div className="mt-3 rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-100/80">
+            Carrying selected kennel dogs into show entry planning.
+          </div>
+        ) : null}
       </section>
 
       {clusters.length === 0 ? (
@@ -127,7 +142,7 @@ export default async function ShowsPage() {
                   </div>
 
                   <Link
-                    href={`/shows/${cluster.id}`}
+                    href={`/shows/${cluster.id}${showDetailQuery}`}
                     className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
                   >
                     Open Show

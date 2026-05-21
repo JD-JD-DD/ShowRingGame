@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { getVisibleCategoriesFromDogRecord } from "@/server/services/foundationDog.service";
-import type { VisibleCategories } from "@showring/rules";
+import { canSellPuppy, type VisibleCategories } from "@showring/rules";
 
 const PLAYER_LISTING_TYPE = "PLAYER_PUBLIC";
 
@@ -206,6 +206,7 @@ export async function listDogForSale(args: {
         id: true,
         regNumber: true,
         ownerKennelId: true,
+        birthEpoch: true,
         lifecycleState: true,
         marketState: true,
       },
@@ -221,6 +222,10 @@ export async function listDogForSale(args: {
 
     if (dog.lifecycleState !== "ALIVE") {
       throw new Error("Only active dogs can be offered for sale.");
+    }
+
+    if (!canSellPuppy(currentEpoch, dog.birthEpoch, dog.lifecycleState)) {
+      throw new Error("Dogs cannot be offered for sale until 8 weeks of game age.");
     }
 
     if (dog.marketState !== "NOT_FOR_SALE") {
