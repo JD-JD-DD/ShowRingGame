@@ -8,8 +8,8 @@ function formatEpoch(epoch: number): string {
   return `${epoch.toLocaleString()} (${epochToDate(epoch).toLocaleString()})`;
 }
 
-function formatScore(score: number): string {
-  return score.toFixed(2);
+function formatPublishedDate(epoch: number): string {
+  return epochToDate(epoch).toLocaleString();
 }
 
 function getDogDisplayName(dog: {
@@ -18,6 +18,38 @@ function getDogDisplayName(dog: {
   regNumber: string;
 }): string {
   return dog.registeredName || dog.callName || dog.regNumber;
+}
+
+function getAwardLabel(result: {
+  finalRank: number | null;
+  placementCode: string | null;
+}): string {
+  const placement = result.placementCode ?? "";
+  const numericPlacement = Number(placement);
+  const rank = result.finalRank ?? numericPlacement;
+
+  if (Number.isFinite(numericPlacement)) {
+    return rank >= 1 && rank <= 4 ? String(rank) : "-";
+  }
+
+  return placement || "-";
+}
+
+function getAwardPointsLabel(result: {
+  placementCode: string | null;
+  pointsAwarded: number;
+}): string | null {
+  const pointEligibleAwards = new Set(["WB", "WD", "BOB"]);
+
+  if (
+    !result.placementCode ||
+    !pointEligibleAwards.has(result.placementCode) ||
+    result.pointsAwarded <= 0
+  ) {
+    return null;
+  }
+
+  return `${result.pointsAwarded} ${result.pointsAwarded === 1 ? "pt" : "pts"}`;
 }
 
 function statusTone(status: string): string {
@@ -118,8 +150,8 @@ export default async function ShowResultsPage({
               {cluster.name}
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
-              Published placements, judging scores, dogs, and kennels for each
-              completed breed block.
+              Published awards, placements, dogs, and kennels for each completed
+              breed block.
             </p>
           </div>
 
@@ -236,65 +268,59 @@ export default async function ShowResultsPage({
                       </div>
                     ) : (
                       <div className="mt-4 overflow-x-auto">
-                        <table className="w-full min-w-[920px] border-separate border-spacing-y-2 text-sm">
+                        <table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-sm">
                           <thead>
                             <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
-                              <th className="px-3 py-2">Place</th>
+                              <th className="px-3 py-2">Award</th>
                               <th className="px-3 py-2">Dog</th>
                               <th className="px-3 py-2">Kennel</th>
                               <th className="px-3 py-2">Sex</th>
-                              <th className="px-3 py-2">Base</th>
-                              <th className="px-3 py-2">Final</th>
-                              <th className="px-3 py-2">Points</th>
                               <th className="px-3 py-2">Published</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {block.showResults.map((result) => (
-                              <tr
-                                key={result.id}
-                                className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
-                              >
-                                <td className="rounded-l-2xl px-3 py-3">
-                                  <div className="inline-flex min-w-10 justify-center rounded-full border border-sky-300/25 bg-sky-500/10 px-3 py-1 font-semibold text-sky-100">
-                                    {result.placementCode ??
-                                      (result.finalRank
-                                        ? String(result.finalRank)
-                                        : "-")}
-                                  </div>
-                                </td>
-                                <td className="px-3 py-3">
-                                  <Link
-                                    href={`/dogs/${result.dog.id}`}
-                                    className="font-semibold text-white underline-offset-4 hover:underline"
-                                  >
-                                    {getDogDisplayName(result.dog)}
-                                  </Link>
-                                  <div className="text-xs text-purple-100/55">
-                                    {result.dog.regNumber}
-                                  </div>
-                                </td>
-                                <td className="px-3 py-3 text-purple-100/75">
-                                  {result.showEntry.kennel.name}
-                                </td>
-                                <td className="px-3 py-3 text-purple-100/75">
-                                  {result.dog.sex}
-                                </td>
-                                <td className="px-3 py-3 text-purple-100/75">
-                                  {formatScore(result.baseScore)}
-                                </td>
-                                <td className="px-3 py-3 font-semibold text-emerald-200">
-                                  {formatScore(result.finalScore)}
-                                </td>
-                                <td className="px-3 py-3 text-purple-100/75">
-                                  {result.pointsAwarded}
-                                  {result.isMajor ? " major" : ""}
-                                </td>
-                                <td className="rounded-r-2xl px-3 py-3 text-purple-100/65">
-                                  {formatEpoch(result.publishedAtEpoch)}
-                                </td>
-                              </tr>
-                            ))}
+                            {block.showResults.map((result) => {
+                              const awardLabel = getAwardLabel(result);
+                              const pointsLabel = getAwardPointsLabel(result);
+
+                              return (
+                                <tr
+                                  key={result.id}
+                                  className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                                >
+                                  <td className="rounded-l-2xl px-3 py-3">
+                                    <div className="inline-flex min-w-10 items-center justify-center gap-2 rounded-full border border-sky-300/25 bg-sky-500/10 px-3 py-1 font-semibold text-sky-100">
+                                      <span>{awardLabel}</span>
+                                      {pointsLabel ? (
+                                        <span className="font-bold text-white">
+                                          {pointsLabel}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-3">
+                                    <Link
+                                      href={`/dogs/${result.dog.id}`}
+                                      className="font-semibold text-white underline-offset-4 hover:underline"
+                                    >
+                                      {getDogDisplayName(result.dog)}
+                                    </Link>
+                                    <div className="text-xs text-purple-100/55">
+                                      {result.dog.regNumber}
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-3 text-purple-100/75">
+                                    {result.showEntry.kennel.name}
+                                  </td>
+                                  <td className="px-3 py-3 text-purple-100/75">
+                                    {result.dog.sex}
+                                  </td>
+                                  <td className="rounded-r-2xl px-3 py-3 text-purple-100/65">
+                                    {formatPublishedDate(result.publishedAtEpoch)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
