@@ -7,8 +7,16 @@ import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { listEligibleDogsByShowBlock } from "@/server/services/showEntry.service";
 
-function formatEpoch(epoch: number): string {
-  return `${epoch.toLocaleString()} (${epochToDate(epoch).toLocaleString()})`;
+function formatShowDateTime(epoch: number): string {
+  return epochToDate(epoch).toLocaleString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  });
 }
 
 function formatAge(ageHours: number): string {
@@ -88,8 +96,8 @@ export default async function ShowDetailPage({
               { blockOrder: "asc" },
             ],
             include: {
-              judge: { select: { name: true, style: true } },
-              breed: { select: { name: true, code2: true, groupName: true } },
+              judge: { select: { name: true } },
+              breed: { select: { name: true } },
               _count: { select: { showEntries: true, showResults: true } },
             },
           },
@@ -172,7 +180,7 @@ export default async function ShowDetailPage({
             District {cluster.district}
           </div>
           <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
-            Entries close {formatEpoch(cluster.entryCloseEpoch)}
+            Entries close {formatShowDateTime(cluster.entryCloseEpoch)}
           </div>
         </div>
 
@@ -221,7 +229,7 @@ export default async function ShowDetailPage({
                   Day {day.dayIndex}
                 </h2>
                 <p className="mt-2 text-sm text-purple-100/70">
-                  Starts {formatEpoch(day.scheduledEpoch)}
+                  Starts {formatShowDateTime(day.scheduledEpoch)}
                 </p>
               </div>
               <div
@@ -246,7 +254,6 @@ export default async function ShowDetailPage({
                       <th className="px-3 py-2">Judge</th>
                       <th className="px-3 py-2">Start</th>
                       <th className="px-3 py-2">Entries</th>
-                      <th className="px-3 py-2">Results</th>
                       <th className="px-3 py-2">Status</th>
                       <th className="px-3 py-2">Enter</th>
                     </tr>
@@ -274,38 +281,17 @@ export default async function ShowDetailPage({
                             <div className="font-semibold text-white">
                               {block.breed.name}
                             </div>
-                            <div className="text-xs text-purple-100/55">
-                              {block.breed.code2} - {block.breed.groupName}
-                            </div>
                           </td>
                           <td className="px-3 py-3">
                             <div className="font-semibold text-white">
                               {block.judge.name}
                             </div>
-                            <div className="text-xs text-purple-100/55">
-                              {block.judge.style ?? "balanced"}
-                            </div>
                           </td>
                           <td className="px-3 py-3 text-purple-100/75">
-                            {formatEpoch(block.startEpoch)}
+                            {formatShowDateTime(block.startEpoch)}
                           </td>
                           <td className="px-3 py-3 text-purple-100/75">
                             {block._count.showEntries}
-                            {block.entryCountHint
-                              ? ` / hint ${block.entryCountHint}`
-                              : ""}
-                          </td>
-                          <td className="px-3 py-3 text-purple-100/75">
-                            {block._count.showResults > 0 ? (
-                              <Link
-                                href={`/shows/${cluster.id}/results#${block.id}`}
-                                className="font-semibold text-sky-100 underline-offset-4 hover:underline"
-                              >
-                                {block._count.showResults}
-                              </Link>
-                            ) : (
-                              block._count.showResults
-                            )}
                           </td>
                           <td className="px-3 py-3">
                             <span
@@ -316,27 +302,6 @@ export default async function ShowDetailPage({
                           </td>
                           <td className="rounded-r-2xl px-3 py-3">
                             <div className="flex min-w-[300px] flex-col gap-2">
-                              {block._count.showEntries > 0 &&
-                              block.status !== "RESULTS_PUBLISHED" &&
-                              block.status !== "CANCELLED" ? (
-                                <form
-                                  action={`/api/admin/show-blocks/${block.id}/judge`}
-                                  method="post"
-                                >
-                                  <input
-                                    type="hidden"
-                                    name="redirectTo"
-                                    value={`/shows/${cluster.id}/results`}
-                                  />
-                                  <button
-                                    type="submit"
-                                    className="w-full rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
-                                  >
-                                    Run Judging
-                                  </button>
-                                </form>
-                              ) : null}
-
                               {kennel ? (
                               eligibleDogs.length > 0 ? (
                                 <form
