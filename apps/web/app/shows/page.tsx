@@ -44,6 +44,7 @@ export default async function ShowsPage({
       showDays: {
         orderBy: [{ dayIndex: "asc" }],
         include: {
+          _count: { select: { showResults: true } },
           judgingBlocks: {
             orderBy: [
               { startEpoch: "asc" },
@@ -116,6 +117,10 @@ export default async function ShowsPage({
               (total, day) => total + day.judgingBlocks.length,
               0
             );
+            const resultCount = cluster.showDays.reduce(
+              (total, day) => total + day._count.showResults,
+              0
+            );
 
             return (
               <section
@@ -144,12 +149,24 @@ export default async function ShowsPage({
                     </div>
                   </div>
 
-                  <Link
-                    href={`/shows/${cluster.id}${showDetailQuery}`}
-                    className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-                  >
-                    Open Show
-                  </Link>
+                  <div className="flex flex-wrap gap-3">
+                    <Link
+                      href={`/shows/${cluster.id}/results`}
+                      className={
+                        resultCount > 0
+                          ? "rounded-2xl bg-sky-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-sky-500"
+                          : "rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                      }
+                    >
+                      Results
+                    </Link>
+                    <Link
+                      href={`/shows/${cluster.id}${showDetailQuery}`}
+                      className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                    >
+                      Open Show
+                    </Link>
+                  </div>
                 </div>
 
                 <div className="mt-5 grid gap-3 lg:grid-cols-2">

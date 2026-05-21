@@ -109,6 +109,15 @@ export default async function ShowDetailPage({
         currentEpoch,
       })
     : {};
+  const resultCount = cluster.showDays.reduce(
+    (dayTotal, day) =>
+      dayTotal +
+      day.judgingBlocks.reduce(
+        (blockTotal, block) => blockTotal + block._count.showResults,
+        0
+      ),
+    0
+  );
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8 text-white">
@@ -128,6 +137,16 @@ export default async function ShowDetailPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/shows/${cluster.id}/results`}
+              className={
+                resultCount > 0
+                  ? "rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500"
+                  : "rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              }
+            >
+              Results
+            </Link>
             <Link
               href="/shows"
               className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
@@ -277,7 +296,16 @@ export default async function ShowDetailPage({
                               : ""}
                           </td>
                           <td className="px-3 py-3 text-purple-100/75">
-                            {block._count.showResults}
+                            {block._count.showResults > 0 ? (
+                              <Link
+                                href={`/shows/${cluster.id}/results#${block.id}`}
+                                className="font-semibold text-sky-100 underline-offset-4 hover:underline"
+                              >
+                                {block._count.showResults}
+                              </Link>
+                            ) : (
+                              block._count.showResults
+                            )}
                           </td>
                           <td className="px-3 py-3">
                             <span
@@ -298,7 +326,7 @@ export default async function ShowDetailPage({
                                   <input
                                     type="hidden"
                                     name="redirectTo"
-                                    value={`/shows/${cluster.id}`}
+                                    value={`/shows/${cluster.id}/results`}
                                   />
                                   <button
                                     type="submit"
