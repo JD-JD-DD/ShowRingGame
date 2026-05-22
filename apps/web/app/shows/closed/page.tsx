@@ -21,10 +21,7 @@ function formatShowDateTime(epoch: number): string {
 
 function statusTone(status: string): string {
   switch (status) {
-    case "OPEN":
-    case "ENTRY_OPEN":
-      return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
-    case "JUDGING":
+    case "CLOSED":
     case "ENTRY_LOCKED":
       return "border-amber-300/25 bg-amber-500/10 text-amber-100";
     case "RESULTS_PUBLISHED":
@@ -37,29 +34,15 @@ function statusTone(status: string): string {
   }
 }
 
-export default async function ShowsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{
-    dogIds?: string;
-    generated?: string;
-    generateError?: string;
-  }>;
-}) {
-  const { dogIds, generated, generateError } = await searchParams;
-  const selectedDogIdsQuery = typeof dogIds === "string" ? dogIds : "";
-  const showDetailQuery = selectedDogIdsQuery
-    ? `?dogIds=${encodeURIComponent(selectedDogIdsQuery)}`
-    : "";
+export default async function ClosedShowsPage() {
   const currentEpoch = getCurrentEpoch();
-
   const clusters = await db.showCluster.findMany({
     where: {
       startEpoch: {
         gt: currentEpoch,
         lte: currentEpoch + UPCOMING_SHOW_WINDOW_HOURS,
       },
-      status: "OPEN",
+      status: "CLOSED",
     },
     orderBy: [{ startEpoch: "asc" }, { name: "asc" }],
     include: {
@@ -81,28 +64,19 @@ export default async function ShowsPage({
               Show Calendar
             </p>
             <h1 className="mt-2 text-4xl font-bold tracking-tight text-white">
-              Upcoming Shows
+              Closed Upcoming Shows
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
-              Browse open clusters ready for show entry.
+              Review upcoming clusters whose entry windows have closed.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <form action="/api/shows" method="post">
-              <input type="hidden" name="redirectTo" value="/shows" />
-              <button
-                type="submit"
-                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
-              >
-                Refresh Upcoming Shows
-              </button>
-            </form>
             <Link
-              href="/shows/closed"
+              href="/shows"
               className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
             >
-              View Closed Shows
+              Open Shows
             </Link>
             <Link
               href="/shows/archive"
@@ -112,15 +86,9 @@ export default async function ShowsPage({
             </Link>
             <Link
               href="/kennel"
-              className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-            >
-              My Kennel
-            </Link>
-            <Link
-              href="/"
               className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
             >
-              Home
+              My Kennel
             </Link>
           </div>
         </div>
@@ -128,30 +96,11 @@ export default async function ShowsPage({
         <div className="mt-5 inline-flex rounded-2xl border border-purple-300/20 bg-black/20 px-4 py-2 text-sm text-purple-100/80">
           Showing through {formatShowDateTime(currentEpoch + UPCOMING_SHOW_WINDOW_HOURS)}
         </div>
-
-        {selectedDogIdsQuery ? (
-          <div className="mt-3 rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-100/80">
-            Carrying selected kennel dogs into show entry planning.
-          </div>
-        ) : null}
-
-        {generated ? (
-          <div className="mt-3 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            Upcoming shows refreshed.
-          </div>
-        ) : null}
-
-        {generateError ? (
-          <div className="mt-3 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-            {generateError}
-          </div>
-        ) : null}
-
       </section>
 
       {clusters.length === 0 ? (
         <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 text-sm text-purple-100/75">
-          <div>No open upcoming shows are available yet.</div>
+          <div>No closed upcoming shows are available.</div>
         </section>
       ) : (
         <div className="grid gap-6">
@@ -181,9 +130,9 @@ export default async function ShowsPage({
                       {cluster.name}
                     </h2>
                     <div className="mt-2 text-sm text-purple-100/70">
-                      District {cluster.district} · Year {cluster.year} ·{" "}
+                      District {cluster.district} - Year {cluster.year} -{" "}
                       {cluster.showDays.length} show day
-                      {cluster.showDays.length === 1 ? "" : "s"} · {entryCount}{" "}
+                      {cluster.showDays.length === 1 ? "" : "s"} - {entryCount}{" "}
                       entr{entryCount === 1 ? "y" : "ies"}
                     </div>
                     <div className="mt-2 text-xs text-purple-100/55">
@@ -204,14 +153,13 @@ export default async function ShowsPage({
                       Results
                     </Link>
                     <Link
-                      href={`/shows/${cluster.id}${showDetailQuery}`}
+                      href={`/shows/${cluster.id}`}
                       className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10 lg:min-w-32"
                     >
-                      Open Show
+                      View Show
                     </Link>
                   </div>
                 </div>
-
               </section>
             );
           })}
