@@ -163,8 +163,9 @@ export default async function ShowDetailPage({
   const breedOptions = [...breedOptionByCode.values()].sort((a, b) =>
     a.name.localeCompare(b.name)
   );
-  const selectedBreed =
-    breedOptionByCode.get(selectedBreedCode) ?? breedOptions[0] ?? null;
+  const selectedBreed = selectedBreedCode
+    ? breedOptionByCode.get(selectedBreedCode) ?? null
+    : null;
   const eligibleDogs =
     kennel && selectedBreed
       ? (
@@ -270,12 +271,13 @@ export default async function ShowDetailPage({
             <input type="hidden" name="dogIds" value={dogIds} />
           ) : null}
           <label className="grid gap-2 text-sm text-purple-100/75">
-            Breed
+            Breed to Enter
             <select
               name="breedCode2"
               defaultValue={selectedBreed?.code2 ?? ""}
               className="rounded-xl border border-purple-300/20 bg-black/35 px-4 py-3 text-sm font-semibold text-white outline-none"
             >
+              <option value="">Choose a breed...</option>
               {breedOptions.length === 0 ? (
                 <option value="">No open breed entries</option>
               ) : (
@@ -299,11 +301,11 @@ export default async function ShowDetailPage({
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
             Log in to enter dogs from your kennel.
           </div>
-        ) : !selectedBreed ? (
+        ) : selectedBreedCode && !selectedBreed ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
-            No breeds are currently open for entry in this show.
+            That breed is not currently open for entry in this show.
           </div>
-        ) : eligibleDogs.length === 0 ? (
+        ) : !selectedBreed ? null : eligibleDogs.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
             No eligible {selectedBreed.name} dogs are available in your kennel.
           </div>
