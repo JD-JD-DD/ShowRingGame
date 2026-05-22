@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { recalculateDogTitleProgressForDogs } from "@/server/services/titleProgress.service";
 import {
   JUDGING_SCORING_VERSION,
   judgeBreedBlock,
@@ -420,6 +421,13 @@ export async function judgeShowBlock(args: {
 
     if (awardsToCreate.length > 0) {
       await tx.showAward.createMany({ data: awardsToCreate });
+
+      await recalculateDogTitleProgressForDogs({
+        tx,
+        dogIds: awardsToCreate
+          .filter((award) => (award.pointsAwarded ?? 0) > 0)
+          .map((award) => award.dogId),
+      });
     }
 
     if (judgedEntryIds.length > 0) {

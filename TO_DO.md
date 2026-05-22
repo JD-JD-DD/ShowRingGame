@@ -6,9 +6,8 @@ This file is the short working queue. Use `docs/DRIFT_AUDIT.md` for the reasonin
 
 ### 1. Check Breeding Eligibility
 
-Status: audited; implementation pass needed
+Status: first pass implemented; central helper/tests still needed
 
-- Audit result: server-side creation mostly works, but eligibility is duplicated across rules, service, breed page, dog page, and kennel roster.
 - Current server create path blocks:
   - wrong owner
   - same dog
@@ -18,19 +17,16 @@ Status: audited; implementation pass needed
   - female over current max age
   - pending pregnancy check
   - pregnant
+  - post-whelp cooldown
   - not alive
-- Current gaps:
-  - dog page can show the breed button for a bitch with an active pending/pregnant attempt because it only checks age/alive/ownership
-  - post-whelp cooldown is not enforced
-  - post-whelp cooldown countdown is not shown
+- Remaining gaps:
   - male age-out does not exist yet
   - female cutoff differs from the MasterFile (`2555` in code vs `2520` in MasterFile)
   - `FOREVER_HOME` does not exist yet
+  - eligibility logic is still duplicated across rules, service, breed page, dog page, and kennel roster
 - Next implementation pass:
   - create or centralize one breeding eligibility helper for service/API/UI
-  - update dog page eligibility display to use active breeding state
-  - implement post-whelp cooldown by deriving from latest whelped attempt or persisting `whelpingCooldownUntil`
-  - keep `CHECKED_NOT_PREGNANT` immediately breedable if otherwise eligible
+  - add focused checks for active pregnancy, did-not-take, cooldown, age-out, retired, deceased, and future forever-home cases
 - Implemented first pass:
   - when a player clicks `Breed Dog` from a dog page, the breed page now honors `/breed?dogId=...`
   - the clicked dog is pinned at the top/side as the selected dog
@@ -204,16 +200,15 @@ Status: todo; strategy/design needed before implementation
 
 ### 7. Show Entry and Judging Flow
 
-Status: audited; mostly greenfield implementation
+Status: active implementation
 
 - Broad roadmap: `docs/SHOW_IMPLEMENTATION_PLAN.md`
 - Current state:
-  - show schema exists for judges, clusters, show days, judging blocks, entries, results, and title progress
-  - judge and judging rules engines exist
-  - entry quote/travel economy engine exists
-  - `/shows` pages currently render nothing
-  - show API routes are placeholders
-  - show service and mapper files are empty
+  - show schema exists for judges, clusters, show days, judging blocks, entries, results, awards, and title progress
+  - judge, judging, economy, and show-calendar helper engines exist
+  - `/shows`, `/shows/[showId]`, and results pages are implemented for first-pass test shows
+  - players can enter eligible dogs and pay the `$25` entry fee
+  - manual judging endpoints still exist for backend/admin use, but the visible `Run Judging` button has been removed
 - First implementation pass:
   - build the judging spine before the calendar/entry wrapper
   - done: core rules produce base score, final score, controlled variance, tie-breaks, final rank, and placement code
@@ -234,8 +229,21 @@ Status: audited; mostly greenfield implementation
   - done: entry close timing is temporarily relaxed while show timing rules are still being designed
   - done: `/ledger` page shows recent kennel ledger transactions
   - done: a global UTC clock appears in the upper right of app pages
+  - done: rules helper generates deterministic show clusters from MasterFile calendar rules:
+    - 3 clusters per week
+    - 75% 2-day and 25% 4-day cluster pattern
+    - 15-district rotation with every district hosting every 5 weeks
+    - annual event hour excluded
+    - 120-hour generation horizon
+    - 14-hour future entry close offset
   - later: decide the actual entry close timing and re-enable entry window enforcement
-  - add a basic result page before awards/title progression
+  - next: wire the cluster generator into a persistence/service path that creates real upcoming clusters
+  - next: implement lazy automatic judging when block start epochs pass
+  - done: first-pass CH title progression recalculates from `ShowAward` points after judging
+  - done: first-pass title application sets `visibleTitlePrefix = "CH"` once a dog has 15 points and 2 majors
+  - next: parse/use the real point schedule instead of the temporary all-breed points rule
+  - next: show title progress on dog pages and/or a show record page
+  - next: apply visible title prefixes/suffixes consistently anywhere dog names are rendered
   - refine show detail/entry planner page with quote summaries and stronger entry feedback
   - then make dog page `Enter Show` route to the planner with optional `/shows?dogId=...` preselection
   - then add eligible dog filtering for show entries
@@ -253,9 +261,8 @@ Status: audited; mostly greenfield implementation
     - entry-lock/deadline check
     - affordability check
     - ledger transactions for entry/travel/handler fees
-  - seed or generate sample clusters and judges
-  - add results page and permanent show history
-  - add CH point progression after results are reliable
+  - generate sample clusters and judges from the generator instead of hand-maintained CSV rows
+  - expand permanent show history
 - Later show-side systems:
   - Winners Dog / Winners Bitch
   - Best of Winners

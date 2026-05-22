@@ -56,6 +56,14 @@ function firstQueryValue(value: string | string[] | undefined): string | null {
   return value ?? null;
 }
 
+function formatTitledName(args: {
+  name: string;
+  prefix?: string | null;
+  suffix?: string | null;
+}) {
+  return [args.prefix, args.name, args.suffix].filter(Boolean).join(" ");
+}
+
 export default async function DogPage({ params, searchParams }: PageProps) {
   const { dogId } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -256,6 +264,11 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
   const displayName =
     dog.registeredName || dog.callName || dog.regNumber || "Unnamed Dog";
+  const titledDisplayName = formatTitledName({
+    name: displayName,
+    prefix: dog.visibleTitlePrefix,
+    suffix: dog.visibleTitleSuffix,
+  });
   const canNameDog = isOwnedByCurrentKennel && !dog.registeredName?.trim();
   const canOfferForSale =
     isOwnedByCurrentKennel &&
@@ -282,7 +295,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               </div>
 
               <h1 className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-                {displayName}
+                {titledDisplayName}
               </h1>
 
               <div className="mt-3 text-sm text-purple-100/70">

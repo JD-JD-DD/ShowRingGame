@@ -1,5 +1,0 @@
-TO_DO_Local
-
-if ownership changes between the time the dog is entered in a show and the show runs, new owner's kennel name is shown. since points and all that is attached to the dog object. 
-
-

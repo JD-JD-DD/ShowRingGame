@@ -1,0 +1,29 @@
+import {
+  ANNUAL_EVENT_HOUR_IN_YEAR,
+  SHOW_DAY_FRI,
+  SHOW_DAY_MON,
+  SHOW_DAY_SAT,
+  SHOW_DAY_SUN,
+} from "./time.constants";
+
+export const SHOW_CLUSTERS_PER_WEEK = 3;
+export const SHOW_DISTRICT_COUNT = 15;
+export const SHOW_INSTANCE_GENERATION_HORIZON_HOURS = 120;
+export const SHOW_ENTRY_CLOSE_OFFSET_HOURS = 14;
+
+export const SHOW_CLUSTER_2_DAY_RATIO = 0.75;
+export const SHOW_CLUSTER_4_DAY_RATIO = 0.25;
+
+export const SHOW_ANNUAL_EVENT_HOUR_IN_YEAR = ANNUAL_EVENT_HOUR_IN_YEAR;
+
+export const TWO_DAY_CLUSTER_DAY_OFFSETS = [
+  SHOW_DAY_SAT,
+  SHOW_DAY_SUN,
+] as const;
+
+export const FOUR_DAY_CLUSTER_DAY_OFFSETS = [
+  SHOW_DAY_MON,
+  SHOW_DAY_FRI,
+  SHOW_DAY_SAT,
+  SHOW_DAY_SUN,
+] as const;
