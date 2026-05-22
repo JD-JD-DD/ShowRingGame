@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
-import { listEligibleDogsByShowBlock } from "@/server/services/showEntry.service";
+import { listEligibleDogsForShowBlock } from "@/server/services/showEntry.service";
 import { ensureGeneratedShowBlocksForCluster } from "@/server/services/showSchedule.service";
 import { ENTRY_FEE_PER_SHOW } from "@showring/rules";
 
@@ -60,6 +60,7 @@ export default async function ShowDetailPage({
     entryError?: string;
     entryMessage?: string;
     dogIds?: string;
+    entryBlockId?: string;
     judged?: string;
     judgedEntries?: string;
     judgeError?: string;
@@ -70,6 +71,7 @@ export default async function ShowDetailPage({
     entryError,
     entryMessage,
     dogIds,
+    entryBlockId,
     judged,
     judgedEntries,
     judgeError,
@@ -82,6 +84,10 @@ export default async function ShowDetailPage({
           .filter(Boolean)
       : []
   );
+  const selectedEntryBlockId =
+    typeof entryBlockId === "string" && entryBlockId.trim()
+      ? entryBlockId.trim()
+      : "";
   const currentEpoch = getCurrentEpoch();
   const userId = await getSessionUserId();
   const kennel = userId ? await getKennelForUser(userId) : null;
@@ -117,13 +123,33 @@ export default async function ShowDetailPage({
     notFound();
   }
 
-  const eligibleDogsByBlock = kennel
-    ? await listEligibleDogsByShowBlock({
-        showId: cluster.id,
-        kennelId: kennel.id,
-        currentEpoch,
-      })
-    : {};
+  const eligibleDogsForSelectedBlock =
+    kennel && selectedEntryBlockId
+      ? (
+          await listEligibleDogsForShowBlock({
+            judgingBlockId: selectedEntryBlockId,
+            kennelId: kennel.id,
+            currentEpoch,
+          })
+        ).filter(
+          (dog) => selectedDogIds.size === 0 || selectedDogIds.has(dog.dogId)
+        )
+      : [];
+  const getEntryBlockHref = (blockId: string) => {
+    const params = new URLSearchParams();
+
+    params.set("entryBlockId", blockId);
+
+    if (typeof dogIds === "string" && dogIds.trim()) {
+      params.set("dogIds", dogIds);
+    }
+
+    return `/shows/${cluster.id}?${params.toString()}`;
+  };
+  const clearEntryBlockHref =
+    typeof dogIds === "string" && dogIds.trim()
+      ? `/shows/${cluster.id}?dogIds=${encodeURIComponent(dogIds)}`
+      : `/shows/${cluster.id}`;
   const resultCount = cluster.showDays.reduce(
     (dayTotal, day) =>
       dayTotal +
@@ -252,7 +278,7 @@ export default async function ShowDetailPage({
               </div>
             ) : (
               <div className="mt-5 overflow-x-auto">
-                <table className="w-full min-w-[1240px] border-separate border-spacing-y-2 text-sm">
+                <table className="w-full min-w-[980px] border-separate border-spacing-y-2 text-sm">
                   <thead>
                     <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
                       <th className="px-3 py-2">Order</th>
@@ -267,10 +293,9 @@ export default async function ShowDetailPage({
                   </thead>
                   <tbody>
                     {day.judgingBlocks.map((block) => {
-                      const eligibleDogs = (eligibleDogsByBlock[block.id] ?? []).filter(
-                        (dog) =>
-                          selectedDogIds.size === 0 || selectedDogIds.has(dog.dogId)
-                      );
+                      const isSelectedEntryBlock =
+                        selectedEntryBlockId === block.id;
+                      const canOpenEntrySelector = block.status === "ENTRY_OPEN";
 
                       return (
                         <tr
@@ -308,13 +333,30 @@ export default async function ShowDetailPage({
                             </span>
                           </td>
                           <td className="rounded-r-2xl px-3 py-3">
-                            <div className="flex min-w-[300px] flex-col gap-2">
-                              {kennel ? (
-                              eligibleDogs.length > 0 ? (
+                            <div className="flex min-w-[180px] flex-col gap-2">
+                              {!kennel ? (
+                                <Link
+                                  href="/login"
+                                  className="text-sm font-semibold text-purple-100 underline-offset-4 hover:underline"
+                                >
+                                  Log in
+                                </Link>
+                              ) : !canOpenEntrySelector ? (
+                                <div className="text-xs text-purple-100/55">
+                                  Entry closed
+                                </div>
+                              ) : !isSelectedEntryBlock ? (
+                                <Link
+                                  href={getEntryBlockHref(block.id)}
+                                  className="rounded-xl bg-purple-600 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
+                                >
+                                  Choose Dog
+                                </Link>
+                              ) : eligibleDogsForSelectedBlock.length > 0 ? (
                                 <form
                                   action={`/api/shows/${cluster.id}/enter`}
                                   method="post"
-                                  className="flex min-w-[300px] gap-2"
+                                  className="flex min-w-[360px] gap-2"
                                 >
                                   <input
                                     type="hidden"
@@ -325,7 +367,7 @@ export default async function ShowDetailPage({
                                     name="dogId"
                                     className="min-w-0 flex-1 rounded-xl border border-purple-300/20 bg-black/35 px-3 py-2 text-sm text-white outline-none"
                                   >
-                                    {eligibleDogs.map((dog) => (
+                                    {eligibleDogsForSelectedBlock.map((dog) => (
                                       <option key={dog.dogId} value={dog.dogId}>
                                         {dog.displayName} - {dog.sex} -{" "}
                                         {formatAge(dog.ageHours)}
@@ -338,20 +380,18 @@ export default async function ShowDetailPage({
                                   >
                                     Enter ${ENTRY_FEE_PER_SHOW}
                                   </button>
+                                  <Link
+                                    href={clearEntryBlockHref}
+                                    className="rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                                  >
+                                    Cancel
+                                  </Link>
                                 </form>
                               ) : (
                                 <div className="text-xs text-purple-100/55">
                                   No eligible kennel dogs
                                 </div>
-                              )
-                            ) : (
-                              <Link
-                                href="/login"
-                                className="text-sm font-semibold text-purple-100 underline-offset-4 hover:underline"
-                              >
-                                Log in
-                              </Link>
-                            )}
+                              )}
                             </div>
                           </td>
                         </tr>

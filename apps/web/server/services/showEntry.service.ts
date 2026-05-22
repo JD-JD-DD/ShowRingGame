@@ -369,6 +369,48 @@ export async function listEligibleDogsByShowBlock(args: {
   );
 }
 
+export async function listEligibleDogsForShowBlock(args: {
+  judgingBlockId: string;
+  kennelId: string;
+  currentEpoch: number;
+}): Promise<EligibleShowDogDto[]> {
+  const { judgingBlockId, kennelId, currentEpoch } = args;
+  const block = await db.showJudgingBlock.findUnique({
+    where: { id: judgingBlockId },
+    ...showBlockForEntryArgs,
+  });
+
+  if (!block) {
+    return [];
+  }
+
+  const dogs = await db.dog.findMany({
+    where: {
+      ownerKennelId: kennelId,
+      breedCode2: block.breedCode2,
+      showEntries: {
+        none: {
+          showDayId: block.showDayId,
+        },
+      },
+    },
+    orderBy: [{ registeredName: "asc" }, { regNumber: "asc" }],
+    ...dogForEntryArgs,
+  });
+
+  return dogs
+    .filter((dog) => canEnterShowBlock({ dog, block, currentEpoch }).ok)
+    .map((dog) => ({
+      dogId: dog.id,
+      displayName: getDogDisplayName(dog),
+      regNumber: dog.regNumber,
+      sex: dog.sex,
+      ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
+      conditioningSnapshot: getConditioningSnapshot(dog),
+      fatigueSnapshot: dog.fatiguePoints,
+    }));
+}
+
 export async function seedTestEntriesForShow(args: {
   showId: string;
   currentEpoch: number;

@@ -7,7 +7,6 @@ import { ensureGeneratedShowSchedule } from "@/server/services/showSchedule.serv
 export const dynamic = "force-dynamic";
 
 const UPCOMING_SHOW_WINDOW_HOURS = 42;
-const RECENT_SHOW_BUFFER_HOURS = 7;
 
 function formatShowDateTime(epoch: number): string {
   return epochToDate(epoch).toLocaleString("en-US", {
@@ -60,8 +59,10 @@ export default async function ShowsPage({
 
   const clusters = await db.showCluster.findMany({
     where: {
-      endEpoch: { gte: currentEpoch - RECENT_SHOW_BUFFER_HOURS },
-      startEpoch: { lte: currentEpoch + UPCOMING_SHOW_WINDOW_HOURS },
+      startEpoch: {
+        gt: currentEpoch,
+        lte: currentEpoch + UPCOMING_SHOW_WINDOW_HOURS,
+      },
       status: { not: "CANCELLED" },
     },
     orderBy: [{ startEpoch: "asc" }, { name: "asc" }],
@@ -70,18 +71,6 @@ export default async function ShowsPage({
         orderBy: [{ dayIndex: "asc" }],
         include: {
           _count: { select: { judgingBlocks: true, showResults: true } },
-          judgingBlocks: {
-            take: 4,
-            orderBy: [
-              { startEpoch: "asc" },
-              { ringNumber: "asc" },
-              { blockOrder: "asc" },
-            ],
-            include: {
-              judge: { select: { name: true, style: true } },
-              breed: { select: { name: true, code2: true, groupName: true } },
-            },
-          },
         },
       },
     },
@@ -201,7 +190,7 @@ export default async function ShowsPage({
                   </div>
                 </div>
 
-                <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   {cluster.showDays.map((day) => (
                     <div
                       key={day.id}
@@ -220,23 +209,12 @@ export default async function ShowsPage({
                       <div className="mt-2 text-sm text-purple-100/70">
                         Starts {formatShowDateTime(day.scheduledEpoch)}
                       </div>
-                      <div className="mt-4 space-y-2">
-                        {day.judgingBlocks.slice(0, 4).map((block) => (
-                          <div
-                            key={block.id}
-                            className="grid gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm sm:grid-cols-[0.8fr_1.1fr_1fr]"
-                          >
-                            <div className="text-purple-100">
-                              Ring {block.ringNumber}
-                            </div>
-                            <div className="font-medium text-white">
-                              {block.breed.name}
-                            </div>
-                            <div className="text-purple-100/65">
-                              {block.judge.name}
-                            </div>
-                          </div>
-                        ))}
+                      <div className="mt-3 text-xs text-purple-100/55">
+                        {day._count.judgingBlocks > 0
+                          ? `${day._count.judgingBlocks} breed block${
+                              day._count.judgingBlocks === 1 ? "" : "s"
+                            }`
+                          : "Breed blocks load when opened"}
                       </div>
                     </div>
                   ))}
