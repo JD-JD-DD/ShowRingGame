@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
-import { ensureGeneratedShowSchedule } from "@/server/services/showSchedule.service";
 
 export const dynamic = "force-dynamic";
 
@@ -43,19 +42,16 @@ export default async function ShowsPage({
 }: {
   searchParams: Promise<{
     dogIds?: string;
+    generated?: string;
+    generateError?: string;
   }>;
 }) {
-  const { dogIds } = await searchParams;
+  const { dogIds, generated, generateError } = await searchParams;
   const selectedDogIdsQuery = typeof dogIds === "string" ? dogIds : "";
   const showDetailQuery = selectedDogIdsQuery
     ? `?dogIds=${encodeURIComponent(selectedDogIdsQuery)}`
     : "";
   const currentEpoch = getCurrentEpoch();
-  await ensureGeneratedShowSchedule({
-    currentEpoch,
-    horizonHours: UPCOMING_SHOW_WINDOW_HOURS,
-    includeJudgingBlocks: false,
-  });
 
   const clusters = await db.showCluster.findMany({
     where: {
@@ -94,6 +90,15 @@ export default async function ShowsPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <form action="/api/shows" method="post">
+              <input type="hidden" name="redirectTo" value="/shows" />
+              <button
+                type="submit"
+                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
+              >
+                Refresh Upcoming Shows
+              </button>
+            </form>
             <Link
               href="/shows/archive"
               className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
@@ -122,6 +127,18 @@ export default async function ShowsPage({
         {selectedDogIdsQuery ? (
           <div className="mt-3 rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-100/80">
             Carrying selected kennel dogs into show entry planning.
+          </div>
+        ) : null}
+
+        {generated ? (
+          <div className="mt-3 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            Upcoming shows refreshed.
+          </div>
+        ) : null}
+
+        {generateError ? (
+          <div className="mt-3 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {generateError}
           </div>
         ) : null}
 
@@ -190,35 +207,6 @@ export default async function ShowsPage({
                   </div>
                 </div>
 
-                <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  {cluster.showDays.map((day) => (
-                    <div
-                      key={day.id}
-                      className="rounded-2xl border border-white/10 bg-black/20 p-4"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="font-semibold text-white">
-                          Day {day.dayIndex}
-                        </div>
-                        <div
-                          className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusTone(day.status)}`}
-                        >
-                          {day.status}
-                        </div>
-                      </div>
-                      <div className="mt-2 text-sm text-purple-100/70">
-                        Starts {formatShowDateTime(day.scheduledEpoch)}
-                      </div>
-                      <div className="mt-3 text-xs text-purple-100/55">
-                        {day._count.judgingBlocks > 0
-                          ? `${day._count.judgingBlocks} breed block${
-                              day._count.judgingBlocks === 1 ? "" : "s"
-                            }`
-                          : "Breed blocks load when opened"}
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </section>
             );
           })}
