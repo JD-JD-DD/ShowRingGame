@@ -101,7 +101,7 @@ export default async function ShowDetailPage({
       showDays: {
         orderBy: [{ dayIndex: "asc" }],
         include: {
-          judge: { select: { name: true } },
+          judge: { select: { judgeCode: true, name: true } },
           _count: { select: { showResults: true, showEntries: true } },
         },
       },
@@ -240,7 +240,13 @@ export default async function ShowDetailPage({
                 {formatShowDateTime(day.scheduledEpoch)}
               </div>
               <div className="mt-2 text-sm text-purple-100/75">
-                Judge: <span className="font-semibold text-white">{day.judge.name}</span>
+                Judge:{" "}
+                <Link
+                  href={`/judges/${day.judge.judgeCode}`}
+                  className="font-semibold text-white underline-offset-4 hover:underline"
+                >
+                  {day.judge.name}
+                </Link>
               </div>
               <div className="mt-2 text-xs text-purple-100/50">
                 {day._count.showEntries} entered

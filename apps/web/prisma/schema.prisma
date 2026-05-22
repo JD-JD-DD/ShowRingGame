@@ -250,6 +250,7 @@ model Dog {
 
 model Judge {
   id           String  @id
+  judgeCode    String  @unique
   name         String
   style        String?
   isActive     Boolean @default(true)

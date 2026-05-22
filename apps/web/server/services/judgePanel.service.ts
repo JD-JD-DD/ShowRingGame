@@ -30,6 +30,14 @@ function toJudgeId(judgeName: string): string {
   return `judge-${normalizedName}`;
 }
 
+function toJudgeCode(index: number): string {
+  return `JDG-${String(index + 1).padStart(4, "0")}`;
+}
+
+function toJudgeIdFromCode(judgeCode: string): string {
+  return `judge-${judgeCode.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+}
+
 export async function seedJudgePanelFromCsv(): Promise<{
   sourcePath: string;
   judgeCount: number;
@@ -37,10 +45,28 @@ export async function seedJudgePanelFromCsv(): Promise<{
   const sourcePath = resolveJudgePanelPath();
   const rows = parseJudgeRosterCsv(fs.readFileSync(sourcePath, "utf8"));
 
-  for (const row of rows) {
+  for (const [index, row] of rows.entries()) {
+    const judgeCode = row.judgeCode ?? toJudgeCode(index);
+    const legacyJudgeId = toJudgeId(row.judgeName);
+    const existingJudgeByCode = await db.judge.findUnique({
+      where: { judgeCode },
+      select: { id: true },
+    });
+    const existingJudgeByLegacyId = existingJudgeByCode
+      ? null
+      : await db.judge.findUnique({
+          where: { id: legacyJudgeId },
+          select: { id: true },
+        });
+    const judgeId =
+      existingJudgeByCode?.id ??
+      existingJudgeByLegacyId?.id ??
+      toJudgeIdFromCode(judgeCode);
+
     await db.judge.upsert({
-      where: { id: toJudgeId(row.judgeName) },
+      where: { id: judgeId },
       update: {
+        judgeCode,
         name: row.judgeName,
         style: row.style,
         isActive: true,
@@ -52,7 +78,8 @@ export async function seedJudgePanelFromCsv(): Promise<{
         weightConditioningHandling: row.conditioningHandlingWeight,
       },
       create: {
-        id: toJudgeId(row.judgeName),
+        id: judgeId,
+        judgeCode,
         name: row.judgeName,
         style: row.style,
         isActive: true,

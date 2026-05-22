@@ -3,6 +3,7 @@ import type { Judge, JudgeStyle } from "../engines/judge.engine";
 export const FULL_JUDGE_PANEL_FILENAME = "fulljudgepanel.csv";
 
 export type JudgeRosterRow = {
+  judgeCode?: string;
   judgeName: string;
   style: string;
   typeExpressionWeight: number;
@@ -126,6 +127,7 @@ export function parseJudgeRosterCsv(csv: string): JudgeRosterRow[] {
     );
 
     return {
+      judgeCode: row.judgeCode?.trim() || undefined,
       judgeName: row.judgeName,
       style: row.style,
       typeExpressionWeight: parseNumber(

@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  outputFileTracingIncludes: {
+    "/*": ["../../docs/*.csv", "../../docs/*.txt"],
+  },
 };
 
 export default nextConfig;

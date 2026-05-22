@@ -215,7 +215,7 @@ export default async function BreedResultsPage({
               { blockOrder: "asc" },
             ],
             include: {
-              judge: { select: { name: true, style: true } },
+              judge: { select: { judgeCode: true, name: true, style: true } },
               breed: { select: { name: true, code2: true, groupName: true } },
               _count: { select: { showEntries: true, showResults: true } },
               showResults: {
@@ -287,7 +287,13 @@ export default async function BreedResultsPage({
           {firstBlock.breed.name}
         </h2>
         <p className="mt-2 text-lg font-semibold text-purple-100">
-          Judge: {firstBlock.judge.name}
+          Judge:{" "}
+          <Link
+            href={`/judges/${firstBlock.judge.judgeCode}`}
+            className="text-white underline-offset-4 hover:underline"
+          >
+            {firstBlock.judge.name}
+          </Link>
         </p>
 
         <div className="mt-6 flex flex-wrap justify-center gap-3">

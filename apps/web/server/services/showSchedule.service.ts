@@ -23,6 +23,7 @@ type ShowBlockCsvRow = {
   ringNumber: number;
   ringName: string;
   startEpoch: number;
+  judgeCode?: string;
   judgeName: string;
   breedCode2: string;
   breedName: string;
@@ -118,6 +119,7 @@ function parseShowBlockCsv(csv: string): ShowBlockCsvRow[] {
       ringNumber: parseNumber(row.ringNumber, "ringNumber"),
       ringName: row.ringName,
       startEpoch: parseNumber(row.startEpoch, "startEpoch"),
+      judgeCode: row.judgeCode?.trim() || undefined,
       judgeName: row.judgeName,
       breedCode2: row.breedCode2.trim().toUpperCase(),
       breedName: row.breedName,
@@ -289,14 +291,15 @@ type ReleasedBreedForShows = Awaited<
 
 type ActiveJudgeForShows = {
   id: string;
+  judgeCode: string;
   name: string;
 };
 
 async function getActiveJudgesForShows(): Promise<ActiveJudgeForShows[]> {
   return db.judge.findMany({
     where: { isActive: true },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true },
+    orderBy: [{ judgeCode: "asc" }, { name: "asc" }],
+    select: { id: true, judgeCode: true, name: true },
   });
 }
 
@@ -669,8 +672,8 @@ export async function seedShowScheduleFromCsv(): Promise<{
 
   const judges = await db.judge.findMany({
     where: { isActive: true },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true },
+    orderBy: [{ judgeCode: "asc" }, { name: "asc" }],
+    select: { id: true, judgeCode: true, name: true },
   });
 
   if (judges.length === 0) {
@@ -679,6 +682,9 @@ export async function seedShowScheduleFromCsv(): Promise<{
 
   const judgeByName = new Map(
     judges.map((judge) => [normalizeName(judge.name), judge])
+  );
+  const judgeByCode = new Map(
+    judges.map((judge) => [judge.judgeCode.toUpperCase(), judge])
   );
   const rowsByCluster = new Map<string, ShowBlockCsvRow[]>();
 
@@ -789,13 +795,18 @@ export async function seedShowScheduleFromCsv(): Promise<{
       showDayCount += 1;
 
       for (const [rowIndex, row] of dayRows.entries()) {
-        const exactJudge = judgeByName.get(normalizeName(row.judgeName));
+        const exactJudge = row.judgeCode
+          ? judgeByCode.get(row.judgeCode.toUpperCase())
+          : judgeByName.get(normalizeName(row.judgeName));
         const assignedJudge =
           exactJudge ?? judges[(dateIndex + rowIndex) % judges.length] ?? judges[0];
 
         if (!exactJudge) {
+          const judgeLabel = row.judgeCode
+            ? `${row.judgeCode} (${row.judgeName})`
+            : row.judgeName;
           warnings.push(
-            `Judge "${row.judgeName}" was not found in fulljudgepanel.csv; assigned ${assignedJudge.name}.`
+            `Judge "${judgeLabel}" was not found in fulljudgepanel.csv; assigned ${assignedJudge.name}.`
           );
         }
 
