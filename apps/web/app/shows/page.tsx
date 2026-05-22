@@ -55,6 +55,7 @@ export default async function ShowsPage({
   await ensureGeneratedShowSchedule({
     currentEpoch,
     horizonHours: UPCOMING_SHOW_WINDOW_HOURS,
+    includeJudgingBlocks: false,
   });
 
   const clusters = await db.showCluster.findMany({
@@ -68,8 +69,9 @@ export default async function ShowsPage({
       showDays: {
         orderBy: [{ dayIndex: "asc" }],
         include: {
-          _count: { select: { showResults: true } },
+          _count: { select: { judgingBlocks: true, showResults: true } },
           judgingBlocks: {
+            take: 4,
             orderBy: [
               { startEpoch: "asc" },
               { ringNumber: "asc" },
@@ -144,7 +146,7 @@ export default async function ShowsPage({
         <div className="grid gap-6">
           {clusters.map((cluster) => {
             const blockCount = cluster.showDays.reduce(
-              (total, day) => total + day.judgingBlocks.length,
+              (total, day) => total + day._count.judgingBlocks,
               0
             );
             const resultCount = cluster.showDays.reduce(

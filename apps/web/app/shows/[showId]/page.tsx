@@ -6,6 +6,7 @@ import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { listEligibleDogsByShowBlock } from "@/server/services/showEntry.service";
+import { ensureGeneratedShowBlocksForCluster } from "@/server/services/showSchedule.service";
 import { ENTRY_FEE_PER_SHOW } from "@showring/rules";
 
 function formatShowDateTime(epoch: number): string {
@@ -84,6 +85,11 @@ export default async function ShowDetailPage({
   const currentEpoch = getCurrentEpoch();
   const userId = await getSessionUserId();
   const kennel = userId ? await getKennelForUser(userId) : null;
+  await ensureGeneratedShowBlocksForCluster({
+    showClusterId: showId,
+    currentEpoch,
+  });
+
   const cluster = await db.showCluster.findUnique({
     where: { id: showId },
     include: {

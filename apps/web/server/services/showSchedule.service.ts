@@ -208,6 +208,26 @@ function getGeneratedClusterId(cluster: GeneratedShowCluster): string {
   return `generated-year-${cluster.year}-${cluster.templateId}`;
 }
 
+function parseGeneratedClusterId(clusterId: string): {
+  year: number;
+  weekInYear: number;
+  slotIndex: number;
+} | null {
+  const match = clusterId.match(
+    /^generated-year-(\d+)-week-(\d+)-slot-(\d+)$/
+  );
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    year: Number(match[1]),
+    weekInYear: Number(match[2]),
+    slotIndex: Number(match[3]) - 1,
+  };
+}
+
 function normalizeGroupName(groupName: string | null): string {
   return groupName?.trim() || "Other";
 }
@@ -263,9 +283,139 @@ async function getReleasedBreedsForShows() {
   });
 }
 
+type ReleasedBreedForShows = Awaited<
+  ReturnType<typeof getReleasedBreedsForShows>
+>[number];
+
+type ActiveJudgeForShows = {
+  id: string;
+  name: string;
+};
+
+async function getActiveJudgesForShows(): Promise<ActiveJudgeForShows[]> {
+  return db.judge.findMany({
+    where: { isActive: true },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
+async function ensureJudgingBlocksForShowDays(args: {
+  weekIndex: number;
+  slotIndex: number;
+  currentEpoch: number;
+  entryOpenEpoch: number;
+  entryCloseEpoch: number;
+  showDays: Array<{
+    id: string;
+    dayIndex: number;
+    scheduledEpoch: number;
+  }>;
+  breeds: ReleasedBreedForShows[];
+  judges: ActiveJudgeForShows[];
+}): Promise<number> {
+  const {
+    weekIndex,
+    slotIndex,
+    currentEpoch,
+    entryOpenEpoch,
+    entryCloseEpoch,
+    showDays,
+    breeds,
+    judges,
+  } = args;
+
+  const groupNames = [
+    ...new Set(breeds.map((breed) => normalizeGroupName(breed.groupName))),
+  ].sort(
+    (a, b) => groupSortKey(a).localeCompare(groupSortKey(b)) || a.localeCompare(b)
+  );
+  const ringNumberByGroup = new Map(
+    groupNames.map((groupName, index) => [groupName, index + 1])
+  );
+  let judgingBlockCount = 0;
+
+  for (const showDay of showDays) {
+    const blockOrderByRing = new Map<number, number>();
+
+    for (const breed of breeds) {
+      const groupName = normalizeGroupName(breed.groupName);
+      const ringNumber = ringNumberByGroup.get(groupName) ?? groupNames.length + 1;
+      const blockOrder = (blockOrderByRing.get(ringNumber) ?? 0) + 1;
+      blockOrderByRing.set(ringNumber, blockOrder);
+
+      const assignedJudge =
+        judges[
+          getGeneratedJudgeIndex({
+            cluster: {
+              weekIndex,
+              slotIndex,
+            } as GeneratedShowCluster,
+            dayIndex: showDay.dayIndex,
+            ringNumber,
+            blockOrder,
+            judgeCount: judges.length,
+          })
+        ];
+      const blockStatus = getBlockStatus({
+        currentEpoch,
+        entryOpenEpoch,
+        entryCloseEpoch,
+      });
+      const existingBlock = await db.showJudgingBlock.findUnique({
+        where: {
+          showDayId_ringNumber_blockOrder: {
+            showDayId: showDay.id,
+            ringNumber,
+            blockOrder,
+          },
+        },
+        select: { id: true, status: true },
+      });
+
+      if (existingBlock) {
+        if (!TERMINAL_BLOCK_STATUSES.has(existingBlock.status)) {
+          await db.showJudgingBlock.update({
+            where: { id: existingBlock.id },
+            data: {
+              judgeId: assignedJudge.id,
+              breedCode2: breed.code2,
+              ringName: getRingName(groupName),
+              startEpoch: showDay.scheduledEpoch,
+              classType: "REGULAR",
+              entryCountHint: GENERATED_SHOW_ENTRY_COUNT_HINT,
+              status: blockStatus,
+            },
+          });
+        }
+      } else {
+        await db.showJudgingBlock.create({
+          data: {
+            showDayId: showDay.id,
+            judgeId: assignedJudge.id,
+            breedCode2: breed.code2,
+            ringNumber,
+            ringName: getRingName(groupName),
+            startEpoch: showDay.scheduledEpoch,
+            classType: "REGULAR",
+            blockOrder,
+            entryCountHint: GENERATED_SHOW_ENTRY_COUNT_HINT,
+            status: blockStatus,
+          },
+        });
+      }
+
+      judgingBlockCount += 1;
+    }
+  }
+
+  return judgingBlockCount;
+}
+
 export async function ensureGeneratedShowSchedule(args?: {
   currentEpoch?: number;
   horizonHours?: number;
+  includeJudgingBlocks?: boolean;
 }): Promise<{
   clusterCount: number;
   showDayCount: number;
@@ -275,20 +425,17 @@ export async function ensureGeneratedShowSchedule(args?: {
   await seedJudgePanelFromCsv();
 
   const currentEpoch = args?.currentEpoch ?? getCurrentEpoch();
+  const includeJudgingBlocks = args?.includeJudgingBlocks ?? true;
   const clusters = generateShowClustersInHorizon({
     currentEpoch,
     horizonHours: args?.horizonHours,
   });
   const [breeds, judges] = await Promise.all([
-    getReleasedBreedsForShows(),
-    db.judge.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
+    includeJudgingBlocks ? getReleasedBreedsForShows() : Promise.resolve([]),
+    getActiveJudgesForShows(),
   ]);
 
-  if (breeds.length === 0) {
+  if (includeJudgingBlocks && breeds.length === 0) {
     throw new Error("No released active breeds are available for show generation.");
   }
 
@@ -296,11 +443,6 @@ export async function ensureGeneratedShowSchedule(args?: {
     throw new Error("No active judges are available for show generation.");
   }
 
-  const groupNames = [...new Set(breeds.map((breed) => normalizeGroupName(breed.groupName)))]
-    .sort((a, b) => groupSortKey(a).localeCompare(groupSortKey(b)) || a.localeCompare(b));
-  const ringNumberByGroup = new Map(
-    groupNames.map((groupName, index) => [groupName, index + 1])
-  );
   let showDayCount = 0;
   let judgingBlockCount = 0;
 
@@ -403,74 +545,25 @@ export async function ensureGeneratedShowSchedule(args?: {
       }
 
       showDayCount += 1;
-      const blockOrderByRing = new Map<number, number>();
+    }
 
-      for (const breed of breeds) {
-        const groupName = normalizeGroupName(breed.groupName);
-        const ringNumber = ringNumberByGroup.get(groupName) ?? groupNames.length + 1;
-        const blockOrder = (blockOrderByRing.get(ringNumber) ?? 0) + 1;
-        blockOrderByRing.set(ringNumber, blockOrder);
+    if (includeJudgingBlocks) {
+      const showDays = await db.showDay.findMany({
+        where: { clusterId },
+        orderBy: [{ dayIndex: "asc" }],
+        select: { id: true, dayIndex: true, scheduledEpoch: true },
+      });
 
-        const assignedJudge =
-          judges[
-            getGeneratedJudgeIndex({
-              cluster,
-              dayIndex,
-              ringNumber,
-              blockOrder,
-              judgeCount: judges.length,
-            })
-          ];
-        const blockStatus = getBlockStatus({
-          currentEpoch,
-          entryOpenEpoch: cluster.entryOpenEpoch,
-          entryCloseEpoch: cluster.entryCloseEpoch,
-        });
-        const existingBlock = await db.showJudgingBlock.findUnique({
-          where: {
-            showDayId_ringNumber_blockOrder: {
-              showDayId,
-              ringNumber,
-              blockOrder,
-            },
-          },
-          select: { id: true, status: true },
-        });
-
-        if (existingBlock) {
-          if (!TERMINAL_BLOCK_STATUSES.has(existingBlock.status)) {
-            await db.showJudgingBlock.update({
-              where: { id: existingBlock.id },
-              data: {
-                judgeId: assignedJudge.id,
-                breedCode2: breed.code2,
-                ringName: getRingName(groupName),
-                startEpoch: scheduledEpoch,
-                classType: "REGULAR",
-                entryCountHint: GENERATED_SHOW_ENTRY_COUNT_HINT,
-                status: blockStatus,
-              },
-            });
-          }
-        } else {
-          await db.showJudgingBlock.create({
-            data: {
-              showDayId,
-              judgeId: assignedJudge.id,
-              breedCode2: breed.code2,
-              ringNumber,
-              ringName: getRingName(groupName),
-              startEpoch: scheduledEpoch,
-              classType: "REGULAR",
-              blockOrder,
-              entryCountHint: GENERATED_SHOW_ENTRY_COUNT_HINT,
-              status: blockStatus,
-            },
-          });
-        }
-
-        judgingBlockCount += 1;
-      }
+      judgingBlockCount += await ensureJudgingBlocksForShowDays({
+        weekIndex: cluster.weekIndex,
+        slotIndex: cluster.slotIndex,
+        currentEpoch,
+        entryOpenEpoch: cluster.entryOpenEpoch,
+        entryCloseEpoch: cluster.entryCloseEpoch,
+        showDays,
+        breeds,
+        judges,
+      });
     }
   }
 
@@ -482,6 +575,59 @@ export async function ensureGeneratedShowSchedule(args?: {
       (latestEpoch, cluster) => Math.max(latestEpoch, cluster.endEpoch),
       currentEpoch
     ),
+  };
+}
+
+export async function ensureGeneratedShowBlocksForCluster(args: {
+  showClusterId: string;
+  currentEpoch?: number;
+}): Promise<{ judgingBlockCount: number }> {
+  const parsed = parseGeneratedClusterId(args.showClusterId);
+
+  if (!parsed) {
+    return { judgingBlockCount: 0 };
+  }
+
+  await seedJudgePanelFromCsv();
+
+  const currentEpoch = args.currentEpoch ?? getCurrentEpoch();
+  const [cluster, breeds, judges] = await Promise.all([
+    db.showCluster.findUnique({
+      where: { id: args.showClusterId },
+      include: {
+        showDays: {
+          orderBy: [{ dayIndex: "asc" }],
+          select: { id: true, dayIndex: true, scheduledEpoch: true },
+        },
+      },
+    }),
+    getReleasedBreedsForShows(),
+    getActiveJudgesForShows(),
+  ]);
+
+  if (!cluster || cluster.showDays.length === 0) {
+    return { judgingBlockCount: 0 };
+  }
+
+  if (breeds.length === 0) {
+    throw new Error("No released active breeds are available for show generation.");
+  }
+
+  if (judges.length === 0) {
+    throw new Error("No active judges are available for show generation.");
+  }
+
+  return {
+    judgingBlockCount: await ensureJudgingBlocksForShowDays({
+      weekIndex: (parsed.year - 1) * 52 + parsed.weekInYear - 1,
+      slotIndex: parsed.slotIndex,
+      currentEpoch,
+      entryOpenEpoch: cluster.entryOpenEpoch,
+      entryCloseEpoch: cluster.entryCloseEpoch,
+      showDays: cluster.showDays,
+      breeds,
+      judges,
+    }),
   };
 }
 
