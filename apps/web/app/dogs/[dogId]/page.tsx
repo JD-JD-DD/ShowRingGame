@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { getCurrentEpoch } from "@/lib/gameClock";
+import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { deriveVisibleCategoriesFromTraits } from "@showring/rules";
 import {
@@ -45,6 +45,15 @@ function formatMoney(amount: number): string {
   return `$${amount.toLocaleString()}`;
 }
 
+function formatShowDate(epoch: number): string {
+  return epochToDate(epoch).toLocaleDateString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function formatCategoryName(key: string): string {
   return key
     .replace(/_/g, " ")
@@ -62,6 +71,50 @@ function formatTitledName(args: {
   suffix?: string | null;
 }) {
   return [args.prefix, args.name, args.suffix].filter(Boolean).join(" ");
+}
+
+function formatPlacement(finalRank: number | null): string {
+  if (!finalRank) {
+    return "Result";
+  }
+
+  if (finalRank === 1) return "1st";
+  if (finalRank === 2) return "2nd";
+  if (finalRank === 3) return "3rd";
+
+  return `${finalRank}th`;
+}
+
+function sortShowAwards<
+  T extends {
+    awardCode: string;
+    awardGroup: string;
+    rank: number | null;
+    pointsAwarded: number;
+  },
+>(awards: T[]): T[] {
+  const awardOrder: Record<string, number> = {
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    WD: 5,
+    WB: 5,
+    RWD: 6,
+    RWB: 6,
+    BOB: 7,
+    BOS: 8,
+    AOM: 9,
+  };
+
+  return [...awards].sort((a, b) => {
+    const orderDifference =
+      (awardOrder[a.awardCode] ?? 99) - (awardOrder[b.awardCode] ?? 99);
+
+    if (orderDifference !== 0) return orderDifference;
+
+    return (a.rank ?? 99) - (b.rank ?? 99);
+  });
 }
 
 export default async function DogPage({ params, searchParams }: PageProps) {
@@ -168,6 +221,51 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           registeredName: true,
           regNumber: true,
           sex: true,
+        },
+      },
+      showResults: {
+        orderBy: [{ publishedAtEpoch: "desc" }, { finalRank: "asc" }],
+        take: 20,
+        select: {
+          id: true,
+          finalRank: true,
+          placementCode: true,
+          pointsAwarded: true,
+          isMajor: true,
+          breed: {
+            select: {
+              name: true,
+              code2: true,
+            },
+          },
+          judge: {
+            select: {
+              judgeCode: true,
+              name: true,
+            },
+          },
+          showDay: {
+            select: {
+              dayIndex: true,
+              scheduledEpoch: true,
+              cluster: {
+                select: {
+                  id: true,
+                  name: true,
+                  district: true,
+                },
+              },
+            },
+          },
+          showAwards: {
+            select: {
+              awardCode: true,
+              awardGroup: true,
+              rank: true,
+              pointsAwarded: true,
+              isMajor: true,
+            },
+          },
         },
       },
       breedingAttemptsAsDam: {
@@ -278,6 +376,11 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
   const categoryEntries = Object.entries(visibleCategories);
   const progeny = dog.sex === "M" ? dog.sireOf : dog.damOf;
+  const showResults = dog.showResults;
+  const totalShowPoints = showResults.reduce(
+    (total, result) => total + result.pointsAwarded,
+    0
+  );
 
   return (
     <main className="min-h-screen px-6 py-8 text-white">
@@ -587,6 +690,118 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               </div>
             </section>
           </div>
+        </section>
+
+        <section className="mb-8 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-2xl font-semibold text-white">Show Record</h2>
+              <p className="mt-2 text-sm leading-7 text-purple-100/70">
+                Published breed results for this dog.
+              </p>
+            </div>
+            <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm font-semibold text-purple-100/75">
+              {showResults.length} result{showResults.length === 1 ? "" : "s"} -{" "}
+              {totalShowPoints} point{totalShowPoints === 1 ? "" : "s"}
+            </div>
+          </div>
+
+          {showResults.length === 0 ? (
+            <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
+              No published show results yet.
+            </div>
+          ) : (
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full min-w-[840px] border-separate border-spacing-y-2 text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+                    <th className="px-3 py-2">Show</th>
+                    <th className="px-3 py-2">Breed</th>
+                    <th className="px-3 py-2">Judge</th>
+                    <th className="px-3 py-2">Result</th>
+                    <th className="px-3 py-2">Awards</th>
+                    <th className="px-3 py-2 text-right">Points</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {showResults.map((result) => {
+                    const sortedAwards = sortShowAwards(result.showAwards);
+
+                    return (
+                      <tr
+                        key={result.id}
+                        className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                      >
+                        <td className="rounded-l-2xl px-3 py-3">
+                          <Link
+                            href={`/shows/${result.showDay.cluster.id}`}
+                            className="font-semibold text-white underline-offset-4 hover:underline"
+                          >
+                            {result.showDay.cluster.name}
+                          </Link>
+                          <div className="text-xs text-purple-100/55">
+                            {formatShowDate(result.showDay.scheduledEpoch)} - Day{" "}
+                            {result.showDay.dayIndex} - District{" "}
+                            {result.showDay.cluster.district}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          <Link
+                            href={`/shows/${result.showDay.cluster.id}/results/${result.breed.code2}`}
+                            className="font-semibold text-sky-100 underline-offset-4 hover:underline"
+                          >
+                            {result.breed.name}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-3">
+                          <Link
+                            href={`/judges/${result.judge.judgeCode}`}
+                            className="font-semibold text-white underline-offset-4 hover:underline"
+                          >
+                            {result.judge.name}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-3 text-purple-100/80">
+                          <div className="font-semibold text-white">
+                            {formatPlacement(result.finalRank)}
+                          </div>
+                          {result.placementCode ? (
+                            <div className="text-xs text-purple-100/55">
+                              {result.placementCode}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-3">
+                          {sortedAwards.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {sortedAwards.map((award) => (
+                                <span
+                                  key={`${result.id}-${award.awardCode}-${award.awardGroup}-${award.rank ?? "na"}`}
+                                  className="rounded-full border border-sky-300/25 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-100"
+                                >
+                                  {award.awardCode}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-purple-100/45">None</span>
+                          )}
+                        </td>
+                        <td className="rounded-r-2xl px-3 py-3 text-right font-semibold text-white">
+                          {result.pointsAwarded}
+                          {result.isMajor ? (
+                            <div className="text-xs font-medium text-amber-100">
+                              Major
+                            </div>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         <section className="grid gap-6 lg:grid-cols-2">
