@@ -2,9 +2,23 @@ import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
+import { ensureGeneratedShowSchedule } from "@/server/services/showSchedule.service";
 
-function formatEpoch(epoch: number): string {
-  return `${epoch.toLocaleString()} (${epochToDate(epoch).toLocaleString()})`;
+export const dynamic = "force-dynamic";
+
+const UPCOMING_SHOW_WINDOW_HOURS = 42;
+const RECENT_SHOW_BUFFER_HOURS = 7;
+
+function formatShowDateTime(epoch: number): string {
+  return epochToDate(epoch).toLocaleString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  });
 }
 
 function statusTone(status: string): string {
@@ -38,7 +52,17 @@ export default async function ShowsPage({
     ? `?dogIds=${encodeURIComponent(selectedDogIdsQuery)}`
     : "";
   const currentEpoch = getCurrentEpoch();
+  await ensureGeneratedShowSchedule({
+    currentEpoch,
+    horizonHours: UPCOMING_SHOW_WINDOW_HOURS,
+  });
+
   const clusters = await db.showCluster.findMany({
+    where: {
+      endEpoch: { gte: currentEpoch - RECENT_SHOW_BUFFER_HOURS },
+      startEpoch: { lte: currentEpoch + UPCOMING_SHOW_WINDOW_HOURS },
+      status: { not: "CANCELLED" },
+    },
     orderBy: [{ startEpoch: "asc" }, { name: "asc" }],
     include: {
       showDays: {
@@ -73,12 +97,18 @@ export default async function ShowsPage({
               Upcoming Shows
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
-              Browse seeded clusters, show days, judging blocks, assigned judges,
-              and breed rings.
+              Browse the next few weeks of generated clusters, show days, breed
+              rings, and entry windows.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <Link
+              href="/shows/archive"
+              className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+            >
+              Results Archive
+            </Link>
             <Link
               href="/kennel"
               className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
@@ -95,7 +125,7 @@ export default async function ShowsPage({
         </div>
 
         <div className="mt-5 inline-flex rounded-2xl border border-purple-300/20 bg-black/20 px-4 py-2 text-sm text-purple-100/80">
-          Current game epoch: {currentEpoch.toLocaleString()}
+          Showing through {formatShowDateTime(currentEpoch + UPCOMING_SHOW_WINDOW_HOURS)}
         </div>
 
         {selectedDogIdsQuery ? (
@@ -144,8 +174,8 @@ export default async function ShowsPage({
                       judging block{blockCount === 1 ? "" : "s"}
                     </div>
                     <div className="mt-2 text-xs text-purple-100/55">
-                      Entries: {formatEpoch(cluster.entryOpenEpoch)} to{" "}
-                      {formatEpoch(cluster.entryCloseEpoch)}
+                      Entries: {formatShowDateTime(cluster.entryOpenEpoch)} to{" "}
+                      {formatShowDateTime(cluster.entryCloseEpoch)}
                     </div>
                   </div>
 
@@ -186,7 +216,7 @@ export default async function ShowsPage({
                         </div>
                       </div>
                       <div className="mt-2 text-sm text-purple-100/70">
-                        Starts {formatEpoch(day.scheduledEpoch)}
+                        Starts {formatShowDateTime(day.scheduledEpoch)}
                       </div>
                       <div className="mt-4 space-y-2">
                         {day.judgingBlocks.slice(0, 4).map((block) => (

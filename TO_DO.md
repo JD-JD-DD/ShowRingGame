@@ -152,6 +152,9 @@ Status: audited; implementation pass needed
   - add memorium view later
   - replace local breedable/show filters with shared eligibility DTOs when helpers are centralized
   - done: widen the kennel roster filter controls so long breed names are easier to read
+- Global kennel header/status bar:
+  - design a persistent top summary bar that can include kennel name, total active dogs, pregnant dogs, ledger balance, and UTC time
+  - decide whether any other kennel-health signals belong there before replacing the simple standalone UTC clock
 - Actions and placement:
   - rename or replace `Re-Home Dog` with final `Forever Home` behavior
   - reserve transferred/sold for ownership changes to another kennel
@@ -236,14 +239,21 @@ Status: active implementation
     - annual event hour excluded
     - 120-hour generation horizon
     - 14-hour future entry close offset
+  - done: `docs/showClusterCalendar.csv` provides a year-agnostic annual show-cluster calendar template:
+    - 52 game weeks per game year
+    - 156 show clusters per game year
+    - the same cluster weeks, districts, and day patterns repeat every game year
+  - done: show calendar generation now uses week-in-year for cluster type and district rotation so the schedule does not drift between game years
   - later: decide the actual entry close timing and re-enable entry window enforcement
-  - next: wire the cluster generator into a persistence/service path that creates real upcoming clusters
+  - next: wire the cluster generator/calendar template into a persistence/service path that creates real upcoming clusters
   - next: implement lazy automatic judging when block start epochs pass
   - done: first-pass CH title progression recalculates from `ShowAward` points after judging
   - done: first-pass title application sets `visibleTitlePrefix = "CH"` once a dog has 15 points and 2 majors
   - next: parse/use the real point schedule instead of the temporary all-breed points rule
   - next: show title progress on dog pages and/or a show record page
   - next: apply visible title prefixes/suffixes consistently anywhere dog names are rendered
+  - next: preserve the entering kennel on show entries/results so a later ownership change does not rewrite historical result kennel names
+  - next: remove raw epoch time from the show listing page and use player-facing date/time display
   - refine show detail/entry planner page with quote summaries and stronger entry feedback
   - then make dog page `Enter Show` route to the planner with optional `/shows?dogId=...` preselection
   - then add eligible dog filtering for show entries
