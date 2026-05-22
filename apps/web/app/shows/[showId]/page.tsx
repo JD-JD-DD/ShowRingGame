@@ -51,6 +51,15 @@ function statusTone(status: string): string {
   }
 }
 
+type BreedOption = {
+  code2: string;
+  name: string;
+  blockId: string;
+  dayIndex: number;
+  startEpoch: number;
+  entryCount: number;
+};
+
 export default async function ShowDetailPage({
   params,
   searchParams,
@@ -60,7 +69,7 @@ export default async function ShowDetailPage({
     entryError?: string;
     entryMessage?: string;
     dogIds?: string;
-    entryBlockId?: string;
+    breedCode2?: string;
     judged?: string;
     judgedEntries?: string;
     judgeError?: string;
@@ -71,7 +80,7 @@ export default async function ShowDetailPage({
     entryError,
     entryMessage,
     dogIds,
-    entryBlockId,
+    breedCode2,
     judged,
     judgedEntries,
     judgeError,
@@ -84,13 +93,14 @@ export default async function ShowDetailPage({
           .filter(Boolean)
       : []
   );
-  const selectedEntryBlockId =
-    typeof entryBlockId === "string" && entryBlockId.trim()
-      ? entryBlockId.trim()
+  const selectedBreedCode =
+    typeof breedCode2 === "string" && breedCode2.trim()
+      ? breedCode2.trim().toUpperCase()
       : "";
   const currentEpoch = getCurrentEpoch();
   const userId = await getSessionUserId();
   const kennel = userId ? await getKennelForUser(userId) : null;
+
   await ensureGeneratedShowBlocksForCluster({
     showClusterId: showId,
     currentEpoch,
@@ -109,11 +119,11 @@ export default async function ShowDetailPage({
               { blockOrder: "asc" },
             ],
             include: {
-              judge: { select: { name: true } },
-              breed: { select: { name: true } },
+              breed: { select: { code2: true, name: true } },
               _count: { select: { showEntries: true, showResults: true } },
             },
           },
+          _count: { select: { showResults: true } },
         },
       },
     },
@@ -123,11 +133,43 @@ export default async function ShowDetailPage({
     notFound();
   }
 
-  const eligibleDogsForSelectedBlock =
-    kennel && selectedEntryBlockId
+  const resultCount = cluster.showDays.reduce(
+    (total, day) => total + day._count.showResults,
+    0
+  );
+  const breedOptionByCode = new Map<string, BreedOption>();
+
+  for (const day of cluster.showDays) {
+    for (const block of day.judgingBlocks) {
+      if (block.status !== "ENTRY_OPEN") {
+        continue;
+      }
+
+      if (breedOptionByCode.has(block.breed.code2)) {
+        continue;
+      }
+
+      breedOptionByCode.set(block.breed.code2, {
+        code2: block.breed.code2,
+        name: block.breed.name,
+        blockId: block.id,
+        dayIndex: day.dayIndex,
+        startEpoch: block.startEpoch,
+        entryCount: block._count.showEntries,
+      });
+    }
+  }
+
+  const breedOptions = [...breedOptionByCode.values()].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+  const selectedBreed =
+    breedOptionByCode.get(selectedBreedCode) ?? breedOptions[0] ?? null;
+  const eligibleDogs =
+    kennel && selectedBreed
       ? (
           await listEligibleDogsForShowBlock({
-            judgingBlockId: selectedEntryBlockId,
+            judgingBlockId: selectedBreed.blockId,
             kennelId: kennel.id,
             currentEpoch,
           })
@@ -135,30 +177,6 @@ export default async function ShowDetailPage({
           (dog) => selectedDogIds.size === 0 || selectedDogIds.has(dog.dogId)
         )
       : [];
-  const getEntryBlockHref = (blockId: string) => {
-    const params = new URLSearchParams();
-
-    params.set("entryBlockId", blockId);
-
-    if (typeof dogIds === "string" && dogIds.trim()) {
-      params.set("dogIds", dogIds);
-    }
-
-    return `/shows/${cluster.id}?${params.toString()}`;
-  };
-  const clearEntryBlockHref =
-    typeof dogIds === "string" && dogIds.trim()
-      ? `/shows/${cluster.id}?dogIds=${encodeURIComponent(dogIds)}`
-      : `/shows/${cluster.id}`;
-  const resultCount = cluster.showDays.reduce(
-    (dayTotal, day) =>
-      dayTotal +
-      day.judgingBlocks.reduce(
-        (blockTotal, block) => blockTotal + block._count.showResults,
-        0
-      ),
-    0
-  );
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8 text-white">
@@ -166,14 +184,13 @@ export default async function ShowDetailPage({
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.22em] text-purple-300/80">
-              Show Detail
+              Show Entry
             </p>
             <h1 className="mt-2 text-4xl font-bold tracking-tight text-white">
               {cluster.name}
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
-              Rings, breed blocks, assigned judges, entry counts, and eligible
-              kennel dogs for this cluster.
+              Choose a breed, then enter eligible dogs from your kennel.
             </p>
           </div>
 
@@ -241,169 +258,166 @@ export default async function ShowDetailPage({
             {judgeError}
           </div>
         ) : null}
-
-        {selectedDogIds.size > 0 ? (
-          <div className="mt-5 rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-100/80">
-            Showing eligible entries from {selectedDogIds.size} selected kennel
-            dog{selectedDogIds.size === 1 ? "" : "s"}.
-          </div>
-        ) : null}
       </section>
 
-      <div className="grid gap-6">
-        {cluster.showDays.map((day) => (
-          <section
-            key={day.id}
-            className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]"
+      <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+        <form
+          action={`/shows/${cluster.id}`}
+          method="get"
+          className="grid gap-3 md:grid-cols-[minmax(240px,1fr)_auto]"
+        >
+          {typeof dogIds === "string" && dogIds.trim() ? (
+            <input type="hidden" name="dogIds" value={dogIds} />
+          ) : null}
+          <label className="grid gap-2 text-sm text-purple-100/75">
+            Breed
+            <select
+              name="breedCode2"
+              defaultValue={selectedBreed?.code2 ?? ""}
+              className="rounded-xl border border-purple-300/20 bg-black/35 px-4 py-3 text-sm font-semibold text-white outline-none"
+            >
+              {breedOptions.length === 0 ? (
+                <option value="">No open breed entries</option>
+              ) : (
+                breedOptions.map((breed) => (
+                  <option key={breed.code2} value={breed.code2}>
+                    {breed.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="self-end rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
           >
-            <div className="flex flex-wrap items-start justify-between gap-3">
+            Show Dogs
+          </button>
+        </form>
+
+        {!kennel ? (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+            Log in to enter dogs from your kennel.
+          </div>
+        ) : !selectedBreed ? (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+            No breeds are currently open for entry in this show.
+          </div>
+        ) : eligibleDogs.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+            No eligible {selectedBreed.name} dogs are available in your kennel.
+          </div>
+        ) : (
+          <div className="mt-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-2xl font-semibold text-white">
-                  Day {day.dayIndex}
+                  {selectedBreed.name}
                 </h2>
-                <p className="mt-2 text-sm text-purple-100/70">
-                  Starts {formatShowDateTime(day.scheduledEpoch)}
+                <p className="mt-1 text-sm text-purple-100/65">
+                  Day {selectedBreed.dayIndex} · Starts{" "}
+                  {formatShowDateTime(selectedBreed.startEpoch)} ·{" "}
+                  {selectedBreed.entryCount} entered
                 </p>
               </div>
-              <div
-                className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusTone(day.status)}`}
+              <form
+                id="bulk-entry-form"
+                action={`/api/shows/${cluster.id}/enter`}
+                method="post"
               >
-                {day.status}
-              </div>
+                <input
+                  type="hidden"
+                  name="judgingBlockId"
+                  value={selectedBreed.blockId}
+                />
+                <input type="hidden" name="breedCode2" value={selectedBreed.code2} />
+                <button
+                  type="submit"
+                  className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
+                >
+                  Enter Selected ${ENTRY_FEE_PER_SHOW} each
+                </button>
+              </form>
             </div>
 
-            {day.judgingBlocks.length === 0 ? (
-              <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
-                No judging blocks have been scheduled for this day.
-              </div>
-            ) : (
-              <div className="mt-5 overflow-x-auto">
-                <table className="w-full min-w-[980px] border-separate border-spacing-y-2 text-sm">
-                  <thead>
-                    <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
-                      <th className="px-3 py-2">Order</th>
-                      <th className="px-3 py-2">Ring</th>
-                      <th className="px-3 py-2">Breed</th>
-                      <th className="px-3 py-2">Judge</th>
-                      <th className="px-3 py-2">Start</th>
-                      <th className="px-3 py-2">Entries</th>
-                      <th className="px-3 py-2">Status</th>
-                      <th className="px-3 py-2">Enter</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {day.judgingBlocks.map((block) => {
-                      const isSelectedEntryBlock =
-                        selectedEntryBlockId === block.id;
-                      const canOpenEntrySelector = block.status === "ENTRY_OPEN";
-
-                      return (
-                        <tr
-                          key={block.id}
-                          className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+                    <th className="px-3 py-2">Select</th>
+                    <th className="px-3 py-2">Dog</th>
+                    <th className="px-3 py-2">Sex</th>
+                    <th className="px-3 py-2">Age</th>
+                    <th className="px-3 py-2">Condition</th>
+                    <th className="px-3 py-2">Enter</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eligibleDogs.map((dog) => (
+                    <tr
+                      key={dog.dogId}
+                      className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                    >
+                      <td className="rounded-l-2xl px-3 py-3">
+                        <input
+                          form="bulk-entry-form"
+                          type="checkbox"
+                          name="dogIds"
+                          value={dog.dogId}
+                          className="h-5 w-5 accent-purple-500"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <Link
+                          href={`/dogs/${dog.dogId}`}
+                          className="font-semibold text-white underline-offset-4 hover:underline"
                         >
-                          <td className="rounded-l-2xl px-3 py-3 text-purple-100">
-                            {block.blockOrder}
-                          </td>
-                          <td className="px-3 py-3 text-white">
-                            Ring {block.ringNumber}
-                            {block.ringName ? ` - ${block.ringName}` : ""}
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="font-semibold text-white">
-                              {block.breed.name}
-                            </div>
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="font-semibold text-white">
-                              {block.judge.name}
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 text-purple-100/75">
-                            {formatShowDateTime(block.startEpoch)}
-                          </td>
-                          <td className="px-3 py-3 text-purple-100/75">
-                            {block._count.showEntries}
-                          </td>
-                          <td className="px-3 py-3">
-                            <span
-                              className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusTone(block.status)}`}
-                            >
-                              {block.status}
-                            </span>
-                          </td>
-                          <td className="rounded-r-2xl px-3 py-3">
-                            <div className="flex min-w-[180px] flex-col gap-2">
-                              {!kennel ? (
-                                <Link
-                                  href="/login"
-                                  className="text-sm font-semibold text-purple-100 underline-offset-4 hover:underline"
-                                >
-                                  Log in
-                                </Link>
-                              ) : !canOpenEntrySelector ? (
-                                <div className="text-xs text-purple-100/55">
-                                  Entry closed
-                                </div>
-                              ) : !isSelectedEntryBlock ? (
-                                <Link
-                                  href={getEntryBlockHref(block.id)}
-                                  className="rounded-xl bg-purple-600 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
-                                >
-                                  Choose Dog
-                                </Link>
-                              ) : eligibleDogsForSelectedBlock.length > 0 ? (
-                                <form
-                                  action={`/api/shows/${cluster.id}/enter`}
-                                  method="post"
-                                  className="flex min-w-[360px] gap-2"
-                                >
-                                  <input
-                                    type="hidden"
-                                    name="judgingBlockId"
-                                    value={block.id}
-                                  />
-                                  <select
-                                    name="dogId"
-                                    className="min-w-0 flex-1 rounded-xl border border-purple-300/20 bg-black/35 px-3 py-2 text-sm text-white outline-none"
-                                  >
-                                    {eligibleDogsForSelectedBlock.map((dog) => (
-                                      <option key={dog.dogId} value={dog.dogId}>
-                                        {dog.displayName} - {dog.sex} -{" "}
-                                        {formatAge(dog.ageHours)}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <button
-                                    type="submit"
-                                    className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500"
-                                  >
-                                    Enter ${ENTRY_FEE_PER_SHOW}
-                                  </button>
-                                  <Link
-                                    href={clearEntryBlockHref}
-                                    className="rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-                                  >
-                                    Cancel
-                                  </Link>
-                                </form>
-                              ) : (
-                                <div className="text-xs text-purple-100/55">
-                                  No eligible kennel dogs
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        ))}
-      </div>
+                          {dog.displayName}
+                        </Link>
+                        <div className="text-xs text-purple-100/55">
+                          {dog.regNumber}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-purple-100/75">{dog.sex}</td>
+                      <td className="px-3 py-3 text-purple-100/75">
+                        {formatAge(dog.ageHours)}
+                      </td>
+                      <td className="px-3 py-3 text-purple-100/75">
+                        {dog.conditioningSnapshot}
+                      </td>
+                      <td className="rounded-r-2xl px-3 py-3">
+                        <form
+                          action={`/api/shows/${cluster.id}/enter`}
+                          method="post"
+                          className="inline-flex"
+                        >
+                          <input
+                            type="hidden"
+                            name="judgingBlockId"
+                            value={selectedBreed.blockId}
+                          />
+                          <input
+                            type="hidden"
+                            name="breedCode2"
+                            value={selectedBreed.code2}
+                          />
+                          <input type="hidden" name="dogId" value={dog.dogId} />
+                          <button
+                            type="submit"
+                            className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500"
+                          >
+                            Enter ${ENTRY_FEE_PER_SHOW}
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
     </main>
   );
 }

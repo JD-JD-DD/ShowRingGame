@@ -8,20 +8,24 @@ import { createShowEntry } from "@/server/services/showEntry.service";
 function redirectWithEntryError(
   request: Request,
   showId: string,
-  error: string
+  error: string,
+  breedCode2?: string
 ) {
   const url = new URL(`/shows/${showId}`, request.url);
   url.searchParams.set("entryError", error);
+  if (breedCode2) url.searchParams.set("breedCode2", breedCode2);
   return NextResponse.redirect(url);
 }
 
 function redirectWithEntryMessage(
   request: Request,
   showId: string,
-  message: string
+  message: string,
+  breedCode2?: string
 ) {
   const url = new URL(`/shows/${showId}`, request.url);
   url.searchParams.set("entryMessage", message);
+  if (breedCode2) url.searchParams.set("breedCode2", breedCode2);
   return NextResponse.redirect(url);
 }
 
@@ -44,21 +48,43 @@ export async function POST(
     }
 
     const formData = await request.formData();
-    const dogId = String(formData.get("dogId") ?? "");
+    const dogIds = formData
+      .getAll("dogIds")
+      .map((dogId) => String(dogId).trim())
+      .filter(Boolean);
+    const singleDogId = String(formData.get("dogId") ?? "").trim();
     const judgingBlockId = String(formData.get("judgingBlockId") ?? "");
+    const breedCode2 = String(formData.get("breedCode2") ?? "").trim();
+    const selectedDogIds = dogIds.length > 0 ? dogIds : singleDogId ? [singleDogId] : [];
 
-    if (!dogId || !judgingBlockId) {
-      return redirectWithEntryError(request, showId, "Select a dog to enter.");
+    if (selectedDogIds.length === 0 || !judgingBlockId) {
+      return redirectWithEntryError(
+        request,
+        showId,
+        "Select at least one dog to enter.",
+        breedCode2
+      );
     }
 
-    await createShowEntry({
-      dogId,
-      judgingBlockId,
-      ownerKennelId: kennel.id,
-      currentEpoch: getCurrentEpoch(),
-    });
+    const currentEpoch = getCurrentEpoch();
+    let enteredCount = 0;
 
-    return redirectWithEntryMessage(request, showId, "Dog entered.");
+    for (const dogId of selectedDogIds) {
+      await createShowEntry({
+        dogId,
+        judgingBlockId,
+        ownerKennelId: kennel.id,
+        currentEpoch,
+      });
+      enteredCount += 1;
+    }
+
+    return redirectWithEntryMessage(
+      request,
+      showId,
+      enteredCount === 1 ? "Dog entered." : `${enteredCount} dogs entered.`,
+      breedCode2
+    );
   } catch (error) {
     const { showId } = await params;
 
