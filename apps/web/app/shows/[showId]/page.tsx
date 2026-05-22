@@ -123,9 +123,9 @@ export default async function ShowDetailPage({
         currentEpoch,
       })
     : [];
-  const selectedBreed =
-    breedOptions.find((breed) => breed.code2 === selectedBreedCode) ??
-    (selectedBreedCode ? null : breedOptions[0] ?? null);
+  const selectedBreed = selectedBreedCode
+    ? breedOptions.find((breed) => breed.code2 === selectedBreedCode) ?? null
+    : null;
   const planner =
     kennel && selectedBreed
       ? await getShowEntryPlanner({
@@ -274,6 +274,7 @@ export default async function ShowDetailPage({
                   defaultValue={selectedBreed?.code2 ?? ""}
                   className="rounded-xl border border-purple-300/20 bg-black/35 px-4 py-3 text-sm font-semibold text-white outline-none"
                 >
+                  <option value="">Choose a breed...</option>
                   {breedOptions.map((breed) => (
                     <option key={breed.code2} value={breed.code2}>
                       {breed.name} ({breed.eligibleDogCount})
@@ -289,7 +290,11 @@ export default async function ShowDetailPage({
               </button>
             </form>
 
-            {selectedBreed && planner && planner.dogs.length > 0 ? (
+            {!selectedBreedCode ? (
+              <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+                Choose a breed to see eligible kennel dogs for this show.
+              </div>
+            ) : selectedBreed && planner && planner.dogs.length > 0 ? (
               <>
                 <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
                   <div>
@@ -325,7 +330,11 @@ export default async function ShowDetailPage({
               <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
                 No eligible {selectedBreed.name} dogs are available for open days in this show.
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+                No eligible kennel dogs are available for this show.
+              </div>
+            )}
           </div>
         )}
       </section>

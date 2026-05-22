@@ -163,10 +163,10 @@ export default async function ShowsPage({
             return (
               <section
                 key={cluster.id}
-                className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]"
+                className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] px-6 py-5 shadow-[0_22px_60px_rgba(0,0,0,0.35)]"
               >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
+                <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+                  <div className="min-w-0">
                     <div
                       className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${statusTone(cluster.status)}`}
                     >
@@ -187,20 +187,20 @@ export default async function ShowsPage({
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-3 lg:justify-end">
                     <Link
                       href={`/shows/${cluster.id}/results`}
                       className={
                         resultCount > 0
-                          ? "rounded-2xl bg-sky-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-sky-500"
-                          : "rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                          ? "rounded-2xl bg-sky-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-sky-500 lg:min-w-32"
+                          : "rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10 lg:min-w-32"
                       }
                     >
                       Results
                     </Link>
                     <Link
                       href={`/shows/${cluster.id}${showDetailQuery}`}
-                      className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                      className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10 lg:min-w-32"
                     >
                       Open Show
                     </Link>

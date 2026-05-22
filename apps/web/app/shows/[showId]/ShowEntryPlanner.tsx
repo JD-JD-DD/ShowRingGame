@@ -21,7 +21,6 @@ type PlannerDog = {
   regNumber: string;
   sex: "M" | "F";
   ageLabel: string;
-  conditioningSnapshot: number;
   eligibleShowDayIds: string[];
   alreadyEnteredShowDayIds: string[];
 };
@@ -149,13 +148,12 @@ export function ShowEntryPlanner({
       ))}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[860px] border-separate border-spacing-y-2 text-sm">
+        <table className="w-full min-w-[720px] border-separate border-spacing-y-2 text-sm">
           <thead>
             <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
               <th className="px-3 py-2">Dog</th>
               <th className="px-3 py-2">Sex</th>
               <th className="px-3 py-2">Age</th>
-              <th className="px-3 py-2">Condition</th>
               {days.map((day) => (
                 <th key={day.showDayId} className="w-28 px-3 py-2 text-center">
                   Day {day.dayIndex}
@@ -176,9 +174,6 @@ export function ShowEntryPlanner({
                 </td>
                 <td className="px-3 py-3 text-purple-100/75">{dog.sex}</td>
                 <td className="px-3 py-3 text-purple-100/75">{dog.ageLabel}</td>
-                <td className="px-3 py-3 text-purple-100/75">
-                  {dog.conditioningSnapshot}
-                </td>
                 {days.map((day) => {
                   const key = selectionKey(dog.dogId, day.showDayId);
                   const isEligible = dog.eligibleShowDayIds.includes(day.showDayId);
