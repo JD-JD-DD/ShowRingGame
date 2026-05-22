@@ -1,5 +1,9 @@
 import { db } from "@/lib/db";
-import { ENTRY_FEE_PER_SHOW, canEnterShows } from "@showring/rules";
+import {
+  ENTRY_FEE_PER_SHOW,
+  canEnterShows,
+  getClusterEntryQuote,
+} from "@showring/rules";
 import { Prisma } from "@prisma/client";
 
 const showBlockForEntryArgs =
@@ -75,6 +79,51 @@ export type EligibleShowDogDto = {
 
 export type EligibleDogsByBlockDto = Record<string, EligibleShowDogDto[]>;
 
+export type ShowEntryPlannerDayDto = {
+  showDayId: string;
+  dayIndex: number;
+  scheduledEpoch: number;
+  judgeName: string;
+  status: string;
+};
+
+export type ShowEntryBreedOptionDto = {
+  code2: string;
+  name: string;
+  eligibleDogCount: number;
+};
+
+export type ShowEntryPlannerDogDto = EligibleShowDogDto & {
+  eligibleShowDayIds: string[];
+  alreadyEnteredShowDayIds: string[];
+};
+
+export type ShowEntryPlannerDto = {
+  days: ShowEntryPlannerDayDto[];
+  dogs: ShowEntryPlannerDogDto[];
+};
+
+export type BulkShowEntrySelection = {
+  dogId: string;
+  showDayId: string;
+};
+
+export type BulkShowEntryQuoteDto = {
+  entryFees: number;
+  travelCost: number;
+  handlerFee: number;
+  totalCost: number;
+  balanceAfter: number;
+};
+
+export type BulkShowEntryResultDto = {
+  showId: string;
+  breedCode2: string;
+  entriesCreated: number;
+  dogsEntered: number;
+  quote: BulkShowEntryQuoteDto;
+};
+
 function getDogDisplayName(dog: DogForEntry): string {
   return dog.registeredName || dog.callName || dog.regNumber;
 }
@@ -97,6 +146,108 @@ function isEntryWindowOpen(args: {
     block.showDay.status === "ENTRY_OPEN" &&
     block.status === "ENTRY_OPEN"
   );
+}
+
+function isShowDayEntryWindowOpen(args: {
+  cluster: {
+    entryOpenEpoch: number;
+    entryCloseEpoch: number;
+    status: string;
+  };
+  showDay: {
+    status: string;
+    scheduledEpoch: number;
+  };
+  currentEpoch: number;
+}): boolean {
+  const { cluster, showDay, currentEpoch } = args;
+
+  return (
+    currentEpoch >= cluster.entryOpenEpoch &&
+    currentEpoch <= cluster.entryCloseEpoch &&
+    currentEpoch < showDay.scheduledEpoch &&
+    cluster.status !== "COMPLETE" &&
+    cluster.status !== "CANCELLED" &&
+    showDay.status === "ENTRY_OPEN"
+  );
+}
+
+function getShowDayEntryEligibilityReason(args: {
+  dog: DogForEntry;
+  cluster: {
+    entryOpenEpoch: number;
+    entryCloseEpoch: number;
+    status: string;
+  };
+  showDay: {
+    status: string;
+    scheduledEpoch: number;
+  };
+  breedCode2: string;
+  currentEpoch: number;
+}): string | null {
+  const { dog, cluster, showDay, breedCode2, currentEpoch } = args;
+
+  if (cluster.status === "CANCELLED") {
+    return "Show cluster is cancelled.";
+  }
+
+  if (showDay.status === "CANCELLED") {
+    return "Show day is cancelled.";
+  }
+
+  if (!isShowDayEntryWindowOpen({ cluster, showDay, currentEpoch })) {
+    return "Entry window is closed.";
+  }
+
+  if (dog.ownerKennelId == null) {
+    return "Dog is not owned by a kennel.";
+  }
+
+  if (dog.lifecycleState !== "ALIVE") {
+    return "Dog is not alive and active.";
+  }
+
+  if (dog.marketState === "SOLD_PENDING_TRANSFER") {
+    return "Dog has a pending transfer.";
+  }
+
+  if (dog.breedCode2 !== breedCode2) {
+    return "Dog breed does not match the selected breed.";
+  }
+
+  if (!canEnterShows(showDay.scheduledEpoch, dog.birthEpoch, dog.lifecycleState)) {
+    return "Dog is not show-age eligible for this show day.";
+  }
+
+  return null;
+}
+
+function uniqueSelections(
+  selections: BulkShowEntrySelection[]
+): BulkShowEntrySelection[] {
+  const seen = new Set<string>();
+  const result: BulkShowEntrySelection[] = [];
+
+  for (const selection of selections) {
+    const dogId = selection.dogId.trim();
+    const showDayId = selection.showDayId.trim();
+
+    if (!dogId || !showDayId) {
+      continue;
+    }
+
+    const key = `${dogId}:${showDayId}`;
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push({ dogId, showDayId });
+  }
+
+  return result;
 }
 
 export function getShowEntryEligibilityReason(args: {
@@ -409,6 +560,477 @@ export async function listEligibleDogsForShowBlock(args: {
       conditioningSnapshot: getConditioningSnapshot(dog),
       fatigueSnapshot: dog.fatiguePoints,
     }));
+}
+
+export async function listShowEntryBreedOptions(args: {
+  showId: string;
+  kennelId: string;
+  currentEpoch: number;
+}): Promise<ShowEntryBreedOptionDto[]> {
+  const { showId, kennelId, currentEpoch } = args;
+  const cluster = await db.showCluster.findUnique({
+    where: { id: showId },
+    include: {
+      showDays: {
+        orderBy: [{ dayIndex: "asc" }],
+        select: {
+          id: true,
+          status: true,
+          scheduledEpoch: true,
+        },
+      },
+    },
+  });
+
+  if (!cluster) {
+    return [];
+  }
+
+  const dogs = await db.dog.findMany({
+    where: {
+      ownerKennelId: kennelId,
+      lifecycleState: "ALIVE",
+    },
+    orderBy: [{ breedCode2: "asc" }, { registeredName: "asc" }, { regNumber: "asc" }],
+    include: {
+      breed: { select: { code2: true, name: true } },
+    },
+  });
+  const optionByBreed = new Map<string, ShowEntryBreedOptionDto>();
+
+  for (const dog of dogs) {
+    const hasEligibleDay = cluster.showDays.some((showDay) => {
+      const reason = getShowDayEntryEligibilityReason({
+        dog,
+        cluster,
+        showDay,
+        breedCode2: dog.breedCode2,
+        currentEpoch,
+      });
+
+      return reason == null;
+    });
+
+    if (!hasEligibleDay) {
+      continue;
+    }
+
+    const existing = optionByBreed.get(dog.breedCode2);
+
+    if (existing) {
+      existing.eligibleDogCount += 1;
+    } else {
+      optionByBreed.set(dog.breedCode2, {
+        code2: dog.breed.code2,
+        name: dog.breed.name,
+        eligibleDogCount: 1,
+      });
+    }
+  }
+
+  return [...optionByBreed.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getShowEntryPlanner(args: {
+  showId: string;
+  kennelId: string;
+  breedCode2: string;
+  currentEpoch: number;
+  selectedDogIds?: Set<string>;
+}): Promise<ShowEntryPlannerDto> {
+  const { showId, kennelId, breedCode2, currentEpoch, selectedDogIds } = args;
+  const cluster = await db.showCluster.findUnique({
+    where: { id: showId },
+    include: {
+      showDays: {
+        orderBy: [{ dayIndex: "asc" }],
+        include: {
+          judge: { select: { name: true } },
+        },
+      },
+    },
+  });
+
+  if (!cluster) {
+    return { days: [], dogs: [] };
+  }
+
+  const dogs = await db.dog.findMany({
+    where: {
+      ownerKennelId: kennelId,
+      breedCode2,
+      ...(selectedDogIds && selectedDogIds.size > 0
+        ? { id: { in: [...selectedDogIds] } }
+        : {}),
+    },
+    orderBy: [{ registeredName: "asc" }, { regNumber: "asc" }],
+    ...dogForEntryArgs,
+  });
+  const existingEntries = await db.showEntry.findMany({
+    where: {
+      kennelId,
+      breedCode2,
+      showDay: { clusterId: showId },
+      dogId: { in: dogs.map((dog) => dog.id) },
+    },
+    select: {
+      dogId: true,
+      showDayId: true,
+    },
+  });
+  const enteredDayIdsByDogId = new Map<string, Set<string>>();
+
+  for (const entry of existingEntries) {
+    const enteredDayIds = enteredDayIdsByDogId.get(entry.dogId) ?? new Set<string>();
+    enteredDayIds.add(entry.showDayId);
+    enteredDayIdsByDogId.set(entry.dogId, enteredDayIds);
+  }
+
+  const days = cluster.showDays.map((showDay) => ({
+    showDayId: showDay.id,
+    dayIndex: showDay.dayIndex,
+    scheduledEpoch: showDay.scheduledEpoch,
+    judgeName: showDay.judge.name,
+    status: showDay.status,
+  }));
+
+  return {
+    days,
+    dogs: dogs
+      .map((dog) => {
+        const alreadyEnteredShowDayIds = [
+          ...(enteredDayIdsByDogId.get(dog.id) ?? new Set<string>()),
+        ];
+        const eligibleShowDayIds = cluster.showDays
+          .filter((showDay) => {
+            if (alreadyEnteredShowDayIds.includes(showDay.id)) {
+              return false;
+            }
+
+            return (
+              getShowDayEntryEligibilityReason({
+                dog,
+                cluster,
+                showDay,
+                breedCode2,
+                currentEpoch,
+              }) == null
+            );
+          })
+          .map((showDay) => showDay.id);
+
+        return {
+          dogId: dog.id,
+          displayName: getDogDisplayName(dog),
+          regNumber: dog.regNumber,
+          sex: dog.sex,
+          ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
+          conditioningSnapshot: getConditioningSnapshot(dog),
+          fatigueSnapshot: dog.fatiguePoints,
+          eligibleShowDayIds,
+          alreadyEnteredShowDayIds,
+        };
+      })
+      .filter(
+        (dog) =>
+          dog.eligibleShowDayIds.length > 0 ||
+          dog.alreadyEnteredShowDayIds.length > 0
+      ),
+  };
+}
+
+async function ensureBreedBlockForEntry(args: {
+  tx: Prisma.TransactionClient;
+  showDay: {
+    id: string;
+    judgeId: string;
+    scheduledEpoch: number;
+    status: string;
+  };
+  breedCode2: string;
+}): Promise<string> {
+  const { tx, showDay, breedCode2 } = args;
+  const existingBlock = await tx.showJudgingBlock.findFirst({
+    where: {
+      showDayId: showDay.id,
+      breedCode2,
+    },
+    select: { id: true },
+  });
+
+  if (existingBlock) {
+    return existingBlock.id;
+  }
+
+  const lastBlock = await tx.showJudgingBlock.findFirst({
+    where: { showDayId: showDay.id },
+    orderBy: [{ blockOrder: "desc" }],
+    select: { blockOrder: true },
+  });
+
+  const createdBlock = await tx.showJudgingBlock.create({
+    data: {
+      showDayId: showDay.id,
+      judgeId: showDay.judgeId,
+      breedCode2,
+      ringNumber: 1,
+      ringName: "Breed Judging",
+      startEpoch: showDay.scheduledEpoch,
+      classType: "REGULAR",
+      blockOrder: (lastBlock?.blockOrder ?? 0) + 1,
+      status: showDay.status === "ENTRY_OPEN" ? "ENTRY_OPEN" : "SCHEDULED",
+    },
+    select: { id: true },
+  });
+
+  return createdBlock.id;
+}
+
+export async function createShowEntriesForCluster(args: {
+  showId: string;
+  kennelId: string;
+  breedCode2: string;
+  selections: BulkShowEntrySelection[];
+  currentEpoch: number;
+}): Promise<BulkShowEntryResultDto> {
+  const { showId, kennelId, currentEpoch } = args;
+  const breedCode2 = args.breedCode2.trim().toUpperCase();
+  const selections = uniqueSelections(args.selections);
+
+  if (!breedCode2) {
+    throw new Error("Choose a breed to enter.");
+  }
+
+  if (selections.length === 0) {
+    throw new Error("Select at least one dog and show day.");
+  }
+
+  return db.$transaction(async (tx) => {
+    const cluster = await tx.showCluster.findUnique({
+      where: { id: showId },
+      include: {
+        showDays: {
+          orderBy: [{ dayIndex: "asc" }],
+          select: {
+            id: true,
+            dayIndex: true,
+            scheduledEpoch: true,
+            status: true,
+            judgeId: true,
+          },
+        },
+      },
+    });
+
+    if (!cluster) {
+      throw new Error("Show cluster not found.");
+    }
+
+    const kennel = await tx.kennel.findUnique({
+      where: { id: kennelId },
+      select: { id: true, balance: true, homeDistrict: true },
+    });
+
+    if (!kennel) {
+      throw new Error("Kennel not found.");
+    }
+
+    const dayById = new Map(cluster.showDays.map((day) => [day.id, day]));
+    const dogIds = [...new Set(selections.map((selection) => selection.dogId))];
+    const dogs = await tx.dog.findMany({
+      where: { id: { in: dogIds } },
+      ...dogForEntryArgs,
+    });
+    const dogById = new Map(dogs.map((dog) => [dog.id, dog]));
+
+    if (dogs.length !== dogIds.length) {
+      throw new Error("One or more selected dogs could not be found.");
+    }
+
+    const existingEntries = await tx.showEntry.findMany({
+      where: {
+        dogId: { in: dogIds },
+        showDayId: { in: selections.map((selection) => selection.showDayId) },
+      },
+      select: {
+        dogId: true,
+        showDayId: true,
+      },
+    });
+    const existingEntryKeys = new Set(
+      existingEntries.map((entry) => `${entry.dogId}:${entry.showDayId}`)
+    );
+
+    for (const selection of selections) {
+      const dog = dogById.get(selection.dogId);
+      const showDay = dayById.get(selection.showDayId);
+
+      if (!dog || !showDay) {
+        throw new Error("Selected dog or show day was not found.");
+      }
+
+      if (dog.ownerKennelId !== kennelId) {
+        throw new Error(`You do not own ${dog.regNumber}.`);
+      }
+
+      if (existingEntryKeys.has(`${dog.id}:${showDay.id}`)) {
+        throw new Error(`${dog.regNumber} is already entered on day ${showDay.dayIndex}.`);
+      }
+
+      const reason = getShowDayEntryEligibilityReason({
+        dog,
+        cluster,
+        showDay,
+        breedCode2,
+        currentEpoch,
+      });
+
+      if (reason) {
+        throw new Error(`${dog.regNumber}: ${reason}`);
+      }
+    }
+
+    const selectedDaysByDogId = new Map<string, number[]>();
+
+    for (const selection of selections) {
+      const showDay = dayById.get(selection.showDayId);
+
+      if (!showDay) {
+        continue;
+      }
+
+      const selectedDays = selectedDaysByDogId.get(selection.dogId) ?? [];
+      selectedDays.push(showDay.dayIndex);
+      selectedDaysByDogId.set(selection.dogId, selectedDays);
+    }
+
+    const quote = getClusterEntryQuote({
+      homeDistrict: kennel.homeDistrict ?? cluster.district,
+      clusterDistrict: cluster.district,
+      ledgerBalance: kennel.balance,
+      dogs: dogs.map((dog) => ({
+        dogId: dog.id,
+        dogName: getDogDisplayName(dog),
+        breed: dog.breedCode2,
+        sex: dog.sex === "M" ? "Dog" : "Bitch",
+        selectedShowDays: selectedDaysByDogId.get(dog.id) ?? [],
+      })),
+    });
+
+    if (!quote.canAfford) {
+      throw new Error(`Insufficient funds for show entry. Shortfall: $${quote.shortfall}.`);
+    }
+
+    const blockIdByDayId = new Map<string, string>();
+
+    for (const showDayId of new Set(selections.map((selection) => selection.showDayId))) {
+      const showDay = dayById.get(showDayId);
+
+      if (!showDay) {
+        continue;
+      }
+
+      blockIdByDayId.set(
+        showDay.id,
+        await ensureBreedBlockForEntry({
+          tx,
+          showDay,
+          breedCode2,
+        })
+      );
+    }
+
+    const balanceAfter = kennel.balance - quote.totalCost;
+
+    await tx.kennel.update({
+      where: { id: kennel.id },
+      data: { balance: balanceAfter },
+    });
+
+    await tx.showEntry.createMany({
+      data: selections.map((selection) => {
+        const dog = dogById.get(selection.dogId);
+
+        if (!dog) {
+          throw new Error("Selected dog could not be found.");
+        }
+
+        return {
+          showDayId: selection.showDayId,
+          judgingBlockId: blockIdByDayId.get(selection.showDayId),
+          dogId: dog.id,
+          kennelId: kennel.id,
+          breedCode2: dog.breedCode2,
+          entryStatus: "ENTERED",
+          enteredAtEpoch: currentEpoch,
+          feeCharged: ENTRY_FEE_PER_SHOW,
+          handlerUsed: quote.handlerFee > 0,
+          conditioningSnapshot: getConditioningSnapshot(dog),
+          fatigueSnapshot: dog.fatiguePoints,
+        };
+      }),
+    });
+
+    const ledgerRows: Prisma.LedgerTransactionCreateManyInput[] = [];
+    let runningBalance = kennel.balance;
+
+    if (quote.entryFees > 0) {
+      runningBalance -= quote.entryFees;
+      ledgerRows.push({
+        kennelId: kennel.id,
+        transactionType: "SHOW_ENTRY_FEE",
+        amount: -quote.entryFees,
+        balanceAfter: runningBalance,
+        occurredAtEpoch: currentEpoch,
+        showClusterId: cluster.id,
+        memo: `Entered ${selections.length} ${breedCode2} show entry slot(s).`,
+      });
+    }
+
+    if (quote.travel.totalCost > 0) {
+      runningBalance -= quote.travel.totalCost;
+      ledgerRows.push({
+        kennelId: kennel.id,
+        transactionType: "TRAVEL_COST",
+        amount: -quote.travel.totalCost,
+        balanceAfter: runningBalance,
+        occurredAtEpoch: currentEpoch,
+        showClusterId: cluster.id,
+        memo: `Travel for ${quote.dogsEntered} dog(s) to ${cluster.name}.`,
+      });
+    }
+
+    if (quote.handlerFee > 0) {
+      runningBalance -= quote.handlerFee;
+      ledgerRows.push({
+        kennelId: kennel.id,
+        transactionType: "HANDLER_FEE",
+        amount: -quote.handlerFee,
+        balanceAfter: runningBalance,
+        occurredAtEpoch: currentEpoch,
+        showClusterId: cluster.id,
+        memo: `Handler fee for ${quote.dogsEntered} dog(s) at ${cluster.name}.`,
+      });
+    }
+
+    if (ledgerRows.length > 0) {
+      await tx.ledgerTransaction.createMany({ data: ledgerRows });
+    }
+
+    return {
+      showId,
+      breedCode2,
+      entriesCreated: selections.length,
+      dogsEntered: quote.dogsEntered,
+      quote: {
+        entryFees: quote.entryFees,
+        travelCost: quote.travel.totalCost,
+        handlerFee: quote.handlerFee,
+        totalCost: quote.totalCost,
+        balanceAfter,
+      },
+    };
+  });
 }
 
 export async function seedTestEntriesForShow(args: {

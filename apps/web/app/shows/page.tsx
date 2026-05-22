@@ -66,7 +66,7 @@ export default async function ShowsPage({
       showDays: {
         orderBy: [{ dayIndex: "asc" }],
         include: {
-          _count: { select: { judgingBlocks: true, showResults: true } },
+          _count: { select: { showEntries: true, showResults: true } },
         },
       },
     },
@@ -151,8 +151,8 @@ export default async function ShowsPage({
       ) : (
         <div className="grid gap-6">
           {clusters.map((cluster) => {
-            const blockCount = cluster.showDays.reduce(
-              (total, day) => total + day._count.judgingBlocks,
+            const entryCount = cluster.showDays.reduce(
+              (total, day) => total + day._count.showEntries,
               0
             );
             const resultCount = cluster.showDays.reduce(
@@ -178,8 +178,8 @@ export default async function ShowsPage({
                     <div className="mt-2 text-sm text-purple-100/70">
                       District {cluster.district} · Year {cluster.year} ·{" "}
                       {cluster.showDays.length} show day
-                      {cluster.showDays.length === 1 ? "" : "s"} · {blockCount}{" "}
-                      judging block{blockCount === 1 ? "" : "s"}
+                      {cluster.showDays.length === 1 ? "" : "s"} · {entryCount}{" "}
+                      entr{entryCount === 1 ? "y" : "ies"}
                     </div>
                     <div className="mt-2 text-xs text-purple-100/55">
                       Entries: {formatShowDateTime(cluster.entryOpenEpoch)} to{" "}

@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
-import { createShowEntry } from "@/server/services/showEntry.service";
+import {
+  createShowEntriesForCluster,
+  type BulkShowEntrySelection,
+} from "@/server/services/showEntry.service";
 
 function redirectWithEntryError(
   request: Request,
@@ -48,41 +51,43 @@ export async function POST(
     }
 
     const formData = await request.formData();
-    const dogIds = formData
-      .getAll("dogIds")
-      .map((dogId) => String(dogId).trim())
-      .filter(Boolean);
-    const singleDogId = String(formData.get("dogId") ?? "").trim();
-    const judgingBlockId = String(formData.get("judgingBlockId") ?? "");
     const breedCode2 = String(formData.get("breedCode2") ?? "").trim();
-    const selectedDogIds = dogIds.length > 0 ? dogIds : singleDogId ? [singleDogId] : [];
+    const selections: BulkShowEntrySelection[] = formData
+      .getAll("dogDaySelections")
+      .map((value) => String(value).trim())
+      .filter(Boolean)
+      .map((value) => {
+        const [dogId, showDayId] = value.split(":");
+        return {
+          dogId: dogId ?? "",
+          showDayId: showDayId ?? "",
+        };
+      });
 
-    if (selectedDogIds.length === 0 || !judgingBlockId) {
+    if (selections.length === 0) {
       return redirectWithEntryError(
         request,
         showId,
-        "Select at least one dog to enter.",
+        "Select at least one dog and show day.",
         breedCode2
       );
     }
 
     const currentEpoch = getCurrentEpoch();
-    let enteredCount = 0;
-
-    for (const dogId of selectedDogIds) {
-      await createShowEntry({
-        dogId,
-        judgingBlockId,
-        ownerKennelId: kennel.id,
-        currentEpoch,
-      });
-      enteredCount += 1;
-    }
+    const result = await createShowEntriesForCluster({
+      showId,
+      kennelId: kennel.id,
+      breedCode2,
+      selections,
+      currentEpoch,
+    });
 
     return redirectWithEntryMessage(
       request,
-      showId,
-      enteredCount === 1 ? "Dog entered." : `${enteredCount} dogs entered.`,
+      result.showId,
+      result.entriesCreated === 1
+        ? `Entry submitted. Total cost: $${result.quote.totalCost}.`
+        : `${result.entriesCreated} entries submitted for ${result.dogsEntered} dog(s). Total cost: $${result.quote.totalCost}.`,
       breedCode2
     );
   } catch (error) {

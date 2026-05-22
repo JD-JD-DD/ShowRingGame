@@ -515,3 +515,109 @@ export async function judgeShowDay(args: {
     blocks,
   };
 }
+
+async function ensureShowDayBreedBlock(args: {
+  showDayId: string;
+  breedCode2: string;
+  currentEpoch: number;
+}): Promise<string> {
+  const { showDayId, breedCode2, currentEpoch } = args;
+
+  return db.$transaction(async (tx) => {
+    const existingBlock = await tx.showJudgingBlock.findFirst({
+      where: {
+        showDayId,
+        breedCode2,
+      },
+      select: { id: true },
+    });
+
+    if (existingBlock) {
+      await tx.showEntry.updateMany({
+        where: {
+          showDayId,
+          breedCode2,
+          judgingBlockId: null,
+        },
+        data: { judgingBlockId: existingBlock.id },
+      });
+
+      return existingBlock.id;
+    }
+
+    const showDay = await tx.showDay.findUnique({
+      where: { id: showDayId },
+      include: { cluster: true },
+    });
+
+    if (!showDay) {
+      throw new Error("Show day not found.");
+    }
+
+    const entryCount = await tx.showEntry.count({
+      where: {
+        showDayId,
+        breedCode2,
+      },
+    });
+
+    if (entryCount === 0) {
+      throw new Error("No entries exist for this breed on this show day.");
+    }
+
+    const lastBlock = await tx.showJudgingBlock.findFirst({
+      where: { showDayId },
+      orderBy: [{ blockOrder: "desc" }],
+      select: { blockOrder: true },
+    });
+    const status =
+      showDay.status === "JUDGING" || showDay.status === "ENTRY_LOCKED"
+        ? showDay.status
+        : currentEpoch >= showDay.scheduledEpoch
+          ? "ENTRY_OPEN"
+          : "SCHEDULED";
+    const createdBlock = await tx.showJudgingBlock.create({
+      data: {
+        showDayId,
+        judgeId: showDay.judgeId,
+        breedCode2,
+        ringNumber: 1,
+        ringName: "Breed Judging",
+        startEpoch: showDay.scheduledEpoch,
+        classType: "REGULAR",
+        blockOrder: (lastBlock?.blockOrder ?? 0) + 1,
+        entryCountHint: entryCount,
+        status,
+      },
+      select: { id: true },
+    });
+
+    await tx.showEntry.updateMany({
+      where: {
+        showDayId,
+        breedCode2,
+        judgingBlockId: null,
+      },
+      data: { judgingBlockId: createdBlock.id },
+    });
+
+    return createdBlock.id;
+  });
+}
+
+export async function judgeShowDayBreed(args: {
+  showDayId: string;
+  breedCode2: string;
+  currentEpoch: number;
+}): Promise<JudgeShowBlockDto> {
+  const judgingBlockId = await ensureShowDayBreedBlock({
+    showDayId: args.showDayId,
+    breedCode2: args.breedCode2.trim().toUpperCase(),
+    currentEpoch: args.currentEpoch,
+  });
+
+  return judgeShowBlock({
+    judgingBlockId,
+    currentEpoch: args.currentEpoch,
+  });
+}
