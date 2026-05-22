@@ -621,3 +621,50 @@ export async function judgeShowDayBreed(args: {
     currentEpoch: args.currentEpoch,
   });
 }
+
+export async function publishReadyBreedResultsForCluster(args: {
+  showId: string;
+  breedCode2: string;
+  currentEpoch: number;
+}): Promise<{
+  showDayCount: number;
+  judgedBlockCount: number;
+  eligibleEntryCount: number;
+}> {
+  const breedCode2 = args.breedCode2.trim().toUpperCase();
+  const showDays = await db.showDay.findMany({
+    where: {
+      clusterId: args.showId,
+      scheduledEpoch: { lte: args.currentEpoch },
+      status: { not: "CANCELLED" },
+      showEntries: {
+        some: {
+          breedCode2,
+          entryStatus: "ENTERED",
+        },
+      },
+    },
+    orderBy: [{ dayIndex: "asc" }],
+    select: { id: true },
+  });
+
+  let judgedBlockCount = 0;
+  let eligibleEntryCount = 0;
+
+  for (const showDay of showDays) {
+    const result = await judgeShowDayBreed({
+      showDayId: showDay.id,
+      breedCode2,
+      currentEpoch: args.currentEpoch,
+    });
+
+    judgedBlockCount += result.alreadyPublished ? 0 : 1;
+    eligibleEntryCount += result.eligibleEntryCount;
+  }
+
+  return {
+    showDayCount: showDays.length,
+    judgedBlockCount,
+    eligibleEntryCount,
+  };
+}

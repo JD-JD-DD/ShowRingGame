@@ -84,6 +84,15 @@ export default async function ShowResultsIndexPage({
     (total, day) => total + day._count.showResults,
     0
   );
+  const entryCount = cluster.showDays.reduce(
+    (total, day) =>
+      total +
+      day.judgingBlocks.reduce(
+        (blockTotal, block) => blockTotal + block._count.showEntries,
+        0
+      ),
+    0
+  );
   const breedBlocks = new Map<
     string,
     {
@@ -161,8 +170,13 @@ export default async function ShowResultsIndexPage({
             District {cluster.district}
           </div>
           <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
-            Results: {resultCount}
+            Entries: {entryCount}
           </div>
+          {resultCount > 0 ? (
+            <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
+              Results: {resultCount}
+            </div>
+          ) : null}
         </div>
 
         {judged ? (

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { epochToDate } from "@/lib/gameClock";
+import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
+import { publishReadyBreedResultsForCluster } from "@/server/services/judging.service";
 
 const AWARD_SORT_ORDER: Record<string, number> = {
   "1": 1,
@@ -201,6 +202,12 @@ export default async function BreedResultsPage({
 }) {
   const { showId, breedCode2 } = await params;
   const normalizedBreedCode = decodeURIComponent(breedCode2).toUpperCase();
+  await publishReadyBreedResultsForCluster({
+    showId,
+    breedCode2: normalizedBreedCode,
+    currentEpoch: getCurrentEpoch(),
+  });
+
   const cluster = await db.showCluster.findUnique({
     where: { id: showId },
     include: {
