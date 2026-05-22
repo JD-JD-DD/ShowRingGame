@@ -43,6 +43,30 @@ export const DISTANCE_TIER_LABEL: Record<DistanceTier, string> = {
   [DistanceTier.Isolated]: "Isolated"
 };
 
+export type ShowDistrictRegion = {
+  district: number;
+  name: string;
+  shortName: string;
+};
+
+export const SHOW_DISTRICT_REGIONS: ShowDistrictRegion[] = [
+  { district: 1, name: "Pacific Northwest", shortName: "Cascadia" },
+  { district: 2, name: "Northern California", shortName: "NorCal" },
+  { district: 3, name: "Southern California", shortName: "SoCal" },
+  { district: 4, name: "Mountain West", shortName: "Mountain West" },
+  { district: 5, name: "Desert Southwest", shortName: "Desert Southwest" },
+  { district: 6, name: "Texas Plains", shortName: "Texas Plains" },
+  { district: 7, name: "Great Plains", shortName: "Great Plains" },
+  { district: 8, name: "Upper Midwest", shortName: "Upper Midwest" },
+  { district: 9, name: "Great Lakes", shortName: "Great Lakes" },
+  { district: 10, name: "Ohio Valley", shortName: "Ohio Valley" },
+  { district: 11, name: "Mid-Atlantic", shortName: "Mid-Atlantic" },
+  { district: 12, name: "Northeast", shortName: "Northeast" },
+  { district: 13, name: "Southeast", shortName: "Southeast" },
+  { district: 14, name: "Gulf Coast", shortName: "Gulf Coast" },
+  { district: 15, name: "Florida-Caribbean", shortName: "Florida Coast" },
+];
+
 /**
  * DISTRICT_DISTANCE_MATRIX
  *

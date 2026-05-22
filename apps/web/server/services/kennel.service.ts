@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { db } from '@/lib/db';
+import { applyBetaBalanceTopUpToKennel } from "@/lib/betaEconomy";
 import { getCurrentEpoch } from "@/lib/gameClock";
 
 const createKennelSchema = z.object({
@@ -115,7 +116,7 @@ export async function createKennelForUser(userId: string, input: unknown) {
 }
 
 export async function getKennelForUser(userId: string) {
-  return db.kennel.findFirst({
+  const kennel = await db.kennel.findFirst({
     where: { userId },
     select: {
       id: true,
@@ -131,4 +132,6 @@ export async function getKennelForUser(userId: string) {
       },
     },
   });
+
+  return applyBetaBalanceTopUpToKennel(kennel, getCurrentEpoch());
 }

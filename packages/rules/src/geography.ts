@@ -1,6 +1,7 @@
 
 import { DISTANCE_TIER_LABEL, DistanceTier } from "../constants/geography.constants";
 import { DISTRICT_DISTANCE_MATRIX } from "../constants/geography.constants";
+import { SHOW_DISTRICT_REGIONS } from "../constants/geography.constants";
 
 // helper, how far apart are districts
 export function getDistrictDistanceTier(
@@ -28,4 +29,16 @@ export function getDistrictDistanceTier(
  */
 export function getDistanceTierLabel(tier: DistanceTier): string {
   return DISTANCE_TIER_LABEL[tier];
+}
+
+export function getShowDistrictRegion(district: number) {
+  const region = SHOW_DISTRICT_REGIONS.find(
+    (candidate) => candidate.district === district
+  );
+
+  if (!region) {
+    throw new Error(`Invalid district: ${district}`);
+  }
+
+  return region;
 }

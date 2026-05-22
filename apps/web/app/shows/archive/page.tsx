@@ -37,6 +37,14 @@ function getGeneratedTemplateId(clusterId: string): string | null {
   return match?.[1] ?? null;
 }
 
+function formatShowDayNames(dayNames: string[]): string {
+  const displayOrder = ["Friday", "Saturday", "Sunday", "Monday"];
+
+  return [...dayNames]
+    .sort((a, b) => displayOrder.indexOf(a) - displayOrder.indexOf(b))
+    .join(", ");
+}
+
 export default async function ShowArchivePage() {
   const templates = generateAnnualShowClusterTemplates();
   const clusters = await db.showCluster.findMany({
@@ -118,7 +126,7 @@ export default async function ShowArchivePage() {
                       {template.name}
                     </h2>
                     <div className="mt-2 text-sm text-purple-100/65">
-                      {template.showDayNames.join(", ")} · District{" "}
+                      {formatShowDayNames(template.showDayNames)} · District{" "}
                       {template.district}
                     </div>
                   </div>

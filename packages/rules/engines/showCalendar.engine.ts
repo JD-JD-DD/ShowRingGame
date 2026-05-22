@@ -8,6 +8,7 @@ import {
   SHOW_YEAR_HOURS,
   TWO_DAY_CLUSTER_DAY_OFFSETS,
 } from "../constants";
+import { getShowDistrictRegion } from "../src/geography";
 import { getHourInYear } from "../src/time";
 
 export type ShowClusterType = "TWO_DAY" | "FOUR_DAY";
@@ -98,9 +99,14 @@ function getNextWeekStartEpoch(weekStartEpoch: number): number {
 }
 
 function getShowClusterName(type: ShowClusterType, district: number): string {
-  const typeLabel = type === "FOUR_DAY" ? "4-Day" : "2-Day";
+  const region = getShowDistrictRegion(district);
+  const suffixes =
+    type === "FOUR_DAY"
+      ? ["Four-Day Classic", "Circuit", "Cluster", "Show Weekend"]
+      : ["Weekend Classic", "Kennel Club Weekend", "Show Cluster", "Circuit"];
+  const suffix = suffixes[(district - 1) % suffixes.length];
 
-  return `District ${district} ${typeLabel} Cluster`;
+  return `${region.shortName} ${suffix}`;
 }
 
 function getShowClusterDayOffsets(type: ShowClusterType): readonly number[] {

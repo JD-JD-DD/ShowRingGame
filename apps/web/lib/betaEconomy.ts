@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 
 const ENABLE_BETA_BALANCE_TOP_UP = true;
 const BETA_BALANCE_THRESHOLD = 10_000;
-const BETA_BALANCE_TOP_UP_AMOUNT = 20_000;
+const BETA_BALANCE_TOP_UP_AMOUNT = 25_000;
 
 type ApplyBetaBalanceTopUpArgs = {
   kennelId: string;
@@ -85,4 +85,29 @@ export async function applyBetaBalanceTopUp(
 
 export function isBetaBalanceTopUpEnabled(): boolean {
   return ENABLE_BETA_BALANCE_TOP_UP;
+}
+
+export async function applyBetaBalanceTopUpToKennel<
+  T extends { id: string; balance: number },
+>(
+  kennel: T | null,
+  currentEpoch: number
+): Promise<T | null> {
+  if (!kennel) {
+    return null;
+  }
+
+  const topUp = await applyBetaBalanceTopUp({
+    kennelId: kennel.id,
+    currentEpoch,
+  });
+
+  if (!topUp.applied || topUp.newBalance == null) {
+    return kennel;
+  }
+
+  return {
+    ...kennel,
+    balance: topUp.newBalance,
+  };
 }
