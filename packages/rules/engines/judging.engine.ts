@@ -29,6 +29,7 @@ export type JudgedDogBreakdown = {
 export type JudgingEntry = {
   showEntryId?: string;
   dog: Dog;
+  isChampion?: boolean;
 };
 
 export type JudgedEntryResult = JudgedDogBreakdown & {
@@ -317,33 +318,49 @@ function buildWinnersAwards(args: {
 }
 
 function buildBreedAwards(args: {
-  maleResults: JudgedEntryResult[];
-  femaleResults: JudgedEntryResult[];
+  entries: JudgingEntry[];
+  maleClassResults: JudgedEntryResult[];
+  femaleClassResults: JudgedEntryResult[];
+  breedResults: JudgedEntryResult[];
 }): JudgedShowAward[] {
-  const breedCandidates = [args.maleResults[0], args.femaleResults[0]]
-    .filter((result): result is JudgedEntryResult => Boolean(result))
-    .sort(compareJudgedDogs);
+  const winnersCandidates = [
+    args.maleClassResults[0],
+    args.femaleClassResults[0],
+  ].filter((result): result is JudgedEntryResult => Boolean(result));
+  const bestOfWinners = [...winnersCandidates].sort(compareJudgedDogs)[0];
+  const breedCandidates = [
+    ...args.breedResults,
+    ...winnersCandidates.filter(
+      (winner) =>
+        !args.breedResults.some((result) => result.dogId === winner.dogId)
+    ),
+  ].sort(compareJudgedDogs);
   const bestOfBreed = breedCandidates[0];
+  const bestOfBreedSex = bestOfBreed
+    ? entrySexForResult(args.entries, bestOfBreed)
+    : null;
   const bestOfOpposite = breedCandidates.find(
-    (result) => result.dogId !== bestOfBreed?.dogId
+    (result) =>
+      result.dogId !== bestOfBreed?.dogId &&
+      entrySexForResult(args.entries, result) !== bestOfBreedSex
   );
   const awards: JudgedShowAward[] = [];
-  const maleWinnerPoints = getTemporaryAllBreedPoints(args.maleResults.length);
-  const femaleWinnerPoints = getTemporaryAllBreedPoints(args.femaleResults.length);
+  const maleWinnerPoints = getTemporaryAllBreedPoints(args.maleClassResults.length);
+  const femaleWinnerPoints = getTemporaryAllBreedPoints(args.femaleClassResults.length);
   const bestOfWinnersPoints = Math.max(maleWinnerPoints, femaleWinnerPoints);
 
-  if (bestOfBreed && args.maleResults[0] && args.femaleResults[0]) {
+  if (bestOfWinners && args.maleClassResults[0] && args.femaleClassResults[0]) {
     awards.push(
       makeAward({
-        result: bestOfBreed,
+        result: bestOfWinners,
         awardCode: "BOW",
         awardGroup: "BREED",
-        sex: bestOfBreed.dogId === args.maleResults[0].dogId ? "M" : "F",
+        sex: bestOfWinners.dogId === args.maleClassResults[0].dogId ? "M" : "F",
         rank: 1,
         pointsAwarded: bestOfWinnersPoints,
         dogsInCompetition: Math.max(
-          args.maleResults.length,
-          args.femaleResults.length
+          args.maleClassResults.length,
+          args.femaleClassResults.length
         ),
       })
     );
@@ -367,7 +384,7 @@ function buildBreedAwards(args: {
         result: bestOfOpposite,
         awardCode: "BOS",
         awardGroup: "BREED",
-        sex: bestOfOpposite.dogId === args.maleResults[0]?.dogId ? "M" : "F",
+        sex: bestOfOpposite.dogId === args.maleClassResults[0]?.dogId ? "M" : "F",
         rank: 2,
       })
     );
@@ -382,23 +399,38 @@ export function judgeBreedBlock(args: {
   random01?: () => number;
 }): JudgedBreedBlock {
   const results = judgeBreedEntries(args);
-  const maleResults = results.filter((result) => {
-    const entry = args.entries.find((candidate) => candidate.showEntryId === result.showEntryId);
+  const classEntries = args.entries.filter((entry) => !entry.isChampion);
+  const specialEntries = args.entries.filter((entry) => entry.isChampion);
+  const maleClassResults = results.filter((result) => {
+    const entry = classEntries.find((candidate) => candidate.showEntryId === result.showEntryId);
     return entry?.dog.sex === "M";
   });
-  const femaleResults = results.filter((result) => {
-    const entry = args.entries.find((candidate) => candidate.showEntryId === result.showEntryId);
+  const femaleClassResults = results.filter((result) => {
+    const entry = classEntries.find((candidate) => candidate.showEntryId === result.showEntryId);
     return entry?.dog.sex === "F";
+  });
+  const breedResults = results.filter((result) => {
+    const entry = args.entries.find((candidate) => candidate.showEntryId === result.showEntryId);
+    return (
+      Boolean(entry?.isChampion) ||
+      result.showEntryId === maleClassResults[0]?.showEntryId ||
+      result.showEntryId === femaleClassResults[0]?.showEntryId
+    );
   });
 
   return {
     results,
     awards: [
-      ...buildSexClassAwards({ results: maleResults, sex: "M" }),
-      ...buildSexClassAwards({ results: femaleResults, sex: "F" }),
-      ...buildWinnersAwards({ results: maleResults, sex: "M" }),
-      ...buildWinnersAwards({ results: femaleResults, sex: "F" }),
-      ...buildBreedAwards({ maleResults, femaleResults }),
+      ...buildSexClassAwards({ results: maleClassResults, sex: "M" }),
+      ...buildSexClassAwards({ results: femaleClassResults, sex: "F" }),
+      ...buildWinnersAwards({ results: maleClassResults, sex: "M" }),
+      ...buildWinnersAwards({ results: femaleClassResults, sex: "F" }),
+      ...buildBreedAwards({
+        entries: args.entries,
+        maleClassResults,
+        femaleClassResults,
+        breedResults,
+      }),
     ],
   };
 }

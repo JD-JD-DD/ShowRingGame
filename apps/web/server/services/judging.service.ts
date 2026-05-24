@@ -23,7 +23,15 @@ const showBlockForJudgingArgs =
       },
       showEntries: {
         include: {
-          dog: true,
+          dog: {
+            include: {
+              titleProgress: {
+                select: {
+                  currentTitleCode: true,
+                },
+              },
+            },
+          },
         },
         orderBy: [{ enteredAtEpoch: "asc" }],
       },
@@ -141,6 +149,13 @@ function toEngineDogRecord(dog: DogForEngine): EngineDog {
 
 function toEngineDog(entry: EntryForJudging): EngineDog {
   return toEngineDogRecord(entry.dog);
+}
+
+function isChampionEntry(entry: EntryForJudging): boolean {
+  return (
+    entry.dog.visibleTitlePrefix === "CH" ||
+    entry.dog.titleProgress?.currentTitleCode === "CH"
+  );
 }
 
 function canBlockMoveToJudging(
@@ -453,6 +468,7 @@ export async function judgeShowBlock(args: {
       entries: eligibleEntries.map((entry) => ({
         showEntryId: entry.id,
         dog: toEngineDog(entry),
+        isChampion: isChampionEntry(entry),
       })),
     });
     const resultIdByShowEntryId = new Map<string, string>();
