@@ -1,8 +1,14 @@
 import Link from "next/link";
 
 import { db } from "@/lib/db";
-import { epochToDate } from "@/lib/gameClock";
-import { generateAnnualShowClusterTemplates } from "@showring/rules";
+import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
+import {
+  generateAnnualShowClusterTemplates,
+  SHOW_WEEK_HOURS,
+  SHOW_YEAR_HOURS,
+} from "@showring/rules";
+
+export const dynamic = "force-dynamic";
 
 function formatShowDate(epoch: number): string {
   return epochToDate(epoch).toLocaleDateString("en-US", {
@@ -10,6 +16,18 @@ function formatShowDate(epoch: number): string {
     day: "numeric",
     year: "numeric",
     timeZone: "UTC",
+  });
+}
+
+function formatShowDateTime(epoch: number): string {
+  return epochToDate(epoch).toLocaleString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
   });
 }
 
@@ -28,6 +46,19 @@ function statusTone(status: string): string {
       return "border-red-300/25 bg-red-500/10 text-red-100";
     default:
       return "border-purple-300/20 bg-white/5 text-purple-100";
+  }
+}
+
+function derivedStatusTone(
+  status: "CURRENT_WEEK" | "NOT_YET_JUDGED" | "JUDGING_OPENS"
+): string {
+  switch (status) {
+    case "CURRENT_WEEK":
+      return "border-fuchsia-300/30 bg-fuchsia-500/10 text-fuchsia-100";
+    case "NOT_YET_JUDGED":
+      return "border-amber-300/30 bg-amber-500/10 text-amber-100";
+    case "JUDGING_OPENS":
+      return "border-purple-300/20 bg-black/20 text-purple-100/70";
   }
 }
 
@@ -64,7 +95,22 @@ function getLatestJudgedEpoch(
   );
 }
 
+function getCurrentCalendarPosition(currentEpoch: number): {
+  year: number;
+  weekInYear: number;
+} {
+  const hourInYear = currentEpoch % SHOW_YEAR_HOURS;
+  const showCalendarHourInYear = Math.min(hourInYear, SHOW_YEAR_HOURS - 2);
+
+  return {
+    year: Math.floor(currentEpoch / SHOW_YEAR_HOURS) + 1,
+    weekInYear: Math.floor(showCalendarHourInYear / SHOW_WEEK_HOURS) + 1,
+  };
+}
+
 export default async function ShowArchivePage() {
+  const currentEpoch = getCurrentEpoch();
+  const currentCalendarPosition = getCurrentCalendarPosition(currentEpoch);
   const templates = generateAnnualShowClusterTemplates();
   const [clusters, latestResultsByDay] = await Promise.all([
     db.showCluster.findMany({
@@ -111,6 +157,7 @@ export default async function ShowArchivePage() {
       )
     );
   }
+
   const mostRecentTemplateIndex = templates.reduce((bestIndex, template, index) => {
     const templateId = `week-${template.weekInYear}-slot-${template.slotIndex + 1}`;
     const bestTemplate = templates[bestIndex];
@@ -150,6 +197,16 @@ export default async function ShowArchivePage() {
               Browse the permanent cluster titles. Each cluster gathers every
               game year that has been generated, entered, judged, or published.
             </p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="rounded-full border border-fuchsia-300/30 bg-fuchsia-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-fuchsia-100">
+                Now
+              </span>
+              <span className="rounded-full border border-purple-300/20 bg-black/20 px-3 py-1 text-xs text-purple-100/75">
+                Year {currentCalendarPosition.year} - Week{" "}
+                {currentCalendarPosition.weekInYear} -{" "}
+                {formatShowDateTime(currentEpoch)}
+              </span>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
@@ -174,22 +231,38 @@ export default async function ShowArchivePage() {
           {orderedTemplates.map((template) => {
             const templateId = `week-${template.weekInYear}-slot-${template.slotIndex + 1}`;
             const templateClusters = clustersByTemplate.get(templateId) ?? [];
+            const isCurrentWeek =
+              template.weekInYear === currentCalendarPosition.weekInYear;
 
             return (
               <div
                 key={templateId}
-                className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                className={
+                  isCurrentWeek
+                    ? "rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[0_0_0_1px_rgba(240,171,252,0.08)]"
+                    : "rounded-2xl border border-white/10 bg-white/5 p-4"
+                }
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <div className="text-xs uppercase tracking-[0.18em] text-purple-200/70">
-                      Week {template.weekInYear} · Slot {template.slotIndex + 1}
+                    <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-purple-200/70">
+                      <span>
+                        Week {template.weekInYear} - Slot{" "}
+                        {template.slotIndex + 1}
+                      </span>
+                      {isCurrentWeek ? (
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold tracking-[0.12em] ${derivedStatusTone("CURRENT_WEEK")}`}
+                        >
+                          Current Week
+                        </span>
+                      ) : null}
                     </div>
                     <h2 className="mt-1 text-lg font-semibold text-white">
                       {template.name}
                     </h2>
                     <div className="mt-2 text-sm text-purple-100/65">
-                      {formatShowDayNames(template.showDayNames)} · District{" "}
+                      {formatShowDayNames(template.showDayNames)} - District{" "}
                       {template.district}
                     </div>
                   </div>
@@ -205,6 +278,19 @@ export default async function ShowArchivePage() {
                           (total, day) => total + day._count.showResults,
                           0
                         );
+                        const readyUnjudgedDay = cluster.showDays.some(
+                          (day) =>
+                            day.scheduledEpoch <= currentEpoch &&
+                            day._count.showResults === 0
+                        );
+                        const judgingPending =
+                          resultCount === 0 &&
+                          (readyUnjudgedDay ||
+                            cluster.entryCloseEpoch <= currentEpoch);
+                        const judgingOpens =
+                          resultCount === 0 && cluster.startEpoch > currentEpoch
+                            ? cluster.startEpoch
+                            : null;
 
                         return (
                           <Link
@@ -223,10 +309,24 @@ export default async function ShowArchivePage() {
                             >
                               {cluster.status}
                             </span>
+                            {judgingPending ? (
+                              <span
+                                className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${derivedStatusTone("NOT_YET_JUDGED")}`}
+                              >
+                                NOT YET JUDGED
+                              </span>
+                            ) : null}
                             {resultCount > 0 ? (
                               <span className="ml-2 text-sky-100">
                                 {resultCount} result
                                 {resultCount === 1 ? "" : "s"}
+                              </span>
+                            ) : null}
+                            {judgingOpens ? (
+                              <span
+                                className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] ${derivedStatusTone("JUDGING_OPENS")}`}
+                              >
+                                Judging {formatShowDate(judgingOpens)}
                               </span>
                             ) : null}
                           </Link>
