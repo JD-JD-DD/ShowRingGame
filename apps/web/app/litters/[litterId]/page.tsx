@@ -5,6 +5,7 @@ import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { getLitterForKennel } from "@/server/services/litter.service";
+import TraitLine from "@/components/ui/TraitLine";
 
 type PageProps = {
   params: Promise<{
@@ -75,43 +76,43 @@ export default async function LitterDetailPage({ params }: PageProps) {
           </Link>
         </div>
 
-        <section className="mb-8 rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(13,148,136,0.18),rgba(255,255,255,0.06))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.32)]">
-          <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr] lg:items-start">
+        <section className="mb-8 rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(13,148,136,0.18),rgba(255,255,255,0.06))] px-5 py-4 shadow-[0_22px_60px_rgba(0,0,0,0.32)]">
+          <div className="grid gap-5 lg:grid-cols-[1fr_minmax(420px,0.75fr)] lg:items-center">
             <div>
               <p className="text-sm uppercase tracking-[0.25em] text-emerald-200">
                 Litter Record
               </p>
-              <h1 className="mt-3 text-4xl font-semibold tracking-tight">
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
                 {litter.dam.displayName} x {litter.sire.displayName}
               </h1>
-              <p className="mt-3 text-sm leading-7 text-purple-100/75">
+              <p className="mt-2 text-sm leading-6 text-purple-100/75">
                 {litter.breedName} ({litter.breedCode2}) litter {litter.serial7},
                 whelped {formatGameDays(litter.ageHours)} ago.
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                 <div className="text-xs uppercase tracking-wide text-purple-200">
                   Puppies
                 </div>
-                <div className="mt-1 text-2xl font-semibold">
+                <div className="mt-1 text-2xl font-semibold leading-none">
                   {litter.pupCount}
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                 <div className="text-xs uppercase tracking-wide text-purple-200">
                   Dogs
                 </div>
-                <div className="mt-1 text-2xl font-semibold">
+                <div className="mt-1 text-2xl font-semibold leading-none">
                   {litter.maleCount}
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                 <div className="text-xs uppercase tracking-wide text-purple-200">
                   Bitches
                 </div>
-                <div className="mt-1 text-2xl font-semibold">
+                <div className="mt-1 text-2xl font-semibold leading-none">
                   {litter.femaleCount}
                 </div>
               </div>
@@ -202,19 +203,18 @@ export default async function LitterDetailPage({ params }: PageProps) {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                  <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
                     {visibleCategories.map(([key, value]) => (
-                      <div
+                      <TraitLine
                         key={key}
-                        className="rounded-xl border border-white/10 bg-black/20 p-3"
-                      >
-                        <div className="text-xs text-purple-200">
-                          {formatCategoryName(key)}
-                        </div>
-                        <div className="mt-1 text-sm font-semibold text-white">
-                          {value}
-                        </div>
-                      </div>
+                        label={formatCategoryName(key)}
+                        value={value}
+                        min={0}
+                        max={20}
+                        ideal={10}
+                        leftLabel="Poor"
+                        rightLabel="Poor"
+                      />
                     ))}
                   </div>
                 </article>
