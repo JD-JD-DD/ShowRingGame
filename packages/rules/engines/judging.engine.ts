@@ -46,6 +46,7 @@ export type ShowAwardCode =
   | "RWD"
   | "WB"
   | "RWB"
+  | "BOW"
   | "BOB"
   | "BOS"
   | "AOM";
@@ -319,6 +320,26 @@ function buildBreedAwards(args: {
     (result) => result.dogId !== bestOfBreed?.dogId
   );
   const awards: JudgedShowAward[] = [];
+  const maleWinnerPoints = getTemporaryAllBreedPoints(args.maleResults.length);
+  const femaleWinnerPoints = getTemporaryAllBreedPoints(args.femaleResults.length);
+  const bestOfWinnersPoints = Math.max(maleWinnerPoints, femaleWinnerPoints);
+
+  if (bestOfBreed && args.maleResults[0] && args.femaleResults[0]) {
+    awards.push(
+      makeAward({
+        result: bestOfBreed,
+        awardCode: "BOW",
+        awardGroup: "BREED",
+        sex: bestOfBreed.dogId === args.maleResults[0].dogId ? "M" : "F",
+        rank: 1,
+        pointsAwarded: bestOfWinnersPoints,
+        dogsInCompetition: Math.max(
+          args.maleResults.length,
+          args.femaleResults.length
+        ),
+      })
+    );
+  }
 
   if (bestOfBreed) {
     awards.push(

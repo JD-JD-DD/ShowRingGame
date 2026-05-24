@@ -382,7 +382,10 @@ export async function judgeShowBlock(args: {
 
       pointsByShowEntryId.set(
         award.showEntryId,
-        (pointsByShowEntryId.get(award.showEntryId) ?? 0) + award.pointsAwarded
+        Math.max(
+          pointsByShowEntryId.get(award.showEntryId) ?? 0,
+          award.pointsAwarded
+        )
       );
     }
 

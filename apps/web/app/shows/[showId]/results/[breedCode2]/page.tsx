@@ -14,9 +14,10 @@ const AWARD_SORT_ORDER: Record<string, number> = {
   WB: 5,
   RWD: 6,
   RWB: 6,
-  BOB: 7,
-  BOS: 8,
-  AOM: 9,
+  BOW: 7,
+  BOB: 8,
+  BOS: 9,
+  AOM: 10,
 };
 
 function formatShowDate(epoch: number): string {
