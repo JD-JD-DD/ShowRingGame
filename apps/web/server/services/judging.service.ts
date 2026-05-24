@@ -222,6 +222,56 @@ async function listPersistedBlockResults(
   return results.map(mapPersistedResult);
 }
 
+async function repairPublishedBlockState(args: {
+  tx: Prisma.TransactionClient;
+  block: ShowBlockForJudging;
+  currentEpoch: number;
+}): Promise<JudgeShowBlockDto> {
+  const { tx, block, currentEpoch } = args;
+  const persistedResults = await listPersistedBlockResults(tx, block.id);
+  const existingAwardCount = await tx.showAward.count({
+    where: { judgingBlockId: block.id },
+  });
+
+  if (existingAwardCount === 0) {
+    throw new Error(
+      "Show judging block has persisted results but no persisted awards."
+    );
+  }
+
+  const judgedEntryIds = persistedResults
+    .map((result) => result.showEntryId)
+    .filter((showEntryId): showEntryId is string => Boolean(showEntryId));
+  const publishedAtEpoch = block.publishedAtEpoch ?? currentEpoch;
+
+  if (judgedEntryIds.length > 0) {
+    await tx.showEntry.updateMany({
+      where: { id: { in: judgedEntryIds } },
+      data: { entryStatus: "JUDGED" },
+    });
+  }
+
+  await tx.showJudgingBlock.update({
+    where: { id: block.id },
+    data: {
+      status: "RESULTS_PUBLISHED",
+      publishedAtEpoch,
+    },
+  });
+
+  return {
+    judgingBlockId: block.id,
+    showDayId: block.showDayId,
+    status: ShowJudgingBlockStatus.RESULTS_PUBLISHED,
+    alreadyPublished: true,
+    eligibleEntryCount: persistedResults.length,
+    ineligibleEntryCount: block.showEntries.filter(
+      (entry) => entry.entryStatus === "INELIGIBLE"
+    ).length,
+    results: persistedResults,
+  };
+}
+
 async function maybeCompleteCluster(
   tx: Prisma.TransactionClient,
   clusterId: string
@@ -363,9 +413,7 @@ export async function judgeShowBlock(args: {
     });
 
     if (existingResultCount > 0) {
-      throw new Error(
-        "Show judging block has persisted results but is not marked as published."
-      );
+      return repairPublishedBlockState({ tx, block, currentEpoch });
     }
 
     await tx.showJudgingBlock.update({
