@@ -89,6 +89,17 @@ enum DogListingStatus {
   CANCELLED
 }
 
+enum BulletinThreadSource {
+  PLAYER
+  SYSTEM
+}
+
+enum BulletinThreadStatus {
+  OPEN
+  LOCKED
+  HIDDEN
+}
+
 enum LedgerTransactionType {
   STARTER_FUNDS
   SHOW_ENTRY_FEE
@@ -140,6 +151,8 @@ model Kennel {
   counterpartyLedger      LedgerTransaction[] @relation("CounterpartyKennelLedger")
   dogListings             DogListing[]        @relation("SellerKennelListings")
   purchasedListings       DogListing[]        @relation("BuyerKennelListings")
+  bulletinThreads         BulletinThread[]
+  bulletinPosts           BulletinPost[]
 
   @@index([userId])
   @@index([homeDistrict])
@@ -569,6 +582,76 @@ model DogListing {
   @@index([buyerKennelId])
   @@index([status])
   @@index([sellerType])
+}
+
+model BulletinCategory {
+  id          String   @id
+  slug        String   @unique
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  threads BulletinThread[]
+
+  @@index([sortOrder])
+  @@index([isActive])
+}
+
+model BulletinThread {
+  id                String               @id @default(cuid())
+  categoryId        String
+  kennelId          String
+  title             String
+  sourceType        BulletinThreadSource @default(PLAYER)
+  status            BulletinThreadStatus @default(OPEN)
+  pinned            Boolean              @default(false)
+  createdAtEpoch    Int
+  lastActivityEpoch Int
+  linkedDogId       String?
+  linkedShowId      String?
+  linkedLitterId    String?
+  linkedResultId    String?
+  linkedListingId   String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  category BulletinCategory @relation(fields: [categoryId], references: [id])
+  kennel   Kennel           @relation(fields: [kennelId], references: [id])
+  posts    BulletinPost[]
+
+  @@index([categoryId])
+  @@index([kennelId])
+  @@index([sourceType])
+  @@index([status])
+  @@index([pinned])
+  @@index([lastActivityEpoch])
+  @@index([linkedDogId])
+  @@index([linkedShowId])
+  @@index([linkedLitterId])
+}
+
+model BulletinPost {
+  id             String               @id @default(cuid())
+  threadId       String
+  kennelId       String
+  body           String
+  sourceType     BulletinThreadSource @default(PLAYER)
+  hidden         Boolean              @default(false)
+  createdAtEpoch Int
+  editedAtEpoch  Int?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  thread BulletinThread @relation(fields: [threadId], references: [id])
+  kennel Kennel         @relation(fields: [kennelId], references: [id])
+
+  @@index([threadId])
+  @@index([kennelId])
+  @@index([sourceType])
+  @@index([hidden])
+  @@index([createdAtEpoch])
 }
 
 model DogTitleProgress {

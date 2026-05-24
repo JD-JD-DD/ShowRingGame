@@ -86,6 +86,13 @@ export default async function KennelPage() {
         </Link>
 
         <Link
+          href="/bulletin"
+          className="rounded-md border border-amber-300/40 px-5 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-950/40"
+        >
+          Bulletin Board
+        </Link>
+
+        <Link
           href="/shows"
           className="rounded-md border border-sky-400/40 px-5 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-950/40"
         >

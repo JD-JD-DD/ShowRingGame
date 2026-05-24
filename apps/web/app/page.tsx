@@ -27,6 +27,12 @@ const availableNow = [
     href: "/shows",
     action: "Enter Shows",
   },
+  {
+    title: "Bulletin Board",
+    body: "Talk with active kennels about shows, judges, wins, litters, stud ads, and help.",
+    href: "/bulletin",
+    action: "Open Board",
+  },
 ];
 
 const quickStart = [
@@ -115,6 +121,12 @@ export default async function HomePage() {
                 >
                   Browse Market
                 </Link>
+                <Link
+                  href="/bulletin"
+                  className="rounded-full border border-purple-300/30 bg-white/5 px-5 py-2.5 font-semibold text-purple-100 transition hover:bg-white/10"
+                >
+                  Bulletin Board
+                </Link>
               </>
             )}
           </nav>
@@ -198,7 +210,7 @@ export default async function HomePage() {
         </section>
 
         <section className="mb-8">
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
             {availableNow.map((item) => (
               <article
                 key={item.title}
