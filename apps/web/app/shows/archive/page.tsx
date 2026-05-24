@@ -13,18 +13,6 @@ function formatShowDate(epoch: number): string {
   });
 }
 
-function formatShowDateTime(epoch: number): string {
-  return epochToDate(epoch).toLocaleString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  });
-}
-
 function statusTone(status: string): string {
   switch (status) {
     case "COMPLETE":
@@ -57,6 +45,25 @@ function formatShowDayNames(dayNames: string[]): string {
     .join(", ");
 }
 
+function getLatestJudgedEpoch(
+  cluster: {
+    showDays: Array<{
+      id: string;
+      publishedAtEpoch: number | null;
+    }>;
+  },
+  latestResultEpochByDay: Map<string, number>
+): number {
+  return cluster.showDays.reduce(
+    (latestEpoch, day) =>
+      Math.max(
+        latestEpoch,
+        day.publishedAtEpoch ?? latestResultEpochByDay.get(day.id) ?? 0
+      ),
+    0
+  );
+}
+
 export default async function ShowArchivePage() {
   const templates = generateAnnualShowClusterTemplates();
   const [clusters, latestResultsByDay] = await Promise.all([
@@ -83,34 +90,7 @@ export default async function ShowArchivePage() {
     ])
   );
   const clustersByTemplate = new Map<string, typeof clusters>();
-  const recentResultClusters = clusters
-    .map((cluster) => {
-      const resultCount = cluster.showDays.reduce(
-        (total, day) => total + day._count.showResults,
-        0
-      );
-      const latestJudgedEpoch = Math.max(
-        ...cluster.showDays.map(
-          (day) =>
-            day.publishedAtEpoch ??
-            latestResultEpochByDay.get(day.id) ??
-            0
-        )
-      );
-
-      return {
-        cluster,
-        resultCount,
-        latestJudgedEpoch,
-      };
-    })
-    .filter((cluster) => cluster.resultCount > 0)
-    .sort(
-      (a, b) =>
-        b.latestJudgedEpoch - a.latestJudgedEpoch ||
-        b.cluster.startEpoch - a.cluster.startEpoch ||
-        a.cluster.name.localeCompare(b.cluster.name)
-    );
+  const latestJudgedEpochByTemplate = new Map<string, number>();
 
   for (const cluster of clusters) {
     const templateId = getGeneratedTemplateId(cluster.id);
@@ -122,7 +102,38 @@ export default async function ShowArchivePage() {
     const templateClusters = clustersByTemplate.get(templateId) ?? [];
     templateClusters.push(cluster);
     clustersByTemplate.set(templateId, templateClusters);
+
+    latestJudgedEpochByTemplate.set(
+      templateId,
+      Math.max(
+        latestJudgedEpochByTemplate.get(templateId) ?? 0,
+        getLatestJudgedEpoch(cluster, latestResultEpochByDay)
+      )
+    );
   }
+  const mostRecentTemplateIndex = templates.reduce((bestIndex, template, index) => {
+    const templateId = `week-${template.weekInYear}-slot-${template.slotIndex + 1}`;
+    const bestTemplate = templates[bestIndex];
+    const bestTemplateId = `week-${bestTemplate.weekInYear}-slot-${
+      bestTemplate.slotIndex + 1
+    }`;
+
+    return (latestJudgedEpochByTemplate.get(templateId) ?? 0) >
+      (latestJudgedEpochByTemplate.get(bestTemplateId) ?? 0)
+      ? index
+      : bestIndex;
+  }, 0);
+  const orderedTemplates =
+    (latestJudgedEpochByTemplate.get(
+      `week-${templates[mostRecentTemplateIndex].weekInYear}-slot-${
+        templates[mostRecentTemplateIndex].slotIndex + 1
+      }`
+    ) ?? 0) > 0
+      ? [
+          ...templates.slice(mostRecentTemplateIndex),
+          ...templates.slice(0, mostRecentTemplateIndex),
+        ]
+      : templates;
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8 text-white">
@@ -158,65 +169,9 @@ export default async function ShowArchivePage() {
         </div>
       </section>
 
-      {recentResultClusters.length > 0 ? (
-        <section className="mb-8 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-purple-200/70">
-                Recently Judged
-              </p>
-              <h2 className="mt-1 text-2xl font-semibold text-white">
-                Latest Published Results
-              </h2>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3">
-            {recentResultClusters.map(
-              ({ cluster, latestJudgedEpoch, resultCount }) => (
-                <Link
-                  key={cluster.id}
-                  href={`/shows/${cluster.id}/results`}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-sky-300/40 hover:bg-sky-500/10"
-                >
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <div
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${statusTone(cluster.status)}`}
-                      >
-                        {cluster.status}
-                      </div>
-                      <h3 className="mt-3 text-xl font-semibold text-white">
-                        {cluster.name}
-                      </h3>
-                      <div className="mt-2 text-sm text-purple-100/70">
-                        District {cluster.district} Â· Year {cluster.year} Â·{" "}
-                        {formatShowDate(cluster.startEpoch)}
-                      </div>
-                    </div>
-
-                    <div className="text-sm text-purple-100/70 lg:text-right">
-                      <div className="font-semibold text-sky-100">
-                        {resultCount} result
-                        {resultCount === 1 ? "" : "s"}
-                      </div>
-                      {latestJudgedEpoch > 0 ? (
-                        <div className="mt-1 text-xs text-purple-100/55">
-                          Judged {formatShowDateTime(latestJudgedEpoch)}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </Link>
-              )
-            )}
-          </div>
-        </section>
-      ) : null}
-
       <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
         <div className="grid gap-3">
-          {templates.map((template) => {
+          {orderedTemplates.map((template) => {
             const templateId = `week-${template.weekInYear}-slot-${template.slotIndex + 1}`;
             const templateClusters = clustersByTemplate.get(templateId) ?? [];
 
