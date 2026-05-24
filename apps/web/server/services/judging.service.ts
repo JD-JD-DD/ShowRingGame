@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { recalculateDogTitleProgressForDogs } from "@/server/services/titleProgress.service";
 import {
   JUDGING_SCORING_VERSION,
@@ -124,10 +125,16 @@ function isEntryEligibleForBlockJudging(
   entry: EntryForJudging,
   block: ShowBlockForJudging
 ): boolean {
+  const aliveAtBlockStart =
+    entry.dog.lifecycleState === "ALIVE" ||
+    (entry.dog.lifecycleState === "DECEASED" &&
+      entry.dog.deathEpoch !== null &&
+      entry.dog.deathEpoch > block.startEpoch);
+
   return (
     entry.entryStatus === "ENTERED" &&
     entry.breedCode2 === block.breedCode2 &&
-    entry.dog.lifecycleState === "ALIVE" &&
+    aliveAtBlockStart &&
     entry.dog.ownerKennelId === entry.kennelId
   );
 }
@@ -254,6 +261,24 @@ export async function judgeShowBlock(args: {
   currentEpoch: number;
 }): Promise<JudgeShowBlockDto> {
   const { judgingBlockId, currentEpoch } = args;
+  const blockTiming = await db.showJudgingBlock.findUnique({
+    where: { id: judgingBlockId },
+    select: {
+      startEpoch: true,
+      showEntries: {
+        select: {
+          dogId: true,
+        },
+      },
+    },
+  });
+
+  if (blockTiming && currentEpoch >= blockTiming.startEpoch) {
+    await resolveDogDeaths({
+      currentEpoch: blockTiming.startEpoch,
+      dogIds: blockTiming.showEntries.map((entry) => entry.dogId),
+    });
+  }
 
   return db.$transaction(async (tx) => {
     const block = await tx.showJudgingBlock.findUnique({

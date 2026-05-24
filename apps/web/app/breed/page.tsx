@@ -10,6 +10,7 @@ import {
   deriveVisibleCategoriesFromTraits,
 } from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -62,12 +63,14 @@ export default async function BreedPage({ searchParams }: PageProps) {
   }
 
   const currentEpoch = getCurrentEpoch();
+  await resolveDogDeaths({ kennelId: kennel.id, currentEpoch });
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const initialDogId = firstQueryValue(resolvedSearchParams.dogId);
 
   const dogs = await db.dog.findMany({
     where: {
       ownerKennelId: kennel.id,
+      lifecycleState: "ALIVE",
     },
     select: {
       id: true,

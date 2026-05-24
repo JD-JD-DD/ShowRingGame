@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
   BREEDING_FEE,
   DAM_MAX_BREED_AGE_HOURS,
@@ -93,7 +94,13 @@ function seeded01(seed: string): number {
     hash = Math.imul(hash, 16777619);
   }
 
-  return (hash >>> 0) / 4294967295;
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x85ebca6b);
+  hash ^= hash >>> 13;
+  hash = Math.imul(hash, 0xc2b2ae35);
+  hash ^= hash >>> 16;
+
+  return (hash >>> 0) / 0x100000000;
 }
 
 function buildPuppySexes(seed: string, pupCount: number): Array<"M" | "F"> {
@@ -203,6 +210,8 @@ export async function resolveBreedingProgressForKennel(args: {
   currentEpoch: number;
 }) {
   const { kennelId, currentEpoch } = args;
+
+  await resolveDogDeaths({ kennelId, currentEpoch });
 
   const dueAttempts: AttemptForResolution[] = await db.breedingAttempt.findMany({
     where: {
@@ -592,6 +601,8 @@ export async function createBreedingAttemptForKennel(args: {
   currentEpoch: number;
 }) {
   const { kennelId, primaryDogId, mateDogId, currentEpoch } = args;
+
+  await resolveDogDeaths({ kennelId, currentEpoch });
 
   const [primaryDog, mateDog] = await Promise.all([
     getDogForBreeding(primaryDogId),

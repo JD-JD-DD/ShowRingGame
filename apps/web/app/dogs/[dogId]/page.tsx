@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { deriveVisibleCategoriesFromTraits } from "@showring/rules";
 import {
   DAM_MAX_BREED_AGE_HOURS,
@@ -146,6 +147,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     redirect("/onboarding");
   }
 
+  await resolveDogDeaths({ currentEpoch, dogIds: [dogId] });
+
   const dog = await db.dog.findUnique({
     where: { id: dogId },
     select: {
@@ -156,6 +159,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
       breedCode2: true,
       sex: true,
       birthEpoch: true,
+      deathEpoch: true,
       lifecycleState: true,
       marketState: true,
       originType: true,
@@ -430,6 +434,11 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-medium text-purple-100">
                   Status: {dog.lifecycleState}
                 </div>
+                {dog.deathEpoch !== null ? (
+                  <div className="rounded-full border border-rose-300/20 bg-rose-500/10 px-3 py-1 text-xs font-medium text-rose-100">
+                    Died: {formatShowDate(dog.deathEpoch)}
+                  </div>
+                ) : null}
                 <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-medium text-purple-100">
                   Origin: {dog.originType}
                 </div>
@@ -624,12 +633,25 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </div>
                 </div>
 
+                {dog.deathEpoch !== null ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                    <div className="text-xs uppercase tracking-wide text-purple-200">
+                      Death Date
+                    </div>
+                    <div className="mt-1 text-sm font-medium text-white">
+                      {formatShowDate(dog.deathEpoch)}
+                    </div>
+                  </div>
+                ) : null}
+
                 <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
                   <div className="text-xs uppercase tracking-wide text-purple-200">
                     Show Eligibility
                   </div>
                   <div className="mt-1 text-sm font-medium text-white">
-                    {ageHours >= MIN_SHOW_AGE_HOURS && ageHours <= MAX_SHOW_AGE_HOURS
+                    {isAlive &&
+                    ageHours >= MIN_SHOW_AGE_HOURS &&
+                    ageHours <= MAX_SHOW_AGE_HOURS
                       ? "Eligible"
                       : "Not eligible"}
                   </div>

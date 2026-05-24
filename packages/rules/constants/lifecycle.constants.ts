@@ -4,6 +4,7 @@ import { SHOW_YEAR_HOURS, SHOW_WEEK_HOURS } from "./time.constants";
 
 // aging
 export const AGE_DEATH_START_HOURS = 2880
+export const AGE_DEATH_GUARANTEED_HOURS = 12 * SHOW_YEAR_HOURS
 
 
 // show eligibility

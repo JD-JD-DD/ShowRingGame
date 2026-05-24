@@ -2,7 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BREEDING_FEE } from "@showring/rules";
+import {
+  BREEDING_FEE,
+  DAM_MAX_BREED_AGE_HOURS,
+  MIN_BREED_AGE_HOURS,
+} from "@showring/rules";
 
 type VisibleCategories = Record<string, number>;
 
@@ -59,6 +63,10 @@ function formatCategoryName(key: string): string {
 function reasonDogUnavailable(dog: DogCardDto) {
   if (dog.lifecycleState !== "ALIVE") return "Not alive";
   if (dog.inBreedingConflict) return "Already in breeding cycle";
+  if (dog.ageHours < MIN_BREED_AGE_HOURS) return "Too young to breed";
+  if (dog.sex === "F" && dog.ageHours > DAM_MAX_BREED_AGE_HOURS) {
+    return "Past dam breeding age";
+  }
   if (!dog.isEligibleToBreed) return "Not eligible";
   return null;
 }

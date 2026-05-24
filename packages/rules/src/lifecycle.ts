@@ -3,6 +3,7 @@ import {
   MIN_SHOW_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
   AGE_DEATH_START_HOURS,
+  AGE_DEATH_GUARANTEED_HOURS,
   MAX_SHOW_AGE_HOURS,
   DAM_MAX_BREED_AGE_HOURS,
 } from "../constants/lifecycle.constants";
@@ -31,6 +32,31 @@ export type ReproState = {
 };
 
 export type LifeStage = "PUPPY" | "JUNIOR" | "ADULT" | "VETERAN" | "SENIOR";
+
+function assertRoll(value: number, label: string): void {
+  if (!Number.isFinite(value) || value < 0 || value >= 1) {
+    throw new Error(`${label} must be >= 0 and < 1.`);
+  }
+}
+
+export function rollDeathAgeHours(
+  random01: () => number = Math.random
+): number {
+  const roll = random01();
+  assertRoll(roll, "deathAgeRoll");
+
+  const span = AGE_DEATH_GUARANTEED_HOURS - AGE_DEATH_START_HOURS;
+  const agedSpan = Math.floor(Math.pow(roll, 0.6) * span);
+
+  return AGE_DEATH_START_HOURS + agedSpan;
+}
+
+export function projectedDeathEpoch(args: {
+  birthEpoch: number;
+  random01?: () => number;
+}): number {
+  return args.birthEpoch + rollDeathAgeHours(args.random01);
+}
 
 /**
  * Derive a coarse life stage based on age.

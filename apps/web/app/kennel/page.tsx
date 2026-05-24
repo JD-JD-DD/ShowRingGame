@@ -79,6 +79,13 @@ export default async function KennelPage() {
         </Link>
 
         <Link
+          href="/memorium"
+          className="rounded-md border border-rose-300/40 px-5 py-2 text-sm font-semibold text-rose-100 hover:bg-rose-950/40"
+        >
+          Memorium
+        </Link>
+
+        <Link
           href="/shows"
           className="rounded-md border border-sky-400/40 px-5 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-950/40"
         >
