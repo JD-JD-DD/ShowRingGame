@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
-import { publishReadyShowResultsForCluster } from "@/server/services/judging.service";
+import { epochToDate } from "@/lib/gameClock";
 
 function formatShowDate(epoch: number): string {
   return epochToDate(epoch).toLocaleDateString();
@@ -62,10 +61,6 @@ export default async function ShowResultsIndexPage({
 }) {
   const { showId } = await params;
   const { judged, judgedEntries, judgeError } = await searchParams;
-  await publishReadyShowResultsForCluster({
-    showId,
-    currentEpoch: getCurrentEpoch(),
-  });
 
   const cluster = await db.showCluster.findUnique({
     where: { id: showId },
