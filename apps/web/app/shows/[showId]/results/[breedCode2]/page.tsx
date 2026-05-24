@@ -268,6 +268,14 @@ export default async function BreedResultsPage({
 
   const blocks = cluster.showDays.flatMap((day) => day.judgingBlocks);
   const enteredBlocks = blocks.filter((block) => block._count.showEntries > 0);
+  const enteredDays = cluster.showDays
+    .map((day) => ({
+      ...day,
+      judgingBlocks: day.judgingBlocks.filter(
+        (block) => block._count.showEntries > 0
+      ),
+    }))
+    .filter((day) => day.judgingBlocks.length > 0);
   const firstBlock = enteredBlocks[0] ?? blocks[0];
 
   if (!firstBlock) {
@@ -295,13 +303,8 @@ export default async function BreedResultsPage({
           {firstBlock.breed.name}
         </h2>
         <p className="mt-2 text-lg font-semibold text-purple-100">
-          Judge:{" "}
-          <Link
-            href={`/judges/${firstBlock.judge.judgeCode}`}
-            className="text-white underline-offset-4 hover:underline"
-          >
-            {firstBlock.judge.name}
-          </Link>
+          {enteredDays.length || blocks.length} show day
+          {(enteredDays.length || blocks.length) === 1 ? "" : "s"}
         </p>
 
         <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -336,49 +339,73 @@ export default async function BreedResultsPage({
         </section>
       ) : (
         <div className="mt-6 grid gap-6">
-          {enteredBlocks.map((block) => (
+          {enteredDays.map((day) => (
             <section
-              key={block.id}
+              key={day.id}
               className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]"
             >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.18em] text-purple-200/70">
-                    Ring {block.ringNumber}
-                    {block.ringName ? ` - ${block.ringName}` : ""}
-                  </p>
-                  <p className="mt-2 text-sm text-purple-100/65">
-                    {block._count.showEntries} entered /{" "}
-                    {block._count.showResults} result
-                    {block._count.showResults === 1 ? "" : "s"}
-                  </p>
-                </div>
-                <div
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusTone(block.status)}`}
-                >
-                  {block.status}
-                </div>
+              <div className="border-b border-white/10 pb-5">
+                <p className="text-xs uppercase tracking-[0.18em] text-purple-200/70">
+                  Show Day
+                </p>
+                <h3 className="mt-2 text-2xl font-bold text-white">
+                  Day {day.dayIndex} - {formatShowDate(day.scheduledEpoch)}
+                </h3>
+                <p className="mt-2 text-sm font-semibold text-purple-100">
+                  Judge:{" "}
+                  <Link
+                    href={`/judges/${day.judgingBlocks[0].judge.judgeCode}`}
+                    className="text-white underline-offset-4 hover:underline"
+                  >
+                    {day.judgingBlocks[0].judge.name}
+                  </Link>
+                </p>
               </div>
 
-              <ResultSection
-                title={`${block.breed.name}, Dogs`}
-                results={block.showResults.filter(
-                  (result) => result.dog.sex === "M"
-                )}
-                awardGroups={["DOG_CLASS", "WINNERS"]}
-              />
-              <ResultSection
-                title={`${block.breed.name}, Bitches`}
-                results={block.showResults.filter(
-                  (result) => result.dog.sex === "F"
-                )}
-                awardGroups={["BITCH_CLASS", "WINNERS"]}
-              />
-              <ResultSection
-                title={`${block.breed.name}, Best of Breed Competition`}
-                results={block.showResults}
-                awardGroups={["BREED"]}
-              />
+              <div className="mt-5 grid gap-6">
+                {day.judgingBlocks.map((block) => (
+                  <div key={block.id}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-purple-200/70">
+                          Ring {block.ringNumber}
+                          {block.ringName ? ` - ${block.ringName}` : ""}
+                        </p>
+                        <p className="mt-2 text-sm text-purple-100/65">
+                          {block._count.showEntries} entered /{" "}
+                          {block._count.showResults} result
+                          {block._count.showResults === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                      <div
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusTone(block.status)}`}
+                      >
+                        {block.status}
+                      </div>
+                    </div>
+
+                    <ResultSection
+                      title={`${block.breed.name}, Dogs`}
+                      results={block.showResults.filter(
+                        (result) => result.dog.sex === "M"
+                      )}
+                      awardGroups={["DOG_CLASS", "WINNERS"]}
+                    />
+                    <ResultSection
+                      title={`${block.breed.name}, Bitches`}
+                      results={block.showResults.filter(
+                        (result) => result.dog.sex === "F"
+                      )}
+                      awardGroups={["BITCH_CLASS", "WINNERS"]}
+                    />
+                    <ResultSection
+                      title={`${block.breed.name}, Best of Breed Competition`}
+                      results={block.showResults}
+                      awardGroups={["BREED"]}
+                    />
+                  </div>
+                ))}
+              </div>
             </section>
           ))}
         </div>

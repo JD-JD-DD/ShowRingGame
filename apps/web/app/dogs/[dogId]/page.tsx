@@ -107,6 +107,12 @@ function sortShowAwards<
     BOB: 8,
     BOS: 9,
     AOM: 10,
+    G1: 11,
+    G2: 12,
+    G3: 13,
+    G4: 14,
+    BIS: 15,
+    RBIS: 16,
   };
 
   return [...awards].sort((a, b) => {

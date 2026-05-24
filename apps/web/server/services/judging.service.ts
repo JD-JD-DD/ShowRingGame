@@ -3,7 +3,9 @@ import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { recalculateDogTitleProgressForDogs } from "@/server/services/titleProgress.service";
 import {
   JUDGING_SCORING_VERSION,
+  judgeBestInShow,
   judgeBreedBlock,
+  judgeGroup,
   mapJudgeRosterStyleToJudgeStyle,
   type Dog as EngineDog,
   type Judge as EngineJudge,
@@ -33,6 +35,38 @@ type ShowBlockForJudging = Prisma.ShowJudgingBlockGetPayload<
 >;
 
 type EntryForJudging = ShowBlockForJudging["showEntries"][number];
+type JudgeForEngine = {
+  id: string;
+  name: string;
+  style: string | null;
+  weightTypeExpression: number;
+  weightStructureBalance: number;
+  weightMovement: number;
+  weightCoatPresentation: number;
+  weightTemperamentRingBehavior: number;
+  weightConditioningHandling: number;
+};
+type DogForEngine = {
+  id: string;
+  regNumber: string;
+  breedCode2: string;
+  birthEpoch: number;
+  sex: "M" | "F";
+  litterId: string | null;
+  litterOrder: number | null;
+  sireId: string | null;
+  damId: string | null;
+  traitHead: number;
+  traitForequarters: number;
+  traitHindquarters: number;
+  traitGait: number;
+  traitCoat: number;
+  traitSize: number;
+  traitTemperament: number;
+  traitShowShine: number;
+  traitFeet: number;
+  traitTopline: number;
+};
 
 export type JudgedShowResultDto = {
   showEntryId: string;
@@ -62,7 +96,7 @@ export type JudgeShowDayDto = {
   blocks: JudgeShowBlockDto[];
 };
 
-function toEngineJudge(judge: ShowBlockForJudging["judge"]): EngineJudge {
+function toEngineJudge(judge: JudgeForEngine): EngineJudge {
   return {
     judgeId: judge.id,
     name: judge.name,
@@ -78,9 +112,7 @@ function toEngineJudge(judge: ShowBlockForJudging["judge"]): EngineJudge {
   };
 }
 
-function toEngineDog(entry: EntryForJudging): EngineDog {
-  const dog = entry.dog;
-
+function toEngineDogRecord(dog: DogForEngine): EngineDog {
   return {
     dogId: dog.id,
     regNumber: dog.regNumber,
@@ -105,6 +137,10 @@ function toEngineDog(entry: EntryForJudging): EngineDog {
       topline: dog.traitTopline,
     },
   };
+}
+
+function toEngineDog(entry: EntryForJudging): EngineDog {
+  return toEngineDogRecord(entry.dog);
 }
 
 function canBlockMoveToJudging(
@@ -648,6 +684,438 @@ export async function judgeShowDayBreed(args: {
     judgingBlockId,
     currentEpoch: args.currentEpoch,
   });
+}
+
+function normalizeGroupName(groupName: string | null): string {
+  return groupName?.trim() || "Other Breeds";
+}
+
+async function createGroupAwardsForShowDay(args: {
+  showDayId: string;
+  judgeId: string;
+  judge: EngineJudge;
+  currentEpoch: number;
+}): Promise<number> {
+  return db.$transaction(async (tx) => {
+    const existingGroupAwards = await tx.showAward.count({
+      where: {
+        showDayId: args.showDayId,
+        awardGroup: "GROUP",
+      },
+    });
+
+    if (existingGroupAwards > 0) {
+      return 0;
+    }
+
+    const bobAwards = await tx.showAward.findMany({
+      where: {
+        showDayId: args.showDayId,
+        awardGroup: "BREED",
+        awardCode: "BOB",
+      },
+      select: {
+        showEntryId: true,
+        showResultId: true,
+        dogId: true,
+        breedCode2: true,
+        showEntry: {
+          select: {
+            kennelId: true,
+          },
+        },
+        dog: {
+          select: {
+            id: true,
+            regNumber: true,
+            breedCode2: true,
+            birthEpoch: true,
+            sex: true,
+            litterId: true,
+            litterOrder: true,
+            sireId: true,
+            damId: true,
+            traitHead: true,
+            traitForequarters: true,
+            traitHindquarters: true,
+            traitGait: true,
+            traitCoat: true,
+            traitSize: true,
+            traitTemperament: true,
+            traitShowShine: true,
+            traitFeet: true,
+            traitTopline: true,
+            breed: {
+              select: {
+                groupName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    const awardsByGroup = new Map<string, typeof bobAwards>();
+
+    for (const award of bobAwards) {
+      const groupName = normalizeGroupName(award.dog.breed.groupName);
+      const groupAwards = awardsByGroup.get(groupName) ?? [];
+      groupAwards.push(award);
+      awardsByGroup.set(groupName, groupAwards);
+    }
+
+    const awardsToCreate: Prisma.ShowAwardCreateManyInput[] = [];
+
+    for (const groupAwards of awardsByGroup.values()) {
+      const awardByEntryId = new Map(
+        groupAwards.map((award) => [award.showEntryId, award])
+      );
+      const uniqueKennelsInCompetition = new Set(
+        groupAwards.map((award) => award.showEntry.kennelId)
+      ).size;
+      const judgedGroupAwards = judgeGroup({
+        judge: args.judge,
+        entries: groupAwards.map((award) => ({
+          showEntryId: award.showEntryId,
+          dog: toEngineDogRecord(award.dog),
+        })),
+      });
+
+      for (const judgedAward of judgedGroupAwards) {
+        if (!judgedAward.showEntryId) {
+          continue;
+        }
+
+        const sourceAward = awardByEntryId.get(judgedAward.showEntryId);
+
+        if (!sourceAward) {
+          continue;
+        }
+
+        awardsToCreate.push({
+          showResultId: sourceAward.showResultId,
+          showEntryId: sourceAward.showEntryId,
+          showDayId: args.showDayId,
+          judgingBlockId: null,
+          dogId: sourceAward.dogId,
+          breedCode2: sourceAward.breedCode2,
+          judgeId: args.judgeId,
+          awardCode: judgedAward.awardCode,
+          awardGroup: judgedAward.awardGroup,
+          sex: judgedAward.sex,
+          rank: judgedAward.rank,
+          pointsAwarded: 0,
+          isMajor: false,
+          dogsInCompetition: judgedAward.dogsInCompetition,
+          uniqueKennelsInCompetition,
+          publishedAtEpoch: args.currentEpoch,
+        });
+      }
+    }
+
+    if (awardsToCreate.length === 0) {
+      return 0;
+    }
+
+    const created = await tx.showAward.createMany({
+      data: awardsToCreate,
+    });
+
+    return created.count;
+  });
+}
+
+async function createBestInShowAwardsForShowDay(args: {
+  showDayId: string;
+  judgeId: string;
+  judge: EngineJudge;
+  currentEpoch: number;
+}): Promise<number> {
+  return db.$transaction(async (tx) => {
+    const existingBestInShowAwards = await tx.showAward.count({
+      where: {
+        showDayId: args.showDayId,
+        awardGroup: "BEST_IN_SHOW",
+      },
+    });
+
+    if (existingBestInShowAwards > 0) {
+      return 0;
+    }
+
+    const groupOneAwards = await tx.showAward.findMany({
+      where: {
+        showDayId: args.showDayId,
+        awardGroup: "GROUP",
+        awardCode: "G1",
+      },
+      select: {
+        showEntryId: true,
+        showResultId: true,
+        dogId: true,
+        breedCode2: true,
+        showEntry: {
+          select: {
+            kennelId: true,
+          },
+        },
+        dog: {
+          select: {
+            id: true,
+            regNumber: true,
+            breedCode2: true,
+            birthEpoch: true,
+            sex: true,
+            litterId: true,
+            litterOrder: true,
+            sireId: true,
+            damId: true,
+            traitHead: true,
+            traitForequarters: true,
+            traitHindquarters: true,
+            traitGait: true,
+            traitCoat: true,
+            traitSize: true,
+            traitTemperament: true,
+            traitShowShine: true,
+            traitFeet: true,
+            traitTopline: true,
+          },
+        },
+      },
+    });
+
+    if (groupOneAwards.length === 0) {
+      return 0;
+    }
+
+    const awardByEntryId = new Map(
+      groupOneAwards.map((award) => [award.showEntryId, award])
+    );
+    const uniqueKennelsInCompetition = new Set(
+      groupOneAwards.map((award) => award.showEntry.kennelId)
+    ).size;
+    const judgedBestInShowAwards = judgeBestInShow({
+      judge: args.judge,
+      entries: groupOneAwards.map((award) => ({
+        showEntryId: award.showEntryId,
+        dog: toEngineDogRecord(award.dog),
+      })),
+    });
+    const awardsToCreate: Prisma.ShowAwardCreateManyInput[] = [];
+
+    for (const judgedAward of judgedBestInShowAwards) {
+      if (!judgedAward.showEntryId) {
+        continue;
+      }
+
+      const sourceAward = awardByEntryId.get(judgedAward.showEntryId);
+
+      if (!sourceAward) {
+        continue;
+      }
+
+      awardsToCreate.push({
+        showResultId: sourceAward.showResultId,
+        showEntryId: sourceAward.showEntryId,
+        showDayId: args.showDayId,
+        judgingBlockId: null,
+        dogId: sourceAward.dogId,
+        breedCode2: sourceAward.breedCode2,
+        judgeId: args.judgeId,
+        awardCode: judgedAward.awardCode,
+        awardGroup: judgedAward.awardGroup,
+        sex: judgedAward.sex,
+        rank: judgedAward.rank,
+        pointsAwarded: 0,
+        isMajor: false,
+        dogsInCompetition: judgedAward.dogsInCompetition,
+        uniqueKennelsInCompetition,
+        publishedAtEpoch: args.currentEpoch,
+      });
+    }
+
+    if (awardsToCreate.length === 0) {
+      return 0;
+    }
+
+    const created = await tx.showAward.createMany({
+      data: awardsToCreate,
+    });
+
+    return created.count;
+  });
+}
+
+export async function publishReadyShowDayResults(args: {
+  showDayId: string;
+  currentEpoch: number;
+}): Promise<{
+  showDayId: string;
+  breedBlocksJudged: number;
+  eligibleEntryCount: number;
+  groupAwardsCreated: number;
+  bestInShowAwardsCreated: number;
+}> {
+  const showDay = await db.showDay.findUnique({
+    where: { id: args.showDayId },
+    include: {
+      cluster: true,
+      judge: true,
+      judgingBlocks: {
+        orderBy: [
+          { startEpoch: "asc" },
+          { ringNumber: "asc" },
+          { blockOrder: "asc" },
+        ],
+        select: {
+          id: true,
+          status: true,
+          _count: {
+            select: {
+              showEntries: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!showDay) {
+    throw new Error("Show day not found.");
+  }
+
+  if (
+    showDay.status === "CANCELLED" ||
+    showDay.cluster.status === "CANCELLED" ||
+    args.currentEpoch < showDay.scheduledEpoch
+  ) {
+    return {
+      showDayId: args.showDayId,
+      breedBlocksJudged: 0,
+      eligibleEntryCount: 0,
+      groupAwardsCreated: 0,
+      bestInShowAwardsCreated: 0,
+    };
+  }
+
+  let breedBlocksJudged = 0;
+  let eligibleEntryCount = 0;
+
+  for (const block of showDay.judgingBlocks) {
+    if (block._count.showEntries === 0 || block.status === "CANCELLED") {
+      continue;
+    }
+
+    const result = await judgeShowBlock({
+      judgingBlockId: block.id,
+      currentEpoch: args.currentEpoch,
+    });
+
+    breedBlocksJudged += result.alreadyPublished ? 0 : 1;
+    eligibleEntryCount += result.eligibleEntryCount;
+  }
+
+  const remainingEntryBlocks = await db.showJudgingBlock.count({
+    where: {
+      showDayId: args.showDayId,
+      status: {
+        notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
+      },
+      showEntries: {
+        some: {},
+      },
+    },
+  });
+
+  if (remainingEntryBlocks > 0) {
+    return {
+      showDayId: args.showDayId,
+      breedBlocksJudged,
+      eligibleEntryCount,
+      groupAwardsCreated: 0,
+      bestInShowAwardsCreated: 0,
+    };
+  }
+
+  const engineJudge = toEngineJudge(showDay.judge);
+  const groupAwardsCreated = await createGroupAwardsForShowDay({
+    showDayId: args.showDayId,
+    judgeId: showDay.judgeId,
+    judge: engineJudge,
+    currentEpoch: args.currentEpoch,
+  });
+  const bestInShowAwardsCreated = await createBestInShowAwardsForShowDay({
+    showDayId: args.showDayId,
+    judgeId: showDay.judgeId,
+    judge: engineJudge,
+    currentEpoch: args.currentEpoch,
+  });
+
+  await db.$transaction(async (tx) => {
+    await tx.showDay.update({
+      where: { id: args.showDayId },
+      data: {
+        status: "RESULTS_PUBLISHED",
+        publishedAtEpoch: args.currentEpoch,
+      },
+    });
+
+    await maybeCompleteCluster(tx, showDay.clusterId);
+  });
+
+  return {
+    showDayId: args.showDayId,
+    breedBlocksJudged,
+    eligibleEntryCount,
+    groupAwardsCreated,
+    bestInShowAwardsCreated,
+  };
+}
+
+export async function publishReadyShowResultsForCluster(args: {
+  showId: string;
+  currentEpoch: number;
+}): Promise<{
+  showDaysVisited: number;
+  breedBlocksJudged: number;
+  eligibleEntryCount: number;
+  groupAwardsCreated: number;
+  bestInShowAwardsCreated: number;
+}> {
+  const showDays = await db.showDay.findMany({
+    where: {
+      clusterId: args.showId,
+      scheduledEpoch: { lte: args.currentEpoch },
+      status: { not: "CANCELLED" },
+      showEntries: {
+        some: {},
+      },
+    },
+    orderBy: [{ dayIndex: "asc" }],
+    select: { id: true },
+  });
+  const summary = {
+    showDaysVisited: 0,
+    breedBlocksJudged: 0,
+    eligibleEntryCount: 0,
+    groupAwardsCreated: 0,
+    bestInShowAwardsCreated: 0,
+  };
+
+  for (const showDay of showDays) {
+    const result = await publishReadyShowDayResults({
+      showDayId: showDay.id,
+      currentEpoch: args.currentEpoch,
+    });
+
+    summary.showDaysVisited += 1;
+    summary.breedBlocksJudged += result.breedBlocksJudged;
+    summary.eligibleEntryCount += result.eligibleEntryCount;
+    summary.groupAwardsCreated += result.groupAwardsCreated;
+    summary.bestInShowAwardsCreated += result.bestInShowAwardsCreated;
+  }
+
+  return summary;
 }
 
 export async function publishReadyBreedResultsForCluster(args: {

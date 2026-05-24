@@ -49,13 +49,21 @@ export type ShowAwardCode =
   | "BOW"
   | "BOB"
   | "BOS"
-  | "AOM";
+  | "AOM"
+  | "G1"
+  | "G2"
+  | "G3"
+  | "G4"
+  | "BIS"
+  | "RBIS";
 
 export type ShowAwardGroup =
   | "DOG_CLASS"
   | "BITCH_CLASS"
   | "WINNERS"
-  | "BREED";
+  | "BREED"
+  | "GROUP"
+  | "BEST_IN_SHOW";
 
 export type JudgedShowAward = {
   showEntryId?: string;
@@ -393,6 +401,74 @@ export function judgeBreedBlock(args: {
       ...buildBreedAwards({ maleResults, femaleResults }),
     ],
   };
+}
+
+function entrySexForResult(
+  entries: JudgingEntry[],
+  result: JudgedEntryResult
+): "M" | "F" | null {
+  return (
+    entries.find((entry) => entry.showEntryId === result.showEntryId)?.dog.sex ??
+    null
+  );
+}
+
+export function judgeGroup(args: {
+  entries: JudgingEntry[];
+  judge: Judge;
+  random01?: () => number;
+}): JudgedShowAward[] {
+  const results = judgeBreedEntries(args);
+
+  return results.slice(0, 4).map((result, index) =>
+    makeAward({
+      result,
+      awardCode: `G${index + 1}` as ShowAwardCode,
+      awardGroup: "GROUP",
+      sex: entrySexForResult(args.entries, result),
+      rank: index + 1,
+      dogsInCompetition: args.entries.length,
+    })
+  );
+}
+
+export function judgeBestInShow(args: {
+  entries: JudgingEntry[];
+  judge: Judge;
+  random01?: () => number;
+}): JudgedShowAward[] {
+  const results = judgeBreedEntries(args);
+  const bestInShow = results[0];
+  const reserveBestInShow = results[1];
+  const awards: JudgedShowAward[] = [];
+
+  if (bestInShow) {
+    awards.push(
+      makeAward({
+        result: bestInShow,
+        awardCode: "BIS",
+        awardGroup: "BEST_IN_SHOW",
+        sex: entrySexForResult(args.entries, bestInShow),
+        rank: 1,
+        dogsInCompetition: args.entries.length,
+      })
+    );
+  }
+
+  if (reserveBestInShow) {
+    awards.push(
+      makeAward({
+        result: reserveBestInShow,
+        awardCode: "RBIS",
+        awardGroup: "BEST_IN_SHOW",
+        sex: entrySexForResult(args.entries, reserveBestInShow),
+        rank: 2,
+        dogsInCompetition: args.entries.length,
+      })
+    );
+  }
+
+  return awards;
 }
 
 export function rankDogsByJudgeWeights(args: {

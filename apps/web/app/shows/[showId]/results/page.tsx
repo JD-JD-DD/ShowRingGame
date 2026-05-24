@@ -2,10 +2,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { epochToDate } from "@/lib/gameClock";
+import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
+import { publishReadyShowResultsForCluster } from "@/server/services/judging.service";
 
 function formatShowDate(epoch: number): string {
   return epochToDate(epoch).toLocaleDateString();
+}
+
+function getDogDisplayName(dog: {
+  registeredName: string | null;
+  callName: string | null;
+  regNumber: string;
+}): string {
+  return dog.registeredName || dog.callName || dog.regNumber;
 }
 
 function normalizeGroupName(groupName: string | null): string {
@@ -53,6 +62,11 @@ export default async function ShowResultsIndexPage({
 }) {
   const { showId } = await params;
   const { judged, judgedEntries, judgeError } = await searchParams;
+  await publishReadyShowResultsForCluster({
+    showId,
+    currentEpoch: getCurrentEpoch(),
+  });
+
   const cluster = await db.showCluster.findUnique({
     where: { id: showId },
     include: {
@@ -71,6 +85,30 @@ export default async function ShowResultsIndexPage({
             },
           },
           _count: { select: { showResults: true } },
+          showAwards: {
+            where: {
+              awardGroup: {
+                in: ["GROUP", "BEST_IN_SHOW"],
+              },
+            },
+            orderBy: [{ awardGroup: "asc" }, { rank: "asc" }],
+            include: {
+              breed: { select: { name: true, code2: true, groupName: true } },
+              dog: {
+                select: {
+                  id: true,
+                  registeredName: true,
+                  callName: true,
+                  regNumber: true,
+                },
+              },
+              showEntry: {
+                include: {
+                  kennel: { select: { name: true, slug: true } },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -148,7 +186,7 @@ export default async function ShowResultsIndexPage({
     );
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-8 text-white">
+    <main className="mx-auto max-w-6xl px-6 py-8 text-white">
       <section className="rounded-[28px] border border-white/10 bg-white/5 px-6 py-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
         <p className="text-sm uppercase tracking-[0.22em] text-purple-300/80">
           Show Results
@@ -213,6 +251,112 @@ export default async function ShowResultsIndexPage({
           </Link>
         </div>
       </section>
+
+      {cluster.showDays.some((day) => day.showAwards.length > 0) ? (
+        <section className="mt-6 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+          <h2 className="text-xl font-semibold text-white">
+            Group & Best In Show
+          </h2>
+
+          <div className="mt-5 grid gap-6">
+            {cluster.showDays
+              .filter((day) => day.showAwards.length > 0)
+              .map((day) => {
+                const bestInShowAwards = day.showAwards.filter(
+                  (award) => award.awardGroup === "BEST_IN_SHOW"
+                );
+                const groupAwards = day.showAwards.filter(
+                  (award) => award.awardGroup === "GROUP"
+                );
+                const groupAwardsByGroup = groupAwards.reduce(
+                  (groups, award) => {
+                    const groupName = normalizeGroupName(award.breed.groupName);
+                    const awards = groups.get(groupName) ?? [];
+                    awards.push(award);
+                    groups.set(groupName, awards);
+                    return groups;
+                  },
+                  new Map<string, typeof groupAwards>()
+                );
+
+                return (
+                  <div
+                    key={day.id}
+                    className="rounded-2xl border border-white/10 bg-black/20 p-5"
+                  >
+                    <h3 className="text-lg font-semibold text-purple-100">
+                      Day {day.dayIndex} - {formatShowDate(day.scheduledEpoch)}
+                    </h3>
+
+                    {bestInShowAwards.length > 0 ? (
+                      <div className="mt-4">
+                        <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-100">
+                          Best In Show
+                        </h4>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {bestInShowAwards.map((award) => (
+                            <Link
+                              key={award.id}
+                              href={`/dogs/${award.dog.id}`}
+                              className="rounded-xl border border-sky-300/20 bg-sky-500/10 px-4 py-3 text-sm transition hover:border-sky-300/40"
+                            >
+                              <div className="font-semibold text-white">
+                                {award.awardCode} - {getDogDisplayName(award.dog)}
+                              </div>
+                              <div className="mt-1 text-xs text-purple-100/65">
+                                {award.breed.name} ({award.breed.code2}) -{" "}
+                                {award.showEntry.kennel.name}
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {groupAwardsByGroup.size > 0 ? (
+                      <div className="mt-5 grid gap-4 md:grid-cols-2">
+                        {[...groupAwardsByGroup.entries()]
+                          .sort((a, b) =>
+                            groupSortKey(a[0]).localeCompare(groupSortKey(b[0]))
+                          )
+                          .map(([groupName, awards]) => (
+                            <div
+                              key={`${day.id}-${groupName}`}
+                              className="rounded-xl border border-white/10 bg-white/5 p-4"
+                            >
+                              <h4 className="text-sm font-semibold text-purple-100">
+                                {groupName}
+                              </h4>
+                              <div className="mt-3 grid gap-2">
+                                {awards
+                                  .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99))
+                                  .map((award) => (
+                                    <Link
+                                      key={award.id}
+                                      href={`/dogs/${award.dog.id}`}
+                                      className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm transition hover:border-purple-300/35 hover:bg-white/10"
+                                    >
+                                      <div className="font-semibold text-white">
+                                        {award.awardCode} -{" "}
+                                        {getDogDisplayName(award.dog)}
+                                      </div>
+                                      <div className="mt-1 text-xs text-purple-100/60">
+                                        {award.breed.name} -{" "}
+                                        {award.showEntry.kennel.name}
+                                      </div>
+                                    </Link>
+                                  ))}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+          </div>
+        </section>
+      ) : null}
 
       <section className="mt-6 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
         <h2 className="text-xl font-semibold text-white">Breeds & Classes</h2>
