@@ -1,9 +1,14 @@
 import { db } from "@/lib/db";
 import { getVisibleCategoriesFromDogRecord } from "@/server/services/foundationDog.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
-import { canSellPuppy, type VisibleCategories } from "@showring/rules";
+import {
+  canSellPuppy,
+  MIN_BREED_AGE_HOURS,
+  type VisibleCategories,
+} from "@showring/rules";
 
-const PLAYER_LISTING_TYPE = "PLAYER_PUBLIC";
+export const PLAYER_SALE_LISTING_TYPE = "PLAYER_PUBLIC";
+export const PLAYER_STUD_LISTING_TYPE = "PLAYER_STUD";
 
 type HiddenTraitRecord = {
   traitHead: number;
@@ -62,9 +67,9 @@ export type MarketDogDto = {
   visibleCategories: VisibleCategories;
 };
 
-function assertWholeDollarPrice(value: number): void {
+function assertWholeDollarAmount(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 1) {
-    throw new Error("Sale price must be a whole dollar amount of at least $1.");
+    throw new Error(`${label} must be a whole dollar amount of at least $1.`);
   }
 }
 
@@ -137,6 +142,7 @@ export async function listMarketDogs(args: {
         },
         {
           sellerType: "PLAYER",
+          listingType: PLAYER_SALE_LISTING_TYPE,
           dog: {
             ...dogBreedFilter,
             lifecycleState: "ALIVE",
@@ -212,7 +218,7 @@ export async function listDogForSale(args: {
 }): Promise<string> {
   const { dogId, sellerKennelId, currentEpoch, askingPrice } = args;
 
-  assertWholeDollarPrice(askingPrice);
+  assertWholeDollarAmount(askingPrice, "Sale price");
   await resolveDogDeaths({ currentEpoch, dogIds: [dogId] });
 
   return db.$transaction(async (tx) => {
@@ -286,7 +292,7 @@ export async function listDogForSale(args: {
         sellerKennelId,
         sellerType: "PLAYER",
         askingPrice,
-        listingType: PLAYER_LISTING_TYPE,
+        listingType: PLAYER_SALE_LISTING_TYPE,
         status: "ACTIVE",
         listedAtEpoch: currentEpoch,
         descriptionPublic: `Player listing for ${dog.regNumber}.`,
@@ -328,6 +334,7 @@ export async function buyPlayerDogListing(args: {
       where: {
         id: listingId,
         sellerType: "PLAYER",
+        listingType: PLAYER_SALE_LISTING_TYPE,
         status: "ACTIVE",
       },
       select: {
@@ -452,13 +459,14 @@ export async function updatePlayerDogListingPrice(args: {
 }): Promise<string> {
   const { listingId, sellerKennelId, askingPrice } = args;
 
-  assertWholeDollarPrice(askingPrice);
+  assertWholeDollarAmount(askingPrice, "Sale price");
 
   return db.$transaction(async (tx) => {
     const listing = await tx.dogListing.findFirst({
       where: {
         id: listingId,
         sellerType: "PLAYER",
+        listingType: PLAYER_SALE_LISTING_TYPE,
         status: "ACTIVE",
       },
       select: {
@@ -509,6 +517,7 @@ export async function cancelPlayerDogListing(args: {
       where: {
         id: listingId,
         sellerType: "PLAYER",
+        listingType: PLAYER_SALE_LISTING_TYPE,
         status: "ACTIVE",
       },
       select: {
@@ -548,6 +557,190 @@ export async function cancelPlayerDogListing(args: {
       where: { id: listing.dog.id },
       data: {
         marketState: "NOT_FOR_SALE",
+      },
+    });
+
+    return listing.dog.id;
+  });
+}
+
+export async function listDogAtStud(args: {
+  dogId: string;
+  sellerKennelId: string;
+  currentEpoch: number;
+  studFeeAmount: number;
+}): Promise<string> {
+  const { dogId, sellerKennelId, currentEpoch, studFeeAmount } = args;
+
+  assertWholeDollarAmount(studFeeAmount, "Stud fee");
+  await resolveDogDeaths({ currentEpoch, dogIds: [dogId] });
+
+  return db.$transaction(async (tx) => {
+    const dog = await tx.dog.findUnique({
+      where: { id: dogId },
+      select: {
+        id: true,
+        regNumber: true,
+        ownerKennelId: true,
+        sex: true,
+        birthEpoch: true,
+        lifecycleState: true,
+        marketState: true,
+      },
+    });
+
+    if (!dog) {
+      throw new Error("Dog not found.");
+    }
+
+    if (dog.ownerKennelId !== sellerKennelId) {
+      throw new Error("You do not own this dog.");
+    }
+
+    if (dog.lifecycleState !== "ALIVE") {
+      throw new Error("Only active dogs can be offered at stud.");
+    }
+
+    if (dog.sex !== "M") {
+      throw new Error("Only male dogs can be offered at stud.");
+    }
+
+    if (currentEpoch - dog.birthEpoch < MIN_BREED_AGE_HOURS) {
+      throw new Error("Dogs must be breeding age before they can be offered at stud.");
+    }
+
+    if (dog.marketState !== "NOT_FOR_SALE") {
+      throw new Error("Dogs listed for sale cannot be offered at stud.");
+    }
+
+    const activeListing = await tx.dogListing.findFirst({
+      where: {
+        dogId: dog.id,
+        status: "ACTIVE",
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (activeListing) {
+      throw new Error("This dog already has an active listing.");
+    }
+
+    const listing = await tx.dogListing.create({
+      data: {
+        dogId: dog.id,
+        sellerKennelId,
+        sellerType: "PLAYER",
+        askingPrice: studFeeAmount,
+        listingType: PLAYER_STUD_LISTING_TYPE,
+        status: "ACTIVE",
+        listedAtEpoch: currentEpoch,
+        descriptionPublic: `Stud listing for ${dog.regNumber}.`,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return listing.id;
+  });
+}
+
+export async function updatePlayerStudListingPrice(args: {
+  listingId: string;
+  sellerKennelId: string;
+  studFeeAmount: number;
+}): Promise<string> {
+  const { listingId, sellerKennelId, studFeeAmount } = args;
+
+  assertWholeDollarAmount(studFeeAmount, "Stud fee");
+
+  return db.$transaction(async (tx) => {
+    const listing = await tx.dogListing.findFirst({
+      where: {
+        id: listingId,
+        sellerType: "PLAYER",
+        listingType: PLAYER_STUD_LISTING_TYPE,
+        status: "ACTIVE",
+      },
+      select: {
+        id: true,
+        sellerKennelId: true,
+        dog: {
+          select: {
+            id: true,
+            ownerKennelId: true,
+            lifecycleState: true,
+          },
+        },
+      },
+    });
+
+    if (!listing || listing.sellerKennelId !== sellerKennelId) {
+      throw new Error("Stud listing not found.");
+    }
+
+    if (
+      listing.dog.ownerKennelId !== sellerKennelId ||
+      listing.dog.lifecycleState !== "ALIVE"
+    ) {
+      throw new Error("This dog is no longer available for stud listing changes.");
+    }
+
+    await tx.dogListing.update({
+      where: { id: listing.id },
+      data: {
+        askingPrice: studFeeAmount,
+      },
+    });
+
+    return listing.dog.id;
+  });
+}
+
+export async function cancelPlayerStudListing(args: {
+  listingId: string;
+  sellerKennelId: string;
+}): Promise<string> {
+  const { listingId, sellerKennelId } = args;
+
+  return db.$transaction(async (tx) => {
+    const listing = await tx.dogListing.findFirst({
+      where: {
+        id: listingId,
+        sellerType: "PLAYER",
+        listingType: PLAYER_STUD_LISTING_TYPE,
+        status: "ACTIVE",
+      },
+      select: {
+        id: true,
+        sellerKennelId: true,
+        dog: {
+          select: {
+            id: true,
+            ownerKennelId: true,
+            lifecycleState: true,
+          },
+        },
+      },
+    });
+
+    if (!listing || listing.sellerKennelId !== sellerKennelId) {
+      throw new Error("Stud listing not found.");
+    }
+
+    if (
+      listing.dog.ownerKennelId !== sellerKennelId ||
+      listing.dog.lifecycleState !== "ALIVE"
+    ) {
+      throw new Error("This dog is no longer available for stud listing changes.");
+    }
+
+    await tx.dogListing.update({
+      where: { id: listing.id },
+      data: {
+        status: "CANCELLED",
       },
     });
 

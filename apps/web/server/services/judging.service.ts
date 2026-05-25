@@ -1079,6 +1079,54 @@ export async function publishReadyShowDayResults(args: {
     eligibleEntryCount += result.eligibleEntryCount;
   }
 
+  const finalized = await finalizeReadyShowDayResults({
+    showDayId: args.showDayId,
+    currentEpoch: args.currentEpoch,
+  });
+
+  return {
+    showDayId: args.showDayId,
+    breedBlocksJudged,
+    eligibleEntryCount,
+    groupAwardsCreated: finalized.groupAwardsCreated,
+    bestInShowAwardsCreated: finalized.bestInShowAwardsCreated,
+  };
+}
+
+export async function finalizeReadyShowDayResults(args: {
+  showDayId: string;
+  currentEpoch: number;
+}): Promise<{
+  showDayId: string;
+  readyToFinalize: boolean;
+  groupAwardsCreated: number;
+  bestInShowAwardsCreated: number;
+}> {
+  const showDay = await db.showDay.findUnique({
+    where: { id: args.showDayId },
+    include: {
+      cluster: true,
+      judge: true,
+    },
+  });
+
+  if (!showDay) {
+    throw new Error("Show day not found.");
+  }
+
+  if (
+    showDay.status === "CANCELLED" ||
+    showDay.cluster.status === "CANCELLED" ||
+    args.currentEpoch < showDay.scheduledEpoch
+  ) {
+    return {
+      showDayId: args.showDayId,
+      readyToFinalize: false,
+      groupAwardsCreated: 0,
+      bestInShowAwardsCreated: 0,
+    };
+  }
+
   const remainingEntryBlocks = await db.showJudgingBlock.count({
     where: {
       showDayId: args.showDayId,
@@ -1094,8 +1142,7 @@ export async function publishReadyShowDayResults(args: {
   if (remainingEntryBlocks > 0) {
     return {
       showDayId: args.showDayId,
-      breedBlocksJudged,
-      eligibleEntryCount,
+      readyToFinalize: false,
       groupAwardsCreated: 0,
       bestInShowAwardsCreated: 0,
     };
@@ -1129,8 +1176,7 @@ export async function publishReadyShowDayResults(args: {
 
   return {
     showDayId: args.showDayId,
-    breedBlocksJudged,
-    eligibleEntryCount,
+    readyToFinalize: true,
     groupAwardsCreated,
     bestInShowAwardsCreated,
   };

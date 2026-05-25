@@ -15,9 +15,15 @@ import {
   WHELPING_COOLDOWN_HOURS,
 } from "@showring/rules";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
+import ManageDogStudListingForm from "@/components/dogs/ManageDogStudListingForm";
+import OfferDogAtStudForm from "@/components/dogs/OfferDogAtStudForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
 import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
 import TraitLine from "@/components/ui/TraitLine";
+import {
+  PLAYER_SALE_LISTING_TYPE,
+  PLAYER_STUD_LISTING_TYPE,
+} from "@/server/services/market.service";
 
 type PageProps = {
   params: Promise<{
@@ -59,6 +65,12 @@ function formatCategoryName(key: string): string {
   return key
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatListingType(listingType: string): string {
+  if (listingType === PLAYER_SALE_LISTING_TYPE) return "For Sale";
+  if (listingType === PLAYER_STUD_LISTING_TYPE) return "At Stud";
+  return listingType;
 }
 
 function firstQueryValue(value: string | string[] | undefined): string | null {
@@ -307,7 +319,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         orderBy: {
           createdAt: "desc",
         },
-        take: 1,
         select: {
           id: true,
           askingPrice: true,
@@ -349,10 +360,19 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   });
 
   const isOwnedByCurrentKennel = dog.ownerKennel?.id === currentKennel.id;
-  const activeListing = dog.listings[0] ?? null;
+  const activeSaleListing =
+    dog.listings.find(
+      (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
+    ) ?? null;
+  const activeStudListing =
+    dog.listings.find(
+      (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
+    ) ?? null;
+  const activeListing =
+    activeSaleListing ?? activeStudListing ?? dog.listings[0] ?? null;
   const isAlive = dog.lifecycleState === "ALIVE";
   const isListedForSale =
-    !!activeListing &&
+    !!activeSaleListing &&
     (dog.marketState === "LISTED_NPC" || dog.marketState === "LISTED_PLAYER");
   const canBuyActiveListing =
     isListedForSale && isAlive && !isOwnedByCurrentKennel;
@@ -383,7 +403,15 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     isOwnedByCurrentKennel &&
     isAlive &&
     ageHours >= PUPPY_SALE_MIN_AGE_HOURS &&
-    dog.marketState === "NOT_FOR_SALE";
+    dog.marketState === "NOT_FOR_SALE" &&
+    !activeListing;
+  const canOfferAtStud =
+    isOwnedByCurrentKennel &&
+    isAlive &&
+    dog.sex === "M" &&
+    ageHours >= MIN_BREED_AGE_HOURS &&
+    dog.marketState === "NOT_FOR_SALE" &&
+    !activeListing;
 
   const categoryEntries = Object.entries(visibleCategories);
   const progeny = dog.sex === "M" ? dog.sireOf : dog.damOf;
@@ -459,6 +487,11 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     Listed for Sale
                   </div>
                 ) : null}
+                {activeStudListing ? (
+                  <div className="rounded-full border border-sky-300/20 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-100">
+                    At Stud
+                  </div>
+                ) : null}
               </div>
 
               {saleMessage ? (
@@ -508,16 +541,16 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 </div>
               )}
 
-              {canBuyActiveListing && activeListing ? (
+              {canBuyActiveListing && activeSaleListing ? (
                 <form
-                  action={`/api/market-dogs/${activeListing.id}/buy`}
+                  action={`/api/market-dogs/${activeSaleListing.id}/buy`}
                   method="post"
                 >
                   <button
                     type="submit"
                     className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-emerald-500"
                   >
-                    Buy for {formatMoney(activeListing.askingPrice)}
+                    Buy for {formatMoney(activeSaleListing.askingPrice)}
                   </button>
                 </form>
               ) : null}
@@ -526,17 +559,34 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <OfferDogForSaleForm
                   action={`/api/dogs/${dog.id}/list-for-sale`}
                 />
-              ) : isOwnedByCurrentKennel && activeListing ? (
+              ) : isOwnedByCurrentKennel && activeSaleListing ? (
                 <ManageDogListingForm
                   dogId={dog.id}
-                  listingId={activeListing.id}
-                  currentPrice={activeListing.askingPrice}
-                  updateAction={`/api/market-dogs/${activeListing.id}/update-price`}
-                  cancelAction={`/api/market-dogs/${activeListing.id}/cancel`}
+                  listingId={activeSaleListing.id}
+                  currentPrice={activeSaleListing.askingPrice}
+                  updateAction={`/api/market-dogs/${activeSaleListing.id}/update-price`}
+                  cancelAction={`/api/market-dogs/${activeSaleListing.id}/cancel`}
                 />
               ) : null}
 
-              {isOwnedByCurrentKennel && isAlive && dog.marketState === "NOT_FOR_SALE" ? (
+              {canOfferAtStud ? (
+                <OfferDogAtStudForm
+                  action={`/api/dogs/${dog.id}/list-at-stud`}
+                />
+              ) : isOwnedByCurrentKennel && activeStudListing ? (
+                <ManageDogStudListingForm
+                  dogId={dog.id}
+                  listingId={activeStudListing.id}
+                  currentPrice={activeStudListing.askingPrice}
+                  updateAction={`/api/stud-listings/${activeStudListing.id}/update-price`}
+                  cancelAction={`/api/stud-listings/${activeStudListing.id}/cancel`}
+                />
+              ) : null}
+
+              {isOwnedByCurrentKennel &&
+              isAlive &&
+              dog.marketState === "NOT_FOR_SALE" &&
+              !activeListing ? (
                 <form action={`/api/dogs/${dog.id}/rehome`} method="post">
                   <button
                     type="submit"
@@ -916,7 +966,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   Active Listing
                 </div>
                 <div className="mt-2 text-white">
-                  {activeListing.listingType} · {formatMoney(activeListing.askingPrice)}
+                  {formatListingType(activeListing.listingType)} ·{" "}
+                  {formatMoney(activeListing.askingPrice)}
                 </div>
                 {activeListing.descriptionPublic ? (
                   <div className="mt-2 text-purple-100/70">

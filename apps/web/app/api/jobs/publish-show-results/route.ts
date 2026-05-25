@@ -3,21 +3,30 @@ import { NextResponse } from "next/server";
 import { fail, ok } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { db } from "@/lib/db";
-import { publishReadyShowDayResults } from "@/server/services/judging.service";
+import {
+  finalizeReadyShowDayResults,
+  judgeShowBlock,
+} from "@/server/services/judging.service";
 
 export const dynamic = "force-dynamic";
 
-const DEFAULT_BATCH_SIZE = 1;
-const MAX_BATCH_SIZE = 3;
+const DEFAULT_BLOCK_BATCH_SIZE = 1;
+const MAX_BLOCK_BATCH_SIZE = 12;
+const DEFAULT_FINALIZE_BATCH_SIZE = 1;
+const MAX_FINALIZE_BATCH_SIZE = 12;
 
-function parseBatchSize(value: string | undefined): number {
+function parseBatchSize(
+  value: string | undefined,
+  defaultValue: number,
+  maxValue: number
+): number {
   const parsed = Number(value);
 
   if (!Number.isInteger(parsed) || parsed < 1) {
-    return DEFAULT_BATCH_SIZE;
+    return defaultValue;
   }
 
-  return Math.min(parsed, MAX_BATCH_SIZE);
+  return Math.min(parsed, maxValue);
 }
 
 export async function GET(request: Request) {
@@ -32,17 +41,135 @@ export async function GET(request: Request) {
   }
 
   const currentEpoch = getCurrentEpoch();
-  const batchSize = parseBatchSize(process.env.SHOW_RESULTS_JOB_BATCH_SIZE);
-  const showDays = await db.showDay.findMany({
+  const blockBatchSize = parseBatchSize(
+    process.env.SHOW_RESULTS_JOB_BLOCK_BATCH_SIZE ??
+      process.env.SHOW_RESULTS_JOB_BATCH_SIZE,
+    DEFAULT_BLOCK_BATCH_SIZE,
+    MAX_BLOCK_BATCH_SIZE
+  );
+  const finalizeBatchSize = parseBatchSize(
+    process.env.SHOW_RESULTS_JOB_FINALIZE_BATCH_SIZE,
+    DEFAULT_FINALIZE_BATCH_SIZE,
+    MAX_FINALIZE_BATCH_SIZE
+  );
+  const readyBlocks = await db.showJudgingBlock.findMany({
+    where: {
+      startEpoch: { lte: currentEpoch },
+      status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
+      showEntries: {
+        some: {},
+      },
+      showDay: {
+        scheduledEpoch: { lte: currentEpoch },
+        status: { not: "CANCELLED" },
+        cluster: {
+          status: { not: "CANCELLED" },
+        },
+      },
+    },
+    orderBy: [
+      { showDay: { scheduledEpoch: "asc" } },
+      { showDay: { dayIndex: "asc" } },
+      { startEpoch: "asc" },
+      { ringNumber: "asc" },
+      { blockOrder: "asc" },
+    ],
+    select: {
+      id: true,
+      showDayId: true,
+      breedCode2: true,
+      showDay: {
+        select: {
+          clusterId: true,
+          dayIndex: true,
+        },
+      },
+    },
+    take: blockBatchSize,
+  });
+  const processedBlocks = [];
+  const finalized = [];
+  const errors = [];
+  const touchedShowDayIds = new Set<string>();
+
+  for (const block of readyBlocks) {
+    try {
+      const result = await judgeShowBlock({
+        judgingBlockId: block.id,
+        currentEpoch,
+      });
+
+      touchedShowDayIds.add(block.showDayId);
+      processedBlocks.push({
+        judgingBlockId: block.id,
+        showDayId: block.showDayId,
+        clusterId: block.showDay.clusterId,
+        dayIndex: block.showDay.dayIndex,
+        breedCode2: block.breedCode2,
+        result,
+      });
+    } catch (error) {
+      console.error("GET /api/jobs/publish-show-results failed for block", {
+        judgingBlockId: block.id,
+        showDayId: block.showDayId,
+        error,
+      });
+
+      errors.push({
+        judgingBlockId: block.id,
+        showDayId: block.showDayId,
+        clusterId: block.showDay.clusterId,
+        dayIndex: block.showDay.dayIndex,
+        breedCode2: block.breedCode2,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to judge show block.",
+      });
+    }
+  }
+
+  const readyToFinalize = await db.showDay.findMany({
     where: {
       scheduledEpoch: { lte: currentEpoch },
-      status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
+      status: { not: "CANCELLED" },
       showEntries: {
         some: {},
       },
       cluster: {
         status: { not: "CANCELLED" },
       },
+      judgingBlocks: {
+        none: {
+          status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
+          showEntries: {
+            some: {},
+          },
+        },
+      },
+      OR: [
+        { status: { not: "RESULTS_PUBLISHED" } },
+        {
+          AND: [
+            { status: "RESULTS_PUBLISHED" },
+            {
+              showAwards: {
+                some: {
+                  awardGroup: "BREED",
+                  awardCode: "BOB",
+                },
+              },
+            },
+            {
+              showAwards: {
+                none: {
+                  awardGroup: "GROUP",
+                },
+              },
+            },
+          ],
+        },
+      ],
     },
     orderBy: [{ scheduledEpoch: "asc" }, { dayIndex: "asc" }],
     select: {
@@ -50,26 +177,26 @@ export async function GET(request: Request) {
       clusterId: true,
       dayIndex: true,
     },
-    take: batchSize,
+    take: finalizeBatchSize,
   });
-  const processed = [];
-  const errors = [];
 
-  for (const showDay of showDays) {
+  for (const showDay of readyToFinalize) {
+    touchedShowDayIds.add(showDay.id);
+
     try {
-      const result = await publishReadyShowDayResults({
+      const result = await finalizeReadyShowDayResults({
         showDayId: showDay.id,
         currentEpoch,
       });
 
-      processed.push({
+      finalized.push({
         showDayId: showDay.id,
         clusterId: showDay.clusterId,
         dayIndex: showDay.dayIndex,
         result,
       });
     } catch (error) {
-      console.error("GET /api/jobs/publish-show-results failed for show day", {
+      console.error("GET /api/jobs/publish-show-results failed to finalize day", {
         showDayId: showDay.id,
         error,
       });
@@ -81,20 +208,28 @@ export async function GET(request: Request) {
         error:
           error instanceof Error
             ? error.message
-            : "Failed to publish show day results.",
+            : "Failed to finalize show day results.",
       });
     }
   }
 
   const payload = {
     currentEpoch,
-    batchSize,
-    selected: showDays.length,
-    processed,
+    blockBatchSize,
+    finalizeBatchSize,
+    selectedBlocks: readyBlocks.length,
+    selectedFinalizers: readyToFinalize.length,
+    touchedShowDayIds: [...touchedShowDayIds],
+    processedBlocks,
+    finalized,
     errors,
   };
 
-  if (errors.length > 0) {
+  if (
+    errors.length > 0 &&
+    processedBlocks.length === 0 &&
+    finalized.length === 0
+  ) {
     return NextResponse.json({ ok: false, ...payload }, { status: 500 });
   }
 

@@ -17,6 +17,7 @@ jobs:
         env:
           SHOWRING_JOBS_BASE_URL: ${{ secrets.SHOWRING_JOBS_BASE_URL }}
           SHOWRING_JOBS_SECRET: ${{ secrets.SHOWRING_JOBS_SECRET }}
+          SHOWRING_JOBS_RUNS: 20
         run: |
           if [ -z "$SHOWRING_JOBS_BASE_URL" ]; then
             echo "SHOWRING_JOBS_BASE_URL is not set"
@@ -28,6 +29,11 @@ jobs:
             exit 1
           fi
 
-          curl --fail-with-body --show-error --silent \
-            --header "Authorization: Bearer ${SHOWRING_JOBS_SECRET}" \
-            "${SHOWRING_JOBS_BASE_URL%/}/api/jobs/publish-show-results"
+          for run in $(seq 1 "${SHOWRING_JOBS_RUNS}"); do
+            echo "Publish show results pass ${run}/${SHOWRING_JOBS_RUNS}"
+            curl --fail-with-body --show-error --silent \
+              --header "Authorization: Bearer ${SHOWRING_JOBS_SECRET}" \
+              "${SHOWRING_JOBS_BASE_URL%/}/api/jobs/publish-show-results"
+            echo
+            sleep 2
+          done
