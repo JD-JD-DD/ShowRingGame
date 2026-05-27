@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import {
   BREEDING_FEE,
   DAM_MAX_BREED_AGE_HOURS,
@@ -598,11 +599,13 @@ export async function createBreedingAttemptForKennel(args: {
   kennelId: string;
   primaryDogId: string;
   mateDogId: string;
+  studListingId?: string;
   currentEpoch: number;
 }) {
-  const { kennelId, primaryDogId, mateDogId, currentEpoch } = args;
+  const { kennelId, primaryDogId, mateDogId, studListingId, currentEpoch } = args;
 
   await resolveDogDeaths({ kennelId, currentEpoch });
+  await resolveDogDeaths({ currentEpoch, dogIds: [primaryDogId, mateDogId] });
 
   const [primaryDog, mateDog] = await Promise.all([
     getDogForBreeding(primaryDogId),
@@ -611,10 +614,6 @@ export async function createBreedingAttemptForKennel(args: {
 
   if (!primaryDog || !mateDog) {
     throw new Error("One or both dogs could not be found.");
-  }
-
-  if (primaryDog.ownerKennelId !== kennelId || mateDog.ownerKennelId !== kennelId) {
-    throw new Error("You may only breed dogs owned by your kennel.");
   }
 
   if (primaryDog.id === mateDog.id) {
@@ -647,6 +646,19 @@ export async function createBreedingAttemptForKennel(args: {
 
   const sire = primaryDog.sex === "M" ? primaryDog : mateDog;
   const dam = primaryDog.sex === "F" ? primaryDog : mateDog;
+  const usesPublicStud = sire.ownerKennelId !== kennelId;
+
+  if (dam.ownerKennelId !== kennelId) {
+    throw new Error("You may only breed dams owned by your kennel.");
+  }
+
+  if (usesPublicStud && !studListingId) {
+    throw new Error("Choose an active public stud listing for that sire.");
+  }
+
+  if (!usesPublicStud && studListingId) {
+    throw new Error("Stud listings are only needed for sires outside your kennel.");
+  }
 
   const conflictingAttempt = await db.breedingAttempt.findFirst({
     where: {
@@ -699,6 +711,54 @@ export async function createBreedingAttemptForKennel(args: {
   });
 
   const attempt = await db.$transaction(async (tx) => {
+    let studFeeAmount = 0;
+    let studSellerKennelId: string | null = null;
+    let studSellerBalanceAfter: number | null = null;
+
+    if (usesPublicStud) {
+      const studListing = await tx.dogListing.findFirst({
+        where: {
+          id: studListingId,
+          dogId: sire.id,
+          sellerType: "PLAYER",
+          listingType: PLAYER_STUD_LISTING_TYPE,
+          status: "ACTIVE",
+        },
+        select: {
+          id: true,
+          askingPrice: true,
+          sellerKennelId: true,
+          dog: {
+            select: {
+              id: true,
+              ownerKennelId: true,
+              lifecycleState: true,
+              sex: true,
+            },
+          },
+        },
+      });
+
+      if (!studListing || !studListing.sellerKennelId) {
+        throw new Error("Public stud listing not found.");
+      }
+
+      if (studListing.sellerKennelId === kennelId) {
+        throw new Error("You already own that stud.");
+      }
+
+      if (
+        studListing.dog.ownerKennelId !== studListing.sellerKennelId ||
+        studListing.dog.lifecycleState !== "ALIVE" ||
+        studListing.dog.sex !== "M"
+      ) {
+        throw new Error("That stud is no longer available.");
+      }
+
+      studFeeAmount = studListing.askingPrice;
+      studSellerKennelId = studListing.sellerKennelId;
+    }
+
     const kennel = await tx.kennel.findUnique({
       where: { id: kennelId },
       select: { id: true, balance: true },
@@ -708,16 +768,41 @@ export async function createBreedingAttemptForKennel(args: {
       throw new Error("Kennel not found.");
     }
 
-    if (kennel.balance < BREEDING_FEE) {
-      throw new Error("Insufficient funds for the breeding fee.");
+    const totalCost = BREEDING_FEE + studFeeAmount;
+
+    if (kennel.balance < totalCost) {
+      throw new Error(
+        usesPublicStud
+          ? "Insufficient funds for the breeding and stud fees."
+          : "Insufficient funds for the breeding fee."
+      );
     }
 
-    const balanceAfter = kennel.balance - BREEDING_FEE;
+    const balanceAfterBreedingFee = kennel.balance - BREEDING_FEE;
+    const buyerBalanceAfter = balanceAfterBreedingFee - studFeeAmount;
 
     await tx.kennel.update({
       where: { id: kennel.id },
-      data: { balance: balanceAfter },
+      data: { balance: buyerBalanceAfter },
     });
+
+    if (studSellerKennelId && studFeeAmount > 0) {
+      const studSeller = await tx.kennel.findUnique({
+        where: { id: studSellerKennelId },
+        select: { id: true, balance: true },
+      });
+
+      if (!studSeller) {
+        throw new Error("Stud owner kennel not found.");
+      }
+
+      studSellerBalanceAfter = studSeller.balance + studFeeAmount;
+
+      await tx.kennel.update({
+        where: { id: studSeller.id },
+        data: { balance: studSellerBalanceAfter },
+      });
+    }
 
     const createdAttempt = await tx.breedingAttempt.create({
       data: {
@@ -732,8 +817,10 @@ export async function createBreedingAttemptForKennel(args: {
         status: "INITIATED",
         createdByKennelId: kennelId,
         rngSeed,
-        studFeeAmount: 0,
-        notes: "Beta breeding attempt created from breeding page.",
+        studFeeAmount,
+        notes: usesPublicStud
+          ? "Beta breeding attempt created with a public stud listing."
+          : "Beta breeding attempt created from breeding page.",
       },
       select: {
         id: true,
@@ -752,7 +839,7 @@ export async function createBreedingAttemptForKennel(args: {
         kennelId: kennel.id,
         transactionType: "BREEDING_FEE",
         amount: -BREEDING_FEE,
-        balanceAfter,
+        balanceAfter: balanceAfterBreedingFee,
         occurredAtEpoch: currentEpoch,
         dogId: dam.id,
         memo: `Breeding fee for ${displayDogName(dam)} x ${displayDogName(sire)}.`,
@@ -760,9 +847,50 @@ export async function createBreedingAttemptForKennel(args: {
           sireId: sire.id,
           damId: dam.id,
           breedingAttemptId: createdAttempt.id,
+          studListingId: studListingId ?? null,
         },
       },
     });
+
+    if (studSellerKennelId && studFeeAmount > 0) {
+      await tx.ledgerTransaction.create({
+        data: {
+          kennelId: kennel.id,
+          transactionType: "STUD_FEE_OUT",
+          amount: -studFeeAmount,
+          balanceAfter: buyerBalanceAfter,
+          occurredAtEpoch: currentEpoch,
+          dogId: sire.id,
+          counterpartyKennelId: studSellerKennelId,
+          memo: `Stud fee for ${displayDogName(sire)}.`,
+          metadataJson: {
+            sireId: sire.id,
+            damId: dam.id,
+            breedingAttemptId: createdAttempt.id,
+            studListingId: studListingId ?? null,
+          },
+        },
+      });
+
+      await tx.ledgerTransaction.create({
+        data: {
+          kennelId: studSellerKennelId,
+          transactionType: "STUD_FEE_IN",
+          amount: studFeeAmount,
+          balanceAfter: studSellerBalanceAfter,
+          occurredAtEpoch: currentEpoch,
+          dogId: sire.id,
+          counterpartyKennelId: kennel.id,
+          memo: `Stud fee received for ${displayDogName(sire)}.`,
+          metadataJson: {
+            sireId: sire.id,
+            damId: dam.id,
+            breedingAttemptId: createdAttempt.id,
+            studListingId: studListingId ?? null,
+          },
+        },
+      });
+    }
 
     return createdAttempt;
   });

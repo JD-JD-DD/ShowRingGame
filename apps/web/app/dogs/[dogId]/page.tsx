@@ -376,6 +376,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     (dog.marketState === "LISTED_NPC" || dog.marketState === "LISTED_PLAYER");
   const canBuyActiveListing =
     isListedForSale && isAlive && !isOwnedByCurrentKennel;
+  const canUseActiveStudListing =
+    !!activeStudListing && isAlive && dog.sex === "M" && !isOwnedByCurrentKennel;
 
   const canEnterShow =
     isOwnedByCurrentKennel &&
@@ -553,6 +555,15 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     Buy for {formatMoney(activeSaleListing.askingPrice)}
                   </button>
                 </form>
+              ) : null}
+
+              {canUseActiveStudListing && activeStudListing ? (
+                <Link
+                  href={`/breed?studListingId=${activeStudListing.id}`}
+                  className="rounded-2xl bg-sky-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-sky-500"
+                >
+                  Use At Stud for {formatMoney(activeStudListing.askingPrice)}
+                </Link>
               ) : null}
 
               {canOfferForSale ? (

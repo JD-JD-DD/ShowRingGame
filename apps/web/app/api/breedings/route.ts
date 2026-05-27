@@ -61,6 +61,8 @@ export async function POST(request: Request) {
       typeof body.primaryDogId === "string" ? body.primaryDogId.trim() : "";
     const mateDogId =
       typeof body.mateDogId === "string" ? body.mateDogId.trim() : "";
+    const studListingId =
+      typeof body.studListingId === "string" ? body.studListingId.trim() : "";
 
     if (!primaryDogId || !mateDogId) {
       return fail("primaryDogId and mateDogId are required.", 400);
@@ -72,6 +74,7 @@ export async function POST(request: Request) {
       kennelId: kennel.id,
       primaryDogId,
       mateDogId,
+      studListingId: studListingId || undefined,
       currentEpoch,
     });
 

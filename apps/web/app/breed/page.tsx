@@ -11,10 +11,12 @@ import {
 } from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 
 type PageProps = {
   searchParams?: Promise<{
     dogId?: string | string[];
+    studListingId?: string | string[];
   }>;
 };
 
@@ -32,8 +34,11 @@ type DogCardDto = {
   ageHours: number;
   lifecycleState: string;
   ownerKennelName: string | null;
+  isOwnedByCurrentKennel: boolean;
   isEligibleToBreed: boolean;
   inBreedingConflict: boolean;
+  studListingId: string | null;
+  studFeeAmount: number | null;
   visibleCategories: VisibleCategories;
 };
 
@@ -66,6 +71,7 @@ export default async function BreedPage({ searchParams }: PageProps) {
   await resolveDogDeaths({ kennelId: kennel.id, currentEpoch });
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const initialDogId = firstQueryValue(resolvedSearchParams.dogId);
+  const initialStudListingId = firstQueryValue(resolvedSearchParams.studListingId);
 
   const dogs = await db.dog.findMany({
     where: {
@@ -146,8 +152,128 @@ export default async function BreedPage({ searchParams }: PageProps) {
       ageHours,
       lifecycleState: dog.lifecycleState,
       ownerKennelName: dog.ownerKennel?.name ?? null,
+      isOwnedByCurrentKennel: true,
       isEligibleToBreed: alive && oldEnough && notTooOldIfFemale && !inBreedingConflict,
       inBreedingConflict,
+      studListingId: null,
+      studFeeAmount: null,
+      visibleCategories: deriveVisibleCategoriesFromTraits({
+        head: dog.traitHead,
+        forequarters: dog.traitForequarters,
+        hindquarters: dog.traitHindquarters,
+        gait: dog.traitGait,
+        coat: dog.traitCoat,
+        size: dog.traitSize,
+        temperament: dog.traitTemperament,
+        show_shine: dog.traitShowShine,
+        feet: dog.traitFeet,
+        topline: dog.traitTopline,
+      }),
+    };
+  });
+
+  const activeStudDogIds = await db.dogListing.findMany({
+    where: {
+      sellerType: "PLAYER",
+      listingType: PLAYER_STUD_LISTING_TYPE,
+      status: "ACTIVE",
+      sellerKennelId: {
+        not: kennel.id,
+      },
+    },
+    select: {
+      dogId: true,
+    },
+  });
+
+  await resolveDogDeaths({
+    currentEpoch,
+    dogIds: activeStudDogIds.map((listing) => listing.dogId),
+  });
+
+  const publicStudListings = await db.dogListing.findMany({
+    where: {
+      sellerType: "PLAYER",
+      listingType: PLAYER_STUD_LISTING_TYPE,
+      status: "ACTIVE",
+      sellerKennelId: {
+        not: kennel.id,
+      },
+      dog: {
+        lifecycleState: "ALIVE",
+        sex: "M",
+        ownerKennelId: {
+          not: null,
+        },
+      },
+    },
+    orderBy: [
+      { dog: { breedCode2: "asc" } },
+      { askingPrice: "asc" },
+      { listedAtEpoch: "desc" },
+    ],
+    take: 200,
+    select: {
+      id: true,
+      askingPrice: true,
+      dog: {
+        select: {
+          id: true,
+          callName: true,
+          registeredName: true,
+          regNumber: true,
+          breedCode2: true,
+          sex: true,
+          birthEpoch: true,
+          lifecycleState: true,
+          traitHead: true,
+          traitForequarters: true,
+          traitHindquarters: true,
+          traitGait: true,
+          traitCoat: true,
+          traitSize: true,
+          traitTemperament: true,
+          traitShowShine: true,
+          traitFeet: true,
+          traitTopline: true,
+          breed: {
+            select: {
+              name: true,
+            },
+          },
+          ownerKennel: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const publicStudCards: DogCardDto[] = publicStudListings.map((listing) => {
+    const dog = listing.dog;
+    const ageHours = currentEpoch - dog.birthEpoch;
+    const alive = dog.lifecycleState === "ALIVE";
+    const oldEnough = ageHours >= MIN_BREED_AGE_HOURS;
+
+    return {
+      id: dog.id,
+      callName: dog.callName,
+      registeredName: dog.registeredName,
+      regNumber: dog.regNumber,
+      breedCode2: dog.breedCode2,
+      breedName: dog.breed.name,
+      sex: dog.sex,
+      birthEpoch: dog.birthEpoch,
+      ageHours,
+      lifecycleState: dog.lifecycleState,
+      ownerKennelName: dog.ownerKennel?.name ?? null,
+      isOwnedByCurrentKennel: false,
+      isEligibleToBreed: alive && oldEnough,
+      inBreedingConflict: false,
+      studListingId: listing.id,
+      studFeeAmount: listing.askingPrice,
       visibleCategories: deriveVisibleCategoriesFromTraits({
         head: dog.traitHead,
         forequarters: dog.traitForequarters,
@@ -174,7 +300,8 @@ export default async function BreedPage({ searchParams }: PageProps) {
             Plan a Breeding
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
-            Select two eligible dogs you own. Breedings must be same-breed,
+            Select an eligible dam from your kennel, then pair her with one of
+            your dogs or an available public stud. Breedings must be same-breed,
             opposite-sex pairings, and the dam cannot already be in a conflicting
             breeding state.
           </p>
@@ -203,8 +330,9 @@ export default async function BreedPage({ searchParams }: PageProps) {
         kennelId={kennel.id}
         kennelName={kennel.name}
         kennelBalance={kennel.balance}
-        dogs={dogCards}
+        dogs={[...dogCards, ...publicStudCards]}
         initialDogId={initialDogId}
+        initialStudListingId={initialStudListingId}
       />
 
       <div className="mt-8">

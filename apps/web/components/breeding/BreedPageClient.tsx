@@ -22,8 +22,11 @@ type DogCardDto = {
   ageHours: number;
   lifecycleState: string;
   ownerKennelName: string | null;
+  isOwnedByCurrentKennel: boolean;
   isEligibleToBreed: boolean;
   inBreedingConflict: boolean;
+  studListingId: string | null;
+  studFeeAmount: number | null;
   visibleCategories: VisibleCategories;
 };
 
@@ -33,6 +36,7 @@ type Props = {
   kennelBalance: number;
   dogs: DogCardDto[];
   initialDogId: string | null;
+  initialStudListingId: string | null;
 };
 
 const USUAL_PREG_CHECK_DAYS = 28;
@@ -52,6 +56,10 @@ function ageLabel(ageHours: number) {
 
 function sexLabel(sex: "M" | "F") {
   return sex === "M" ? "Dog" : "Bitch";
+}
+
+function formatMoney(amount: number) {
+  return `$${amount.toLocaleString()}`;
 }
 
 function formatCategoryName(key: string): string {
@@ -147,6 +155,12 @@ function DogMeta({ dog }: { dog: DogCardDto }) {
     <div className="mt-3 grid gap-2 text-sm text-purple-100/80 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
       <div>Breed: {dog.breedName}</div>
       <div>Age: {ageLabel(dog.ageHours)}</div>
+      {!dog.isOwnedByCurrentKennel ? (
+        <>
+          <div>Owner: {dog.ownerKennelName ?? "Player Kennel"}</div>
+          <div>Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -215,6 +229,7 @@ function SummaryCard({
   kennelBalance,
   selectedSire,
   selectedDam,
+  totalCost,
   canSubmit,
   submitting,
   errorMessage,
@@ -226,6 +241,7 @@ function SummaryCard({
   kennelBalance: number;
   selectedSire: DogCardDto | null;
   selectedDam: DogCardDto | null;
+  totalCost: number;
   canSubmit: boolean;
   submitting: boolean;
   errorMessage: string;
@@ -252,6 +268,11 @@ function SummaryCard({
           <div className="mt-1 text-sm font-medium text-white">
             {selectedSire ? dogDisplayName(selectedSire) : "Not selected"}
           </div>
+          {selectedSire?.studFeeAmount ? (
+            <div className="mt-1 text-xs text-purple-100/65">
+              Public stud from {selectedSire.ownerKennelName ?? "Player Kennel"}
+            </div>
+          ) : null}
         </div>
 
         <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
@@ -267,13 +288,27 @@ function SummaryCard({
           <div className="flex items-center justify-between text-sm">
             <span className="text-purple-100/80">Breeding fee</span>
             <span className="font-semibold text-white">
-              ${BREEDING_FEE.toLocaleString()}
+              {formatMoney(BREEDING_FEE)}
+            </span>
+          </div>
+          {selectedSire?.studFeeAmount ? (
+            <div className="mt-2 flex items-center justify-between text-sm">
+              <span className="text-purple-100/80">Stud fee</span>
+              <span className="font-semibold text-white">
+                {formatMoney(selectedSire.studFeeAmount)}
+              </span>
+            </div>
+          ) : null}
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <span className="text-purple-100/80">Total</span>
+            <span className="font-semibold text-white">
+              {formatMoney(totalCost)}
             </span>
           </div>
           <div className="mt-2 flex items-center justify-between text-sm">
             <span className="text-purple-100/80">Balance after</span>
             <span className="font-semibold text-white">
-              ${(kennelBalance - BREEDING_FEE).toLocaleString()}
+              {formatMoney(kennelBalance - totalCost)}
             </span>
           </div>
         </div>
@@ -322,11 +357,16 @@ export default function BreedPageClient({
   kennelBalance,
   dogs,
   initialDogId,
+  initialStudListingId,
 }: Props) {
   const router = useRouter();
-  const initialDog = dogs.find((dog) => dog.id === initialDogId) ?? null;
+  const initialDog =
+    dogs.find((dog) => dog.id === initialDogId && dog.isOwnedByCurrentKennel) ??
+    null;
+  const initialStud =
+    dogs.find((dog) => dog.studListingId === initialStudListingId) ?? null;
   const [sireId, setSireId] = useState<string>(
-    initialDog?.sex === "M" ? initialDog.id : ""
+    initialDog?.sex === "M" ? initialDog.id : initialStud?.id ?? ""
   );
   const [damId, setDamId] = useState<string>(
     initialDog?.sex === "F" ? initialDog.id : ""
@@ -341,13 +381,22 @@ export default function BreedPageClient({
     [dogs]
   );
 
+  const eligibleOwnedDogs = useMemo(
+    () => eligibleDogs.filter((dog) => dog.isOwnedByCurrentKennel),
+    [eligibleDogs]
+  );
+
   const males = useMemo(
-    () => eligibleDogs.filter((dog) => dog.sex === "M"),
+    () => eligibleOwnedDogs.filter((dog) => dog.sex === "M"),
+    [eligibleOwnedDogs]
+  );
+  const publicStuds = useMemo(
+    () => eligibleDogs.filter((dog) => dog.sex === "M" && !dog.isOwnedByCurrentKennel),
     [eligibleDogs]
   );
   const females = useMemo(
-    () => eligibleDogs.filter((dog) => dog.sex === "F"),
-    [eligibleDogs]
+    () => eligibleOwnedDogs.filter((dog) => dog.sex === "F"),
+    [eligibleOwnedDogs]
   );
 
   const selectedSire = dogs.find((dog) => dog.id === sireId) ?? null;
@@ -357,13 +406,19 @@ export default function BreedPageClient({
   const mateDogs = useMemo(() => {
     if (!anchorDog) return [];
 
-    return eligibleDogs.filter(
-      (dog) =>
-        dog.id !== anchorDog.id &&
-        dog.sex !== anchorDog.sex &&
-        dog.breedCode2 === anchorDog.breedCode2
-    );
-  }, [anchorDog, eligibleDogs]);
+    return eligibleOwnedDogs
+      .filter(
+        (dog) =>
+          dog.id !== anchorDog.id &&
+          dog.sex !== anchorDog.sex &&
+          dog.breedCode2 === anchorDog.breedCode2
+      )
+      .concat(
+        anchorDog.sex === "F"
+          ? publicStuds.filter((dog) => dog.breedCode2 === anchorDog.breedCode2)
+          : []
+      );
+  }, [anchorDog, eligibleOwnedDogs, publicStuds]);
 
   const filteredDams = useMemo(() => {
     if (!selectedSire) return females;
@@ -371,22 +426,26 @@ export default function BreedPageClient({
   }, [females, selectedSire]);
 
   const filteredSires = useMemo(() => {
-    if (!selectedDam) return males;
-    return males.filter((dog) => dog.breedCode2 === selectedDam.breedCode2);
-  }, [males, selectedDam]);
+    const sireOptions = [...males, ...publicStuds];
+    if (!selectedDam) return sireOptions;
+    return sireOptions.filter((dog) => dog.breedCode2 === selectedDam.breedCode2);
+  }, [males, publicStuds, selectedDam]);
 
   const breedMismatch =
     selectedSire && selectedDam
       ? selectedSire.breedCode2 !== selectedDam.breedCode2
       : false;
+  const totalCost = BREEDING_FEE + (selectedSire?.studFeeAmount ?? 0);
 
   const canSubmit =
     !!selectedSire &&
     !!selectedDam &&
     selectedSire.isEligibleToBreed &&
     selectedDam.isEligibleToBreed &&
+    selectedDam.isOwnedByCurrentKennel &&
+    (selectedSire.isOwnedByCurrentKennel || !!selectedSire.studListingId) &&
     !breedMismatch &&
-    kennelBalance >= BREEDING_FEE &&
+    kennelBalance >= totalCost &&
     !submitting;
 
   function selectMate(dog: DogCardDto) {
@@ -415,6 +474,7 @@ export default function BreedPageClient({
         body: JSON.stringify({
           primaryDogId: selectedSire.id,
           mateDogId: selectedDam.id,
+          studListingId: selectedSire.studListingId,
         }),
       });
 
@@ -449,7 +509,7 @@ export default function BreedPageClient({
     const emptyLabel =
       anchorDog.sex === "M"
         ? "No eligible bitches of this breed are available."
-        : "No eligible dogs of this breed are available.";
+        : "No owned or public stud dogs of this breed are available.";
 
     return (
       <div className="grid gap-5 lg:grid-cols-12">
@@ -458,7 +518,8 @@ export default function BreedPageClient({
         <section className="rounded-2xl border border-purple-300/15 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] lg:col-span-6 xl:col-span-6">
           <h2 className="text-xl font-semibold text-white">{mateLabel}</h2>
           <p className="mt-2 text-sm leading-7 text-purple-100/70">
-            Eligible {anchorDog.breedName} mates from your kennel.
+            Eligible {anchorDog.breedName} mates from your kennel
+            {anchorDog.sex === "F" ? " and public stud listings" : ""}.
           </p>
 
           <div className="mt-6 space-y-4">
@@ -485,6 +546,7 @@ export default function BreedPageClient({
             kennelBalance={kennelBalance}
             selectedSire={selectedSire}
             selectedDam={selectedDam}
+            totalCost={totalCost}
             canSubmit={canSubmit}
             submitting={submitting}
             errorMessage={errorMessage}
@@ -503,6 +565,7 @@ export default function BreedPageClient({
         <h2 className="text-xl font-semibold text-white">Select Sire</h2>
         <p className="mt-2 text-sm leading-7 text-purple-100/70">
           Choose an eligible male you own.
+          Public stud listings are included when they match the selected dam.
         </p>
 
         <div className="mt-6 space-y-4">
@@ -552,6 +615,7 @@ export default function BreedPageClient({
         kennelBalance={kennelBalance}
         selectedSire={selectedSire}
         selectedDam={selectedDam}
+        totalCost={totalCost}
         canSubmit={canSubmit}
         submitting={submitting}
         errorMessage={errorMessage}
