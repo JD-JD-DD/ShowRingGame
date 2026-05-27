@@ -1,6 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SHOW_WEEK_HOURS, SHOW_YEAR_HOURS } from "@showring/rules";
+
+import { getCurrentEpoch } from "@/lib/gameClock";
+
+const SHOW_DAY_NAMES = [
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+  "Sun",
+] as const;
 
 function formatUtc(date: Date): string {
   return date
@@ -18,6 +31,23 @@ function formatUtc(date: Date): string {
     .replace(",", "");
 }
 
+function getShowCalendarLabel(): string {
+  const currentEpoch = getCurrentEpoch();
+  const hourInYear = currentEpoch % SHOW_YEAR_HOURS;
+  const year = Math.floor(currentEpoch / SHOW_YEAR_HOURS) + 1;
+
+  if (hourInYear === SHOW_YEAR_HOURS - 1) {
+    return `Year ${year} - Annual Day`;
+  }
+
+  const showCalendarHourInYear = Math.min(hourInYear, SHOW_YEAR_HOURS - 2);
+  const weekInYear =
+    Math.floor(showCalendarHourInYear / SHOW_WEEK_HOURS) + 1;
+  const dayInWeek = showCalendarHourInYear % SHOW_WEEK_HOURS;
+
+  return `Year ${year} - Week ${weekInYear} - ${SHOW_DAY_NAMES[dayInWeek]}`;
+}
+
 export default function GlobalUtcClock() {
   const [now, setNow] = useState<Date | null>(null);
 
@@ -28,8 +58,11 @@ export default function GlobalUtcClock() {
   }, []);
 
   return (
-    <div className="pointer-events-none fixed right-4 top-3 z-50 rounded-full border border-purple-300/20 bg-black/55 px-3 py-1.5 text-[11px] font-semibold text-purple-100/85 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur">
-      {now ? formatUtc(now) : "UTC"}
+    <div className="pointer-events-none fixed right-4 top-3 z-50 rounded-2xl border border-purple-300/20 bg-black/55 px-3 py-1.5 text-right text-[11px] font-semibold leading-4 text-purple-100/85 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur">
+      <div>{now ? formatUtc(now) : "UTC"}</div>
+      <div className="text-purple-200/70">
+        {now ? getShowCalendarLabel() : "Show Week"}
+      </div>
     </div>
   );
 }
