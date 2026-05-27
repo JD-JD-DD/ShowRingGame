@@ -380,12 +380,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const canUseActiveStudListing =
     !!activeStudListing && isAlive && dog.sex === "M" && !isOwnedByCurrentKennel;
 
-  const canEnterShow =
-    isOwnedByCurrentKennel &&
-    isAlive &&
-    ageHours >= MIN_SHOW_AGE_HOURS &&
-    ageHours <= MAX_SHOW_AGE_HOURS;
-
   const canBreed =
     isOwnedByCurrentKennel &&
     isAlive &&
@@ -528,19 +522,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               ) : (
                 <div className="rounded-2xl border border-white/10 bg-black/20 px-5 py-3 text-center text-sm font-semibold text-purple-100/45">
                   Breed Dog
-                </div>
-              )}
-
-              {canEnterShow ? (
-                <Link
-                  href="/shows"
-                  className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-                >
-                  Enter Show
-                </Link>
-              ) : (
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-5 py-3 text-center text-sm font-semibold text-purple-100/45">
-                  Enter Show
                 </div>
               )}
 
@@ -733,49 +714,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               </div>
             </section>
 
-            <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-              <h2 className="text-xl font-semibold text-white">
-                Conditioning Snapshot
-              </h2>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
-                    Ring Obedience
-                  </div>
-                  <div className="mt-1 text-sm font-medium text-white">
-                    {dog.ringObedience}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
-                    Muscle Tone
-                  </div>
-                  <div className="mt-1 text-sm font-medium text-white">
-                    {dog.muscleTone}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
-                    Coat Condition
-                  </div>
-                  <div className="mt-1 text-sm font-medium text-white">
-                    {dog.coatCondition}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
-                    Fatigue
-                  </div>
-                  <div className="mt-1 text-sm font-medium text-white">
-                    {dog.fatiguePoints}
-                  </div>
-                </div>
-              </div>
-            </section>
           </div>
         </section>
 

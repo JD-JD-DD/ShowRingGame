@@ -43,13 +43,20 @@ function statusTone(status: string): string {
 }
 
 function derivedStatusTone(
-  status: "CURRENT_WEEK" | "JUDGED" | "NOT_YET_JUDGED" | "JUDGING_OPENS"
+  status:
+    | "CURRENT_WEEK"
+    | "JUDGED"
+    | "NO_ENTRIES"
+    | "NOT_YET_JUDGED"
+    | "JUDGING_OPENS"
 ): string {
   switch (status) {
     case "CURRENT_WEEK":
       return "border-fuchsia-300/30 bg-fuchsia-500/10 text-fuchsia-100";
     case "JUDGED":
       return "border-sky-300/25 bg-sky-500/10 text-sky-100";
+    case "NO_ENTRIES":
+      return "border-purple-300/20 bg-black/20 text-purple-100/65";
     case "NOT_YET_JUDGED":
       return "border-amber-300/30 bg-amber-500/10 text-amber-100";
     case "JUDGING_OPENS":
@@ -269,10 +276,16 @@ export default async function ShowsPage({
                         const readyUnjudgedDay = cluster.showDays.some(
                           (day) =>
                             day.scheduledEpoch <= currentEpoch &&
+                            day._count.showEntries > 0 &&
                             day._count.showResults === 0
                         );
+                        const closedWithoutEntries =
+                          !hasResults &&
+                          entryCount === 0 &&
+                          cluster.entryCloseEpoch <= currentEpoch;
                         const judgingPending =
                           !hasResults &&
+                          entryCount > 0 &&
                           (readyUnjudgedDay ||
                             cluster.entryCloseEpoch <= currentEpoch);
                         const judgingOpens =
@@ -314,6 +327,13 @@ export default async function ShowsPage({
                                   className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${derivedStatusTone("NOT_YET_JUDGED")}`}
                                 >
                                   NOT YET JUDGED
+                                </span>
+                              ) : null}
+                              {closedWithoutEntries ? (
+                                <span
+                                  className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${derivedStatusTone("NO_ENTRIES")}`}
+                                >
+                                  NO ENTRIES
                                 </span>
                               ) : null}
                               {hasResults ? (

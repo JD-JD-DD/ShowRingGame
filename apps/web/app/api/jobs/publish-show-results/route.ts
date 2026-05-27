@@ -10,9 +10,9 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const DEFAULT_BLOCK_BATCH_SIZE = 1;
+const DEFAULT_BLOCK_BATCH_SIZE = 4;
 const MAX_BLOCK_BATCH_SIZE = 12;
-const DEFAULT_FINALIZE_BATCH_SIZE = 1;
+const DEFAULT_FINALIZE_BATCH_SIZE = 4;
 const MAX_FINALIZE_BATCH_SIZE = 12;
 
 function parseBatchSize(
