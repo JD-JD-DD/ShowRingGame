@@ -252,7 +252,7 @@ Status: active implementation
     - the same cluster weeks, districts, and day patterns repeat every game year
   - done: show calendar generation now uses week-in-year for cluster type and district rotation so the schedule does not drift between game years
   - later: decide the actual entry close timing and re-enable entry window enforcement
-  - next: enforce that a dog can only be entered in one district per show cluster/weekend, so the same dog cannot be entered in District 11 and District 10 during the same weekend
+  - done: enforce that a dog can only be entered in one district per show cluster/weekend, so the same dog cannot be entered in District 11 and District 10 during the same weekend
   - next: wire the cluster generator/calendar template into a persistence/service path that creates real upcoming clusters
   - next: implement lazy automatic judging when block start epochs pass
   - done: first-pass CH title progression recalculates from `ShowAward` points after judging

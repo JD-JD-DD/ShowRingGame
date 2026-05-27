@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
   ENTRY_FEE_PER_SHOW,
+  SHOW_WEEK_HOURS,
   canEnterShows,
   getClusterEntryQuote,
 } from "@showring/rules";
@@ -41,6 +42,11 @@ type ShowBlockForEntry = Prisma.ShowJudgingBlockGetPayload<
   typeof showBlockForEntryArgs
 >;
 type DogForEntry = Prisma.DogGetPayload<typeof dogForEntryArgs>;
+
+type WeekendCluster = {
+  id: string;
+  startEpoch: number;
+};
 
 export type ShowEntryEligibilityResult = {
   ok: boolean;
@@ -131,6 +137,120 @@ function getDogDisplayName(dog: DogForEntry): string {
 
 function getConditioningSnapshot(dog: DogForEntry): number {
   return Math.round((dog.ringObedience + dog.muscleTone + dog.coatCondition) / 3);
+}
+
+function getGeneratedWeekendPrefix(clusterId: string): string | null {
+  const match = clusterId.match(/^generated-year-(\d+)-week-(\d+)-slot-\d+$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return `generated-year-${match[1]}-week-${match[2]}-slot-`;
+}
+
+function getSameWeekendClusterWhere(
+  cluster: WeekendCluster
+): Prisma.ShowClusterWhereInput {
+  const generatedPrefix = getGeneratedWeekendPrefix(cluster.id);
+
+  if (generatedPrefix) {
+    return {
+      id: {
+        startsWith: generatedPrefix,
+      },
+    };
+  }
+
+  const weekStartEpoch =
+    cluster.startEpoch - (cluster.startEpoch % SHOW_WEEK_HOURS);
+
+  return {
+    startEpoch: {
+      gte: weekStartEpoch,
+      lt: weekStartEpoch + SHOW_WEEK_HOURS,
+    },
+  };
+}
+
+async function getDogIdsWithSameWeekendEntries(args: {
+  client: typeof db | Prisma.TransactionClient;
+  dogIds: string[];
+  cluster: WeekendCluster;
+  excludeClusterId?: string;
+}): Promise<Set<string>> {
+  const dogIds = [...new Set(args.dogIds)].filter(Boolean);
+
+  if (dogIds.length === 0) {
+    return new Set();
+  }
+
+  const entries = await args.client.showEntry.findMany({
+    where: {
+      dogId: {
+        in: dogIds,
+      },
+      showDay: {
+        ...(args.excludeClusterId
+          ? {
+              clusterId: {
+                not: args.excludeClusterId,
+              },
+            }
+          : {}),
+        cluster: getSameWeekendClusterWhere(args.cluster),
+      },
+    },
+    select: {
+      dogId: true,
+    },
+  });
+
+  return new Set(entries.map((entry) => entry.dogId));
+}
+
+async function getSameWeekendEntryConflict(args: {
+  client: typeof db | Prisma.TransactionClient;
+  dogIds: string[];
+  cluster: WeekendCluster;
+  excludeClusterId: string;
+}) {
+  const dogIds = [...new Set(args.dogIds)].filter(Boolean);
+
+  if (dogIds.length === 0) {
+    return null;
+  }
+
+  return args.client.showEntry.findFirst({
+    where: {
+      dogId: {
+        in: dogIds,
+      },
+      showDay: {
+        clusterId: {
+          not: args.excludeClusterId,
+        },
+        cluster: getSameWeekendClusterWhere(args.cluster),
+      },
+    },
+    select: {
+      dog: {
+        select: {
+          regNumber: true,
+        },
+      },
+      showDay: {
+        select: {
+          cluster: {
+            select: {
+              name: true,
+              district: true,
+            },
+          },
+        },
+      },
+    },
+  });
 }
 
 function isEntryWindowOpen(args: {
@@ -347,6 +467,19 @@ async function createShowEntryWithTx(args: {
     throw new Error("Dog is already entered on this show day.");
   }
 
+  const weekendConflict = await getSameWeekendEntryConflict({
+    client: tx,
+    dogIds: [dog.id],
+    cluster: block.showDay.cluster,
+    excludeClusterId: block.showDay.clusterId,
+  });
+
+  if (weekendConflict) {
+    throw new Error(
+      `${dog.regNumber} is already entered in ${weekendConflict.showDay.cluster.name} (District ${weekendConflict.showDay.cluster.district}) this weekend.`
+    );
+  }
+
   const kennel = await tx.kennel.findUnique({
     where: { id: dog.ownerKennelId },
     select: { id: true, balance: true },
@@ -502,9 +635,22 @@ export async function listEligibleDogsByShowBlock(args: {
     orderBy: [{ breedCode2: "asc" }, { registeredName: "asc" }, { regNumber: "asc" }],
     ...dogForEntryArgs,
   });
+  const weekendConflictDogIds =
+    blocks[0] == null
+      ? new Set<string>()
+      : await getDogIdsWithSameWeekendEntries({
+          client: db,
+          dogIds: dogs.map((dog) => dog.id),
+          cluster: blocks[0].showDay.cluster,
+          excludeClusterId: showId,
+        });
   const dogsByBreed = new Map<string, DogForEntry[]>();
 
   for (const dog of dogs) {
+    if (weekendConflictDogIds.has(dog.id)) {
+      continue;
+    }
+
     const breedDogs = dogsByBreed.get(dog.breedCode2) ?? [];
     breedDogs.push(dog);
     dogsByBreed.set(dog.breedCode2, breedDogs);
@@ -558,8 +704,15 @@ export async function listEligibleDogsForShowBlock(args: {
     orderBy: [{ registeredName: "asc" }, { regNumber: "asc" }],
     ...dogForEntryArgs,
   });
+  const weekendConflictDogIds = await getDogIdsWithSameWeekendEntries({
+    client: db,
+    dogIds: dogs.map((dog) => dog.id),
+    cluster: block.showDay.cluster,
+    excludeClusterId: block.showDay.clusterId,
+  });
 
   return dogs
+    .filter((dog) => !weekendConflictDogIds.has(dog.id))
     .filter((dog) => canEnterShowBlock({ dog, block, currentEpoch }).ok)
     .map((dog) => ({
       dogId: dog.id,
@@ -608,9 +761,19 @@ export async function listShowEntryBreedOptions(args: {
       breed: { select: { code2: true, name: true } },
     },
   });
+  const weekendConflictDogIds = await getDogIdsWithSameWeekendEntries({
+    client: db,
+    dogIds: dogs.map((dog) => dog.id),
+    cluster,
+    excludeClusterId: cluster.id,
+  });
   const optionByBreed = new Map<string, ShowEntryBreedOptionDto>();
 
   for (const dog of dogs) {
+    if (weekendConflictDogIds.has(dog.id)) {
+      continue;
+    }
+
     const hasEligibleDay = cluster.showDays.some((showDay) => {
       const reason = getShowDayEntryEligibilityReason({
         dog,
@@ -680,6 +843,12 @@ export async function getShowEntryPlanner(args: {
     orderBy: [{ registeredName: "asc" }, { regNumber: "asc" }],
     ...dogForEntryArgs,
   });
+  const weekendConflictDogIds = await getDogIdsWithSameWeekendEntries({
+    client: db,
+    dogIds: dogs.map((dog) => dog.id),
+    cluster,
+    excludeClusterId: cluster.id,
+  });
   const existingEntries = await db.showEntry.findMany({
     where: {
       kennelId,
@@ -711,6 +880,7 @@ export async function getShowEntryPlanner(args: {
   return {
     days,
     dogs: dogs
+      .filter((dog) => !weekendConflictDogIds.has(dog.id))
       .map((dog) => {
         const alreadyEnteredShowDayIds = [
           ...(enteredDayIdsByDogId.get(dog.id) ?? new Set<string>()),
@@ -876,6 +1046,18 @@ export async function createShowEntriesForCluster(args: {
     const existingEntryKeys = new Set(
       existingEntries.map((entry) => `${entry.dogId}:${entry.showDayId}`)
     );
+    const weekendConflict = await getSameWeekendEntryConflict({
+      client: tx,
+      dogIds,
+      cluster,
+      excludeClusterId: cluster.id,
+    });
+
+    if (weekendConflict) {
+      throw new Error(
+        `${weekendConflict.dog.regNumber} is already entered in ${weekendConflict.showDay.cluster.name} (District ${weekendConflict.showDay.cluster.district}) this weekend.`
+      );
+    }
 
     for (const selection of selections) {
       const dog = dogById.get(selection.dogId);

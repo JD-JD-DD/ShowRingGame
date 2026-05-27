@@ -65,7 +65,7 @@ export default async function KennelPage() {
         </Link>
 
         <Link
-          href="/market/foundation"
+          href="/market"
           className="rounded-md bg-purple-700 px-5 py-2 text-sm font-semibold text-white hover:bg-purple-600"
         >
           Market
