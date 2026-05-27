@@ -309,6 +309,13 @@ export default async function BreedPage({ searchParams }: PageProps) {
 
         <div className="flex flex-wrap items-center gap-3">
           <Link
+            href="/studs"
+            className="rounded-2xl border border-sky-300/25 bg-sky-500/10 px-5 py-3 text-center text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+          >
+            Browse Public Studs
+          </Link>
+
+          <Link
             href="/kennel"
             className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
           >

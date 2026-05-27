@@ -155,8 +155,13 @@ Status: audited; implementation pass needed
 - Global kennel header/status bar:
   - design a persistent top summary bar that can include kennel name, total active dogs, pregnant dogs, ledger balance, and UTC time
   - decide whether any other kennel-health signals belong there before replacing the simple standalone UTC clock
+- Public kennel profiles:
+  - make kennel/user names on the bulletin board clickable
+  - add a public kennel page that shows that kennel's dogs
+  - highlight that kennel's dogs currently at stud and dogs currently for sale
 - Actions and placement:
   - rename or replace `Re-Home Dog` with final `Forever Home` behavior
+  - add a confirmation step to the current `Re-Home Dog` action that clearly says this cannot be undone
   - reserve transferred/sold for ownership changes to another kennel
   - add a retire action after retirement couch semantics are implemented
 
@@ -187,6 +192,7 @@ Status: todo; strategy/design needed before implementation
   - decide whether post-sale dogs remain visible to previous owner through litter/pedigree/history only
 - Puppy sales should use the same listing foundation once puppy naming and sale age rules are ready.
 - Add a stud dog market/page:
+  - done: build a dedicated stud dog page for browsing public stud listings
   - users can offer eligible male dogs for public stud service
   - owner sets a whole-dollar stud fee
   - other players can browse available studs by breed
@@ -245,12 +251,14 @@ Status: active implementation
     - the same cluster weeks, districts, and day patterns repeat every game year
   - done: show calendar generation now uses week-in-year for cluster type and district rotation so the schedule does not drift between game years
   - later: decide the actual entry close timing and re-enable entry window enforcement
+  - next: enforce that a dog can only be entered in one district per show cluster/weekend, so the same dog cannot be entered in District 11 and District 10 during the same weekend
   - next: wire the cluster generator/calendar template into a persistence/service path that creates real upcoming clusters
   - next: implement lazy automatic judging when block start epochs pass
   - done: first-pass CH title progression recalculates from `ShowAward` points after judging
   - done: first-pass title application sets `visibleTitlePrefix = "CH"` once a dog has 15 points and 2 majors
   - next: parse/use the real point schedule instead of the temporary all-breed points rule
   - next: show title progress on dog pages and/or a show record page
+  - next: add one central all-show-results page where users can browse recent/past results across shows
   - next: apply visible title prefixes/suffixes consistently anywhere dog names are rendered
   - next: preserve the entering kennel on show entries/results so a later ownership change does not rewrite historical result kennel names
   - next: remove raw epoch time from the show listing page and use player-facing date/time display
@@ -280,7 +288,8 @@ Status: active implementation
   - majors and unique kennel checks
   - GCH and higher title ladders
   - breed essential rules
-  - group/BIS layers
+  - group wins and Best in Show wins
+  - group/BIS layers, including result pages and dog-page/show-history display
   - conditioning/fatigue effects
   - market/prestige effects from show wins
 

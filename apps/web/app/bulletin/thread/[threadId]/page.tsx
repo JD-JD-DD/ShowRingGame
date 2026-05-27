@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import type { ReactNode } from "react";
 
 import BulletinBadges from "@/components/bulletin/BulletinBadges";
 import { db } from "@/lib/db";
@@ -30,6 +31,65 @@ function formatEpoch(epoch: number): string {
     minute: "2-digit",
     timeZone: "UTC",
   });
+}
+
+const LINK_PATTERN = /((?:https?:\/\/|www\.)[^\s<]+)/gi;
+const TRAILING_PUNCTUATION_PATTERN = /[.,!?;:)\]]+$/;
+
+function safeLinkHref(value: string): string | null {
+  const href = value.startsWith("www.") ? `https://${value}` : value;
+
+  try {
+    const url = new URL(href);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function renderLinkedText(text: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(LINK_PATTERN)) {
+    const rawMatch = match[0];
+    const startIndex = match.index ?? 0;
+    const trimmedUrl = rawMatch.replace(TRAILING_PUNCTUATION_PATTERN, "");
+    const trailingText = rawMatch.slice(trimmedUrl.length);
+    const href = safeLinkHref(trimmedUrl);
+
+    if (startIndex > lastIndex) {
+      nodes.push(text.slice(lastIndex, startIndex));
+    }
+
+    if (href) {
+      nodes.push(
+        <a
+          key={`${href}-${startIndex}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-sky-200 underline underline-offset-4 transition hover:text-sky-100"
+        >
+          {trimmedUrl}
+        </a>
+      );
+    } else {
+      nodes.push(trimmedUrl);
+    }
+
+    if (trailingText) {
+      nodes.push(trailingText);
+    }
+
+    lastIndex = startIndex + rawMatch.length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes;
 }
 
 export default async function BulletinThreadPage({
@@ -142,7 +202,7 @@ export default async function BulletinThreadPage({
                 </div>
               </div>
               <div className="whitespace-pre-wrap text-sm leading-7 text-purple-100/80">
-                {post.body}
+                {renderLinkedText(post.body)}
               </div>
             </article>
           ))}

@@ -243,6 +243,12 @@ export default function MarketPage() {
 
             <div className="flex flex-wrap gap-3">
               <Link
+                href="/studs"
+                className="rounded-2xl border border-sky-300/25 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+              >
+                Browse Studs
+              </Link>
+              <Link
                 href="/kennel"
                 className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
               >

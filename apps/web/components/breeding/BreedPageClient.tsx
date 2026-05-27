@@ -210,8 +210,12 @@ function MateCard({
       onClick={onSelect}
       className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
         selected
-          ? "border-purple-300 bg-purple-500/20"
-          : "border-white/10 bg-black/20 hover:border-purple-300/40"
+          ? dog.isOwnedByCurrentKennel
+            ? "border-purple-300 bg-purple-500/20"
+            : "border-sky-300 bg-sky-500/20"
+          : dog.isOwnedByCurrentKennel
+            ? "border-white/10 bg-black/20 hover:border-purple-300/40"
+            : "border-sky-300/30 bg-sky-500/10 hover:border-sky-200/60 hover:bg-sky-500/15"
       }`}
     >
       <DogSummaryHeader dog={dog} />
