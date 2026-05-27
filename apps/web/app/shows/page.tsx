@@ -24,18 +24,6 @@ function formatShowDate(epoch: number): string {
   });
 }
 
-function formatShowDateTime(epoch: number): string {
-  return epochToDate(epoch).toLocaleString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  });
-}
-
 function statusTone(status: string): string {
   switch (status) {
     case "COMPLETE":
@@ -172,26 +160,13 @@ export default async function ShowsPage({
       <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.22em] text-purple-300/80">
-              Show Calendar
-            </p>
-            <h1 className="mt-2 text-4xl font-bold tracking-tight text-white">
+            <h1 className="text-4xl font-bold tracking-tight text-white">
               Annual Show Calendar
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
               Browse the full 52-week show calendar, open upcoming clusters, and
               review results from generated years.
             </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-full border border-fuchsia-300/30 bg-fuchsia-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-fuchsia-100">
-                Now
-              </span>
-              <span className="rounded-full border border-purple-300/20 bg-black/20 px-3 py-1 text-xs text-purple-100/75">
-                Year {currentCalendarPosition.year} - Week{" "}
-                {currentCalendarPosition.weekInYear} -{" "}
-                {formatShowDateTime(currentEpoch)}
-              </span>
-            </div>
           </div>
 
           <div className="flex flex-wrap gap-3">
