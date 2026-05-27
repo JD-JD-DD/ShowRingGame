@@ -145,6 +145,7 @@ Status: audited; implementation pass needed
   - make deceased/forever-home dog pages historical-only with no gameplay actions
 - Breed page from dog page:
   - first pass implemented: `/breed?dogId=...` is honored, the clicked dog is pinned/preselected, only eligible same-breed opposite-sex mates are listed, and trait sliders are shown
+  - reassess the standalone `Plan a Breeding` page; it is not very useful as a broad entry point and may be removed or simplified because most users will breed from kennel/dog pages
   - later pass: make this use the final shared eligibility helper once post-whelp cooldown, senior male age-out, retired, deceased, and forever-home states are centralized
 - Kennel page:
   - keep the main roster as active usable dogs

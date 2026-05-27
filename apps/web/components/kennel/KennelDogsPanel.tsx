@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 type VisibleCategories = Record<string, number>;
@@ -65,6 +66,8 @@ type SortKey =
   | "coatPresentation"
   | "temperamentRingBehavior"
   | "conditioningHandling";
+
+type BulkAction = "" | "show-entry" | "rehome";
 
 function formatAge(ageHours: number): string {
   const weeks = Math.floor(ageHours / 7);
@@ -183,11 +186,14 @@ function SortButton({
 }
 
 export default function KennelDogsPanel() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [dogs, setDogs] = useState<KennelDogDto[]>([]);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<BulkAction>("");
+  const [confirmingBulkAction, setConfirmingBulkAction] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   const [breedFilter, setBreedFilter] = useState("");
@@ -234,6 +240,13 @@ export default function KennelDogsPanel() {
       current.filter((dogId) => dogs.some((dog) => dog.dogId === dogId))
     );
   }, [dogs]);
+
+  useEffect(() => {
+    if (selectedDogIds.length === 0) {
+      setBulkAction("");
+      setConfirmingBulkAction(false);
+    }
+  }, [selectedDogIds.length]);
 
   const breedOptions = useMemo(() => {
     return Array.from(new Set(dogs.map((dog) => dog.breedName))).sort((a, b) =>
@@ -310,6 +323,9 @@ export default function KennelDogsPanel() {
     selectedDogs.every(
       (dog) => dog.lifecycleState === "ALIVE" && dog.marketState === "NOT_FOR_SALE"
     );
+  const canApplyBulkAction =
+    bulkAction === "show-entry" ||
+    (bulkAction === "rehome" && canBulkRehome && !bulkActionLoading);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -322,6 +338,7 @@ export default function KennelDogsPanel() {
   }
 
   function toggleDogSelection(dogId: string) {
+    setConfirmingBulkAction(false);
     setSelectedDogIds((current) =>
       current.includes(dogId)
         ? current.filter((selectedDogId) => selectedDogId !== dogId)
@@ -337,29 +354,39 @@ export default function KennelDogsPanel() {
       visibleIds.every((dogId) => selectedDogIds.includes(dogId));
 
     if (allVisibleSelected) {
+      setConfirmingBulkAction(false);
       setSelectedDogIds((current) =>
         current.filter((dogId) => !visibleIdSet.has(dogId))
       );
       return;
     }
 
+    setConfirmingBulkAction(false);
     setSelectedDogIds((current) => Array.from(new Set([...current, ...visibleIds])));
+  }
+
+  function updateBulkAction(action: BulkAction) {
+    setBulkAction(action);
+    setConfirmingBulkAction(false);
+  }
+
+  function applyBulkAction() {
+    if (!canApplyBulkAction) {
+      return;
+    }
+
+    if (bulkAction === "show-entry") {
+      router.push(`/shows?dogIds=${encodeURIComponent(selectedDogsQuery)}`);
+      return;
+    }
+
+    if (bulkAction === "rehome") {
+      setConfirmingBulkAction(true);
+    }
   }
 
   async function rehomeSelectedDogs() {
     if (!canBulkRehome || bulkActionLoading) {
-      return;
-    }
-
-    const dogLabel =
-      selectedDogs.length === 1
-        ? getDogDisplayName(selectedDogs[0])
-        : `${selectedDogs.length} selected dogs`;
-    const confirmed = window.confirm(
-      `Re-home ${dogLabel}?\n\nThis cannot be undone. The selected dog${selectedDogs.length === 1 ? "" : "s"} will leave your kennel and you will no longer be able to use ${selectedDogs.length === 1 ? "it" : "them"}.`
-    );
-
-    if (!confirmed) {
       return;
     }
 
@@ -391,6 +418,8 @@ export default function KennelDogsPanel() {
         current.filter((dog) => !rehomedIds.has(dog.dogId))
       );
       setSelectedDogIds([]);
+      setBulkAction("");
+      setConfirmingBulkAction(false);
       setMessage(`Re-homed ${data.rehomedCount ?? rehomedIds.size} dog(s).`);
     } catch (err) {
       setError(
@@ -475,33 +504,90 @@ export default function KennelDogsPanel() {
       ) : null}
 
       {selectedDogIds.length > 0 ? (
-        <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-purple-300/15 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm text-purple-100/80">
-            {selectedDogIds.length} selected
+        <div className="mb-4 rounded-2xl border border-purple-300/15 bg-black/20 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="text-sm font-semibold text-white">
+                {selectedDogIds.length} selected
+              </div>
+              <div className="mt-1 text-xs text-purple-100/65">
+                Choose a bulk action, then apply it.
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-[minmax(180px,1fr)_auto_auto]">
+              <select
+                value={bulkAction}
+                onChange={(event) =>
+                  updateBulkAction(event.target.value as BulkAction)
+                }
+                className="rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+              >
+                <option value="">Bulk action...</option>
+                <option value="show-entry">Show Entry</option>
+                <option value="rehome">Re-Home</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={applyBulkAction}
+                disabled={!canApplyBulkAction}
+                className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {bulkAction === "show-entry" ? "Continue" : "Apply Action"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDogIds([]);
+                  setBulkAction("");
+                  setConfirmingBulkAction(false);
+                }}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              >
+                Clear
+              </button>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href={`/shows?dogIds=${encodeURIComponent(selectedDogsQuery)}`}
-              className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500"
-            >
-              Show Entry
-            </Link>
-            <button
-              type="button"
-              onClick={rehomeSelectedDogs}
-              disabled={!canBulkRehome || bulkActionLoading}
-              className="rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              {bulkActionLoading ? "Re-Homing..." : "Re-Home Selected"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedDogIds([])}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-            >
-              Clear
-            </button>
-          </div>
+
+          {bulkAction === "rehome" && !canBulkRehome ? (
+            <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              Only active dogs that are not listed for sale can be re-homed in bulk.
+            </div>
+          ) : null}
+
+          {confirmingBulkAction && bulkAction === "rehome" ? (
+            <div className="mt-3 rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-3">
+              <div className="text-sm font-semibold text-red-100">
+                Confirm re-home for {selectedDogIds.length} selected dog
+                {selectedDogIds.length === 1 ? "" : "s"}.
+              </div>
+              <div className="mt-1 text-sm leading-6 text-red-100/75">
+                This cannot be undone. The selected dog
+                {selectedDogIds.length === 1 ? "" : "s"} will leave your kennel
+                and you will no longer be able to use{" "}
+                {selectedDogIds.length === 1 ? "it" : "them"}.
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={rehomeSelectedDogs}
+                  disabled={bulkActionLoading}
+                  className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {bulkActionLoading ? "Re-Homing..." : "Confirm Re-Home"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingBulkAction(false)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
