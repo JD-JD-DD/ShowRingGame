@@ -161,7 +161,7 @@ Status: audited; implementation pass needed
   - highlight that kennel's dogs currently at stud and dogs currently for sale
 - Actions and placement:
   - rename or replace `Re-Home Dog` with final `Forever Home` behavior
-  - add a confirmation step to the current `Re-Home Dog` action that clearly says this cannot be undone
+  - done: add a confirmation step to the current `Re-Home Dog` action that clearly says this cannot be undone
   - reserve transferred/sold for ownership changes to another kennel
   - add a retire action after retirement couch semantics are implemented
 

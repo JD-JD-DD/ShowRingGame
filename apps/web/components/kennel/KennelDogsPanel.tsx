@@ -351,6 +351,18 @@ export default function KennelDogsPanel() {
       return;
     }
 
+    const dogLabel =
+      selectedDogs.length === 1
+        ? getDogDisplayName(selectedDogs[0])
+        : `${selectedDogs.length} selected dogs`;
+    const confirmed = window.confirm(
+      `Re-home ${dogLabel}?\n\nThis cannot be undone. The selected dog${selectedDogs.length === 1 ? "" : "s"} will leave your kennel and you will no longer be able to use ${selectedDogs.length === 1 ? "it" : "them"}.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     setBulkActionLoading(true);
     setError(null);
     setMessage(null);

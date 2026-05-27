@@ -19,6 +19,7 @@ import ManageDogStudListingForm from "@/components/dogs/ManageDogStudListingForm
 import OfferDogAtStudForm from "@/components/dogs/OfferDogAtStudForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
 import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
+import RehomeDogForm from "@/components/dogs/RehomeDogForm";
 import TraitLine from "@/components/ui/TraitLine";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -598,14 +599,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               isAlive &&
               dog.marketState === "NOT_FOR_SALE" &&
               !activeListing ? (
-                <form action={`/api/dogs/${dog.id}/rehome`} method="post">
-                  <button
-                    type="submit"
-                    className="w-full rounded-2xl border border-red-300/25 bg-red-500/10 px-5 py-3 text-center text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
-                  >
-                    Re-Home Dog
-                  </button>
-                </form>
+                <RehomeDogForm
+                  action={`/api/dogs/${dog.id}/rehome`}
+                  dogName={displayName}
+                />
               ) : null}
             </div>
           </div>
