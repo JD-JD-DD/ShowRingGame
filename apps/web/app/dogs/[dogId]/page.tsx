@@ -83,18 +83,6 @@ function firstQueryValue(value: string | string[] | undefined): string | null {
   return value ?? null;
 }
 
-function formatPlacement(finalRank: number | null): string {
-  if (!finalRank) {
-    return "Result";
-  }
-
-  if (finalRank === 1) return "1st";
-  if (finalRank === 2) return "2nd";
-  if (finalRank === 3) return "3rd";
-
-  return `${finalRank}th`;
-}
-
 function sortShowAwards<
   T extends {
     awardCode: string;
@@ -855,14 +843,13 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             </div>
           ) : (
             <div className="mt-5 overflow-x-auto">
-              <table className="w-full min-w-[840px] border-separate border-spacing-y-2 text-sm">
+              <table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
                     <th className="px-3 py-2">Show</th>
                     <th className="px-3 py-2">Breed</th>
                     <th className="px-3 py-2">Judge</th>
                     <th className="px-3 py-2">Result</th>
-                    <th className="px-3 py-2">Awards</th>
                     <th className="px-3 py-2 text-right">Points</th>
                   </tr>
                 </thead>
@@ -903,16 +890,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                           >
                             {result.judge.name}
                           </Link>
-                        </td>
-                        <td className="px-3 py-3 text-purple-100/80">
-                          <div className="font-semibold text-white">
-                            {formatPlacement(result.finalRank)}
-                          </div>
-                          {result.placementCode ? (
-                            <div className="text-xs text-purple-100/55">
-                              {result.placementCode}
-                            </div>
-                          ) : null}
                         </td>
                         <td className="px-3 py-3">
                           {sortedAwards.length > 0 ? (
