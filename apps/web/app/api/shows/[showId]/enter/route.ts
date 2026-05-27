@@ -36,6 +36,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ showId: string }> }
 ) {
+  let selectedBreedCode2 = "";
+
   try {
     const { showId } = await params;
     const userId = await getSessionUserId();
@@ -52,6 +54,7 @@ export async function POST(
 
     const formData = await request.formData();
     const breedCode2 = String(formData.get("breedCode2") ?? "").trim();
+    selectedBreedCode2 = breedCode2;
     const selections: BulkShowEntrySelection[] = formData
       .getAll("dogDaySelections")
       .map((value) => String(value).trim())
@@ -98,7 +101,8 @@ export async function POST(
     return redirectWithEntryError(
       request,
       showId,
-      error instanceof Error ? error.message : "Failed to enter dog."
+      error instanceof Error ? error.message : "Failed to enter dog.",
+      selectedBreedCode2
     );
   }
 }

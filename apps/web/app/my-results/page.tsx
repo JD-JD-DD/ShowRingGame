@@ -73,7 +73,12 @@ export default async function MyShowResultsPage() {
   }
 
   const entries = await db.showEntry.findMany({
-    where: { kennelId: kennel.id },
+    where: {
+      kennelId: kennel.id,
+      showResult: {
+        isNot: null,
+      },
+    },
     orderBy: [
       { showDay: { scheduledEpoch: "desc" } },
       { dog: { registeredName: "asc" } },
@@ -133,7 +138,7 @@ export default async function MyShowResultsPage() {
               My Show Results
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
-              The latest 100 show entries for dogs in {kennel.name}.
+              The latest 100 judged show results for dogs in {kennel.name}.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -156,7 +161,7 @@ export default async function MyShowResultsPage() {
       <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
         {entries.length === 0 ? (
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
-            No show entries yet.
+            No judged show results yet.
           </div>
         ) : (
           <div className="overflow-x-auto">

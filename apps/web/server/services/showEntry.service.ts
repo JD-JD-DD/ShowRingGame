@@ -41,6 +41,29 @@ const dogForEntryArgs = Prisma.validator<Prisma.DogDefaultArgs>()({
   },
 });
 
+function isUniqueShowEntryError(error: unknown): boolean {
+  if (
+    !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+    error.code !== "P2002"
+  ) {
+    return false;
+  }
+
+  const target = error.meta?.target;
+
+  if (Array.isArray(target)) {
+    return target.includes("showDayId") && target.includes("dogId");
+  }
+
+  return typeof target === "string" && target.includes("showDayId");
+}
+
+function duplicateShowEntryError(): Error {
+  return new Error(
+    "One or more selected dogs are already entered for that show day."
+  );
+}
+
 type ShowBlockForEntry = Prisma.ShowJudgingBlockGetPayload<
   typeof showBlockForEntryArgs
 >;
@@ -503,30 +526,38 @@ async function createShowEntryWithTx(args: {
     data: { balance: balanceAfter },
   });
 
-  const entry = await tx.showEntry.create({
-    data: {
-      showDayId: block.showDayId,
-      judgingBlockId: block.id,
-      dogId: dog.id,
-      kennelId: kennel.id,
-      breedCode2: dog.breedCode2,
-      entryStatus: "ENTERED",
-      enteredAtEpoch: currentEpoch,
-      feeCharged: ENTRY_FEE_PER_SHOW,
-      handlerUsed,
-      conditioningSnapshot: getConditioningSnapshot(dog),
-      fatigueSnapshot: dog.fatiguePoints,
-    },
-    select: {
-      id: true,
-      showDayId: true,
-      judgingBlockId: true,
-      dogId: true,
-      kennelId: true,
-      breedCode2: true,
-      feeCharged: true,
-    },
-  });
+  const entry = await tx.showEntry
+    .create({
+      data: {
+        showDayId: block.showDayId,
+        judgingBlockId: block.id,
+        dogId: dog.id,
+        kennelId: kennel.id,
+        breedCode2: dog.breedCode2,
+        entryStatus: "ENTERED",
+        enteredAtEpoch: currentEpoch,
+        feeCharged: ENTRY_FEE_PER_SHOW,
+        handlerUsed,
+        conditioningSnapshot: getConditioningSnapshot(dog),
+        fatigueSnapshot: dog.fatiguePoints,
+      },
+      select: {
+        id: true,
+        showDayId: true,
+        judgingBlockId: true,
+        dogId: true,
+        kennelId: true,
+        breedCode2: true,
+        feeCharged: true,
+      },
+    })
+    .catch((error: unknown) => {
+      if (isUniqueShowEntryError(error)) {
+        throw duplicateShowEntryError();
+      }
+
+      throw error;
+    });
 
   await tx.ledgerTransaction.create({
     data: {
@@ -1148,29 +1179,37 @@ export async function createShowEntriesForCluster(args: {
       data: { balance: balanceAfter },
     });
 
-    await tx.showEntry.createMany({
-      data: selections.map((selection) => {
-        const dog = dogById.get(selection.dogId);
+    await tx.showEntry
+      .createMany({
+        data: selections.map((selection) => {
+          const dog = dogById.get(selection.dogId);
 
-        if (!dog) {
-          throw new Error("Selected dog could not be found.");
+          if (!dog) {
+            throw new Error("Selected dog could not be found.");
+          }
+
+          return {
+            showDayId: selection.showDayId,
+            judgingBlockId: blockIdByDayId.get(selection.showDayId),
+            dogId: dog.id,
+            kennelId: kennel.id,
+            breedCode2: dog.breedCode2,
+            entryStatus: "ENTERED",
+            enteredAtEpoch: currentEpoch,
+            feeCharged: ENTRY_FEE_PER_SHOW,
+            handlerUsed: quote.handlerFee > 0,
+            conditioningSnapshot: getConditioningSnapshot(dog),
+            fatigueSnapshot: dog.fatiguePoints,
+          };
+        }),
+      })
+      .catch((error: unknown) => {
+        if (isUniqueShowEntryError(error)) {
+          throw duplicateShowEntryError();
         }
 
-        return {
-          showDayId: selection.showDayId,
-          judgingBlockId: blockIdByDayId.get(selection.showDayId),
-          dogId: dog.id,
-          kennelId: kennel.id,
-          breedCode2: dog.breedCode2,
-          entryStatus: "ENTERED",
-          enteredAtEpoch: currentEpoch,
-          feeCharged: ENTRY_FEE_PER_SHOW,
-          handlerUsed: quote.handlerFee > 0,
-          conditioningSnapshot: getConditioningSnapshot(dog),
-          fatigueSnapshot: dog.fatiguePoints,
-        };
-      }),
-    });
+        throw error;
+      });
 
     const ledgerRows: Prisma.LedgerTransactionCreateManyInput[] = [];
     let runningBalance = kennel.balance;

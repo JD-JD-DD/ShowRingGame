@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 
 import {
   ENTRY_FEE_PER_SHOW,
@@ -81,6 +81,8 @@ export function ShowEntryPlanner({
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
     getInitialSelection({ dogs, initiallySelectedDogIds })
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const selectedPairs = useMemo(
     () =>
@@ -135,8 +137,23 @@ export function ShowEntryPlanner({
     });
   }
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (submittingRef.current || selectedPairs.length === 0 || !quote.canAfford) {
+      event.preventDefault();
+      return;
+    }
+
+    submittingRef.current = true;
+    setIsSubmitting(true);
+  }
+
   return (
-    <form action={`/api/shows/${showId}/enter`} method="post" className="mt-6">
+    <form
+      action={`/api/shows/${showId}/enter`}
+      method="post"
+      onSubmit={handleSubmit}
+      className="mt-6"
+    >
       <input type="hidden" name="breedCode2" value={breedCode2} />
       {selectedPairs.map((pair) => (
         <input
@@ -189,7 +206,7 @@ export function ShowEntryPlanner({
                         <input
                           type="checkbox"
                           checked={Boolean(selected[key])}
-                          disabled={!isEligible}
+                          disabled={isSubmitting || !isEligible}
                           onChange={(event) =>
                             setSelected((current) => ({
                               ...current,
@@ -208,14 +225,16 @@ export function ShowEntryPlanner({
                     <button
                       type="button"
                       onClick={() => setDogSelection(dog, true)}
-                      className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+                      disabled={isSubmitting}
+                      className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       All
                     </button>
                     <button
                       type="button"
                       onClick={() => setDogSelection(dog, false)}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
+                      disabled={isSubmitting}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       Clear
                     </button>
@@ -277,10 +296,14 @@ export function ShowEntryPlanner({
 
         <button
           type="submit"
-          disabled={selectedPairs.length === 0 || !quote.canAfford}
+          disabled={isSubmitting || selectedPairs.length === 0 || !quote.canAfford}
           className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-purple-100/45"
         >
-          Submit {selectedPairs.length} Entr{selectedPairs.length === 1 ? "y" : "ies"}
+          {isSubmitting
+            ? "Submitting..."
+            : `Submit ${selectedPairs.length} Entr${
+                selectedPairs.length === 1 ? "y" : "ies"
+              }`}
         </button>
       </div>
 
