@@ -56,7 +56,7 @@ export default async function KennelPage() {
           </div>
         </div>
       </section>
-      <div className="mb-6 flex flex-wrap gap-4">
+      <div className="mb-8 flex flex-wrap items-center gap-4">
         <Link
           href="/"
           className="rounded-md border border-purple-500 px-5 py-2 text-sm font-semibold text-purple-200 hover:bg-purple-950/40"
@@ -112,11 +112,10 @@ export default async function KennelPage() {
         >
           Ledger
         </Link>
-      </div>
 
-
-      <div className="mb-8">
-        <LogoutButton />
+        <div className="ml-auto">
+          <LogoutButton />
+        </div>
       </div>
 
       <KennelDogsPanel />
