@@ -289,7 +289,7 @@ Status: active implementation
   - majors and unique kennel checks
   - GCH and higher title ladders
   - breed essential rules
-  - group wins and Best in Show wins
+  - done: group and Best in Show placements can award class-dog championship points when the dog defeats other dogs in final-round competition
   - group/BIS layers, including result pages and dog-page/show-history display
   - conditioning/fatigue effects
   - market/prestige effects from show wins

@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { recalculateDogTitleProgressForDogs } from "@/server/services/titleProgress.service";
 import {
+  getChampionshipPointsForCompetition,
   JUDGING_SCORING_VERSION,
   judgeBestInShow,
   judgeBreedBlock,
@@ -156,6 +157,105 @@ function isChampionEntry(entry: EntryForJudging): boolean {
     entry.dog.visibleTitlePrefix === "CH" ||
     entry.dog.titleProgress?.currentTitleCode === "CH"
   );
+}
+
+function getFinalsPointsForClassDog(args: {
+  isClassDog: boolean;
+  rank: number | null;
+  dogsInCompetition: number | null;
+}): number {
+  if (!args.isClassDog || args.rank == null || args.dogsInCompetition == null) {
+    return 0;
+  }
+
+  const dogsDefeated = args.dogsInCompetition - args.rank;
+
+  if (dogsDefeated <= 0) {
+    return 0;
+  }
+
+  return getChampionshipPointsForCompetition(args.dogsInCompetition);
+}
+
+async function getClassDogIdsForShowDay(args: {
+  tx: Prisma.TransactionClient;
+  showDayId: string;
+  dogIds: string[];
+}): Promise<Set<string>> {
+  const dogIds = [...new Set(args.dogIds)];
+
+  if (dogIds.length === 0) {
+    return new Set();
+  }
+
+  const classAwards = await args.tx.showAward.findMany({
+    where: {
+      showDayId: args.showDayId,
+      dogId: {
+        in: dogIds,
+      },
+      awardGroup: {
+        in: ["DOG_CLASS", "BITCH_CLASS", "WINNERS"],
+      },
+    },
+    select: {
+      dogId: true,
+    },
+  });
+
+  return new Set(classAwards.map((award) => award.dogId));
+}
+
+async function updateShowResultsAndTitleProgressForAwards(args: {
+  tx: Prisma.TransactionClient;
+  awards: Array<{
+    showResultId?: string | null;
+    dogId: string;
+    pointsAwarded?: number;
+  }>;
+}) {
+  const pointAwards = args.awards.filter(
+    (award) => award.showResultId && (award.pointsAwarded ?? 0) > 0
+  );
+
+  if (pointAwards.length === 0) {
+    return;
+  }
+
+  const maxPointsByResultId = new Map<string, number>();
+
+  for (const award of pointAwards) {
+    const showResultId = award.showResultId;
+
+    if (!showResultId) {
+      continue;
+    }
+
+    maxPointsByResultId.set(
+      showResultId,
+      Math.max(maxPointsByResultId.get(showResultId) ?? 0, award.pointsAwarded ?? 0)
+    );
+  }
+
+  for (const [showResultId, pointsAwarded] of maxPointsByResultId.entries()) {
+    await args.tx.showResult.updateMany({
+      where: {
+        id: showResultId,
+        pointsAwarded: {
+          lt: pointsAwarded,
+        },
+      },
+      data: {
+        pointsAwarded,
+        isMajor: pointsAwarded >= 3,
+      },
+    });
+  }
+
+  await recalculateDogTitleProgressForDogs({
+    tx: args.tx,
+    dogIds: pointAwards.map((award) => award.dogId),
+  });
 }
 
 function canBlockMoveToJudging(
@@ -828,6 +928,11 @@ async function createGroupAwardsForShowDay(args: {
     }
 
     const awardsToCreate: Prisma.ShowAwardCreateManyInput[] = [];
+    const classDogIds = await getClassDogIdsForShowDay({
+      tx,
+      showDayId: args.showDayId,
+      dogIds: bobAwards.map((award) => award.dogId),
+    });
 
     for (const groupAwards of awardsByGroup.values()) {
       const awardByEntryId = new Map(
@@ -855,6 +960,12 @@ async function createGroupAwardsForShowDay(args: {
           continue;
         }
 
+        const pointsAwarded = getFinalsPointsForClassDog({
+          isClassDog: classDogIds.has(sourceAward.dogId),
+          rank: judgedAward.rank,
+          dogsInCompetition: judgedAward.dogsInCompetition,
+        });
+
         awardsToCreate.push({
           showResultId: sourceAward.showResultId,
           showEntryId: sourceAward.showEntryId,
@@ -867,8 +978,8 @@ async function createGroupAwardsForShowDay(args: {
           awardGroup: judgedAward.awardGroup,
           sex: judgedAward.sex,
           rank: judgedAward.rank,
-          pointsAwarded: 0,
-          isMajor: false,
+          pointsAwarded,
+          isMajor: pointsAwarded >= 3,
           dogsInCompetition: judgedAward.dogsInCompetition,
           uniqueKennelsInCompetition,
           publishedAtEpoch: args.currentEpoch,
@@ -882,6 +993,11 @@ async function createGroupAwardsForShowDay(args: {
 
     const created = await tx.showAward.createMany({
       data: awardsToCreate,
+    });
+
+    await updateShowResultsAndTitleProgressForAwards({
+      tx,
+      awards: awardsToCreate,
     });
 
     return created.count;
@@ -966,6 +1082,11 @@ async function createBestInShowAwardsForShowDay(args: {
       })),
     });
     const awardsToCreate: Prisma.ShowAwardCreateManyInput[] = [];
+    const classDogIds = await getClassDogIdsForShowDay({
+      tx,
+      showDayId: args.showDayId,
+      dogIds: groupOneAwards.map((award) => award.dogId),
+    });
 
     for (const judgedAward of judgedBestInShowAwards) {
       if (!judgedAward.showEntryId) {
@@ -977,6 +1098,12 @@ async function createBestInShowAwardsForShowDay(args: {
       if (!sourceAward) {
         continue;
       }
+
+      const pointsAwarded = getFinalsPointsForClassDog({
+        isClassDog: classDogIds.has(sourceAward.dogId),
+        rank: judgedAward.rank,
+        dogsInCompetition: judgedAward.dogsInCompetition,
+      });
 
       awardsToCreate.push({
         showResultId: sourceAward.showResultId,
@@ -990,8 +1117,8 @@ async function createBestInShowAwardsForShowDay(args: {
         awardGroup: judgedAward.awardGroup,
         sex: judgedAward.sex,
         rank: judgedAward.rank,
-        pointsAwarded: 0,
-        isMajor: false,
+        pointsAwarded,
+        isMajor: pointsAwarded >= 3,
         dogsInCompetition: judgedAward.dogsInCompetition,
         uniqueKennelsInCompetition,
         publishedAtEpoch: args.currentEpoch,
@@ -1004,6 +1131,11 @@ async function createBestInShowAwardsForShowDay(args: {
 
     const created = await tx.showAward.createMany({
       data: awardsToCreate,
+    });
+
+    await updateShowResultsAndTitleProgressForAwards({
+      tx,
+      awards: awardsToCreate,
     });
 
     return created.count;

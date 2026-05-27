@@ -35,13 +35,6 @@ const availableNow = [
   },
 ];
 
-const beginnerTips = [
-  "Start with a small number of dogs.",
-  "Pay attention to visible category strengths.",
-  "Breed for balance, not perfection.",
-  "Plan for future generations.",
-];
-
 const miniFaq = [
   {
     question: "How does breeding work?",
@@ -107,45 +100,6 @@ export default async function HomePage() {
                 Start a kennel, breed litters, and show your dogs.
               </p>
 
-              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                {!userId ? (
-                  <>
-                    <Link
-                      href="/signup"
-                      className="rounded-2xl bg-purple-600 px-6 py-4 text-center text-sm font-semibold text-white shadow-lg shadow-purple-900/30 transition hover:bg-purple-500"
-                    >
-                      Create Your Kennel
-                    </Link>
-                    <Link
-                      href="/login"
-                      className="rounded-2xl border border-purple-300/25 bg-white/5 px-6 py-4 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-                    >
-                      Sign In
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/kennel"
-                      className="rounded-2xl bg-purple-600 px-6 py-4 text-center text-sm font-semibold text-white shadow-lg shadow-purple-900/30 transition hover:bg-purple-500"
-                    >
-                      Enter My Kennel
-                    </Link>
-                    <Link
-                      href="/market"
-                      className="rounded-2xl border border-purple-300/25 bg-white/5 px-6 py-4 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-                    >
-                      Browse Dogs
-                    </Link>
-                    <Link
-                      href="/litters"
-                      className="rounded-2xl border border-purple-300/25 bg-white/5 px-6 py-4 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-                    >
-                      View Litters
-                    </Link>
-                  </>
-                )}
-              </div>
             </div>
 
             <div className="rounded-[24px] border border-white/10 bg-black/20 p-5">
@@ -157,22 +111,6 @@ export default async function HomePage() {
                 >
                   Full FAQ
                 </Link>
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-purple-300/20 bg-purple-500/10 p-4">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-purple-100">
-                  Quick Beginner Tips
-                </h3>
-                <ul className="mt-3 space-y-2">
-                  {beginnerTips.map((tip) => (
-                    <li
-                      key={tip}
-                      className="text-sm leading-6 text-purple-100/78"
-                    >
-                      {tip}
-                    </li>
-                  ))}
-                </ul>
               </div>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">

@@ -218,7 +218,9 @@ export function judgeBreedEntries(args: {
     }));
 }
 
-function getTemporaryAllBreedPoints(dogsInCompetition: number): number {
+export function getChampionshipPointsForCompetition(
+  dogsInCompetition: number
+): number {
   if (dogsInCompetition >= 7) return 5;
   if (dogsInCompetition >= 6) return 4;
   if (dogsInCompetition >= 5) return 3;
@@ -295,7 +297,7 @@ function buildWinnersAwards(args: {
         awardGroup: "WINNERS",
         sex,
         rank: 1,
-        pointsAwarded: getTemporaryAllBreedPoints(results.length),
+        pointsAwarded: getChampionshipPointsForCompetition(results.length),
         dogsInCompetition: results.length,
       })
     );
@@ -345,8 +347,12 @@ function buildBreedAwards(args: {
       entrySexForResult(args.entries, result) !== bestOfBreedSex
   );
   const awards: JudgedShowAward[] = [];
-  const maleWinnerPoints = getTemporaryAllBreedPoints(args.maleClassResults.length);
-  const femaleWinnerPoints = getTemporaryAllBreedPoints(args.femaleClassResults.length);
+  const maleWinnerPoints = getChampionshipPointsForCompetition(
+    args.maleClassResults.length
+  );
+  const femaleWinnerPoints = getChampionshipPointsForCompetition(
+    args.femaleClassResults.length
+  );
   const bestOfWinnersPoints = Math.max(maleWinnerPoints, femaleWinnerPoints);
 
   if (bestOfWinners && args.maleClassResults[0] && args.femaleClassResults[0]) {
