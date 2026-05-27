@@ -83,6 +83,19 @@ export type JudgedBreedBlock = {
   awards: JudgedShowAward[];
 };
 
+type ChampionshipPointScheduleRow = {
+  dogsInCompetition: number;
+  points: number;
+};
+
+const DEFAULT_CHAMPIONSHIP_POINT_SCHEDULE: ChampionshipPointScheduleRow[] = [
+  { dogsInCompetition: 6, points: 5 },
+  { dogsInCompetition: 5, points: 4 },
+  { dogsInCompetition: 4, points: 3 },
+  { dogsInCompetition: 3, points: 2 },
+  { dogsInCompetition: 2, points: 1 },
+];
+
 function average(values: readonly number[]): number {
   if (values.length === 0) {
     return 0;
@@ -221,12 +234,11 @@ export function judgeBreedEntries(args: {
 export function getChampionshipPointsForCompetition(
   dogsInCompetition: number
 ): number {
-  if (dogsInCompetition >= 7) return 5;
-  if (dogsInCompetition >= 6) return 4;
-  if (dogsInCompetition >= 5) return 3;
-  if (dogsInCompetition >= 4) return 2;
-  if (dogsInCompetition >= 3) return 1;
-  return 0;
+  return (
+    DEFAULT_CHAMPIONSHIP_POINT_SCHEDULE.find(
+      (row) => dogsInCompetition >= row.dogsInCompetition
+    )?.points ?? 0
+  );
 }
 
 function makeAward(args: {

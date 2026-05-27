@@ -139,6 +139,7 @@ Status: audited; implementation pass needed
 - Dog page:
   - remove or replace raw user-facing `ALIVE`/`Lifecycle` display for normal active dogs
   - show pregnancy state, pregnancy check countdown, or due countdown when applicable
+  - make registered-name confirmation behave like the kennel roster bulk-action confirmation, with the confirmation state shown on the page instead of a browser confirm dialog
   - done: make the `Breed Dog` button account for pending, pregnant, post-whelp cooldown, age, alive state, and ownership
   - disable or hide breeding when the dog is senior, retired, deceased, or forever-homed once those final statuses are centralized
   - done: list direct progeny on sire and dam pages with clickable dog links
@@ -280,6 +281,7 @@ Status: active implementation
     - entry-lock/deadline check
     - affordability check
     - ledger transactions for entry/travel/handler fees
+  - handler fees need a proper design later, including how fees are calculated, shown before entry, charged, and represented in ledger/history
   - generate sample clusters and judges from the generator instead of hand-maintained CSV rows
   - expand permanent show history
 - Later show-side systems:
@@ -293,6 +295,7 @@ Status: active implementation
   - group/BIS layers, including result pages and dog-page/show-history display
   - conditioning/fatigue effects
   - market/prestige effects from show wins
+  - add veteran classes after Open, Bred-by Exhibitor, and related classes are expanded; veteran entries are age-restricted but otherwise compete for BOB like normal entries, with their significance coming from the dog's age
 
 ## Lifecycle/Status Model
 
@@ -301,10 +304,12 @@ Status: active implementation
   - puppy
   - open/adult
   - veteran
+- Veteran class should remain a show-entry class, not a lifecycle state.
 - Dog age stages are for breeding/show eligibility, death risk, and death:
   - puppy: cannot breed
   - adult: can breed if otherwise eligible
   - senior: cannot breed and enters death-risk logic
+- Decide how age affects visible ring categories; as dogs age, apply degradation that pushes visible category values away from the desirable `10`.
 - Alive/deceased describes whether the dog is an active game object or historical/memorium record.
 - Retirement couch is user-chosen and should disable functionality while keeping the dog in the kennel.
 - Forever home removes the dog from active play permanently.
