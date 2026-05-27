@@ -18,6 +18,8 @@ type MineDog = {
   callName: string | null;
   registeredName: string | null;
   regNumber: string;
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
   breedCode2: string;
   sex: "M" | "F";
   birthEpoch: number;
@@ -230,6 +232,8 @@ export async function GET() {
         callName: true,
         registeredName: true,
         regNumber: true,
+        visibleTitlePrefix: true,
+        visibleTitleSuffix: true,
         breedCode2: true,
         sex: true,
         birthEpoch: true,
@@ -282,6 +286,8 @@ export async function GET() {
         callName: dog.callName,
         registeredName: dog.registeredName,
         regNumber: dog.regNumber,
+        visibleTitlePrefix: dog.visibleTitlePrefix,
+        visibleTitleSuffix: dog.visibleTitleSuffix,
         breedCode2: dog.breedCode2,
         breedName: dog.breed.name,
         sex: dog.sex,

@@ -2,18 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
 
 function formatShowDate(epoch: number): string {
   return epochToDate(epoch).toLocaleDateString();
-}
-
-function getDogDisplayName(dog: {
-  registeredName: string | null;
-  callName: string | null;
-  regNumber: string;
-}): string {
-  return dog.registeredName || dog.callName || dog.regNumber;
 }
 
 function normalizeGroupName(groupName: string | null): string {
@@ -95,6 +88,8 @@ export default async function ShowResultsIndexPage({
                   registeredName: true,
                   callName: true,
                   regNumber: true,
+                  visibleTitlePrefix: true,
+                  visibleTitleSuffix: true,
                 },
               },
               showEntry: {
@@ -296,7 +291,7 @@ export default async function ShowResultsIndexPage({
                               className="rounded-xl border border-sky-300/20 bg-sky-500/10 px-4 py-3 text-sm transition hover:border-sky-300/40"
                             >
                               <div className="font-semibold text-white">
-                                {award.awardCode} - {getDogDisplayName(award.dog)}
+                                {award.awardCode} - {formatDogDisplayName(award.dog)}
                               </div>
                               <div className="mt-1 text-xs text-purple-100/65">
                                 {award.breed.name} ({award.breed.code2}) -{" "}
@@ -333,7 +328,7 @@ export default async function ShowResultsIndexPage({
                                     >
                                       <div className="font-semibold text-white">
                                         {award.awardCode} -{" "}
-                                        {getDogDisplayName(award.dog)}
+                                        {formatDogDisplayName(award.dog)}
                                       </div>
                                       <div className="mt-1 text-xs text-purple-100/60">
                                         {award.breed.name} -{" "}

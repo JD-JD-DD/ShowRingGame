@@ -1,10 +1,13 @@
 import { deriveVisibleCategoriesFromTraits } from "@showring/rules";
+import { formatDogDisplayName } from "@/lib/dogNames";
 
 type ParentDogInput = {
   id: string;
   callName: string | null;
   registeredName?: string | null;
   regNumber: string;
+  visibleTitlePrefix?: string | null;
+  visibleTitleSuffix?: string | null;
   sex: "M" | "F";
 };
 
@@ -104,14 +107,10 @@ export type LitterDetailDto = LitterListItemDto & {
   puppies: LitterPuppyDto[];
 };
 
-function displayDogName(dog: ParentDogInput): string {
-  return dog.registeredName || dog.callName || dog.regNumber;
-}
-
 function mapParent(dog: ParentDogInput): LitterParentDto {
   return {
     dogId: dog.id,
-    displayName: displayDogName(dog),
+    displayName: formatDogDisplayName(dog),
     regNumber: dog.regNumber,
     sex: dog.sex,
   };

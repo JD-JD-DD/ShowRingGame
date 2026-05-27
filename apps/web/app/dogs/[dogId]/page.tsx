@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
@@ -25,6 +26,9 @@ import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
+
+const CHAMPIONSHIP_POINTS_REQUIRED = 15;
+const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
 
 type PageProps = {
   params: Promise<{
@@ -79,14 +83,6 @@ function firstQueryValue(value: string | string[] | undefined): string | null {
   return value ?? null;
 }
 
-function formatTitledName(args: {
-  name: string;
-  prefix?: string | null;
-  suffix?: string | null;
-}) {
-  return [args.prefix, args.name, args.suffix].filter(Boolean).join(" ");
-}
-
 function formatPlacement(finalRank: number | null): string {
   if (!finalRank) {
     return "Result";
@@ -138,6 +134,38 @@ function sortShowAwards<
   });
 }
 
+type ChampionshipPointWin = {
+  showDayId: string;
+  awardCode: string;
+  pointsAwarded: number;
+  isMajor: boolean;
+};
+
+function getChampionshipPointWins(value: unknown): ChampionshipPointWin[] {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !Array.isArray(
+      (value as { championshipPointWins?: unknown }).championshipPointWins
+    )
+  ) {
+    return [];
+  }
+
+  return (value as { championshipPointWins: unknown[] }).championshipPointWins
+    .filter(
+      (win): win is ChampionshipPointWin =>
+        typeof win === "object" &&
+        win !== null &&
+        typeof (win as ChampionshipPointWin).showDayId === "string" &&
+        typeof (win as ChampionshipPointWin).awardCode === "string" &&
+        typeof (win as ChampionshipPointWin).pointsAwarded === "number" &&
+        typeof (win as ChampionshipPointWin).isMajor === "boolean"
+    )
+    .slice(-5)
+    .reverse();
+}
+
 export default async function DogPage({ params, searchParams }: PageProps) {
   const { dogId } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -186,6 +214,14 @@ export default async function DogPage({ params, searchParams }: PageProps) {
       isFoundation: true,
       visibleTitlePrefix: true,
       visibleTitleSuffix: true,
+      titleProgress: {
+        select: {
+          championshipPoints: true,
+          majorCount: true,
+          currentTitleCode: true,
+          winsByTypeJson: true,
+        },
+      },
       notesPublic: true,
       ringObedience: true,
       muscleTone: true,
@@ -217,6 +253,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           callName: true,
           registeredName: true,
           regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
         },
       },
       dam: {
@@ -225,6 +263,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           callName: true,
           registeredName: true,
           regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
         },
       },
       sireOf: {
@@ -234,6 +274,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           callName: true,
           registeredName: true,
           regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
           sex: true,
         },
       },
@@ -244,6 +286,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           callName: true,
           registeredName: true,
           regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
           sex: true,
         },
       },
@@ -388,13 +432,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
       (ageHours <= DAM_MAX_BREED_AGE_HOURS &&
         dog.breedingAttemptsAsDam.length === 0));
 
-  const displayName =
-    dog.registeredName || dog.callName || dog.regNumber || "Unnamed Dog";
-  const titledDisplayName = formatTitledName({
-    name: displayName,
-    prefix: dog.visibleTitlePrefix,
-    suffix: dog.visibleTitleSuffix,
-  });
+  const displayName = formatDogDisplayName(dog);
   const canNameDog = isOwnedByCurrentKennel && !dog.registeredName?.trim();
   const canOfferForSale =
     isOwnedByCurrentKennel &&
@@ -417,6 +455,17 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     (total, result) => total + result.pointsAwarded,
     0
   );
+  const championshipPoints = dog.titleProgress?.championshipPoints ?? 0;
+  const majorCount = dog.titleProgress?.majorCount ?? 0;
+  const currentTitleCode = dog.titleProgress?.currentTitleCode ?? null;
+  const pointsNeeded = Math.max(
+    0,
+    CHAMPIONSHIP_POINTS_REQUIRED - championshipPoints
+  );
+  const majorsNeeded = Math.max(0, CHAMPIONSHIP_MAJORS_REQUIRED - majorCount);
+  const championshipPointWins = getChampionshipPointWins(
+    dog.titleProgress?.winsByTypeJson
+  );
 
   return (
     <main className="min-h-screen px-6 py-8 text-white">
@@ -434,7 +483,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               </div>
 
               <h1 className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-                {titledDisplayName}
+                {displayName}
               </h1>
 
               <div className="mt-3 text-sm text-purple-100/70">
@@ -452,7 +501,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <div className="mt-3 text-sm text-purple-100/80">
                   {[dog.visibleTitlePrefix, dog.visibleTitleSuffix]
                     .filter(Boolean)
-                    .join(" • ")}
+                    .join(" / ")}
                 </div>
               )}
 
@@ -714,6 +763,75 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               </div>
             </section>
 
+            <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-white">
+                    Title Progress
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-purple-100/65">
+                    Championship requires 15 points and 2 major wins. Majors are
+                    3, 4, or 5 point wins.
+                  </p>
+                </div>
+                {currentTitleCode ? (
+                  <span className="rounded-full border border-sky-300/25 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-100">
+                    {currentTitleCode}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                    Points
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-white">
+                    {championshipPoints}/{CHAMPIONSHIP_POINTS_REQUIRED}
+                  </div>
+                  <div className="mt-1 text-xs text-purple-100/55">
+                    {pointsNeeded === 0
+                      ? "Point requirement met"
+                      : `${pointsNeeded} more needed`}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                    Majors
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-white">
+                    {majorCount}/{CHAMPIONSHIP_MAJORS_REQUIRED}
+                  </div>
+                  <div className="mt-1 text-xs text-purple-100/55">
+                    {majorsNeeded === 0
+                      ? "Major requirement met"
+                      : `${majorsNeeded} more needed`}
+                  </div>
+                </div>
+              </div>
+
+              {championshipPointWins.length > 0 ? (
+                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                    Recent Point Wins
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {championshipPointWins.map((win) => (
+                      <span
+                        key={`${win.showDayId}-${win.awardCode}`}
+                        className="rounded-full border border-sky-300/25 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-100"
+                      >
+                        {win.awardCode} - {win.pointsAwarded} pt
+                        {win.pointsAwarded === 1 ? "" : "s"}
+                        {win.isMajor ? " major" : ""}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </section>
+
           </div>
         </section>
 
@@ -841,9 +959,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <div className="mt-1 text-sm font-medium text-white">
                   {dog.sire ? (
                     <Link href={`/dogs/${dog.sire.id}`} className="hover:underline">
-                      {dog.sire.registeredName ??
-                        dog.sire.callName ??
-                        dog.sire.regNumber}
+                      {formatDogDisplayName(dog.sire)}
                     </Link>
                   ) : (
                     "Unknown"
@@ -858,9 +974,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <div className="mt-1 text-sm font-medium text-white">
                   {dog.dam ? (
                     <Link href={`/dogs/${dog.dam.id}`} className="hover:underline">
-                      {dog.dam.registeredName ??
-                        dog.dam.callName ??
-                        dog.dam.regNumber}
+                      {formatDogDisplayName(dog.dam)}
                     </Link>
                   ) : (
                     "Unknown"
@@ -882,7 +996,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm transition hover:border-purple-300/35 hover:bg-white/10"
                   >
                     <span className="font-medium text-white">
-                      {puppy.registeredName ?? puppy.callName ?? puppy.regNumber}
+                      {formatDogDisplayName(puppy)}
                     </span>
                     <span className="shrink-0 text-purple-100/70">
                       {puppy.sex}

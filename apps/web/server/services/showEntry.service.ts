@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
   ENTRY_FEE_PER_SHOW,
@@ -25,6 +26,8 @@ const dogForEntryArgs = Prisma.validator<Prisma.DogDefaultArgs>()({
     callName: true,
     registeredName: true,
     regNumber: true,
+    visibleTitlePrefix: true,
+    visibleTitleSuffix: true,
     breedCode2: true,
     sex: true,
     ownerKennelId: true,
@@ -132,7 +135,7 @@ export type BulkShowEntryResultDto = {
 };
 
 function getDogDisplayName(dog: DogForEntry): string {
-  return dog.registeredName || dog.callName || dog.regNumber;
+  return formatDogDisplayName(dog);
 }
 
 function getConditioningSnapshot(dog: DogForEntry): number {

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 
@@ -28,14 +29,6 @@ function formatLedgerTime(epoch: number): string {
     timeZone: "UTC",
     timeZoneName: "short",
   });
-}
-
-function dogDisplayName(dog: {
-  registeredName: string | null;
-  callName: string | null;
-  regNumber: string;
-}) {
-  return dog.registeredName || dog.callName || dog.regNumber;
 }
 
 export default async function LedgerPage() {
@@ -77,6 +70,8 @@ export default async function LedgerPage() {
           registeredName: true,
           callName: true,
           regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
         },
       },
       showCluster: {
@@ -166,7 +161,7 @@ export default async function LedgerPage() {
                           href={`/dogs/${transaction.dog.id}`}
                           className="font-medium text-purple-100 underline-offset-4 hover:underline"
                         >
-                          {dogDisplayName(transaction.dog)}
+                          {formatDogDisplayName(transaction.dog)}
                         </Link>
                       ) : (
                         "-"

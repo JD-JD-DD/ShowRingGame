@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { formatDogDisplayName } from "@/lib/dogNames";
 
 type VisibleCategories = Record<string, number>;
 
@@ -26,6 +27,8 @@ type KennelDogDto = {
   callName: string | null;
   registeredName: string | null;
   regNumber: string;
+  visibleTitlePrefix?: string | null;
+  visibleTitleSuffix?: string | null;
   breedCode2: string;
   breedName: string;
   sex: "M" | "F";
@@ -82,7 +85,7 @@ function formatAge(ageHours: number): string {
 }
 
 function getDogDisplayName(dog: KennelDogDto): string {
-  return dog.registeredName?.trim() || dog.callName?.trim() || dog.regNumber;
+  return formatDogDisplayName(dog);
 }
 
 function valueForSort(dog: KennelDogDto, key: SortKey): string | number {

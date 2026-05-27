@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
@@ -25,14 +26,6 @@ function formatAge(ageHours: number): string {
   }
 
   return `${weeks}w`;
-}
-
-function displayName(dog: {
-  registeredName: string | null;
-  callName: string | null;
-  regNumber: string;
-}): string {
-  return dog.registeredName || dog.callName || dog.regNumber;
 }
 
 export default async function MemoriumPage() {
@@ -120,13 +113,7 @@ export default async function MemoriumPage() {
         ) : (
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {dogs.map((dog) => {
-              const name = [
-                dog.visibleTitlePrefix,
-                displayName(dog),
-                dog.visibleTitleSuffix,
-              ]
-                .filter(Boolean)
-                .join(" ");
+              const name = formatDogDisplayName(dog);
               const deathEpoch = dog.deathEpoch ?? currentEpoch;
               const ageAtDeath = Math.max(0, deathEpoch - dog.birthEpoch);
               const progenyCount =

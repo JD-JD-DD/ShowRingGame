@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
 import { getVisibleCategoriesFromDogRecord } from "@/server/services/foundationDog.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
@@ -37,6 +38,8 @@ type MarketListingRecord = {
     callName: string | null;
     registeredName: string | null;
     regNumber: string;
+    visibleTitlePrefix: string | null;
+    visibleTitleSuffix: string | null;
     breedCode2: string;
     sex: "M" | "F";
     birthEpoch: number;
@@ -54,6 +57,8 @@ export type MarketDogDto = {
   callName: string | null;
   registeredName: string | null;
   regNumber: string;
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
   breedCode2: string;
   breedName: string;
   sex: "M" | "F";
@@ -73,10 +78,6 @@ function assertWholeDollarAmount(value: number, label: string): void {
   }
 }
 
-function getDisplayName(dog: MarketListingRecord["dog"]): string {
-  return dog.registeredName || dog.callName || dog.regNumber || "Unnamed Dog";
-}
-
 function mapMarketListing(args: {
   listing: MarketListingRecord;
   currentEpoch: number;
@@ -87,10 +88,12 @@ function mapMarketListing(args: {
   return {
     listingId: listing.id,
     dogId: listing.dog.id,
-    displayName: getDisplayName(listing.dog),
+    displayName: formatDogDisplayName(listing.dog),
     callName: listing.dog.callName,
     registeredName: listing.dog.registeredName,
     regNumber: listing.dog.regNumber,
+    visibleTitlePrefix: listing.dog.visibleTitlePrefix,
+    visibleTitleSuffix: listing.dog.visibleTitleSuffix,
     breedCode2: listing.dog.breedCode2,
     breedName: listing.dog.breed.name,
     sex: listing.dog.sex,
@@ -177,6 +180,8 @@ export async function listMarketDogs(args: {
           callName: true,
           registeredName: true,
           regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
           breedCode2: true,
           sex: true,
           birthEpoch: true,

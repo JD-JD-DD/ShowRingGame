@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { formatDogDisplayName } from "@/lib/dogNames";
 import {
   BREEDING_FEE,
   DAM_MAX_BREED_AGE_HOURS,
@@ -15,6 +16,8 @@ type DogCardDto = {
   callName: string | null;
   registeredName: string | null;
   regNumber: string;
+  visibleTitlePrefix?: string | null;
+  visibleTitleSuffix?: string | null;
   breedCode2: string;
   breedName: string;
   sex: "M" | "F";
@@ -43,7 +46,7 @@ const USUAL_PREG_CHECK_DAYS = 28;
 const USUAL_GESTATION_DAYS = 56;
 
 function dogDisplayName(dog: DogCardDto) {
-  return dog.registeredName || dog.callName || dog.regNumber;
+  return formatDogDisplayName(dog);
 }
 
 function ageLabel(ageHours: number) {

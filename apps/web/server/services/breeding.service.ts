@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import {
@@ -19,6 +20,8 @@ type DogForBreeding = {
   callName: string | null;
   registeredName: string | null;
   regNumber: string;
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
   breedCode2: string;
   sex: "M" | "F";
   birthEpoch: number;
@@ -170,8 +173,10 @@ function displayDogName(dog: {
   registeredName?: string | null;
   callName: string | null;
   regNumber: string;
+  visibleTitlePrefix?: string | null;
+  visibleTitleSuffix?: string | null;
 }) {
-  return dog.registeredName || dog.callName || dog.regNumber;
+  return formatDogDisplayName(dog);
 }
 
 async function getDogForBreeding(dogId: string): Promise<DogForBreeding | null> {
@@ -182,6 +187,8 @@ async function getDogForBreeding(dogId: string): Promise<DogForBreeding | null> 
       callName: true,
       registeredName: true,
       regNumber: true,
+      visibleTitlePrefix: true,
+      visibleTitleSuffix: true,
       breedCode2: true,
       sex: true,
       birthEpoch: true,
@@ -560,6 +567,8 @@ export async function listBreedingsForKennel(args: {
           callName: true,
           registeredName: true,
           regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
         },
       },
       dam: {
@@ -568,6 +577,8 @@ export async function listBreedingsForKennel(args: {
           callName: true,
           registeredName: true,
           regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
         },
       },
     },

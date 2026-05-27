@@ -100,6 +100,13 @@ export default async function KennelPage() {
         </Link>
 
         <Link
+          href="/my-results"
+          className="rounded-md border border-sky-300/40 px-5 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-950/40"
+        >
+          My Results
+        </Link>
+
+        <Link
           href="/ledger"
           className="rounded-md border border-purple-300/40 px-5 py-2 text-sm font-semibold text-purple-100 hover:bg-purple-950/40"
         >

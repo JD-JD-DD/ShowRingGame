@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
 
 const AWARD_SORT_ORDER: Record<string, number> = {
@@ -25,14 +26,6 @@ function formatShowDate(epoch: number): string {
 
 function formatPublishedDate(epoch: number): string {
   return epochToDate(epoch).toLocaleString();
-}
-
-function getDogDisplayName(dog: {
-  registeredName: string | null;
-  callName: string | null;
-  regNumber: string;
-}): string {
-  return dog.registeredName || dog.callName || dog.regNumber;
 }
 
 function formatPoints(pointsAwarded: number): string {
@@ -80,6 +73,8 @@ type ResultRow = {
     registeredName: string | null;
     callName: string | null;
     regNumber: string;
+    visibleTitlePrefix: string | null;
+    visibleTitleSuffix: string | null;
     sex: "M" | "F";
   };
   showEntry: {
@@ -170,7 +165,7 @@ function ResultSection({
                       href={`/dogs/${result.dog.id}`}
                       className="font-semibold text-white underline-offset-4 hover:underline"
                     >
-                      {getDogDisplayName(result.dog)}
+                      {formatDogDisplayName(result.dog)}
                     </Link>
                     <div className="text-xs text-purple-100/55">
                       {result.dog.regNumber}
@@ -229,6 +224,8 @@ export default async function BreedResultsPage({
                       registeredName: true,
                       callName: true,
                       regNumber: true,
+                      visibleTitlePrefix: true,
+                      visibleTitleSuffix: true,
                       sex: true,
                     },
                   },

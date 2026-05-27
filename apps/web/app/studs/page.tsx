@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
@@ -22,14 +23,6 @@ type PageProps = {
 function firstQueryValue(value: string | string[] | undefined): string | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
-}
-
-function dogDisplayName(dog: {
-  registeredName: string | null;
-  callName: string | null;
-  regNumber: string;
-}) {
-  return dog.registeredName || dog.callName || dog.regNumber;
 }
 
 function ageLabel(ageHours: number) {
@@ -142,6 +135,8 @@ export default async function StudsPage({ searchParams }: PageProps) {
           callName: true,
           registeredName: true,
           regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
           breedCode2: true,
           birthEpoch: true,
           breed: {
@@ -285,7 +280,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           </span>
                         </div>
                         <h2 className="mt-2 text-2xl font-bold text-white">
-                          {dogDisplayName(dog)}
+                          {formatDogDisplayName(dog)}
                         </h2>
                         <div className="mt-2 text-sm text-purple-100/70">
                           {dog.regNumber}
