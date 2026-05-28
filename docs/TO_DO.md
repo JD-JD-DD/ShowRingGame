@@ -1,6 +1,6 @@
 # ShowRingGame TO DO
 
-This is the short working queue. Deeper design notes live in the MasterFile, `docs/SHOW_ENTRY_WEEKEND_HANDLER_PLAN.md`, and `ECONOMY_IDEAS.md`.
+This is the short working queue. Deeper design notes live in `MasterFile4_3.md`, `SHOW_ENTRY_WEEKEND_HANDLER_PLAN.md`, and `ECONOMY_IDEAS.md`.
 
 Items not listed here are treated as complete, superseded, or folded into one of these remaining implementation areas.
 
