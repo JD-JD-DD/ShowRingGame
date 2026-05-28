@@ -1,7 +1,10 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import {
+  markDogDeceased,
+  resolveDogDeaths,
+} from "@/server/services/lifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import {
   BREEDING_FEE,
@@ -13,6 +16,7 @@ import {
   resolvePregnancyCheck,
   resolveWhelp,
   WHELPING_COOLDOWN_HOURS,
+  WHELPING_DAM_DEATH_RATE,
 } from "@showring/rules";
 import { randomUUID } from "node:crypto";
 
@@ -430,6 +434,12 @@ export async function resolveBreedingProgressForKennel(args: {
             dam: {
               select: {
                 id: true,
+                ownerKennelId: true,
+                registeredName: true,
+                callName: true,
+                regNumber: true,
+                visibleTitlePrefix: true,
+                visibleTitleSuffix: true,
                 traitHead: true,
                 traitForequarters: true,
                 traitHindquarters: true,
@@ -561,6 +571,22 @@ export async function resolveBreedingProgressForKennel(args: {
             currentEpoch,
             linkedLitterId: outcome.litter.litterId,
             linkedDogId: outcome.litter.damId,
+          });
+        }
+
+        const damDiedAtWhelp =
+          seeded01(`${rngSeed}:whelp:dam-mortality`) <
+          WHELPING_DAM_DEATH_RATE;
+
+        if (damDiedAtWhelp) {
+          await markDogDeceased({
+            client: tx,
+            dogId: fresh.dam.id,
+            regNumber: fresh.dam.regNumber,
+            ownerKennelId: fresh.dam.ownerKennelId,
+            displayName: formatDogDisplayName(fresh.dam),
+            deathEpoch: currentEpoch,
+            cause: "WHELPING_DAM",
           });
         }
       });

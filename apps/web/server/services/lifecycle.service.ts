@@ -1,10 +1,20 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import { AGE_DEATH_START_HOURS, projectedDeathEpoch } from "@showring/rules";
+import {
+  ACCIDENT_ILLNESS_LIFETIME_DEATH_RATE,
+  NEONATAL_PUPPY_DEATH_RATE,
+  NEONATAL_PUPPY_DEATH_WINDOW_HOURS,
+  projectedDeathEpoch,
+} from "@showring/rules";
 import { Prisma } from "@prisma/client";
 
 type DbClient = typeof db | Prisma.TransactionClient;
+export type DogDeathCause =
+  | "AGE"
+  | "ACCIDENT_ILLNESS"
+  | "NEONATAL_PUPPY"
+  | "WHELPING_DAM";
 
 type DeathCandidate = {
   id: string;
@@ -17,12 +27,15 @@ type DeathCandidate = {
   birthEpoch: number;
   deathEpoch: number | null;
   lifecycleState: string;
+  originType: string;
+  litterId: string | null;
 };
 
 export type ResolvedDogDeath = {
   dogId: string;
   regNumber: string;
   deathEpoch: number;
+  cause: DogDeathCause;
 };
 
 function seeded01(seed: string): number {
@@ -56,20 +69,138 @@ export function getProjectedDogDeathEpoch(dog: {
   );
 }
 
-async function markDogDeceased(args: {
+function getProjectedAccidentIllnessDeathEpoch(dog: {
+  id: string;
+  birthEpoch: number;
+  deathEpoch?: number | null;
+}): number | null {
+  if (
+    seeded01(`${dog.id}:accident-illness:will-die`) >=
+    ACCIDENT_ILLNESS_LIFETIME_DEATH_RATE
+  ) {
+    return null;
+  }
+
+  const ageDeathEpoch = getProjectedDogDeathEpoch(dog);
+  const activeLifespanHours = Math.max(1, ageDeathEpoch - dog.birthEpoch);
+  const deathOffset = Math.max(
+    1,
+    Math.floor(
+      seeded01(`${dog.id}:accident-illness:death-epoch`) *
+        activeLifespanHours
+    )
+  );
+
+  return dog.birthEpoch + deathOffset;
+}
+
+function getProjectedNeonatalPuppyDeathEpoch(dog: {
+  id: string;
+  birthEpoch: number;
+  originType?: string | null;
+  litterId?: string | null;
+}): number | null {
+  if (dog.originType !== "PLAYER_BRED" || !dog.litterId) {
+    return null;
+  }
+
+  if (
+    seeded01(`${dog.id}:neonatal-puppy:will-die`) >=
+    NEONATAL_PUPPY_DEATH_RATE
+  ) {
+    return null;
+  }
+
+  return (
+    dog.birthEpoch +
+    Math.floor(
+      seeded01(`${dog.id}:neonatal-puppy:death-epoch`) *
+        NEONATAL_PUPPY_DEATH_WINDOW_HOURS
+    )
+  );
+}
+
+export function getProjectedDogDeath(dog: {
+  id: string;
+  birthEpoch: number;
+  deathEpoch?: number | null;
+  originType?: string | null;
+  litterId?: string | null;
+}): { deathEpoch: number; cause: DogDeathCause } {
+  const candidates: Array<{ deathEpoch: number; cause: DogDeathCause }> = [
+    {
+      deathEpoch: getProjectedDogDeathEpoch(dog),
+      cause: "AGE",
+    },
+  ];
+
+  const accidentIllnessDeathEpoch = getProjectedAccidentIllnessDeathEpoch(dog);
+  if (accidentIllnessDeathEpoch !== null) {
+    candidates.push({
+      deathEpoch: accidentIllnessDeathEpoch,
+      cause: "ACCIDENT_ILLNESS",
+    });
+  }
+
+  const neonatalPuppyDeathEpoch = getProjectedNeonatalPuppyDeathEpoch(dog);
+  if (neonatalPuppyDeathEpoch !== null) {
+    candidates.push({
+      deathEpoch: neonatalPuppyDeathEpoch,
+      cause: "NEONATAL_PUPPY",
+    });
+  }
+
+  return candidates.reduce((earliest, candidate) =>
+    candidate.deathEpoch < earliest.deathEpoch ? candidate : earliest
+  );
+}
+
+function deathNoticeBody(displayName: string, cause: DogDeathCause): string {
+  switch (cause) {
+    case "ACCIDENT_ILLNESS":
+      return `${displayName} has died after an illness or accident.`;
+    case "NEONATAL_PUPPY":
+      return `${displayName} died during the vulnerable first week of life.`;
+    case "WHELPING_DAM":
+      return `${displayName} died from whelping complications.`;
+    case "AGE":
+    default:
+      return `${displayName} has died of old age.`;
+  }
+}
+
+function breedingFailureNote(regNumber: string, cause: DogDeathCause): string {
+  if (cause === "ACCIDENT_ILLNESS") {
+    return `Dam ${regNumber} died after an illness or accident before the breeding could be completed.`;
+  }
+
+  return `Dam ${regNumber} died before the breeding could be completed.`;
+}
+
+export async function markDogDeceased(args: {
   client: DbClient;
   dogId: string;
   regNumber: string;
   ownerKennelId: string | null;
   displayName: string;
   deathEpoch: number;
+  cause: DogDeathCause;
 }): Promise<boolean> {
-  const { client, dogId, regNumber, ownerKennelId, displayName, deathEpoch } =
-    args;
+  const {
+    client,
+    dogId,
+    regNumber,
+    ownerKennelId,
+    displayName,
+    deathEpoch,
+    cause,
+  } = args;
   const update = await client.dog.updateMany({
     where: {
       id: dogId,
-      lifecycleState: "ALIVE",
+      lifecycleState: {
+        in: ["ALIVE", "RETIRED"],
+      },
     },
     data: {
       lifecycleState: "DECEASED",
@@ -119,7 +250,7 @@ async function markDogDeceased(args: {
       status: "FAILED",
       isPregnant: false,
       checkedEpoch: deathEpoch,
-      notes: `Dam ${regNumber} died before the breeding could be completed.`,
+      notes: breedingFailureNote(regNumber, cause),
     },
   });
 
@@ -129,9 +260,12 @@ async function markDogDeceased(args: {
       kennelId: ownerKennelId,
       type: "DOG_DEATH",
       title: "Dog death",
-      body: `${displayName} has died.`,
+      body: deathNoticeBody(displayName, cause),
       currentEpoch: deathEpoch,
       linkedDogId: dogId,
+      metadataJson: {
+        cause,
+      },
     });
   }
 
@@ -153,9 +287,8 @@ async function resolveDogDeathsWithClient(args: {
 
   const candidates: DeathCandidate[] = await client.dog.findMany({
     where: {
-      lifecycleState: "ALIVE",
-      birthEpoch: {
-        lte: args.currentEpoch - AGE_DEATH_START_HOURS,
+      lifecycleState: {
+        in: ["ALIVE", "RETIRED"],
       },
       ...(args.kennelId ? { ownerKennelId: args.kennelId } : {}),
       ...(dogIds && dogIds.length > 0 ? { id: { in: dogIds } } : {}),
@@ -171,6 +304,8 @@ async function resolveDogDeathsWithClient(args: {
       birthEpoch: true,
       deathEpoch: true,
       lifecycleState: true,
+      originType: true,
+      litterId: true,
     },
   });
 
@@ -178,7 +313,7 @@ async function resolveDogDeathsWithClient(args: {
   const deceasedDogs: ResolvedDogDeath[] = [];
 
   for (const dog of candidates) {
-    const deathEpoch = getProjectedDogDeathEpoch(dog);
+    const { deathEpoch, cause } = getProjectedDogDeath(dog);
 
     if (deathEpoch > args.currentEpoch) {
       continue;
@@ -191,6 +326,7 @@ async function resolveDogDeathsWithClient(args: {
       ownerKennelId: dog.ownerKennelId,
       displayName: formatDogDisplayName(dog),
       deathEpoch,
+      cause,
     });
 
     if (changed) {
@@ -199,6 +335,7 @@ async function resolveDogDeathsWithClient(args: {
         dogId: dog.id,
         regNumber: dog.regNumber,
         deathEpoch,
+        cause,
       });
     }
   }
