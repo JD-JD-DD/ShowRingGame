@@ -61,6 +61,22 @@ export default async function MemoriumPage() {
           damOf: true,
         },
       },
+      sireOf: {
+        where: {
+          visibleTitlePrefix: "CH",
+        },
+        select: {
+          id: true,
+        },
+      },
+      damOf: {
+        where: {
+          visibleTitlePrefix: "CH",
+        },
+        select: {
+          id: true,
+        },
+      },
     },
   });
 
@@ -93,10 +109,11 @@ export default async function MemoriumPage() {
           </section>
         ) : (
           <section className="overflow-hidden rounded-[28px] border border-rose-200/15 bg-[linear-gradient(180deg,rgba(45,25,48,0.96),rgba(18,10,24,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.3)]">
-            <div className="grid grid-cols-[minmax(0,1fr)_8rem_6rem] gap-4 border-b border-white/10 px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-rose-100/80">
+            <div className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem] gap-4 border-b border-white/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-rose-100/80">
               <div>Name</div>
               <div className="text-right">Died</div>
               <div className="text-right">Progeny</div>
+              <div className="text-right">CH</div>
             </div>
 
             <div className="divide-y divide-white/10">
@@ -105,26 +122,26 @@ export default async function MemoriumPage() {
                 const deathEpoch = dog.deathEpoch ?? currentEpoch;
                 const progenyCount =
                   dog.sex === "M" ? dog._count.sireOf : dog._count.damOf;
+                const championProgenyCount =
+                  dog.sex === "M" ? dog.sireOf.length : dog.damOf.length;
 
                 return (
                   <Link
                     key={dog.id}
                     href={`/dogs/${dog.id}`}
-                    className="grid grid-cols-[minmax(0,1fr)_8rem_6rem] gap-4 px-5 py-4 text-sm transition hover:bg-white/5"
+                    className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem] gap-4 px-5 py-2.5 text-sm transition hover:bg-white/5"
                   >
-                    <div className="min-w-0">
-                      <div className="truncate font-semibold text-white">
-                        {name}
-                      </div>
-                      <div className="mt-1 truncate text-xs text-purple-100/55">
-                        {dog.regNumber}
-                      </div>
+                    <div className="min-w-0 truncate self-center font-semibold text-white">
+                      {name}
                     </div>
                     <div className="self-center text-right font-semibold text-purple-100">
                       {formatDate(deathEpoch)}
                     </div>
                     <div className="self-center text-right font-semibold text-white">
                       {progenyCount}
+                    </div>
+                    <div className="self-center text-right font-semibold text-white">
+                      {championProgenyCount}
                     </div>
                   </Link>
                 );

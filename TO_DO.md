@@ -1,6 +1,6 @@
 # ShowRingGame TO DO
 
-This is the short working queue. Detailed history, evidence, and older audit notes live in `docs/DRIFT_AUDIT.md` and the MasterFile.
+This is the short working queue. Deeper design notes live in the MasterFile, `docs/SHOW_ENTRY_WEEKEND_HANDLER_PLAN.md`, and `ECONOMY_IDEAS.md`.
 
 Items not listed here are treated as complete, superseded, or folded into one of these remaining implementation areas.
 
@@ -24,6 +24,10 @@ Items not listed here are treated as complete, superseded, or folded into one of
 
 - Add yearly dogs-beaten prestige tracking for shows. Each dog should keep a running game-year tally of dogs defeated, including breed, group, and BIS layers. Example: a Saluki winning G1 over a 42-dog group adds those defeated dogs; a later BOB over 7 dogs adds to that same yearly total. Use this for breed Top Ten and all-breed Top Ten displays, so dogs winning at large shows receive extra prestige beyond titles alone.
 
+- Add breed clubs and specialty shows. Players can pay for club membership; clubs fund breed specialties that run as additional shows within a cluster and accept only that breed. Later, add breed nationals weeks or multi-day national specialties for specific breeds.
+
+- Add once-a-year prestige shows, including a Week 52 invitational based on the Top Ten per breed system.
+
 - Add future show classes: Puppy, Open, Bred-by Exhibitor, and Veteran.
 
 - Add Sweepstakes classes for player cash winnings.
@@ -45,5 +49,7 @@ Items not listed here are treated as complete, superseded, or folded into one of
 - Expand title progression beyond CH into GCH and higher title ladders.
 
 - Connect show success, titles, and prestige to market value and kennel reputation.
+
+- Add frozen semen collection for stud dogs, with finite stored uses and ongoing maintenance costs.
 
 - Add future economy sinks such as kennel upkeep, health testing, training services, and advanced kennel services.
