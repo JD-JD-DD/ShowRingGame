@@ -137,6 +137,7 @@ export type ShowEntryPlannerDogDto = EligibleShowDogDto & {
 export type ShowEntryPlannerDto = {
   days: ShowEntryPlannerDayDto[];
   dogs: ShowEntryPlannerDogDto[];
+  existingDogIdsForBreed: string[];
 };
 
 export type ShowWeekendEntryPlanStatusDto = {
@@ -154,6 +155,7 @@ export type BulkShowEntrySelection = {
 export type BulkShowEntryQuoteDto = {
   entryFees: number;
   travelCost: number;
+  handlerDogs: number;
   handlerFee: number;
   totalCost: number;
   balanceAfter: number;
@@ -926,7 +928,7 @@ export async function getShowEntryPlanner(args: {
   });
 
   if (!cluster) {
-    return { days: [], dogs: [] };
+    return { days: [], dogs: [], existingDogIdsForBreed: [] };
   }
 
   const dogs = await db.dog.findMany({
@@ -958,6 +960,17 @@ export async function getShowEntryPlanner(args: {
       showDayId: true,
     },
   });
+  const existingBreedDogEntries = await db.showEntry.findMany({
+    where: {
+      kennelId,
+      breedCode2,
+      showDay: { clusterId: showId },
+    },
+    distinct: ["dogId"],
+    select: {
+      dogId: true,
+    },
+  });
   const enteredDayIdsByDogId = new Map<string, Set<string>>();
 
   for (const entry of existingEntries) {
@@ -976,6 +989,7 @@ export async function getShowEntryPlanner(args: {
 
   return {
     days,
+    existingDogIdsForBreed: existingBreedDogEntries.map((entry) => entry.dogId),
     dogs: dogs
       .filter((dog) => !weekendConflictDogIds.has(dog.id))
       .map((dog) => {
@@ -1168,6 +1182,17 @@ export async function createShowEntriesForCluster(args: {
     const existingEntryKeys = new Set(
       existingEntries.map((entry) => `${entry.dogId}:${entry.showDayId}`)
     );
+    const existingBreedDogEntries = await tx.showEntry.findMany({
+      where: {
+        kennelId,
+        breedCode2,
+        showDay: { clusterId: showId },
+      },
+      distinct: ["dogId"],
+      select: {
+        dogId: true,
+      },
+    });
     const weekendConflict = await getSameWeekendEntryConflict({
       client: tx,
       dogIds,
@@ -1228,6 +1253,9 @@ export async function createShowEntriesForCluster(args: {
       homeDistrict: kennel.homeDistrict ?? cluster.district,
       clusterDistrict: cluster.district,
       ledgerBalance: kennel.balance,
+      existingDogIdsByBreed: {
+        [breedCode2]: existingBreedDogEntries.map((entry) => entry.dogId),
+      },
       dogs: dogs.map((dog) => ({
         dogId: dog.id,
         dogName: getDogDisplayName(dog),
@@ -1303,7 +1331,9 @@ export async function createShowEntriesForCluster(args: {
             entryStatus: "ENTERED",
             enteredAtEpoch: currentEpoch,
             feeCharged: ENTRY_FEE_PER_SHOW,
-            handlerUsed: quote.handlerFee > 0,
+            handlerUsed:
+              quote.handlerFee > 0 &&
+              !existingBreedDogEntries.some((entry) => entry.dogId === dog.id),
             conditioningSnapshot: getConditioningSnapshot(dog),
             fatigueSnapshot: dog.fatiguePoints,
           };
@@ -1355,7 +1385,7 @@ export async function createShowEntriesForCluster(args: {
         balanceAfter: runningBalance,
         occurredAtEpoch: currentEpoch,
         showClusterId: cluster.id,
-        memo: `Handler fee for ${quote.dogsEntered} dog(s) at ${cluster.name}.`,
+        memo: `Ringside handler fee for ${quote.handlerDogs} dog(s) at ${cluster.name}.`,
       });
     }
 
@@ -1371,6 +1401,7 @@ export async function createShowEntriesForCluster(args: {
       quote: {
         entryFees: quote.entryFees,
         travelCost,
+        handlerDogs: quote.handlerDogs,
         handlerFee: quote.handlerFee,
         totalCost,
         balanceAfter,

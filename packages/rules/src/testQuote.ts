@@ -1,5 +1,11 @@
 import { getClusterEntryQuote } from "../engines/economy.engine";
 
+function assertEqual(actual: number, expected: number, label: string) {
+  if (actual !== expected) {
+    throw new Error(`${label}: expected ${expected}, received ${actual}`);
+  }
+}
+
 const quote = getClusterEntryQuote({
   homeDistrict: 3,
   clusterDistrict: 7,
@@ -24,5 +30,98 @@ const quote = getClusterEntryQuote({
   ],
 });
 
+const threeDogsOneBreed = getClusterEntryQuote({
+  homeDistrict: 3,
+  clusterDistrict: 7,
+  ledgerBalance: 1000,
+  dogs: ["dog-1", "dog-2", "dog-3"].map((dogId) => ({
+    dogId,
+    dogName: dogId,
+    breed: "Weimaraner",
+    sex: "Dog" as const,
+    selectedShowDays: [1],
+  })),
+});
+
+const fourDogsOneBreed = getClusterEntryQuote({
+  homeDistrict: 3,
+  clusterDistrict: 7,
+  ledgerBalance: 1000,
+  dogs: ["dog-1", "dog-2", "dog-3", "dog-4"].map((dogId) => ({
+    dogId,
+    dogName: dogId,
+    breed: "Weimaraner",
+    sex: "Dog" as const,
+    selectedShowDays: [1],
+  })),
+});
+
+const threeDogsTwoBreeds = getClusterEntryQuote({
+  homeDistrict: 3,
+  clusterDistrict: 7,
+  ledgerBalance: 1000,
+  dogs: [
+    ["dog-1", "Weimaraner"],
+    ["dog-2", "Weimaraner"],
+    ["dog-3", "Weimaraner"],
+    ["dog-4", "Saluki"],
+    ["dog-5", "Saluki"],
+    ["dog-6", "Saluki"],
+  ].map(([dogId, breed]) => ({
+    dogId,
+    dogName: dogId,
+    breed,
+    sex: "Dog" as const,
+    selectedShowDays: [1],
+  })),
+});
+
+const addThreeAfterThreeExisting = getClusterEntryQuote({
+  homeDistrict: 3,
+  clusterDistrict: 7,
+  ledgerBalance: 1000,
+  existingDogIdsByBreed: {
+    Weimaraner: ["dog-1", "dog-2", "dog-3"],
+  },
+  dogs: ["dog-4", "dog-5", "dog-6"].map((dogId) => ({
+    dogId,
+    dogName: dogId,
+    breed: "Weimaraner",
+    sex: "Dog" as const,
+    selectedShowDays: [1],
+  })),
+});
+
+const addDayForExistingDogs = getClusterEntryQuote({
+  homeDistrict: 3,
+  clusterDistrict: 7,
+  ledgerBalance: 1000,
+  existingDogIdsByBreed: {
+    Weimaraner: ["dog-1", "dog-2", "dog-3"],
+  },
+  dogs: ["dog-1", "dog-2"].map((dogId) => ({
+    dogId,
+    dogName: dogId,
+    breed: "Weimaraner",
+    sex: "Dog" as const,
+    selectedShowDays: [2],
+  })),
+});
+
+assertEqual(threeDogsOneBreed.handlerDogs, 0, "3 dogs in one breed");
+assertEqual(fourDogsOneBreed.handlerDogs, 1, "4 dogs in one breed");
+assertEqual(threeDogsTwoBreeds.handlerDogs, 0, "3 dogs in each of two breeds");
+assertEqual(
+  addThreeAfterThreeExisting.handlerDogs,
+  3,
+  "3 new dogs after 3 existing"
+);
+assertEqual(
+  addDayForExistingDogs.handlerDogs,
+  0,
+  "additional days for existing dogs"
+);
+
 console.log("CLUSTER ENTRY QUOTE");
 console.log(JSON.stringify(quote, null, 2));
+console.log("QUOTE TESTS PASSED");

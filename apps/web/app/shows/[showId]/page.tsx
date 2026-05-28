@@ -370,6 +370,7 @@ export default async function ShowDetailPage({
                   travelCostAlreadyPlanned={Boolean(
                     weekendPlanStatus?.isPrimaryShow
                   )}
+                  existingDogIdsForBreed={planner.existingDogIdsForBreed}
                   initiallySelectedDogIds={[...selectedDogIds]}
                 />
               </>

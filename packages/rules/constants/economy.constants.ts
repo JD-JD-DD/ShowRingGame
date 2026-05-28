@@ -39,18 +39,17 @@ export const ENTRY_FEE_PER_SHOW = 25;
 export const BREEDING_FEE = 500;
 
 /**
- * Flat handler fee applied when 4 or more dogs are entered in the cluster.
- *
- * V1 rule:
- * - 1 to 3 dogs = no handler fee
- * - 4+ dogs = handler fee applies
+ * Ringside handler fee charged per dog over the owner-handled limit for a
+ * breed at the primary show.
  */
 export const CLUSTER_HANDLER_FEE = 10;
+export const RINGSIDE_HANDLER_FEE = CLUSTER_HANDLER_FEE;
 
 /**
- * Number of dogs at which handler fee begins.
+ * Owner-handled breed limit. Dogs 1-3 of a breed do not require handlers.
  */
 export const HANDLER_THRESHOLD_DOGS = 4;
+export const OWNER_HANDLED_DOG_LIMIT_PER_BREED = HANDLER_THRESHOLD_DOGS - 1;
 
 // TBD
 // handler cost from 4 - 7, 8 - 11, 12 - 15, 16 - 19. Is it locked at 20?

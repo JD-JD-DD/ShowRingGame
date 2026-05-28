@@ -34,6 +34,7 @@ type PlannerProps = {
   homeDistrict: number;
   clusterDistrict: number;
   travelCostAlreadyPlanned: boolean;
+  existingDogIdsForBreed: string[];
   initiallySelectedDogIds: string[];
 };
 
@@ -78,6 +79,7 @@ export function ShowEntryPlanner({
   homeDistrict,
   clusterDistrict,
   travelCostAlreadyPlanned,
+  existingDogIdsForBreed,
   initiallySelectedDogIds,
 }: PlannerProps) {
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
@@ -117,6 +119,9 @@ export function ShowEntryPlanner({
       homeDistrict,
       clusterDistrict,
       ledgerBalance: kennelBalance,
+      existingDogIdsByBreed: {
+        [breedCode2]: existingDogIdsForBreed,
+      },
       dogs: dogs.map((dog) => ({
         dogId: dog.dogId,
         dogName: dog.displayName,
@@ -142,7 +147,17 @@ export function ShowEntryPlanner({
       shortfall,
       canAfford: ledgerBalanceAfterEntry >= 0,
     };
-  }, [breedCode2, clusterDistrict, days, dogs, homeDistrict, kennelBalance, selectedPairs, travelCostAlreadyPlanned]);
+  }, [
+    breedCode2,
+    clusterDistrict,
+    days,
+    dogs,
+    existingDogIdsForBreed,
+    homeDistrict,
+    kennelBalance,
+    selectedPairs,
+    travelCostAlreadyPlanned,
+  ]);
 
   function setDogSelection(dog: PlannerDog, isSelected: boolean) {
     setSelected((current) => {
@@ -296,7 +311,11 @@ export function ShowEntryPlanner({
               Handler
             </div>
             <div className="mt-1 font-semibold text-white">
-              {formatMoney(quote.handlerFee)}
+              {quote.handlerDogs > 0
+                ? `${quote.handlerDogs} x ${formatMoney(
+                    quote.handlerFee / quote.handlerDogs
+                  )}`
+                : formatMoney(quote.handlerFee)}
             </div>
           </div>
           <div>
