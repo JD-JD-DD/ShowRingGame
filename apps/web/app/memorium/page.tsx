@@ -16,18 +16,6 @@ function formatDate(epoch: number): string {
   });
 }
 
-function formatAge(ageHours: number): string {
-  const weeks = Math.floor(ageHours / 7);
-  const years = Math.floor(weeks / 52);
-
-  if (years >= 1) {
-    const remainingWeeks = weeks % 52;
-    return remainingWeeks > 0 ? `${years}y ${remainingWeeks}w` : `${years}y`;
-  }
-
-  return `${weeks}w`;
-}
-
 export default async function MemoriumPage() {
   const userId = await getSessionUserId();
 
@@ -64,18 +52,11 @@ export default async function MemoriumPage() {
       regNumber: true,
       breedCode2: true,
       sex: true,
-      birthEpoch: true,
       deathEpoch: true,
       visibleTitlePrefix: true,
       visibleTitleSuffix: true,
-      breed: {
-        select: {
-          name: true,
-        },
-      },
       _count: {
         select: {
-          showResults: true,
           sireOf: true,
           damOf: true,
         },
@@ -111,66 +92,44 @@ export default async function MemoriumPage() {
             No dogs are in the memorium.
           </section>
         ) : (
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {dogs.map((dog) => {
-              const name = formatDogDisplayName(dog);
-              const deathEpoch = dog.deathEpoch ?? currentEpoch;
-              const ageAtDeath = Math.max(0, deathEpoch - dog.birthEpoch);
-              const progenyCount =
-                dog.sex === "M" ? dog._count.sireOf : dog._count.damOf;
+          <section className="overflow-hidden rounded-[28px] border border-rose-200/15 bg-[linear-gradient(180deg,rgba(45,25,48,0.96),rgba(18,10,24,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.3)]">
+            <div className="grid grid-cols-[minmax(0,1fr)_8rem_6rem] gap-4 border-b border-white/10 px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-rose-100/80">
+              <div>Name</div>
+              <div className="text-right">Died</div>
+              <div className="text-right">Progeny</div>
+            </div>
 
-              return (
-                <Link
-                  key={dog.id}
-                  href={`/dogs/${dog.id}`}
-                  className="rounded-[28px] border border-rose-200/15 bg-[linear-gradient(180deg,rgba(45,25,48,0.96),rgba(18,10,24,0.98))] p-5 shadow-[0_18px_44px_rgba(0,0,0,0.3)] transition hover:border-rose-200/35 hover:bg-white/10"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-rose-100">
-                        {dog.breed.name} ({dog.breedCode2})
-                      </div>
-                      <h2 className="mt-2 text-xl font-semibold text-white">
+            <div className="divide-y divide-white/10">
+              {dogs.map((dog) => {
+                const name = formatDogDisplayName(dog);
+                const deathEpoch = dog.deathEpoch ?? currentEpoch;
+                const progenyCount =
+                  dog.sex === "M" ? dog._count.sireOf : dog._count.damOf;
+
+                return (
+                  <Link
+                    key={dog.id}
+                    href={`/dogs/${dog.id}`}
+                    className="grid grid-cols-[minmax(0,1fr)_8rem_6rem] gap-4 px-5 py-4 text-sm transition hover:bg-white/5"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold text-white">
                         {name}
-                      </h2>
-                      <div className="mt-1 text-sm text-purple-100/60">
+                      </div>
+                      <div className="mt-1 truncate text-xs text-purple-100/55">
                         {dog.regNumber}
                       </div>
                     </div>
-                    <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-semibold text-purple-100">
-                      {dog.sex}
+                    <div className="self-center text-right font-semibold text-purple-100">
+                      {formatDate(deathEpoch)}
                     </div>
-                  </div>
-
-                  <div className="mt-5 grid gap-3 text-sm text-purple-100/75">
-                    <div className="flex items-center justify-between gap-3">
-                      <span>Died</span>
-                      <span className="font-semibold text-white">
-                        {formatDate(deathEpoch)}
-                      </span>
+                    <div className="self-center text-right font-semibold text-white">
+                      {progenyCount}
                     </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span>Age</span>
-                      <span className="font-semibold text-white">
-                        {formatAge(ageAtDeath)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span>Show Results</span>
-                      <span className="font-semibold text-white">
-                        {dog._count.showResults}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span>Progeny</span>
-                      <span className="font-semibold text-white">
-                        {progenyCount}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              })}
+            </div>
           </section>
         )}
       </div>
