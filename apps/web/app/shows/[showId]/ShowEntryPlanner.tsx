@@ -33,6 +33,7 @@ type PlannerProps = {
   kennelBalance: number;
   homeDistrict: number;
   clusterDistrict: number;
+  showRole: "PRIMARY" | "SECONDARY";
   travelCostAlreadyPlanned: boolean;
   existingDogIdsForBreed: string[];
   initiallySelectedDogIds: string[];
@@ -78,6 +79,7 @@ export function ShowEntryPlanner({
   kennelBalance,
   homeDistrict,
   clusterDistrict,
+  showRole,
   travelCostAlreadyPlanned,
   existingDogIdsForBreed,
   initiallySelectedDogIds,
@@ -119,6 +121,7 @@ export function ShowEntryPlanner({
       homeDistrict,
       clusterDistrict,
       ledgerBalance: kennelBalance,
+      showRole,
       existingDogIdsByBreed: {
         [breedCode2]: existingDogIdsForBreed,
       },
@@ -156,6 +159,7 @@ export function ShowEntryPlanner({
     homeDistrict,
     kennelBalance,
     selectedPairs,
+    showRole,
     travelCostAlreadyPlanned,
   ]);
 
@@ -308,7 +312,7 @@ export function ShowEntryPlanner({
           </div>
           <div>
             <div className="text-xs uppercase tracking-[0.14em] text-purple-200/60">
-              Handler
+              {quote.handlerFeeType === "TRAVELING" ? "Travel Handler" : "Handler"}
             </div>
             <div className="mt-1 font-semibold text-white">
               {quote.handlerDogs > 0

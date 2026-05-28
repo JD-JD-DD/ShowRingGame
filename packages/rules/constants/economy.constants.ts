@@ -44,6 +44,7 @@ export const BREEDING_FEE = 500;
  */
 export const CLUSTER_HANDLER_FEE = 10;
 export const RINGSIDE_HANDLER_FEE = CLUSTER_HANDLER_FEE;
+export const TRAVELING_HANDLER_FEE = RINGSIDE_HANDLER_FEE * 5;
 
 /**
  * Owner-handled breed limit. Dogs 1-3 of a breed do not require handlers.

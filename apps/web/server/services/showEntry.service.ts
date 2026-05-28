@@ -155,6 +155,7 @@ export type BulkShowEntrySelection = {
 export type BulkShowEntryQuoteDto = {
   entryFees: number;
   travelCost: number;
+  handlerFeeType: "RINGSIDE" | "TRAVELING";
   handlerDogs: number;
   handlerFee: number;
   totalCost: number;
@@ -1151,11 +1152,10 @@ export async function createShowEntriesForCluster(args: {
       },
     });
 
-    if (weekendPlan && weekendPlan.primaryClusterId !== cluster.id) {
-      throw new Error(
-        `Your primary show for this weekend is ${weekendPlan.primaryCluster.name} (District ${weekendPlan.primaryCluster.district}). Secondary show entries are not enabled yet.`
-      );
-    }
+    const showRole =
+      weekendPlan && weekendPlan.primaryClusterId !== cluster.id
+        ? "SECONDARY"
+        : "PRIMARY";
 
     const dayById = new Map(cluster.showDays.map((day) => [day.id, day]));
     const dogIds = [...new Set(selections.map((selection) => selection.dogId))];
@@ -1253,6 +1253,7 @@ export async function createShowEntriesForCluster(args: {
       homeDistrict: kennel.homeDistrict ?? cluster.district,
       clusterDistrict: cluster.district,
       ledgerBalance: kennel.balance,
+      showRole,
       existingDogIdsByBreed: {
         [breedCode2]: existingBreedDogEntries.map((entry) => entry.dogId),
       },
@@ -1385,7 +1386,10 @@ export async function createShowEntriesForCluster(args: {
         balanceAfter: runningBalance,
         occurredAtEpoch: currentEpoch,
         showClusterId: cluster.id,
-        memo: `Ringside handler fee for ${quote.handlerDogs} dog(s) at ${cluster.name}.`,
+        memo:
+          quote.handlerFeeType === "TRAVELING"
+            ? `Traveling handler fee for ${quote.handlerDogs} dog(s) at ${cluster.name}.`
+            : `Ringside handler fee for ${quote.handlerDogs} dog(s) at ${cluster.name}.`,
       });
     }
 
@@ -1401,6 +1405,7 @@ export async function createShowEntriesForCluster(args: {
       quote: {
         entryFees: quote.entryFees,
         travelCost,
+        handlerFeeType: quote.handlerFeeType,
         handlerDogs: quote.handlerDogs,
         handlerFee: quote.handlerFee,
         totalCost,

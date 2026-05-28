@@ -127,8 +127,9 @@ export default async function ShowDetailPage({
     weekendPlanStatus?.primaryClusterId &&
       weekendPlanStatus.primaryClusterId !== cluster.id
   );
+  const showRole = hasDifferentPrimaryShow ? "SECONDARY" : "PRIMARY";
   const breedOptions =
-    kennel && !hasDifferentPrimaryShow
+    kennel
       ? await listShowEntryBreedOptions({
           showId: cluster.id,
           kennelId: kennel.id,
@@ -248,7 +249,8 @@ export default async function ShowDetailPage({
           <div className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
             Your primary show for this weekend is{" "}
             {weekendPlanStatus?.primaryClusterName ?? "another show"}.
-            Secondary show entries are not enabled yet.
+            Entries here use traveling handlers, and dogs already entered in
+            another show this weekend are not available.
           </div>
         ) : null}
       </section>
@@ -292,10 +294,6 @@ export default async function ShowDetailPage({
         {!kennel ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
             Log in to enter dogs from your kennel.
-          </div>
-        ) : hasDifferentPrimaryShow ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
-            Use your primary show page to add more entries for this weekend.
           </div>
         ) : breedOptions.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
@@ -367,8 +365,9 @@ export default async function ShowDetailPage({
                   kennelBalance={kennel.balance}
                   homeDistrict={kennel.homeDistrict ?? cluster.district}
                   clusterDistrict={cluster.district}
+                  showRole={showRole}
                   travelCostAlreadyPlanned={Boolean(
-                    weekendPlanStatus?.isPrimaryShow
+                    weekendPlanStatus?.primaryClusterId
                   )}
                   existingDogIdsForBreed={planner.existingDogIdsForBreed}
                   initiallySelectedDogIds={[...selectedDogIds]}

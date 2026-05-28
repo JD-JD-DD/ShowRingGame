@@ -24,7 +24,8 @@ import {
   TRAVEL_COST_PER_DOG,
   ENTRY_FEE_PER_SHOW,
   OWNER_HANDLED_DOG_LIMIT_PER_BREED,
-  RINGSIDE_HANDLER_FEE
+  RINGSIDE_HANDLER_FEE,
+  TRAVELING_HANDLER_FEE
 } from "../constants/economy.constants";
 import { getDistrictDistanceTier } from "../src/geography";
 import { DistanceTier } from "../constants/geography.constants";
@@ -209,6 +210,7 @@ export type ClusterEntryQuoteInput = {
   ledgerBalance: number;
   dogs: ClusterEntryDogSelection[];
   existingDogIdsByBreed?: Record<string, string[]>;
+  showRole?: "PRIMARY" | "SECONDARY";
 };
 
 /**
@@ -220,6 +222,7 @@ export type ClusterEntryQuote = {
 
   travel: TravelCostBreakdown;
   entryFees: number;
+  handlerFeeType: "RINGSIDE" | "TRAVELING";
   handlerDogs: number;
   handlerFee: number;
 
@@ -255,6 +258,21 @@ function getExistingDogIdsForBreed(
   return new Set(existingDogIdsByBreed?.[breed] ?? []);
 }
 
+function getNewSelectedDogCount(args: {
+  selectedDogIds: Set<string>;
+  existingDogIds: Set<string>;
+}): number {
+  let newDogCount = 0;
+
+  for (const dogId of args.selectedDogIds) {
+    if (!args.existingDogIds.has(dogId)) {
+      newDogCount += 1;
+    }
+  }
+
+  return newDogCount;
+}
+
 function getRingsideHandlerDogs(input: ClusterEntryQuoteInput): number {
   const selectedDogIdsByBreed = getUniqueEnteredDogIdsByBreed(input.dogs);
   let handlerDogs = 0;
@@ -264,13 +282,7 @@ function getRingsideHandlerDogs(input: ClusterEntryQuoteInput): number {
       input.existingDogIdsByBreed,
       breed
     );
-    let newDogCount = 0;
-
-    for (const dogId of selectedDogIds) {
-      if (!existingDogIds.has(dogId)) {
-        newDogCount += 1;
-      }
-    }
+    const newDogCount = getNewSelectedDogCount({ selectedDogIds, existingDogIds });
 
     const existingHandlerDogs = Math.max(
       0,
@@ -282,6 +294,22 @@ function getRingsideHandlerDogs(input: ClusterEntryQuoteInput): number {
     );
 
     handlerDogs += totalHandlerDogs - existingHandlerDogs;
+  }
+
+  return handlerDogs;
+}
+
+function getTravelingHandlerDogs(input: ClusterEntryQuoteInput): number {
+  const selectedDogIdsByBreed = getUniqueEnteredDogIdsByBreed(input.dogs);
+  let handlerDogs = 0;
+
+  for (const [breed, selectedDogIds] of selectedDogIdsByBreed.entries()) {
+    const existingDogIds = getExistingDogIdsForBreed(
+      input.existingDogIdsByBreed,
+      breed
+    );
+
+    handlerDogs += getNewSelectedDogCount({ selectedDogIds, existingDogIds });
   }
 
   return handlerDogs;
@@ -341,13 +369,20 @@ export function getClusterEntryQuote(
    */
   const entryFees = totalEntries * ENTRY_FEE_PER_SHOW;
 
+  const showRole = input.showRole ?? "PRIMARY";
+  const handlerFeeType = showRole === "SECONDARY" ? "TRAVELING" : "RINGSIDE";
+
   /**
-   * Ringside handler fees are calculated per breed at the primary show.
-   * The kennel may owner-handle the first 3 dogs in each breed; each new dog
-   * beyond that limit requires a ringside handler.
+   * Primary shows use per-breed ringside handlers after the owner-handled
+   * limit. Secondary shows use traveling handlers for every newly assigned dog.
    */
-  const handlerDogs = getRingsideHandlerDogs(input);
-  const handlerFee = handlerDogs * RINGSIDE_HANDLER_FEE;
+  const handlerDogs =
+    showRole === "SECONDARY"
+      ? getTravelingHandlerDogs(input)
+      : getRingsideHandlerDogs(input);
+  const handlerFee =
+    handlerDogs *
+    (showRole === "SECONDARY" ? TRAVELING_HANDLER_FEE : RINGSIDE_HANDLER_FEE);
 
   /**
    * Final cost of this proposed cluster entry.
@@ -376,6 +411,7 @@ export function getClusterEntryQuote(
     totalEntries,
     travel,
     entryFees,
+    handlerFeeType,
     handlerDogs,
     handlerFee,
     totalCost,

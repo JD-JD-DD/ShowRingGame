@@ -1,4 +1,5 @@
 import { getClusterEntryQuote } from "../engines/economy.engine";
+import { TRAVELING_HANDLER_FEE } from "../constants/economy.constants";
 
 function assertEqual(actual: number, expected: number, label: string) {
   if (actual !== expected) {
@@ -108,6 +109,37 @@ const addDayForExistingDogs = getClusterEntryQuote({
   })),
 });
 
+const secondaryShow = getClusterEntryQuote({
+  homeDistrict: 3,
+  clusterDistrict: 7,
+  ledgerBalance: 1000,
+  showRole: "SECONDARY",
+  dogs: ["dog-1", "dog-2"].map((dogId) => ({
+    dogId,
+    dogName: dogId,
+    breed: "Weimaraner",
+    sex: "Dog" as const,
+    selectedShowDays: [1, 2],
+  })),
+});
+
+const secondaryAdditionalDay = getClusterEntryQuote({
+  homeDistrict: 3,
+  clusterDistrict: 7,
+  ledgerBalance: 1000,
+  showRole: "SECONDARY",
+  existingDogIdsByBreed: {
+    Weimaraner: ["dog-1", "dog-2"],
+  },
+  dogs: ["dog-1", "dog-2"].map((dogId) => ({
+    dogId,
+    dogName: dogId,
+    breed: "Weimaraner",
+    sex: "Dog" as const,
+    selectedShowDays: [3],
+  })),
+});
+
 assertEqual(threeDogsOneBreed.handlerDogs, 0, "3 dogs in one breed");
 assertEqual(fourDogsOneBreed.handlerDogs, 1, "4 dogs in one breed");
 assertEqual(threeDogsTwoBreeds.handlerDogs, 0, "3 dogs in each of two breeds");
@@ -120,6 +152,17 @@ assertEqual(
   addDayForExistingDogs.handlerDogs,
   0,
   "additional days for existing dogs"
+);
+assertEqual(secondaryShow.handlerDogs, 2, "secondary handler dogs");
+assertEqual(
+  secondaryShow.handlerFee,
+  2 * TRAVELING_HANDLER_FEE,
+  "secondary handler fee"
+);
+assertEqual(
+  secondaryAdditionalDay.handlerDogs,
+  0,
+  "secondary existing dog additional days"
 );
 
 console.log("CLUSTER ENTRY QUOTE");
