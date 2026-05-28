@@ -15,6 +15,7 @@ export type DogDeathCause =
   | "ACCIDENT_ILLNESS"
   | "NEONATAL_PUPPY"
   | "WHELPING_DAM";
+const MAX_DEATHS_PER_RESOLUTION = 3;
 
 type DeathCandidate = {
   id: string;
@@ -311,13 +312,21 @@ async function resolveDogDeathsWithClient(args: {
 
   const deceasedDogIds: string[] = [];
   const deceasedDogs: ResolvedDogDeath[] = [];
+  const dueDeaths = candidates
+    .map((dog) => ({
+      dog,
+      projected: getProjectedDogDeath(dog),
+    }))
+    .filter(({ projected }) => projected.deathEpoch <= args.currentEpoch)
+    .sort(
+      (left, right) =>
+        left.projected.deathEpoch - right.projected.deathEpoch ||
+        left.dog.regNumber.localeCompare(right.dog.regNumber)
+    )
+    .slice(0, MAX_DEATHS_PER_RESOLUTION);
 
-  for (const dog of candidates) {
-    const { deathEpoch, cause } = getProjectedDogDeath(dog);
-
-    if (deathEpoch > args.currentEpoch) {
-      continue;
-    }
+  for (const { dog, projected } of dueDeaths) {
+    const { deathEpoch, cause } = projected;
 
     const changed = await markDogDeceased({
       client,
@@ -358,12 +367,10 @@ export async function resolveDogDeaths(args: {
     });
   }
 
-  return db.$transaction((tx) =>
-    resolveDogDeathsWithClient({
-      client: tx,
-      currentEpoch: args.currentEpoch,
-      kennelId: args.kennelId,
-      dogIds: args.dogIds,
-    })
-  );
+  return resolveDogDeathsWithClient({
+    client: db,
+    currentEpoch: args.currentEpoch,
+    kennelId: args.kennelId,
+    dogIds: args.dogIds,
+  });
 }
