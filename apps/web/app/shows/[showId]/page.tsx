@@ -7,6 +7,7 @@ import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import {
   getShowEntryPlanner,
+  getShowWeekendEntryPlanStatus,
   listShowEntryBreedOptions,
 } from "@/server/services/showEntry.service";
 
@@ -116,13 +117,24 @@ export default async function ShowDetailPage({
     (total, day) => total + day._count.showResults,
     0
   );
-  const breedOptions = kennel
-    ? await listShowEntryBreedOptions({
+  const weekendPlanStatus = kennel
+    ? await getShowWeekendEntryPlanStatus({
         showId: cluster.id,
         kennelId: kennel.id,
-        currentEpoch,
       })
-    : [];
+    : null;
+  const hasDifferentPrimaryShow = Boolean(
+    weekendPlanStatus?.primaryClusterId &&
+      weekendPlanStatus.primaryClusterId !== cluster.id
+  );
+  const breedOptions =
+    kennel && !hasDifferentPrimaryShow
+      ? await listShowEntryBreedOptions({
+          showId: cluster.id,
+          kennelId: kennel.id,
+          currentEpoch,
+        })
+      : [];
   const selectedBreed = selectedBreedCode
     ? breedOptions.find((breed) => breed.code2 === selectedBreedCode) ?? null
     : null;
@@ -217,6 +229,28 @@ export default async function ShowDetailPage({
             {judgeError}
           </div>
         ) : null}
+
+        {kennel && weekendPlanStatus && !weekendPlanStatus.primaryClusterId ? (
+          <div className="mt-5 rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-100">
+            Submitting entries here will make this your primary show for the
+            weekend.
+          </div>
+        ) : null}
+
+        {kennel && weekendPlanStatus?.isPrimaryShow ? (
+          <div className="mt-5 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            This is your primary show for the weekend. Travel is already planned
+            for this show.
+          </div>
+        ) : null}
+
+        {kennel && hasDifferentPrimaryShow ? (
+          <div className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            Your primary show for this weekend is{" "}
+            {weekendPlanStatus?.primaryClusterName ?? "another show"}.
+            Secondary show entries are not enabled yet.
+          </div>
+        ) : null}
       </section>
 
       <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
@@ -258,6 +292,10 @@ export default async function ShowDetailPage({
         {!kennel ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
             Log in to enter dogs from your kennel.
+          </div>
+        ) : hasDifferentPrimaryShow ? (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+            Use your primary show page to add more entries for this weekend.
           </div>
         ) : breedOptions.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
@@ -329,6 +367,9 @@ export default async function ShowDetailPage({
                   kennelBalance={kennel.balance}
                   homeDistrict={kennel.homeDistrict ?? cluster.district}
                   clusterDistrict={cluster.district}
+                  travelCostAlreadyPlanned={Boolean(
+                    weekendPlanStatus?.isPrimaryShow
+                  )}
                   initiallySelectedDogIds={[...selectedDogIds]}
                 />
               </>

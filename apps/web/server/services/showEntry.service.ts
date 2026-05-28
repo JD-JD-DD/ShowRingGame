@@ -7,6 +7,7 @@ import {
   canEnterShows,
   getClusterEntryQuote,
   getGeneratedShowWeekendPrefix,
+  getShowWeekendKey,
   getShowWeekendStartEpoch,
 } from "@showring/rules";
 import { Prisma } from "@prisma/client";
@@ -138,6 +139,13 @@ export type ShowEntryPlannerDto = {
   dogs: ShowEntryPlannerDogDto[];
 };
 
+export type ShowWeekendEntryPlanStatusDto = {
+  weekendKey: string;
+  primaryClusterId: string | null;
+  primaryClusterName: string | null;
+  isPrimaryShow: boolean;
+};
+
 export type BulkShowEntrySelection = {
   dogId: string;
   showDayId: string;
@@ -187,6 +195,56 @@ function getSameWeekendClusterWhere(
       gte: weekStartEpoch,
       lt: weekStartEpoch + SHOW_WEEK_HOURS,
     },
+  };
+}
+
+function getWeekendKeyForCluster(cluster: WeekendCluster): string {
+  return getShowWeekendKey({
+    clusterId: cluster.id,
+    startEpoch: cluster.startEpoch,
+  });
+}
+
+async function getShowWeekendPlanStatusWithClient(args: {
+  client: typeof db | Prisma.TransactionClient;
+  showId: string;
+  kennelId: string;
+}): Promise<ShowWeekendEntryPlanStatusDto | null> {
+  const cluster = await args.client.showCluster.findUnique({
+    where: { id: args.showId },
+    select: {
+      id: true,
+      startEpoch: true,
+    },
+  });
+
+  if (!cluster) {
+    return null;
+  }
+
+  const weekendKey = getWeekendKeyForCluster(cluster);
+  const plan = await args.client.kennelShowWeekendPlan.findUnique({
+    where: {
+      kennelId_weekendKey: {
+        kennelId: args.kennelId,
+        weekendKey,
+      },
+    },
+    select: {
+      primaryClusterId: true,
+      primaryCluster: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  return {
+    weekendKey,
+    primaryClusterId: plan?.primaryClusterId ?? null,
+    primaryClusterName: plan?.primaryCluster.name ?? null,
+    isPrimaryShow: plan?.primaryClusterId === args.showId,
   };
 }
 
@@ -267,6 +325,17 @@ async function getSameWeekendEntryConflict(args: {
         },
       },
     },
+  });
+}
+
+export async function getShowWeekendEntryPlanStatus(args: {
+  showId: string;
+  kennelId: string;
+}): Promise<ShowWeekendEntryPlanStatusDto | null> {
+  return getShowWeekendPlanStatusWithClient({
+    client: db,
+    showId: args.showId,
+    kennelId: args.kennelId,
   });
 }
 
@@ -1049,6 +1118,31 @@ export async function createShowEntriesForCluster(args: {
       throw new Error("Kennel not found.");
     }
 
+    const weekendKey = getWeekendKeyForCluster(cluster);
+    const weekendPlan = await tx.kennelShowWeekendPlan.findUnique({
+      where: {
+        kennelId_weekendKey: {
+          kennelId: kennel.id,
+          weekendKey,
+        },
+      },
+      select: {
+        primaryClusterId: true,
+        primaryCluster: {
+          select: {
+            name: true,
+            district: true,
+          },
+        },
+      },
+    });
+
+    if (weekendPlan && weekendPlan.primaryClusterId !== cluster.id) {
+      throw new Error(
+        `Your primary show for this weekend is ${weekendPlan.primaryCluster.name} (District ${weekendPlan.primaryCluster.district}). Secondary show entries are not enabled yet.`
+      );
+    }
+
     const dayById = new Map(cluster.showDays.map((day) => [day.id, day]));
     const dogIds = [...new Set(selections.map((selection) => selection.dogId))];
     const dogs = await tx.dog.findMany({
@@ -1142,9 +1236,14 @@ export async function createShowEntriesForCluster(args: {
         selectedShowDays: selectedDaysByDogId.get(dog.id) ?? [],
       })),
     });
+    const shouldChargeTravel = weekendPlan == null;
+    const travelCost = shouldChargeTravel ? quote.travel.totalCost : 0;
+    const totalCost = quote.entryFees + travelCost + quote.handlerFee;
+    const balanceAfter = kennel.balance - totalCost;
+    const shortfall = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
 
-    if (!quote.canAfford) {
-      throw new Error(`Insufficient funds for show entry. Shortfall: $${quote.shortfall}.`);
+    if (shortfall > 0) {
+      throw new Error(`Insufficient funds for show entry. Shortfall: $${shortfall}.`);
     }
 
     const blockIdByDayId = new Map<string, string>();
@@ -1166,12 +1265,22 @@ export async function createShowEntriesForCluster(args: {
       );
     }
 
-    const balanceAfter = kennel.balance - quote.totalCost;
-
     await tx.kennel.update({
       where: { id: kennel.id },
       data: { balance: balanceAfter },
     });
+
+    if (!weekendPlan) {
+      await tx.kennelShowWeekendPlan.create({
+        data: {
+          kennelId: kennel.id,
+          weekendKey,
+          primaryClusterId: cluster.id,
+          travelFeeCharged: travelCost,
+          createdAtEpoch: currentEpoch,
+        },
+      });
+    }
 
     await tx.showEntry
       .createMany({
@@ -1224,12 +1333,12 @@ export async function createShowEntriesForCluster(args: {
       });
     }
 
-    if (quote.travel.totalCost > 0) {
-      runningBalance -= quote.travel.totalCost;
+    if (travelCost > 0) {
+      runningBalance -= travelCost;
       ledgerRows.push({
         kennelId: kennel.id,
         transactionType: "TRAVEL_COST",
-        amount: -quote.travel.totalCost,
+        amount: -travelCost,
         balanceAfter: runningBalance,
         occurredAtEpoch: currentEpoch,
         showClusterId: cluster.id,
@@ -1261,9 +1370,9 @@ export async function createShowEntriesForCluster(args: {
       dogsEntered: quote.dogsEntered,
       quote: {
         entryFees: quote.entryFees,
-        travelCost: quote.travel.totalCost,
+        travelCost,
         handlerFee: quote.handlerFee,
-        totalCost: quote.totalCost,
+        totalCost,
         balanceAfter,
       },
     };

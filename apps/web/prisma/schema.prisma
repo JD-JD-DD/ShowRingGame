@@ -161,6 +161,7 @@ model Kennel {
   counterpartyLedger      LedgerTransaction[] @relation("CounterpartyKennelLedger")
   dogListings             DogListing[]        @relation("SellerKennelListings")
   purchasedListings       DogListing[]        @relation("BuyerKennelListings")
+  showWeekendPlans        KennelShowWeekendPlan[]
   bulletinThreads         BulletinThread[]
   bulletinPosts           BulletinPost[]
   notices                 KennelNotice[]
@@ -368,10 +369,29 @@ model ShowCluster {
 
   showDays           ShowDay[]
   ledgerTransactions LedgerTransaction[]
+  primaryWeekendPlans KennelShowWeekendPlan[] @relation("PrimaryShowWeekendCluster")
 
   @@index([district])
   @@index([year])
   @@index([status])
+}
+
+model KennelShowWeekendPlan {
+  id               String   @id @default(cuid())
+  kennelId         String
+  weekendKey       String
+  primaryClusterId String
+  travelFeeCharged Int      @default(0)
+  createdAtEpoch   Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  kennel         Kennel      @relation(fields: [kennelId], references: [id])
+  primaryCluster ShowCluster @relation("PrimaryShowWeekendCluster", fields: [primaryClusterId], references: [id])
+
+  @@unique([kennelId, weekendKey])
+  @@index([primaryClusterId])
+  @@index([weekendKey])
 }
 
 model ShowDay {

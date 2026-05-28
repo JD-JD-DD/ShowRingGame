@@ -33,6 +33,7 @@ type PlannerProps = {
   kennelBalance: number;
   homeDistrict: number;
   clusterDistrict: number;
+  travelCostAlreadyPlanned: boolean;
   initiallySelectedDogIds: string[];
 };
 
@@ -76,6 +77,7 @@ export function ShowEntryPlanner({
   kennelBalance,
   homeDistrict,
   clusterDistrict,
+  travelCostAlreadyPlanned,
   initiallySelectedDogIds,
 }: PlannerProps) {
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
@@ -111,7 +113,7 @@ export function ShowEntryPlanner({
       selectedDaysByDogId.set(pair.dogId, selectedDays);
     }
 
-    return getClusterEntryQuote({
+    const baseQuote = getClusterEntryQuote({
       homeDistrict,
       clusterDistrict,
       ledgerBalance: kennelBalance,
@@ -123,7 +125,24 @@ export function ShowEntryPlanner({
         selectedShowDays: selectedDaysByDogId.get(dog.dogId) ?? [],
       })),
     });
-  }, [breedCode2, clusterDistrict, days, dogs, homeDistrict, kennelBalance, selectedPairs]);
+    const travelCost = travelCostAlreadyPlanned ? 0 : baseQuote.travel.totalCost;
+    const totalCost = baseQuote.entryFees + travelCost + baseQuote.handlerFee;
+    const ledgerBalanceAfterEntry = kennelBalance - totalCost;
+    const shortfall =
+      ledgerBalanceAfterEntry < 0 ? Math.abs(ledgerBalanceAfterEntry) : 0;
+
+    return {
+      ...baseQuote,
+      travel: {
+        ...baseQuote.travel,
+        totalCost: travelCost,
+      },
+      totalCost,
+      ledgerBalanceAfterEntry,
+      shortfall,
+      canAfford: ledgerBalanceAfterEntry >= 0,
+    };
+  }, [breedCode2, clusterDistrict, days, dogs, homeDistrict, kennelBalance, selectedPairs, travelCostAlreadyPlanned]);
 
   function setDogSelection(dog: PlannerDog, isSelected: boolean) {
     setSelected((current) => {
