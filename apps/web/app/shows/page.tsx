@@ -294,6 +294,10 @@ export default async function ShowsPage({
                             : null;
                         const canOpenShow =
                           cluster.status === "OPEN" || cluster.status === "CLOSED";
+                        const clusterHref =
+                          cluster.status === "OPEN"
+                            ? `/shows/${cluster.id}${showDetailQuery}`
+                            : `/shows/${cluster.id}/results`;
 
                         return (
                           <div
@@ -301,7 +305,7 @@ export default async function ShowsPage({
                             className="flex flex-wrap items-center justify-end gap-2 rounded-xl border border-purple-300/25 bg-black/20 px-3 py-2 text-sm text-purple-100"
                           >
                             <Link
-                              href={`/shows/${cluster.id}/results`}
+                              href={clusterHref}
                               className="transition hover:text-sky-100"
                             >
                               <span className="font-semibold text-white">
@@ -361,7 +365,7 @@ export default async function ShowsPage({
                                 href={`/shows/${cluster.id}${showDetailQuery}`}
                                 className="rounded-lg border border-purple-300/25 bg-white/5 px-2.5 py-1 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
                               >
-                                Open
+                                {cluster.status === "OPEN" ? "Enter" : "Open"}
                               </Link>
                             ) : null}
                           </div>

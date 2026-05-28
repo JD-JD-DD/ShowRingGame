@@ -27,21 +27,26 @@ export async function createKennelNotice(args: {
 
   const client = args.client ?? db;
 
-  return client.kennelNotice.create({
-    data: {
-      kennelId: args.kennelId,
-      type: args.type,
-      title: args.title,
-      body: args.body ?? null,
-      createdAtEpoch: args.currentEpoch,
-      linkedDogId: args.linkedDogId ?? null,
-      linkedLitterId: args.linkedLitterId ?? null,
-      linkedShowId: args.linkedShowId ?? null,
-      linkedThreadId: args.linkedThreadId ?? null,
-      linkedListingId: args.linkedListingId ?? null,
-      metadataJson: args.metadataJson ?? Prisma.JsonNull,
-    },
-  });
+  try {
+    return await client.kennelNotice.create({
+      data: {
+        kennelId: args.kennelId,
+        type: args.type,
+        title: args.title,
+        body: args.body ?? null,
+        createdAtEpoch: args.currentEpoch,
+        linkedDogId: args.linkedDogId ?? null,
+        linkedLitterId: args.linkedLitterId ?? null,
+        linkedShowId: args.linkedShowId ?? null,
+        linkedThreadId: args.linkedThreadId ?? null,
+        linkedListingId: args.linkedListingId ?? null,
+        metadataJson: args.metadataJson ?? Prisma.JsonNull,
+      },
+    });
+  } catch (error) {
+    console.error("Unable to create kennel notice:", error);
+    return null;
+  }
 }
 
 export async function getUnreadKennelNoticeCount(kennelId: string) {

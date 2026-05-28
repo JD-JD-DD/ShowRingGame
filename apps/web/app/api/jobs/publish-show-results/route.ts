@@ -1,5 +1,3 @@
-import { NextResponse } from "next/server";
-
 import { fail, ok } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { db } from "@/lib/db";
@@ -224,14 +222,6 @@ export async function GET(request: Request) {
     finalized,
     errors,
   };
-
-  if (
-    errors.length > 0 &&
-    processedBlocks.length === 0 &&
-    finalized.length === 0
-  ) {
-    return NextResponse.json({ ok: false, ...payload }, { status: 500 });
-  }
 
   return ok(payload);
 }

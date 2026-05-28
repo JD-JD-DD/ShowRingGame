@@ -305,6 +305,14 @@ export default async function BreedResultsPage({
         </p>
 
         <div className="mt-6 flex flex-wrap justify-center gap-3">
+          {cluster.status === "OPEN" ? (
+            <Link
+              href={`/shows/${cluster.id}`}
+              className="rounded-2xl bg-fuchsia-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-600"
+            >
+              Enter Show
+            </Link>
+          ) : null}
           <Link
             href={`/shows/${cluster.id}/results`}
             className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
