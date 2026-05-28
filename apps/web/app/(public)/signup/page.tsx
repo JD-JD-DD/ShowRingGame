@@ -1,8 +1,24 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+const signupHighlights = [
+  {
+    title: "Start With Foundation Dogs",
+    body: "Choose released breeds, compare visible category strengths, and build a kennel with a plan.",
+  },
+  {
+    title: "Breed For The Next Generation",
+    body: "Pair compatible dogs, follow pregnancy timing, and evaluate each litter as it grows.",
+  },
+  {
+    title: "Step Into The Show Ring",
+    body: "Enter eligible dogs, watch results, earn titles, and chase wins against other kennels.",
+  },
+];
 
 export default function SignupPage() {
   const router = useRouter();
@@ -55,83 +71,164 @@ export default function SignupPage() {
   }
 
   return (
-    <main style={{ padding: "40px", maxWidth: "600px", margin: "0 auto" }}>
-      <h1>Create Account</h1>
-      <p>Sign up for ShowRing Game.</p>
-      <p style={{ marginTop: "12px" }}>
-        Already have an account?{" "}
-        <Link href="/login" style={{ fontWeight: 700, textDecoration: "underline" }}>
-          Log in
-        </Link>
-        .
-      </p>
+    <main className="min-h-screen px-6 py-8 text-white">
+      <div className="mx-auto flex max-w-7xl flex-col">
+        <header className="mb-8 flex flex-col gap-6 rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur md:flex-row md:items-center md:justify-between">
+          <Link href="/" className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
+            <Image
+              src="/logo.png"
+              alt="ShowRing Game"
+              fill
+              className="object-contain object-left"
+              priority
+            />
+          </Link>
 
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          display: "grid",
-          gap: "16px",
-          marginTop: "24px",
-        }}
-      >
-        <label style={{ display: "grid", gap: "6px" }}>
-          <span>Email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ padding: "10px" }}
-          />
-        </label>
+          <nav className="flex flex-wrap items-center gap-3 text-sm">
+            <Link
+              href="/login"
+              className="rounded-full border border-purple-300/25 bg-white/5 px-5 py-2.5 font-semibold text-purple-100 transition hover:bg-white/10"
+            >
+              Log In
+            </Link>
+            <Link
+              href="/"
+              className="rounded-full bg-purple-600 px-5 py-2.5 font-semibold text-white transition hover:bg-purple-500"
+            >
+              Home
+            </Link>
+          </nav>
+        </header>
 
-        <label style={{ display: "grid", gap: "6px" }}>
-          <span>Display Name (optional)</span>
-          <input
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            style={{ padding: "10px" }}
-          />
-        </label>
+        <section className="rounded-[32px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(50,26,71,0.94),rgba(24,12,35,0.96))] p-7 shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:p-8">
+          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+            <div>
+              <div className="mb-4 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+                New Kennel
+              </div>
 
-        <label style={{ display: "grid", gap: "6px" }}>
-          <span>Password</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ padding: "10px" }}
-          />
-        </label>
+              <h1 className="max-w-3xl text-4xl font-bold text-white sm:text-5xl lg:text-6xl">
+                Start a kennel with dogs worth studying.
+              </h1>
 
-        <label style={{ display: "grid", gap: "6px" }}>
-          <span>Confirm Password</span>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            style={{ padding: "10px" }}
-          />
-        </label>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-purple-100/78 sm:text-lg sm:leading-8">
+                ShowRing Game is a dog show and breeder simulation built around
+                thoughtful pairings, visible strengths, show strategy, and the
+                slow satisfaction of improving a line.
+              </p>
 
-        {error ? (
-          <div style={{ color: "red", fontWeight: 600 }}>{error}</div>
-        ) : null}
+              <div className="mt-7 grid gap-3">
+                {signupHighlights.map((item) => (
+                  <div
+                    key={item.title}
+                    className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                  >
+                    <h2 className="text-sm font-semibold text-white">
+                      {item.title}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-purple-100/72">
+                      {item.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          style={{
-            padding: "12px",
-            cursor: isSubmitting ? "not-allowed" : "pointer",
-          }}
-        >
-          {isSubmitting ? "Creating Account..." : "Create Account"}
-        </button>
-      </form>
+            <div className="rounded-[24px] border border-white/10 bg-black/20 p-5 sm:p-6">
+              <h2 className="text-2xl font-semibold text-white">
+                Create Account
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-purple-100/72">
+                Already have an account?{" "}
+                <Link
+                  href="/login"
+                  className="font-semibold text-purple-100 underline decoration-purple-300/60 underline-offset-4"
+                >
+                  Log in
+                </Link>
+                .
+              </p>
+
+              <form onSubmit={handleSubmit} className="mt-6 grid gap-4">
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-purple-100">
+                    Email
+                  </span>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="rounded-2xl border border-purple-300/20 bg-[#15091f] px-4 py-3 text-white outline-none transition placeholder:text-purple-100/35 focus:border-purple-300/55 focus:bg-[#1b0d27]"
+                    autoComplete="email"
+                  />
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-purple-100">
+                    Display Name
+                  </span>
+                  <input
+                    type="text"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="rounded-2xl border border-purple-300/20 bg-[#15091f] px-4 py-3 text-white outline-none transition placeholder:text-purple-100/35 focus:border-purple-300/55 focus:bg-[#1b0d27]"
+                    placeholder="Optional"
+                    autoComplete="nickname"
+                  />
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-purple-100">
+                    Password
+                  </span>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="rounded-2xl border border-purple-300/20 bg-[#15091f] px-4 py-3 text-white outline-none transition placeholder:text-purple-100/35 focus:border-purple-300/55 focus:bg-[#1b0d27]"
+                    autoComplete="new-password"
+                  />
+                </label>
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-purple-100">
+                    Confirm Password
+                  </span>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="rounded-2xl border border-purple-300/20 bg-[#15091f] px-4 py-3 text-white outline-none transition placeholder:text-purple-100/35 focus:border-purple-300/55 focus:bg-[#1b0d27]"
+                    autoComplete="new-password"
+                  />
+                </label>
+
+                {error ? (
+                  <div className="rounded-2xl border border-red-300/30 bg-red-950/35 px-4 py-3 text-sm font-semibold text-red-100">
+                    {error}
+                  </div>
+                ) : null}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="mt-2 rounded-2xl bg-purple-600 px-5 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSubmitting ? "Creating Account..." : "Create Account"}
+                </button>
+              </form>
+
+              <div className="mt-5 rounded-2xl border border-purple-300/15 bg-white/5 px-4 py-3 text-sm leading-6 text-purple-100/72">
+                After signup, you will create your kennel and choose where your
+                first breeding program begins.
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
