@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -50,6 +51,13 @@ export default function LoginPage() {
     <main style={{ padding: "40px", maxWidth: "600px", margin: "0 auto" }}>
       <h1>Login</h1>
       <p>Sign in to your ShowRing Game account.</p>
+      <p style={{ marginTop: "12px" }}>
+        Need an account?{" "}
+        <Link href="/signup" style={{ fontWeight: 700, textDecoration: "underline" }}>
+          Create one
+        </Link>
+        .
+      </p>
 
       <form
         onSubmit={handleSubmit}

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function SignupPage() {
@@ -57,6 +58,13 @@ export default function SignupPage() {
     <main style={{ padding: "40px", maxWidth: "600px", margin: "0 auto" }}>
       <h1>Create Account</h1>
       <p>Sign up for ShowRing Game.</p>
+      <p style={{ marginTop: "12px" }}>
+        Already have an account?{" "}
+        <Link href="/login" style={{ fontWeight: 700, textDecoration: "underline" }}>
+          Log in
+        </Link>
+        .
+      </p>
 
       <form
         onSubmit={handleSubmit}
