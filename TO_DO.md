@@ -61,30 +61,25 @@ Original audit checklist:
 
 ### 2. Death Risk and Deceased Stage
 
-Status: audited; implementation pass needed
+Status: first pass implemented; tuning/testing needed
 
-- Define the senior/death-risk age threshold.
-- Decide the mortality curve; MasterFile only says daily death probability increases gradually.
-- Implement death-risk engine or service.
-- Prefer deterministic daily checks keyed by dog/day so the same day is not rerolled repeatedly.
-- Decide how often death risk is processed:
-  - lazy page-load resolution
-  - scheduled game tick
-  - hybrid
-- Ensure death risk is hidden from users.
+- Done: senior/death-risk age begins at `AGE_DEATH_START_HOURS`.
+- Done: death uses a deterministic projected death age per dog, seeded by dog id, so the same dog does not reroll repeatedly.
+- Done: first-pass death risk is resolved lazily from active gameplay routes/services instead of a scheduled tick.
+- Done: death risk remains hidden from users; users only see the dog after it has passed.
 - On death:
-  - set dog as deceased
-  - record death epoch
-  - set market state to not for sale
-  - close/cancel active listings
-  - remove dog from active kennel pages
-  - remove all show/breeding/market functionality
-  - preserve dog page as historical only
-  - show dog in memorium section
-- Add death-during-pregnancy handling before death processing can affect pregnant dams:
-  - if dam dies while pending/pregnant, close attempt and prevent litter creation
-  - decide sire-death behavior during pregnancy
-- Add death-during-show-entry handling when show entries are implemented.
+  - done: set dog as deceased
+  - done: record death epoch
+  - done: set market state to not for sale
+  - done: expire active listings
+  - done: active kennel pages filter out deceased dogs
+  - done: dog pages become historical/no-action when the dog is not alive
+  - done: show dog in memorium section
+- Done: if a dam dies while pending/pregnant, fail the breeding attempt and prevent litter creation.
+- Sire-death policy during an already-started pregnancy: no current interruption after breeding has occurred.
+- Done: future entered show entries become ineligible if the dog dies before the show day.
+- Next: add focused tests/checks for projected death, listing expiry, breeding failure, and future show-entry invalidation.
+- Later: tune the mortality curve; MasterFile only says daily death probability increases gradually.
 - Split lifecycle helpers before or during implementation:
   - dog age stage
   - death risk
@@ -161,6 +156,18 @@ Status: audited; implementation pass needed
   - make kennel/user names on the bulletin board clickable
   - add a public kennel page that shows that kennel's dogs
   - highlight that kennel's dogs currently at stud and dogs currently for sale
+- Kennel notifications:
+  - add a notification bell/inbox with unread count
+  - create a persistent `KennelNotice`-style model with type, title/body, created epoch, read/dismissed state, and optional linked dog/litter/show/thread/listing ids
+  - first notice types:
+    - bulletin board reply
+    - new champion in your kennel
+    - dog death
+    - litter born
+    - female did not take
+    - stud fee received
+    - dog sold
+  - generate notices at the existing event points instead of relying only on page-load banners
 - Actions and placement:
   - rename or replace `Re-Home Dog` with final `Forever Home` behavior
   - done: add a confirmation step to the current `Re-Home Dog` action that clearly says this cannot be undone
@@ -262,7 +269,7 @@ Status: active implementation
   - next: show title progress on dog pages and/or a show record page
   - next: add one central all-show-results page where users can browse recent/past results across shows
   - next: apply visible title prefixes/suffixes consistently anywhere dog names are rendered
-  - next: preserve the entering kennel on show entries/results so a later ownership change does not rewrite historical result kennel names
+  - done: preserve the entering kennel name/slug on show entries/results so later ownership or kennel-name changes do not rewrite historical result kennel names
   - next: remove raw epoch time from the show listing page and use player-facing date/time display
   - refine show detail/entry planner page with quote summaries and stronger entry feedback
   - then make dog page `Enter Show` route to the planner with optional `/shows?dogId=...` preselection

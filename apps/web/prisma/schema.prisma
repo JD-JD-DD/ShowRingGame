@@ -425,6 +425,9 @@ model ShowEntry {
   judgingBlockId       String?
   dogId                String
   kennelId             String
+  enteredKennelId      String?
+  enteredKennelName    String?
+  enteredKennelSlug    String?
   breedCode2           String
   entryStatus          ShowEntryStatus @default(ENTERED)
   enteredAtEpoch       Int
@@ -447,6 +450,7 @@ model ShowEntry {
   @@index([judgingBlockId])
   @@index([dogId])
   @@index([kennelId])
+  @@index([enteredKennelId])
   @@index([breedCode2])
   @@index([entryStatus])
 }
@@ -457,6 +461,9 @@ model ShowResult {
   showDayId                  String
   judgingBlockId             String?
   dogId                      String
+  enteredKennelId            String?
+  enteredKennelName          String?
+  enteredKennelSlug          String?
   breedCode2                 String
   judgeId                    String
   finalRank                  Int?
@@ -482,6 +489,7 @@ model ShowResult {
   @@index([showDayId])
   @@index([judgingBlockId])
   @@index([dogId])
+  @@index([enteredKennelId])
   @@index([breedCode2])
   @@index([judgeId])
   @@index([pointsAwarded])

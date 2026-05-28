@@ -508,7 +508,7 @@ async function createShowEntryWithTx(args: {
 
   const kennel = await tx.kennel.findUnique({
     where: { id: dog.ownerKennelId },
-    select: { id: true, balance: true },
+    select: { id: true, name: true, slug: true, balance: true },
   });
 
   if (!kennel) {
@@ -533,6 +533,9 @@ async function createShowEntryWithTx(args: {
         judgingBlockId: block.id,
         dogId: dog.id,
         kennelId: kennel.id,
+        enteredKennelId: kennel.id,
+        enteredKennelName: kennel.name,
+        enteredKennelSlug: kennel.slug,
         breedCode2: dog.breedCode2,
         entryStatus: "ENTERED",
         enteredAtEpoch: currentEpoch,
@@ -1048,7 +1051,7 @@ export async function createShowEntriesForCluster(args: {
 
     const kennel = await tx.kennel.findUnique({
       where: { id: kennelId },
-      select: { id: true, balance: true, homeDistrict: true },
+      select: { id: true, name: true, slug: true, balance: true, homeDistrict: true },
     });
 
     if (!kennel) {
@@ -1193,6 +1196,9 @@ export async function createShowEntriesForCluster(args: {
             judgingBlockId: blockIdByDayId.get(selection.showDayId),
             dogId: dog.id,
             kennelId: kennel.id,
+            enteredKennelId: kennel.id,
+            enteredKennelName: kennel.name,
+            enteredKennelSlug: kennel.slug,
             breedCode2: dog.breedCode2,
             entryStatus: "ENTERED",
             enteredAtEpoch: currentEpoch,

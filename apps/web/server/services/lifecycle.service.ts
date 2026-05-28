@@ -6,9 +6,16 @@ type DbClient = typeof db | Prisma.TransactionClient;
 
 type DeathCandidate = {
   id: string;
+  regNumber: string;
   birthEpoch: number;
   deathEpoch: number | null;
   lifecycleState: string;
+};
+
+export type ResolvedDogDeath = {
+  dogId: string;
+  regNumber: string;
+  deathEpoch: number;
 };
 
 function seeded01(seed: string): number {
@@ -45,9 +52,10 @@ export function getProjectedDogDeathEpoch(dog: {
 async function markDogDeceased(args: {
   client: DbClient;
   dogId: string;
+  regNumber: string;
   deathEpoch: number;
 }): Promise<boolean> {
-  const { client, dogId, deathEpoch } = args;
+  const { client, dogId, regNumber, deathEpoch } = args;
   const update = await client.dog.updateMany({
     where: {
       id: dogId,
@@ -99,23 +107,26 @@ async function markDogDeceased(args: {
     },
     data: {
       status: "FAILED",
+      isPregnant: false,
+      checkedEpoch: deathEpoch,
+      notes: `Dam ${regNumber} died before the breeding could be completed.`,
     },
   });
 
   return true;
 }
 
-export async function resolveDogDeaths(args: {
+async function resolveDogDeathsWithClient(args: {
+  client: DbClient;
   currentEpoch: number;
   kennelId?: string;
   dogIds?: string[];
-  tx?: Prisma.TransactionClient;
-}): Promise<{ deceasedDogIds: string[] }> {
-  const client = args.tx ?? db;
+}): Promise<{ deceasedDogIds: string[]; deceasedDogs: ResolvedDogDeath[] }> {
+  const { client } = args;
   const dogIds = args.dogIds?.filter(Boolean);
 
   if (args.dogIds && (!dogIds || dogIds.length === 0)) {
-    return { deceasedDogIds: [] };
+    return { deceasedDogIds: [], deceasedDogs: [] };
   }
 
   const candidates: DeathCandidate[] = await client.dog.findMany({
@@ -129,6 +140,7 @@ export async function resolveDogDeaths(args: {
     },
     select: {
       id: true,
+      regNumber: true,
       birthEpoch: true,
       deathEpoch: true,
       lifecycleState: true,
@@ -136,6 +148,7 @@ export async function resolveDogDeaths(args: {
   });
 
   const deceasedDogIds: string[] = [];
+  const deceasedDogs: ResolvedDogDeath[] = [];
 
   for (const dog of candidates) {
     const deathEpoch = getProjectedDogDeathEpoch(dog);
@@ -147,13 +160,44 @@ export async function resolveDogDeaths(args: {
     const changed = await markDogDeceased({
       client,
       dogId: dog.id,
+      regNumber: dog.regNumber,
       deathEpoch,
     });
 
     if (changed) {
       deceasedDogIds.push(dog.id);
+      deceasedDogs.push({
+        dogId: dog.id,
+        regNumber: dog.regNumber,
+        deathEpoch,
+      });
     }
   }
 
-  return { deceasedDogIds };
+  return { deceasedDogIds, deceasedDogs };
+}
+
+export async function resolveDogDeaths(args: {
+  currentEpoch: number;
+  kennelId?: string;
+  dogIds?: string[];
+  tx?: Prisma.TransactionClient;
+}): Promise<{ deceasedDogIds: string[]; deceasedDogs: ResolvedDogDeath[] }> {
+  if (args.tx) {
+    return resolveDogDeathsWithClient({
+      client: args.tx,
+      currentEpoch: args.currentEpoch,
+      kennelId: args.kennelId,
+      dogIds: args.dogIds,
+    });
+  }
+
+  return db.$transaction((tx) =>
+    resolveDogDeathsWithClient({
+      client: tx,
+      currentEpoch: args.currentEpoch,
+      kennelId: args.kennelId,
+      dogIds: args.dogIds,
+    })
+  );
 }

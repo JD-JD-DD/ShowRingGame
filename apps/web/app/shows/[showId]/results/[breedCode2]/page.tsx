@@ -78,6 +78,8 @@ type ResultRow = {
     sex: "M" | "F";
   };
   showEntry: {
+    enteredKennelName: string | null;
+    enteredKennelSlug: string | null;
     kennel: {
       name: string;
       slug: string;
@@ -92,6 +94,10 @@ type ResultRow = {
     isMajor: boolean;
   }>;
 };
+
+function showEntryKennelName(entry: ResultRow["showEntry"]): string {
+  return entry.enteredKennelName?.trim() || entry.kennel.name;
+}
 
 function getSectionAwards(result: ResultRow, awardGroups: string[]): ResultRow["showAwards"] {
   return sortAwards(
@@ -172,7 +178,7 @@ function ResultSection({
                     </div>
                   </td>
                   <td className="px-3 py-3 text-purple-100/75">
-                    {result.showEntry.kennel.name}
+                    {showEntryKennelName(result.showEntry)}
                   </td>
                   <td className="px-3 py-3 text-purple-100/75">
                     {result.dog.sex}

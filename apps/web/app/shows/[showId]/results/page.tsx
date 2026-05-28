@@ -41,6 +41,13 @@ function statusTone(status: string): string {
   }
 }
 
+function showEntryKennelName(entry: {
+  enteredKennelName: string | null;
+  kennel: { name: string };
+}): string {
+  return entry.enteredKennelName?.trim() || entry.kennel.name;
+}
+
 export default async function ShowResultsIndexPage({
   params,
   searchParams,
@@ -295,7 +302,7 @@ export default async function ShowResultsIndexPage({
                               </div>
                               <div className="mt-1 text-xs text-purple-100/65">
                                 {award.breed.name} ({award.breed.code2}) -{" "}
-                                {award.showEntry.kennel.name}
+                                {showEntryKennelName(award.showEntry)}
                               </div>
                             </Link>
                           ))}
@@ -332,7 +339,7 @@ export default async function ShowResultsIndexPage({
                                       </div>
                                       <div className="mt-1 text-xs text-purple-100/60">
                                         {award.breed.name} -{" "}
-                                        {award.showEntry.kennel.name}
+                                        {showEntryKennelName(award.showEntry)}
                                       </div>
                                     </Link>
                                   ))}

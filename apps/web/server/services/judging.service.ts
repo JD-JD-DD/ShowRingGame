@@ -574,6 +574,7 @@ export async function judgeShowBlock(args: {
     const resultIdByShowEntryId = new Map<string, string>();
     const judgedEntryIds: string[] = [];
     const pointsByShowEntryId = new Map<string, number>();
+    const entryById = new Map(eligibleEntries.map((entry) => [entry.id, entry]));
 
     for (const award of judgedBlock.awards) {
       if (!award.showEntryId || award.pointsAwarded <= 0) {
@@ -595,6 +596,7 @@ export async function judgeShowBlock(args: {
       }
 
       judgedEntryIds.push(result.showEntryId);
+      const sourceEntry = entryById.get(result.showEntryId);
       const pointsAwarded = pointsByShowEntryId.get(result.showEntryId) ?? 0;
       const createdResult = await tx.showResult.create({
         data: {
@@ -602,6 +604,9 @@ export async function judgeShowBlock(args: {
           showDayId: block.showDayId,
           judgingBlockId,
           dogId: result.dogId,
+          enteredKennelId: sourceEntry?.enteredKennelId ?? sourceEntry?.kennelId,
+          enteredKennelName: sourceEntry?.enteredKennelName,
+          enteredKennelSlug: sourceEntry?.enteredKennelSlug,
           breedCode2: block.breedCode2,
           judgeId: block.judgeId,
           finalRank: result.finalRank,
