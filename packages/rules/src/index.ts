@@ -5,6 +5,7 @@ export * from "./judge-roster";
 export * from "./time";
 export * from "./lifecycle";
 export * from "./geography";
+export * from "./showWeekend";
 export * from "../constants/lifecycle.constants";
 export * from "../constants/time.constants";
 export * from "../constants/release.constants";

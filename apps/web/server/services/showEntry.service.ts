@@ -6,6 +6,8 @@ import {
   SHOW_WEEK_HOURS,
   canEnterShows,
   getClusterEntryQuote,
+  getGeneratedShowWeekendPrefix,
+  getShowWeekendStartEpoch,
 } from "@showring/rules";
 import { Prisma } from "@prisma/client";
 
@@ -165,20 +167,10 @@ function getConditioningSnapshot(dog: DogForEntry): number {
   return Math.round((dog.ringObedience + dog.muscleTone + dog.coatCondition) / 3);
 }
 
-function getGeneratedWeekendPrefix(clusterId: string): string | null {
-  const match = clusterId.match(/^generated-year-(\d+)-week-(\d+)-slot-\d+$/);
-
-  if (!match) {
-    return null;
-  }
-
-  return `generated-year-${match[1]}-week-${match[2]}-slot-`;
-}
-
 function getSameWeekendClusterWhere(
   cluster: WeekendCluster
 ): Prisma.ShowClusterWhereInput {
-  const generatedPrefix = getGeneratedWeekendPrefix(cluster.id);
+  const generatedPrefix = getGeneratedShowWeekendPrefix(cluster.id);
 
   if (generatedPrefix) {
     return {
@@ -188,8 +180,7 @@ function getSameWeekendClusterWhere(
     };
   }
 
-  const weekStartEpoch =
-    cluster.startEpoch - (cluster.startEpoch % SHOW_WEEK_HOURS);
+  const weekStartEpoch = getShowWeekendStartEpoch(cluster.startEpoch);
 
   return {
     startEpoch: {
