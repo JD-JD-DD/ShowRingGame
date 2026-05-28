@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import GlobalUtcClock from "@/components/GlobalUtcClock";
+import NotificationInboxLink from "@/components/NotificationInboxLink";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <GlobalUtcClock />
+        <NotificationInboxLink />
         {children}
         <Analytics />
       </body>

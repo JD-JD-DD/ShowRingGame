@@ -116,6 +116,16 @@ enum LedgerTransactionType {
   REFUND
 }
 
+enum KennelNoticeType {
+  BULLETIN_REPLY
+  NEW_CHAMPION
+  DOG_DEATH
+  LITTER_BORN
+  DID_NOT_TAKE
+  STUD_FEE_RECEIVED
+  DOG_SOLD
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -153,6 +163,7 @@ model Kennel {
   purchasedListings       DogListing[]        @relation("BuyerKennelListings")
   bulletinThreads         BulletinThread[]
   bulletinPosts           BulletinPost[]
+  notices                 KennelNotice[]
 
   @@index([userId])
   @@index([homeDistrict])
@@ -660,6 +671,37 @@ model BulletinPost {
   @@index([sourceType])
   @@index([hidden])
   @@index([createdAtEpoch])
+}
+
+model KennelNotice {
+  id              String           @id @default(cuid())
+  kennelId        String
+  type            KennelNoticeType
+  title           String
+  body            String?
+  createdAtEpoch  Int
+  readAtEpoch     Int?
+  dismissedAtEpoch Int?
+  linkedDogId     String?
+  linkedLitterId  String?
+  linkedShowId    String?
+  linkedThreadId  String?
+  linkedListingId String?
+  metadataJson    Json?
+  createdAt       DateTime         @default(now())
+
+  kennel Kennel @relation(fields: [kennelId], references: [id])
+
+  @@index([kennelId])
+  @@index([type])
+  @@index([createdAtEpoch])
+  @@index([readAtEpoch])
+  @@index([dismissedAtEpoch])
+  @@index([linkedDogId])
+  @@index([linkedLitterId])
+  @@index([linkedShowId])
+  @@index([linkedThreadId])
+  @@index([linkedListingId])
 }
 
 model DogTitleProgress {

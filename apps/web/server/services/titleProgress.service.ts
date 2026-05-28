@@ -1,5 +1,8 @@
 import { Prisma } from "@prisma/client";
 
+import { formatDogDisplayName } from "@/lib/dogNames";
+import { createKennelNotice } from "@/server/services/kennelNotice.service";
+
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
 const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
 const CHAMPION_TITLE_CODE = "CH";
@@ -11,6 +14,9 @@ type PointAward = {
   pointsAwarded: number;
   isMajor: boolean;
   awardCode: string;
+  showDay: {
+    scheduledEpoch: number;
+  };
 };
 
 function summarizeChampionshipAwards(awards: PointAward[]) {
@@ -73,6 +79,25 @@ export async function recalculateDogTitleProgress(args: {
   dogId: string;
 }) {
   const { tx, dogId } = args;
+  const [dog, previousProgress] = await Promise.all([
+    tx.dog.findUnique({
+      where: { id: dogId },
+      select: {
+        id: true,
+        ownerKennelId: true,
+        registeredName: true,
+        callName: true,
+        regNumber: true,
+        visibleTitlePrefix: true,
+        visibleTitleSuffix: true,
+      },
+    }),
+    tx.dogTitleProgress.findUnique({
+      where: { dogId },
+      select: { currentTitleCode: true },
+    }),
+  ]);
+
   const awards = await tx.showAward.findMany({
     where: {
       dogId,
@@ -85,6 +110,11 @@ export async function recalculateDogTitleProgress(args: {
       pointsAwarded: true,
       isMajor: true,
       awardCode: true,
+      showDay: {
+        select: {
+          scheduledEpoch: true,
+        },
+      },
     },
   });
   const summary = summarizeChampionshipAwards(awards);
@@ -113,6 +143,27 @@ export async function recalculateDogTitleProgress(args: {
         visibleTitlePrefix: CHAMPION_TITLE_CODE,
       },
     });
+
+    if (
+      dog?.ownerKennelId &&
+      previousProgress?.currentTitleCode !== CHAMPION_TITLE_CODE
+    ) {
+      await createKennelNotice({
+        client: tx,
+        kennelId: dog.ownerKennelId,
+        type: "NEW_CHAMPION",
+        title: "New champion",
+        body: `${formatDogDisplayName({
+          ...dog,
+          visibleTitlePrefix: CHAMPION_TITLE_CODE,
+        })} has finished their championship.`,
+        currentEpoch: Math.max(
+          ...awards.map((award) => award.showDay.scheduledEpoch),
+          0
+        ),
+        linkedDogId: dog.id,
+      });
+    }
   }
 
   return summary;

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { Prisma } from "@prisma/client";
 
 const STUD_LISTING_TYPES = ["STUD", "STUD_SERVICE", "PLAYER_STUD"] as const;
@@ -624,6 +625,8 @@ export async function createBulletinReply(args: {
     select: {
       id: true,
       status: true,
+      title: true,
+      kennelId: true,
     },
   });
 
@@ -654,5 +657,22 @@ export async function createBulletinReply(args: {
         lastActivityEpoch: currentEpoch,
       },
     });
+
+    if (thread.kennelId !== args.kennelId) {
+      const replier = await tx.kennel.findUnique({
+        where: { id: args.kennelId },
+        select: { name: true },
+      });
+
+      await createKennelNotice({
+        client: tx,
+        kennelId: thread.kennelId,
+        type: "BULLETIN_REPLY",
+        title: "New bulletin reply",
+        body: `${replier?.name ?? "Another kennel"} replied to "${thread.title}".`,
+        currentEpoch,
+        linkedThreadId: thread.id,
+      });
+    }
   });
 }

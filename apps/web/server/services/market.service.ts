@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getVisibleCategoriesFromDogRecord } from "@/server/services/foundationDog.service";
+import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
   canSellPuppy,
@@ -350,6 +351,10 @@ export async function buyPlayerDogListing(args: {
           select: {
             id: true,
             regNumber: true,
+            registeredName: true,
+            callName: true,
+            visibleTitlePrefix: true,
+            visibleTitleSuffix: true,
             ownerKennelId: true,
             lifecycleState: true,
             marketState: true,
@@ -377,7 +382,7 @@ export async function buyPlayerDogListing(args: {
     const [buyer, seller] = await Promise.all([
       tx.kennel.findUnique({
         where: { id: buyerKennelId },
-        select: { id: true, balance: true },
+        select: { id: true, name: true, balance: true },
       }),
       tx.kennel.findUnique({
         where: { id: listing.sellerKennelId },
@@ -451,6 +456,17 @@ export async function buyPlayerDogListing(args: {
         soldAtEpoch: currentEpoch,
         buyerKennelId: buyer.id,
       },
+    });
+
+    await createKennelNotice({
+      client: tx,
+      kennelId: seller.id,
+      type: "DOG_SOLD",
+      title: "Dog sold",
+      body: `${formatDogDisplayName(listing.dog)} sold to ${buyer.name} for $${listing.askingPrice.toLocaleString()}.`,
+      currentEpoch,
+      linkedDogId: listing.dog.id,
+      linkedListingId: listing.id,
     });
 
     return listing.dog.id;

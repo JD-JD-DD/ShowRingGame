@@ -1,4 +1,6 @@
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
+import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { AGE_DEATH_START_HOURS, projectedDeathEpoch } from "@showring/rules";
 import { Prisma } from "@prisma/client";
 
@@ -7,6 +9,11 @@ type DbClient = typeof db | Prisma.TransactionClient;
 type DeathCandidate = {
   id: string;
   regNumber: string;
+  registeredName: string | null;
+  callName: string | null;
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
+  ownerKennelId: string | null;
   birthEpoch: number;
   deathEpoch: number | null;
   lifecycleState: string;
@@ -53,9 +60,12 @@ async function markDogDeceased(args: {
   client: DbClient;
   dogId: string;
   regNumber: string;
+  ownerKennelId: string | null;
+  displayName: string;
   deathEpoch: number;
 }): Promise<boolean> {
-  const { client, dogId, regNumber, deathEpoch } = args;
+  const { client, dogId, regNumber, ownerKennelId, displayName, deathEpoch } =
+    args;
   const update = await client.dog.updateMany({
     where: {
       id: dogId,
@@ -113,6 +123,18 @@ async function markDogDeceased(args: {
     },
   });
 
+  if (ownerKennelId) {
+    await createKennelNotice({
+      client,
+      kennelId: ownerKennelId,
+      type: "DOG_DEATH",
+      title: "Dog death",
+      body: `${displayName} has died.`,
+      currentEpoch: deathEpoch,
+      linkedDogId: dogId,
+    });
+  }
+
   return true;
 }
 
@@ -141,6 +163,11 @@ async function resolveDogDeathsWithClient(args: {
     select: {
       id: true,
       regNumber: true,
+      registeredName: true,
+      callName: true,
+      visibleTitlePrefix: true,
+      visibleTitleSuffix: true,
+      ownerKennelId: true,
       birthEpoch: true,
       deathEpoch: true,
       lifecycleState: true,
@@ -161,6 +188,8 @@ async function resolveDogDeathsWithClient(args: {
       client,
       dogId: dog.id,
       regNumber: dog.regNumber,
+      ownerKennelId: dog.ownerKennelId,
+      displayName: formatDogDisplayName(dog),
       deathEpoch,
     });
 

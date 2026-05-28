@@ -157,17 +157,10 @@ Status: audited; implementation pass needed
   - add a public kennel page that shows that kennel's dogs
   - highlight that kennel's dogs currently at stud and dogs currently for sale
 - Kennel notifications:
-  - add a notification bell/inbox with unread count
-  - create a persistent `KennelNotice`-style model with type, title/body, created epoch, read/dismissed state, and optional linked dog/litter/show/thread/listing ids
-  - first notice types:
-    - bulletin board reply
-    - new champion in your kennel
-    - dog death
-    - litter born
-    - female did not take
-    - stud fee received
-    - dog sold
-  - generate notices at the existing event points instead of relying only on page-load banners
+  - done: add a notification inbox link with unread count
+  - done: create a persistent `KennelNotice` model with type, title/body, created epoch, read/dismissed state, and optional linked dog/litter/show/thread/listing ids
+  - done: generate notices for bulletin board replies, new champions, dog deaths, litters born, females that did not take, stud fees received, and dogs sold
+  - decide later whether other events need notices, such as show entries closing, show results posted, or puppy sale eligibility
 - Actions and placement:
   - rename or replace `Re-Home Dog` with final `Forever Home` behavior
   - done: add a confirmation step to the current `Re-Home Dog` action that clearly says this cannot be undone

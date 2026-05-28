@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import {
@@ -312,6 +313,17 @@ export async function resolveBreedingProgressForKennel(args: {
             status: true,
             rngSeed: true,
             litterId: true,
+            createdByKennelId: true,
+            dam: {
+              select: {
+                id: true,
+                registeredName: true,
+                callName: true,
+                regNumber: true,
+                visibleTitlePrefix: true,
+                visibleTitleSuffix: true,
+              },
+            },
           },
         });
 
@@ -357,6 +369,21 @@ export async function resolveBreedingProgressForKennel(args: {
             isPregnant: resolved.isPregnant,
           },
         });
+
+        if (
+          resolved.status === "CHECKED_NOT_PREGNANT" &&
+          fresh.createdByKennelId
+        ) {
+          await createKennelNotice({
+            client: tx,
+            kennelId: fresh.createdByKennelId,
+            type: "DID_NOT_TAKE",
+            title: "Female did not take",
+            body: `${formatDogDisplayName(fresh.dam)} did not take on this breeding.`,
+            currentEpoch,
+            linkedDogId: fresh.dam.id,
+          });
+        }
       });
     }
   }
@@ -523,6 +550,19 @@ export async function resolveBreedingProgressForKennel(args: {
             litterId: outcome.litter.litterId,
           },
         });
+
+        if (fresh.createdByKennelId) {
+          await createKennelNotice({
+            client: tx,
+            kennelId: fresh.createdByKennelId,
+            type: "LITTER_BORN",
+            title: "Litter born",
+            body: `Litter ${outcome.litter.serial7} has been born with ${outcome.litter.pupCount} puppies.`,
+            currentEpoch,
+            linkedLitterId: outcome.litter.litterId,
+            linkedDogId: outcome.litter.damId,
+          });
+        }
       });
     }
   }
@@ -900,6 +940,17 @@ export async function createBreedingAttemptForKennel(args: {
             studListingId: studListingId ?? null,
           },
         },
+      });
+
+      await createKennelNotice({
+        client: tx,
+        kennelId: studSellerKennelId,
+        type: "STUD_FEE_RECEIVED",
+        title: "Stud fee received",
+        body: `$${studFeeAmount.toLocaleString()} received for ${displayDogName(sire)}.`,
+        currentEpoch,
+        linkedDogId: sire.id,
+        linkedListingId: studListingId ?? null,
       });
     }
 
