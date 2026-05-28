@@ -312,6 +312,10 @@ async function resolveDogDeathsWithClient(args: {
 
   const deceasedDogIds: string[] = [];
   const deceasedDogs: ResolvedDogDeath[] = [];
+  const maxDeathsThisRun =
+    dogIds && dogIds.length > 0
+      ? Number.POSITIVE_INFINITY
+      : MAX_DEATHS_PER_RESOLUTION;
   const dueDeaths = candidates
     .map((dog) => ({
       dog,
@@ -323,7 +327,7 @@ async function resolveDogDeathsWithClient(args: {
         left.projected.deathEpoch - right.projected.deathEpoch ||
         left.dog.regNumber.localeCompare(right.dog.regNumber)
     )
-    .slice(0, MAX_DEATHS_PER_RESOLUTION);
+    .slice(0, maxDeathsThisRun);
 
   for (const { dog, projected } of dueDeaths) {
     const { deathEpoch, cause } = projected;

@@ -8,8 +8,6 @@ Items not listed here are treated as complete, superseded, or folded into one of
 
 - Finalize handler behavior for owner handlers, ringside handlers, and traveling handlers.
 
-- Tune and test dog death handling for age, illness/accident, whelping complications, puppy mortality, and related edge cases.
-
 - Add retirement, forever-home, and memorial views as separate long-term dog placement states.
 
 - Make the litter page more useful and interactive.
