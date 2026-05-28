@@ -42,7 +42,7 @@ export const BREEDING_FEE = 500;
  * Ringside handler fee charged per dog over the owner-handled limit for a
  * breed at the primary show.
  */
-export const CLUSTER_HANDLER_FEE = 10;
+export const CLUSTER_HANDLER_FEE = 100;
 export const RINGSIDE_HANDLER_FEE = CLUSTER_HANDLER_FEE;
 export const TRAVELING_HANDLER_FEE = RINGSIDE_HANDLER_FEE * 5;
 
