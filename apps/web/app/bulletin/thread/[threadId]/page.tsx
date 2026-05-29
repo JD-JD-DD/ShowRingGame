@@ -153,9 +153,12 @@ export default async function BulletinThreadPage({
               </div>
               <h1 className="mt-3 text-3xl font-semibold">{thread.title}</h1>
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                <span className="text-sm font-semibold text-purple-100">
+                <Link
+                  href={`/kennels/${thread.kennel.slug}`}
+                  className="text-sm font-semibold text-purple-100 underline-offset-4 hover:underline"
+                >
                   {thread.kennel.name}
-                </span>
+                </Link>
                 <BulletinBadges badges={thread.badges} />
               </div>
             </div>
@@ -191,9 +194,12 @@ export default async function BulletinThreadPage({
             >
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="font-semibold text-white">
+                  <Link
+                    href={`/kennels/${post.kennel.slug}`}
+                    className="font-semibold text-white underline-offset-4 hover:underline"
+                  >
                     {post.kennel.name}
-                  </span>
+                  </Link>
                   <BulletinBadges badges={post.badges} />
                 </div>
                 <div className="text-xs text-purple-100/60">

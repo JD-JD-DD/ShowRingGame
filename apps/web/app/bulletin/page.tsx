@@ -133,9 +133,8 @@ export default async function BulletinPage() {
             ) : (
               <div className="grid gap-4">
                 {recentThreads.map((thread) => (
-                  <Link
+                  <article
                     key={thread.id}
-                    href={`/bulletin/thread/${thread.id}`}
                     className="rounded-[24px] border border-white/10 bg-white/5 p-5 shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition hover:border-purple-300/35 hover:bg-white/10"
                   >
                     <div className="flex flex-wrap items-center gap-2 text-xs text-purple-100/60">
@@ -146,18 +145,26 @@ export default async function BulletinPage() {
                       <span>{thread.replyCount} replies</span>
                     </div>
                     <h3 className="mt-2 text-lg font-semibold text-white">
-                      {thread.title}
+                      <Link
+                        href={`/bulletin/thread/${thread.id}`}
+                        className="underline-offset-4 hover:underline"
+                      >
+                        {thread.title}
+                      </Link>
                     </h3>
                     <p className="mt-2 text-sm leading-6 text-purple-100/72">
                       {thread.preview}
                     </p>
                     <div className="mt-4 flex flex-wrap items-center gap-3">
-                      <span className="text-sm font-semibold text-purple-100">
+                      <Link
+                        href={`/kennels/${thread.kennel.slug}`}
+                        className="text-sm font-semibold text-purple-100 underline-offset-4 hover:underline"
+                      >
                         {thread.kennel.name}
-                      </span>
+                      </Link>
                       <BulletinBadges badges={thread.badges} />
                     </div>
-                  </Link>
+                  </article>
                 ))}
               </div>
             )}

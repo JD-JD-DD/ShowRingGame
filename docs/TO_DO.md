@@ -14,8 +14,6 @@ Items not listed here are treated as complete, superseded, or folded into one of
 
 - Improve dog pages with better status text, pregnancy state, due dates, and historical-only views for deceased or forever-home dogs.
 
-- Build public kennel profiles from bulletin board user names, showing that kennel's dogs, dogs at stud, and dogs for sale.
-
 - Add named handler schedules later so players can choose handlers for secondary shows.
 
 - Replace the temporary all-breed point schedule with the real point schedule.
