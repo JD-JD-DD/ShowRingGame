@@ -114,16 +114,17 @@ export default function LoginPage() {
 
             <div className="rounded-[24px] border border-white/10 bg-black/20 p-5 sm:p-6">
               <h2 className="text-2xl font-semibold text-white">Log in</h2>
-              <p className="mt-2 text-sm leading-6 text-purple-100/72">
-                New to ShowRing Game?{" "}
+              <div className="mt-4 rounded-2xl border border-purple-300/30 bg-purple-500/12 px-4 py-4 shadow-[0_12px_28px_rgba(126,34,206,0.18)]">
+                <p className="text-sm font-semibold text-white">
+                  New to ShowRing Game?
+                </p>
                 <Link
                   href="/signup"
-                  className="font-semibold text-purple-100 underline decoration-purple-300/60 underline-offset-4"
+                  className="mt-3 inline-flex w-full justify-center rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
                 >
                   Create your kennel account
                 </Link>
-                .
-              </p>
+              </div>
 
               <form onSubmit={handleSubmit} className="mt-6 grid gap-4">
                 <label className="grid gap-2">
