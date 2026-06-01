@@ -321,6 +321,10 @@ export default async function ShowsPage({
                             ? cluster.startEpoch
                             : null;
                         const canEnterShow = playerStatus === "OPEN";
+                        const showClosedLabel =
+                          playerStatus === "NO ENTRIES" ||
+                          playerStatus === "AWAITING JUDGING" ||
+                          playerStatus === "JUDGING";
                         const clusterHref =
                           playerStatus === "OPEN"
                             ? `/shows/${cluster.id}${showDetailQuery}`
@@ -373,6 +377,10 @@ export default async function ShowsPage({
                               >
                                 Enter
                               </Link>
+                            ) : showClosedLabel ? (
+                              <span className="rounded-lg border border-purple-300/25 bg-white/5 px-2.5 py-1 text-xs font-semibold text-purple-100/80">
+                                Closed
+                              </span>
                             ) : null}
                           </div>
                         );
