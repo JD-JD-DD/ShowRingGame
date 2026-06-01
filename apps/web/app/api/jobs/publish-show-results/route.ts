@@ -167,6 +167,19 @@ export async function GET(request: Request) {
             },
           ],
         },
+        {
+          AND: [
+            { status: "RESULTS_PUBLISHED" },
+            {
+              showAwards: {
+                some: {},
+              },
+            },
+            {
+              prestigeCalculatedAtEpoch: null,
+            },
+          ],
+        },
       ],
     },
     orderBy: [{ scheduledEpoch: "asc" }, { dayIndex: "asc" }],

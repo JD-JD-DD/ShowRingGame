@@ -210,6 +210,12 @@ export default async function ShowsPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <Link
+              href="/shows/top-ten"
+              className="rounded-2xl border border-amber-300/30 bg-amber-500/10 px-5 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
+            >
+              Top Ten
+            </Link>
             <form action="/api/shows" method="post">
               <input type="hidden" name="redirectTo" value="/shows" />
               <button

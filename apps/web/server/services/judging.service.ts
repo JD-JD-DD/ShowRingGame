@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
 import { recalculateDogTitleProgressForDogs } from "@/server/services/titleProgress.service";
 import {
   canEnterShows,
@@ -899,6 +900,9 @@ function normalizeGroupName(groupName: string | null): string {
 // Finals recalculate championship progress after creating awards. As show history
 // grows, that work can exceed Prisma's five-second interactive transaction default.
 const FINALS_TRANSACTION_TIMEOUT_MS = 30_000;
+// Finalization also refreshes yearly prestige standings. Historical recovery
+// can be more expensive than a newly completed show day.
+const SHOW_DAY_FINALIZATION_TIMEOUT_MS = 30_000;
 
 async function createGroupAwardsForShowDay(args: {
   showDayId: string;
@@ -1354,6 +1358,13 @@ export async function finalizeReadyShowDayResults(args: {
     });
 
     await maybeCompleteCluster(tx, showDay.clusterId);
+    await refreshPrestigeStatsForShowDay({
+      tx,
+      showDayId: args.showDayId,
+      currentEpoch: args.currentEpoch,
+    });
+  }, {
+    timeout: SHOW_DAY_FINALIZATION_TIMEOUT_MS,
   });
 
   return {

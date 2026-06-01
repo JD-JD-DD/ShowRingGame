@@ -18,8 +18,6 @@ Items not listed here are treated as complete, superseded, or folded into one of
 
 - Replace the temporary all-breed point schedule with the real point schedule.
 
-- Add yearly dogs-beaten prestige tracking for shows. Each dog should keep a running game-year tally of dogs defeated, including breed, group, and BIS layers. Example: a Saluki winning G1 over a 42-dog group adds those defeated dogs; a later BOB over 7 dogs adds to that same yearly total. Use this for breed Top Ten and all-breed Top Ten displays, so dogs winning at large shows receive extra prestige beyond titles alone.
-
 - Add breed clubs and specialty shows. Players can pay for club membership; clubs fund breed specialties that run as additional shows within a cluster and accept only that breed. Later, add breed nationals weeks or multi-day national specialties for specific breeds.
 
 - Add once-a-year prestige shows, including a Week 52 invitational based on the Top Ten per breed system.

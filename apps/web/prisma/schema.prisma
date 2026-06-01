@@ -259,6 +259,8 @@ model Dog {
   showEntries        ShowEntry[]
   showResults        ShowResult[]
   showAwards         ShowAward[]
+  showPrestigeCredits DogShowPrestigeCredit[]
+  yearlyPrestigeStats DogYearlyPrestigeStat[]
   ledgerTransactions LedgerTransaction[]
   listings           DogListing[]
   titleProgress      DogTitleProgress?
@@ -396,14 +398,15 @@ model KennelShowWeekendPlan {
 }
 
 model ShowDay {
-  id               String        @id @default(cuid())
-  clusterId        String
-  scheduledEpoch   Int
-  dayIndex         Int
-  judgeId          String
-  status           ShowDayStatus @default(SCHEDULED)
-  publishedAtEpoch Int?
-  createdAt        DateTime      @default(now())
+  id                        String        @id @default(cuid())
+  clusterId                 String
+  scheduledEpoch            Int
+  dayIndex                  Int
+  judgeId                   String
+  status                    ShowDayStatus @default(SCHEDULED)
+  publishedAtEpoch          Int?
+  prestigeCalculatedAtEpoch Int?
+  createdAt                 DateTime      @default(now())
 
   cluster ShowCluster @relation(fields: [clusterId], references: [id])
   judge   Judge       @relation(fields: [judgeId], references: [id])
@@ -411,6 +414,7 @@ model ShowDay {
   showEntries ShowEntry[]
   showResults ShowResult[]
   showAwards  ShowAward[]
+  prestigeCredits DogShowPrestigeCredit[]
   judgingBlocks ShowJudgingBlock[]
 
   @@unique([clusterId, dayIndex])
@@ -564,6 +568,57 @@ model ShowAward {
   @@index([judgeId])
   @@index([awardCode])
   @@index([pointsAwarded])
+}
+
+model DogShowPrestigeCredit {
+  id                  String   @id @default(cuid())
+  dogId               String
+  showDayId           String
+  gameYear            Int
+  breedCode2          String
+  breedDogsBeaten     Int      @default(0)
+  allBreedDogsBeaten  Int      @default(0)
+  breedWinCount       Int      @default(0)
+  groupWinCount       Int      @default(0)
+  bestInShowWinCount  Int      @default(0)
+  reserveBisCount     Int      @default(0)
+  calculatedAtEpoch   Int
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  dog     Dog     @relation(fields: [dogId], references: [id])
+  showDay ShowDay @relation(fields: [showDayId], references: [id])
+
+  @@unique([dogId, showDayId])
+  @@index([showDayId])
+  @@index([gameYear])
+  @@index([breedCode2])
+  @@index([breedDogsBeaten])
+  @@index([allBreedDogsBeaten])
+}
+
+model DogYearlyPrestigeStat {
+  id                  String   @id @default(cuid())
+  dogId               String
+  gameYear            Int
+  breedCode2          String
+  breedDogsBeaten     Int      @default(0)
+  allBreedDogsBeaten  Int      @default(0)
+  breedWinCount       Int      @default(0)
+  groupWinCount       Int      @default(0)
+  bestInShowWinCount  Int      @default(0)
+  reserveBisCount     Int      @default(0)
+  updatedAtEpoch      Int
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  dog Dog @relation(fields: [dogId], references: [id])
+
+  @@unique([dogId, gameYear])
+  @@index([gameYear])
+  @@index([breedCode2])
+  @@index([breedDogsBeaten])
+  @@index([allBreedDogsBeaten])
 }
 
 model LedgerTransaction {
