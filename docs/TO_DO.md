@@ -22,6 +22,8 @@ Items not listed here are treated as complete, superseded, or folded into one of
 
 - Add once-a-year prestige shows, including a Week 52 invitational based on the Top Ten per breed system.
 
+- Add all-time cumulative Breed and All-Breed prestige rankings for dogs with multi-year show careers. Keep the current game-year Top Ten views as the primary standings.
+
 - Add future show classes: Puppy, Open, Bred-by Exhibitor, and Veteran.
 
 - Add Sweepstakes classes for player cash winnings.
