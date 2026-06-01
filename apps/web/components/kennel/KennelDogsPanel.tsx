@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { getPuppyRehomePayoutForAgeHours } from "@showring/rules";
+import {
+  PUPPY_SALE_MIN_AGE_HOURS,
+  getPuppyRehomePayoutForAgeHours,
+} from "@showring/rules";
 
 type VisibleCategories = Record<string, number>;
 
@@ -330,7 +333,10 @@ export default function KennelDogsPanel() {
   const canBulkRehome =
     selectedDogs.length > 0 &&
     selectedDogs.every(
-      (dog) => dog.lifecycleState === "ALIVE" && dog.marketState === "NOT_FOR_SALE"
+      (dog) =>
+        dog.ageHours >= PUPPY_SALE_MIN_AGE_HOURS &&
+        dog.lifecycleState === "ALIVE" &&
+        dog.marketState === "NOT_FOR_SALE"
     );
   const canApplyBulkAction =
     bulkAction === "show-entry" ||
@@ -571,7 +577,8 @@ export default function KennelDogsPanel() {
 
           {bulkAction === "rehome" && !canBulkRehome ? (
             <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-              Only active dogs that are not listed for sale can be re-homed in bulk.
+              Only dogs at least 8 weeks old that are active and not listed for sale
+              can be re-homed in bulk.
             </div>
           ) : null}
 

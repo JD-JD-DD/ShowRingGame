@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
-import { getPuppyRehomePayout } from "@showring/rules";
+import { canRehomeDog, getPuppyRehomePayout } from "@showring/rules";
 
 export async function POST(request: Request) {
   try {
@@ -58,14 +58,16 @@ export async function POST(request: Request) {
     }
 
     const blockedDog = dogs.find(
-      (dog) => dog.lifecycleState !== "ALIVE" || dog.marketState !== "NOT_FOR_SALE"
+      (dog) =>
+        !canRehomeDog(currentEpoch, dog.birthEpoch, dog.lifecycleState) ||
+        dog.marketState !== "NOT_FOR_SALE"
     );
 
     if (blockedDog) {
       return NextResponse.json(
         {
           error:
-            "Only active dogs that are not listed for sale can be re-homed in bulk.",
+            "Only dogs at least 8 weeks old that are active and not listed for sale can be re-homed in bulk.",
         },
         { status: 400 }
       );

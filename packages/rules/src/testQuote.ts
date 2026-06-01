@@ -3,6 +3,7 @@ import {
   getPuppyRehomePayoutForAgeHours,
 } from "../engines/economy.engine";
 import { TRAVELING_HANDLER_FEE } from "../constants/economy.constants";
+import { canRehomeDog } from "./lifecycle";
 
 function assertEqual(actual: number, expected: number, label: string) {
   if (actual !== expected) {
@@ -175,6 +176,9 @@ assertEqual(
   "puppy re-home before 6 months"
 );
 assertEqual(getPuppyRehomePayoutForAgeHours(182), 0, "puppy re-home at 6 months");
+assertEqual(Number(canRehomeDog(55, 0, "ALIVE")), 0, "re-home before 8 weeks");
+assertEqual(Number(canRehomeDog(56, 0, "ALIVE")), 1, "re-home at 8 weeks");
+assertEqual(Number(canRehomeDog(500, 0, "ALIVE")), 1, "adult re-home");
 
 console.log("CLUSTER ENTRY QUOTE");
 console.log(JSON.stringify(quote, null, 2));

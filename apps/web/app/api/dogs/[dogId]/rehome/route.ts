@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
-import { getPuppyRehomePayout } from "@showring/rules";
+import { canRehomeDog, getPuppyRehomePayout } from "@showring/rules";
 
 export async function POST(
   request: Request,
@@ -45,9 +45,9 @@ export async function POST(
       return NextResponse.json({ error: "You do not own this dog." }, { status: 403 });
     }
 
-    if (dog.lifecycleState !== "ALIVE") {
+    if (!canRehomeDog(currentEpoch, dog.birthEpoch, dog.lifecycleState)) {
       return NextResponse.json(
-        { error: "Only active dogs can be re-homed." },
+        { error: "Dogs cannot be re-homed until they are at least 8 weeks old." },
         { status: 400 }
       );
     }

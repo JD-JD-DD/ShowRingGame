@@ -84,6 +84,18 @@ export function canSellPuppy(currentEpoch: number, birthEpoch: number, status: D
   return ageHours(currentEpoch, birthEpoch) >= PUPPY_SALE_MIN_AGE_HOURS;
 }
 
+/**
+ * Dogs remain with their breeder until the puppy-sale age boundary.
+ *
+ * Re-homing is available from 8 weeks onward for puppies and adult dogs.
+ * The separate economy rule decides whether an eligible re-home receives
+ * the baseline puppy-placement credit.
+ */
+export function canRehomeDog(currentEpoch: number, birthEpoch: number, status: DogStatus): boolean {
+  if (status !== "ALIVE") return false;
+  return ageHours(currentEpoch, birthEpoch) >= PUPPY_SALE_MIN_AGE_HOURS;
+}
+
 export function canEnterShows(currentEpoch: number, birthEpoch: number, status: DogStatus): boolean {
   if (status !== "ALIVE") return false;
 
