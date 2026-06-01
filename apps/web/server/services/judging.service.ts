@@ -14,6 +14,10 @@ import {
 } from "@showring/rules";
 import { Prisma, ShowDayStatus, ShowJudgingBlockStatus } from "@prisma/client";
 
+// Breed blocks persist results one dog at a time and then recalculate title
+// progress. Larger entries need more than Prisma's five-second default.
+const BREED_BLOCK_TRANSACTION_TIMEOUT_MS = 30_000;
+
 const showBlockForJudgingArgs =
   Prisma.validator<Prisma.ShowJudgingBlockDefaultArgs>()({
     include: {
@@ -724,6 +728,8 @@ export async function judgeShowBlock(args: {
       ineligibleEntryCount: ineligibleEntryIds.length,
       results: await listPersistedBlockResults(tx, judgingBlockId),
     };
+  }, {
+    timeout: BREED_BLOCK_TRANSACTION_TIMEOUT_MS,
   });
 }
 
