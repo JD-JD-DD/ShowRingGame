@@ -3820,6 +3820,234 @@ Potential additions:
 
 ---
 
+# 4.3.1 District Community / Club / Kennel Assistance System
+
+## status
+
+Long-term design goal.
+
+This system should be implemented in stages after the core district, show,
+economy, and permission foundations are stable.
+
+---
+
+## description
+
+Districts should become more than travel origins. They should create local
+communities where players can compete, cooperate, earn income, and help one
+another remain active in the game.
+
+The game currently assigns new kennels to districts to maintain an
+approximately equal number of players in each district. That assignment
+behavior will need refinement as districts accumulate vacant, inactive, or
+abandoned kennels.
+
+The broader goal is to add multiple layers of player community:
+
+- breed clubs
+- district all-breed clubs
+- paid service roles
+- permission-based kennel assistance
+
+These systems should give players meaningful ways to participate even when
+their own kennel is temporarily low on funds or when another player needs help
+while away from the game.
+
+---
+
+## psychology
+
+Designed to create:
+
+- regional identity
+- breed-specific communities
+- friendly rivalry
+- cooperative relationships
+- reasons to return beyond personal kennel progression
+- useful roles for players at different economy levels
+- resilience when a player must be away from the game
+
+Short absences should still matter because the game continues moving, but a
+player should be able to ask for limited in-game help without sharing account
+credentials.
+
+---
+
+## district assignment refinement
+
+### current intent
+
+New player kennels are assigned to districts in a way that keeps active player
+populations approximately balanced.
+
+### future requirement
+
+District balancing must distinguish between:
+
+- active player kennels
+- temporarily inactive player kennels
+- vacant or abandoned kennels
+- NPC kennels
+
+Vacant kennels should not permanently distort new-player assignment.
+
+### future tuning questions
+
+- When should an inactive kennel stop counting toward district balance?
+- Should a returning player retain the original district assignment?
+- Should district moves be allowed, and under what cost or cooldown?
+- Should club membership survive a district move?
+- How should district assignment react when a district club becomes crowded or
+  under-populated?
+
+---
+
+## breed clubs
+
+Breed clubs are communities centered on one breed.
+
+Potential club features:
+
+- membership dues
+- officers
+- club budget
+- internal club decisions
+- club-funded sweepstakes
+- club-funded specialties
+- national specialties
+- annual Nationals events
+- breed-specific discussion and planning
+
+Club budgets should matter. A specialty, sweepstakes event, or Nationals event
+should be created through the club's available funds and internal decisions,
+not appear automatically without economic support.
+
+---
+
+## district all-breed clubs
+
+Each district may have an all-breed club focused on the local player
+community.
+
+Potential club features:
+
+- membership dues
+- officers
+- club budget
+- local perks
+- district event planning
+- local service coordination
+- regional identity and competition
+
+District clubs should provide value even to players who are not currently able
+to campaign heavily.
+
+---
+
+## player service roles
+
+Community systems should create optional income activities between players.
+
+Examples:
+
+- handler gigs
+- temporary kennel assistance
+- club administration
+- event support roles
+
+These roles should provide ways for players to earn credits and participate
+when their own kennel budget is limited.
+
+---
+
+## permission-based kennel assistance
+
+Players should be able to designate another registered player as a temporary
+kennel assistant without sharing login credentials or passwords.
+
+The kennel owner must choose exactly what the assistant may do.
+
+Potential permissions:
+
+- enter shows
+- enter shows only within a specified budget
+- breed dogs
+- manage stud listings
+- manage sale listings
+- manage handlers
+- view private kennel planning information
+- re-home dogs
+- transfer or sell dogs
+- spend credits
+
+High-risk actions should default to denied.
+
+Examples:
+
+```txt
+Breed dogs: allowed
+Enter shows: allowed up to $2,000
+Re-home dogs: denied
+Sell or transfer dogs: denied
+```
+
+### security requirements
+
+- Never require players to share passwords.
+- All assistant actions must be attributed to the acting player.
+- Permissions must be granular and revocable.
+- Permissions may include start and end times.
+- Spending permissions must support explicit caps.
+- Destructive or irreversible actions should be denied by default.
+- The kennel owner should be able to review an activity history.
+
+### audit trail
+
+Store:
+
+- kennel owner
+- assistant player
+- granted permissions
+- spending cap
+- start and end time
+- action taken
+- acting player
+- timestamp
+- affected dog, litter, show, listing, or ledger entry where relevant
+
+---
+
+## implementation stages
+
+Recommended order:
+
+1. refine active-player district balancing
+2. add club data models and membership dues
+3. add district all-breed clubs
+4. add breed clubs
+5. add club budgets and officers
+6. add club-funded sweepstakes, specialties, and Nationals
+7. add player service listings such as handler gigs
+8. add permission-based temporary kennel assistance with audit history
+
+---
+
+## dependencies
+
+Depends on:
+
+- Geography / Travel System
+- Kennel System
+- Economy System
+- Ledger System
+- Show System
+- Handler System
+- authentication
+- granular authorization
+- audit logging
+
+---
+
 # 4.4 Handler System
 
 ## description
