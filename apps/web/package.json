@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "prisma migrate deploy && prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "password-reset-link": "tsx scripts/create-password-reset-link.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.0",
