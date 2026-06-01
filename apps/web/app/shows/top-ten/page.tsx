@@ -71,7 +71,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
   const selectedBreedCode =
     breedOptions.some((option) => option.breedCode2 === breedQuery)
       ? breedQuery ?? null
-      : breedOptions[0]?.breedCode2 ?? null;
+      : null;
   const yearOptions = [
     ...new Set([fallbackYear, ...years.map((year) => year.gameYear)]),
   ].sort((a, b) => b - a);
@@ -139,8 +139,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
     breedOptions.find((option) => option.breedCode2 === selectedBreedCode)?.dog
       .breed.name ??
     breedRows[0]?.dog.breed.name ??
-    selectedBreedCode ??
-    "Breed";
+    selectedBreedCode;
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8 text-white">
@@ -219,31 +218,58 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                 No breed standings have been recorded for Year {selectedYear}.
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {breedOptions.map((option) => (
-                  <Link
-                    key={option.breedCode2}
-                    href={`/shows/top-ten?year=${selectedYear}&breed=${option.breedCode2}`}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                      option.breedCode2 === selectedBreedCode
-                        ? "border-purple-300/40 bg-purple-600 text-white"
-                        : "border-purple-300/20 bg-black/20 text-purple-100 hover:bg-white/10"
-                    }`}
+              <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+                <input type="hidden" name="year" value={selectedYear} />
+                <div>
+                  <label
+                    htmlFor="breed"
+                    className="mb-1 block text-xs uppercase tracking-wide text-purple-100/60"
                   >
-                    {option.dog.breed.name} ({option.breedCode2})
+                    Breed
+                  </label>
+                  <select
+                    id="breed"
+                    name="breed"
+                    defaultValue={selectedBreedCode ?? ""}
+                    className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+                  >
+                    <option value="">Choose a breed...</option>
+                    {breedOptions.map((option) => (
+                      <option key={option.breedCode2} value={option.breedCode2}>
+                        {option.dog.breed.name} ({option.breedCode2})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  className="rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-500"
+                >
+                  View Breed
+                </button>
+
+                {selectedBreedCode ? (
+                  <Link
+                    href={`/shows/top-ten?year=${selectedYear}`}
+                    className="rounded-xl border border-purple-300/25 bg-white/5 px-5 py-2.5 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                  >
+                    Clear
                   </Link>
-                ))}
-              </div>
+                ) : null}
+              </form>
             )}
           </section>
 
-          <RankingPanel
-            title={`${selectedBreedName} Top Ten`}
-            subtitle={`Year ${selectedYear}`}
-            metricLabel="Breed Dogs Beaten"
-            rows={rankRows(breedRows)}
-            getMetric={(row) => row.breedDogsBeaten}
-          />
+          {selectedBreedCode && selectedBreedName ? (
+            <RankingPanel
+              title={`${selectedBreedName} Top Ten`}
+              subtitle={`Year ${selectedYear}`}
+              metricLabel="Breed Dogs Beaten"
+              rows={rankRows(breedRows)}
+              getMetric={(row) => row.breedDogsBeaten}
+            />
+          ) : null}
         </div>
       </section>
     </main>
