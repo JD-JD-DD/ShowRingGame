@@ -27,11 +27,10 @@ function formatShowDate(epoch: number): string {
 
 type PlayerClusterStatus =
   | "OPEN"
-  | "UPCOMING"
+  | "CLOSED"
   | "AWAITING JUDGING"
   | "JUDGING"
   | "JUDGED"
-  | "NO ENTRIES"
   | "CANCELLED";
 
 function statusTone(status: PlayerClusterStatus): string {
@@ -43,8 +42,7 @@ function statusTone(status: PlayerClusterStatus): string {
     case "AWAITING JUDGING":
     case "JUDGING":
       return "border-amber-300/25 bg-amber-500/10 text-amber-100";
-    case "NO ENTRIES":
-    case "UPCOMING":
+    case "CLOSED":
       return "border-purple-300/20 bg-black/20 text-purple-100/65";
     case "CANCELLED":
       return "border-red-300/25 bg-red-500/10 text-red-100";
@@ -77,7 +75,7 @@ function getPlayerClusterStatus(args: {
   }
 
   if (args.entryCount === 0 && args.entryCloseEpoch <= args.currentEpoch) {
-    return "NO ENTRIES";
+    return "CLOSED";
   }
 
   if (args.clusterStatus === "COMPLETE") {
@@ -96,7 +94,7 @@ function getPlayerClusterStatus(args: {
     return "OPEN";
   }
 
-  return "UPCOMING";
+  return "CLOSED";
 }
 
 function getGeneratedTemplateId(clusterId: string): string | null {
@@ -321,10 +319,6 @@ export default async function ShowsPage({
                             ? cluster.startEpoch
                             : null;
                         const canEnterShow = playerStatus === "OPEN";
-                        const showClosedLabel =
-                          playerStatus === "NO ENTRIES" ||
-                          playerStatus === "AWAITING JUDGING" ||
-                          playerStatus === "JUDGING";
                         const clusterHref =
                           playerStatus === "OPEN"
                             ? `/shows/${cluster.id}${showDetailQuery}`
@@ -377,10 +371,6 @@ export default async function ShowsPage({
                               >
                                 Enter
                               </Link>
-                            ) : showClosedLabel ? (
-                              <span className="rounded-lg border border-purple-300/25 bg-white/5 px-2.5 py-1 text-xs font-semibold text-purple-100/80">
-                                Closed
-                              </span>
                             ) : null}
                           </div>
                         );
