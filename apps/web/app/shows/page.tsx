@@ -320,11 +320,7 @@ export default async function ShowsPage({
                           !hasResults && cluster.startEpoch > currentEpoch
                             ? cluster.startEpoch
                             : null;
-                        const canOpenShow =
-                          playerStatus === "OPEN" ||
-                          playerStatus === "AWAITING JUDGING" ||
-                          playerStatus === "JUDGING" ||
-                          playerStatus === "NO ENTRIES";
+                        const canEnterShow = playerStatus === "OPEN";
                         const clusterHref =
                           playerStatus === "OPEN"
                             ? `/shows/${cluster.id}${showDetailQuery}`
@@ -370,12 +366,12 @@ export default async function ShowsPage({
                               ) : null}
                             </Link>
 
-                            {canOpenShow ? (
+                            {canEnterShow ? (
                               <Link
                                 href={`/shows/${cluster.id}${showDetailQuery}`}
                                 className="rounded-lg border border-purple-300/25 bg-white/5 px-2.5 py-1 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
                               >
-                                {playerStatus === "OPEN" ? "Enter" : "Open"}
+                                Enter
                               </Link>
                             ) : null}
                           </div>
