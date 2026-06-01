@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
+  DAM_SHOW_POST_WHELP_COOLDOWN_HOURS,
   ENTRY_FEE_PER_SHOW,
   SHOW_WEEK_HOURS,
   canEnterShows,
@@ -42,6 +43,21 @@ const dogForEntryArgs = Prisma.validator<Prisma.DogDefaultArgs>()({
     muscleTone: true,
     coatCondition: true,
     fatiguePoints: true,
+    breedingAttemptsAsDam: {
+      where: {
+        OR: [
+          { status: "PREGNANT" },
+          { status: "WHELPED", whelpedEpoch: { not: null } },
+        ],
+      },
+      orderBy: {
+        whelpedEpoch: "desc",
+      },
+      select: {
+        status: true,
+        whelpedEpoch: true,
+      },
+    },
   },
 });
 
@@ -177,6 +193,39 @@ function getDogDisplayName(dog: DogForEntry): string {
 
 function getConditioningSnapshot(dog: DogForEntry): number {
   return Math.round((dog.ringObedience + dog.muscleTone + dog.coatCondition) / 3);
+}
+
+function getShowReproState(dog: DogForEntry) {
+  const latestWhelp = dog.breedingAttemptsAsDam.find(
+    (attempt) => attempt.status === "WHELPED" && attempt.whelpedEpoch != null
+  );
+
+  return {
+    isPregnant: dog.breedingAttemptsAsDam.some(
+      (attempt) => attempt.status === "PREGNANT"
+    ),
+    lastWhelpedEpoch: latestWhelp?.whelpedEpoch ?? null,
+  };
+}
+
+function getShowReproEligibilityReason(
+  dog: DogForEntry,
+  showEpoch: number
+): string | null {
+  const repro = getShowReproState(dog);
+
+  if (repro.isPregnant) {
+    return "Bitch cannot be shown after pregnancy confirmation.";
+  }
+
+  if (
+    repro.lastWhelpedEpoch != null &&
+    showEpoch < repro.lastWhelpedEpoch + DAM_SHOW_POST_WHELP_COOLDOWN_HOURS
+  ) {
+    return "Bitch cannot be shown until 8 weeks after whelping.";
+  }
+
+  return null;
 }
 
 function getSameWeekendClusterWhere(
@@ -427,8 +476,21 @@ function getShowDayEntryEligibilityReason(args: {
     return "Dog breed does not match the selected breed.";
   }
 
-  if (!canEnterShows(showDay.scheduledEpoch, dog.birthEpoch, dog.lifecycleState)) {
-    return "Dog is not show-age eligible for this show day.";
+  const reproReason = getShowReproEligibilityReason(dog, showDay.scheduledEpoch);
+
+  if (reproReason) {
+    return reproReason;
+  }
+
+  if (
+    !canEnterShows(
+      showDay.scheduledEpoch,
+      dog.birthEpoch,
+      dog.lifecycleState,
+      getShowReproState(dog)
+    )
+  ) {
+    return "Dog is not eligible to be shown on this show day.";
   }
 
   return null;
@@ -504,8 +566,21 @@ export function getShowEntryEligibilityReason(args: {
     return "Dog breed does not match the judging block.";
   }
 
-  if (!canEnterShows(currentEpoch, dog.birthEpoch, dog.lifecycleState)) {
-    return "Dog is not show-age eligible.";
+  const reproReason = getShowReproEligibilityReason(dog, block.startEpoch);
+
+  if (reproReason) {
+    return reproReason;
+  }
+
+  if (
+    !canEnterShows(
+      block.startEpoch,
+      dog.birthEpoch,
+      dog.lifecycleState,
+      getShowReproState(dog)
+    )
+  ) {
+    return "Dog is not eligible to be shown in this judging block.";
   }
 
   return null;
@@ -860,6 +935,21 @@ export async function listShowEntryBreedOptions(args: {
     orderBy: [{ breedCode2: "asc" }, { registeredName: "asc" }, { regNumber: "asc" }],
     include: {
       breed: { select: { code2: true, name: true } },
+      breedingAttemptsAsDam: {
+        where: {
+          OR: [
+            { status: "PREGNANT" },
+            { status: "WHELPED", whelpedEpoch: { not: null } },
+          ],
+        },
+        orderBy: {
+          whelpedEpoch: "desc",
+        },
+        select: {
+          status: true,
+          whelpedEpoch: true,
+        },
+      },
     },
   });
   const weekendConflictDogIds = await getDogIdsWithSameWeekendEntries({

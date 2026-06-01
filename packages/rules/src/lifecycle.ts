@@ -6,6 +6,7 @@ import {
   AGE_DEATH_GUARANTEED_HOURS,
   MAX_SHOW_AGE_HOURS,
   DAM_MAX_BREED_AGE_HOURS,
+  DAM_SHOW_POST_WHELP_COOLDOWN_HOURS,
 } from "../constants/lifecycle.constants";
 import { ageHours } from "./time";
 
@@ -28,6 +29,7 @@ export type ReproState = {
   // breedingAttemptId?: string
   // pregCheckEpoch?: number
   // dueEpoch?: number
+  lastWhelpedEpoch?: number | null;
   whelpingCooldownUntil?: number | null;
 };
 
@@ -96,11 +98,31 @@ export function canRehomeDog(currentEpoch: number, birthEpoch: number, status: D
   return ageHours(currentEpoch, birthEpoch) >= PUPPY_SALE_MIN_AGE_HOURS;
 }
 
-export function canEnterShows(currentEpoch: number, birthEpoch: number, status: DogStatus): boolean {
+export function canEnterShows(
+  currentEpoch: number,
+  birthEpoch: number,
+  status: DogStatus,
+  repro: ReproState = {}
+): boolean {
   if (status !== "ALIVE") return false;
 
   const h = ageHours(currentEpoch, birthEpoch);
-  return h >= MIN_SHOW_AGE_HOURS && h <= MAX_SHOW_AGE_HOURS;
+
+  if (h < MIN_SHOW_AGE_HOURS || h > MAX_SHOW_AGE_HOURS) return false;
+
+  // Once pregnancy is confirmed, the bitch stays home through recovery from
+  // whelping. The show cooldown is intentionally shorter than the breeding
+  // cooldown because these model different real-world constraints.
+  if (repro.isPregnant) return false;
+
+  if (
+    repro.lastWhelpedEpoch != null &&
+    currentEpoch < repro.lastWhelpedEpoch + DAM_SHOW_POST_WHELP_COOLDOWN_HOURS
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -153,7 +175,7 @@ export function getLifecycleFlags(args: {
   return {
     ageHours: h,
     stage: lifeStage(currentEpoch, birthEpoch),
-    canShow: canEnterShows(currentEpoch, birthEpoch, status),
+    canShow: canEnterShows(currentEpoch, birthEpoch, status, repro),
     canBreed: canBreed(currentEpoch, birthEpoch, status, sex, repro),
     canSell: canSellPuppy(currentEpoch, birthEpoch, status),
     isDeathRiskAge: h >= AGE_DEATH_START_HOURS

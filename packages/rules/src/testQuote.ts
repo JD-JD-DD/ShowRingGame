@@ -3,7 +3,8 @@ import {
   getPuppyRehomePayoutForAgeHours,
 } from "../engines/economy.engine";
 import { TRAVELING_HANDLER_FEE } from "../constants/economy.constants";
-import { canRehomeDog } from "./lifecycle";
+import { DAM_SHOW_POST_WHELP_COOLDOWN_HOURS } from "../constants/lifecycle.constants";
+import { canEnterShows, canRehomeDog } from "./lifecycle";
 
 function assertEqual(actual: number, expected: number, label: string) {
   if (actual !== expected) {
@@ -179,6 +180,30 @@ assertEqual(getPuppyRehomePayoutForAgeHours(182), 0, "puppy re-home at 6 months"
 assertEqual(Number(canRehomeDog(55, 0, "ALIVE")), 0, "re-home before 8 weeks");
 assertEqual(Number(canRehomeDog(56, 0, "ALIVE")), 1, "re-home at 8 weeks");
 assertEqual(Number(canRehomeDog(500, 0, "ALIVE")), 1, "adult re-home");
+assertEqual(Number(canEnterShows(1000, 0, "ALIVE")), 1, "adult can show");
+assertEqual(
+  Number(canEnterShows(1000, 0, "ALIVE", { isPregnant: true })),
+  0,
+  "confirmed pregnant bitch cannot show"
+);
+assertEqual(
+  Number(
+    canEnterShows(1000, 0, "ALIVE", {
+      lastWhelpedEpoch: 1000 - DAM_SHOW_POST_WHELP_COOLDOWN_HOURS + 1,
+    })
+  ),
+  0,
+  "bitch cannot show before 8 weeks post-whelp"
+);
+assertEqual(
+  Number(
+    canEnterShows(1000, 0, "ALIVE", {
+      lastWhelpedEpoch: 1000 - DAM_SHOW_POST_WHELP_COOLDOWN_HOURS,
+    })
+  ),
+  1,
+  "bitch can show at 8 weeks post-whelp"
+);
 
 console.log("CLUSTER ENTRY QUOTE");
 console.log(JSON.stringify(quote, null, 2));

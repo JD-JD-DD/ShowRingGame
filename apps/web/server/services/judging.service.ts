@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { recalculateDogTitleProgressForDogs } from "@/server/services/titleProgress.service";
 import {
+  canEnterShows,
   getChampionshipPointsForCompetition,
   JUDGING_SCORING_VERSION,
   judgeBestInShow,
@@ -29,6 +30,21 @@ const showBlockForJudgingArgs =
               titleProgress: {
                 select: {
                   currentTitleCode: true,
+                },
+              },
+              breedingAttemptsAsDam: {
+                where: {
+                  OR: [
+                    { status: "PREGNANT" },
+                    { status: "WHELPED", whelpedEpoch: { not: null } },
+                  ],
+                },
+                orderBy: {
+                  whelpedEpoch: "desc",
+                },
+                select: {
+                  status: true,
+                  whelpedEpoch: true,
                 },
               },
             },
@@ -281,11 +297,26 @@ function isEntryEligibleForBlockJudging(
     (entry.dog.lifecycleState === "DECEASED" &&
       entry.dog.deathEpoch !== null &&
       entry.dog.deathEpoch > block.startEpoch);
+  const latestWhelp = entry.dog.breedingAttemptsAsDam.find(
+    (attempt) => attempt.status === "WHELPED" && attempt.whelpedEpoch != null
+  );
+  const showEligibleAtBlockStart = canEnterShows(
+    block.startEpoch,
+    entry.dog.birthEpoch,
+    aliveAtBlockStart ? "ALIVE" : entry.dog.lifecycleState,
+    {
+      isPregnant: entry.dog.breedingAttemptsAsDam.some(
+        (attempt) => attempt.status === "PREGNANT"
+      ),
+      lastWhelpedEpoch: latestWhelp?.whelpedEpoch ?? null,
+    }
+  );
 
   return (
     entry.entryStatus === "ENTERED" &&
     entry.breedCode2 === block.breedCode2 &&
     aliveAtBlockStart &&
+    showEligibleAtBlockStart &&
     entry.dog.ownerKennelId === entry.kennelId
   );
 }
