@@ -85,12 +85,19 @@ export async function GET(request: Request) {
     },
     take: blockBatchSize,
   });
+  const earliestReadyShowDayId = readyBlocks[0]?.showDayId;
+  const selectedBlocks = earliestReadyShowDayId
+    ? readyBlocks.filter((block) => block.showDayId === earliestReadyShowDayId)
+    : [];
   const processedBlocks = [];
   const finalized = [];
   const errors = [];
   const touchedShowDayIds = new Set<string>();
 
-  for (const block of readyBlocks) {
+  // Keep each workflow run within one show day. This lets Group and BIS finals
+  // update championship titles before any later-day breed blocks are judged,
+  // so a newly finished champion moves from the classes into specials.
+  for (const block of selectedBlocks) {
     try {
       const result = await judgeShowBlock({
         judgingBlockId: block.id,
@@ -228,7 +235,7 @@ export async function GET(request: Request) {
     currentEpoch,
     blockBatchSize,
     finalizeBatchSize,
-    selectedBlocks: readyBlocks.length,
+    selectedBlocks: selectedBlocks.length,
     selectedFinalizers: readyToFinalize.length,
     touchedShowDayIds: [...touchedShowDayIds],
     processedBlocks,
