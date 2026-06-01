@@ -25,44 +25,78 @@ function formatShowDate(epoch: number): string {
   });
 }
 
-function statusTone(status: string): string {
+type PlayerClusterStatus =
+  | "OPEN"
+  | "UPCOMING"
+  | "AWAITING JUDGING"
+  | "JUDGING"
+  | "JUDGED"
+  | "NO ENTRIES"
+  | "CANCELLED";
+
+function statusTone(status: PlayerClusterStatus): string {
   switch (status) {
-    case "COMPLETE":
-    case "RESULTS_PUBLISHED":
+    case "JUDGED":
       return "border-sky-300/25 bg-sky-500/10 text-sky-100";
     case "OPEN":
-    case "ENTRY_OPEN":
       return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
-    case "CLOSED":
-    case "ENTRY_LOCKED":
+    case "AWAITING JUDGING":
+    case "JUDGING":
       return "border-amber-300/25 bg-amber-500/10 text-amber-100";
+    case "NO ENTRIES":
+    case "UPCOMING":
+      return "border-purple-300/20 bg-black/20 text-purple-100/65";
     case "CANCELLED":
       return "border-red-300/25 bg-red-500/10 text-red-100";
-    default:
-      return "border-purple-300/20 bg-white/5 text-purple-100";
   }
 }
 
 function derivedStatusTone(
-  status:
-    | "CURRENT_WEEK"
-    | "JUDGED"
-    | "NO_ENTRIES"
-    | "NOT_YET_JUDGED"
-    | "JUDGING_OPENS"
+  status: "CURRENT_WEEK" | "JUDGING_OPENS"
 ): string {
   switch (status) {
     case "CURRENT_WEEK":
       return "border-fuchsia-300/30 bg-fuchsia-500/10 text-fuchsia-100";
-    case "JUDGED":
-      return "border-sky-300/25 bg-sky-500/10 text-sky-100";
-    case "NO_ENTRIES":
-      return "border-purple-300/20 bg-black/20 text-purple-100/65";
-    case "NOT_YET_JUDGED":
-      return "border-amber-300/30 bg-amber-500/10 text-amber-100";
     case "JUDGING_OPENS":
       return "border-purple-300/20 bg-black/20 text-purple-100/70";
   }
+}
+
+// Cluster statuses are workflow states. Derive a single label that tells
+// players what they can expect from the show at the current game time.
+function getPlayerClusterStatus(args: {
+  clusterStatus: string;
+  entryCount: number;
+  hasResults: boolean;
+  entryOpenEpoch: number;
+  entryCloseEpoch: number;
+  currentEpoch: number;
+}): PlayerClusterStatus {
+  if (args.clusterStatus === "CANCELLED") {
+    return "CANCELLED";
+  }
+
+  if (args.entryCount === 0 && args.entryCloseEpoch <= args.currentEpoch) {
+    return "NO ENTRIES";
+  }
+
+  if (args.clusterStatus === "COMPLETE") {
+    return "JUDGED";
+  }
+
+  if (args.hasResults) {
+    return "JUDGING";
+  }
+
+  if (args.entryCloseEpoch <= args.currentEpoch) {
+    return "AWAITING JUDGING";
+  }
+
+  if (args.entryOpenEpoch <= args.currentEpoch) {
+    return "OPEN";
+  }
+
+  return "UPCOMING";
 }
 
 function getGeneratedTemplateId(clusterId: string): string | null {
@@ -274,29 +308,25 @@ export default async function ShowsPage({
                         const resultCount = clusterResultCount(cluster);
                         const entryCount = clusterEntryCount(cluster);
                         const hasResults = resultCount > 0;
-                        const readyUnjudgedDay = cluster.showDays.some(
-                          (day) =>
-                            day.scheduledEpoch <= currentEpoch &&
-                            day._count.showEntries > 0 &&
-                            day._count.showResults === 0
-                        );
-                        const closedWithoutEntries =
-                          !hasResults &&
-                          entryCount === 0 &&
-                          cluster.entryCloseEpoch <= currentEpoch;
-                        const judgingPending =
-                          !hasResults &&
-                          entryCount > 0 &&
-                          (readyUnjudgedDay ||
-                            cluster.entryCloseEpoch <= currentEpoch);
+                        const playerStatus = getPlayerClusterStatus({
+                          clusterStatus: cluster.status,
+                          entryCount,
+                          hasResults,
+                          entryOpenEpoch: cluster.entryOpenEpoch,
+                          entryCloseEpoch: cluster.entryCloseEpoch,
+                          currentEpoch,
+                        });
                         const judgingOpens =
                           !hasResults && cluster.startEpoch > currentEpoch
                             ? cluster.startEpoch
                             : null;
                         const canOpenShow =
-                          cluster.status === "OPEN" || cluster.status === "CLOSED";
+                          playerStatus === "OPEN" ||
+                          playerStatus === "AWAITING JUDGING" ||
+                          playerStatus === "JUDGING" ||
+                          playerStatus === "NO ENTRIES";
                         const clusterHref =
-                          cluster.status === "OPEN"
+                          playerStatus === "OPEN"
                             ? `/shows/${cluster.id}${showDetailQuery}`
                             : `/shows/${cluster.id}/results`;
 
@@ -316,31 +346,10 @@ export default async function ShowsPage({
                                 {formatShowDate(cluster.startEpoch)}
                               </span>
                               <span
-                                className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone(cluster.status)}`}
+                                className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone(playerStatus)}`}
                               >
-                                {cluster.status}
+                                {playerStatus}
                               </span>
-                              {cluster.status !== "COMPLETE" && hasResults ? (
-                                <span
-                                  className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${derivedStatusTone("JUDGED")}`}
-                                >
-                                  JUDGED
-                                </span>
-                              ) : null}
-                              {judgingPending ? (
-                                <span
-                                  className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${derivedStatusTone("NOT_YET_JUDGED")}`}
-                                >
-                                  NOT YET JUDGED
-                                </span>
-                              ) : null}
-                              {closedWithoutEntries ? (
-                                <span
-                                  className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${derivedStatusTone("NO_ENTRIES")}`}
-                                >
-                                  NO ENTRIES
-                                </span>
-                              ) : null}
                               {hasResults ? (
                                 <span className="ml-2 text-sky-100">
                                   {resultCount} result
@@ -366,7 +375,7 @@ export default async function ShowsPage({
                                 href={`/shows/${cluster.id}${showDetailQuery}`}
                                 className="rounded-lg border border-purple-300/25 bg-white/5 px-2.5 py-1 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
                               >
-                                {cluster.status === "OPEN" ? "Enter" : "Open"}
+                                {playerStatus === "OPEN" ? "Enter" : "Open"}
                               </Link>
                             ) : null}
                           </div>

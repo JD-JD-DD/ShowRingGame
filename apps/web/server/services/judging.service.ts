@@ -859,6 +859,10 @@ function normalizeGroupName(groupName: string | null): string {
   return groupName?.trim() || "Other Breeds";
 }
 
+// Finals recalculate championship progress after creating awards. As show history
+// grows, that work can exceed Prisma's five-second interactive transaction default.
+const FINALS_TRANSACTION_TIMEOUT_MS = 30_000;
+
 async function createGroupAwardsForShowDay(args: {
   showDayId: string;
   judgeId: string;
@@ -1006,6 +1010,8 @@ async function createGroupAwardsForShowDay(args: {
     });
 
     return created.count;
+  }, {
+    timeout: FINALS_TRANSACTION_TIMEOUT_MS,
   });
 }
 
@@ -1144,6 +1150,8 @@ async function createBestInShowAwardsForShowDay(args: {
     });
 
     return created.count;
+  }, {
+    timeout: FINALS_TRANSACTION_TIMEOUT_MS,
   });
 }
 

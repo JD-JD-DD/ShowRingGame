@@ -223,5 +223,11 @@ export async function GET(request: Request) {
     errors,
   };
 
+  // The workflow calls this endpoint with curl --fail. Preserve the detailed
+  // payload, but return a failing status so a repeated judging error is visible.
+  if (errors.length > 0) {
+    return fail("Show results job completed with errors.", 500, payload);
+  }
+
   return ok(payload);
 }
