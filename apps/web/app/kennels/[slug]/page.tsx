@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
+import { getDistrictPanelStyle } from "@/lib/districtStyles";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { getSessionUserId } from "@/lib/session";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
-import { getShowDistrictRegionName } from "@showring/rules";
+import { getShowDistrictRegion } from "@showring/rules";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -34,6 +36,9 @@ function formatMoney(value: number): string {
 }
 
 export default async function PublicKennelProfilePage({ params }: PageProps) {
+  const userId = await getSessionUserId();
+  if (!userId) redirect("/login");
+
   const { slug } = await params;
   const currentEpoch = getCurrentEpoch();
   const kennel = await db.kennel.findUnique({
@@ -51,6 +56,10 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
   if (!kennel) {
     notFound();
   }
+
+  const homeRegion = kennel.homeDistrict
+    ? getShowDistrictRegion(kennel.homeDistrict)
+    : null;
 
   await resolveDogDeaths({ kennelId: kennel.id, currentEpoch });
 
@@ -163,6 +172,12 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
               >
                 My Kennel
               </Link>
+              <Link
+                href="/travel-map"
+                className="rounded-2xl border border-sky-300/25 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+              >
+                District Map
+              </Link>
             </div>
           </div>
         </header>
@@ -190,14 +205,15 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
               {saleListings.length}
             </div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div
+            style={homeRegion ? getDistrictPanelStyle(homeRegion) : undefined}
+            className="rounded-2xl border border-white/10 bg-white/5 p-5"
+          >
             <div className="text-xs uppercase tracking-wide text-purple-200">
               Region
             </div>
             <div className="mt-2 text-3xl font-semibold">
-              {kennel.homeDistrict
-                ? getShowDistrictRegionName(kennel.homeDistrict)
-                : "-"}
+              {homeRegion?.name ?? "-"}
             </div>
           </div>
         </section>

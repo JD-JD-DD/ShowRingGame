@@ -4,7 +4,8 @@ import { getSessionUserId } from "@/lib/session";
 import LogoutButton from "@/components/LogoutButton";
 import KennelDogsPanel from "@/components/kennel/KennelDogsPanel";
 import Link from "next/link";
-import { getShowDistrictRegionName } from "@showring/rules";
+import { getShowDistrictRegion } from "@showring/rules";
+import { getDistrictPanelStyle } from "@/lib/districtStyles";
 
 export default async function KennelPage() {
   const userId = await getSessionUserId();
@@ -29,6 +30,10 @@ export default async function KennelPage() {
     redirect("/onboarding");
   }
 
+  const homeRegion = kennel.homeDistrict
+    ? getShowDistrictRegion(kennel.homeDistrict)
+    : null;
+
   return (
     <main className="mx-auto max-w-7xl px-6 py-8">
       <section className="mb-8 grid gap-4 md:grid-cols-4">
@@ -38,12 +43,13 @@ export default async function KennelPage() {
           <div className="mt-1 text-sm text-neutral-600">{kennel.slug}</div>
         </div>
 
-        <div className="rounded-2xl border border-purple-900 bg-purple-800/40 p-5 shadow-sm">
+        <div
+          style={homeRegion ? getDistrictPanelStyle(homeRegion) : undefined}
+          className="rounded-2xl border border-purple-900 bg-purple-800/40 p-5 shadow-sm"
+        >
           <div className="text-sm text-neutral-500">Region</div>
           <div className="mt-1 text-xl font-semibold">
-            {kennel.homeDistrict
-              ? getShowDistrictRegionName(kennel.homeDistrict)
-              : "-"}
+            {homeRegion?.name ?? "-"}
           </div>
         </div>
 
@@ -102,6 +108,13 @@ export default async function KennelPage() {
           className="rounded-md border border-sky-400/40 px-5 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-950/40"
         >
           Shows
+        </Link>
+
+        <Link
+          href="/travel-map"
+          className="rounded-md border border-sky-300/40 px-5 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-950/40"
+        >
+          District Map
         </Link>
 
         <Link

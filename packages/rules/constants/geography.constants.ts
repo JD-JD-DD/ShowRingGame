@@ -47,24 +47,29 @@ export type ShowDistrictRegion = {
   district: number;
   name: string;
   shortName: string;
+  /**
+   * Permanent player-facing district color. This is an identity color, not a
+   * travel-distance color, so players can recognize their region consistently.
+   */
+  accentColor: string;
 };
 
 export const SHOW_DISTRICT_REGIONS: ShowDistrictRegion[] = [
-  { district: 1, name: "Pacific Northwest", shortName: "Cascadia" },
-  { district: 2, name: "Northern California", shortName: "NorCal" },
-  { district: 3, name: "Southern California", shortName: "SoCal" },
-  { district: 4, name: "Mountain West", shortName: "Mountain West" },
-  { district: 5, name: "Desert Southwest", shortName: "Desert Southwest" },
-  { district: 6, name: "Texas Plains", shortName: "Texas Plains" },
-  { district: 7, name: "Great Plains", shortName: "Great Plains" },
-  { district: 8, name: "Upper Midwest", shortName: "Upper Midwest" },
-  { district: 9, name: "Great Lakes", shortName: "Great Lakes" },
-  { district: 10, name: "Ohio Valley", shortName: "Ohio Valley" },
-  { district: 11, name: "Mid-Atlantic", shortName: "Mid-Atlantic" },
-  { district: 12, name: "Northeast", shortName: "Northeast" },
-  { district: 13, name: "Southeast", shortName: "Southeast" },
-  { district: 14, name: "Gulf Coast", shortName: "Gulf Coast" },
-  { district: 15, name: "Florida-Caribbean", shortName: "Florida Coast" },
+  { district: 1, name: "Pacific Northwest", shortName: "Cascadia", accentColor: "#38bdf8" },
+  { district: 2, name: "Northern California", shortName: "NorCal", accentColor: "#60a5fa" },
+  { district: 3, name: "Southern California", shortName: "SoCal", accentColor: "#818cf8" },
+  { district: 4, name: "Mountain West", shortName: "Mountain West", accentColor: "#a78bfa" },
+  { district: 5, name: "Desert Southwest", shortName: "Desert Southwest", accentColor: "#f59e0b" },
+  { district: 6, name: "Texas Plains", shortName: "Texas Plains", accentColor: "#f97316" },
+  { district: 7, name: "Great Plains", shortName: "Great Plains", accentColor: "#84cc16" },
+  { district: 8, name: "Upper Midwest", shortName: "Upper Midwest", accentColor: "#22c55e" },
+  { district: 9, name: "Great Lakes", shortName: "Great Lakes", accentColor: "#14b8a6" },
+  { district: 10, name: "Ohio Valley", shortName: "Ohio Valley", accentColor: "#06b6d4" },
+  { district: 11, name: "Mid-Atlantic", shortName: "Mid-Atlantic", accentColor: "#6366f1" },
+  { district: 12, name: "Northeast", shortName: "Northeast", accentColor: "#a855f7" },
+  { district: 13, name: "Southeast", shortName: "Southeast", accentColor: "#ec4899" },
+  { district: 14, name: "Gulf Coast", shortName: "Gulf Coast", accentColor: "#f43f5e" },
+  { district: 15, name: "Florida-Caribbean", shortName: "Florida Coast", accentColor: "#fb7185" },
 ];
 
 /**

@@ -1,50 +1,13 @@
-import { createHmac } from "node:crypto";
 import { cookies } from "next/headers";
-
-const SESSION_COOKIE_NAME = "showring_session";
-const SESSION_SECRET = process.env.SESSION_SECRET || "dev-only-change-me";
-
-type SessionPayload = {
-  userId: string;
-  issuedAt: number;
-};
-
-function base64UrlEncode(value: string): string {
-  return Buffer.from(value, "utf8").toString("base64url");
-}
-
-function base64UrlDecode(value: string): string {
-  return Buffer.from(value, "base64url").toString("utf8");
-}
-
-function sign(value: string): string {
-  return createHmac("sha256", SESSION_SECRET).update(value).digest("base64url");
-}
-
-function encodeSession(payload: SessionPayload): string {
-  const body = base64UrlEncode(JSON.stringify(payload));
-  const signature = sign(body);
-  return `${body}.${signature}`;
-}
-
-function decodeSession(token: string): SessionPayload | null {
-  const [body, signature] = token.split(".");
-
-  if (!body || !signature) return null;
-  if (sign(body) !== signature) return null;
-
-  try {
-    const parsed = JSON.parse(base64UrlDecode(body)) as SessionPayload;
-    if (!parsed.userId) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
+import {
+  createSessionToken,
+  decodeSessionToken,
+  SESSION_COOKIE_NAME
+} from "@/lib/sessionToken";
 
 export async function createSession(userId: string): Promise<void> {
   const store = await cookies();
-  const token = encodeSession({
+  const token = createSessionToken({
     userId,
     issuedAt: Date.now(),
   });
@@ -69,8 +32,6 @@ export async function getSessionUserId(): Promise<string | null> {
 
   if (!token) return null;
 
-  const payload = decodeSession(token);
+  const payload = decodeSessionToken(token);
   return payload?.userId ?? null;
-
-  
 }

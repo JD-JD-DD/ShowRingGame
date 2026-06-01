@@ -216,6 +216,12 @@ export default async function ShowsPage({
             >
               Top Ten
             </Link>
+            <Link
+              href="/travel-map"
+              className="rounded-2xl border border-sky-300/30 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+            >
+              District Map
+            </Link>
             <form action="/api/shows" method="post">
               <input type="hidden" name="redirectTo" value="/shows" />
               <button
