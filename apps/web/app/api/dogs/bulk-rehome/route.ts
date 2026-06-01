@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
+import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import { getPuppyRehomePayout } from "@showring/rules";
 
 export async function POST(request: Request) {
   try {
+    const currentEpoch = getCurrentEpoch();
     const userId = await getSessionUserId();
 
     if (!userId) {
@@ -41,6 +44,7 @@ export async function POST(request: Request) {
       },
       select: {
         id: true,
+        birthEpoch: true,
         lifecycleState: true,
         marketState: true,
       },
@@ -67,21 +71,70 @@ export async function POST(request: Request) {
       );
     }
 
-    await db.dog.updateMany({
-      where: {
-        id: { in: dogIds },
-        ownerKennelId: kennel.id,
-      },
-      data: {
-        ownerKennelId: null,
-        marketState: "NOT_FOR_SALE",
-        lifecycleState: "TRANSFERRED",
-      },
+    const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
+    const payoutDogs = dogIds
+      .map((dogId) => dogsById.get(dogId)!)
+      .map((dog) => ({
+        ...dog,
+        payout: getPuppyRehomePayout(currentEpoch, dog.birthEpoch),
+      }))
+      .filter((dog) => dog.payout > 0);
+    const creditsAdded = payoutDogs.reduce(
+      (total, dog) => total + dog.payout,
+      0
+    );
+
+    await db.$transaction(async (tx) => {
+      const transfer = await tx.dog.updateMany({
+        where: {
+          id: { in: dogIds },
+          ownerKennelId: kennel.id,
+          lifecycleState: "ALIVE",
+          marketState: "NOT_FOR_SALE",
+        },
+        data: {
+          ownerKennelId: null,
+          marketState: "NOT_FOR_SALE",
+          lifecycleState: "TRANSFERRED",
+        },
+      });
+
+      if (transfer.count !== dogIds.length) {
+        throw new Error("One or more dogs are no longer available to re-home.");
+      }
+
+      if (creditsAdded === 0) {
+        return;
+      }
+
+      const updatedKennel = await tx.kennel.update({
+        where: { id: kennel.id },
+        data: { balance: { increment: creditsAdded } },
+        select: { balance: true },
+      });
+      let runningBalance = updatedKennel.balance - creditsAdded;
+
+      await tx.ledgerTransaction.createMany({
+        data: payoutDogs.map((dog) => {
+          runningBalance += dog.payout;
+
+          return {
+            kennelId: kennel.id,
+            transactionType: "PUPPY_REHOME",
+            amount: dog.payout,
+            balanceAfter: runningBalance,
+            occurredAtEpoch: currentEpoch,
+            dogId: dog.id,
+            memo: "Baseline puppy re-home placement",
+          };
+        }),
+      });
     });
 
     return NextResponse.json({
       ok: true,
       rehomedCount: dogIds.length,
+      creditsAdded,
       dogIds,
     });
   } catch (error) {

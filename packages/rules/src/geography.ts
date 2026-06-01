@@ -7,19 +7,19 @@ import { SHOW_DISTRICT_REGIONS } from "../constants/geography.constants";
 export function getDistrictDistanceTier(
   fromDistrict: number,
   toDistrict: number
-): number {
-  if (fromDistrict < 1 || fromDistrict > 15) {
+): DistanceTier {
+  if (fromDistrict < 1 || fromDistrict > SHOW_DISTRICT_REGIONS.length) {
     throw new Error(`Invalid fromDistrict: ${fromDistrict}`);
   }
 
-  if (toDistrict < 1 || toDistrict > 15) {
+  if (toDistrict < 1 || toDistrict > SHOW_DISTRICT_REGIONS.length) {
     throw new Error(`Invalid toDistrict: ${toDistrict}`);
   }
 
   const fromIndex = fromDistrict - 1;
   const toIndex = toDistrict - 1;
 
-  return DISTRICT_DISTANCE_MATRIX[fromIndex][toIndex];
+  return DISTRICT_DISTANCE_MATRIX[fromIndex][toIndex] as DistanceTier;
 }
 
 
@@ -41,4 +41,12 @@ export function getShowDistrictRegion(district: number) {
   }
 
   return region;
+}
+
+/**
+ * Returns the player-facing region name for a numeric show district.
+ * Numeric districts remain the stable values used for storage and rules.
+ */
+export function getShowDistrictRegionName(district: number): string {
+  return getShowDistrictRegion(district).name;
 }

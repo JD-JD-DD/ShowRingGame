@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import { getShowDistrictRegionName } from "@showring/rules";
 
 function formatShowDate(epoch: number): string {
   return epochToDate(epoch).toLocaleDateString("en-US", {
@@ -210,7 +211,9 @@ export default async function MyShowResultsPage() {
                           {entry.showDay.cluster.name}
                         </Link>
                         <div className="text-xs text-purple-100/55">
-                          District {entry.showDay.cluster.district}
+                          {getShowDistrictRegionName(
+                            entry.showDay.cluster.district
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-3 text-purple-100/80">

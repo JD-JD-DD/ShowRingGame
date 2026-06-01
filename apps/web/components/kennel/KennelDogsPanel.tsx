@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { getPuppyRehomePayoutForAgeHours } from "@showring/rules";
 
 type VisibleCategories = Record<string, number>;
 
@@ -321,6 +322,11 @@ export default function KennelDogsPanel() {
   }, [dogs, selectedDogIds]);
 
   const selectedDogsQuery = selectedDogIds.join(",");
+  const selectedRehomeCredits = selectedDogs.reduce(
+    (total, dog) =>
+      total + getPuppyRehomePayoutForAgeHours(dog.ageHours),
+    0
+  );
   const canBulkRehome =
     selectedDogs.length > 0 &&
     selectedDogs.every(
@@ -408,6 +414,7 @@ export default function KennelDogsPanel() {
       const data = (await response.json()) as {
         ok?: boolean;
         rehomedCount?: number;
+        creditsAdded?: number;
         dogIds?: string[];
         error?: string;
       };
@@ -423,7 +430,15 @@ export default function KennelDogsPanel() {
       setSelectedDogIds([]);
       setBulkAction("");
       setConfirmingBulkAction(false);
-      setMessage(`Re-homed ${data.rehomedCount ?? rehomedIds.size} dog(s).`);
+      router.refresh();
+      const creditsAdded = data.creditsAdded ?? 0;
+      setMessage(
+        `Re-homed ${data.rehomedCount ?? rehomedIds.size} dog(s).${
+          creditsAdded > 0
+            ? ` Added $${creditsAdded.toLocaleString()} to your ledger.`
+            : ""
+        }`
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to re-home selected dogs."
@@ -572,6 +587,12 @@ export default function KennelDogsPanel() {
                 and you will no longer be able to use{" "}
                 {selectedDogIds.length === 1 ? "it" : "them"}.
               </div>
+              {selectedRehomeCredits > 0 ? (
+                <div className="mt-2 text-sm font-semibold text-emerald-100">
+                  Expected kennel ledger credit: $
+                  {selectedRehomeCredits.toLocaleString()}.
+                </div>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"

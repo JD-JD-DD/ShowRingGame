@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import {
   generateAnnualShowClusterTemplates,
+  getShowDistrictRegionName,
   SHOW_WEEK_HOURS,
   SHOW_YEAR_HOURS,
 } from "@showring/rules";
@@ -258,8 +259,8 @@ export default async function ShowsPage({
                       {template.name}
                     </h2>
                     <div className="mt-2 text-sm text-purple-100/65">
-                      {formatShowDayNames(template.showDayNames)} - District{" "}
-                      {template.district}
+                      {formatShowDayNames(template.showDayNames)} -{" "}
+                      {getShowDistrictRegionName(template.district)}
                     </div>
                   </div>
 

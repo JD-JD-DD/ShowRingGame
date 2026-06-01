@@ -1,9 +1,4 @@
-// market floor values
-// minimum value for forever homed puppy
-export const FLOOR_PUPPY_PRICE = 100
-
-
-// travel costs
+// Travel costs
 export const BASE_TRAVEL_COST: Record<number, number> = {
   0: 0,
   1: 100,
@@ -17,11 +12,13 @@ export const BASE_TRAVEL_COST: Record<number, number> = {
 
 export const TRAVEL_COST_PER_DOG = 50;
 
-// TBD
-export const ENTRY_FEE = 0 // TBD
-export const HANDLER_FEE = 0 // TBD
-export const KENNEL_RUN_COST = 0 // TBD
-export const TRAVEL_COST_MULTIPLIER = 0 // TBD
+/**
+ * Base credit awarded when an eligible puppy is re-homed.
+ *
+ * This represents a baseline puppy placement. A future puppy-sale engine can
+ * replace the flat value with market-derived pricing and NPC purchase logic.
+ */
+export const BASE_PUPPY_REHOME_PAYOUT = 100;
 
 /**
  * Flat entry fee charged for each dog entered in each individual show.
@@ -51,7 +48,4 @@ export const TRAVELING_HANDLER_FEE = RINGSIDE_HANDLER_FEE * 5;
  */
 export const HANDLER_THRESHOLD_DOGS = 4;
 export const OWNER_HANDLED_DOG_LIMIT_PER_BREED = HANDLER_THRESHOLD_DOGS - 1;
-
-// TBD
-// handler cost from 4 - 7, 8 - 11, 12 - 15, 16 - 19. Is it locked at 20?
  

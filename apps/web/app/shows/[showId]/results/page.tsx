@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
+import { getShowDistrictRegionName } from "@showring/rules";
 
 function formatShowDate(epoch: number): string {
   return epochToDate(epoch).toLocaleDateString();
@@ -202,7 +203,7 @@ export default async function ShowResultsIndexPage({
             {cluster.status}
           </div>
           <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
-            District {cluster.district}
+            {getShowDistrictRegionName(cluster.district)}
           </div>
           <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
             Entries: {entryCount}

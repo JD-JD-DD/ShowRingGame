@@ -24,5 +24,6 @@ export const WHELPING_DAM_DEATH_RATE = 0.03
 
 // puppies
 export const PUPPY_SALE_MIN_AGE_HOURS = 56 // 8 weeks
+export const PUPPY_REHOME_PAYOUT_MAX_AGE_HOURS = MIN_SHOW_AGE_HOURS // ~6 months
 export const NEONATAL_PUPPY_DEATH_RATE = 0.07
 export const NEONATAL_PUPPY_DEATH_WINDOW_HOURS = SHOW_WEEK_HOURS

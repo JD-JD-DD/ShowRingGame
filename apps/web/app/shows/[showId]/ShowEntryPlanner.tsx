@@ -5,6 +5,7 @@ import { useMemo, useRef, useState, type FormEvent } from "react";
 import {
   ENTRY_FEE_PER_SHOW,
   getClusterEntryQuote,
+  getDistanceTierLabel,
 } from "@showring/rules";
 
 type PlannerDay = {
@@ -304,7 +305,7 @@ export function ShowEntryPlanner({
           </div>
           <div>
             <div className="text-xs uppercase tracking-[0.14em] text-purple-200/60">
-              Travel
+              {getDistanceTierLabel(quote.travel.tier)} Travel
             </div>
             <div className="mt-1 font-semibold text-white">
               {formatMoney(quote.travel.totalCost)}

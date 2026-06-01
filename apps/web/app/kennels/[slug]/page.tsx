@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import { getShowDistrictRegionName } from "@showring/rules";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -191,10 +192,12 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="text-xs uppercase tracking-wide text-purple-200">
-              District
+              Region
             </div>
             <div className="mt-2 text-3xl font-semibold">
-              {kennel.homeDistrict ?? "-"}
+              {kennel.homeDistrict
+                ? getShowDistrictRegionName(kennel.homeDistrict)
+                : "-"}
             </div>
           </div>
         </section>

@@ -4,6 +4,7 @@ import { getSessionUserId } from "@/lib/session";
 import LogoutButton from "@/components/LogoutButton";
 import KennelDogsPanel from "@/components/kennel/KennelDogsPanel";
 import Link from "next/link";
+import { getShowDistrictRegionName } from "@showring/rules";
 
 export default async function KennelPage() {
   const userId = await getSessionUserId();
@@ -38,8 +39,12 @@ export default async function KennelPage() {
         </div>
 
         <div className="rounded-2xl border border-purple-900 bg-purple-800/40 p-5 shadow-sm">
-          <div className="text-sm text-neutral-500">District</div>
-          <div className="mt-1 text-xl font-semibold">{kennel.homeDistrict}</div>
+          <div className="text-sm text-neutral-500">Region</div>
+          <div className="mt-1 text-xl font-semibold">
+            {kennel.homeDistrict
+              ? getShowDistrictRegionName(kennel.homeDistrict)
+              : "-"}
+          </div>
         </div>
 
         <div className="rounded-2xl border border-purple-900 bg-purple-800/40 p-5 shadow-sm">

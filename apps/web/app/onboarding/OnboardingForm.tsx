@@ -48,7 +48,7 @@ export default function OnboardingForm() {
     <main style={{ padding: "40px", maxWidth: "700px", margin: "0 auto" }}>
       <h1>Create Your Kennel</h1>
       <p>Your account is ready. Now create your kennel to enter the game.</p>
-      <p>Your home district will be assigned automatically to keep district populations balanced.</p>
+      <p>Your home region will be assigned automatically to keep region populations balanced.</p>
 
       <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px", marginTop: "24px" }}>
         <label style={{ display: "grid", gap: "8px" }}>

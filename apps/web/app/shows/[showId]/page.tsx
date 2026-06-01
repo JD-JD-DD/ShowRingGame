@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
+import { getShowDistrictRegionName } from "@showring/rules";
 import {
   getShowEntryPlanner,
   getShowWeekendEntryPlanStatus,
@@ -199,7 +200,7 @@ export default async function ShowDetailPage({
             {cluster.status}
           </div>
           <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
-            District {cluster.district}
+            {getShowDistrictRegionName(cluster.district)}
           </div>
           <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
             Entries close {formatShowDateTime(cluster.entryCloseEpoch)}

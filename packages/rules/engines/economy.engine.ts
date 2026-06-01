@@ -21,14 +21,41 @@
 
 import {
   BASE_TRAVEL_COST,
+  BASE_PUPPY_REHOME_PAYOUT,
   TRAVEL_COST_PER_DOG,
   ENTRY_FEE_PER_SHOW,
   OWNER_HANDLED_DOG_LIMIT_PER_BREED,
   RINGSIDE_HANDLER_FEE,
   TRAVELING_HANDLER_FEE
 } from "../constants/economy.constants";
+import {
+  PUPPY_REHOME_PAYOUT_MAX_AGE_HOURS,
+  PUPPY_SALE_MIN_AGE_HOURS
+} from "../constants/lifecycle.constants";
 import { getDistrictDistanceTier } from "../src/geography";
 import { DistanceTier } from "../constants/geography.constants";
+import { ageHours } from "../src/time";
+
+/**
+ * Returns the baseline credit for re-homing a puppy at a given age.
+ *
+ * Puppies receive the placement credit from 8 weeks until the six-month
+ * boundary. At six months and beyond, re-homing still transfers the dog but
+ * does not add credits to the kennel ledger.
+ */
+export function getPuppyRehomePayoutForAgeHours(dogAgeHours: number): number {
+  return dogAgeHours >= PUPPY_SALE_MIN_AGE_HOURS &&
+    dogAgeHours < PUPPY_REHOME_PAYOUT_MAX_AGE_HOURS
+    ? BASE_PUPPY_REHOME_PAYOUT
+    : 0;
+}
+
+export function getPuppyRehomePayout(
+  currentEpoch: number,
+  birthEpoch: number
+): number {
+  return getPuppyRehomePayoutForAgeHours(ageHours(currentEpoch, birthEpoch));
+}
 
 /**
  * TravelCostBreakdown

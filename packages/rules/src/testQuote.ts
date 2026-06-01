@@ -1,4 +1,7 @@
-import { getClusterEntryQuote } from "../engines/economy.engine";
+import {
+  getClusterEntryQuote,
+  getPuppyRehomePayoutForAgeHours,
+} from "../engines/economy.engine";
 import { TRAVELING_HANDLER_FEE } from "../constants/economy.constants";
 
 function assertEqual(actual: number, expected: number, label: string) {
@@ -164,6 +167,14 @@ assertEqual(
   0,
   "secondary existing dog additional days"
 );
+assertEqual(getPuppyRehomePayoutForAgeHours(55), 0, "puppy re-home before 8 weeks");
+assertEqual(getPuppyRehomePayoutForAgeHours(56), 100, "puppy re-home at 8 weeks");
+assertEqual(
+  getPuppyRehomePayoutForAgeHours(181),
+  100,
+  "puppy re-home before 6 months"
+);
+assertEqual(getPuppyRehomePayoutForAgeHours(182), 0, "puppy re-home at 6 months");
 
 console.log("CLUSTER ENTRY QUOTE");
 console.log(JSON.stringify(quote, null, 2));

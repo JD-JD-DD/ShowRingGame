@@ -14,6 +14,8 @@ import {
   MIN_SHOW_AGE_HOURS,
   PUPPY_SALE_MIN_AGE_HOURS,
   WHELPING_COOLDOWN_HOURS,
+  getPuppyRehomePayoutForAgeHours,
+  getShowDistrictRegionName,
 } from "@showring/rules";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import ManageDogStudListingForm from "@/components/dogs/ManageDogStudListingForm";
@@ -378,6 +380,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   }
 
   const ageHours = Math.max(0, currentEpoch - dog.birthEpoch);
+  const rehomePayout = getPuppyRehomePayoutForAgeHours(ageHours);
 
   const visibleCategories = deriveVisibleCategoriesFromTraits({
     head: dog.traitHead,
@@ -620,6 +623,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <RehomeDogForm
                   action={`/api/dogs/${dog.id}/rehome`}
                   dogName={displayName}
+                  payout={rehomePayout}
                 />
               ) : null}
             </div>
@@ -871,8 +875,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                           </Link>
                           <div className="text-xs text-purple-100/55">
                             {formatShowDate(result.showDay.scheduledEpoch)} - Day{" "}
-                            {result.showDay.dayIndex} - District{" "}
-                            {result.showDay.cluster.district}
+                            {result.showDay.dayIndex} -{" "}
+                            {getShowDistrictRegionName(
+                              result.showDay.cluster.district
+                            )}
                           </div>
                         </td>
                         <td className="px-3 py-3">

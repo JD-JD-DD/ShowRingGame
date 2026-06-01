@@ -7,6 +7,7 @@ import {
   canEnterShows,
   getClusterEntryQuote,
   getGeneratedShowWeekendPrefix,
+  getShowDistrictRegionName,
   getShowWeekendKey,
   getShowWeekendStartEpoch,
 } from "@showring/rules";
@@ -565,7 +566,7 @@ async function createShowEntryWithTx(args: {
 
   if (weekendConflict) {
     throw new Error(
-      `${dog.regNumber} is already entered in ${weekendConflict.showDay.cluster.name} (District ${weekendConflict.showDay.cluster.district}) this weekend.`
+      `${dog.regNumber} is already entered in ${weekendConflict.showDay.cluster.name} (${getShowDistrictRegionName(weekendConflict.showDay.cluster.district)}) this weekend.`
     );
   }
 
@@ -1202,7 +1203,7 @@ export async function createShowEntriesForCluster(args: {
 
     if (weekendConflict) {
       throw new Error(
-        `${weekendConflict.dog.regNumber} is already entered in ${weekendConflict.showDay.cluster.name} (District ${weekendConflict.showDay.cluster.district}) this weekend.`
+        `${weekendConflict.dog.regNumber} is already entered in ${weekendConflict.showDay.cluster.name} (${getShowDistrictRegionName(weekendConflict.showDay.cluster.district)}) this weekend.`
       );
     }
 

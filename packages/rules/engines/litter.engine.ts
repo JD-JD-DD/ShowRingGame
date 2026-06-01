@@ -4,6 +4,9 @@ import {
   LITTER_SERIAL_LENGTH,
 } from "../constants/breed.constants";
 import {
+  DEFAULT_LITTER_SIZE,
+  LITTER_SIZE_NEGATIVE_OFFSET_RATE,
+  LITTER_SIZE_OFFSET_BANDS,
   MAX_LITTER_SIZE,
   MIN_LITTER_SIZE,
 } from "../constants/litter.constants";
@@ -108,28 +111,20 @@ export function rollLitterSize(random01: () => number = Math.random): number {
   const bandRoll = random01();
   assertRoll(bandRoll, "litterSizeBandRoll");
 
-  const offsetMagnitude =
-    bandRoll < 0.7
-      ? 0
-      : bandRoll < 0.8
-        ? 1
-        : bandRoll < 0.875
-          ? 2
-          : bandRoll < 0.925
-            ? 3
-            : bandRoll < 0.965
-              ? 4
-              : bandRoll < 0.99
-                ? 5
-                : 6;
+  const offsetMagnitude = LITTER_SIZE_OFFSET_BANDS.find(
+    (band) => bandRoll < band.upperBoundExclusive
+  )!.offsetMagnitude;
 
-  if (offsetMagnitude === 0) return 8;
+  if (offsetMagnitude === 0) return DEFAULT_LITTER_SIZE;
 
   const signRoll = random01();
   assertRoll(signRoll, "litterSizeSignRoll");
 
-  const signedOffset = signRoll < 0.5 ? -offsetMagnitude : offsetMagnitude;
-  return clampLitterSize(8 + signedOffset);
+  const signedOffset =
+    signRoll < LITTER_SIZE_NEGATIVE_OFFSET_RATE
+      ? -offsetMagnitude
+      : offsetMagnitude;
+  return clampLitterSize(DEFAULT_LITTER_SIZE + signedOffset);
 }
 
 export function createLitter(input: CreateLitterInput): LitterWithDogs {
