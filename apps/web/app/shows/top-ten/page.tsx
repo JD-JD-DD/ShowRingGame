@@ -9,6 +9,7 @@ type PageProps = {
   searchParams?: Promise<{
     year?: string | string[];
     breed?: string | string[];
+    allTimeBreed?: string | string[];
   }>;
 };
 
@@ -31,6 +32,36 @@ function rankRows<T extends { dogId: string }>(rows: T[]): Array<T & { rank: num
   return rows.map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
+function buildTopTenHref({
+  year,
+  breed,
+  allTimeBreed,
+}: {
+  year: number;
+  breed?: string | null;
+  allTimeBreed?: string | null;
+}): string {
+  const params = new URLSearchParams({ year: `${year}` });
+
+  if (breed) params.set("breed", breed);
+  if (allTimeBreed) params.set("allTimeBreed", allTimeBreed);
+
+  return `/shows/top-ten?${params.toString()}`;
+}
+
+type AllTimePrestigeTotal = {
+  dogId: string;
+  breedCode2: string;
+  _sum: {
+    breedDogsBeaten: number | null;
+    allBreedDogsBeaten: number | null;
+    breedWinCount: number | null;
+    groupWinCount: number | null;
+    bestInShowWinCount: number | null;
+    reserveBisCount: number | null;
+  };
+};
+
 export default async function ShowTopTenPage({ searchParams }: PageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const fallbackYear = Math.floor(getCurrentEpoch() / SHOW_YEAR_HOURS) + 1;
@@ -39,43 +70,80 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
     fallbackYear
   );
   const breedQuery = firstQueryValue(resolvedSearchParams.breed)?.toUpperCase();
-  const years = await db.dogYearlyPrestigeStat.findMany({
-    distinct: ["gameYear"],
-    orderBy: [{ gameYear: "desc" }],
-    select: {
-      gameYear: true,
-    },
-  });
-  const breedOptions = await db.dogYearlyPrestigeStat.findMany({
-    where: {
-      gameYear: selectedYear,
-      breedDogsBeaten: {
-        gt: 0,
+  const allTimeBreedQuery = firstQueryValue(
+    resolvedSearchParams.allTimeBreed
+  )?.toUpperCase();
+  const [years, breedOptions, allTimeBreedOptions] = await Promise.all([
+    db.dogYearlyPrestigeStat.findMany({
+      distinct: ["gameYear"],
+      orderBy: [{ gameYear: "desc" }],
+      select: {
+        gameYear: true,
       },
-    },
-    distinct: ["breedCode2"],
-    orderBy: [{ breedCode2: "asc" }],
-    select: {
-      breedCode2: true,
-      dog: {
-        select: {
-          breed: {
-            select: {
-              name: true,
+    }),
+    db.dogYearlyPrestigeStat.findMany({
+      where: {
+        gameYear: selectedYear,
+        breedDogsBeaten: {
+          gt: 0,
+        },
+      },
+      distinct: ["breedCode2"],
+      orderBy: [{ breedCode2: "asc" }],
+      select: {
+        breedCode2: true,
+        dog: {
+          select: {
+            breed: {
+              select: {
+                name: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    db.dogYearlyPrestigeStat.findMany({
+      where: {
+        breedDogsBeaten: {
+          gt: 0,
+        },
+      },
+      distinct: ["breedCode2"],
+      orderBy: [{ breedCode2: "asc" }],
+      select: {
+        breedCode2: true,
+        dog: {
+          select: {
+            breed: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+  ]);
   const selectedBreedCode =
     breedOptions.some((option) => option.breedCode2 === breedQuery)
       ? breedQuery ?? null
       : null;
+  const selectedAllTimeBreedCode =
+    allTimeBreedOptions.some(
+      (option) => option.breedCode2 === allTimeBreedQuery
+    )
+      ? allTimeBreedQuery ?? null
+      : null;
   const yearOptions = [
     ...new Set([fallbackYear, ...years.map((year) => year.gameYear)]),
   ].sort((a, b) => b - a);
-  const [allBreedRows, breedRows] = await Promise.all([
+  const [
+    allBreedRows,
+    breedRows,
+    allTimeAllBreedTotals,
+    allTimeBreedTotals,
+  ] = await Promise.all([
     db.dogYearlyPrestigeStat.findMany({
       where: {
         gameYear: selectedYear,
@@ -134,12 +202,109 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
           },
         })
       : Promise.resolve([]),
+    db.dogYearlyPrestigeStat.groupBy({
+      by: ["dogId", "breedCode2"],
+      where: {
+        allBreedDogsBeaten: {
+          gt: 0,
+        },
+      },
+      _sum: {
+        breedDogsBeaten: true,
+        allBreedDogsBeaten: true,
+        breedWinCount: true,
+        groupWinCount: true,
+        bestInShowWinCount: true,
+        reserveBisCount: true,
+      },
+      orderBy: [
+        { _sum: { allBreedDogsBeaten: "desc" } },
+        { _sum: { bestInShowWinCount: "desc" } },
+        { _sum: { groupWinCount: "desc" } },
+        { _sum: { breedDogsBeaten: "desc" } },
+      ],
+      take: 10,
+    }),
+    selectedAllTimeBreedCode
+      ? db.dogYearlyPrestigeStat.groupBy({
+          by: ["dogId", "breedCode2"],
+          where: {
+            breedCode2: selectedAllTimeBreedCode,
+            breedDogsBeaten: {
+              gt: 0,
+            },
+          },
+          _sum: {
+            breedDogsBeaten: true,
+            allBreedDogsBeaten: true,
+            breedWinCount: true,
+            groupWinCount: true,
+            bestInShowWinCount: true,
+            reserveBisCount: true,
+          },
+          orderBy: [
+            { _sum: { breedDogsBeaten: "desc" } },
+            { _sum: { breedWinCount: "desc" } },
+            { _sum: { allBreedDogsBeaten: "desc" } },
+          ],
+          take: 10,
+        })
+      : Promise.resolve([]),
   ]);
   const selectedBreedName =
     breedOptions.find((option) => option.breedCode2 === selectedBreedCode)?.dog
       .breed.name ??
     breedRows[0]?.dog.breed.name ??
     selectedBreedCode;
+  const allTimeDogIds = [
+    ...new Set(
+      [...allTimeAllBreedTotals, ...allTimeBreedTotals].map((row) => row.dogId)
+    ),
+  ];
+  const allTimeDogs = await db.dog.findMany({
+    where: {
+      id: {
+        in: allTimeDogIds,
+      },
+    },
+    include: {
+      breed: true,
+      ownerKennel: {
+        select: {
+          name: true,
+          slug: true,
+        },
+      },
+    },
+  });
+  const allTimeDogsById = new Map(allTimeDogs.map((dog) => [dog.id, dog]));
+  const buildAllTimeRows = (rows: AllTimePrestigeTotal[]) =>
+    rows.flatMap((row) => {
+      const dog = allTimeDogsById.get(row.dogId);
+      if (!dog) return [];
+
+      return [
+        {
+          dogId: row.dogId,
+          breedCode2: row.breedCode2,
+          breedDogsBeaten: row._sum.breedDogsBeaten ?? 0,
+          allBreedDogsBeaten: row._sum.allBreedDogsBeaten ?? 0,
+          breedWinCount: row._sum.breedWinCount ?? 0,
+          groupWinCount: row._sum.groupWinCount ?? 0,
+          bestInShowWinCount: row._sum.bestInShowWinCount ?? 0,
+          reserveBisCount: row._sum.reserveBisCount ?? 0,
+          dog,
+        },
+      ];
+    });
+  const allTimeAllBreedRows = buildAllTimeRows(allTimeAllBreedTotals);
+  const allTimeBreedRows = buildAllTimeRows(allTimeBreedTotals);
+  const selectedAllTimeBreedName =
+    allTimeBreedOptions.find(
+      (option) => option.breedCode2 === selectedAllTimeBreedCode
+    )?.dog.breed.name ??
+    allTimeBreedRows[0]?.dog.breed.name ??
+    selectedAllTimeBreedCode;
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8 text-white">
@@ -184,9 +349,11 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
           {yearOptions.map((year) => (
             <Link
               key={year}
-              href={`/shows/top-ten?year=${year}${
-                selectedBreedCode ? `&breed=${selectedBreedCode}` : ""
-              }`}
+              href={buildTopTenHref({
+                year,
+                breed: selectedBreedCode,
+                allTimeBreed: selectedAllTimeBreedCode,
+              })}
               className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                 year === selectedYear
                   ? "border-purple-300/40 bg-purple-600 text-white"
@@ -220,6 +387,13 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
             ) : (
               <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
                 <input type="hidden" name="year" value={selectedYear} />
+                {selectedAllTimeBreedCode ? (
+                  <input
+                    type="hidden"
+                    name="allTimeBreed"
+                    value={selectedAllTimeBreedCode}
+                  />
+                ) : null}
                 <div>
                   <label
                     htmlFor="breed"
@@ -251,7 +425,10 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
 
                 {selectedBreedCode ? (
                   <Link
-                    href={`/shows/top-ten?year=${selectedYear}`}
+                    href={buildTopTenHref({
+                      year: selectedYear,
+                      allTimeBreed: selectedAllTimeBreedCode,
+                    })}
                     className="rounded-xl border border-purple-300/25 bg-white/5 px-5 py-2.5 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
                   >
                     Clear
@@ -267,6 +444,86 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
               subtitle={`Year ${selectedYear}`}
               metricLabel="Breed Dogs Beaten"
               rows={rankRows(breedRows)}
+              getMetric={(row) => row.breedDogsBeaten}
+            />
+          ) : null}
+        </div>
+      </section>
+
+      <section className="mt-10 grid gap-6 xl:grid-cols-2">
+        <RankingPanel
+          title="All-Time All-Breed Top Ten"
+          subtitle="Career totals across all recorded years"
+          metricLabel="All-Breed Dogs Beaten"
+          rows={rankRows(allTimeAllBreedRows)}
+          getMetric={(row) => row.allBreedDogsBeaten}
+        />
+
+        <div className="grid gap-4">
+          <section className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+              All-Time Breed
+            </div>
+            {allTimeBreedOptions.length === 0 ? (
+              <p className="text-sm text-purple-100/70">
+                No all-time breed standings have been recorded yet.
+              </p>
+            ) : (
+              <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+                <input type="hidden" name="year" value={selectedYear} />
+                {selectedBreedCode ? (
+                  <input type="hidden" name="breed" value={selectedBreedCode} />
+                ) : null}
+                <div>
+                  <label
+                    htmlFor="allTimeBreed"
+                    className="mb-1 block text-xs uppercase tracking-wide text-purple-100/60"
+                  >
+                    Breed
+                  </label>
+                  <select
+                    id="allTimeBreed"
+                    name="allTimeBreed"
+                    defaultValue={selectedAllTimeBreedCode ?? ""}
+                    className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+                  >
+                    <option value="">Choose a breed...</option>
+                    {allTimeBreedOptions.map((option) => (
+                      <option key={option.breedCode2} value={option.breedCode2}>
+                        {option.dog.breed.name} ({option.breedCode2})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  className="rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-500"
+                >
+                  View Breed
+                </button>
+
+                {selectedAllTimeBreedCode ? (
+                  <Link
+                    href={buildTopTenHref({
+                      year: selectedYear,
+                      breed: selectedBreedCode,
+                    })}
+                    className="rounded-xl border border-purple-300/25 bg-white/5 px-5 py-2.5 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                  >
+                    Clear
+                  </Link>
+                ) : null}
+              </form>
+            )}
+          </section>
+
+          {selectedAllTimeBreedCode && selectedAllTimeBreedName ? (
+            <RankingPanel
+              title={`All-Time ${selectedAllTimeBreedName} Top Ten`}
+              subtitle="Career totals across all recorded years"
+              metricLabel="Breed Dogs Beaten"
+              rows={rankRows(allTimeBreedRows)}
               getMetric={(row) => row.breedDogsBeaten}
             />
           ) : null}
