@@ -1041,7 +1041,7 @@ export default function BreedPageClient({
             Choose an eligible mate for the selected dog.
           </p>
           <Link
-            href="/breed"
+            href="/breed?mode=full"
             className="rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
           >
             Open Full Planning Worksheet

@@ -17,6 +17,7 @@ type PageProps = {
   searchParams?: Promise<{
     dogId?: string | string[];
     studListingId?: string | string[];
+    mode?: string | string[];
   }>;
 };
 
@@ -78,8 +79,13 @@ export default async function BreedPage({ searchParams }: PageProps) {
   const currentEpoch = getCurrentEpoch();
   await resolveDogDeaths({ kennelId: kennel.id, currentEpoch });
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const initialDogId = firstQueryValue(resolvedSearchParams.dogId);
-  const initialStudListingId = firstQueryValue(resolvedSearchParams.studListingId);
+  const isFullPlanner = firstQueryValue(resolvedSearchParams.mode) === "full";
+  const initialDogId = isFullPlanner
+    ? null
+    : firstQueryValue(resolvedSearchParams.dogId);
+  const initialStudListingId = isFullPlanner
+    ? null
+    : firstQueryValue(resolvedSearchParams.studListingId);
 
   const dogs = await db.dog.findMany({
     where: {
@@ -391,6 +397,11 @@ export default async function BreedPage({ searchParams }: PageProps) {
       </div>
 
       <BreedPageClient
+        key={
+          isFullPlanner
+            ? "full"
+            : initialDogId ?? initialStudListingId ?? "full"
+        }
         kennelId={kennel.id}
         kennelName={kennel.name}
         kennelBalance={kennel.balance}

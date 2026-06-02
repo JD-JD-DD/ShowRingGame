@@ -184,7 +184,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
 
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/breed"
+                href="/breed?mode=full"
                 className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500"
               >
                 Plan A Litter

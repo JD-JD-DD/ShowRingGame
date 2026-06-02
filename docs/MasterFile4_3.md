@@ -6109,6 +6109,22 @@ Potential additions:
 - breeding prediction tools
 - campaign statistics
 
+### Plan A Litter monetization route
+
+The enhanced breed-first `Plan A Litter` worksheet has been separated from the
+free dog-specific breeding flow so it can be placed behind a future entitlement
+check without changing the core breeding mechanics.
+
+- Premium-ready worksheet route: `/breed?mode=full`
+- Free dog-specific route: `/breed?dogId=...`
+- Free public-stud route: `/breed?studListingId=...`
+- Generic `Plan A Litter` buttons use the premium-ready worksheet route.
+- Dog-page `Breed Dog` actions continue to use the free anchored flow.
+
+When subscriptions are implemented, enforce access to `mode=full` on the server
+and replace or redirect premium worksheet links for kennels without the required
+entitlement. Typing the URL manually must not bypass the entitlement check.
+
 ## kennel name registration
 
 Potential permanent registration fee system.
