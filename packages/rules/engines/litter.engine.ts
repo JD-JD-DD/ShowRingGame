@@ -22,6 +22,8 @@ export type Litter = {
   sireId: string;
   damId: string;
   pupCount: number;
+  coiPercent: number;
+  coiGenerationDepth: number;
 };
 
 export type CreateLitterInput = {
@@ -35,6 +37,8 @@ export type CreateLitterInput = {
   puppySexes: Sex[];
   sireTraits: DogTraits;
   damTraits: DogTraits;
+  coiPercent: number;
+  coiGenerationDepth: number;
   random01?: () => number;
 };
 
@@ -161,6 +165,8 @@ export function createLitter(input: CreateLitterInput): LitterWithDogs {
     sireId: input.sireId,
     damId: input.damId,
     pupCount: input.pupCount,
+    coiPercent: input.coiPercent,
+    coiGenerationDepth: input.coiGenerationDepth,
   };
 
   const puppies: Dog[] = Array.from({ length: input.pupCount }, (_, index) => {
@@ -179,6 +185,8 @@ export function createLitter(input: CreateLitterInput): LitterWithDogs {
       damId: input.damId,
       sireTraits: input.sireTraits,
       damTraits: input.damTraits,
+      coiPercent: input.coiPercent,
+      coiGenerationDepth: input.coiGenerationDepth,
       random01,
     });
   });

@@ -16,6 +16,8 @@ export type Dog = {
   litterOrder: number | null;
   sireId: string | null;
   damId: string | null;
+  coiPercent?: number;
+  coiGenerationDepth?: number;
   traits: DogTraits;
 };
 
@@ -32,6 +34,8 @@ export type CreateDogFromLitterInput = {
   status?: DogStatus;
   sireTraits: DogTraits;
   damTraits: DogTraits;
+  coiPercent: number;
+  coiGenerationDepth: number;
   random01?: () => number;
 };
 
@@ -51,9 +55,12 @@ export function createDogFromLitter(
     litterOrder: input.litterOrder,
     sireId: input.sireId,
     damId: input.damId,
+    coiPercent: input.coiPercent,
+    coiGenerationDepth: input.coiGenerationDepth,
     traits: generatePuppyTraits({
       sireTraits: input.sireTraits,
       damTraits: input.damTraits,
+      coiPercent: input.coiPercent,
       random01,
     }),
   };

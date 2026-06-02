@@ -85,6 +85,8 @@ export type ResolveWhelpInput = {
   puppyDogIds: string[];
   sireTraits: DogTraits;
   damTraits: DogTraits;
+  coiPercent: number;
+  coiGenerationDepth: number;
   random01?: () => number;
 };
 
@@ -318,6 +320,8 @@ const { litter, puppies } = createLitter({
   puppyDogIds,
   sireTraits: input.sireTraits,
   damTraits: input.damTraits,
+  coiPercent: input.coiPercent,
+  coiGenerationDepth: input.coiGenerationDepth,
   random01,
 });
 

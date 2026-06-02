@@ -8,6 +8,8 @@ import {
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import {
   BREEDING_FEE,
+  calculatePedigreeCoi,
+  COI_CALCULATION_MAX_GENERATIONS,
   DAM_MAX_BREED_AGE_HOURS,
   deriveVisibleCategoriesFromTraits,
   MIN_BREED_AGE_HOURS,
@@ -18,6 +20,7 @@ import {
   WHELPING_COOLDOWN_HOURS,
   WHELPING_DAM_DEATH_RATE,
 } from "@showring/rules";
+import type { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 
 type DogForBreeding = {
@@ -139,6 +142,53 @@ function mapTraits(dog: AttemptForResolution["sire"]) {
     feet: dog.traitFeet,
     topline: dog.traitTopline,
   };
+}
+
+async function loadPedigreeForCoi(
+  client: Prisma.TransactionClient,
+  parentIds: string[]
+) {
+  const pedigreeById = new Map<
+    string,
+    { id: string; sireId: string | null; damId: string | null }
+  >();
+  let currentIds = [...new Set(parentIds)];
+
+  for (
+    let generation = 0;
+    generation < COI_CALCULATION_MAX_GENERATIONS && currentIds.length > 0;
+    generation += 1
+  ) {
+    const dogs = await client.dog.findMany({
+      where: {
+        id: {
+          in: currentIds,
+        },
+      },
+      select: {
+        id: true,
+        sireId: true,
+        damId: true,
+      },
+    });
+    const nextIds = new Set<string>();
+
+    for (const dog of dogs) {
+      pedigreeById.set(dog.id, dog);
+
+      if (dog.sireId && !pedigreeById.has(dog.sireId)) {
+        nextIds.add(dog.sireId);
+      }
+
+      if (dog.damId && !pedigreeById.has(dog.damId)) {
+        nextIds.add(dog.damId);
+      }
+    }
+
+    currentIds = [...nextIds];
+  }
+
+  return [...pedigreeById.values()];
 }
 
 function getAgeHours(currentEpoch: number, birthEpoch: number): number {
@@ -475,6 +525,15 @@ export async function resolveBreedingProgressForKennel(args: {
         });
         const puppyDogIds = Array.from({ length: pupCount }, () => randomUUID());
         const puppySexes = buildPuppySexes(String(rngSeed), pupCount);
+        const pedigree = await loadPedigreeForCoi(tx, [
+          fresh.sireId,
+          fresh.damId,
+        ]);
+        const pairingCoi = calculatePedigreeCoi({
+          sireId: fresh.sireId,
+          damId: fresh.damId,
+          pedigree,
+        });
         let noiseIndex = 0;
 
         const outcome = resolveWhelp({
@@ -500,6 +559,8 @@ export async function resolveBreedingProgressForKennel(args: {
           puppySexes,
           sireTraits: mapTraits(fresh.sire),
           damTraits: mapTraits(fresh.dam),
+          coiPercent: pairingCoi.coiPercent,
+          coiGenerationDepth: pairingCoi.generationDepth,
           random01: () => {
             const value = seeded01(`${rngSeed}:whelp:${noiseIndex}`);
             noiseIndex += 1;
@@ -539,6 +600,8 @@ export async function resolveBreedingProgressForKennel(args: {
             damId: puppy.damId,
             litterId: puppy.litterId,
             litterOrder: puppy.litterOrder,
+            coiPercent: outcome.litter.coiPercent,
+            coiGenerationDepth: outcome.litter.coiGenerationDepth,
             traitHead: puppy.traits.head,
             traitForequarters: puppy.traits.forequarters,
             traitHindquarters: puppy.traits.hindquarters,

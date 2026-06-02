@@ -11,6 +11,7 @@ import {
   PREG_CHECK_HOURS,
   WHELPING_COOLDOWN_HOURS,
 } from "../constants/lifecycle.constants";
+import type { DogTraits } from "../engines/dog.engine";
 
 function printHeader(title: string): void {
   console.log("\n========================================");
@@ -50,6 +51,19 @@ const wrongBreedDam: BreedingDog = {
   birthEpoch: now - MIN_BREED_AGE_HOURS - 100,
   sex: "F",
   status: "ALIVE",
+};
+
+const sampleTraits: DogTraits = {
+  head: 10,
+  forequarters: 10,
+  hindquarters: 10,
+  gait: 10,
+  coat: 10,
+  size: 10,
+  temperament: 10,
+  show_shine: 10,
+  feet: 10,
+  topline: 10,
 };
 
 function runScenarioValidBreedingAttempt(): void {
@@ -146,9 +160,12 @@ function runScenarioPregnancySuccessAndWhelp(): void {
     currentEpoch: now + GESTATION_HOURS,
     litterId: "litter-001",
     pupCount: 3,
-    serial7: "1234567",
     puppySexes: ["M", "F", "F"],
     puppyDogIds: ["pup-001", "pup-002", "pup-003"],
+    sireTraits: sampleTraits,
+    damTraits: sampleTraits,
+    coiPercent: 0,
+    coiGenerationDepth: 1,
   });
 
   console.log("Attempt:");

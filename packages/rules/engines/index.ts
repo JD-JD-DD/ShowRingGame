@@ -1,7 +1,7 @@
 // export * from "./aging.engine";
 export * from "./breeding.engine";
 export * from "./clock.engine";
-// export * from "./coi.engine";
+export * from "./coi.engine";
 // export * from "./death.engine";
 export * from "./dog.engine";
 export * from "./economy.engine";
