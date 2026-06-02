@@ -150,6 +150,17 @@ type ChampionshipPointWin = {
   isMajor: boolean;
 };
 
+type PedigreeDog = {
+  id: string;
+  callName: string | null;
+  registeredName: string | null;
+  regNumber: string;
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
+  sireId: string | null;
+  damId: string | null;
+};
+
 function getChampionshipPointWins(value: unknown): ChampionshipPointWin[] {
   if (
     typeof value !== "object" ||
@@ -173,6 +184,110 @@ function getChampionshipPointWins(value: unknown): ChampionshipPointWin[] {
     )
     .slice(-5)
     .reverse();
+}
+
+async function getPedigreeAncestors(rootDog: {
+  sireId: string | null;
+  damId: string | null;
+}): Promise<Map<string, PedigreeDog>> {
+  const ancestors = new Map<string, PedigreeDog>();
+  let dogIds = [rootDog.sireId, rootDog.damId].filter(
+    (dogId): dogId is string => Boolean(dogId)
+  );
+
+  for (let generation = 0; generation < 4 && dogIds.length > 0; generation += 1) {
+    const dogs = await db.dog.findMany({
+      where: {
+        id: {
+          in: [...new Set(dogIds)],
+        },
+      },
+      select: {
+        id: true,
+        callName: true,
+        registeredName: true,
+        regNumber: true,
+        visibleTitlePrefix: true,
+        visibleTitleSuffix: true,
+        sireId: true,
+        damId: true,
+      },
+    });
+
+    for (const dog of dogs) {
+      ancestors.set(dog.id, dog);
+    }
+
+    dogIds = dogs
+      .flatMap((dog) => [dog.sireId, dog.damId])
+      .filter((dogId): dogId is string => Boolean(dogId));
+  }
+
+  return ancestors;
+}
+
+function getPedigreeParent(
+  ancestors: Map<string, PedigreeDog>,
+  dog: { sireId: string | null; damId: string | null } | null | undefined,
+  parent: "sireId" | "damId"
+): PedigreeDog | null {
+  const dogId = dog?.[parent];
+
+  return dogId ? ancestors.get(dogId) ?? null : null;
+}
+
+function PedigreeCard({
+  dog,
+  relationship,
+  column,
+  rowStart,
+  rowSpan,
+}: {
+  dog: PedigreeDog | null;
+  relationship: string;
+  column: number;
+  rowStart: number;
+  rowSpan: number;
+}) {
+  const className =
+    "flex min-h-0 flex-col justify-center rounded-2xl border border-white/10 bg-black/20 px-3 py-2 transition";
+  const content = (
+    <>
+      <div className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-purple-200/70">
+        {relationship}
+      </div>
+      <div className="mt-1 text-sm font-semibold leading-tight text-white">
+        {dog ? formatDogDisplayName(dog) : "Unknown"}
+      </div>
+      {dog ? (
+        <div className="mt-1 truncate text-[0.68rem] text-purple-100/55">
+          {dog.regNumber}
+        </div>
+      ) : null}
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] text-purple-100/55">
+        <span>Color: Pending</span>
+        <span>Health: Pending</span>
+      </div>
+    </>
+  );
+  const style = {
+    gridColumn: column,
+    gridRow: `${rowStart} / span ${rowSpan}`,
+  };
+
+  return dog ? (
+    <Link
+      href={`/dogs/${dog.id}`}
+      style={style}
+      className={`${className} hover:border-purple-300/45 hover:bg-white/10`}
+    >
+      {content}
+    </Link>
+  ) : (
+    <div style={style} className={`${className} border-dashed opacity-65`}>
+      {content}
+    </div>
+  );
 }
 
 export default async function DogPage({ params, searchParams }: PageProps) {
@@ -221,6 +336,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
       marketState: true,
       originType: true,
       isFoundation: true,
+      sireId: true,
+      damId: true,
+      coiPercent: true,
+      coiGenerationDepth: true,
       visibleTitlePrefix: true,
       visibleTitleSuffix: true,
       titleProgress: {
@@ -254,26 +373,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           id: true,
           name: true,
           slug: true,
-        },
-      },
-      sire: {
-        select: {
-          id: true,
-          callName: true,
-          registeredName: true,
-          regNumber: true,
-          visibleTitlePrefix: true,
-          visibleTitleSuffix: true,
-        },
-      },
-      dam: {
-        select: {
-          id: true,
-          callName: true,
-          registeredName: true,
-          regNumber: true,
-          visibleTitlePrefix: true,
-          visibleTitleSuffix: true,
         },
       },
       sireOf: {
@@ -423,6 +522,69 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
+  const pedigreeAncestors = await getPedigreeAncestors(dog);
+  const pedigreeSire = getPedigreeParent(pedigreeAncestors, dog, "sireId");
+  const pedigreeDam = getPedigreeParent(pedigreeAncestors, dog, "damId");
+  const pedigreeSireSire = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeSire,
+    "sireId"
+  );
+  const pedigreeSireDam = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeSire,
+    "damId"
+  );
+  const pedigreeDamSire = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeDam,
+    "sireId"
+  );
+  const pedigreeDamDam = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeDam,
+    "damId"
+  );
+  const pedigreeSireSireSire = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeSireSire,
+    "sireId"
+  );
+  const pedigreeSireSireDam = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeSireSire,
+    "damId"
+  );
+  const pedigreeSireDamSire = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeSireDam,
+    "sireId"
+  );
+  const pedigreeSireDamDam = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeSireDam,
+    "damId"
+  );
+  const pedigreeDamSireSire = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeDamSire,
+    "sireId"
+  );
+  const pedigreeDamSireDam = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeDamSire,
+    "damId"
+  );
+  const pedigreeDamDamSire = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeDamDam,
+    "sireId"
+  );
+  const pedigreeDamDamDam = getPedigreeParent(
+    pedigreeAncestors,
+    pedigreeDamDam,
+    "damId"
+  );
   const ageHours = Math.max(0, currentEpoch - dog.birthEpoch);
   const rehomePayout = getPuppyRehomePayoutForAgeHours(ageHours);
 
@@ -1043,43 +1205,89 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           </section>
         ) : null}
 
-        <section className="grid gap-6 lg:grid-cols-2">
-          <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-            <h2 className="text-xl font-semibold text-white">Lineage</h2>
+        <section className="mb-8 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold text-white">
+                Four-Generation Pedigree
+              </h2>
+              <p className="mt-2 text-sm leading-7 text-purple-100/70">
+                Traditional pedigree order with sires above dams. Select any
+                recorded ancestor to open that dog&apos;s profile.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1 text-xs font-semibold text-purple-100">
+                COI:{" "}
+                {dog.coiPercent === null
+                  ? "Pending"
+                  : `${dog.coiPercent.toFixed(2)}%`}
+              </span>
+              {dog.coiPercent !== null && dog.coiGenerationDepth !== null ? (
+                <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/70">
+                  {dog.coiGenerationDepth} generation calculation
+                </span>
+              ) : null}
+              <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/70">
+                Color: Pending
+              </span>
+              <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/70">
+                Health tests: Pending
+              </span>
+            </div>
+          </div>
 
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Sire
-                </div>
-                <div className="mt-1 text-sm font-medium text-white">
-                  {dog.sire ? (
-                    <Link href={`/dogs/${dog.sire.id}`} className="hover:underline">
-                      {formatDogDisplayName(dog.sire)}
-                    </Link>
-                  ) : (
-                    "Unknown"
-                  )}
-                </div>
+          <div className="mt-5 overflow-x-auto pb-2">
+            <div className="grid min-w-[1440px] grid-cols-4 gap-3 text-xs">
+              <div className="font-semibold uppercase tracking-[0.18em] text-purple-200/75">
+                Parents
               </div>
-
-              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Dam
-                </div>
-                <div className="mt-1 text-sm font-medium text-white">
-                  {dog.dam ? (
-                    <Link href={`/dogs/${dog.dam.id}`} className="hover:underline">
-                      {formatDogDisplayName(dog.dam)}
-                    </Link>
-                  ) : (
-                    "Unknown"
-                  )}
-                </div>
+              <div className="font-semibold uppercase tracking-[0.18em] text-purple-200/75">
+                Grandparents
+              </div>
+              <div className="font-semibold uppercase tracking-[0.18em] text-purple-200/75">
+                Great-Grandparents
+              </div>
+              <div className="font-semibold uppercase tracking-[0.18em] text-purple-200/75">
+                Great-Great-Grandparents
               </div>
             </div>
-          </section>
+            <div className="mt-3 grid min-w-[1440px] grid-cols-4 grid-rows-16 gap-3">
+              <PedigreeCard dog={pedigreeSire} relationship="Sire" column={1} rowStart={1} rowSpan={8} />
+              <PedigreeCard dog={pedigreeDam} relationship="Dam" column={1} rowStart={9} rowSpan={8} />
+              <PedigreeCard dog={pedigreeSireSire} relationship="Sire's Sire" column={2} rowStart={1} rowSpan={4} />
+              <PedigreeCard dog={pedigreeSireDam} relationship="Sire's Dam" column={2} rowStart={5} rowSpan={4} />
+              <PedigreeCard dog={pedigreeDamSire} relationship="Dam's Sire" column={2} rowStart={9} rowSpan={4} />
+              <PedigreeCard dog={pedigreeDamDam} relationship="Dam's Dam" column={2} rowStart={13} rowSpan={4} />
+              <PedigreeCard dog={pedigreeSireSireSire} relationship="Sire's Sire's Sire" column={3} rowStart={1} rowSpan={2} />
+              <PedigreeCard dog={pedigreeSireSireDam} relationship="Sire's Sire's Dam" column={3} rowStart={3} rowSpan={2} />
+              <PedigreeCard dog={pedigreeSireDamSire} relationship="Sire's Dam's Sire" column={3} rowStart={5} rowSpan={2} />
+              <PedigreeCard dog={pedigreeSireDamDam} relationship="Sire's Dam's Dam" column={3} rowStart={7} rowSpan={2} />
+              <PedigreeCard dog={pedigreeDamSireSire} relationship="Dam's Sire's Sire" column={3} rowStart={9} rowSpan={2} />
+              <PedigreeCard dog={pedigreeDamSireDam} relationship="Dam's Sire's Dam" column={3} rowStart={11} rowSpan={2} />
+              <PedigreeCard dog={pedigreeDamDamSire} relationship="Dam's Dam's Sire" column={3} rowStart={13} rowSpan={2} />
+              <PedigreeCard dog={pedigreeDamDamDam} relationship="Dam's Dam's Dam" column={3} rowStart={15} rowSpan={2} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeSireSireSire, "sireId")} relationship="Sire's Sire's Sire's Sire" column={4} rowStart={1} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeSireSireSire, "damId")} relationship="Sire's Sire's Sire's Dam" column={4} rowStart={2} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeSireSireDam, "sireId")} relationship="Sire's Sire's Dam's Sire" column={4} rowStart={3} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeSireSireDam, "damId")} relationship="Sire's Sire's Dam's Dam" column={4} rowStart={4} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeSireDamSire, "sireId")} relationship="Sire's Dam's Sire's Sire" column={4} rowStart={5} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeSireDamSire, "damId")} relationship="Sire's Dam's Sire's Dam" column={4} rowStart={6} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeSireDamDam, "sireId")} relationship="Sire's Dam's Dam's Sire" column={4} rowStart={7} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeSireDamDam, "damId")} relationship="Sire's Dam's Dam's Dam" column={4} rowStart={8} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeDamSireSire, "sireId")} relationship="Dam's Sire's Sire's Sire" column={4} rowStart={9} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeDamSireSire, "damId")} relationship="Dam's Sire's Sire's Dam" column={4} rowStart={10} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeDamSireDam, "sireId")} relationship="Dam's Sire's Dam's Sire" column={4} rowStart={11} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeDamSireDam, "damId")} relationship="Dam's Sire's Dam's Dam" column={4} rowStart={12} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeDamDamSire, "sireId")} relationship="Dam's Dam's Sire's Sire" column={4} rowStart={13} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeDamDamSire, "damId")} relationship="Dam's Dam's Sire's Dam" column={4} rowStart={14} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeDamDamDam, "sireId")} relationship="Dam's Dam's Dam's Sire" column={4} rowStart={15} rowSpan={1} />
+              <PedigreeCard dog={getPedigreeParent(pedigreeAncestors, pedigreeDamDamDam, "damId")} relationship="Dam's Dam's Dam's Dam" column={4} rowStart={16} rowSpan={1} />
+            </div>
+          </div>
+        </section>
 
+        <section className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
             <h2 className="text-xl font-semibold text-white">Progeny</h2>
 
