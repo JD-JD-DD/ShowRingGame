@@ -183,6 +183,7 @@ model Kennel {
   bulletinThreads         BulletinThread[]
   bulletinPosts           BulletinPost[]
   notices                 KennelNotice[]
+  privateDogNotes         KennelDogPrivateNote[]
 
   @@index([userId])
   @@index([homeDistrict])
@@ -283,6 +284,7 @@ model Dog {
   titleProgress      DogTitleProgress?
   healthTests        HealthTestRecord[]
   healthConditionTruths DogHealthConditionTruth[]
+  privateKennelNotes KennelDogPrivateNote[]
 
   @@index([breedCode2])
   @@index([ownerKennelId])
@@ -292,6 +294,21 @@ model Dog {
   @@index([litterId])
   @@index([lifecycleState])
   @@index([marketState])
+}
+
+model KennelDogPrivateNote {
+  id        String   @id @default(cuid())
+  kennelId  String
+  dogId     String
+  notes     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kennel Kennel @relation(fields: [kennelId], references: [id], onDelete: Cascade)
+  dog    Dog    @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+  @@unique([kennelId, dogId])
+  @@index([dogId])
 }
 
 model Judge {

@@ -23,6 +23,7 @@ import {
 } from "@showring/rules";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import ManageDogStudListingForm from "@/components/dogs/ManageDogStudListingForm";
+import DogPrivateNotesEditor from "@/components/dogs/DogPrivateNotesEditor";
 import OfferDogAtStudForm from "@/components/dogs/OfferDogAtStudForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
 import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
@@ -47,6 +48,8 @@ type PageProps = {
     saleMessage?: string | string[];
     healthError?: string | string[];
     healthMessage?: string | string[];
+    notesError?: string | string[];
+    notesMessage?: string | string[];
   }>;
 };
 
@@ -446,6 +449,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const saleMessage = firstQueryValue(resolvedSearchParams.saleMessage);
   const healthError = firstQueryValue(resolvedSearchParams.healthError);
   const healthMessage = firstQueryValue(resolvedSearchParams.healthMessage);
+  const notesError = firstQueryValue(resolvedSearchParams.notesError);
+  const notesMessage = firstQueryValue(resolvedSearchParams.notesMessage);
   const userId = await getSessionUserId();
 
   if (!userId) {
@@ -513,7 +518,17 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           revealedAtEpoch: true,
         },
       },
-      notesPublic: true,
+      privateKennelNotes: currentKennel
+        ? {
+            where: {
+              kennelId: currentKennel.id,
+            },
+            select: {
+              notes: true,
+            },
+            take: 1,
+          }
+        : false,
       ringObedience: true,
       muscleTone: true,
       coatCondition: true,
@@ -1641,19 +1656,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           </section>
 
           <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
-            <h2 className="text-xl font-semibold text-white">Notes</h2>
-
-            <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-purple-100/75">
-              {dog.notesPublic?.trim()
-                ? dog.notesPublic
-                : "Pedigree and advanced systems coming soon."}
-            </div>
+            <h2 className="text-xl font-semibold text-white">Active Listing</h2>
 
             {activeListing ? (
               <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-purple-100/75">
-                <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Active Listing
-                </div>
                 <div className="mt-2 text-white">
                   {formatListingType(activeListing.listingType)} ·{" "}
                   {formatMoney(activeListing.askingPrice)}
@@ -1664,9 +1670,22 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </div>
                 ) : null}
               </div>
-            ) : null}
+            ) : (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-purple-100/75">
+                No active listing.
+              </div>
+            )}
           </section>
         </section>
+
+        {isOwnedByCurrentKennel ? (
+          <DogPrivateNotesEditor
+            action={`/api/dogs/${dog.id}/notes`}
+            initialNotes={dog.privateKennelNotes[0]?.notes ?? ""}
+            notesError={notesError}
+            notesMessage={notesMessage}
+          />
+        ) : null}
       </div>
     </main>
   );
