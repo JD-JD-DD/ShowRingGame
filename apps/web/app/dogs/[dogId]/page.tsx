@@ -886,6 +886,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         : null,
     };
   });
+  const hasAllGreenHealthTests = healthTestRows.every(
+    ({ latestResult, severity }) => latestResult && severity === "green"
+  );
   const canOrderHealthTests =
     isOwnedByCurrentKennel && isAlive && ageHours >= MIN_BREED_AGE_HOURS;
 
@@ -904,8 +907,17 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <span className="text-purple-100/60">({dog.breedCode2})</span>
               </div>
 
-              <h1 className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
-                {displayName}
+              <h1 className="mt-2 flex flex-wrap items-center gap-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
+                <span>{displayName}</span>
+                {hasAllGreenHealthTests ? (
+                  <span
+                    title="All four phenotype health tests completed with green results"
+                  aria-label="All four phenotype health tests completed with green results"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-300/60 bg-emerald-500/20 text-xl font-extrabold text-emerald-200 sm:h-9 sm:w-9"
+                >
+                    &#10003;
+                  </span>
+                ) : null}
               </h1>
 
               <div className="mt-3 text-sm text-purple-100/70">
