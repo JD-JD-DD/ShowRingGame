@@ -7,6 +7,7 @@ import {
   getClusterEntryQuote,
   getDistanceTierLabel,
 } from "@showring/rules";
+import HealthClearBadge from "@/components/dogs/HealthClearBadge";
 
 type PlannerDay = {
   showDayId: string;
@@ -24,6 +25,7 @@ type PlannerDog = {
   ageLabel: string;
   eligibleShowDayIds: string[];
   alreadyEnteredShowDayIds: string[];
+  hasAllGreenHealthTests: boolean;
 };
 
 type PlannerProps = {
@@ -225,7 +227,10 @@ export function ShowEntryPlanner({
                 className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
               >
                 <td className="rounded-l-2xl px-3 py-3">
-                  <div className="font-semibold text-white">{dog.displayName}</div>
+                  <div className="flex items-center gap-1.5 font-semibold text-white">
+                    <span>{dog.displayName}</span>
+                    {dog.hasAllGreenHealthTests ? <HealthClearBadge /> : null}
+                  </div>
                   <div className="text-xs text-purple-100/55">{dog.regNumber}</div>
                 </td>
                 <td className="px-3 py-3 text-purple-100/75">{dog.sex}</td>

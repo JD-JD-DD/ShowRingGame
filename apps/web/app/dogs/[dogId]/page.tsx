@@ -2,6 +2,10 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
+import {
+  hasAllGreenPhenotypeHealthTests,
+  isGreenPhenotypeHealthResult,
+} from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
@@ -24,6 +28,7 @@ import {
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import ManageDogStudListingForm from "@/components/dogs/ManageDogStudListingForm";
 import DogPrivateNotesEditor from "@/components/dogs/DogPrivateNotesEditor";
+import HealthClearBadge from "@/components/dogs/HealthClearBadge";
 import OfferDogAtStudForm from "@/components/dogs/OfferDogAtStudForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
 import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
@@ -212,9 +217,7 @@ function getPedigreeHealthSummary(
       return {
         label: `Hips ${resultCode}`,
         severity:
-          resultCode === "EXCELLENT" ||
-          resultCode === "GOOD" ||
-          resultCode === "FAIR"
+          isGreenPhenotypeHealthResult(testTypeCode, resultCode)
             ? "green"
             : resultCode === "BORDERLINE"
               ? "yellow"
@@ -224,7 +227,7 @@ function getPedigreeHealthSummary(
       return {
         label: `Cardiac ${resultCode}`,
         severity:
-          resultCode === "NORMAL"
+          isGreenPhenotypeHealthResult(testTypeCode, resultCode)
             ? "green"
             : resultCode === "EQUIVOCAL"
               ? "yellow"
@@ -237,7 +240,7 @@ function getPedigreeHealthSummary(
             ? "CAER CLEAR"
             : `CAER ${resultCode.replace(/_/g, " ")}`,
         severity:
-          resultCode === "NORMAL"
+          isGreenPhenotypeHealthResult(testTypeCode, resultCode)
             ? "green"
             : resultCode === "BREEDER_OPTION"
               ? "yellow"
@@ -247,7 +250,7 @@ function getPedigreeHealthSummary(
       return {
         label: `Thyroid ${resultCode.replace(/_/g, " ")}`,
         severity:
-          resultCode === "NORMAL"
+          isGreenPhenotypeHealthResult(testTypeCode, resultCode)
             ? "green"
             : resultCode === "EQUIVOCAL"
               ? "yellow"
@@ -315,6 +318,7 @@ async function getPedigreeAncestors(rootDog: {
           where: {
             isPublic: true,
           },
+          orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
           select: {
             testTypeCode: true,
             resultCode: true,
@@ -361,11 +365,21 @@ function PedigreeCard({
   compactHealth?: boolean;
 }) {
   const useCompactHealth = compactHealth || column >= 3;
-  const healthResults = dog
-    ? dog.healthTests.map((test) =>
-        getPedigreeHealthSummary(test.testTypeCode, test.resultCode)
-      )
+  const latestHealthTests = dog
+    ? PHENOTYPE_HEALTH_TEST_CODES.flatMap((testTypeCode) => {
+        const latestResult = dog.healthTests.find(
+          (test) => test.testTypeCode === testTypeCode
+        );
+
+        return latestResult ? [latestResult] : [];
+      })
     : [];
+  const healthResults = latestHealthTests.map((test) =>
+    getPedigreeHealthSummary(test.testTypeCode, test.resultCode)
+  );
+  const hasAllGreenHealthTests = dog
+    ? hasAllGreenPhenotypeHealthTests(dog.healthTests)
+    : false;
   const healthCounts = healthResults.reduce(
     (counts, result) => ({
       ...counts,
@@ -380,8 +394,9 @@ function PedigreeCard({
       <div className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-purple-200/70">
         {relationship}
       </div>
-      <div className="mt-1 text-sm font-semibold leading-tight text-white">
-        {dog ? formatDogDisplayName(dog) : "Unknown"}
+      <div className="mt-1 flex items-center gap-1.5 text-sm font-semibold leading-tight text-white">
+        <span>{dog ? formatDogDisplayName(dog) : "Unknown"}</span>
+        {hasAllGreenHealthTests ? <HealthClearBadge /> : null}
       </div>
       {dog ? (
         <div className="mt-1 truncate text-[0.68rem] text-purple-100/55">
@@ -579,7 +594,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
       },
       showResults: {
         orderBy: [{ publishedAtEpoch: "desc" }, { finalRank: "asc" }],
-        take: 20,
         select: {
           id: true,
           finalRank: true,
@@ -665,6 +679,39 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 select: {
                   id: true,
                   year: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      showEntries: {
+        where: {
+          entryStatus: "ENTERED",
+        },
+        select: {
+          id: true,
+          breed: {
+            select: {
+              name: true,
+              code2: true,
+            },
+          },
+          showDay: {
+            select: {
+              dayIndex: true,
+              scheduledEpoch: true,
+              judge: {
+                select: {
+                  judgeCode: true,
+                  name: true,
+                },
+              },
+              cluster: {
+                select: {
+                  id: true,
+                  name: true,
+                  district: true,
                 },
               },
             },
@@ -854,6 +901,27 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const categoryEntries = Object.entries(visibleCategories);
   const progeny = dog.sex === "M" ? dog.sireOf : dog.damOf;
   const showResults = dog.showResults;
+  const showRecordRows = [
+    ...showResults.map((result) => ({
+      kind: "result" as const,
+      id: result.id,
+      breed: result.breed,
+      judge: result.judge,
+      showDay: result.showDay,
+      result,
+    })),
+    ...dog.showEntries.map((entry) => ({
+      kind: "entry" as const,
+      id: entry.id,
+      breed: entry.breed,
+      judge: entry.showDay.judge,
+      showDay: entry.showDay,
+    })),
+  ].sort(
+    (a, b) =>
+      b.showDay.scheduledEpoch - a.showDay.scheduledEpoch ||
+      b.showDay.dayIndex - a.showDay.dayIndex
+  );
   const totalShowPoints = showResults.reduce(
     (total, result) => total + result.pointsAwarded,
     0
@@ -886,9 +954,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         : null,
     };
   });
-  const hasAllGreenHealthTests = healthTestRows.every(
-    ({ latestResult, severity }) => latestResult && severity === "green"
-  );
+  const hasAllGreenHealthTests = hasAllGreenPhenotypeHealthTests(dog.healthTests);
   const canOrderHealthTests =
     isOwnedByCurrentKennel && isAlive && ageHours >= MIN_BREED_AGE_HOURS;
 
@@ -909,15 +975,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
               <h1 className="mt-2 flex flex-wrap items-center gap-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
                 <span>{displayName}</span>
-                {hasAllGreenHealthTests ? (
-                  <span
-                    title="All four phenotype health tests completed with green results"
-                  aria-label="All four phenotype health tests completed with green results"
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-300/60 bg-emerald-500/20 text-xl font-extrabold text-emerald-200 sm:h-9 sm:w-9"
-                >
-                    &#10003;
-                  </span>
-                ) : null}
+                {hasAllGreenHealthTests ? <HealthClearBadge size="lg" /> : null}
               </h1>
 
               <div className="mt-3 text-sm text-purple-100/70">
@@ -1390,7 +1448,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             <div>
               <h2 className="text-2xl font-semibold text-white">Show Record</h2>
               <p className="mt-2 text-sm leading-7 text-purple-100/70">
-                Published breed results for this dog.
+                Published breed results and current show entries for this dog.
               </p>
             </div>
             <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm font-semibold text-purple-100/75">
@@ -1399,9 +1457,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             </div>
           </div>
 
-          {showResults.length === 0 ? (
+          {showRecordRows.length === 0 ? (
             <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
-              No published show results yet.
+              No show entries or published results yet.
             </div>
           ) : (
             <div className="mt-5 overflow-x-auto">
@@ -1416,51 +1474,64 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {showResults.map((result) => {
-                    const sortedAwards = sortShowAwards(result.showAwards);
+                  {showRecordRows.map((row) => {
+                    const sortedAwards =
+                      row.kind === "result"
+                        ? sortShowAwards(row.result.showAwards)
+                        : [];
 
                     return (
                       <tr
-                        key={result.id}
+                        key={`${row.kind}-${row.id}`}
                         className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
                       >
                         <td className="rounded-l-2xl px-3 py-3">
                           <Link
-                            href={`/shows/${result.showDay.cluster.id}`}
+                            href={`/shows/${row.showDay.cluster.id}`}
                             className="font-semibold text-white underline-offset-4 hover:underline"
                           >
-                            {result.showDay.cluster.name}
+                            {row.showDay.cluster.name}
                           </Link>
                           <div className="text-xs text-purple-100/55">
-                            {formatShowDate(result.showDay.scheduledEpoch)} - Day{" "}
-                            {result.showDay.dayIndex} -{" "}
+                            {formatShowDate(row.showDay.scheduledEpoch)} - Day{" "}
+                            {row.showDay.dayIndex} -{" "}
                             {getShowDistrictRegionName(
-                              result.showDay.cluster.district
+                              row.showDay.cluster.district
                             )}
                           </div>
                         </td>
                         <td className="px-3 py-3">
-                          <Link
-                            href={`/shows/${result.showDay.cluster.id}/results/${result.breed.code2}`}
-                            className="font-semibold text-sky-100 underline-offset-4 hover:underline"
-                          >
-                            {result.breed.name}
-                          </Link>
+                          {row.kind === "result" ? (
+                            <Link
+                              href={`/shows/${row.showDay.cluster.id}/results/${row.breed.code2}`}
+                              className="font-semibold text-sky-100 underline-offset-4 hover:underline"
+                            >
+                              {row.breed.name}
+                            </Link>
+                          ) : (
+                            <span className="font-semibold text-white">
+                              {row.breed.name}
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 py-3">
                           <Link
-                            href={`/judges/${result.judge.judgeCode}`}
+                            href={`/judges/${row.judge.judgeCode}`}
                             className="font-semibold text-white underline-offset-4 hover:underline"
                           >
-                            {result.judge.name}
+                            {row.judge.name}
                           </Link>
                         </td>
                         <td className="px-3 py-3">
-                          {sortedAwards.length > 0 ? (
+                          {row.kind === "entry" ? (
+                            <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-100">
+                              Entered
+                            </span>
+                          ) : sortedAwards.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
                               {sortedAwards.map((award) => (
                                 <span
-                                  key={`${result.id}-${award.awardCode}-${award.awardGroup}-${award.rank ?? "na"}`}
+                                  key={`${row.id}-${award.awardCode}-${award.awardGroup}-${award.rank ?? "na"}`}
                                   className="rounded-full border border-sky-300/25 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-100"
                                 >
                                   {award.awardCode}
@@ -1472,8 +1543,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                           )}
                         </td>
                         <td className="rounded-r-2xl px-3 py-3 text-right font-semibold text-white">
-                          {result.pointsAwarded}
-                          {result.isMajor ? (
+                          {row.kind === "entry" ? "-" : row.result.pointsAwarded}
+                          {row.kind === "result" && row.result.isMajor ? (
                             <div className="text-xs font-medium text-amber-100">
                               Major
                             </div>

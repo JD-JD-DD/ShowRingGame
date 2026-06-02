@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { hasAllGreenPhenotypeHealthTests } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
@@ -43,6 +44,16 @@ const dogForEntryArgs = Prisma.validator<Prisma.DogDefaultArgs>()({
     muscleTone: true,
     coatCondition: true,
     fatiguePoints: true,
+    healthTests: {
+      where: {
+        isPublic: true,
+      },
+      orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+      select: {
+        testTypeCode: true,
+        resultCode: true,
+      },
+    },
     breedingAttemptsAsDam: {
       where: {
         OR: [
@@ -128,6 +139,7 @@ export type EligibleShowDogDto = {
   ageHours: number;
   conditioningSnapshot: number;
   fatigueSnapshot: number;
+  hasAllGreenHealthTests: boolean;
 };
 
 export type EligibleDogsByBlockDto = Record<string, EligibleShowDogDto[]>;
@@ -845,6 +857,9 @@ export async function listEligibleDogsByShowBlock(args: {
           ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
           conditioningSnapshot: getConditioningSnapshot(dog),
           fatigueSnapshot: dog.fatiguePoints,
+          hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(
+            dog.healthTests
+          ),
         })),
     ])
   );
@@ -898,6 +913,7 @@ export async function listEligibleDogsForShowBlock(args: {
       ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
       conditioningSnapshot: getConditioningSnapshot(dog),
       fatigueSnapshot: dog.fatiguePoints,
+      hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(dog.healthTests),
     }));
 }
 
@@ -948,6 +964,16 @@ export async function listShowEntryBreedOptions(args: {
         select: {
           status: true,
           whelpedEpoch: true,
+        },
+      },
+      healthTests: {
+        where: {
+          isPublic: true,
+        },
+        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+        select: {
+          testTypeCode: true,
+          resultCode: true,
         },
       },
     },
@@ -1114,6 +1140,9 @@ export async function getShowEntryPlanner(args: {
           ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
           conditioningSnapshot: getConditioningSnapshot(dog),
           fatigueSnapshot: dog.fatiguePoints,
+          hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(
+            dog.healthTests
+          ),
           eligibleShowDayIds,
           alreadyEnteredShowDayIds,
         };
