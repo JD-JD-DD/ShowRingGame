@@ -187,7 +187,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                 href="/breed"
                 className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500"
               >
-                Plan Breeding
+                Plan A Litter
               </Link>
               <Link
                 href="/kennel"

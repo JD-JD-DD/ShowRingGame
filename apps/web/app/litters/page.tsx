@@ -65,7 +65,7 @@ export default async function LittersPage() {
               href="/breed"
               className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
             >
-              Plan Breeding
+              Plan A Litter
             </Link>
             <Link
               href="/kennel"
@@ -176,7 +176,7 @@ export default async function LittersPage() {
                 href="/breed"
                 className="mt-5 inline-flex rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold transition hover:bg-emerald-500"
               >
-                Start a Breeding
+                Plan A Litter
               </Link>
             </div>
           ) : (

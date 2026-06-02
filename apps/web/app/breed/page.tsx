@@ -27,6 +27,8 @@ type DogCardDto = {
   callName: string | null;
   registeredName: string | null;
   regNumber: string;
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
   breedCode2: string;
   breedName: string;
   sex: "M" | "F";
@@ -39,6 +41,12 @@ type DogCardDto = {
   inBreedingConflict: boolean;
   studListingId: string | null;
   studFeeAmount: number | null;
+  coiPercent: number | null;
+  lastLitterEpoch: number | null;
+  healthTests: Array<{
+    testTypeCode: string;
+    resultCode: string;
+  }>;
   visibleCategories: VisibleCategories;
 };
 
@@ -85,6 +93,7 @@ export default async function BreedPage({ searchParams }: PageProps) {
       regNumber: true,
       visibleTitlePrefix: true,
       visibleTitleSuffix: true,
+      coiPercent: true,
       breedCode2: true,
       sex: true,
       birthEpoch: true,
@@ -111,23 +120,29 @@ export default async function BreedPage({ searchParams }: PageProps) {
       },
       breedingAttemptsAsDam: {
         where: {
-          OR: [
-            {
-              status: {
-                in: ["INITIATED", "PREGNANT"],
-              },
-            },
-            {
-              status: "WHELPED",
-              whelpedEpoch: {
-                not: null,
-                gt: currentEpoch - WHELPING_COOLDOWN_HOURS,
-              },
-            },
-          ],
+          status: {
+            in: ["INITIATED", "PREGNANT"],
+          },
         },
         orderBy: [{ createdEpoch: "desc" }],
         select: { id: true, status: true },
+      },
+      dammedLitters: {
+        orderBy: [{ bornEpoch: "desc" }],
+        take: 1,
+        select: {
+          bornEpoch: true,
+        },
+      },
+      healthTests: {
+        where: {
+          isPublic: true,
+        },
+        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+        select: {
+          testTypeCode: true,
+          resultCode: true,
+        },
       },
     },
     orderBy: [{ breedCode2: "asc" }, { birthEpoch: "asc" }],
@@ -141,12 +156,19 @@ export default async function BreedPage({ searchParams }: PageProps) {
       dog.sex === "F" ? ageHours <= DAM_MAX_BREED_AGE_HOURS : true;
     const inBreedingConflict =
       dog.sex === "F" && dog.breedingAttemptsAsDam.length > 0;
+    const lastLitterEpoch = dog.dammedLitters[0]?.bornEpoch ?? null;
+    const inPostWhelpCooldown =
+      dog.sex === "F" &&
+      lastLitterEpoch !== null &&
+      currentEpoch < lastLitterEpoch + WHELPING_COOLDOWN_HOURS;
 
     return {
       id: dog.id,
       callName: dog.callName,
       registeredName: dog.registeredName,
       regNumber: dog.regNumber,
+      visibleTitlePrefix: dog.visibleTitlePrefix,
+      visibleTitleSuffix: dog.visibleTitleSuffix,
       breedCode2: dog.breedCode2,
       breedName: dog.breed.name,
       sex: dog.sex,
@@ -155,10 +177,18 @@ export default async function BreedPage({ searchParams }: PageProps) {
       lifecycleState: dog.lifecycleState,
       ownerKennelName: dog.ownerKennel?.name ?? null,
       isOwnedByCurrentKennel: true,
-      isEligibleToBreed: alive && oldEnough && notTooOldIfFemale && !inBreedingConflict,
-      inBreedingConflict,
+      isEligibleToBreed:
+        alive &&
+        oldEnough &&
+        notTooOldIfFemale &&
+        !inBreedingConflict &&
+        !inPostWhelpCooldown,
+      inBreedingConflict: inBreedingConflict || inPostWhelpCooldown,
       studListingId: null,
       studFeeAmount: null,
+      coiPercent: dog.coiPercent,
+      lastLitterEpoch,
+      healthTests: dog.healthTests,
       visibleCategories: deriveVisibleCategoriesFromTraits({
         head: dog.traitHead,
         forequarters: dog.traitForequarters,
@@ -226,6 +256,7 @@ export default async function BreedPage({ searchParams }: PageProps) {
           regNumber: true,
           visibleTitlePrefix: true,
           visibleTitleSuffix: true,
+          coiPercent: true,
           breedCode2: true,
           sex: true,
           birthEpoch: true,
@@ -248,6 +279,16 @@ export default async function BreedPage({ searchParams }: PageProps) {
           ownerKennel: {
             select: {
               name: true,
+            },
+          },
+          healthTests: {
+            where: {
+              isPublic: true,
+            },
+            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+            select: {
+              testTypeCode: true,
+              resultCode: true,
             },
           },
         },
@@ -280,6 +321,9 @@ export default async function BreedPage({ searchParams }: PageProps) {
       inBreedingConflict: false,
       studListingId: listing.id,
       studFeeAmount: listing.askingPrice,
+      coiPercent: dog.coiPercent,
+      lastLitterEpoch: null,
+      healthTests: dog.healthTests,
       visibleCategories: deriveVisibleCategoriesFromTraits({
         head: dog.traitHead,
         forequarters: dog.traitForequarters,
@@ -295,6 +339,14 @@ export default async function BreedPage({ searchParams }: PageProps) {
     };
   });
 
+  const pedigree = await db.dog.findMany({
+    select: {
+      id: true,
+      sireId: true,
+      damId: true,
+    },
+  });
+
   return (
     <main className="mx-auto max-w-7xl px-6 py-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
@@ -303,13 +355,12 @@ export default async function BreedPage({ searchParams }: PageProps) {
             Breeding
           </p>
           <h1 className="mt-2 text-3xl font-semibold text-white">
-            Plan a Breeding
+            Plan A Litter
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
-            Select an eligible dam from your kennel, then pair her with one of
-            your dogs or an available public stud. Breedings must be same-breed,
-            opposite-sex pairings, and the dam cannot already be in a conflicting
-            breeding state.
+            Build a thoughtful pairing step by step. Start with a breed, compare
+            eligible dams and sires, then review health, pedigree COI, visible
+            trait outlook, timing, and cost before confirming the litter plan.
           </p>
         </div>
 
@@ -344,6 +395,8 @@ export default async function BreedPage({ searchParams }: PageProps) {
         kennelName={kennel.name}
         kennelBalance={kennel.balance}
         dogs={[...dogCards, ...publicStudCards]}
+        pedigree={pedigree}
+        currentEpoch={currentEpoch}
         initialDogId={initialDogId}
         initialStudListingId={initialStudListingId}
       />

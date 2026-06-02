@@ -1073,11 +1073,11 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   href={`/breed?dogId=${dog.id}`}
                   className="rounded-2xl bg-purple-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
                 >
-                  Breed Dog
+                  Plan A Litter
                 </Link>
               ) : (
                 <div className="rounded-2xl border border-white/10 bg-black/20 px-5 py-3 text-center text-sm font-semibold text-purple-100/45">
-                  Breed Dog
+                  Plan A Litter
                 </div>
               )}
 

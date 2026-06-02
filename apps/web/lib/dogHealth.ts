@@ -8,6 +8,8 @@ type PublicPhenotypeHealthTest = {
   resultCode: string;
 };
 
+export type PhenotypeHealthSeverity = "green" | "yellow" | "red";
+
 export function isGreenPhenotypeHealthResult(
   testTypeCode: string,
   resultCode: string
@@ -26,6 +28,25 @@ export function isGreenPhenotypeHealthResult(
     default:
       return false;
   }
+}
+
+export function getPhenotypeHealthSeverity(
+  testTypeCode: string,
+  resultCode: string
+): PhenotypeHealthSeverity {
+  if (isGreenPhenotypeHealthResult(testTypeCode, resultCode)) {
+    return "green";
+  }
+
+  if (
+    resultCode === "BORDERLINE" ||
+    resultCode === "EQUIVOCAL" ||
+    resultCode === "BREEDER_OPTION"
+  ) {
+    return "yellow";
+  }
+
+  return "red";
 }
 
 export function hasAllGreenPhenotypeHealthTests(
