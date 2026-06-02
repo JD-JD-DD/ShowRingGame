@@ -1128,9 +1128,19 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         <section className="mb-8 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-semibold text-white">
-                Health Testing
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl font-semibold text-white">
+                  Health Testing
+                </h2>
+                <Link
+                  href="/faq#health-testing"
+                  aria-label="Read the health testing FAQ"
+                  title="Read the health testing FAQ"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-purple-300/30 bg-purple-500/10 text-xs font-bold text-purple-100 transition hover:bg-purple-500/25"
+                >
+                  ?
+                </Link>
+              </div>
               <p className="mt-2 text-sm leading-7 text-purple-100/70">
                 Public phenotype screening results. Testing becomes available
                 at breeding age.

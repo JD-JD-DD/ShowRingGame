@@ -97,6 +97,51 @@ const faqSections = [
     ],
   },
   {
+    title: "Health Testing",
+    items: [
+      {
+        question: "How does health testing work?",
+        answer:
+          "When a dog reaches breeding age, its owner can purchase health screening from the dog's profile. Results are available immediately and become part of the dog's public profile and pedigree information. Untested dogs show as not tested.",
+      },
+      {
+        question: "Are health risks inherited?",
+        answer:
+          "Yes. Puppies inherit health tendencies from both parents, with natural variation. Close breeding can increase risk over time. Some screening outcomes, especially hip results, can also be influenced by environmental factors.",
+      },
+      {
+        question: "Does a health result prevent breeding?",
+        answer:
+          "No. Health screening gives you information for breeding decisions, but it does not automatically prevent a dog from breeding. Choosing how to balance health, show quality, pedigree, and genetic diversity is part of managing your kennel.",
+      },
+      {
+        question: "What do Hip Dysplasia screening results mean?",
+        answer:
+          "Hip results range from Excellent, Good, and Fair through Borderline, Mild, Moderate, and Severe. Excellent, Good, and Fair are the stronger results. Borderline deserves caution. Mild, Moderate, and Severe indicate increasing concern when planning a breeding.",
+      },
+      {
+        question: "What do Cardiac screening results mean?",
+        answer:
+          "Normal is the strongest cardiac result. Equivocal means the screening result is uncertain or deserves caution. Abnormal indicates a cardiac concern that should be weighed carefully before breeding.",
+      },
+      {
+        question: "What do CAER Eye screening results mean?",
+        answer:
+          "Normal is the strongest eye screening result. Breeder Option means a finding is present and the breeder must decide whether and how to use the dog. Not Cleared indicates a more serious eye concern.",
+      },
+      {
+        question: "What do Thyroid screening results mean?",
+        answer:
+          "Normal is the strongest thyroid result. Equivocal means the result deserves caution. Autoimmune Thyroiditis and Reduced Thyroid Function indicate thyroid concerns that should be considered when planning a breeding.",
+      },
+      {
+        question: "Are these DNA tests?",
+        answer:
+          "No. The current tests are phenotype screenings: they report the dog's health screening outcome. Future DNA marker tests will be separate and may report results such as clear, carrier, or affected for specific conditions.",
+      },
+    ],
+  },
+  {
     title: "Shows and Economy",
     items: [
       {
@@ -188,6 +233,7 @@ export default function FAQPage() {
           {faqSections.map((section) => (
             <section
               key={section.title}
+              id={section.title === "Health Testing" ? "health-testing" : undefined}
               className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
             >
               <h2 className="text-2xl font-semibold text-white">
