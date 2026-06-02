@@ -384,6 +384,191 @@ function DogOptionCard({
   );
 }
 
+function MiniTraitSummary({ dog }: { dog: DogCardDto }) {
+  return (
+    <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
+      {Object.entries(dog.visibleCategories).map(([key, value]) => (
+        <div key={key} className="flex items-center justify-between gap-3 text-xs">
+          <span className="truncate text-purple-100/65">
+            {formatCategoryName(key)}
+          </span>
+          <span className="font-semibold text-white">{value.toFixed(1)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FreeAnchorCard({ dog }: { dog: DogCardDto }) {
+  return (
+    <section className="rounded-2xl border border-purple-300/30 bg-[linear-gradient(180deg,rgba(42,22,58,0.98),rgba(20,10,30,0.98))] p-4 shadow-[0_18px_44px_rgba(0,0,0,0.35)] lg:sticky lg:top-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+        Selected Dog
+      </div>
+      <div className="mt-3 font-semibold text-white">
+        <DogName dog={dog} />
+      </div>
+      <div className="mt-1 text-xs text-purple-100/55">{dog.regNumber}</div>
+      <div className="mt-3 grid gap-1 text-xs text-purple-100/70">
+        <span>{dog.breedName}</span>
+        <span>Age: {ageLabel(dog.ageHours)}</span>
+        {!dog.isOwnedByCurrentKennel ? (
+          <>
+            <span>Owner: {dog.ownerKennelName ?? "Player Kennel"}</span>
+            <span>Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</span>
+          </>
+        ) : null}
+      </div>
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
+        <MiniTraitSummary dog={dog} />
+      </div>
+    </section>
+  );
+}
+
+function FreeMateCard({
+  dog,
+  selected,
+  onSelect,
+}: {
+  dog: DogCardDto;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const outsideKennel = !dog.isOwnedByCurrentKennel;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full rounded-2xl border p-4 text-left transition ${
+        selected
+          ? outsideKennel
+            ? "border-sky-200/70 bg-sky-500/25"
+            : "border-purple-300/70 bg-purple-500/20"
+          : outsideKennel
+            ? "border-sky-300/35 bg-sky-500/10 hover:border-sky-200/65 hover:bg-sky-500/15"
+            : "border-white/10 bg-black/20 hover:border-purple-300/45"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="font-semibold text-white">
+            <DogName dog={dog} />
+          </div>
+          <div className="mt-1 text-xs text-purple-100/55">{dog.regNumber}</div>
+        </div>
+        <span
+          className={`rounded-full border px-2 py-1 text-[0.68rem] font-semibold ${
+            outsideKennel
+              ? "border-sky-300/35 bg-sky-500/10 text-sky-100"
+              : "border-white/10 bg-white/5 text-purple-100/75"
+          }`}
+        >
+          {outsideKennel ? "Outside Stud" : "My Kennel"}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-1 text-xs text-purple-100/70 sm:grid-cols-2">
+        <span>Age: {ageLabel(dog.ageHours)}</span>
+        {outsideKennel ? (
+          <span>Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</span>
+        ) : null}
+      </div>
+      <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-3">
+        <MiniTraitSummary dog={dog} />
+      </div>
+    </button>
+  );
+}
+
+function FreeBreedingSummary({
+  kennelBalance,
+  sire,
+  dam,
+  submitting,
+  redirecting,
+  errorMessage,
+  successMessage,
+  onSubmit,
+}: {
+  kennelBalance: number;
+  sire: DogCardDto | null;
+  dam: DogCardDto | null;
+  submitting: boolean;
+  redirecting: boolean;
+  errorMessage: string;
+  successMessage: string;
+  onSubmit: () => void;
+}) {
+  const totalCost = BREEDING_FEE + (sire?.studFeeAmount ?? 0);
+  const canSubmit =
+    sire !== null &&
+    dam !== null &&
+    kennelBalance >= totalCost &&
+    !submitting &&
+    !redirecting;
+
+  return (
+    <aside className="rounded-2xl border border-purple-300/15 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] lg:sticky lg:top-4">
+      <h2 className="text-xl font-semibold text-white">Breeding Summary</h2>
+      <div className="mt-4 space-y-3 text-sm">
+        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+          <div className="text-xs uppercase tracking-wide text-purple-200">Sire</div>
+          <div className="mt-1 font-semibold text-white">
+            {sire ? dogDisplayName(sire) : "Select a sire"}
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+          <div className="text-xs uppercase tracking-wide text-purple-200">Dam</div>
+          <div className="mt-1 font-semibold text-white">
+            {dam ? dogDisplayName(dam) : "Select a dam"}
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-purple-100/75">
+          <div className="flex justify-between gap-3">
+            <span>Breeding fee</span><span>{formatMoney(BREEDING_FEE)}</span>
+          </div>
+          <div className="mt-2 flex justify-between gap-3">
+            <span>Stud fee</span><span>{formatMoney(sire?.studFeeAmount ?? 0)}</span>
+          </div>
+          <div className="mt-2 flex justify-between gap-3 border-t border-white/10 pt-2 font-semibold text-white">
+            <span>Total</span><span>{formatMoney(totalCost)}</span>
+          </div>
+          <div className="mt-2 flex justify-between gap-3">
+            <span>Balance after</span><span>{formatMoney(kennelBalance - totalCost)}</span>
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-purple-100/70">
+          Pregnancy check in about {USUAL_PREG_CHECK_DAYS} game days. Expected
+          litter in about {USUAL_GESTATION_DAYS} game days.
+        </div>
+        {errorMessage ? (
+          <div className="rounded-xl border border-red-400/35 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+            {errorMessage}
+          </div>
+        ) : null}
+        {successMessage ? (
+          <div className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+            {successMessage}
+          </div>
+        ) : null}
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={!canSubmit}
+          className="w-full rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {redirecting
+            ? "Confirmed"
+            : submitting
+              ? "Creating Breeding..."
+              : "Confirm Breeding"}
+        </button>
+      </div>
+    </aside>
+  );
+}
+
 function TraitOutlook({ dam, sire }: { dam: DogCardDto; sire: DogCardDto }) {
   return (
     <div className="mt-4 overflow-x-auto">
@@ -674,10 +859,19 @@ export default function BreedPageClient({
 }: Props) {
   const router = useRouter();
   const initialDog =
-    dogs.find((dog) => dog.id === initialDogId && dog.isOwnedByCurrentKennel) ??
+    dogs.find(
+      (dog) =>
+        dog.id === initialDogId &&
+        dog.isOwnedByCurrentKennel &&
+        dog.isEligibleToBreed
+    ) ??
     null;
   const initialStud =
-    dogs.find((dog) => dog.studListingId === initialStudListingId) ?? null;
+    dogs.find(
+      (dog) =>
+        dog.studListingId === initialStudListingId && dog.isEligibleToBreed
+    ) ?? null;
+  const anchorDog = initialDog ?? initialStud;
   const initialBreedCode = initialDog?.breedCode2 ?? initialStud?.breedCode2 ?? "";
   const [breedCode2, setBreedCode2] = useState(initialBreedCode);
   const [damId, setDamId] = useState(initialDog?.sex === "F" ? initialDog.id : "");
@@ -691,24 +885,30 @@ export default function BreedPageClient({
   const [redirecting, setRedirecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const eligibleDogs = useMemo(
+    () => dogs.filter((dog) => dog.isEligibleToBreed),
+    [dogs]
+  );
 
   const breeds = useMemo(() => {
     const breedByCode = new Map<string, string>();
 
-    for (const dog of dogs) {
-      breedByCode.set(dog.breedCode2, dog.breedName);
+    for (const dog of eligibleDogs) {
+      if (dog.isOwnedByCurrentKennel && dog.sex === "F") {
+        breedByCode.set(dog.breedCode2, dog.breedName);
+      }
     }
 
     return [...breedByCode.entries()]
       .map(([code2, name]) => ({ code2, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [dogs]);
+  }, [eligibleDogs]);
 
-  const selectedDam = dogs.find((dog) => dog.id === damId) ?? null;
-  const selectedSire = dogs.find((dog) => dog.id === sireId) ?? null;
+  const selectedDam = eligibleDogs.find((dog) => dog.id === damId) ?? null;
+  const selectedSire = eligibleDogs.find((dog) => dog.id === sireId) ?? null;
   const dams = useMemo(
     () =>
-      dogs
+      eligibleDogs
         .filter(
           (dog) =>
             dog.isOwnedByCurrentKennel &&
@@ -716,10 +916,10 @@ export default function BreedPageClient({
             dog.breedCode2 === breedCode2
         )
         .sort((a, b) => b.ageHours - a.ageHours),
-    [breedCode2, dogs]
+    [breedCode2, eligibleDogs]
   );
   const sires = useMemo(() => {
-    const candidates = dogs.filter(
+    const candidates = eligibleDogs.filter(
       (dog) =>
         dog.sex === "M" &&
         dog.breedCode2 === breedCode2 &&
@@ -751,9 +951,30 @@ export default function BreedPageClient({
         sireRecommendationScore(a, selectedDam, pedigree)
       );
     });
-  }, [breedCode2, dogs, pedigree, selectedDam, sireSort, sireSource]);
+  }, [breedCode2, eligibleDogs, pedigree, selectedDam, sireSort, sireSource]);
+  const freeMates = useMemo(() => {
+    if (!anchorDog) return [];
+
+    return eligibleDogs
+      .filter(
+        (dog) =>
+          dog.id !== anchorDog.id &&
+          dog.breedCode2 === anchorDog.breedCode2 &&
+          (anchorDog.sex === "M"
+            ? dog.sex === "F" && dog.isOwnedByCurrentKennel
+            : dog.sex === "M" &&
+              (dog.isOwnedByCurrentKennel || Boolean(dog.studListingId)))
+      )
+      .sort((a, b) => {
+        if (a.isOwnedByCurrentKennel !== b.isOwnedByCurrentKennel) {
+          return Number(b.isOwnedByCurrentKennel) - Number(a.isOwnedByCurrentKennel);
+        }
+
+        return dogDisplayName(a).localeCompare(dogDisplayName(b));
+      });
+  }, [anchorDog, eligibleDogs]);
   const shortlistedSires = shortlistedSireIds
-    .map((id) => dogs.find((dog) => dog.id === id))
+    .map((id) => eligibleDogs.find((dog) => dog.id === id))
     .filter((dog): dog is DogCardDto => Boolean(dog));
 
   function chooseBreed(nextBreedCode: string) {
@@ -799,13 +1020,85 @@ export default function BreedPageClient({
       }
 
       setRedirecting(true);
-      setSuccessMessage("Confirmed. Returning to the dam's page...");
-      window.setTimeout(() => router.push(`/dogs/${selectedDam.id}`), 900);
+      const returnDogId = initialDog?.id ?? selectedDam.id;
+      setSuccessMessage("Confirmed. Returning to the dog's page...");
+      window.setTimeout(() => router.push(`/dogs/${returnDogId}`), 900);
     } catch {
       setErrorMessage("Something went wrong while creating the breeding.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (anchorDog) {
+    const selectingDams = anchorDog.sex === "M";
+    const selectedMate = selectingDams ? selectedDam : selectedSire;
+
+    return (
+      <div>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-purple-300/15 bg-white/5 px-4 py-3">
+          <p className="text-sm text-purple-100/75">
+            Choose an eligible mate for the selected dog.
+          </p>
+          <Link
+            href="/breed"
+            className="rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
+          >
+            Open Full Planning Worksheet
+          </Link>
+        </div>
+        <div className="grid gap-5 lg:grid-cols-12">
+          <div className="lg:col-span-3">
+            <FreeAnchorCard dog={anchorDog} />
+          </div>
+          <section className="rounded-2xl border border-purple-300/15 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] lg:col-span-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+              Eligible Mates
+            </p>
+            <h2 className="mt-2 text-xl font-semibold text-white">
+              Choose {selectingDams ? "A Dam" : "A Sire"}
+            </h2>
+            <p className="mt-2 text-sm text-purple-100/70">
+              Only dogs currently eligible for this breeding are shown. Outside
+              studs are highlighted in blue.
+            </p>
+            <div className="mt-5 max-h-[72vh] space-y-3 overflow-y-auto pr-1">
+              {freeMates.length > 0 ? (
+                freeMates.map((dog) => (
+                  <FreeMateCard
+                    key={`${dog.id}-${dog.studListingId ?? "owned"}`}
+                    dog={dog}
+                    selected={dog.id === selectedMate?.id}
+                    onSelect={() =>
+                      selectingDams ? setDamId(dog.id) : setSireId(dog.id)
+                    }
+                  />
+                ))
+              ) : (
+                <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/65">
+                  No eligible mates are currently available for this dog.
+                </div>
+              )}
+            </div>
+          </section>
+          <div className="lg:col-span-3">
+            <FreeBreedingSummary
+              kennelBalance={kennelBalance}
+              sire={selectedSire}
+              dam={selectedDam}
+              submitting={submitting}
+              redirecting={redirecting}
+              errorMessage={errorMessage}
+              successMessage={successMessage}
+              onSubmit={handleSubmit}
+            />
+          </div>
+        </div>
+        <div className="mt-6 text-xs text-purple-100/50">
+          Planning for {kennelName}. Choose a mate and confirm the breeding.
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -850,7 +1143,7 @@ export default function BreedPageClient({
               </p>
               <h2 className="mt-2 text-xl font-semibold text-white">Choose Dam</h2>
               <p className="mt-2 text-sm text-purple-100/70">
-                Your kennel&apos;s females, including clear explanations when a dam is unavailable.
+                Your kennel&apos;s eligible females for this breed.
               </p>
               <div className="mt-5 space-y-3">
                 {dams.length > 0 ? (

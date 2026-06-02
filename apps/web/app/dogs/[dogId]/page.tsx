@@ -685,39 +685,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           },
         },
       },
-      showEntries: {
-        where: {
-          entryStatus: "ENTERED",
-        },
-        select: {
-          id: true,
-          breed: {
-            select: {
-              name: true,
-              code2: true,
-            },
-          },
-          showDay: {
-            select: {
-              dayIndex: true,
-              scheduledEpoch: true,
-              judge: {
-                select: {
-                  judgeCode: true,
-                  name: true,
-                },
-              },
-              cluster: {
-                select: {
-                  id: true,
-                  name: true,
-                  district: true,
-                },
-              },
-            },
-          },
-        },
-      },
       breedingAttemptsAsSire: {
         orderBy: [{ createdEpoch: "desc" }],
         select: {
@@ -855,6 +822,42 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   });
 
   const isOwnedByCurrentKennel = dog.ownerKennel?.id === currentKennel.id;
+  const upcomingShowEntries = isOwnedByCurrentKennel
+    ? await db.showEntry.findMany({
+        where: {
+          dogId: dog.id,
+          entryStatus: "ENTERED",
+        },
+        orderBy: [{ showDay: { scheduledEpoch: "desc" } }],
+        select: {
+          id: true,
+          breed: {
+            select: {
+              name: true,
+            },
+          },
+          showDay: {
+            select: {
+              dayIndex: true,
+              scheduledEpoch: true,
+              judge: {
+                select: {
+                  judgeCode: true,
+                  name: true,
+                },
+              },
+              cluster: {
+                select: {
+                  id: true,
+                  name: true,
+                  district: true,
+                },
+              },
+            },
+          },
+        },
+      })
+    : [];
   const activeSaleListing =
     dog.listings.find(
       (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
@@ -901,27 +904,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const categoryEntries = Object.entries(visibleCategories);
   const progeny = dog.sex === "M" ? dog.sireOf : dog.damOf;
   const showResults = dog.showResults;
-  const showRecordRows = [
-    ...showResults.map((result) => ({
-      kind: "result" as const,
-      id: result.id,
-      breed: result.breed,
-      judge: result.judge,
-      showDay: result.showDay,
-      result,
-    })),
-    ...dog.showEntries.map((entry) => ({
-      kind: "entry" as const,
-      id: entry.id,
-      breed: entry.breed,
-      judge: entry.showDay.judge,
-      showDay: entry.showDay,
-    })),
-  ].sort(
-    (a, b) =>
-      b.showDay.scheduledEpoch - a.showDay.scheduledEpoch ||
-      b.showDay.dayIndex - a.showDay.dayIndex
-  );
   const totalShowPoints = showResults.reduce(
     (total, result) => total + result.pointsAwarded,
     0
@@ -1448,7 +1430,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             <div>
               <h2 className="text-2xl font-semibold text-white">Show Record</h2>
               <p className="mt-2 text-sm leading-7 text-purple-100/70">
-                Published breed results and current show entries for this dog.
+                Published breed results for this dog.
               </p>
             </div>
             <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm font-semibold text-purple-100/75">
@@ -1457,9 +1439,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             </div>
           </div>
 
-          {showRecordRows.length === 0 ? (
+          {showResults.length === 0 ? (
             <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
-              No show entries or published results yet.
+              No published show results yet.
             </div>
           ) : (
             <div className="mt-5 overflow-x-auto">
@@ -1474,64 +1456,51 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {showRecordRows.map((row) => {
-                    const sortedAwards =
-                      row.kind === "result"
-                        ? sortShowAwards(row.result.showAwards)
-                        : [];
+                  {showResults.map((result) => {
+                    const sortedAwards = sortShowAwards(result.showAwards);
 
                     return (
                       <tr
-                        key={`${row.kind}-${row.id}`}
+                        key={result.id}
                         className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
                       >
                         <td className="rounded-l-2xl px-3 py-3">
                           <Link
-                            href={`/shows/${row.showDay.cluster.id}`}
+                            href={`/shows/${result.showDay.cluster.id}`}
                             className="font-semibold text-white underline-offset-4 hover:underline"
                           >
-                            {row.showDay.cluster.name}
+                            {result.showDay.cluster.name}
                           </Link>
                           <div className="text-xs text-purple-100/55">
-                            {formatShowDate(row.showDay.scheduledEpoch)} - Day{" "}
-                            {row.showDay.dayIndex} -{" "}
+                            {formatShowDate(result.showDay.scheduledEpoch)} - Day{" "}
+                            {result.showDay.dayIndex} -{" "}
                             {getShowDistrictRegionName(
-                              row.showDay.cluster.district
+                              result.showDay.cluster.district
                             )}
                           </div>
                         </td>
                         <td className="px-3 py-3">
-                          {row.kind === "result" ? (
-                            <Link
-                              href={`/shows/${row.showDay.cluster.id}/results/${row.breed.code2}`}
-                              className="font-semibold text-sky-100 underline-offset-4 hover:underline"
-                            >
-                              {row.breed.name}
-                            </Link>
-                          ) : (
-                            <span className="font-semibold text-white">
-                              {row.breed.name}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-3">
                           <Link
-                            href={`/judges/${row.judge.judgeCode}`}
-                            className="font-semibold text-white underline-offset-4 hover:underline"
+                            href={`/shows/${result.showDay.cluster.id}/results/${result.breed.code2}`}
+                            className="font-semibold text-sky-100 underline-offset-4 hover:underline"
                           >
-                            {row.judge.name}
+                            {result.breed.name}
                           </Link>
                         </td>
                         <td className="px-3 py-3">
-                          {row.kind === "entry" ? (
-                            <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-100">
-                              Entered
-                            </span>
-                          ) : sortedAwards.length > 0 ? (
+                          <Link
+                            href={`/judges/${result.judge.judgeCode}`}
+                            className="font-semibold text-white underline-offset-4 hover:underline"
+                          >
+                            {result.judge.name}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-3">
+                          {sortedAwards.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
                               {sortedAwards.map((award) => (
                                 <span
-                                  key={`${row.id}-${award.awardCode}-${award.awardGroup}-${award.rank ?? "na"}`}
+                                  key={`${result.id}-${award.awardCode}-${award.awardGroup}-${award.rank ?? "na"}`}
                                   className="rounded-full border border-sky-300/25 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-100"
                                 >
                                   {award.awardCode}
@@ -1543,8 +1512,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                           )}
                         </td>
                         <td className="rounded-r-2xl px-3 py-3 text-right font-semibold text-white">
-                          {row.kind === "entry" ? "-" : row.result.pointsAwarded}
-                          {row.kind === "result" && row.result.isMajor ? (
+                          {result.pointsAwarded}
+                          {result.isMajor ? (
                             <div className="text-xs font-medium text-amber-100">
                               Major
                             </div>
@@ -1558,6 +1527,84 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             </div>
           )}
         </section>
+
+        {isOwnedByCurrentKennel ? (
+          <section className="mb-8 rounded-[28px] border border-emerald-300/15 bg-emerald-500/5 p-6 shadow-[0_22px_60px_rgba(0,0,0,0.3)]">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-semibold text-white">
+                  Upcoming Shows
+                </h2>
+                <p className="mt-2 text-sm leading-7 text-purple-100/70">
+                  Current entries for this dog. Visible only to your kennel.
+                </p>
+              </div>
+              <div className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-100">
+                {upcomingShowEntries.length} entr
+                {upcomingShowEntries.length === 1 ? "y" : "ies"}
+              </div>
+            </div>
+
+            {upcomingShowEntries.length === 0 ? (
+              <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
+                No upcoming show entries.
+              </div>
+            ) : (
+              <div className="mt-5 overflow-x-auto">
+                <table className="w-full min-w-[680px] border-separate border-spacing-y-2 text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+                      <th className="px-3 py-2">Show</th>
+                      <th className="px-3 py-2">Breed</th>
+                      <th className="px-3 py-2">Judge</th>
+                      <th className="px-3 py-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {upcomingShowEntries.map((entry) => (
+                      <tr
+                        key={entry.id}
+                        className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                      >
+                        <td className="rounded-l-2xl px-3 py-3">
+                          <Link
+                            href={`/shows/${entry.showDay.cluster.id}`}
+                            className="font-semibold text-white underline-offset-4 hover:underline"
+                          >
+                            {entry.showDay.cluster.name}
+                          </Link>
+                          <div className="text-xs text-purple-100/55">
+                            {formatShowDate(entry.showDay.scheduledEpoch)} - Day{" "}
+                            {entry.showDay.dayIndex} -{" "}
+                            {getShowDistrictRegionName(
+                              entry.showDay.cluster.district
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 font-semibold text-white">
+                          {entry.breed.name}
+                        </td>
+                        <td className="px-3 py-3">
+                          <Link
+                            href={`/judges/${entry.showDay.judge.judgeCode}`}
+                            className="font-semibold text-white underline-offset-4 hover:underline"
+                          >
+                            {entry.showDay.judge.name}
+                          </Link>
+                        </td>
+                        <td className="rounded-r-2xl px-3 py-3">
+                          <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-100">
+                            Entered
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        ) : null}
 
         {dog.sex === "M" && isOwnedByCurrentKennel ? (
           <section className="mb-8 rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">

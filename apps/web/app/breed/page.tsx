@@ -394,7 +394,9 @@ export default async function BreedPage({ searchParams }: PageProps) {
         kennelId={kennel.id}
         kennelName={kennel.name}
         kennelBalance={kennel.balance}
-        dogs={[...dogCards, ...publicStudCards]}
+        dogs={[...dogCards, ...publicStudCards].filter(
+          (dog) => dog.isEligibleToBreed
+        )}
         pedigree={pedigree}
         currentEpoch={currentEpoch}
         initialDogId={initialDogId}
