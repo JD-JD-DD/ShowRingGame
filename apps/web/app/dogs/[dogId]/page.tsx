@@ -181,25 +181,22 @@ type PedigreeHealthSummary = {
 
 const PEDIGREE_HEALTH_SEVERITY_STYLES: Record<
   PedigreeHealthSeverity,
-  { line: string; circle: string; text: string; badge: string }
+  { line: string; circle: string; text: string }
 > = {
   green: {
     line: "border-emerald-300/70 text-emerald-100",
     circle: "border-emerald-300/45 bg-emerald-500/20 text-emerald-100",
     text: "text-emerald-100",
-    badge: "border-emerald-300/20 bg-emerald-500/10 text-emerald-100",
   },
   yellow: {
     line: "border-amber-300/70 text-amber-100",
     circle: "border-amber-300/45 bg-amber-500/20 text-amber-100",
     text: "text-amber-100",
-    badge: "border-amber-300/20 bg-amber-500/10 text-amber-100",
   },
   red: {
-    line: "border-red-300/70 text-red-100",
-    circle: "border-red-300/45 bg-red-500/20 text-red-100",
-    text: "text-red-100",
-    badge: "border-red-300/20 bg-red-500/10 text-red-100",
+    line: "border-red-400 text-red-300 font-bold",
+    circle: "border-red-400/80 bg-red-500/35 text-red-100 font-extrabold",
+    text: "text-red-300 font-extrabold",
   },
 };
 
@@ -1335,7 +1332,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
                 {latestResult ? (
                   <span
-                    className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${PEDIGREE_HEALTH_SEVERITY_STYLES[severity ?? "yellow"].badge}`}
+                    className="shrink-0 rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100"
                   >
                     Complete
                   </span>
