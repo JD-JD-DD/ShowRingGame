@@ -91,9 +91,19 @@ export default async function KennelPage() {
 
         <Link
           href="/plan-a-litter"
-          className="rounded-md border border-fuchsia-300/50 bg-fuchsia-500/10 px-5 py-2 text-sm font-semibold text-fuchsia-100 hover:bg-fuchsia-950/40"
+          className="premium-planner-link"
         >
-          Plan A Litter
+          <span className="premium-planner-link__spark" aria-hidden="true">
+            ◆
+          </span>
+          <span>
+            <span className="block text-[0.58rem] font-bold uppercase tracking-[0.2em] text-fuchsia-100/85">
+              Advanced Planning Tool
+            </span>
+            <span className="mt-0.5 block text-sm font-bold tracking-wide text-white">
+              Plan A Litter
+            </span>
+          </span>
         </Link>
 
         <Link

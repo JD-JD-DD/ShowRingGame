@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import HealthClearBadge from "@/components/dogs/HealthClearBadge";
+import TraitLine from "@/components/ui/TraitLine";
 import {
   getPhenotypeHealthSeverity,
   hasAllGreenPhenotypeHealthTests,
@@ -427,10 +427,10 @@ function DogOptionCard({
     <article
       className={`rounded-2xl border p-4 transition ${
         selected
-          ? "border-purple-300/70 bg-purple-500/20"
+          ? "border-fuchsia-200/80 bg-[linear-gradient(135deg,rgba(168,85,247,0.34),rgba(14,165,233,0.18))] shadow-[0_0_28px_rgba(192,132,252,0.22)] ring-1 ring-fuchsia-200/45"
           : unavailable
             ? "border-white/10 bg-black/15 opacity-70"
-            : "border-white/10 bg-black/20 hover:border-purple-300/45"
+            : "border-purple-300/25 bg-[linear-gradient(145deg,rgba(49,24,74,0.9),rgba(17,24,39,0.78))] shadow-[0_14px_34px_rgba(0,0,0,0.2)] hover:border-fuchsia-200/65 hover:shadow-[0_0_24px_rgba(192,132,252,0.16)]"
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -509,13 +509,6 @@ function DogOptionCard({
         >
           {selected ? "Selected" : "Select"}
         </button>
-        <Link
-          href={`/dogs/${dog.id}#pedigree`}
-          target="_blank"
-          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
-        >
-          Pedigree
-        </Link>
         {onToggleShortlist ? (
           <button
             type="button"
@@ -532,14 +525,18 @@ function DogOptionCard({
 
 function MiniTraitSummary({ dog }: { dog: DogCardDto }) {
   return (
-    <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
+    <div className="space-y-3">
       {Object.entries(dog.visibleCategories).map(([key, value]) => (
-        <div key={key} className="flex items-center justify-between gap-3 text-xs">
-          <span className="truncate text-purple-100/65">
-            {formatCategoryName(key)}
-          </span>
-          <span className="font-semibold text-white">{value.toFixed(1)}</span>
-        </div>
+        <TraitLine
+          key={key}
+          label={formatCategoryName(key)}
+          value={value}
+          min={0}
+          max={20}
+          ideal={10}
+          leftLabel="0"
+          rightLabel="20"
+        />
       ))}
     </div>
   );
@@ -799,14 +796,12 @@ function CompactPedigreePreview({
       {sharedAncestors.length > 0 ? (
         <div className="mb-4 flex flex-wrap gap-2">
           {sharedAncestors.map((dog) => (
-            <Link
+            <div
               key={dog.id}
-              href={`/dogs/${dog.id}#pedigree`}
-              target="_blank"
               className="rounded-full border border-amber-300/65 bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-100"
             >
               Shared: {formatDogDisplayName(dog)}
-            </Link>
+            </div>
           ))}
         </div>
       ) : (
@@ -829,14 +824,12 @@ function CompactPedigreePreview({
                 const shared = sharedIds.has(dog.id);
 
                 return (
-                  <Link
+                  <div
                     key={`${branch.label}-${dog.id}-${generation}-${index}`}
-                    href={`/dogs/${dog.id}#pedigree`}
-                    target="_blank"
-                    className={`rounded-lg border px-3 py-2 text-xs transition ${
+                    className={`rounded-lg border px-3 py-2 text-xs ${
                       shared
                         ? "border-amber-300/65 bg-amber-500/15 text-amber-100"
-                        : "border-white/10 bg-white/5 text-purple-100/70 hover:border-purple-300/40"
+                        : "border-white/10 bg-white/5 text-purple-100/70"
                     }`}
                   >
                     <div className="font-semibold">
@@ -846,7 +839,7 @@ function CompactPedigreePreview({
                       Generation {generation}
                       {shared ? " · Shared ancestor" : ""}
                     </div>
-                  </Link>
+                  </div>
                 );
               })
             ) : (
@@ -929,7 +922,7 @@ function PairingAnalysis({
   ];
 
   return (
-    <section className="mt-8 rounded-[28px] border border-purple-300/20 bg-[linear-gradient(180deg,rgba(42,22,58,0.98),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+    <section className="mt-8 rounded-[28px] border border-fuchsia-300/45 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.16),transparent_36%),linear-gradient(180deg,rgba(66,30,94,0.98),rgba(20,10,30,0.98))] p-6 shadow-[0_0_42px_rgba(192,132,252,0.14),0_22px_60px_rgba(0,0,0,0.35)]">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
@@ -1068,8 +1061,8 @@ function PairingAnalysis({
       <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
         <h3 className="font-semibold text-white">Compact Pedigree Preview</h3>
         <p className="mt-2 text-xs leading-5 text-purple-100/60">
-          Shared ancestors are highlighted in amber. Select an ancestor to open
-          that dog&apos;s full pedigree.
+          Shared ancestors are highlighted in amber for a quick relationship
+          review.
         </p>
         <CompactPedigreePreview dam={dam} sire={sire} pedigree={pedigree} />
       </div>
@@ -1163,11 +1156,20 @@ export default function BreedPageClient({
         dog.studListingId === initialStudListingId && dog.isEligibleToBreed
     ) ?? null;
   const anchorDog = initialDog ?? initialStud;
-  const initialBreedCode = initialDog?.breedCode2 ?? initialStud?.breedCode2 ?? "";
+  const initialBreedCode =
+    experience === "worksheet"
+      ? ""
+      : initialDog?.breedCode2 ?? initialStud?.breedCode2 ?? "";
   const [breedCode2, setBreedCode2] = useState(initialBreedCode);
-  const [damId, setDamId] = useState(initialDog?.sex === "F" ? initialDog.id : "");
+  const [damId, setDamId] = useState(
+    experience === "worksheet" ? "" : initialDog?.sex === "F" ? initialDog.id : ""
+  );
   const [sireId, setSireId] = useState(
-    initialDog?.sex === "M" ? initialDog.id : initialStud?.id ?? ""
+    experience === "worksheet"
+      ? ""
+      : initialDog?.sex === "M"
+        ? initialDog.id
+        : initialStud?.id ?? ""
   );
   const [sireSource, setSireSource] = useState<SireSource>("ALL");
   const [sireSort, setSireSort] = useState<SireSort>("RECOMMENDED");
@@ -1401,10 +1403,11 @@ export default function BreedPageClient({
 
   return (
     <div>
-      <section className="rounded-[28px] border border-purple-300/20 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+      <section className="relative overflow-hidden rounded-[28px] border border-fuchsia-300/55 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.22),transparent_42%),linear-gradient(135deg,rgba(88,28,135,0.78),rgba(30,17,48,0.95))] p-6 shadow-[0_0_42px_rgba(192,132,252,0.18),0_20px_60px_rgba(0,0,0,0.34)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-100 to-transparent" />
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-fuchsia-100">
               Step 1
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-white">
@@ -1417,9 +1420,10 @@ export default function BreedPageClient({
           <label className="grid min-w-[280px] gap-2 text-sm text-purple-100/75">
             Breed
             <select
+              autoComplete="off"
               value={breedCode2}
               onChange={(event) => chooseBreed(event.target.value)}
-              className="rounded-xl border border-purple-300/25 bg-black/35 px-4 py-3 font-semibold text-white outline-none"
+              className="rounded-xl border border-fuchsia-200/55 bg-purple-950/80 px-4 py-3 font-semibold text-white shadow-[0_0_20px_rgba(192,132,252,0.15)] outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-300/25"
             >
               <option value="">Choose a breed...</option>
               {breeds.map((breed) => (
@@ -1435,7 +1439,7 @@ export default function BreedPageClient({
       {breedCode2 ? (
         <>
           <section className="mt-6 grid gap-6 lg:grid-cols-2">
-            <div className="rounded-[28px] border border-purple-300/15 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+            <div className="rounded-[28px] border border-fuchsia-300/35 bg-[linear-gradient(155deg,rgba(88,28,135,0.42),rgba(17,24,39,0.78))] p-5 shadow-[0_0_30px_rgba(192,132,252,0.1),0_20px_60px_rgba(0,0,0,0.3)]">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
                 Step 2A
               </p>
@@ -1463,7 +1467,7 @@ export default function BreedPageClient({
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-purple-300/15 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+            <div className="rounded-[28px] border border-sky-300/35 bg-[linear-gradient(155deg,rgba(14,116,144,0.28),rgba(17,24,39,0.8))] p-5 shadow-[0_0_30px_rgba(56,189,248,0.1),0_20px_60px_rgba(0,0,0,0.3)]">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
@@ -1551,7 +1555,7 @@ export default function BreedPageClient({
               onSubmit={handleSubmit}
             />
           ) : (
-            <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-5 text-sm text-purple-100/70">
+            <div className="mt-6 rounded-2xl border border-fuchsia-300/30 bg-[linear-gradient(90deg,rgba(88,28,135,0.3),rgba(14,116,144,0.16))] p-5 text-sm text-purple-100/80 shadow-[0_0_24px_rgba(192,132,252,0.08)]">
               Select a dam and sire to unlock the full pairing preview.
             </div>
           )}

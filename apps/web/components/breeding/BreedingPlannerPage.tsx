@@ -388,7 +388,13 @@ export default async function BreedingPlannerPage({
           <p className="text-sm uppercase tracking-[0.25em] text-purple-300/80">
             Breeding
           </p>
-          <h1 className="mt-2 text-3xl font-semibold text-white">
+          <h1
+            className={`mt-2 text-3xl font-semibold ${
+              experience === "worksheet"
+                ? "bg-gradient-to-r from-fuchsia-100 via-white to-sky-100 bg-clip-text text-transparent"
+                : "text-white"
+            }`}
+          >
             {experience === "worksheet" ? "Plan A Litter" : "Breed Dog"}
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
@@ -399,12 +405,14 @@ export default async function BreedingPlannerPage({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/studs"
-            className="rounded-2xl border border-sky-300/25 bg-sky-500/10 px-5 py-3 text-center text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
-          >
-            Browse Public Studs
-          </Link>
+          {experience === "breed-dog" ? (
+            <Link
+              href="/studs"
+              className="rounded-2xl border border-sky-300/25 bg-sky-500/10 px-5 py-3 text-center text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+            >
+              Browse Public Studs
+            </Link>
+          ) : null}
 
           <Link
             href="/kennel"
