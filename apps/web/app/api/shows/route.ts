@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { ensureAnnualInvitationalShow } from "@/server/services/invitational.service";
 import { ensureGeneratedShowSchedule } from "@/server/services/showSchedule.service";
 
 const UPCOMING_SHOW_WINDOW_HOURS = 42;
@@ -22,11 +23,13 @@ export async function POST(request: Request) {
   const redirectTo = await getRedirectTo(request);
 
   try {
+    const currentEpoch = getCurrentEpoch();
     const schedule = await ensureGeneratedShowSchedule({
-      currentEpoch: getCurrentEpoch(),
+      currentEpoch,
       horizonHours: UPCOMING_SHOW_WINDOW_HOURS,
       includeJudgingBlocks: false,
     });
+    const invitational = await ensureAnnualInvitationalShow({ currentEpoch });
 
     if (redirectTo) {
       const url = new URL(redirectTo, request.url);
@@ -35,7 +38,7 @@ export async function POST(request: Request) {
       return NextResponse.redirect(url);
     }
 
-    return Response.json({ ok: true, schedule });
+    return Response.json({ ok: true, schedule, invitational });
   } catch (error) {
     console.error("POST /api/shows failed:", error);
 

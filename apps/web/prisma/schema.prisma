@@ -125,6 +125,7 @@ enum KennelNoticeType {
   DID_NOT_TAKE
   STUD_FEE_RECEIVED
   DOG_SOLD
+  INVITATIONAL_INVITE
 }
 
 model User {

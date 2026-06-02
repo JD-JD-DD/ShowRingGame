@@ -1,6 +1,7 @@
 import { fail, ok } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { db } from "@/lib/db";
+import { ensureAnnualInvitationalShow } from "@/server/services/invitational.service";
 import {
   finalizeReadyShowDayResults,
   judgeShowBlock,
@@ -231,6 +232,7 @@ export async function GET(request: Request) {
     }
   }
 
+  const invitational = await ensureAnnualInvitationalShow({ currentEpoch });
   const payload = {
     currentEpoch,
     blockBatchSize,
@@ -240,6 +242,7 @@ export async function GET(request: Request) {
     touchedShowDayIds: [...touchedShowDayIds],
     processedBlocks,
     finalized,
+    invitational,
     errors,
   };
 

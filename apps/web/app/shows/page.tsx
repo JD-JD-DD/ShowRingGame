@@ -182,6 +182,9 @@ export default async function ShowsPage({
     },
   });
   const clustersByTemplate = new Map<string, typeof clusters>();
+  const invitationalClusters = clusters.filter((cluster) =>
+    cluster.id.startsWith("invitational-year-")
+  );
 
   for (const cluster of clusters) {
     const templateId = getGeneratedTemplateId(cluster.id);
@@ -394,16 +397,84 @@ export default async function ShowsPage({
               </div>
             );
           })}
-          <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-amber-100/80">
-              Week 52
-            </div>
-            <h2 className="mt-1 text-lg font-semibold text-white">
-              Invitational Show
-            </h2>
-            <div className="mt-2 text-sm text-amber-100/75">
-              Reserved for the annual invitational. No regular district shows
-              are scheduled this week.
+          <div
+            className={
+              currentCalendarPosition.weekInYear === 52
+                ? "rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[0_0_0_1px_rgba(240,171,252,0.08)]"
+                : "rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4"
+            }
+          >
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-amber-100/80">
+                  <span>Week 52</span>
+                  {currentCalendarPosition.weekInYear === 52 ? (
+                    <span
+                      className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold tracking-[0.12em] ${derivedStatusTone("CURRENT_WEEK")}`}
+                    >
+                      Current Week
+                    </span>
+                  ) : null}
+                </div>
+                <h2 className="mt-1 text-lg font-semibold text-white">
+                  Invitational Show
+                </h2>
+                <div className="mt-2 text-sm text-amber-100/75">
+                  The Top Ten dogs in every breed are invited after Week 51
+                  judging. No regular district shows are scheduled this week.
+                </div>
+              </div>
+
+              <div className="flex min-w-0 flex-1 flex-wrap justify-start gap-2 lg:justify-end">
+                {invitationalClusters.length === 0 ? (
+                  <span className="rounded-full border border-amber-300/20 bg-black/20 px-3 py-1 text-xs text-amber-100/70">
+                    Invitations pending
+                  </span>
+                ) : (
+                  invitationalClusters.map((cluster) => {
+                    const resultCount = clusterResultCount(cluster);
+                    const entryCount = clusterEntryCount(cluster);
+                    const playerStatus = getPlayerClusterStatus({
+                      clusterStatus: cluster.status,
+                      entryCount,
+                      hasResults: resultCount > 0,
+                      entryOpenEpoch: cluster.entryOpenEpoch,
+                      entryCloseEpoch: cluster.entryCloseEpoch,
+                      currentEpoch,
+                    });
+
+                    return (
+                      <Link
+                        key={cluster.id}
+                        href={`/shows/${cluster.id}/results`}
+                        className="rounded-xl border border-amber-300/25 bg-black/20 px-3 py-2 text-sm text-amber-100 transition hover:text-white"
+                      >
+                        <span className="font-semibold text-white">
+                          Year {cluster.year}
+                        </span>
+                        <span className="ml-2 text-amber-100/70">
+                          {formatShowDate(cluster.startEpoch)}
+                        </span>
+                        <span
+                          className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone(playerStatus)}`}
+                        >
+                          {playerStatus}
+                        </span>
+                        <span className="ml-2 text-amber-100/80">
+                          {entryCount} invitation
+                          {entryCount === 1 ? "" : "s"}
+                        </span>
+                        {resultCount > 0 ? (
+                          <span className="ml-2 text-sky-100">
+                            {resultCount} result
+                            {resultCount === 1 ? "" : "s"}
+                          </span>
+                        ) : null}
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
         </div>
