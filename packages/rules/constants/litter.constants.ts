@@ -12,12 +12,12 @@ export const MAX_LITTER_SIZE = 14;
  * distribution visible without mixing it into litter creation logic.
  */
 export const LITTER_SIZE_OFFSET_BANDS = [
-  { upperBoundExclusive: 0.7, offsetMagnitude: 0 },
-  { upperBoundExclusive: 0.8, offsetMagnitude: 1 },
-  { upperBoundExclusive: 0.875, offsetMagnitude: 2 },
-  { upperBoundExclusive: 0.925, offsetMagnitude: 3 },
-  { upperBoundExclusive: 0.965, offsetMagnitude: 4 },
-  { upperBoundExclusive: 0.99, offsetMagnitude: 5 },
+  { upperBoundExclusive: 0.45, offsetMagnitude: 0 },
+  { upperBoundExclusive: 0.625, offsetMagnitude: 1 },
+  { upperBoundExclusive: 0.75, offsetMagnitude: 2 },
+  { upperBoundExclusive: 0.85, offsetMagnitude: 3 },
+  { upperBoundExclusive: 0.925, offsetMagnitude: 4 },
+  { upperBoundExclusive: 0.975, offsetMagnitude: 5 },
   { upperBoundExclusive: 1, offsetMagnitude: 6 },
 ] as const;
 
