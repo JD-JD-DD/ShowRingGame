@@ -168,8 +168,98 @@ type PedigreeDog = {
   damId: string | null;
   healthTests: Array<{
     testTypeCode: string;
+    resultCode: string;
   }>;
 };
+
+type PedigreeHealthSeverity = "green" | "yellow" | "red";
+
+type PedigreeHealthSummary = {
+  label: string;
+  severity: PedigreeHealthSeverity;
+};
+
+const PEDIGREE_HEALTH_SEVERITY_STYLES: Record<
+  PedigreeHealthSeverity,
+  { line: string; circle: string; text: string; badge: string }
+> = {
+  green: {
+    line: "border-emerald-300/70 text-emerald-100",
+    circle: "border-emerald-300/45 bg-emerald-500/20 text-emerald-100",
+    text: "text-emerald-100",
+    badge: "border-emerald-300/20 bg-emerald-500/10 text-emerald-100",
+  },
+  yellow: {
+    line: "border-amber-300/70 text-amber-100",
+    circle: "border-amber-300/45 bg-amber-500/20 text-amber-100",
+    text: "text-amber-100",
+    badge: "border-amber-300/20 bg-amber-500/10 text-amber-100",
+  },
+  red: {
+    line: "border-red-300/70 text-red-100",
+    circle: "border-red-300/45 bg-red-500/20 text-red-100",
+    text: "text-red-100",
+    badge: "border-red-300/20 bg-red-500/10 text-red-100",
+  },
+};
+
+function getPedigreeHealthSummary(
+  testTypeCode: string,
+  resultCode: string
+): PedigreeHealthSummary {
+  switch (testTypeCode) {
+    case "HIP_DYSPLASIA":
+      return {
+        label: `Hips ${resultCode}`,
+        severity:
+          resultCode === "EXCELLENT" ||
+          resultCode === "GOOD" ||
+          resultCode === "FAIR"
+            ? "green"
+            : resultCode === "BORDERLINE"
+              ? "yellow"
+              : "red",
+      };
+    case "CARDIAC":
+      return {
+        label: `Cardiac ${resultCode}`,
+        severity:
+          resultCode === "NORMAL"
+            ? "green"
+            : resultCode === "EQUIVOCAL"
+              ? "yellow"
+              : "red",
+      };
+    case "CAER_EYE":
+      return {
+        label:
+          resultCode === "NORMAL"
+            ? "CAER CLEAR"
+            : `CAER ${resultCode.replace(/_/g, " ")}`,
+        severity:
+          resultCode === "NORMAL"
+            ? "green"
+            : resultCode === "BREEDER_OPTION"
+              ? "yellow"
+              : "red",
+      };
+    case "THYROID":
+      return {
+        label: `Thyroid ${resultCode.replace(/_/g, " ")}`,
+        severity:
+          resultCode === "NORMAL"
+            ? "green"
+            : resultCode === "EQUIVOCAL"
+              ? "yellow"
+              : "red",
+      };
+    default:
+      return {
+        label: `${testTypeCode.replace(/_/g, " ")} ${resultCode.replace(/_/g, " ")}`,
+        severity: "yellow",
+      };
+  }
+}
 
 function getChampionshipPointWins(value: unknown): ChampionshipPointWin[] {
   if (
@@ -227,6 +317,7 @@ async function getPedigreeAncestors(rootDog: {
           },
           select: {
             testTypeCode: true,
+            resultCode: true,
           },
         },
       },
@@ -260,13 +351,28 @@ function PedigreeCard({
   column,
   rowStart,
   rowSpan,
+  compactHealth = false,
 }: {
   dog: PedigreeDog | null;
   relationship: string;
   column: number;
   rowStart: number;
   rowSpan: number;
+  compactHealth?: boolean;
 }) {
+  const useCompactHealth = compactHealth || column >= 3;
+  const healthResults = dog
+    ? dog.healthTests.map((test) =>
+        getPedigreeHealthSummary(test.testTypeCode, test.resultCode)
+      )
+    : [];
+  const healthCounts = healthResults.reduce(
+    (counts, result) => ({
+      ...counts,
+      [result.severity]: counts[result.severity] + 1,
+    }),
+    { red: 0, yellow: 0, green: 0 }
+  );
   const className =
     "flex min-h-0 flex-col justify-center rounded-2xl border border-white/10 bg-black/20 px-3 py-2 transition";
   const content = (
@@ -282,12 +388,36 @@ function PedigreeCard({
           {dog.regNumber}
         </div>
       ) : null}
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] text-purple-100/55">
+      <div className="mt-2 text-[0.65rem] text-purple-100/55">
         <span>Color: Pending</span>
-        <span>
-          Health: {dog ? new Set(dog.healthTests.map((test) => test.testTypeCode)).size : 0}/
-          {PHENOTYPE_HEALTH_TEST_CODES.length} tested
-        </span>
+        {healthResults.length === 0 ? (
+          <span className="ml-3">Health: Not tested</span>
+        ) : useCompactHealth ? (
+          <div className="mt-1 flex gap-1.5" aria-label="Health test result summary">
+            {(["red", "yellow", "green"] as const).map((severity) =>
+              healthCounts[severity] > 0 ? (
+                <span
+                  key={severity}
+                  title={`${healthCounts[severity]} ${severity} health result${healthCounts[severity] === 1 ? "" : "s"}`}
+                  className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1 text-[0.6rem] font-bold ${PEDIGREE_HEALTH_SEVERITY_STYLES[severity].circle}`}
+                >
+                  {healthCounts[severity]}
+                </span>
+              ) : null
+            )}
+          </div>
+        ) : (
+          <div className="mt-1 space-y-0.5">
+            {healthResults.map((result) => (
+              <div
+                key={result.label}
+                className={`border-l-2 pl-1.5 font-semibold uppercase leading-tight ${PEDIGREE_HEALTH_SEVERITY_STYLES[result.severity].line}`}
+              >
+                {result.label}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );
@@ -731,12 +861,19 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const completedHealthTestCodes = new Set(
     dog.healthTests.map((test) => test.testTypeCode)
   );
-  const healthTestRows = PHENOTYPE_HEALTH_TEST_CODES.map((testTypeCode) => ({
-    testTypeCode,
-    definition: PHENOTYPE_HEALTH_TESTS[testTypeCode],
-    latestResult:
-      dog.healthTests.find((test) => test.testTypeCode === testTypeCode) ?? null,
-  }));
+  const healthTestRows = PHENOTYPE_HEALTH_TEST_CODES.map((testTypeCode) => {
+    const latestResult =
+      dog.healthTests.find((test) => test.testTypeCode === testTypeCode) ?? null;
+
+    return {
+      testTypeCode,
+      definition: PHENOTYPE_HEALTH_TESTS[testTypeCode],
+      latestResult,
+      severity: latestResult
+        ? getPedigreeHealthSummary(testTypeCode, latestResult.resultCode).severity
+        : null,
+    };
+  });
   const canOrderHealthTests =
     isOwnedByCurrentKennel && isAlive && ageHours >= MIN_BREED_AGE_HOURS;
 
@@ -1164,7 +1301,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           ) : null}
 
           <div className="mt-5 grid gap-3 lg:grid-cols-2">
-            {healthTestRows.map(({ testTypeCode, definition, latestResult }) => (
+            {healthTestRows.map(({ testTypeCode, definition, latestResult, severity }) => (
               <div
                 key={testTypeCode}
                 className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
@@ -1175,7 +1312,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </div>
                   {latestResult ? (
                     <>
-                      <div className="mt-1 text-sm font-semibold text-emerald-100">
+                      <div
+                        className={`mt-1 text-sm font-semibold ${PEDIGREE_HEALTH_SEVERITY_STYLES[severity ?? "yellow"].text}`}
+                      >
                         {getPhenotypeHealthResultLabel(
                           testTypeCode as PhenotypeHealthTestCode,
                           latestResult.resultCode
@@ -1195,7 +1334,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 </div>
 
                 {latestResult ? (
-                  <span className="shrink-0 rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">
+                  <span
+                    className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${PEDIGREE_HEALTH_SEVERITY_STYLES[severity ?? "yellow"].badge}`}
+                  >
                     Complete
                   </span>
                 ) : canOrderHealthTests ? (
