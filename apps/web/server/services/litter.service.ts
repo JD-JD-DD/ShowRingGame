@@ -96,6 +96,11 @@ function visibleToKennelWhere(kennelId: string) {
     OR: [
       { bredByKennelId: kennelId },
       {
+        sire: {
+          ownerKennelId: kennelId,
+        },
+      },
+      {
         puppies: {
           some: {
             ownerKennelId: kennelId,

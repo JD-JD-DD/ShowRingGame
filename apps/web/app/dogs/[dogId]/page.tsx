@@ -80,6 +80,25 @@ function formatListingType(listingType: string): string {
   return listingType;
 }
 
+function formatSireHistoryStatus(status: string): string {
+  switch (status) {
+    case "INITIATED":
+      return "Awaiting pregnancy check";
+    case "CHECKED_NOT_PREGNANT":
+      return "Did not take";
+    case "PREGNANT":
+      return "Pregnant";
+    case "WHELPED":
+      return "Whelped";
+    case "FAILED":
+      return "Failed";
+    case "CANCELLED":
+      return "Cancelled";
+    default:
+      return status;
+  }
+}
+
 function firstQueryValue(value: string | string[] | undefined): string | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
@@ -345,6 +364,31 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         },
         select: {
           id: true,
+        },
+      },
+      breedingAttemptsAsSire: {
+        orderBy: [{ createdEpoch: "desc" }],
+        select: {
+          id: true,
+          createdEpoch: true,
+          status: true,
+          litterId: true,
+          createdByKennel: {
+            select: {
+              name: true,
+              slug: true,
+            },
+          },
+          dam: {
+            select: {
+              id: true,
+              callName: true,
+              registeredName: true,
+              regNumber: true,
+              visibleTitlePrefix: true,
+              visibleTitleSuffix: true,
+            },
+          },
         },
       },
       listings: {
@@ -930,6 +974,74 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             </div>
           )}
         </section>
+
+        {dog.sex === "M" && isOwnedByCurrentKennel ? (
+          <section className="mb-8 rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+            <h2 className="text-xl font-semibold text-white">Sire History</h2>
+            <p className="mt-2 text-sm leading-7 text-purple-100/70">
+              Breeding uses recorded for this dog, including outside stud
+              services.
+            </p>
+
+            {dog.breedingAttemptsAsSire.length > 0 ? (
+              <div className="mt-4 grid gap-2">
+                {dog.breedingAttemptsAsSire.map((attempt) => (
+                  <div
+                    key={attempt.id}
+                    className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="text-purple-100/80">
+                      {attempt.createdByKennel ? (
+                        <Link
+                          href={`/kennels/${attempt.createdByKennel.slug}`}
+                          className="font-semibold text-white underline-offset-4 hover:underline"
+                        >
+                          {attempt.createdByKennel.name}
+                        </Link>
+                      ) : (
+                        <span className="font-semibold text-white">
+                          Unknown kennel
+                        </span>
+                      )}{" "}
+                      used him on {formatShowDate(attempt.createdEpoch)} with{" "}
+                      <Link
+                        href={`/dogs/${attempt.dam.id}`}
+                        className="font-semibold text-white underline-offset-4 hover:underline"
+                      >
+                        {formatDogDisplayName(attempt.dam)}
+                      </Link>
+                      .
+                    </div>
+                    <div className="shrink-0">
+                      {attempt.litterId ? (
+                        <Link
+                          href={`/litters/${attempt.litterId}`}
+                          className="font-semibold text-emerald-100 underline-offset-4 hover:underline"
+                        >
+                          Litter
+                        </Link>
+                      ) : (
+                        <span
+                          className={
+                            attempt.status === "CHECKED_NOT_PREGNANT"
+                              ? "font-semibold text-amber-100"
+                              : "text-purple-100/65"
+                          }
+                        >
+                          {formatSireHistoryStatus(attempt.status)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
+                No breeding uses recorded.
+              </div>
+            )}
+          </section>
+        ) : null}
 
         <section className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
