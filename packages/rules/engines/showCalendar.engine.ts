@@ -1,9 +1,13 @@
 import {
   FOUR_DAY_CLUSTER_DAY_OFFSETS,
+  SHOW_CLUSTERS_PER_DISTRICT_PER_YEAR,
   SHOW_CLUSTERS_PER_WEEK,
   SHOW_DISTRICT_COUNT,
   SHOW_ENTRY_CLOSE_OFFSET_HOURS,
+  SHOW_FOUR_DAY_CLUSTERS_PER_DISTRICT_PER_YEAR,
   SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
+  SHOW_REDUCED_CLUSTER_WEEK_INTERVAL,
+  SHOW_REGULAR_WEEK_COUNT,
   SHOW_WEEK_HOURS,
   SHOW_YEAR_HOURS,
   TWO_DAY_CLUSTER_DAY_OFFSETS,
@@ -119,6 +123,36 @@ function getDayNames(dayOffsets: readonly number[]): string[] {
   return dayOffsets.map((offset) => DAY_NAME_BY_WEEK_OFFSET[offset] ?? `${offset}`);
 }
 
+function getShowSlotIndexesForWeek(weekIndex: number): number[] {
+  if (weekIndex >= SHOW_REGULAR_WEEK_COUNT) {
+    return [];
+  }
+
+  const reducedWeek =
+    (weekIndex + 1) % SHOW_REDUCED_CLUSTER_WEEK_INTERVAL === 0;
+
+  return Array.from({ length: SHOW_CLUSTERS_PER_WEEK }, (_, slotIndex) => slotIndex)
+    .filter((slotIndex) => !reducedWeek || slotIndex < SHOW_CLUSTERS_PER_WEEK - 1);
+}
+
+function getAnnualClusterIndex(args: {
+  weekIndex: number;
+  slotIndex: number;
+}): number {
+  const { weekIndex, slotIndex } = args;
+  const slotIndexes = getShowSlotIndexesForWeek(weekIndex);
+
+  if (!slotIndexes.includes(slotIndex)) {
+    throw new Error("No regular district show is scheduled for that slot.");
+  }
+
+  const reducedWeeksBefore = Math.floor(
+    weekIndex / SHOW_REDUCED_CLUSTER_WEEK_INTERVAL
+  );
+
+  return weekIndex * SHOW_CLUSTERS_PER_WEEK - reducedWeeksBefore + slotIndex;
+}
+
 function csvEscape(value: string | number): string {
   const text = `${value}`;
 
@@ -138,9 +172,18 @@ export function getShowClusterTypeForSlot(args: {
   assertNonNegativeInteger(weekIndex, "weekIndex");
   assertNonNegativeInteger(slotIndex, "slotIndex");
 
-  const globalClusterIndex = weekIndex * SHOW_CLUSTERS_PER_WEEK + slotIndex;
+  const annualClusterIndex = getAnnualClusterIndex({ weekIndex, slotIndex });
+  const district = (annualClusterIndex % SHOW_DISTRICT_COUNT) + 1;
+  const districtVisitIndex = Math.floor(
+    annualClusterIndex / SHOW_DISTRICT_COUNT
+  );
+  const fourDayInterval =
+    SHOW_CLUSTERS_PER_DISTRICT_PER_YEAR /
+    SHOW_FOUR_DAY_CLUSTERS_PER_DISTRICT_PER_YEAR;
 
-  return globalClusterIndex % 4 === 3 ? "FOUR_DAY" : "TWO_DAY";
+  return (district - 1 + districtVisitIndex) % fourDayInterval === 0
+    ? "FOUR_DAY"
+    : "TWO_DAY";
 }
 
 export function getShowClusterDistrict(args: {
@@ -152,17 +195,16 @@ export function getShowClusterDistrict(args: {
   assertNonNegativeInteger(weekIndex, "weekIndex");
   assertNonNegativeInteger(slotIndex, "slotIndex");
 
-  return ((weekIndex * SHOW_CLUSTERS_PER_WEEK + slotIndex) % SHOW_DISTRICT_COUNT) + 1;
+  return (getAnnualClusterIndex({ weekIndex, slotIndex }) % SHOW_DISTRICT_COUNT) + 1;
 }
 
 export function generateAnnualShowClusterTemplates(): ShowClusterTemplate[] {
-  const weekCount = Math.floor((SHOW_YEAR_HOURS - 1) / SHOW_WEEK_HOURS);
   const templates: ShowClusterTemplate[] = [];
 
-  for (let weekIndex = 0; weekIndex < weekCount; weekIndex += 1) {
+  for (let weekIndex = 0; weekIndex < SHOW_REGULAR_WEEK_COUNT; weekIndex += 1) {
     const weekInYear = weekIndex + 1;
 
-    for (let slotIndex = 0; slotIndex < SHOW_CLUSTERS_PER_WEEK; slotIndex += 1) {
+    for (const slotIndex of getShowSlotIndexesForWeek(weekIndex)) {
       const type = getShowClusterTypeForSlot({ weekIndex, slotIndex });
       const district = getShowClusterDistrict({ weekIndex, slotIndex });
       const showDayOffsets = [...getShowClusterDayOffsets(type)];
@@ -236,7 +278,7 @@ export function generateShowClustersForWeek(
   const weekInYear = getWeekInYear(normalizedWeekStartEpoch);
   const calendarWeekIndex = getCalendarWeekIndex(normalizedWeekStartEpoch);
 
-  return Array.from({ length: SHOW_CLUSTERS_PER_WEEK }, (_, slotIndex) => {
+  return getShowSlotIndexesForWeek(calendarWeekIndex).map((slotIndex) => {
     const type = getShowClusterTypeForSlot({
       weekIndex: calendarWeekIndex,
       slotIndex,

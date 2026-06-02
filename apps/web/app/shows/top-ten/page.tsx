@@ -5,6 +5,8 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { SHOW_YEAR_HOURS } from "@showring/rules";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   searchParams?: Promise<{
     year?: string | string[];
@@ -325,6 +327,16 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <a
+              href={buildTopTenHref({
+                year: selectedYear,
+                breed: selectedBreedCode,
+                allTimeBreed: selectedAllTimeBreedCode,
+              })}
+              className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+            >
+              Refresh Standings
+            </a>
             <Link
               href="/shows"
               className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"

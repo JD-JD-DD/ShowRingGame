@@ -8,7 +8,10 @@
   ".": "./src/index.ts"
   },
 
-  
+  "scripts": {
+    "test:show-calendar": "tsx src/testShowCalendar.ts"
+  },
+
   "devDependencies": {
     "tsx": "^4.21.0"
   }

@@ -204,8 +204,9 @@ export default async function ShowsPage({
               Annual Show Calendar
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
-              Browse the full 52-week show calendar, open upcoming clusters, and
-              review results from generated years.
+              Browse the annual district show calendar, open upcoming clusters,
+              and review results from generated years. Week 52 is reserved for
+              the invitational show.
             </p>
           </div>
 
@@ -393,6 +394,18 @@ export default async function ShowsPage({
               </div>
             );
           })}
+          <div className="rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-amber-100/80">
+              Week 52
+            </div>
+            <h2 className="mt-1 text-lg font-semibold text-white">
+              Invitational Show
+            </h2>
+            <div className="mt-2 text-sm text-amber-100/75">
+              Reserved for the annual invitational. No regular district shows
+              are scheduled this week.
+            </div>
+          </div>
         </div>
       </section>
     </main>

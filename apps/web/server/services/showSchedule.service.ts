@@ -3,6 +3,7 @@ import { getCurrentEpoch } from "@/lib/gameClock";
 import { seedJudgePanelFromCsv } from "@/server/services/judgePanel.service";
 import {
   CURRENT_BREED_RELEASE,
+  SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
   type GeneratedShowCluster,
   generateShowClustersInHorizon,
 } from "@showring/rules";
@@ -208,6 +209,67 @@ function getBlockStatus(args: {
 
 function getGeneratedClusterId(cluster: GeneratedShowCluster): string {
   return `generated-year-${cluster.year}-${cluster.templateId}`;
+}
+
+async function deleteEmptyGeneratedCluster(clusterId: string): Promise<boolean> {
+  const cluster = await db.showCluster.findUnique({
+    where: { id: clusterId },
+    select: {
+      status: true,
+      showDays: {
+        select: {
+          id: true,
+          _count: {
+            select: {
+              showEntries: true,
+              showResults: true,
+              showAwards: true,
+              prestigeCredits: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          ledgerTransactions: true,
+          primaryWeekendPlans: true,
+        },
+      },
+    },
+  });
+
+  if (
+    !cluster ||
+    TERMINAL_CLUSTER_STATUSES.has(cluster.status) ||
+    cluster._count.ledgerTransactions > 0 ||
+    cluster._count.primaryWeekendPlans > 0 ||
+    cluster.showDays.some(
+      (showDay) =>
+        showDay._count.showEntries > 0 ||
+        showDay._count.showResults > 0 ||
+        showDay._count.showAwards > 0 ||
+        showDay._count.prestigeCredits > 0
+    )
+  ) {
+    return false;
+  }
+
+  const showDayIds = cluster.showDays.map((showDay) => showDay.id);
+
+  await db.$transaction(async (tx) => {
+    if (showDayIds.length > 0) {
+      await tx.showJudgingBlock.deleteMany({
+        where: { showDayId: { in: showDayIds } },
+      });
+      await tx.showDay.deleteMany({
+        where: { id: { in: showDayIds } },
+      });
+    }
+
+    await tx.showCluster.delete({ where: { id: clusterId } });
+  });
+
+  return true;
 }
 
 function parseGeneratedClusterId(clusterId: string): {
@@ -429,10 +491,31 @@ export async function ensureGeneratedShowSchedule(args?: {
 
   const currentEpoch = args?.currentEpoch ?? getCurrentEpoch();
   const includeJudgingBlocks = args?.includeJudgingBlocks ?? true;
+  const horizonHours =
+    args?.horizonHours ?? SHOW_INSTANCE_GENERATION_HORIZON_HOURS;
   const clusters = generateShowClustersInHorizon({
     currentEpoch,
-    horizonHours: args?.horizonHours,
+    horizonHours,
   });
+  const generatedClusterIds = new Set(clusters.map(getGeneratedClusterId));
+  const obsoleteClusters = await db.showCluster.findMany({
+    where: {
+      id: {
+        startsWith: "generated-year-",
+        ...(generatedClusterIds.size > 0
+          ? { notIn: [...generatedClusterIds] }
+          : {}),
+      },
+      startEpoch: { lte: currentEpoch + horizonHours },
+      endEpoch: { gte: currentEpoch },
+    },
+    select: { id: true },
+  });
+
+  for (const cluster of obsoleteClusters) {
+    await deleteEmptyGeneratedCluster(cluster.id);
+  }
+
   const [breeds, judges] = await Promise.all([
     includeJudgingBlocks ? getReleasedBreedsForShows() : Promise.resolve([]),
     getActiveJudgesForShows(),
@@ -451,16 +534,49 @@ export async function ensureGeneratedShowSchedule(args?: {
 
   for (const cluster of clusters) {
     const clusterId = getGeneratedClusterId(cluster);
+    const showDayEpochs = [...cluster.showDayEpochs].sort((a, b) => a - b);
     const clusterStatus = getClusterStatus({
       currentEpoch,
       entryOpenEpoch: cluster.entryOpenEpoch,
       entryCloseEpoch: cluster.entryCloseEpoch,
       endEpoch: cluster.endEpoch,
     });
-    const existingCluster = await db.showCluster.findUnique({
+    let existingCluster = await db.showCluster.findUnique({
       where: { id: clusterId },
-      select: { status: true },
+      select: {
+        status: true,
+        district: true,
+        startEpoch: true,
+        endEpoch: true,
+        entryOpenEpoch: true,
+        entryCloseEpoch: true,
+        showDays: {
+          orderBy: [{ dayIndex: "asc" }],
+          select: { scheduledEpoch: true },
+        },
+      },
     });
+    const generatedScheduleChanged =
+      existingCluster &&
+      (existingCluster.district !== cluster.district ||
+        existingCluster.startEpoch !== cluster.startEpoch ||
+        existingCluster.endEpoch !== cluster.endEpoch ||
+        existingCluster.entryOpenEpoch !== cluster.entryOpenEpoch ||
+        existingCluster.entryCloseEpoch !== cluster.entryCloseEpoch ||
+        existingCluster.showDays.length !== showDayEpochs.length ||
+        existingCluster.showDays.some(
+          (showDay, index) => showDay.scheduledEpoch !== showDayEpochs[index]
+        ));
+
+    if (generatedScheduleChanged) {
+      const deleted = await deleteEmptyGeneratedCluster(clusterId);
+
+      if (deleted) {
+        existingCluster = null;
+      } else {
+        continue;
+      }
+    }
 
     if (existingCluster) {
       if (!TERMINAL_CLUSTER_STATUSES.has(existingCluster.status)) {
@@ -493,8 +609,6 @@ export async function ensureGeneratedShowSchedule(args?: {
         },
       });
     }
-
-    const showDayEpochs = [...cluster.showDayEpochs].sort((a, b) => a - b);
 
     for (const [dayOffset, scheduledEpoch] of showDayEpochs.entries()) {
       const dayIndex = dayOffset + 1;
