@@ -17,6 +17,7 @@ import {
 } from "@showring/rules";
 import { SHOW_WEEK_HOURS } from "@showring/rules";
 import { applyBetaBalanceTopUp } from "@/lib/betaEconomy";
+import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 
 const FOUNDATION_LISTING_TYPE = "FOUNDATION";
 const FOUNDATION_DESCRIPTION_PUBLIC = "Foundation dog available for purchase.";
@@ -524,6 +525,8 @@ async function createOneFoundationDog(args: {
         id: true,
       },
     });
+
+    await ensurePhenotypeHealthTruthsForDogs(tx, [createdDog.id]);
 
     await tx.dogListing.create({
       data: {

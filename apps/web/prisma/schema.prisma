@@ -114,6 +114,7 @@ enum LedgerTransactionType {
   LISTING_FEE
   UPKEEP
   PRIZE_WINNINGS
+  HEALTH_TEST_FEE
   REFUND
 }
 
@@ -281,6 +282,7 @@ model Dog {
   listings           DogListing[]
   titleProgress      DogTitleProgress?
   healthTests        HealthTestRecord[]
+  healthConditionTruths DogHealthConditionTruth[]
 
   @@index([breedCode2])
   @@index([ownerKennelId])
@@ -813,14 +815,33 @@ model HealthTestRecord {
   dogId           String
   testTypeCode    String
   resultCode      String
+  testedAtEpoch   Int?
   revealedAtEpoch Int?
   createdAt       DateTime @default(now())
   isPublic        Boolean  @default(true)
   notes           String?
+  detailsJson     Json?
 
   dog Dog @relation(fields: [dogId], references: [id])
 
-  @@unique([dogId, testTypeCode])
+  @@index([dogId, testTypeCode, testedAtEpoch])
   @@index([testTypeCode])
   @@index([resultCode])
+}
+
+model DogHealthConditionTruth {
+  id                  String   @id @default(cuid())
+  dogId               String
+  conditionCode       String
+  geneticLiability    Float
+  environmentModifier Float    @default(0)
+  alleleA             String?
+  alleleB             String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  dog Dog @relation(fields: [dogId], references: [id])
+
+  @@unique([dogId, conditionCode])
+  @@index([conditionCode])
 }

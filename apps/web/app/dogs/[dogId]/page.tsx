@@ -12,10 +12,14 @@ import {
   MAX_SHOW_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
   MIN_SHOW_AGE_HOURS,
+  PHENOTYPE_HEALTH_TEST_CODES,
+  PHENOTYPE_HEALTH_TESTS,
   PUPPY_SALE_MIN_AGE_HOURS,
   WHELPING_COOLDOWN_HOURS,
   getPuppyRehomePayoutForAgeHours,
+  getPhenotypeHealthResultLabel,
   getShowDistrictRegionName,
+  type PhenotypeHealthTestCode,
 } from "@showring/rules";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import ManageDogStudListingForm from "@/components/dogs/ManageDogStudListingForm";
@@ -41,6 +45,8 @@ type PageProps = {
     nameError?: string | string[];
     saleError?: string | string[];
     saleMessage?: string | string[];
+    healthError?: string | string[];
+    healthMessage?: string | string[];
   }>;
 };
 
@@ -160,6 +166,9 @@ type PedigreeDog = {
   visibleTitleSuffix: string | null;
   sireId: string | null;
   damId: string | null;
+  healthTests: Array<{
+    testTypeCode: string;
+  }>;
 };
 
 function getChampionshipPointWins(value: unknown): ChampionshipPointWin[] {
@@ -212,6 +221,14 @@ async function getPedigreeAncestors(rootDog: {
         visibleTitleSuffix: true,
         sireId: true,
         damId: true,
+        healthTests: {
+          where: {
+            isPublic: true,
+          },
+          select: {
+            testTypeCode: true,
+          },
+        },
       },
     });
 
@@ -267,7 +284,10 @@ function PedigreeCard({
       ) : null}
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] text-purple-100/55">
         <span>Color: Pending</span>
-        <span>Health: Pending</span>
+        <span>
+          Health: {dog ? new Set(dog.healthTests.map((test) => test.testTypeCode)).size : 0}/
+          {PHENOTYPE_HEALTH_TEST_CODES.length} tested
+        </span>
       </div>
     </>
   );
@@ -297,6 +317,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const nameError = firstQueryValue(resolvedSearchParams.nameError);
   const saleError = firstQueryValue(resolvedSearchParams.saleError);
   const saleMessage = firstQueryValue(resolvedSearchParams.saleMessage);
+  const healthError = firstQueryValue(resolvedSearchParams.healthError);
+  const healthMessage = firstQueryValue(resolvedSearchParams.healthMessage);
   const userId = await getSessionUserId();
 
   if (!userId) {
@@ -349,6 +371,19 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           majorCount: true,
           currentTitleCode: true,
           winsByTypeJson: true,
+        },
+      },
+      healthTests: {
+        where: {
+          isPublic: true,
+        },
+        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          testTypeCode: true,
+          resultCode: true,
+          testedAtEpoch: true,
+          revealedAtEpoch: true,
         },
       },
       notesPublic: true,
@@ -693,6 +728,17 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     dog.titleProgress?.winsByTypeJson
   );
   const invitationalPlacementTags = dog.showAwards;
+  const completedHealthTestCodes = new Set(
+    dog.healthTests.map((test) => test.testTypeCode)
+  );
+  const healthTestRows = PHENOTYPE_HEALTH_TEST_CODES.map((testTypeCode) => ({
+    testTypeCode,
+    definition: PHENOTYPE_HEALTH_TESTS[testTypeCode],
+    latestResult:
+      dog.healthTests.find((test) => test.testTypeCode === testTypeCode) ?? null,
+  }));
+  const canOrderHealthTests =
+    isOwnedByCurrentKennel && isAlive && ageHours >= MIN_BREED_AGE_HOURS;
 
   return (
     <main className="min-h-screen px-6 py-8 text-white">
@@ -1080,6 +1126,91 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         </section>
 
         <section className="mb-8 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold text-white">
+                Health Testing
+              </h2>
+              <p className="mt-2 text-sm leading-7 text-purple-100/70">
+                Public phenotype screening results. Testing becomes available
+                at breeding age.
+              </p>
+            </div>
+            <span className="rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1 text-xs font-semibold text-purple-100">
+              {completedHealthTestCodes.size}/{PHENOTYPE_HEALTH_TEST_CODES.length} tested
+            </span>
+          </div>
+
+          {healthMessage ? (
+            <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+              {healthMessage}
+            </div>
+          ) : null}
+
+          {healthError ? (
+            <div className="mt-4 rounded-2xl border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {healthError}
+            </div>
+          ) : null}
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-2">
+            {healthTestRows.map(({ testTypeCode, definition, latestResult }) => (
+              <div
+                key={testTypeCode}
+                className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <div className="text-sm font-semibold text-white">
+                    {definition.label}
+                  </div>
+                  {latestResult ? (
+                    <>
+                      <div className="mt-1 text-sm font-semibold text-emerald-100">
+                        {getPhenotypeHealthResultLabel(
+                          testTypeCode as PhenotypeHealthTestCode,
+                          latestResult.resultCode
+                        )}
+                      </div>
+                      <div className="mt-1 text-xs text-purple-100/55">
+                        {latestResult.testedAtEpoch === null
+                          ? "Test date unavailable"
+                          : `Tested ${formatShowDate(latestResult.testedAtEpoch)}`}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="mt-1 text-sm text-purple-100/55">
+                      Not tested
+                    </div>
+                  )}
+                </div>
+
+                {latestResult ? (
+                  <span className="shrink-0 rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">
+                    Complete
+                  </span>
+                ) : canOrderHealthTests ? (
+                  <form
+                    action={`/api/dogs/${dog.id}/health-tests/${testTypeCode}`}
+                    method="post"
+                  >
+                    <button
+                      type="submit"
+                      className="shrink-0 rounded-xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500"
+                    >
+                      Test {formatMoney(definition.fee)}
+                    </button>
+                  </form>
+                ) : (
+                  <span className="shrink-0 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/45">
+                    Breeding age
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-8 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-2xl font-semibold text-white">Show Record</h2>
@@ -1277,7 +1408,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 Color: Pending
               </span>
               <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/70">
-                Health tests: Pending
+                Health tests: {completedHealthTestCodes.size}/
+                {PHENOTYPE_HEALTH_TEST_CODES.length}
               </span>
             </div>
           </div>

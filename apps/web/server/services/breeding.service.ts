@@ -6,6 +6,7 @@ import {
   resolveDogDeaths,
 } from "@/server/services/lifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
+import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   BREEDING_FEE,
   calculatePedigreeCoi,
@@ -614,6 +615,11 @@ export async function resolveBreedingProgressForKennel(args: {
             traitTopline: puppy.traits.topline,
           })),
         });
+
+        await ensurePhenotypeHealthTruthsForDogs(
+          tx,
+          outcome.puppies.map((puppy) => puppy.dogId)
+        );
 
         await tx.breedingAttempt.update({
           where: { id: fresh.id },

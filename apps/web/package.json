@@ -7,6 +7,7 @@
     "build": "prisma migrate deploy && prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "backfill:phenotype-health": "tsx scripts/backfill-phenotype-health.ts",
     "password-reset-link": "tsx scripts/create-password-reset-link.ts"
   },
   "dependencies": {

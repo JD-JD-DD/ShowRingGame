@@ -7,7 +7,7 @@ export * from "./dog.engine";
 export * from "./economy.engine";
 export * from "./foundationDog.engine";
 export * from "./idealScoring.engine";
-// export * from "./health.engine";
+export * from "./health.engine";
 export * from "./judge.engine";
 export * from "./judging.engine";
 export * from "./litter.engine";
