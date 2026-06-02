@@ -16,9 +16,11 @@ import {
   BREEDING_FEE,
   calculatePedigreeCoi,
   DAM_MAX_BREED_AGE_HOURS,
+  GESTATION_HOURS,
   MIN_BREED_AGE_HOURS,
   PHENOTYPE_HEALTH_TEST_CODES,
   PHENOTYPE_HEALTH_TESTS,
+  PREG_CHECK_HOURS,
   WHELPING_COOLDOWN_HOURS,
   getPhenotypeHealthResultLabel,
   type PedigreeDog,
@@ -30,6 +32,14 @@ type VisibleCategories = Record<string, number>;
 type HealthTest = {
   testTypeCode: string;
   resultCode: string;
+};
+
+type PlannerPedigreeDog = PedigreeDog & {
+  callName: string | null;
+  registeredName: string | null;
+  regNumber: string;
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
 };
 
 type DogCardDto = {
@@ -58,11 +68,12 @@ type DogCardDto = {
 };
 
 type Props = {
+  experience: "breed-dog" | "worksheet";
   kennelId: string;
   kennelName: string;
   kennelBalance: number;
   currentEpoch: number;
-  pedigree: PedigreeDog[];
+  pedigree: PlannerPedigreeDog[];
   dogs: DogCardDto[];
   initialDogId: string | null;
   initialStudListingId: string | null;
@@ -70,9 +81,6 @@ type Props = {
 
 type SireSource = "ALL" | "OWNED" | "PUBLIC";
 type SireSort = "RECOMMENDED" | "LOWEST_COI" | "HEALTH" | "FEE";
-
-const USUAL_PREG_CHECK_DAYS = 28;
-const USUAL_GESTATION_DAYS = 56;
 
 const HEALTH_TONES: Record<PhenotypeHealthSeverity, string> = {
   green: "border-emerald-300/35 bg-emerald-500/10 text-emerald-100",
@@ -117,6 +125,66 @@ function latestHealthTests(dog: DogCardDto) {
     result:
       dog.healthTests.find((test) => test.testTypeCode === testTypeCode) ?? null,
   }));
+}
+
+function visibleTraitNotes(dog: DogCardDto) {
+  const categories = Object.entries(dog.visibleCategories)
+    .map(([key, value]) => ({
+      label: formatCategoryName(key),
+      value,
+      distance: Math.abs(value - 10),
+    }))
+    .sort((a, b) => a.distance - b.distance);
+  const strengths = categories.slice(0, 2);
+  const watchItems = [...categories]
+    .sort((a, b) => b.distance - a.distance)
+    .filter((category) => category.distance >= 1.5)
+    .slice(0, 2);
+
+  return {
+    strengths,
+    watchItems,
+  };
+}
+
+function damCooldownSummary(dog: DogCardDto, currentEpoch: number) {
+  if (dog.sex !== "F") return null;
+  if (dog.lastLitterEpoch === null) return "Cooldown: no prior litter";
+
+  const cooldownUntil = dog.lastLitterEpoch + WHELPING_COOLDOWN_HOURS;
+
+  return cooldownUntil <= currentEpoch
+    ? `Cooldown complete since ${formatGameDate(cooldownUntil)}`
+    : `Cooldown until ${formatGameDate(cooldownUntil)}`;
+}
+
+function healthWarnings(dog: DogCardDto) {
+  return latestHealthTests(dog).flatMap(({ testTypeCode, result }) => {
+    const definition =
+      PHENOTYPE_HEALTH_TESTS[testTypeCode as PhenotypeHealthTestCode];
+
+    if (!result) {
+      return [{
+        label: `${dogDisplayName(dog)}: ${definition.label} not tested`,
+        severity: "yellow" as const,
+      }];
+    }
+
+    const severity = getPhenotypeHealthSeverity(
+      result.testTypeCode,
+      result.resultCode
+    );
+
+    if (severity === "green") return [];
+
+    return [{
+      label: `${dogDisplayName(dog)}: ${definition.label} ${getPhenotypeHealthResultLabel(
+        testTypeCode as PhenotypeHealthTestCode,
+        result.resultCode
+      )}`,
+      severity,
+    }];
+  });
 }
 
 function reasonDogUnavailable(dog: DogCardDto, currentEpoch: number) {
@@ -182,6 +250,56 @@ function sharedAncestorCount(sire: DogCardDto, dam: DogCardDto, pedigree: Pedigr
 
   return [...sireAncestors].filter((ancestorId) => damAncestors.has(ancestorId))
     .length;
+}
+
+function sharedAncestorIds(
+  sire: DogCardDto,
+  dam: DogCardDto,
+  pedigree: PedigreeDog[]
+) {
+  const sireAncestors = ancestorIds(sire.id, pedigree);
+  const damAncestors = ancestorIds(dam.id, pedigree);
+
+  return new Set(
+    [...sireAncestors].filter((ancestorId) => damAncestors.has(ancestorId))
+  );
+}
+
+function ancestorBranch(
+  dogId: string,
+  pedigree: PlannerPedigreeDog[],
+  maxGenerations = 3
+) {
+  const pedigreeById = new Map(pedigree.map((dog) => [dog.id, dog]));
+  const branch: Array<{ dog: PlannerPedigreeDog; generation: number }> = [];
+  let currentIds = [dogId];
+
+  for (
+    let generation = 1;
+    generation <= maxGenerations && currentIds.length > 0;
+    generation += 1
+  ) {
+    const nextIds: string[] = [];
+
+    for (const currentId of currentIds) {
+      const dog = pedigreeById.get(currentId);
+
+      if (!dog) continue;
+
+      for (const parentId of [dog.sireId, dog.damId]) {
+        const parent = parentId ? pedigreeById.get(parentId) : null;
+
+        if (parent) {
+          branch.push({ dog: parent, generation });
+          nextIds.push(parent.id);
+        }
+      }
+    }
+
+    currentIds = nextIds;
+  }
+
+  return branch;
 }
 
 function coiTone(coiPercent: number | null) {
@@ -302,6 +420,8 @@ function DogOptionCard({
   const unavailable = reasonDogUnavailable(dog, currentEpoch);
   const projectedCoi =
     dog.sex === "M" && pairingDam ? pairingCoi(dog, pairingDam, pedigree) : null;
+  const traitNotes = visibleTraitNotes(dog);
+  const cooldownSummary = damCooldownSummary(dog, currentEpoch);
 
   return (
     <article
@@ -321,7 +441,7 @@ function DogOptionCard({
           <div className="mt-1 text-xs text-purple-100/55">{dog.regNumber}</div>
         </div>
         <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[0.68rem] font-semibold text-purple-100/75">
-          {dog.isOwnedByCurrentKennel ? "My Kennel" : "Public Stud"}
+          {dog.isOwnedByCurrentKennel ? "My Kennel" : "Outside Stud"}
         </span>
       </div>
 
@@ -344,9 +464,35 @@ function DogOptionCard({
         {dog.sex === "F" && dog.lastLitterEpoch !== null ? (
           <span>Last litter: {formatGameDate(dog.lastLitterEpoch)}</span>
         ) : null}
+        {cooldownSummary ? <span>{cooldownSummary}</span> : null}
       </div>
 
       <HealthSummary dog={dog} compact />
+
+      <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-black/15 p-3 text-xs sm:grid-cols-2">
+        <div>
+          <div className="font-semibold uppercase tracking-wide text-emerald-200">
+            Visible Strengths
+          </div>
+          <div className="mt-1 text-purple-100/70">
+            {traitNotes.strengths
+              .map((category) => `${category.label} ${category.value.toFixed(1)}`)
+              .join(" · ")}
+          </div>
+        </div>
+        <div>
+          <div className="font-semibold uppercase tracking-wide text-amber-200">
+            Watch Areas
+          </div>
+          <div className="mt-1 text-purple-100/70">
+            {traitNotes.watchItems.length > 0
+              ? traitNotes.watchItems
+                  .map((category) => `${category.label} ${category.value.toFixed(1)}`)
+                  .join(" · ")
+              : "No pronounced visible watch areas"}
+          </div>
+        </div>
+      </div>
 
       {unavailable ? (
         <div className="mt-3 rounded-xl border border-rose-300/25 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-100">
@@ -364,11 +510,11 @@ function DogOptionCard({
           {selected ? "Selected" : "Select"}
         </button>
         <Link
-          href={`/dogs/${dog.id}`}
+          href={`/dogs/${dog.id}#pedigree`}
           target="_blank"
           className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
         >
-          Profile
+          Pedigree
         </Link>
         {onToggleShortlist ? (
           <button
@@ -539,8 +685,8 @@ function FreeBreedingSummary({
           </div>
         </div>
         <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-purple-100/70">
-          Pregnancy check in about {USUAL_PREG_CHECK_DAYS} game days. Expected
-          litter in about {USUAL_GESTATION_DAYS} game days.
+          Pregnancy check in about {PREG_CHECK_HOURS} game days. Expected litter
+          in about {GESTATION_HOURS} game days.
         </div>
         {errorMessage ? (
           <div className="rounded-xl border border-red-400/35 bg-red-500/10 px-3 py-2 text-sm text-red-100">
@@ -629,8 +775,96 @@ function TraitOutlook({ dam, sire }: { dam: DogCardDto; sire: DogCardDto }) {
   );
 }
 
+function CompactPedigreePreview({
+  dam,
+  sire,
+  pedigree,
+}: {
+  dam: DogCardDto;
+  sire: DogCardDto;
+  pedigree: PlannerPedigreeDog[];
+}) {
+  const sharedIds = sharedAncestorIds(sire, dam, pedigree);
+  const pedigreeById = new Map(pedigree.map((dog) => [dog.id, dog]));
+  const sharedAncestors = [...sharedIds]
+    .map((ancestorId) => pedigreeById.get(ancestorId))
+    .filter((dog): dog is PlannerPedigreeDog => Boolean(dog));
+  const branches = [
+    { label: "Sire Branch", dogs: ancestorBranch(sire.id, pedigree) },
+    { label: "Dam Branch", dogs: ancestorBranch(dam.id, pedigree) },
+  ];
+
+  return (
+    <div className="mt-4">
+      {sharedAncestors.length > 0 ? (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {sharedAncestors.map((dog) => (
+            <Link
+              key={dog.id}
+              href={`/dogs/${dog.id}#pedigree`}
+              target="_blank"
+              className="rounded-full border border-amber-300/65 bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-100"
+            >
+              Shared: {formatDogDisplayName(dog)}
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="mb-4 text-xs font-semibold text-emerald-200">
+          No shared ancestors found in the calculated pedigree.
+        </div>
+      )}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {branches.map((branch) => (
+        <div
+          key={branch.label}
+          className="rounded-xl border border-white/10 bg-black/15 p-3"
+        >
+          <div className="text-xs font-semibold uppercase tracking-wide text-purple-200">
+            {branch.label}
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {branch.dogs.length > 0 ? (
+              branch.dogs.map(({ dog, generation }, index) => {
+                const shared = sharedIds.has(dog.id);
+
+                return (
+                  <Link
+                    key={`${branch.label}-${dog.id}-${generation}-${index}`}
+                    href={`/dogs/${dog.id}#pedigree`}
+                    target="_blank"
+                    className={`rounded-lg border px-3 py-2 text-xs transition ${
+                      shared
+                        ? "border-amber-300/65 bg-amber-500/15 text-amber-100"
+                        : "border-white/10 bg-white/5 text-purple-100/70 hover:border-purple-300/40"
+                    }`}
+                  >
+                    <div className="font-semibold">
+                      {formatDogDisplayName(dog)}
+                    </div>
+                    <div className="mt-1 text-[0.68rem] opacity-75">
+                      Generation {generation}
+                      {shared ? " · Shared ancestor" : ""}
+                    </div>
+                  </Link>
+                );
+              })
+            ) : (
+              <div className="text-xs text-purple-100/55">
+                No recorded ancestors in this branch.
+              </div>
+            )}
+          </div>
+        </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PairingAnalysis({
   kennelBalance,
+  currentEpoch,
   dam,
   sire,
   pedigree,
@@ -641,9 +875,10 @@ function PairingAnalysis({
   onSubmit,
 }: {
   kennelBalance: number;
+  currentEpoch: number;
   dam: DogCardDto;
   sire: DogCardDto;
-  pedigree: PedigreeDog[];
+  pedigree: PlannerPedigreeDog[];
   submitting: boolean;
   redirecting: boolean;
   errorMessage: string;
@@ -656,6 +891,13 @@ function PairingAnalysis({
     hasAllGreenPhenotypeHealthTests(dam.healthTests) &&
     hasAllGreenPhenotypeHealthTests(sire.healthTests);
   const sharedAncestors = sharedAncestorCount(sire, dam, pedigree);
+  const healthConcerns = [...healthWarnings(dam), ...healthWarnings(sire)];
+  const hasRedHealthConcern = healthConcerns.some(
+    (concern) => concern.severity === "red"
+  );
+  const pregCheckEpoch = currentEpoch + PREG_CHECK_HOURS;
+  const expectedLitterEpoch = currentEpoch + GESTATION_HOURS;
+  const projectedCooldownUntil = expectedLitterEpoch + WHELPING_COOLDOWN_HOURS;
   const cues = [
     {
       label: coiLabel(coi?.coiPercent ?? null),
@@ -742,9 +984,12 @@ function PairingAnalysis({
               <span>{formatMoney(kennelBalance - totalCost)}</span>
             </div>
             <div className="border-t border-white/10 pt-2">
-              Pregnancy check in about {USUAL_PREG_CHECK_DAYS} game days
+              Estimated pregnancy check: {formatGameDate(pregCheckEpoch)}
             </div>
-            <div>Expected litter in about {USUAL_GESTATION_DAYS} game days</div>
+            <div>Estimated litter due: {formatGameDate(expectedLitterEpoch)}</div>
+            <div>
+              Dam may breed again after: {formatGameDate(projectedCooldownUntil)}
+            </div>
           </div>
 
           {errorMessage ? (
@@ -773,6 +1018,42 @@ function PairingAnalysis({
         </aside>
       </div>
 
+      {healthConcerns.length > 0 ? (
+        <div
+          className={`mt-6 rounded-2xl border p-4 ${
+            hasRedHealthConcern
+              ? "border-red-400/55 bg-red-500/15"
+              : "border-amber-300/45 bg-amber-500/10"
+          }`}
+        >
+          <h3
+            className={`font-bold ${
+              hasRedHealthConcern ? "text-red-100" : "text-amber-100"
+            }`}
+          >
+            Health Review Recommended
+          </h3>
+          <div className="mt-2 grid gap-1 text-sm">
+            {healthConcerns.map((concern) => (
+              <div
+                key={concern.label}
+                className={
+                  concern.severity === "red"
+                    ? "font-bold text-red-100"
+                    : "text-amber-100"
+                }
+              >
+                {concern.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-6 rounded-2xl border border-emerald-300/35 bg-emerald-500/10 p-4 text-sm font-semibold text-emerald-100">
+          Both parents have complete all-green phenotype health tests.
+        </div>
+      )}
+
       <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
         <h3 className="font-semibold text-white">Planning Notes</h3>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -782,6 +1063,15 @@ function PairingAnalysis({
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+        <h3 className="font-semibold text-white">Compact Pedigree Preview</h3>
+        <p className="mt-2 text-xs leading-5 text-purple-100/60">
+          Shared ancestors are highlighted in amber. Select an ancestor to open
+          that dog&apos;s full pedigree.
+        </p>
+        <CompactPedigreePreview dam={dam} sire={sire} pedigree={pedigree} />
       </div>
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
@@ -827,7 +1117,7 @@ function Shortlist({
                     <DogName dog={sire} />
                   </td>
                   <td className="px-3 py-2 text-purple-100/70">
-                    {sire.isOwnedByCurrentKennel ? "My Kennel" : "Public Stud"}
+                    {sire.isOwnedByCurrentKennel ? "My Kennel" : "Outside Stud"}
                   </td>
                   <td className={`px-3 py-2 text-right ${coiTone(coi?.coiPercent ?? null)}`}>
                     {coi ? `${coi.coiPercent.toFixed(2)}%` : "Pending"}
@@ -849,6 +1139,7 @@ function Shortlist({
 }
 
 export default function BreedPageClient({
+  experience,
   kennelName,
   kennelBalance,
   currentEpoch,
@@ -985,6 +1276,15 @@ export default function BreedPageClient({
     setShortlistedSireIds([]);
   }
 
+  function chooseDam(nextDamId: string) {
+    if (nextDamId !== damId) {
+      setSireId("");
+      setShortlistedSireIds([]);
+    }
+
+    setDamId(nextDamId);
+  }
+
   function toggleShortlist(sireIdToToggle: string) {
     setShortlistedSireIds((current) => {
       if (current.includes(sireIdToToggle)) {
@@ -1030,22 +1330,16 @@ export default function BreedPageClient({
     }
   }
 
-  if (anchorDog) {
+  if (experience === "breed-dog" && anchorDog) {
     const selectingDams = anchorDog.sex === "M";
     const selectedMate = selectingDams ? selectedDam : selectedSire;
 
     return (
       <div>
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-purple-300/15 bg-white/5 px-4 py-3">
+        <div className="mb-5 rounded-2xl border border-purple-300/15 bg-white/5 px-4 py-3">
           <p className="text-sm text-purple-100/75">
             Choose an eligible mate for the selected dog.
           </p>
-          <Link
-            href="/breed?mode=full"
-            className="rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
-          >
-            Open Full Planning Worksheet
-          </Link>
         </div>
         <div className="grid gap-5 lg:grid-cols-12">
           <div className="lg:col-span-3">
@@ -1101,6 +1395,10 @@ export default function BreedPageClient({
     );
   }
 
+  if (experience === "breed-dog") {
+    return null;
+  }
+
   return (
     <div>
       <section className="rounded-[28px] border border-purple-300/20 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
@@ -1154,7 +1452,7 @@ export default function BreedPageClient({
                       currentEpoch={currentEpoch}
                       selected={dog.id === damId}
                       pedigree={pedigree}
-                      onSelect={() => setDamId(dog.id)}
+                      onSelect={() => chooseDam(dog.id)}
                     />
                   ))
                 ) : (
@@ -1173,57 +1471,67 @@ export default function BreedPageClient({
                   </p>
                   <h2 className="mt-2 text-xl font-semibold text-white">Choose Sire</h2>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {(["ALL", "OWNED", "PUBLIC"] as const).map((source) => (
-                    <button
-                      key={source}
-                      type="button"
-                      onClick={() => setSireSource(source)}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-                        sireSource === source
-                          ? "border-sky-300/50 bg-sky-500/20 text-sky-100"
-                          : "border-white/10 bg-white/5 text-purple-100/70"
-                      }`}
-                    >
-                      {source === "OWNED" ? "My Kennel" : source === "PUBLIC" ? "Public Studs" : "All"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <label className="mt-4 grid gap-2 text-xs uppercase tracking-wide text-purple-200/70">
-                Sort Sires
-                <select
-                  value={sireSort}
-                  onChange={(event) => setSireSort(event.target.value as SireSort)}
-                  className="rounded-xl border border-purple-300/20 bg-black/35 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-white outline-none"
-                >
-                  <option value="RECOMMENDED">Recommended</option>
-                  <option value="LOWEST_COI">Lowest Litter COI</option>
-                  <option value="HEALTH">Health Clear First</option>
-                  <option value="FEE">Lowest Stud Fee</option>
-                </select>
-              </label>
-              <div className="mt-5 space-y-3">
-                {sires.length > 0 ? (
-                  sires.map((dog) => (
-                    <DogOptionCard
-                      key={`${dog.id}-${dog.studListingId ?? "owned"}`}
-                      dog={dog}
-                      currentEpoch={currentEpoch}
-                      selected={dog.id === sireId}
-                      pairingDam={selectedDam}
-                      pedigree={pedigree}
-                      shortlisted={shortlistedSireIds.includes(dog.id)}
-                      onSelect={() => setSireId(dog.id)}
-                      onToggleShortlist={() => toggleShortlist(dog.id)}
-                    />
-                  ))
-                ) : (
-                  <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/65">
-                    No sires match this breed and source filter.
+                {selectedDam ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(["ALL", "OWNED", "PUBLIC"] as const).map((source) => (
+                      <button
+                        key={source}
+                        type="button"
+                        onClick={() => setSireSource(source)}
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                          sireSource === source
+                            ? "border-sky-300/50 bg-sky-500/20 text-sky-100"
+                            : "border-white/10 bg-white/5 text-purple-100/70"
+                        }`}
+                      >
+                        {source === "OWNED" ? "My Kennel" : source === "PUBLIC" ? "Outside Studs" : "All"}
+                      </button>
+                    ))}
                   </div>
-                )}
+                ) : null}
               </div>
+              {selectedDam ? (
+                <>
+                  <label className="mt-4 grid gap-2 text-xs uppercase tracking-wide text-purple-200/70">
+                    Sort Sires
+                    <select
+                      value={sireSort}
+                      onChange={(event) => setSireSort(event.target.value as SireSort)}
+                      className="rounded-xl border border-purple-300/20 bg-black/35 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-white outline-none"
+                    >
+                      <option value="RECOMMENDED">Recommended</option>
+                      <option value="LOWEST_COI">Lowest Litter COI</option>
+                      <option value="HEALTH">Health Clear First</option>
+                      <option value="FEE">Lowest Stud Fee</option>
+                    </select>
+                  </label>
+                  <div className="mt-5 space-y-3">
+                    {sires.length > 0 ? (
+                      sires.map((dog) => (
+                        <DogOptionCard
+                          key={`${dog.id}-${dog.studListingId ?? "owned"}`}
+                          dog={dog}
+                          currentEpoch={currentEpoch}
+                          selected={dog.id === sireId}
+                          pairingDam={selectedDam}
+                          pedigree={pedigree}
+                          shortlisted={shortlistedSireIds.includes(dog.id)}
+                          onSelect={() => setSireId(dog.id)}
+                          onToggleShortlist={() => toggleShortlist(dog.id)}
+                        />
+                      ))
+                    ) : (
+                      <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/65">
+                        No sires match this breed and source filter.
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/65">
+                  Select an eligible dam first to compare available sires.
+                </div>
+              )}
             </div>
           </section>
 
@@ -1232,6 +1540,7 @@ export default function BreedPageClient({
           {selectedDam && selectedSire ? (
             <PairingAnalysis
               kennelBalance={kennelBalance}
+              currentEpoch={currentEpoch}
               dam={selectedDam}
               sire={selectedSire}
               pedigree={pedigree}

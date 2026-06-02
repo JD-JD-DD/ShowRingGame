@@ -90,7 +90,7 @@ export default async function KennelPage() {
         </Link>
 
         <Link
-          href="/breed?mode=full"
+          href="/plan-a-litter"
           className="rounded-md border border-fuchsia-300/50 bg-fuchsia-500/10 px-5 py-2 text-sm font-semibold text-fuchsia-100 hover:bg-fuchsia-950/40"
         >
           Plan A Litter

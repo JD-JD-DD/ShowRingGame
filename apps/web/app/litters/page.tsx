@@ -62,12 +62,6 @@ export default async function LittersPage() {
 
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/breed?mode=full"
-              className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
-            >
-              Plan A Litter
-            </Link>
-            <Link
               href="/kennel"
               className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
             >
@@ -173,10 +167,10 @@ export default async function LittersPage() {
                 create puppies and they will appear here.
               </p>
               <Link
-                href="/breed?mode=full"
+                href="/kennel"
                 className="mt-5 inline-flex rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold transition hover:bg-emerald-500"
               >
-                Plan A Litter
+                Visit My Kennel
               </Link>
             </div>
           ) : (
