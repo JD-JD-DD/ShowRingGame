@@ -31,6 +31,7 @@ import {
 
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
 const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
+const INVITATIONAL_PLACEMENT_CODES = ["BIS", "RBIS", "G1", "G2", "G3", "G4"];
 
 type PageProps = {
   params: Promise<{
@@ -465,6 +466,34 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           id: true,
         },
       },
+      showAwards: {
+        where: {
+          awardCode: {
+            in: INVITATIONAL_PLACEMENT_CODES,
+          },
+          showDay: {
+            cluster: {
+              id: {
+                startsWith: "invitational-year-",
+              },
+            },
+          },
+        },
+        orderBy: [{ publishedAtEpoch: "desc" }],
+        select: {
+          awardCode: true,
+          showDay: {
+            select: {
+              cluster: {
+                select: {
+                  id: true,
+                  year: true,
+                },
+              },
+            },
+          },
+        },
+      },
       breedingAttemptsAsSire: {
         orderBy: [{ createdEpoch: "desc" }],
         select: {
@@ -663,6 +692,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const championshipPointWins = getChampionshipPointWins(
     dog.titleProgress?.winsByTypeJson
   );
+  const invitationalPlacementTags = dog.showAwards;
 
   return (
     <main className="min-h-screen px-6 py-8 text-white">
@@ -701,6 +731,21 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     .join(" / ")}
                 </div>
               )}
+
+              {invitationalPlacementTags.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {invitationalPlacementTags.map((award) => (
+                    <Link
+                      key={`${award.showDay.cluster.id}-${award.awardCode}`}
+                      href={`/shows/${award.showDay.cluster.id}/results`}
+                      className="rounded-full border border-amber-300/35 bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/25"
+                    >
+                      Year {award.showDay.cluster.year} Invitational{" "}
+                      {award.awardCode}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
 
               <div className="mt-5 flex flex-wrap gap-2">
                 <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-medium text-purple-100">

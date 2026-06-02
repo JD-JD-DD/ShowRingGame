@@ -180,6 +180,28 @@ function isChampionEntry(entry: EntryForJudging): boolean {
   );
 }
 
+function awardsChampionshipPoints(clusterId: string): boolean {
+  return !clusterId.startsWith("invitational-year-");
+}
+
+async function showDayAwardsChampionshipPoints(args: {
+  tx: Prisma.TransactionClient;
+  showDayId: string;
+}): Promise<boolean> {
+  const showDay = await args.tx.showDay.findUnique({
+    where: { id: args.showDayId },
+    select: {
+      clusterId: true,
+    },
+  });
+
+  if (!showDay) {
+    throw new Error("Show day not found.");
+  }
+
+  return awardsChampionshipPoints(showDay.clusterId);
+}
+
 function getFinalsPointsForClassDog(args: {
   isClassDog: boolean;
   rank: number | null;
@@ -611,9 +633,16 @@ export async function judgeShowBlock(args: {
     const judgedEntryIds: string[] = [];
     const pointsByShowEntryId = new Map<string, number>();
     const entryById = new Map(eligibleEntries.map((entry) => [entry.id, entry]));
+    const shouldAwardChampionshipPoints = awardsChampionshipPoints(
+      block.showDay.cluster.id
+    );
 
     for (const award of judgedBlock.awards) {
-      if (!award.showEntryId || award.pointsAwarded <= 0) {
+      if (
+        !shouldAwardChampionshipPoints ||
+        !award.showEntryId ||
+        award.pointsAwarded <= 0
+      ) {
         continue;
       }
 
@@ -680,8 +709,8 @@ export async function judgeShowBlock(args: {
         awardGroup: award.awardGroup,
         sex: award.sex,
         rank: award.rank,
-        pointsAwarded: award.pointsAwarded,
-        isMajor: award.isMajor,
+        pointsAwarded: shouldAwardChampionshipPoints ? award.pointsAwarded : 0,
+        isMajor: shouldAwardChampionshipPoints ? award.isMajor : false,
         dogsInCompetition: award.dogsInCompetition,
         uniqueKennelsInCompetition,
         publishedAtEpoch: currentEpoch,
@@ -978,6 +1007,11 @@ async function createGroupAwardsForShowDay(args: {
     }
 
     const awardsToCreate: Prisma.ShowAwardCreateManyInput[] = [];
+    const shouldAwardChampionshipPoints =
+      await showDayAwardsChampionshipPoints({
+        tx,
+        showDayId: args.showDayId,
+      });
     const classDogIds = await getClassDogIdsForShowDay({
       tx,
       showDayId: args.showDayId,
@@ -1010,11 +1044,13 @@ async function createGroupAwardsForShowDay(args: {
           continue;
         }
 
-        const pointsAwarded = getFinalsPointsForClassDog({
-          isClassDog: classDogIds.has(sourceAward.dogId),
-          rank: judgedAward.rank,
-          dogsInCompetition: judgedAward.dogsInCompetition,
-        });
+        const pointsAwarded = shouldAwardChampionshipPoints
+          ? getFinalsPointsForClassDog({
+              isClassDog: classDogIds.has(sourceAward.dogId),
+              rank: judgedAward.rank,
+              dogsInCompetition: judgedAward.dogsInCompetition,
+            })
+          : 0;
 
         awardsToCreate.push({
           showResultId: sourceAward.showResultId,
@@ -1134,6 +1170,11 @@ async function createBestInShowAwardsForShowDay(args: {
       })),
     });
     const awardsToCreate: Prisma.ShowAwardCreateManyInput[] = [];
+    const shouldAwardChampionshipPoints =
+      await showDayAwardsChampionshipPoints({
+        tx,
+        showDayId: args.showDayId,
+      });
     const classDogIds = await getClassDogIdsForShowDay({
       tx,
       showDayId: args.showDayId,
@@ -1151,11 +1192,13 @@ async function createBestInShowAwardsForShowDay(args: {
         continue;
       }
 
-      const pointsAwarded = getFinalsPointsForClassDog({
-        isClassDog: classDogIds.has(sourceAward.dogId),
-        rank: judgedAward.rank,
-        dogsInCompetition: judgedAward.dogsInCompetition,
-      });
+      const pointsAwarded = shouldAwardChampionshipPoints
+        ? getFinalsPointsForClassDog({
+            isClassDog: classDogIds.has(sourceAward.dogId),
+            rank: judgedAward.rank,
+            dogsInCompetition: judgedAward.dogsInCompetition,
+          })
+        : 0;
 
       awardsToCreate.push({
         showResultId: sourceAward.showResultId,
