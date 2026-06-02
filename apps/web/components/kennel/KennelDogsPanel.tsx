@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import HealthClearBadge from "@/components/dogs/HealthClearBadge";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import {
   PUPPY_SALE_MIN_AGE_HOURS,
@@ -42,6 +43,7 @@ type KennelDogDto = {
   marketState: string;
   originType: string;
   isFoundation: boolean;
+  hasAllGreenHealthTests: boolean;
   visibleCategories: VisibleCategories;
   breedingCardStatus: BreedingCardStatus;
 };
@@ -771,7 +773,10 @@ export default function KennelDogsPanel() {
                   </td>
 
                   <td className="px-3 py-3 text-white font-medium">
-                    {getDogDisplayName(dog)}
+                    <div className="flex items-center gap-1.5">
+                      <span>{getDogDisplayName(dog)}</span>
+                      {dog.hasAllGreenHealthTests ? <HealthClearBadge /> : null}
+                    </div>
                   </td>
 
                   <td className="px-3 py-3 text-white">{dog.sex}</td>

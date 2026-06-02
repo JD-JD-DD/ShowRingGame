@@ -2,6 +2,7 @@ import { fail, ok } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { db } from "@/lib/db";
+import { hasAllGreenPhenotypeHealthTests } from "@/lib/dogHealth";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { resolveBreedingProgressForKennel } from "@/server/services/breeding.service";
 import {
@@ -54,6 +55,10 @@ type MineDog = {
     dueEpoch: number | null;
     checkedEpoch: number | null;
     whelpedEpoch: number | null;
+  }>;
+  healthTests: Array<{
+    testTypeCode: string;
+    resultCode: string;
   }>;
 };
 
@@ -269,6 +274,16 @@ export async function GET() {
             whelpedEpoch: true,
           },
         },
+        healthTests: {
+          where: {
+            isPublic: true,
+          },
+          orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+          select: {
+            testTypeCode: true,
+            resultCode: true,
+          },
+        },
       },
     });
 
@@ -297,6 +312,7 @@ export async function GET() {
         marketState: dog.marketState,
         originType: dog.originType,
         isFoundation: dog.isFoundation,
+        hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(dog.healthTests),
         visibleCategories: toVisibleCategories(dog),
         breedingCardStatus: getBreedingCardStatus(dog, currentEpoch),
       })),
