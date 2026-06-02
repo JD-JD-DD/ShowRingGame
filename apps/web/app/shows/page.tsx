@@ -185,7 +185,18 @@ export default async function ShowsPage({
         showDays: {
           orderBy: [{ dayIndex: "asc" }],
           include: {
-            _count: { select: { showEntries: true, showResults: true } },
+            _count: {
+              select: {
+                showEntries: {
+                  where: {
+                    entryStatus: {
+                      in: ["ENTERED", "JUDGED"],
+                    },
+                  },
+                },
+                showResults: true,
+              },
+            },
           },
         },
       },
@@ -198,6 +209,9 @@ export default async function ShowsPage({
                 showEntries: {
                   some: {
                     kennelId: currentKennel.id,
+                    entryStatus: {
+                      in: ["ENTERED", "JUDGED"],
+                    },
                   },
                 },
               },

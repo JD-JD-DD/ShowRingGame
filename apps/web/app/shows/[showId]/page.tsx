@@ -104,7 +104,18 @@ export default async function ShowDetailPage({
         orderBy: [{ dayIndex: "asc" }],
         include: {
           judge: { select: { judgeCode: true, name: true } },
-          _count: { select: { showResults: true, showEntries: true } },
+          _count: {
+            select: {
+              showResults: true,
+              showEntries: {
+                where: {
+                  entryStatus: {
+                    in: ["ENTERED", "JUDGED"],
+                  },
+                },
+              },
+            },
+          },
         },
       },
     },

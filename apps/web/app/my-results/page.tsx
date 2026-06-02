@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { epochToDate } from "@/lib/gameClock";
+import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getShowDistrictRegionName } from "@showring/rules";
 
@@ -35,6 +35,7 @@ type MyShowResultEntry = {
 
 function formatResult(entry: MyShowResultEntry): string {
   if (!entry.showResult) {
+    if (entry.entryStatus === "ABSENT") return "Absent";
     if (entry.entryStatus === "INELIGIBLE") return "Ineligible";
     if (entry.entryStatus === "JUDGED") return "DNP";
     return "Pending";
@@ -82,9 +83,21 @@ export default async function MyShowResultsPage() {
   const entries = await db.showEntry.findMany({
     where: {
       kennelId: kennel.id,
-      showResult: {
-        isNot: null,
-      },
+      OR: [
+        {
+          showResult: {
+            isNot: null,
+          },
+        },
+        {
+          entryStatus: "ABSENT",
+          showDay: {
+            scheduledEpoch: {
+              lte: getCurrentEpoch(),
+            },
+          },
+        },
+      ],
     },
     orderBy: [
       { showDay: { scheduledEpoch: "desc" } },
@@ -145,7 +158,8 @@ export default async function MyShowResultsPage() {
               My Show Results
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
-              The latest 100 judged show results for dogs in {kennel.name}.
+              The latest 100 judged show results and absences for dogs in{" "}
+              {kennel.name}.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">

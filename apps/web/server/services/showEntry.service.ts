@@ -330,6 +330,7 @@ async function getDogIdsWithSameWeekendEntries(args: {
       dogId: {
         in: dogIds,
       },
+      entryStatus: "ENTERED",
       showDay: {
         ...(args.excludeClusterId
           ? {
@@ -366,6 +367,7 @@ async function getSameWeekendEntryConflict(args: {
       dogId: {
         in: dogIds,
       },
+      entryStatus: "ENTERED",
       showDay: {
         clusterId: {
           not: args.excludeClusterId,
@@ -783,6 +785,84 @@ export async function createShowEntry(args: {
       currentEpoch,
       handlerUsed,
     });
+  });
+}
+
+export async function pullShowEntry(args: {
+  showEntryId: string;
+  kennelId: string;
+  currentEpoch: number;
+}): Promise<void> {
+  const { showEntryId, kennelId, currentEpoch } = args;
+
+  await db.$transaction(async (tx) => {
+    const entry = await tx.showEntry.findUnique({
+      where: { id: showEntryId },
+      select: {
+        id: true,
+        kennelId: true,
+        entryStatus: true,
+        showDay: {
+          select: {
+            scheduledEpoch: true,
+            status: true,
+            cluster: {
+              select: {
+                status: true,
+              },
+            },
+          },
+        },
+        judgingBlock: {
+          select: {
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!entry) {
+      throw new Error("Show entry not found.");
+    }
+
+    if (entry.kennelId !== kennelId) {
+      throw new Error("You do not own this show entry.");
+    }
+
+    if (entry.entryStatus === "ABSENT") {
+      return;
+    }
+
+    if (entry.entryStatus !== "ENTERED") {
+      throw new Error("Only current show entries can be pulled.");
+    }
+
+    if (
+      currentEpoch >= entry.showDay.scheduledEpoch ||
+      entry.showDay.status === "JUDGING" ||
+      entry.showDay.status === "RESULTS_PUBLISHED" ||
+      entry.showDay.status === "CANCELLED" ||
+      entry.showDay.cluster.status === "CANCELLED" ||
+      entry.judgingBlock?.status === "JUDGING" ||
+      entry.judgingBlock?.status === "RESULTS_PUBLISHED" ||
+      entry.judgingBlock?.status === "CANCELLED"
+    ) {
+      throw new Error("This dog can no longer be pulled from the show.");
+    }
+
+    const update = await tx.showEntry.updateMany({
+      where: {
+        id: entry.id,
+        entryStatus: "ENTERED",
+      },
+      data: {
+        entryStatus: "ABSENT",
+      },
+    });
+
+    if (update.count === 0) {
+      throw new Error("This show entry is no longer available to pull.");
+    }
   });
 }
 

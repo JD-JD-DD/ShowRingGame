@@ -220,7 +220,18 @@ export default async function BreedResultsPage({
             include: {
               judge: { select: { judgeCode: true, name: true, style: true } },
               breed: { select: { name: true, code2: true, groupName: true } },
-              _count: { select: { showEntries: true, showResults: true } },
+              _count: {
+                select: {
+                  showEntries: {
+                    where: {
+                      entryStatus: {
+                        in: ["ENTERED", "JUDGED"],
+                      },
+                    },
+                  },
+                  showResults: true,
+                },
+              },
               showResults: {
                 orderBy: [{ finalRank: "asc" }, { finalScore: "desc" }],
                 include: {

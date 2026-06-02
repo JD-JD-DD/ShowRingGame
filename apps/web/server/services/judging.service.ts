@@ -858,6 +858,7 @@ async function ensureShowDayBreedBlock(args: {
       where: {
         showDayId,
         breedCode2,
+        entryStatus: "ENTERED",
       },
     });
 

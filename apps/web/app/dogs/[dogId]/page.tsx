@@ -55,6 +55,8 @@ type PageProps = {
     healthMessage?: string | string[];
     notesError?: string | string[];
     notesMessage?: string | string[];
+    showError?: string | string[];
+    showMessage?: string | string[];
   }>;
 };
 
@@ -466,6 +468,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const healthMessage = firstQueryValue(resolvedSearchParams.healthMessage);
   const notesError = firstQueryValue(resolvedSearchParams.notesError);
   const notesMessage = firstQueryValue(resolvedSearchParams.notesMessage);
+  const showError = firstQueryValue(resolvedSearchParams.showError);
+  const showMessage = firstQueryValue(resolvedSearchParams.showMessage);
   const userId = await getSessionUserId();
 
   if (!userId) {
@@ -826,11 +830,19 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     ? await db.showEntry.findMany({
         where: {
           dogId: dog.id,
-          entryStatus: "ENTERED",
+          entryStatus: {
+            in: ["ENTERED", "ABSENT"],
+          },
+          showDay: {
+            scheduledEpoch: {
+              gt: currentEpoch,
+            },
+          },
         },
         orderBy: [{ showDay: { scheduledEpoch: "desc" } }],
         select: {
           id: true,
+          entryStatus: true,
           breed: {
             select: {
               name: true,
@@ -1543,9 +1555,21 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 {upcomingShowEntries.length} entr
                 {upcomingShowEntries.length === 1 ? "y" : "ies"}
               </div>
-            </div>
+          </div>
 
-            {upcomingShowEntries.length === 0 ? (
+          {showMessage ? (
+            <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+              {showMessage}
+            </div>
+          ) : null}
+
+          {showError ? (
+            <div className="mt-4 rounded-2xl border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+              {showError}
+            </div>
+          ) : null}
+
+          {upcomingShowEntries.length === 0 ? (
               <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
                 No upcoming show entries.
               </div>
@@ -1593,9 +1617,33 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                           </Link>
                         </td>
                         <td className="rounded-r-2xl px-3 py-3">
-                          <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-100">
-                            Entered
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={
+                                entry.entryStatus === "ABSENT"
+                                  ? "rounded-full border border-amber-300/25 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-100"
+                                  : "rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-100"
+                              }
+                            >
+                              {entry.entryStatus === "ABSENT"
+                                ? "Absent"
+                                : "Entered"}
+                            </span>
+                            {entry.entryStatus === "ENTERED" ? (
+                              <form
+                                action={`/api/show-entries/${entry.id}/pull`}
+                                method="post"
+                              >
+                                <input type="hidden" name="dogId" value={dog.id} />
+                                <button
+                                  type="submit"
+                                  className="rounded-lg border border-red-300/30 bg-red-500/10 px-2.5 py-1 text-xs font-bold text-red-100 transition hover:bg-red-500/20"
+                                >
+                                  PULL
+                                </button>
+                              </form>
+                            ) : null}
+                          </div>
                         </td>
                       </tr>
                     ))}
