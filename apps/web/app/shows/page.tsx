@@ -388,7 +388,7 @@ export default async function ShowsPage({
                                 {playerStatus}
                               </span>
                               {enteredClusterIds.has(cluster.id) ? (
-                                <span className="ml-2 rounded-full border border-amber-300/35 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-100">
+                                <span className="ml-2 rounded-full border border-emerald-300/35 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">
                                   REPRESENTED
                                 </span>
                               ) : null}
@@ -493,7 +493,7 @@ export default async function ShowsPage({
                           {playerStatus}
                         </span>
                         {enteredClusterIds.has(cluster.id) ? (
-                          <span className="ml-2 rounded-full border border-amber-300/35 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-100">
+                          <span className="ml-2 rounded-full border border-emerald-300/35 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">
                             REPRESENTED
                           </span>
                         ) : null}
