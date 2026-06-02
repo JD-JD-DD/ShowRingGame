@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
+import { getSessionUserId } from "@/lib/session";
 import {
   generateAnnualShowClusterTemplates,
   getShowDistrictRegionName,
@@ -169,18 +170,44 @@ export default async function ShowsPage({
   const currentEpoch = getCurrentEpoch();
   const currentCalendarPosition = getCurrentCalendarPosition(currentEpoch);
   const templates = generateAnnualShowClusterTemplates();
+  const userId = await getSessionUserId();
+  const currentKennel = userId
+    ? await db.kennel.findUnique({
+        where: { userId },
+        select: { id: true },
+      })
+    : null;
 
-  const clusters = await db.showCluster.findMany({
-    orderBy: [{ year: "desc" }, { startEpoch: "desc" }],
-    include: {
-      showDays: {
-        orderBy: [{ dayIndex: "asc" }],
-        include: {
-          _count: { select: { showEntries: true, showResults: true } },
+  const [clusters, enteredClusters] = await Promise.all([
+    db.showCluster.findMany({
+      orderBy: [{ year: "desc" }, { startEpoch: "desc" }],
+      include: {
+        showDays: {
+          orderBy: [{ dayIndex: "asc" }],
+          include: {
+            _count: { select: { showEntries: true, showResults: true } },
+          },
         },
       },
-    },
-  });
+    }),
+    currentKennel
+      ? db.showCluster.findMany({
+          where: {
+            showDays: {
+              some: {
+                showEntries: {
+                  some: {
+                    kennelId: currentKennel.id,
+                  },
+                },
+              },
+            },
+          },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const enteredClusterIds = new Set(enteredClusters.map((cluster) => cluster.id));
   const clustersByTemplate = new Map<string, typeof clusters>();
   const invitationalClusters = clusters.filter((cluster) =>
     cluster.id.startsWith("invitational-year-")
@@ -360,6 +387,11 @@ export default async function ShowsPage({
                               >
                                 {playerStatus}
                               </span>
+                              {enteredClusterIds.has(cluster.id) ? (
+                                <span className="ml-2 rounded-full border border-amber-300/35 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-100">
+                                  REPRESENTED
+                                </span>
+                              ) : null}
                               {hasResults ? (
                                 <span className="ml-2 text-sky-100">
                                   {resultCount} result
@@ -460,6 +492,11 @@ export default async function ShowsPage({
                         >
                           {playerStatus}
                         </span>
+                        {enteredClusterIds.has(cluster.id) ? (
+                          <span className="ml-2 rounded-full border border-amber-300/35 bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-100">
+                            REPRESENTED
+                          </span>
+                        ) : null}
                         <span className="ml-2 text-amber-100/80">
                           {entryCount} invitation
                           {entryCount === 1 ? "" : "s"}
