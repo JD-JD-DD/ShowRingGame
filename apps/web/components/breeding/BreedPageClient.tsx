@@ -88,6 +88,13 @@ const HEALTH_TONES: Record<PhenotypeHealthSeverity, string> = {
   red: "border-red-400/45 bg-red-500/15 font-bold text-red-200",
 };
 
+const TRAIT_NUMBER_TONES = {
+  strong: "border-emerald-300/35 bg-emerald-500/10 text-emerald-100",
+  steady: "border-sky-300/30 bg-sky-500/10 text-sky-100",
+  watch: "border-amber-300/35 bg-amber-500/10 text-amber-100",
+  hardWatch: "border-red-400/35 bg-red-500/10 text-red-100",
+};
+
 function dogDisplayName(dog: DogCardDto) {
   return formatDogDisplayName(dog);
 }
@@ -125,6 +132,15 @@ function latestHealthTests(dog: DogCardDto) {
     result:
       dog.healthTests.find((test) => test.testTypeCode === testTypeCode) ?? null,
   }));
+}
+
+function traitNumberTone(value: number) {
+  const distance = Math.abs(value - 10);
+
+  if (distance <= 1.5) return TRAIT_NUMBER_TONES.strong;
+  if (distance <= 2.75) return TRAIT_NUMBER_TONES.steady;
+  if (distance <= 4) return TRAIT_NUMBER_TONES.watch;
+  return TRAIT_NUMBER_TONES.hardWatch;
 }
 
 function visibleTraitNotes(dog: DogCardDto) {
@@ -184,6 +200,38 @@ function healthWarnings(dog: DogCardDto) {
       )}`,
       severity,
     }];
+  });
+}
+
+function compactHealthSignals(dog: DogCardDto) {
+  return latestHealthTests(dog).map(({ testTypeCode, result }) => {
+    const definition =
+      PHENOTYPE_HEALTH_TESTS[testTypeCode as PhenotypeHealthTestCode];
+    const shortLabel = definition.label
+      .replace(" Dysplasia", "")
+      .replace("CAER Eye", "CAER");
+
+    if (!result) {
+      return {
+        label: `${shortLabel}: not tested`,
+        severity: "yellow" as const,
+        isStrength: false,
+      };
+    }
+
+    const severity = getPhenotypeHealthSeverity(
+      result.testTypeCode,
+      result.resultCode
+    );
+
+    return {
+      label: `${shortLabel}: ${getPhenotypeHealthResultLabel(
+        testTypeCode as PhenotypeHealthTestCode,
+        result.resultCode
+      )}`,
+      severity,
+      isStrength: severity === "green",
+    };
   });
 }
 
@@ -351,49 +399,55 @@ function DogName({ dog }: { dog: DogCardDto }) {
   );
 }
 
-function HealthSummary({ dog, compact = false }: { dog: DogCardDto; compact?: boolean }) {
-  const tests = latestHealthTests(dog);
+function CompactHealthChips({
+  dog,
+  kind,
+}: {
+  dog: DogCardDto;
+  kind: "strength" | "watch";
+}) {
+  const signals = compactHealthSignals(dog).filter((signal) =>
+    kind === "strength" ? signal.isStrength : !signal.isStrength
+  );
+
+  if (signals.length === 0) return null;
 
   return (
-    <div className={compact ? "mt-3 grid gap-1.5" : "grid gap-2"}>
-      {tests.map(({ testTypeCode, result }) => {
-        const definition =
-          PHENOTYPE_HEALTH_TESTS[testTypeCode as PhenotypeHealthTestCode];
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {signals.map((signal) => (
+        <span
+          key={`${dog.id}-${kind}-${signal.label}`}
+          className={`rounded-full border px-2 py-0.5 text-[0.66rem] font-semibold ${HEALTH_TONES[signal.severity]}`}
+        >
+          {signal.label}
+        </span>
+      ))}
+    </div>
+  );
+}
 
-        if (!result) {
-          return (
-            <div
-              key={testTypeCode}
-              className="flex items-center justify-between gap-2 text-xs text-purple-100/50"
-            >
-              <span>{definition.label}</span>
-              <span>Not tested</span>
-            </div>
-          );
-        }
-
-        const severity = getPhenotypeHealthSeverity(
-          result.testTypeCode,
-          result.resultCode
-        );
-
-        return (
-          <div
-            key={testTypeCode}
-            className="flex items-center justify-between gap-2 text-xs"
-          >
-            <span className="text-purple-100/70">{definition.label}</span>
-            <span
-              className={`rounded-full border px-2 py-0.5 ${HEALTH_TONES[severity]}`}
-            >
-              {getPhenotypeHealthResultLabel(
-                testTypeCode as PhenotypeHealthTestCode,
-                result.resultCode
-              )}
-            </span>
+function TraitNumberGrid({
+  dog,
+  columns = "sm:grid-cols-2",
+}: {
+  dog: DogCardDto;
+  columns?: string;
+}) {
+  return (
+    <div className={`grid gap-2 ${columns}`}>
+      {Object.entries(dog.visibleCategories).map(([key, value]) => (
+        <div
+          key={key}
+          className={`rounded-xl border px-3 py-2 ${traitNumberTone(value)}`}
+        >
+          <div className="truncate text-[0.66rem] font-semibold uppercase tracking-[0.08em] opacity-80">
+            {formatCategoryName(key)}
           </div>
-        );
-      })}
+          <div className="mt-1 text-xl font-bold leading-none">
+            {value.toFixed(1)}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -467,7 +521,17 @@ function DogOptionCard({
         {cooldownSummary ? <span>{cooldownSummary}</span> : null}
       </div>
 
-      <HealthSummary dog={dog} compact />
+      <div className="mt-4 rounded-2xl border border-fuchsia-300/20 bg-[linear-gradient(135deg,rgba(168,85,247,0.16),rgba(14,165,233,0.08))] p-3">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-fuchsia-100">
+            Visible Show Traits
+          </div>
+          <div className="text-[0.68rem] text-purple-100/55">
+            10 is ideal
+          </div>
+        </div>
+        <TraitNumberGrid dog={dog} />
+      </div>
 
       <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-black/15 p-3 text-xs sm:grid-cols-2">
         <div>
@@ -479,6 +543,7 @@ function DogOptionCard({
               .map((category) => `${category.label} ${category.value.toFixed(1)}`)
               .join(" · ")}
           </div>
+          <CompactHealthChips dog={dog} kind="strength" />
         </div>
         <div>
           <div className="font-semibold uppercase tracking-wide text-amber-200">
@@ -491,6 +556,7 @@ function DogOptionCard({
                   .join(" · ")
               : "No pronounced visible watch areas"}
           </div>
+          <CompactHealthChips dog={dog} kind="watch" />
         </div>
       </div>
 
@@ -772,6 +838,59 @@ function TraitOutlook({ dam, sire }: { dam: DogCardDto; sire: DogCardDto }) {
   );
 }
 
+function PairingParentSnapshot({
+  label,
+  dog,
+}: {
+  label: string;
+  dog: DogCardDto;
+}) {
+  const traitNotes = visibleTraitNotes(dog);
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <div className="text-xs uppercase tracking-wide text-purple-200">
+        {label}
+      </div>
+      <div className="mt-2 font-semibold text-white">
+        <DogName dog={dog} />
+      </div>
+      <div className="mt-3 rounded-xl border border-fuchsia-300/15 bg-fuchsia-500/5 p-3">
+        <div className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-fuchsia-100">
+          Visible Trait Numbers
+        </div>
+        <TraitNumberGrid dog={dog} columns="sm:grid-cols-2 xl:grid-cols-3" />
+      </div>
+      <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-black/15 p-3 text-xs sm:grid-cols-2">
+        <div>
+          <div className="font-semibold uppercase tracking-wide text-emerald-200">
+            Strengths
+          </div>
+          <div className="mt-1 text-purple-100/70">
+            {traitNotes.strengths
+              .map((category) => `${category.label} ${category.value.toFixed(1)}`)
+              .join(" · ")}
+          </div>
+          <CompactHealthChips dog={dog} kind="strength" />
+        </div>
+        <div>
+          <div className="font-semibold uppercase tracking-wide text-amber-200">
+            Watch
+          </div>
+          <div className="mt-1 text-purple-100/70">
+            {traitNotes.watchItems.length > 0
+              ? traitNotes.watchItems
+                  .map((category) => `${category.label} ${category.value.toFixed(1)}`)
+                  .join(" · ")
+              : "No pronounced visible watch areas"}
+          </div>
+          <CompactHealthChips dog={dog} kind="watch" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CompactPedigreePreview({
   dam,
   sire,
@@ -950,16 +1069,8 @@ function PairingAnalysis({
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_1fr_0.9fr]">
-        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <div className="text-xs uppercase tracking-wide text-purple-200">Dam</div>
-          <div className="mt-2 font-semibold text-white"><DogName dog={dam} /></div>
-          <div className="mt-3"><HealthSummary dog={dam} /></div>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-          <div className="text-xs uppercase tracking-wide text-purple-200">Sire</div>
-          <div className="mt-2 font-semibold text-white"><DogName dog={sire} /></div>
-          <div className="mt-3"><HealthSummary dog={sire} /></div>
-        </div>
+        <PairingParentSnapshot label="Dam" dog={dam} />
+        <PairingParentSnapshot label="Sire" dog={sire} />
         <aside className="rounded-2xl border border-purple-300/20 bg-white/5 p-4">
           <h3 className="font-semibold text-white">Plan Summary</h3>
           <div className="mt-4 space-y-2 text-sm text-purple-100/75">
