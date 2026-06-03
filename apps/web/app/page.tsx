@@ -92,6 +92,7 @@ export default async function HomePage() {
     select: {
       id: true,
       name: true,
+      slug: true,
       createdAt: true,
     },
   });
@@ -99,7 +100,7 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen px-6 py-8 text-white">
       <div className="mx-auto flex max-w-7xl flex-col">
-        <header className="mb-8 grid gap-6 rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur md:grid-cols-[minmax(0,1fr)_320px] md:items-start">
+        <header className="mb-8 flex flex-col gap-6 rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur md:flex-row md:items-center md:justify-between">
           <div className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
             <Image
               src="/logo.png"
@@ -110,55 +111,18 @@ export default async function HomePage() {
             />
           </div>
 
-          <div className="grid gap-4">
-            <nav className="flex flex-wrap items-center justify-start gap-3 text-sm md:justify-end">
-              <Link
-                href="/kennel"
-                className="rounded-full bg-purple-600 px-5 py-2.5 font-semibold text-white transition hover:bg-purple-500"
-              >
-                Go to My Kennel
-              </Link>
-            </nav>
-
-            <section className="rounded-[24px] border border-white/10 bg-black/20 p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">
-                    Welcome These New Kennels
-                  </h2>
-                  <p className="mt-1 text-sm text-purple-100/70">
-                    Joined in the last 48 hours
-                  </p>
-                </div>
-              </div>
-
-              {newKennels.length === 0 ? (
-                <div className="mt-4 text-sm text-purple-100/72">
-                  No new kennels have joined recently.
-                </div>
-              ) : (
-                <div className="mt-4 grid gap-3">
-                  {newKennels.map((kennel) => (
-                    <div
-                      key={kennel.id}
-                      className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-                    >
-                      <div className="truncate text-sm font-semibold text-white">
-                        {kennel.name}
-                      </div>
-                      <div className="mt-1 text-xs text-purple-100/65">
-                        Joined {formatJoinedAt(kennel.createdAt)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          </div>
+          <nav className="flex flex-wrap items-center gap-3 text-sm">
+            <Link
+              href="/kennel"
+              className="rounded-full bg-purple-600 px-5 py-2.5 font-semibold text-white transition hover:bg-purple-500"
+            >
+              Go to My Kennel
+            </Link>
+          </nav>
         </header>
 
-        <section className="mb-8 rounded-[32px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(50,26,71,0.94),rgba(24,12,35,0.96))] p-7 shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:p-8">
-          <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+        <section className="mb-8 grid gap-6 xl:grid-cols-[1.45fr_0.55fr] xl:items-stretch">
+          <div className="rounded-[32px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(50,26,71,0.94),rgba(24,12,35,0.96))] p-7 shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:p-8">
             <div>
               <div className="mb-4 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
                 The Show Ring Game
@@ -171,36 +135,73 @@ export default async function HomePage() {
               <p className="mt-5 max-w-3xl text-base leading-7 text-purple-100/78 sm:text-lg sm:leading-8">
                 Start a kennel, breed litters, and show your dogs.
               </p>
-
             </div>
+          </div>
 
-            <div className="rounded-[24px] border border-white/10 bg-black/20 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-xl font-semibold text-white">Mini FAQ</h2>
-                <Link
-                  href="/faq"
-                  className="rounded-xl border border-purple-300/25 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-                >
-                  Full FAQ
-                </Link>
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                {miniFaq.map((item) => (
-                  <div
-                    key={item.question}
-                    className="rounded-2xl border border-white/10 bg-black/20 p-4"
-                  >
-                    <h3 className="text-sm font-semibold text-white">
-                      {item.question}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-purple-100/72">
-                      {item.answer}
-                    </p>
-                  </div>
-                ))}
+          <section className="rounded-[24px] border border-white/10 bg-black/20 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.26)]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold text-white">
+                  Welcome These New Kennels
+                </h2>
+                <p className="mt-1 text-sm text-purple-100/70">
+                  Joined in the last 48 hours
+                </p>
               </div>
             </div>
+
+            {newKennels.length === 0 ? (
+              <div className="mt-4 text-sm text-purple-100/72">
+                No new kennels have joined recently.
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-3">
+                  {newKennels.map((kennel) => (
+                    <div
+                      key={kennel.id}
+                      className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                    >
+                      <Link
+                        href={`/kennels/${kennel.slug}`}
+                        className="truncate text-sm font-semibold text-white underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
+                      >
+                        {kennel.name}
+                      </Link>
+                      <div className="mt-1 text-xs text-purple-100/65">
+                        Joined {formatJoinedAt(kennel.createdAt)}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </section>
+        </section>
+
+        <section className="mb-8 rounded-[24px] border border-white/10 bg-black/20 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold text-white">Mini FAQ</h2>
+            <Link
+              href="/faq"
+              className="rounded-xl border border-purple-300/25 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+            >
+              Full FAQ
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {miniFaq.map((item) => (
+              <div
+                key={item.question}
+                className="rounded-2xl border border-white/10 bg-black/20 p-4"
+              >
+                <h3 className="text-sm font-semibold text-white">
+                  {item.question}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-purple-100/72">
+                  {item.answer}
+                </p>
+              </div>
+            ))}
           </div>
         </section>
 
