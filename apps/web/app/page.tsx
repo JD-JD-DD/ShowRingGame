@@ -6,7 +6,7 @@ import { getSessionUserId } from "@/lib/session";
 
 const primaryActions = [
   {
-    title: "This Week's Shows",
+    title: "Shows",
     body: "Placeholder for the current week show calendar. This will become the quick home-page view into open and upcoming shows.",
     href: "/shows",
     action: "Open Show Calendar",
@@ -99,14 +99,21 @@ export default async function HomePage() {
     <main className="min-h-screen px-6 py-8 text-white">
       <div className="mx-auto flex max-w-7xl flex-col">
         <header className="mb-8 flex flex-col gap-6 rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur md:flex-row md:items-center md:justify-between">
-          <div className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
-            <Image
-              src="/logo.png"
-              alt="ShowRing Game"
-              fill
-              className="object-contain object-left"
-              priority
-            />
+          <div className="flex items-center gap-4">
+            <div className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
+              <Image
+                src="/logo.png"
+                alt="ShowRing Game"
+                fill
+                className="object-contain object-left"
+                priority
+              />
+            </div>
+            <div className="hidden min-w-0 md:block">
+              <h1 className="truncate text-2xl font-semibold text-white lg:text-3xl">
+                The Show Ring Game
+              </h1>
+            </div>
           </div>
 
           <nav className="flex flex-wrap items-center gap-3 text-sm">
@@ -119,11 +126,35 @@ export default async function HomePage() {
           </nav>
         </header>
 
-        <section className="mb-8 grid gap-6 xl:grid-cols-[1.48fr_0.52fr] xl:items-stretch">
-          <section className="rounded-[24px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(50,26,71,0.94),rgba(24,12,35,0.96))] px-6 py-5 shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:px-7 sm:py-6">
-            <h1 className="max-w-4xl text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
-              The Show Ring Game: A Dog Show and Breeder Simulation.
-            </h1>
+        <section className="mb-8 grid gap-6 xl:grid-cols-[1.35fr_0.65fr] xl:items-stretch">
+          <section className="rounded-[24px] border border-white/10 bg-white/5 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)]">
+            <div className="mb-4">
+              <h2 className="text-2xl font-semibold text-white">
+                Around ShowRing
+              </h2>
+              <p className="mt-1 text-sm text-purple-100/72">
+                Community activity surfaces will live here as they come online.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-1">
+              {placeholderCommunityCards.map((card) => (
+                <article
+                  key={card.title}
+                  className="rounded-[22px] border border-white/10 bg-black/20 p-5"
+                >
+                  <div className="mb-3 inline-flex rounded-full border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-amber-100">
+                    Future Placeholder
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">
+                    {card.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-purple-100/72">
+                    {card.body}
+                  </p>
+                </article>
+              ))}
+            </div>
           </section>
 
           <section className="rounded-[24px] border border-white/10 bg-black/20 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.26)]">
@@ -173,13 +204,13 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-[1.3fr_0.85fr_0.85fr]">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-[0.9fr_0.9fr_1.2fr]">
             {primaryActions.map((item) => (
               <article
                 key={item.title}
                 className={`rounded-[24px] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] ${
                   item.featured
-                    ? "border border-sky-300/30 bg-sky-500/10 md:col-span-2 xl:col-span-1"
+                    ? "border border-sky-300/30 bg-sky-500/10"
                     : "border border-purple-300/15 bg-white/5"
                 }`}
               >
@@ -199,36 +230,6 @@ export default async function HomePage() {
                 >
                   {userId ? item.action : "Log In"}
                 </Link>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-8">
-          <div className="mb-4">
-            <h2 className="text-2xl font-semibold text-white">
-              Around ShowRing
-            </h2>
-            <p className="mt-1 text-sm text-purple-100/72">
-              Community activity surfaces will live here as they come online.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {placeholderCommunityCards.map((card) => (
-              <article
-                key={card.title}
-                className="rounded-[22px] border border-white/10 bg-white/5 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
-              >
-                <div className="mb-3 inline-flex rounded-full border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-amber-100">
-                  Future Placeholder
-                </div>
-                <h3 className="text-lg font-semibold text-white">
-                  {card.title}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-purple-100/72">
-                  {card.body}
-                </p>
               </article>
             ))}
           </div>
