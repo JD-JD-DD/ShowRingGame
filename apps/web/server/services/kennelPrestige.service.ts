@@ -488,9 +488,7 @@ export async function getKennelPrestigeLeaderboard(args: {
     });
   }
 
-  const filteredRows = args.breedCode2
-    ? rows.filter((row) => row.prestige.score >= 1)
-    : rows;
+  const filteredRows = rows.filter((row) => row.prestige.score >= 1);
 
   return filteredRows
     .sort(
