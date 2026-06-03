@@ -226,6 +226,10 @@ export default async function ShowsPage({
   const invitationalClusters = clusters.filter((cluster) =>
     cluster.id.startsWith("invitational-year-")
   );
+  const currentWeekTemplateIndex = templates.findIndex(
+    (template) =>
+      template.weekInYear === currentCalendarPosition.weekInYear
+  );
 
   for (const cluster of clusters) {
     const templateId = getGeneratedTemplateId(cluster.id);
@@ -255,6 +259,12 @@ export default async function ShowsPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <Link
+              href="#current-week"
+              className="rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 px-5 py-3 text-sm font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/20"
+            >
+              Jump to Current Week
+            </Link>
             <Link
               href="/shows/top-ten"
               className="rounded-2xl border border-amber-300/30 bg-amber-500/10 px-5 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
@@ -312,21 +322,24 @@ export default async function ShowsPage({
 
       <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
         <div className="grid gap-3">
-          {templates.map((template) => {
+          {templates.map((template, templateIndex) => {
             const templateId = `week-${template.weekInYear}-slot-${
               template.slotIndex + 1
             }`;
             const templateClusters = clustersByTemplate.get(templateId) ?? [];
             const isCurrentWeek =
               template.weekInYear === currentCalendarPosition.weekInYear;
+            const isCurrentWeekAnchor =
+              templateIndex === currentWeekTemplateIndex;
 
             return (
               <div
                 key={templateId}
+                id={isCurrentWeekAnchor ? "current-week" : undefined}
                 className={
                   isCurrentWeek
-                    ? "rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[0_0_0_1px_rgba(240,171,252,0.08)]"
-                    : "rounded-2xl border border-white/10 bg-white/5 p-4"
+                    ? "scroll-mt-6 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[0_0_0_1px_rgba(240,171,252,0.08)]"
+                    : "scroll-mt-6 rounded-2xl border border-white/10 bg-white/5 p-4"
                 }
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -444,10 +457,15 @@ export default async function ShowsPage({
             );
           })}
           <div
+            id={
+              currentCalendarPosition.weekInYear === 52
+                ? "current-week"
+                : undefined
+            }
             className={
               currentCalendarPosition.weekInYear === 52
-                ? "rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[0_0_0_1px_rgba(240,171,252,0.08)]"
-                : "rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4"
+                ? "scroll-mt-6 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[0_0_0_1px_rgba(240,171,252,0.08)]"
+                : "scroll-mt-6 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4"
             }
           >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
