@@ -148,13 +148,6 @@ export default async function KennelPage() {
         </Link>
 
         <Link
-          href="/shows/top-ten#kennel-top-ten"
-          className="rounded-md border border-fuchsia-300/40 px-5 py-2 text-sm font-semibold text-fuchsia-100 hover:bg-fuchsia-950/40"
-        >
-          Kennel Top Ten
-        </Link>
-
-        <Link
           href="/my-results"
           className="rounded-md border border-sky-300/40 px-5 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-950/40"
         >

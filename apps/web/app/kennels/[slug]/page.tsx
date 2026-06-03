@@ -174,7 +174,7 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
                 My Kennel
               </Link>
               <Link
-                href="/shows/top-ten#kennel-top-ten"
+                href="/kennels/top-ten"
                 className="rounded-2xl border border-fuchsia-300/25 bg-fuchsia-500/10 px-5 py-3 text-sm font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/20"
               >
                 Kennel Top Ten

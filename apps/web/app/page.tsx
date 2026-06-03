@@ -28,6 +28,12 @@ const availableNow = [
     action: "Enter Shows",
   },
   {
+    title: "Kennel Prestige Top Ten",
+    body: "Browse the prestige rankings for kennels overall and by breed.",
+    href: "/kennels/top-ten",
+    action: "View Rankings",
+  },
+  {
     title: "Bulletin Board",
     body: "Talk with active kennels about shows, judges, wins, litters, stud ads, and help.",
     href: "/bulletin",
