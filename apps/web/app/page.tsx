@@ -1,44 +1,70 @@
 import Image from "next/image";
 import Link from "next/link";
+
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 
-const availableNow = [
-  {
-    title: "Foundation and Player Market",
-    body: "Browse released breeds, compare visible ring categories, buy foundation dogs, and shop player-listed dogs.",
-    href: "/market",
-    action: "Open Market",
-  },
-  {
-    title: "Dogs At Stud",
-    body: "Browse public stud dogs, compare visible category strengths, and plan outside breedings for your bitches.",
-    href: "/studs",
-    action: "Browse Studs",
-  },
-  {
-    title: "Breeding and Litters",
-    body: "Plan same-breed pairings, create breeding attempts, follow pregnancy timing, and review whelped litters.",
-    href: "/litters",
-    action: "View Litters",
-  },
+const primaryActions = [
   {
     title: "Show Calendar",
     body: "Open seeded shows, review judging blocks, and enter eligible kennel dogs.",
     href: "/shows",
     action: "Enter Shows",
+    featured: true,
   },
   {
-    title: "Kennel Prestige Top Ten",
-    body: "Browse the prestige rankings for kennels overall and by breed.",
-    href: "/kennels/top-ten",
-    action: "View Rankings",
+    title: "My Kennel",
+    body: "Jump into your roster, kennel areas, health records, and daily operations.",
+    href: "/kennel",
+    action: "Open My Kennel",
+  },
+  {
+    title: "Breeding and Litters",
+    body: "Plan pairings, follow pregnancies, and review current and past litters.",
+    href: "/litters",
+    action: "View Litters",
+  },
+  {
+    title: "Foundation and Player Market",
+    body: "Browse released breeds, compare visible ring categories, and shop for dogs.",
+    href: "/market",
+    action: "Open Market",
   },
   {
     title: "Bulletin Board",
-    body: "Talk with active kennels about shows, judges, wins, litters, stud ads, and help.",
+    body: "Talk with other kennels about shows, judges, wins, litters, and help.",
     href: "/bulletin",
     action: "Open Board",
+  },
+];
+
+const communityLinks = [
+  {
+    title: "Dogs At Stud",
+    body: "Browse public stud dogs and compare visible category strengths.",
+    href: "/studs",
+    action: "Browse Studs",
+  },
+  {
+    title: "Kennel Prestige Top Ten",
+    body: "See which kennels are climbing overall and breed-specific prestige rankings.",
+    href: "/kennels/top-ten",
+    action: "View Rankings",
+  },
+];
+
+const placeholderCommunityCards = [
+  {
+    title: "Recent Champions",
+    body: "Coming soon: a live community feed of newly finished champions.",
+  },
+  {
+    title: "Recent Litters",
+    body: "Coming soon: a running list of fresh litters born around ShowRing.",
+  },
+  {
+    title: "Recent Bulletin Activity",
+    body: "Coming soon: active discussion highlights from the bulletin board.",
   },
 ];
 
@@ -80,15 +106,14 @@ function getNewKennelsCutoff(): Date {
 
 export default async function HomePage() {
   const userId = await getSessionUserId();
-  const newKennelsCutoff = getNewKennelsCutoff();
   const newKennels = await db.kennel.findMany({
     where: {
       createdAt: {
-        gte: newKennelsCutoff,
+        gte: getNewKennelsCutoff(),
       },
     },
     orderBy: [{ createdAt: "desc" }],
-    take: 10,
+    take: 6,
     select: {
       id: true,
       name: true,
@@ -121,33 +146,45 @@ export default async function HomePage() {
           </nav>
         </header>
 
-        <section className="mb-8 grid gap-6 xl:grid-cols-[1.45fr_0.55fr] xl:items-stretch">
-          <div className="rounded-[32px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(50,26,71,0.94),rgba(24,12,35,0.96))] p-7 shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:p-8">
-            <div>
-              <div className="mb-4 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
-                The Show Ring Game
-              </div>
-
-              <h1 className="max-w-4xl text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-                The Show Ring Game: A Dog Show and Breeder Simulation.
-              </h1>
-
-              <p className="mt-5 max-w-3xl text-base leading-7 text-purple-100/78 sm:text-lg sm:leading-8">
-                Start a kennel, breed litters, and show your dogs.
-              </p>
+        <section className="mb-8 grid gap-6 xl:grid-cols-[1.48fr_0.52fr] xl:items-stretch">
+          <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(50,26,71,0.94),rgba(24,12,35,0.96))] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:p-7">
+            <div className="mb-3 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+              Community Landing Page
             </div>
-          </div>
+
+            <h1 className="max-w-4xl text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              The Show Ring Game: A Dog Show and Breeder Simulation.
+            </h1>
+
+            <p className="mt-4 max-w-3xl text-base leading-7 text-purple-100/78">
+              Follow what is happening around ShowRing, then jump back into
+              your kennel, your dogs, and the next show weekend.
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link
+                href={userId ? "/shows" : "/login"}
+                className="rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-500"
+              >
+                {userId ? "Enter Shows" : "Log In to Show"}
+              </Link>
+              <Link
+                href={userId ? "/kennel" : "/login"}
+                className="rounded-xl border border-purple-300/25 bg-white/5 px-5 py-2.5 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              >
+                {userId ? "Go to My Kennel" : "Open My Kennel"}
+              </Link>
+            </div>
+          </section>
 
           <section className="rounded-[24px] border border-white/10 bg-black/20 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.26)]">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold text-white">
-                  Welcome These New Kennels
-                </h2>
-                <p className="mt-1 text-sm text-purple-100/70">
-                  Joined in the last 48 hours
-                </p>
-              </div>
+            <div>
+              <h2 className="text-xl font-semibold text-white">
+                Welcome These New Kennels
+              </h2>
+              <p className="mt-1 text-sm text-purple-100/70">
+                Joined in the last 48 hours
+              </p>
             </div>
 
             {newKennels.length === 0 ? (
@@ -155,26 +192,121 @@ export default async function HomePage() {
                 No new kennels have joined recently.
               </div>
             ) : (
-              <div className="mt-4 grid gap-3">
-                  {newKennels.map((kennel) => (
-                    <div
-                      key={kennel.id}
-                      className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+              <div className="mt-4 grid gap-2.5">
+                {newKennels.map((kennel) => (
+                  <div
+                    key={kennel.id}
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                  >
+                    <Link
+                      href={`/kennels/${kennel.slug}`}
+                      className="truncate text-sm font-semibold text-white underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
                     >
-                      <Link
-                        href={`/kennels/${kennel.slug}`}
-                        className="truncate text-sm font-semibold text-white underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
-                      >
-                        {kennel.name}
-                      </Link>
-                      <div className="mt-1 text-xs text-purple-100/65">
-                        Joined {formatJoinedAt(kennel.createdAt)}
-                      </div>
+                      {kennel.name}
+                    </Link>
+                    <div className="mt-1 text-xs text-purple-100/65">
+                      Joined {formatJoinedAt(kennel.createdAt)}
                     </div>
-                  ))}
+                  </div>
+                ))}
               </div>
             )}
           </section>
+        </section>
+
+        <section className="mb-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-semibold text-white">
+              Jump Back In
+            </h2>
+            <p className="mt-1 text-sm text-purple-100/72">
+              Quick routes for getting back to the practical parts of the game.
+            </p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+            {primaryActions.map((item) => (
+              <article
+                key={item.title}
+                className={`rounded-[24px] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] ${
+                  item.featured
+                    ? "border border-sky-300/30 bg-sky-500/10 md:col-span-2 xl:col-span-2"
+                    : "border border-purple-300/15 bg-white/5"
+                }`}
+              >
+                <h3 className="text-lg font-semibold text-white">
+                  {item.title}
+                </h3>
+                <p className="mt-3 min-h-[5.25rem] text-sm leading-7 text-purple-100/72">
+                  {item.body}
+                </p>
+                <Link
+                  href={userId ? item.href : "/login"}
+                  className={`mt-5 inline-flex rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition ${
+                    item.featured
+                      ? "bg-sky-600 hover:bg-sky-500"
+                      : "bg-purple-600 hover:bg-purple-500"
+                  }`}
+                >
+                  {userId ? item.action : "Log In"}
+                </Link>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <div className="grid gap-4 md:grid-cols-2">
+            {communityLinks.map((item) => (
+              <article
+                key={item.title}
+                className="rounded-[22px] border border-purple-300/15 bg-white/5 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
+              >
+                <h3 className="text-lg font-semibold text-white">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-purple-100/72">
+                  {item.body}
+                </p>
+                <Link
+                  href={userId ? item.href : "/login"}
+                  className="mt-4 inline-flex rounded-xl border border-purple-300/25 bg-white/5 px-4 py-2.5 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                >
+                  {userId ? item.action : "Log In"}
+                </Link>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-semibold text-white">
+              Around ShowRing
+            </h2>
+            <p className="mt-1 text-sm text-purple-100/72">
+              Community activity surfaces will live here as they come online.
+            </p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {placeholderCommunityCards.map((card) => (
+              <article
+                key={card.title}
+                className="rounded-[22px] border border-white/10 bg-white/5 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)]"
+              >
+                <div className="mb-3 inline-flex rounded-full border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-amber-100">
+                  Future Placeholder
+                </div>
+                <h3 className="text-lg font-semibold text-white">
+                  {card.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-purple-100/72">
+                  {card.body}
+                </p>
+              </article>
+            ))}
+          </div>
         </section>
 
         <section className="mb-8 rounded-[24px] border border-white/10 bg-black/20 p-5">
@@ -204,31 +336,6 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
-
-        <section className="mb-8">
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
-            {availableNow.map((item) => (
-              <article
-                key={item.title}
-                className="rounded-[24px] border border-purple-300/15 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
-              >
-                <h3 className="text-lg font-semibold text-white">
-                  {item.title}
-                </h3>
-                <p className="mt-3 min-h-[5.25rem] text-sm leading-7 text-purple-100/72">
-                  {item.body}
-                </p>
-                <Link
-                  href={userId ? item.href : "/login"}
-                  className="mt-5 inline-flex rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-500"
-                >
-                  {userId ? item.action : "Log In"}
-                </Link>
-              </article>
-            ))}
-          </div>
-        </section>
-
       </div>
     </main>
   );
