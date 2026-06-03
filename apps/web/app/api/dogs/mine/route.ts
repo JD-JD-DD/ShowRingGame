@@ -60,6 +60,9 @@ type MineDog = {
     testTypeCode: string;
     resultCode: string;
   }>;
+  kennelAreaMemberships: Array<{
+    kennelAreaId: string;
+  }>;
 };
 
 type BreedingCardStatus = {
@@ -284,6 +287,27 @@ export async function GET() {
             resultCode: true,
           },
         },
+        kennelAreaMemberships: {
+          where: {
+            area: {
+              kennelId: kennel.id,
+            },
+          },
+          select: {
+            kennelAreaId: true,
+          },
+        },
+      },
+    });
+    const areas = await db.kennelArea.findMany({
+      where: {
+        kennelId: kennel.id,
+      },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        sortOrder: true,
       },
     });
 
@@ -296,6 +320,7 @@ export async function GET() {
         homeDistrict: kennel.homeDistrict,
         dogCount: dogs.length,
       },
+      areas,
       dogs: dogs.map((dog) => ({
         dogId: dog.id,
         callName: dog.callName,
@@ -313,6 +338,9 @@ export async function GET() {
         originType: dog.originType,
         isFoundation: dog.isFoundation,
         hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(dog.healthTests),
+        areaIds: dog.kennelAreaMemberships.map(
+          (membership) => membership.kennelAreaId
+        ),
         visibleCategories: toVisibleCategories(dog),
         breedingCardStatus: getBreedingCardStatus(dog, currentEpoch),
       })),

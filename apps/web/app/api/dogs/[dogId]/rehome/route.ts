@@ -80,6 +80,15 @@ export async function POST(
         throw new Error("Dog is no longer available to re-home.");
       }
 
+      await tx.kennelAreaDog.deleteMany({
+        where: {
+          dogId,
+          area: {
+            kennelId: kennel.id,
+          },
+        },
+      });
+
       if (payout === 0) {
         return;
       }

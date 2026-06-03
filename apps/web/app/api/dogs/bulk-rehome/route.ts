@@ -105,6 +105,15 @@ export async function POST(request: Request) {
         throw new Error("One or more dogs are no longer available to re-home.");
       }
 
+      await tx.kennelAreaDog.deleteMany({
+        where: {
+          dogId: { in: dogIds },
+          area: {
+            kennelId: kennel.id,
+          },
+        },
+      });
+
       if (creditsAdded === 0) {
         return;
       }

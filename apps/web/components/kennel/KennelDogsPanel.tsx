@@ -44,8 +44,15 @@ type KennelDogDto = {
   originType: string;
   isFoundation: boolean;
   hasAllGreenHealthTests: boolean;
+  areaIds: string[];
   visibleCategories: VisibleCategories;
   breedingCardStatus: BreedingCardStatus;
+};
+
+type KennelAreaDto = {
+  id: string;
+  name: string;
+  sortOrder: number;
 };
 
 type KennelSummary = {
@@ -61,6 +68,7 @@ type KennelDogsResponse = {
   ok: boolean;
   kennel?: KennelSummary;
   dogs?: KennelDogDto[];
+  areas?: KennelAreaDto[];
   error?: string;
 };
 
@@ -76,7 +84,7 @@ type SortKey =
   | "temperamentRingBehavior"
   | "conditioningHandling";
 
-type BulkAction = "" | "show-entry" | "rehome";
+type BulkAction = "" | "show-entry" | "rehome" | "add-area" | "remove-area";
 
 function formatAge(ageHours: number): string {
   const weeks = Math.floor(ageHours / 7);
@@ -200,11 +208,17 @@ export default function KennelDogsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [dogs, setDogs] = useState<KennelDogDto[]>([]);
+  const [areas, setAreas] = useState<KennelAreaDto[]>([]);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<BulkAction>("");
   const [confirmingBulkAction, setConfirmingBulkAction] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [areaActionLoading, setAreaActionLoading] = useState(false);
+  const [areaCreateLoading, setAreaCreateLoading] = useState(false);
 
+  const [activeAreaId, setActiveAreaId] = useState("");
+  const [newAreaName, setNewAreaName] = useState("");
+  const [areaActionTargetId, setAreaActionTargetId] = useState("");
   const [breedFilter, setBreedFilter] = useState("");
   const [sexFilter, setSexFilter] = useState<"" | "M" | "F">("");
   const [search, setSearch] = useState("");
@@ -232,6 +246,7 @@ export default function KennelDogsPanel() {
         }
 
         setDogs(data.dogs ?? []);
+        setAreas(data.areas ?? []);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load kennel dogs."
@@ -257,6 +272,19 @@ export default function KennelDogsPanel() {
     }
   }, [selectedDogIds.length]);
 
+  useEffect(() => {
+    if (activeAreaId && !areas.some((area) => area.id === activeAreaId)) {
+      setActiveAreaId("");
+    }
+
+    if (
+      areaActionTargetId &&
+      !areas.some((area) => area.id === areaActionTargetId)
+    ) {
+      setAreaActionTargetId("");
+    }
+  }, [activeAreaId, areaActionTargetId, areas]);
+
   const breedOptions = useMemo(() => {
     return Array.from(new Set(dogs.map((dog) => dog.breedName))).sort((a, b) =>
       a.localeCompare(b)
@@ -270,6 +298,7 @@ export default function KennelDogsPanel() {
       const name = getDogDisplayName(dog).toLowerCase();
 
       const breedMatch = breedFilter ? dog.breedName === breedFilter : true;
+      const areaMatch = activeAreaId ? dog.areaIds.includes(activeAreaId) : true;
       const sexMatch = sexFilter ? dog.sex === sexFilter : true;
       const searchMatch =
         !q || name.includes(q) || dog.breedName.toLowerCase().includes(q);
@@ -287,6 +316,7 @@ export default function KennelDogsPanel() {
 
       return (
         breedMatch &&
+        areaMatch &&
         sexMatch &&
         searchMatch &&
         breedableMatch &&
@@ -312,6 +342,7 @@ export default function KennelDogsPanel() {
     return list;
   }, [
     dogs,
+    activeAreaId,
     breedFilter,
     sexFilter,
     search,
@@ -327,6 +358,18 @@ export default function KennelDogsPanel() {
   }, [dogs, selectedDogIds]);
 
   const selectedDogsQuery = selectedDogIds.join(",");
+  const areaCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const dog of dogs) {
+      for (const areaId of dog.areaIds) {
+        counts.set(areaId, (counts.get(areaId) ?? 0) + 1);
+      }
+    }
+
+    return counts;
+  }, [dogs]);
+  const activeArea = areas.find((area) => area.id === activeAreaId) ?? null;
   const selectedRehomeCredits = selectedDogs.reduce(
     (total, dog) =>
       total + getPuppyRehomePayoutForAgeHours(dog.ageHours),
@@ -342,7 +385,10 @@ export default function KennelDogsPanel() {
     );
   const canApplyBulkAction =
     bulkAction === "show-entry" ||
-    (bulkAction === "rehome" && canBulkRehome && !bulkActionLoading);
+    (bulkAction === "rehome" && canBulkRehome && !bulkActionLoading) ||
+    ((bulkAction === "add-area" || bulkAction === "remove-area") &&
+      Boolean(areaActionTargetId) &&
+      !areaActionLoading);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -385,6 +431,13 @@ export default function KennelDogsPanel() {
   function updateBulkAction(action: BulkAction) {
     setBulkAction(action);
     setConfirmingBulkAction(false);
+
+    if (
+      (action === "add-area" || action === "remove-area") &&
+      !areaActionTargetId
+    ) {
+      setAreaActionTargetId(activeAreaId || areas[0]?.id || "");
+    }
   }
 
   function applyBulkAction() {
@@ -399,6 +452,124 @@ export default function KennelDogsPanel() {
 
     if (bulkAction === "rehome") {
       setConfirmingBulkAction(true);
+    }
+
+    if (bulkAction === "add-area" || bulkAction === "remove-area") {
+      void updateSelectedDogsArea(bulkAction === "add-area" ? "add" : "remove");
+    }
+  }
+
+  async function createArea() {
+    const name = newAreaName.trim();
+
+    if (name.length < 2 || areaCreateLoading) {
+      return;
+    }
+
+    setAreaCreateLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/kennel/areas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        area?: KennelAreaDto;
+        error?: string;
+      };
+
+      if (!response.ok || !data.ok || !data.area) {
+        throw new Error(data.error || "Failed to create kennel area.");
+      }
+
+      setAreas((current) => [...current, data.area!]);
+      setActiveAreaId(data.area.id);
+      setAreaActionTargetId(data.area.id);
+      setNewAreaName("");
+      setMessage(`Created kennel area "${data.area.name}".`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create area.");
+    } finally {
+      setAreaCreateLoading(false);
+    }
+  }
+
+  async function updateSelectedDogsArea(action: "add" | "remove") {
+    if (!areaActionTargetId || selectedDogIds.length === 0 || areaActionLoading) {
+      return;
+    }
+
+    setAreaActionLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        `/api/kennel/areas/${areaActionTargetId}/dogs`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ dogIds: selectedDogIds, action }),
+        }
+      );
+      const data = (await response.json()) as {
+        ok?: boolean;
+        areaId?: string;
+        dogIds?: string[];
+        action?: "add" | "remove";
+        error?: string;
+      };
+
+      if (!response.ok || !data.ok || !data.areaId) {
+        throw new Error(data.error || "Failed to update kennel area.");
+      }
+
+      const updatedDogIds = new Set(data.dogIds ?? selectedDogIds);
+      const targetAreaId = data.areaId;
+      const targetAreaName =
+        areas.find((area) => area.id === targetAreaId)?.name ?? "area";
+
+      setDogs((current) =>
+        current.map((dog) => {
+          if (!updatedDogIds.has(dog.dogId)) {
+            return dog;
+          }
+
+          const areaIds = new Set(dog.areaIds);
+
+          if (action === "add") {
+            areaIds.add(targetAreaId);
+          } else {
+            areaIds.delete(targetAreaId);
+          }
+
+          return {
+            ...dog,
+            areaIds: [...areaIds],
+          };
+        })
+      );
+      setBulkAction("");
+      setConfirmingBulkAction(false);
+      setMessage(
+        `${action === "add" ? "Added" : "Removed"} ${updatedDogIds.size} dog(s) ${
+          action === "add" ? "to" : "from"
+        } "${targetAreaName}".`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to update kennel area."
+      );
+    } finally {
+      setAreaActionLoading(false);
     }
   }
 
@@ -470,7 +641,99 @@ export default function KennelDogsPanel() {
             Sort, filter, and compare your dogs in one working roster.
           </p>
         </div>
+      </div>
 
+      <div className="mb-5 rounded-2xl border border-sky-300/15 bg-sky-500/5 p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100">
+              Kennel Areas
+            </div>
+            <p className="mt-2 text-sm leading-6 text-purple-100/70">
+              Create private views for groups like puppies to show, brood bitches,
+              or health testing.
+            </p>
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              value={newAreaName}
+              onChange={(event) => setNewAreaName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void createArea();
+                }
+              }}
+              placeholder="New area name..."
+              className="min-w-[220px] rounded-xl border border-sky-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-purple-100/40"
+            />
+            <button
+              type="button"
+              onClick={() => void createArea()}
+              disabled={newAreaName.trim().length < 2 || areaCreateLoading}
+              className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {areaCreateLoading ? "Creating..." : "Create Area"}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveAreaId("");
+              setSelectedDogIds([]);
+              setBulkAction("");
+              setConfirmingBulkAction(false);
+            }}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+              activeAreaId === ""
+                ? "border-sky-200/70 bg-sky-500/20 text-sky-100"
+                : "border-white/10 bg-white/5 text-purple-100/70 hover:bg-white/10"
+            }`}
+          >
+            All Dogs ({dogs.length})
+          </button>
+          {areas.map((area) => (
+            <button
+              key={area.id}
+              type="button"
+              onClick={() => {
+                setActiveAreaId(area.id);
+                setSelectedDogIds([]);
+                setBulkAction("");
+                setConfirmingBulkAction(false);
+              }}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                activeAreaId === area.id
+                  ? "border-fuchsia-200/70 bg-fuchsia-500/20 text-fuchsia-100"
+                  : "border-white/10 bg-white/5 text-purple-100/70 hover:bg-white/10"
+              }`}
+            >
+              {area.name} ({areaCounts.get(area.id) ?? 0})
+            </button>
+          ))}
+          {areas.length === 0 ? (
+            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs text-purple-100/55">
+              No custom areas yet
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200/80">
+            {activeArea ? activeArea.name : "All Dogs"} View
+          </div>
+          <div className="mt-1 text-sm text-purple-100/60">
+            {filteredDogs.length} visible dog
+            {filteredDogs.length === 1 ? "" : "s"}
+          </div>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_minmax(280px,1fr)_minmax(150px,0.7fr)_minmax(130px,0.7fr)_minmax(150px,0.8fr)]">
           <input
             type="text"
@@ -541,7 +804,7 @@ export default function KennelDogsPanel() {
               </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-[minmax(180px,1fr)_auto_auto]">
+            <div className="grid gap-2 sm:grid-cols-[minmax(180px,1fr)_minmax(170px,1fr)_auto_auto]">
               <select
                 value={bulkAction}
                 onChange={(event) =>
@@ -550,9 +813,26 @@ export default function KennelDogsPanel() {
                 className="rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
               >
                 <option value="">Bulk action...</option>
+                <option value="add-area">Add to Area</option>
+                <option value="remove-area">Remove from Area</option>
                 <option value="show-entry">Show Entry</option>
                 <option value="rehome">Re-Home</option>
               </select>
+
+              {bulkAction === "add-area" || bulkAction === "remove-area" ? (
+                <select
+                  value={areaActionTargetId}
+                  onChange={(event) => setAreaActionTargetId(event.target.value)}
+                  className="rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+                >
+                  <option value="">Choose area...</option>
+                  {areas.map((area) => (
+                    <option key={area.id} value={area.id}>
+                      {area.name}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
 
               <button
                 type="button"
@@ -560,7 +840,11 @@ export default function KennelDogsPanel() {
                 disabled={!canApplyBulkAction}
                 className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                {bulkAction === "show-entry" ? "Continue" : "Apply Action"}
+                {bulkAction === "show-entry"
+                  ? "Continue"
+                  : areaActionLoading
+                    ? "Updating..."
+                    : "Apply Action"}
               </button>
 
               <button
@@ -638,7 +922,7 @@ export default function KennelDogsPanel() {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-[1240px] w-full border-separate border-spacing-y-2 text-sm">
+          <table className="min-w-[1360px] w-full border-separate border-spacing-y-2 text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
                 <th className="px-3 py-2">
@@ -742,6 +1026,7 @@ export default function KennelDogsPanel() {
                   </SortButton>
                 </th>
                 <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Areas</th>
               </tr>
             </thead>
 
@@ -807,8 +1092,30 @@ export default function KennelDogsPanel() {
                     />
                   </td>
 
-                  <td className="rounded-r-2xl px-3 py-3 text-xs text-purple-100/80 whitespace-nowrap">
+                  <td className="px-3 py-3 text-xs text-purple-100/80 whitespace-nowrap">
                     {formatBreedingStatus(dog.breedingCardStatus)}
+                  </td>
+                  <td className="rounded-r-2xl px-3 py-3">
+                    <div className="flex max-w-[220px] flex-wrap gap-1.5">
+                      {dog.areaIds.length > 0 ? (
+                        dog.areaIds.map((areaId) => {
+                          const area = areas.find(
+                            (candidate) => candidate.id === areaId
+                          );
+
+                          return area ? (
+                            <span
+                              key={`${dog.dogId}-${area.id}`}
+                              className="rounded-full border border-sky-300/25 bg-sky-500/10 px-2 py-0.5 text-[0.66rem] font-semibold text-sky-100"
+                            >
+                              {area.name}
+                            </span>
+                          ) : null;
+                        })
+                      ) : (
+                        <span className="text-xs text-purple-100/35">-</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

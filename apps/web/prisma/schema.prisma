@@ -181,9 +181,10 @@ model Kennel {
   purchasedListings       DogListing[]        @relation("BuyerKennelListings")
   showWeekendPlans        KennelShowWeekendPlan[]
   bulletinThreads         BulletinThread[]
-  bulletinPosts           BulletinPost[]
-  notices                 KennelNotice[]
-  privateDogNotes         KennelDogPrivateNote[]
+    bulletinPosts           BulletinPost[]
+    notices                 KennelNotice[]
+    privateDogNotes         KennelDogPrivateNote[]
+    areas                   KennelArea[]
 
   @@index([userId])
   @@index([homeDistrict])
@@ -282,9 +283,10 @@ model Dog {
   ledgerTransactions LedgerTransaction[]
   listings           DogListing[]
   titleProgress      DogTitleProgress?
-  healthTests        HealthTestRecord[]
-  healthConditionTruths DogHealthConditionTruth[]
-  privateKennelNotes KennelDogPrivateNote[]
+    healthTests        HealthTestRecord[]
+    healthConditionTruths DogHealthConditionTruth[]
+    privateKennelNotes KennelDogPrivateNote[]
+    kennelAreaMemberships KennelAreaDog[]
 
   @@index([breedCode2])
   @@index([ownerKennelId])
@@ -296,7 +298,7 @@ model Dog {
   @@index([marketState])
 }
 
-model KennelDogPrivateNote {
+  model KennelDogPrivateNote {
   id        String   @id @default(cuid())
   kennelId  String
   dogId     String
@@ -308,8 +310,36 @@ model KennelDogPrivateNote {
   dog    Dog    @relation(fields: [dogId], references: [id], onDelete: Cascade)
 
   @@unique([kennelId, dogId])
-  @@index([dogId])
-}
+    @@index([dogId])
+  }
+
+  model KennelArea {
+    id        String   @id @default(cuid())
+    kennelId  String
+    name      String
+    sortOrder Int      @default(0)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    kennel Kennel          @relation(fields: [kennelId], references: [id], onDelete: Cascade)
+    dogs   KennelAreaDog[]
+
+    @@unique([kennelId, name])
+    @@index([kennelId, sortOrder])
+  }
+
+  model KennelAreaDog {
+    id           String   @id @default(cuid())
+    kennelAreaId String
+    dogId        String
+    addedAt      DateTime @default(now())
+
+    area KennelArea @relation(fields: [kennelAreaId], references: [id], onDelete: Cascade)
+    dog  Dog        @relation(fields: [dogId], references: [id], onDelete: Cascade)
+
+    @@unique([kennelAreaId, dogId])
+    @@index([dogId])
+  }
 
 model Judge {
   id           String  @id
