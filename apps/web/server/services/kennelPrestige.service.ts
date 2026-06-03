@@ -470,14 +470,23 @@ export async function getKennelPrestigeLeaderboard(args: {
       slug: true,
     },
   });
-  const rows = await Promise.all(
-    kennels.map(async (kennel) => ({
+  const rows: Array<{
+    kennel: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+    prestige: KennelPrestigeSummary;
+  }> = [];
+
+  for (const kennel of kennels) {
+    rows.push({
       kennel,
       prestige: await getKennelPrestigeSummary(kennel.id, {
         breedCode2: args.breedCode2,
       }),
-    }))
-  );
+    });
+  }
 
   return rows
     .sort(

@@ -111,16 +111,14 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
     },
   });
   const selectedBreed =
-    breeds.find((breed) => breed.code2 === breedQuery) ?? breeds[0] ?? null;
-  const [overallRows, breedRows] = await Promise.all([
-    getKennelPrestigeLeaderboard({ take: 10 }),
-    selectedBreed
-      ? getKennelPrestigeLeaderboard({
-          breedCode2: selectedBreed.code2,
-          take: 10,
-        })
-      : Promise.resolve([]),
-  ]);
+    breeds.find((breed) => breed.code2 === breedQuery) ?? null;
+  const overallRows = await getKennelPrestigeLeaderboard({ take: 10 });
+  const breedRows = selectedBreed
+    ? await getKennelPrestigeLeaderboard({
+        breedCode2: selectedBreed.code2,
+        take: 10,
+      })
+    : [];
 
   return (
     <main className="min-h-screen px-6 py-8 text-white">
@@ -173,6 +171,7 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
                 defaultValue={selectedBreed?.code2 ?? ""}
                 className="w-full rounded-2xl border border-purple-300/20 bg-black/25 px-4 py-3 text-sm text-white outline-none"
               >
+                <option value="">Choose a breed</option>
                 {breeds.map((breed) => (
                   <option key={breed.code2} value={breed.code2}>
                     {breed.name}
@@ -197,19 +196,28 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
             description="All-breed kennel prestige across the whole show game."
             rows={overallRows}
           />
-          <LeaderboardTable
-            title={
-              selectedBreed
-                ? `${selectedBreed.name} Top Ten`
-                : "Breed Top Ten"
-            }
-            description={
-              selectedBreed
-                ? `Kennel prestige earned specifically through ${selectedBreed.name}s.`
-                : "Choose a breed to view breed-specific kennel prestige."
-            }
-            rows={breedRows}
-          />
+          {selectedBreed ? (
+            <LeaderboardTable
+              title={`${selectedBreed.name} Top Ten`}
+              description={`Kennel prestige earned specifically through ${selectedBreed.name}s.`}
+              rows={breedRows}
+            />
+          ) : (
+            <section className="overflow-hidden rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
+              <div className="border-b border-white/10 px-6 py-5">
+                <h2 className="text-2xl font-bold text-white">
+                  Breed Top Ten
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-purple-100/70">
+                  Choose a breed above to view breed-specific kennel prestige
+                  rankings.
+                </p>
+              </div>
+              <div className="px-6 py-6 text-sm text-purple-100/70">
+                Select a breed to load that breed&apos;s kennel rankings.
+              </div>
+            </section>
+          )}
         </div>
 
         {selectedBreed ? (
