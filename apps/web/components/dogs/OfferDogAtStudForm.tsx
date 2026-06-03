@@ -56,6 +56,46 @@ export default function OfferDogAtStudForm({
         </span>
       </label>
 
+      <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
+        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-100/80">
+          Minimum Bitch Requirements
+        </div>
+        <div className="mt-3 grid gap-2 text-xs leading-5 text-sky-100/85">
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="requiresDamHealthTestsCompleted"
+              className="mt-1"
+            />
+            <span>All four phenotype health tests completed.</span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="requiresDamHealthAllGreen"
+              className="mt-1"
+            />
+            <span>All health test results must be green.</span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="requiresDamHealthGreenOrYellow"
+              className="mt-1"
+            />
+            <span>Health test results may be green or yellow, but not red.</span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="requiresDamChampionTitle"
+              className="mt-1"
+            />
+            <span>Bitch must be a finished champion.</span>
+          </label>
+        </div>
+      </div>
+
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           type="submit"

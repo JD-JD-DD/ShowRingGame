@@ -591,6 +591,10 @@ export async function listDogAtStud(args: {
   currentEpoch: number;
   studFeeAmount: number;
   requiresBrucellosisNegativeDam?: boolean;
+  requiresDamHealthTestsCompleted?: boolean;
+  requiresDamHealthAllGreen?: boolean;
+  requiresDamHealthGreenOrYellow?: boolean;
+  requiresDamChampionTitle?: boolean;
 }): Promise<string> {
   const {
     dogId,
@@ -598,6 +602,10 @@ export async function listDogAtStud(args: {
     currentEpoch,
     studFeeAmount,
     requiresBrucellosisNegativeDam,
+    requiresDamHealthTestsCompleted,
+    requiresDamHealthAllGreen,
+    requiresDamHealthGreenOrYellow,
+    requiresDamChampionTitle,
   } = args;
 
   assertWholeDollarAmount(studFeeAmount, "Stud fee");
@@ -666,6 +674,12 @@ export async function listDogAtStud(args: {
         listedAtEpoch: currentEpoch,
         requiresBrucellosisNegativeDam:
           requiresBrucellosisNegativeDam ?? false,
+        requiresDamHealthTestsCompleted:
+          requiresDamHealthTestsCompleted ?? false,
+        requiresDamHealthAllGreen: requiresDamHealthAllGreen ?? false,
+        requiresDamHealthGreenOrYellow:
+          requiresDamHealthGreenOrYellow ?? false,
+        requiresDamChampionTitle: requiresDamChampionTitle ?? false,
         descriptionPublic: `Stud listing for ${dog.regNumber}.`,
       },
       select: {

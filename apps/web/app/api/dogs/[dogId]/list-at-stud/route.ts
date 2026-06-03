@@ -55,6 +55,14 @@ export async function POST(
     const studFeeAmount = parseWholeDollarPrice(formData.get("studFeeAmount"));
     const requiresBrucellosisNegativeDam =
       formData.get("requiresBrucellosisNegativeDam") === "on";
+    const requiresDamHealthTestsCompleted =
+      formData.get("requiresDamHealthTestsCompleted") === "on";
+    const requiresDamHealthAllGreen =
+      formData.get("requiresDamHealthAllGreen") === "on";
+    const requiresDamHealthGreenOrYellow =
+      formData.get("requiresDamHealthGreenOrYellow") === "on";
+    const requiresDamChampionTitle =
+      formData.get("requiresDamChampionTitle") === "on";
 
     if (studFeeAmount === null || studFeeAmount < 1) {
       return redirectWithSaleError(
@@ -70,6 +78,10 @@ export async function POST(
       currentEpoch: getCurrentEpoch(),
       studFeeAmount,
       requiresBrucellosisNegativeDam,
+      requiresDamHealthTestsCompleted,
+      requiresDamHealthAllGreen,
+      requiresDamHealthGreenOrYellow,
+      requiresDamChampionTitle,
     });
 
     return redirectWithSaleMessage(request, dogId, "Dog listed at stud.");

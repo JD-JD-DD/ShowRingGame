@@ -1,5 +1,9 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import {
+  getPhenotypeHealthSeverity,
+  hasAllGreenPhenotypeHealthTests,
+} from "@/lib/dogHealth";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import {
   markDogDeceased,
@@ -56,6 +60,10 @@ type DogForBreeding = {
   traitShowShine: number;
   traitFeet: number;
   traitTopline: number;
+  healthTests: Array<{
+    testTypeCode: string;
+    resultCode: string;
+  }>;
 };
 
 type AttemptForResolution = {
@@ -242,6 +250,70 @@ function displayDogName(dog: {
   return formatDogDisplayName(dog);
 }
 
+function hasCompletedAllPhenotypeHealthTests(
+  tests: DogForBreeding["healthTests"]
+): boolean {
+  const completedCodes = new Set(tests.map((test) => test.testTypeCode));
+  return ["HIP_DYSPLASIA", "CARDIAC", "CAER_EYE", "THYROID"].every((code) =>
+    completedCodes.has(code)
+  );
+}
+
+function hasOnlyGreenOrYellowPhenotypeHealthTests(
+  tests: DogForBreeding["healthTests"]
+): boolean {
+  return (
+    hasCompletedAllPhenotypeHealthTests(tests) &&
+    tests.every(
+      (test) => getPhenotypeHealthSeverity(test.testTypeCode, test.resultCode) !== "red"
+    )
+  );
+}
+
+function isFinishedChampion(dog: {
+  visibleTitlePrefix?: string | null;
+  visibleTitleSuffix?: string | null;
+}): boolean {
+  return dog.visibleTitlePrefix === "CH" || dog.visibleTitleSuffix === "CH";
+}
+
+function assertDamMeetsStudListingRequirements(args: {
+  dam: DogForBreeding;
+  listing: {
+    requiresDamHealthTestsCompleted: boolean;
+    requiresDamHealthAllGreen: boolean;
+    requiresDamHealthGreenOrYellow: boolean;
+    requiresDamChampionTitle: boolean;
+  };
+}) {
+  const { dam, listing } = args;
+
+  if (
+    listing.requiresDamHealthTestsCompleted &&
+    !hasCompletedAllPhenotypeHealthTests(dam.healthTests)
+  ) {
+    throw new Error("This stud requires bitches to have all four health tests completed.");
+  }
+
+  if (
+    listing.requiresDamHealthAllGreen &&
+    !hasAllGreenPhenotypeHealthTests(dam.healthTests)
+  ) {
+    throw new Error("This stud requires bitches to have all-green health test results.");
+  }
+
+  if (
+    listing.requiresDamHealthGreenOrYellow &&
+    !hasOnlyGreenOrYellowPhenotypeHealthTests(dam.healthTests)
+  ) {
+    throw new Error("This stud requires bitches to have no red health test results.");
+  }
+
+  if (listing.requiresDamChampionTitle && !isFinishedChampion(dam)) {
+    throw new Error("This stud requires bitches to be finished champions.");
+  }
+}
+
 async function getDogForBreeding(dogId: string): Promise<DogForBreeding | null> {
   return db.dog.findUnique({
     where: { id: dogId },
@@ -272,6 +344,16 @@ async function getDogForBreeding(dogId: string): Promise<DogForBreeding | null> 
       traitShowShine: true,
       traitFeet: true,
       traitTopline: true,
+      healthTests: {
+        where: {
+          isPublic: true,
+        },
+        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+        select: {
+          testTypeCode: true,
+          resultCode: true,
+        },
+      },
     },
   });
 }
@@ -898,6 +980,10 @@ export async function createBreedingAttemptForKennel(args: {
           askingPrice: true,
           sellerKennelId: true,
           requiresBrucellosisNegativeDam: true,
+          requiresDamHealthTestsCompleted: true,
+          requiresDamHealthAllGreen: true,
+          requiresDamHealthGreenOrYellow: true,
+          requiresDamChampionTitle: true,
           dog: {
             select: {
               id: true,
@@ -929,6 +1015,10 @@ export async function createBreedingAttemptForKennel(args: {
       studSellerKennelId = studListing.sellerKennelId;
       requiresBrucellosisNegativeDam =
         studListing.requiresBrucellosisNegativeDam;
+      assertDamMeetsStudListingRequirements({
+        dam,
+        listing: studListing,
+      });
     }
 
     const publicStudRequiresDamNegative =

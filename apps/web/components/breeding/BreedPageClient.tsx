@@ -64,6 +64,10 @@ type DogCardDto = {
   studFeeAmount: number | null;
   brucellosisValidUntilEpoch: number | null;
   requiresBrucellosisNegativeDam: boolean;
+  requiresDamHealthTestsCompleted: boolean;
+  requiresDamHealthAllGreen: boolean;
+  requiresDamHealthGreenOrYellow: boolean;
+  requiresDamChampionTitle: boolean;
   coiPercent: number | null;
   lastLitterEpoch: number | null;
   healthTests: HealthTest[];
@@ -195,6 +199,82 @@ function latestHealthTests(dog: DogCardDto) {
     result:
       dog.healthTests.find((test) => test.testTypeCode === testTypeCode) ?? null,
   }));
+}
+
+function hasCompletedAllPhenotypeHealthTests(dog: DogCardDto) {
+  const completedCodes = new Set(
+    dog.healthTests.map((test) => test.testTypeCode)
+  );
+
+  return PHENOTYPE_HEALTH_TEST_CODES.every((testTypeCode) =>
+    completedCodes.has(testTypeCode)
+  );
+}
+
+function hasOnlyGreenOrYellowPhenotypeHealthTests(dog: DogCardDto) {
+  return (
+    hasCompletedAllPhenotypeHealthTests(dog) &&
+    dog.healthTests.every(
+      (test) =>
+        getPhenotypeHealthSeverity(test.testTypeCode, test.resultCode) !== "red"
+    )
+  );
+}
+
+function isFinishedChampion(dog: DogCardDto) {
+  return dog.visibleTitlePrefix === "CH" || dog.visibleTitleSuffix === "CH";
+}
+
+function studRequirementLabels(stud: DogCardDto) {
+  const labels: string[] = [];
+
+  if (stud.requiresBrucellosisNegativeDam) {
+    labels.push("negative brucellosis test");
+  }
+  if (stud.requiresDamHealthTestsCompleted) {
+    labels.push("all health tests completed");
+  }
+  if (stud.requiresDamHealthAllGreen) {
+    labels.push("all-green health results");
+  }
+  if (stud.requiresDamHealthGreenOrYellow) {
+    labels.push("no red health results");
+  }
+  if (stud.requiresDamChampionTitle) {
+    labels.push("finished champion");
+  }
+
+  return labels;
+}
+
+function damMeetsStudRequirements(dam: DogCardDto | null, stud: DogCardDto) {
+  if (stud.isOwnedByCurrentKennel || !dam) {
+    return true;
+  }
+
+  if (
+    stud.requiresDamHealthTestsCompleted &&
+    !hasCompletedAllPhenotypeHealthTests(dam)
+  ) {
+    return false;
+  }
+  if (
+    stud.requiresDamHealthAllGreen &&
+    !hasAllGreenPhenotypeHealthTests(dam.healthTests)
+  ) {
+    return false;
+  }
+  if (
+    stud.requiresDamHealthGreenOrYellow &&
+    !hasOnlyGreenOrYellowPhenotypeHealthTests(dam)
+  ) {
+    return false;
+  }
+  if (stud.requiresDamChampionTitle && !isFinishedChampion(dam)) {
+    return false;
+  }
+
+  return true;
 }
 
 function traitNumberTone(value: number) {
@@ -572,8 +652,10 @@ function DogOptionCard({
             <span>Owner: {dog.ownerKennelName ?? "Player Kennel"}</span>
             <span>Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</span>
             <span>Brucellosis: {brucellosisStatusLabel(dog)}</span>
-            {dog.requiresBrucellosisNegativeDam ? (
-              <span>Requires negative bitch test</span>
+            {studRequirementLabels(dog).length > 0 ? (
+              <span>
+                Bitch minimums: {studRequirementLabels(dog).join(", ")}
+              </span>
             ) : null}
           </>
         ) : null}
@@ -752,8 +834,8 @@ function FreeMateCard({
         {dog.sex === "M" ? (
           <span>Brucellosis: {brucellosisStatusLabel(dog)}</span>
         ) : null}
-        {outsideKennel && dog.requiresBrucellosisNegativeDam ? (
-          <span>Requires negative bitch test</span>
+        {outsideKennel && studRequirementLabels(dog).length > 0 ? (
+          <span>Bitch minimums: {studRequirementLabels(dog).join(", ")}</span>
         ) : null}
       </div>
       <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-3">
@@ -1548,6 +1630,8 @@ export default function BreedPageClient({
         dog.sex === "M" &&
         dog.breedCode2 === breedCode2 &&
         (dog.isOwnedByCurrentKennel || Boolean(dog.studListingId)) &&
+        (dog.isOwnedByCurrentKennel ||
+          damMeetsStudRequirements(selectedDam, dog)) &&
         (sireSource === "ALL" ||
           (sireSource === "OWNED" && dog.isOwnedByCurrentKennel) ||
           (sireSource === "PUBLIC" && !dog.isOwnedByCurrentKennel))
@@ -1585,9 +1669,13 @@ export default function BreedPageClient({
           dog.id !== anchorDog.id &&
           dog.breedCode2 === anchorDog.breedCode2 &&
           (anchorDog.sex === "M"
-            ? dog.sex === "F" && dog.isOwnedByCurrentKennel
+            ? dog.sex === "F" &&
+              dog.isOwnedByCurrentKennel &&
+              damMeetsStudRequirements(dog, anchorDog)
             : dog.sex === "M" &&
-              (dog.isOwnedByCurrentKennel || Boolean(dog.studListingId)))
+              (dog.isOwnedByCurrentKennel ||
+                (Boolean(dog.studListingId) &&
+                  damMeetsStudRequirements(anchorDog, dog))))
       )
       .sort((a, b) => {
         if (a.isOwnedByCurrentKennel !== b.isOwnedByCurrentKennel) {

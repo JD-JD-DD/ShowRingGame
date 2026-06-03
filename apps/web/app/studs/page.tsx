@@ -175,6 +175,10 @@ export default async function StudsPage({ searchParams }: PageProps) {
       id: true,
       askingPrice: true,
       requiresBrucellosisNegativeDam: true,
+      requiresDamHealthTestsCompleted: true,
+      requiresDamHealthAllGreen: true,
+      requiresDamHealthGreenOrYellow: true,
+      requiresDamChampionTitle: true,
       dog: {
         select: {
           id: true,
@@ -312,6 +316,25 @@ export default async function StudsPage({ searchParams }: PageProps) {
           <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {listings.map((listing) => {
               const dog = listing.dog;
+              const requirements = [
+                listing.requiresBrucellosisNegativeDam
+                  ? "Negative brucellosis test"
+                  : null,
+                listing.requiresDamHealthTestsCompleted
+                  ? "All health tests completed"
+                  : null,
+                listing.requiresDamHealthAllGreen
+                  ? "All-green health results"
+                  : null,
+                listing.requiresDamHealthGreenOrYellow
+                  ? "No red health results"
+                  : null,
+                listing.requiresDamChampionTitle
+                  ? "Finished champion"
+                  : null,
+              ].filter((requirement): requirement is string =>
+                Boolean(requirement)
+              );
               const brucellosisValidUntil = validBrucellosisUntil(
                 dog,
                 currentEpoch
@@ -395,12 +418,12 @@ export default async function StudsPage({ searchParams }: PageProps) {
                       </div>
                       <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
                         <div className="text-xs uppercase tracking-wide text-purple-200">
-                          Bitch Requirement
+                          Bitch Requirements
                         </div>
                         <div className="mt-1 font-medium text-white">
-                          {listing.requiresBrucellosisNegativeDam
-                            ? "Negative test required"
-                            : "No test requirement"}
+                          {requirements.length > 0
+                            ? requirements.join(", ")
+                            : "No minimums set"}
                         </div>
                       </div>
                     </div>

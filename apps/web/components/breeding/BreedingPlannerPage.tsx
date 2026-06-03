@@ -45,6 +45,10 @@ type DogCardDto = {
   studFeeAmount: number | null;
   brucellosisValidUntilEpoch: number | null;
   requiresBrucellosisNegativeDam: boolean;
+  requiresDamHealthTestsCompleted: boolean;
+  requiresDamHealthAllGreen: boolean;
+  requiresDamHealthGreenOrYellow: boolean;
+  requiresDamChampionTitle: boolean;
   coiPercent: number | null;
   lastLitterEpoch: number | null;
   healthTests: Array<{
@@ -262,6 +266,10 @@ export default async function BreedingPlannerPage({
       studFeeAmount: null,
       brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
       requiresBrucellosisNegativeDam: false,
+      requiresDamHealthTestsCompleted: false,
+      requiresDamHealthAllGreen: false,
+      requiresDamHealthGreenOrYellow: false,
+      requiresDamChampionTitle: false,
       coiPercent: dog.coiPercent,
       lastLitterEpoch,
       healthTests: dog.healthTests,
@@ -325,6 +333,10 @@ export default async function BreedingPlannerPage({
       id: true,
       askingPrice: true,
       requiresBrucellosisNegativeDam: true,
+      requiresDamHealthTestsCompleted: true,
+      requiresDamHealthAllGreen: true,
+      requiresDamHealthGreenOrYellow: true,
+      requiresDamChampionTitle: true,
       dog: {
         select: {
           id: true,
@@ -421,6 +433,12 @@ export default async function BreedingPlannerPage({
       brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
       requiresBrucellosisNegativeDam:
         listing.requiresBrucellosisNegativeDam,
+      requiresDamHealthTestsCompleted:
+        listing.requiresDamHealthTestsCompleted,
+      requiresDamHealthAllGreen: listing.requiresDamHealthAllGreen,
+      requiresDamHealthGreenOrYellow:
+        listing.requiresDamHealthGreenOrYellow,
+      requiresDamChampionTitle: listing.requiresDamChampionTitle,
       coiPercent: dog.coiPercent,
       lastLitterEpoch: null,
       healthTests: dog.healthTests,

@@ -735,6 +735,10 @@ model DogListing {
   buyerKennelId     String?
   descriptionPublic String?
   requiresBrucellosisNegativeDam Boolean @default(false)
+  requiresDamHealthTestsCompleted Boolean @default(false)
+  requiresDamHealthAllGreen Boolean @default(false)
+  requiresDamHealthGreenOrYellow Boolean @default(false)
+  requiresDamChampionTitle Boolean @default(false)
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 

@@ -1,0 +1,5 @@
+ALTER TABLE "DogListing"
+ADD COLUMN IF NOT EXISTS "requiresDamHealthTestsCompleted" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS "requiresDamHealthAllGreen" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS "requiresDamHealthGreenOrYellow" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS "requiresDamChampionTitle" BOOLEAN NOT NULL DEFAULT false;
