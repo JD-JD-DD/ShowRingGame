@@ -49,6 +49,7 @@ const showBlockForJudgingArgs =
                 },
                 select: {
                   status: true,
+                  dueEpoch: true,
                   whelpedEpoch: true,
                 },
               },
@@ -96,6 +97,11 @@ type DogForEngine = {
   traitShowShine: number;
   traitFeet: number;
   traitTopline: number;
+  breedingAttemptsAsDam?: Array<{
+    status: string;
+    dueEpoch: number | null;
+    whelpedEpoch: number | null;
+  }>;
 };
 
 export type JudgedShowResultDto = {
@@ -143,6 +149,14 @@ function toEngineJudge(judge: JudgeForEngine): EngineJudge {
 }
 
 function toEngineDogRecord(dog: DogForEngine): EngineDog {
+  const breedingAttemptsAsDam = dog.breedingAttemptsAsDam ?? [];
+  const activePregnancy = breedingAttemptsAsDam.find(
+    (attempt) => attempt.status === "PREGNANT"
+  );
+  const latestWhelp = breedingAttemptsAsDam.find(
+    (attempt) => attempt.status === "WHELPED" && attempt.whelpedEpoch != null
+  );
+
   return {
     dogId: dog.id,
     regNumber: dog.regNumber,
@@ -154,6 +168,10 @@ function toEngineDogRecord(dog: DogForEngine): EngineDog {
     litterOrder: dog.litterOrder,
     sireId: dog.sireId,
     damId: dog.damId,
+    presentation: {
+      dueEpoch: activePregnancy?.dueEpoch ?? null,
+      lastWhelpedEpoch: latestWhelp?.whelpedEpoch ?? null,
+    },
     traits: {
       head: dog.traitHead,
       forequarters: dog.traitForequarters,
@@ -623,6 +641,7 @@ export async function judgeShowBlock(args: {
     const engineJudge = toEngineJudge(block.judge);
     const judgedBlock = judgeBreedBlock({
       judge: engineJudge,
+      showEpoch: block.startEpoch,
       entries: eligibleEntries.map((entry) => ({
         showEntryId: entry.id,
         dog: toEngineDog(entry),
@@ -952,6 +971,17 @@ async function createGroupAwardsForShowDay(args: {
       return 0;
     }
 
+    const showDayTiming = await tx.showDay.findUnique({
+      where: { id: args.showDayId },
+      select: {
+        scheduledEpoch: true,
+      },
+    });
+
+    if (!showDayTiming) {
+      throw new Error("Show day not found.");
+    }
+
     const bobAwards = await tx.showAward.findMany({
       where: {
         showDayId: args.showDayId,
@@ -989,6 +1019,22 @@ async function createGroupAwardsForShowDay(args: {
             traitShowShine: true,
             traitFeet: true,
             traitTopline: true,
+            breedingAttemptsAsDam: {
+              where: {
+                OR: [
+                  { status: "PREGNANT" },
+                  { status: "WHELPED", whelpedEpoch: { not: null } },
+                ],
+              },
+              orderBy: {
+                whelpedEpoch: "desc",
+              },
+              select: {
+                status: true,
+                dueEpoch: true,
+                whelpedEpoch: true,
+              },
+            },
             breed: {
               select: {
                 groupName: true,
@@ -1028,6 +1074,7 @@ async function createGroupAwardsForShowDay(args: {
       ).size;
       const judgedGroupAwards = judgeGroup({
         judge: args.judge,
+        showEpoch: showDayTiming.scheduledEpoch,
         entries: groupAwards.map((award) => ({
           showEntryId: award.showEntryId,
           dog: toEngineDogRecord(award.dog),
@@ -1111,6 +1158,17 @@ async function createBestInShowAwardsForShowDay(args: {
       return 0;
     }
 
+    const showDayTiming = await tx.showDay.findUnique({
+      where: { id: args.showDayId },
+      select: {
+        scheduledEpoch: true,
+      },
+    });
+
+    if (!showDayTiming) {
+      throw new Error("Show day not found.");
+    }
+
     const groupOneAwards = await tx.showAward.findMany({
       where: {
         showDayId: args.showDayId,
@@ -1148,6 +1206,22 @@ async function createBestInShowAwardsForShowDay(args: {
             traitShowShine: true,
             traitFeet: true,
             traitTopline: true,
+            breedingAttemptsAsDam: {
+              where: {
+                OR: [
+                  { status: "PREGNANT" },
+                  { status: "WHELPED", whelpedEpoch: { not: null } },
+                ],
+              },
+              orderBy: {
+                whelpedEpoch: "desc",
+              },
+              select: {
+                status: true,
+                dueEpoch: true,
+                whelpedEpoch: true,
+              },
+            },
           },
         },
       },
@@ -1165,6 +1239,7 @@ async function createBestInShowAwardsForShowDay(args: {
     ).size;
     const judgedBestInShowAwards = judgeBestInShow({
       judge: args.judge,
+      showEpoch: showDayTiming.scheduledEpoch,
       entries: groupOneAwards.map((award) => ({
         showEntryId: award.showEntryId,
         dog: toEngineDogRecord(award.dog),

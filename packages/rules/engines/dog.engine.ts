@@ -2,8 +2,17 @@ import { getLifecycleFlags, type DogStatus, type Sex } from "../src/lifecycle";
 import { generatePuppyTraits } from "./trait.engine";
 
 import type { TraitKey } from "../constants/genetics.constants";
+import type { JudgingCategory } from "../constants/judging.constants";
 
 export type DogTraits = Record<TraitKey, number>;
+
+export type DogPresentationInfluences = {
+  dueEpoch?: number | null;
+  lastWhelpedEpoch?: number | null;
+  conditioningMultiplierByCategory?: Partial<Record<JudgingCategory, number>>;
+  groomingMultiplierByCategory?: Partial<Record<JudgingCategory, number>>;
+  handlingMultiplierByCategory?: Partial<Record<JudgingCategory, number>>;
+};
 
 export type Dog = {
   dogId: string;
@@ -18,6 +27,7 @@ export type Dog = {
   damId: string | null;
   coiPercent?: number;
   coiGenerationDepth?: number;
+  presentation?: DogPresentationInfluences;
   traits: DogTraits;
 };
 

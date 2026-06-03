@@ -12,6 +12,7 @@
     "audit:health": "tsx src/auditHealthDistribution.ts",
     "test:coi": "tsx src/testCoi.ts",
     "test:health": "tsx src/testHealth.ts",
+    "test:presentation": "tsx src/testPresentationModifiers.ts",
     "test:show-calendar": "tsx src/testShowCalendar.ts"
   },
 

@@ -9,6 +9,7 @@ import {
   RING_RANDOMNESS,
   type JudgingCategory,
 } from "../constants/judging.constants";
+import { applyPresentationModifiersToCharacteristics } from "./presentation.engine";
 import { scoreValueAgainstIdeal } from "./idealScoring.engine";
 
 export type ShowCharacteristics = Record<JudgingCategory, number>;
@@ -135,12 +136,21 @@ export function deriveShowCharacteristicsFromTraits(
 export function scoreDogByJudgeWeights(args: {
   dog: Dog;
   judge: Judge;
+  showEpoch?: number;
   random01?: () => number;
 }): JudgedDogBreakdown {
   const { dog, judge } = args;
   const random01 = args.random01 ?? Math.random;
 
-  const characteristics = deriveShowCharacteristicsFromTraits(dog.traits);
+  const baseCharacteristics = deriveShowCharacteristicsFromTraits(dog.traits);
+  const characteristics =
+    args.showEpoch == null
+      ? baseCharacteristics
+      : applyPresentationModifiersToCharacteristics({
+          characteristics: baseCharacteristics,
+          dog,
+          showEpoch: args.showEpoch,
+        }).characteristics;
   const weightedCategoryScores = {} as WeightedCategoryScores;
 
   let baseScore = 0;
@@ -210,6 +220,7 @@ function compareJudgedDogs(
 export function judgeBreedEntries(args: {
   entries: JudgingEntry[];
   judge: Judge;
+  showEpoch?: number;
   random01?: () => number;
 }): JudgedEntryResult[] {
   const random01 = args.random01 ?? Math.random;
@@ -220,6 +231,7 @@ export function judgeBreedEntries(args: {
       ...scoreDogByJudgeWeights({
         dog: entry.dog,
         judge: args.judge,
+        showEpoch: args.showEpoch,
         random01,
       }),
     }))
@@ -414,6 +426,7 @@ function buildBreedAwards(args: {
 export function judgeBreedBlock(args: {
   entries: JudgingEntry[];
   judge: Judge;
+  showEpoch?: number;
   random01?: () => number;
 }): JudgedBreedBlock {
   const results = judgeBreedEntries(args);
@@ -466,6 +479,7 @@ function entrySexForResult(
 export function judgeGroup(args: {
   entries: JudgingEntry[];
   judge: Judge;
+  showEpoch?: number;
   random01?: () => number;
 }): JudgedShowAward[] {
   const results = judgeBreedEntries(args);
@@ -485,6 +499,7 @@ export function judgeGroup(args: {
 export function judgeBestInShow(args: {
   entries: JudgingEntry[];
   judge: Judge;
+  showEpoch?: number;
   random01?: () => number;
 }): JudgedShowAward[] {
   const results = judgeBreedEntries(args);
@@ -524,11 +539,13 @@ export function judgeBestInShow(args: {
 export function rankDogsByJudgeWeights(args: {
   dogs: Dog[];
   judge: Judge;
+  showEpoch?: number;
   random01?: () => number;
 }): JudgedDogBreakdown[] {
   return judgeBreedEntries({
     entries: args.dogs.map((dog) => ({ dog })),
     judge: args.judge,
+    showEpoch: args.showEpoch,
     random01: args.random01,
   }).map(({ showEntryId, finalRank, placementCode, ...result }) => result);
 }
