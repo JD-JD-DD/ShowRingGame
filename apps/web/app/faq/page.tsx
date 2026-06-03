@@ -166,6 +166,41 @@ const faqSections = [
       },
     ],
   },
+  {
+    title: "Kennel Prestige",
+    items: [
+      {
+        question: "What is kennel prestige?",
+        answer:
+          "Kennel prestige is a career-style score that measures a kennel's long-term show and breeding impact. The same score and rank are used on private kennel pages, public kennel profiles, bulletin board rank labels, and kennel Top Ten standings.",
+      },
+      {
+        question: "How are Breeding prestige points calculated?",
+        answer:
+          "A kennel earns 120 points for each champion it bred. It also earns 35 points for each unique champion-producing litter, meaning a litter with at least one kennel-bred CH. A litter counts once even if it produces multiple champions.",
+      },
+      {
+        question: "How are Show prestige points calculated?",
+        answer:
+          "A kennel earns 90 points for each champion finished owner-handled and 65 points for each champion finished with a handler. Major awards also add prestige: BIS is worth 90, RBIS is worth 60, G1 is worth 35, and G2 through G4 are worth 12 each.",
+      },
+      {
+        question: "How are Legacy prestige points calculated?",
+        answer:
+          "Legacy prestige uses current-year Top Ten standings. Breed Top Ten credits are worth 25 points when owned by the kennel and 35 points when bred by the kennel. All-breed Top Ten credits are worth 60 points when owned and 75 points when bred. A current #1 breed standing adds 50 points, and a current #1 all-breed standing adds 100 points.",
+      },
+      {
+        question: "How are Care prestige points calculated?",
+        answer:
+          "Care prestige currently awards 30 points for each kennel-bred champion with all four phenotype health tests completed in the green range.",
+      },
+      {
+        question: "What are the kennel prestige ranks?",
+        answer:
+          "Prestige ranks progress from New Kennel to Rising Kennel, Established Kennel, Respected Kennel, Premier Kennel, Elite Kennel, and Hallmark Kennel as the kennel's score grows.",
+      },
+    ],
+  },
 ];
 
 const beginnerTips = [
@@ -233,7 +268,13 @@ export default function FAQPage() {
           {faqSections.map((section) => (
             <section
               key={section.title}
-              id={section.title === "Health Testing" ? "health-testing" : undefined}
+              id={
+                section.title === "Health Testing"
+                  ? "health-testing"
+                  : section.title === "Kennel Prestige"
+                    ? "kennel-prestige"
+                    : undefined
+              }
               className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
             >
               <h2 className="text-2xl font-semibold text-white">
