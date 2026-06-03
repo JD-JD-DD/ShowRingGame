@@ -1,10 +1,8 @@
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
+import { getKennelPrestigeSummary } from "@/server/services/kennelPrestige.service";
 import { Prisma } from "@prisma/client";
-
-const STUD_LISTING_TYPES = ["STUD", "STUD_SERVICE", "PLAYER_STUD"] as const;
-const SALE_LISTING_TYPES = ["PLAYER_PUBLIC"] as const;
 
 export const BULLETIN_CATEGORIES = [
   {
@@ -79,9 +77,8 @@ type ThreadListRecord = {
 };
 
 export type KennelPrestigeBadges = {
-  championCount: number;
-  dogsAtStudCount: number;
-  dogsForSaleCount: number;
+  prestigeScore: number;
+  prestigeRank: string;
 };
 
 export type BulletinThreadListItem = {
@@ -159,44 +156,18 @@ async function badgesForKennels(
 
   for (const kennelId of uniqueKennelIds) {
     result.set(kennelId, {
-      championCount: 0,
-      dogsAtStudCount: 0,
-      dogsForSaleCount: 0,
+      prestigeScore: 0,
+      prestigeRank: "New Kennel",
     });
   }
 
   await Promise.all(
     uniqueKennelIds.map(async (kennelId) => {
-      const [championCount, dogsAtStudCount, dogsForSaleCount] =
-        await Promise.all([
-          db.dogTitleProgress.count({
-            where: {
-              currentTitleCode: "CH",
-              dog: {
-                OR: [{ ownerKennelId: kennelId }, { breederKennelId: kennelId }],
-              },
-            },
-          }),
-          db.dogListing.count({
-            where: {
-              sellerKennelId: kennelId,
-              status: "ACTIVE",
-              listingType: { in: [...STUD_LISTING_TYPES] },
-            },
-          }),
-          db.dogListing.count({
-            where: {
-              sellerKennelId: kennelId,
-              status: "ACTIVE",
-              listingType: { in: [...SALE_LISTING_TYPES] },
-            },
-          }),
-        ]);
+      const prestige = await getKennelPrestigeSummary(kennelId);
 
       result.set(kennelId, {
-        championCount,
-        dogsAtStudCount,
-        dogsForSaleCount,
+        prestigeScore: prestige.score,
+        prestigeRank: prestige.tier.label,
       });
     })
   );
@@ -225,9 +196,8 @@ function mapThreadListItem(
     badges:
       badgesByKennelId.get(thread.kennel.id) ??
       {
-        championCount: 0,
-        dogsAtStudCount: 0,
-        dogsForSaleCount: 0,
+        prestigeScore: 0,
+        prestigeRank: "New Kennel",
       },
   };
 }
@@ -497,9 +467,8 @@ export async function getBulletinThread(
       badges:
         badgesByKennelId.get(post.kennel.id) ??
         {
-          championCount: 0,
-          dogsAtStudCount: 0,
-          dogsForSaleCount: 0,
+          prestigeScore: 0,
+          prestigeRank: "New Kennel",
         },
     })),
   };

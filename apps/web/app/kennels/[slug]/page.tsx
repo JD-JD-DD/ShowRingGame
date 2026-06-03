@@ -7,6 +7,7 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import { getKennelPrestigeSummary } from "@/server/services/kennelPrestige.service";
 import { getShowDistrictRegion } from "@showring/rules";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -48,7 +49,6 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
       name: true,
       slug: true,
       homeDistrict: true,
-      reputationScore: true,
       publicSlogan: true,
     },
   });
@@ -60,6 +60,7 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
   const homeRegion = kennel.homeDistrict
     ? getShowDistrictRegion(kennel.homeDistrict)
     : null;
+  const prestige = await getKennelPrestigeSummary(kennel.id);
 
   await resolveDogDeaths({ kennelId: kennel.id, currentEpoch });
 
@@ -173,6 +174,12 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
                 My Kennel
               </Link>
               <Link
+                href="/shows/top-ten#kennel-top-ten"
+                className="rounded-2xl border border-fuchsia-300/25 bg-fuchsia-500/10 px-5 py-3 text-sm font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/20"
+              >
+                Kennel Top Ten
+              </Link>
+              <Link
                 href="/travel-map"
                 className="rounded-2xl border border-sky-300/25 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
               >
@@ -182,7 +189,7 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
           </div>
         </header>
 
-        <section className="mb-8 grid gap-4 md:grid-cols-4">
+        <section className="mb-8 grid gap-4 md:grid-cols-5">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="text-xs uppercase tracking-wide text-purple-200">
               Active Dogs
@@ -203,6 +210,17 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
             </div>
             <div className="mt-2 text-3xl font-semibold">
               {saleListings.length}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-fuchsia-300/20 bg-fuchsia-500/10 p-5">
+            <div className="text-xs uppercase tracking-wide text-fuchsia-100/80">
+              Prestige
+            </div>
+            <div className="mt-2 text-3xl font-semibold">
+              {prestige.score.toLocaleString()}
+            </div>
+            <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-fuchsia-100/70">
+              {prestige.tier.label}
             </div>
           </div>
           <div

@@ -3,7 +3,14 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
-import { SHOW_YEAR_HOURS } from "@showring/rules";
+import {
+  CURRENT_BREED_RELEASE,
+  SHOW_YEAR_HOURS,
+} from "@showring/rules";
+import {
+  getKennelPrestigeLeaderboard,
+  type KennelPrestigeLeaderboardRow,
+} from "@/server/services/kennelPrestige.service";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +19,7 @@ type PageProps = {
     year?: string | string[];
     breed?: string | string[];
     allTimeBreed?: string | string[];
+    kennelBreed?: string | string[];
   }>;
 };
 
@@ -38,15 +46,18 @@ function buildTopTenHref({
   year,
   breed,
   allTimeBreed,
+  kennelBreed,
 }: {
   year: number;
   breed?: string | null;
   allTimeBreed?: string | null;
+  kennelBreed?: string | null;
 }): string {
   const params = new URLSearchParams({ year: `${year}` });
 
   if (breed) params.set("breed", breed);
   if (allTimeBreed) params.set("allTimeBreed", allTimeBreed);
+  if (kennelBreed) params.set("kennelBreed", kennelBreed);
 
   return `/shows/top-ten?${params.toString()}`;
 }
@@ -75,7 +86,11 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
   const allTimeBreedQuery = firstQueryValue(
     resolvedSearchParams.allTimeBreed
   )?.toUpperCase();
-  const [years, breedOptions, allTimeBreedOptions] = await Promise.all([
+  const kennelBreedQuery = firstQueryValue(
+    resolvedSearchParams.kennelBreed
+  )?.toUpperCase();
+  const [years, breedOptions, allTimeBreedOptions, kennelBreedOptions] =
+    await Promise.all([
     db.dogYearlyPrestigeStat.findMany({
       distinct: ["gameYear"],
       orderBy: [{ gameYear: "desc" }],
@@ -126,6 +141,19 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
         },
       },
     }),
+    db.breed.findMany({
+      where: {
+        releaseVersion: {
+          lte: CURRENT_BREED_RELEASE,
+        },
+      },
+      orderBy: [{ groupName: "asc" }, { name: "asc" }],
+      select: {
+        code2: true,
+        name: true,
+        groupName: true,
+      },
+    }),
   ]);
   const selectedBreedCode =
     breedOptions.some((option) => option.breedCode2 === breedQuery)
@@ -140,11 +168,17 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
   const yearOptions = [
     ...new Set([fallbackYear, ...years.map((year) => year.gameYear)]),
   ].sort((a, b) => b - a);
+  const selectedKennelBreed =
+    kennelBreedOptions.find((breed) => breed.code2 === kennelBreedQuery) ??
+    kennelBreedOptions[0] ??
+    null;
   const [
     allBreedRows,
     breedRows,
     allTimeAllBreedTotals,
     allTimeBreedTotals,
+    kennelOverallRows,
+    kennelBreedRows,
   ] = await Promise.all([
     db.dogYearlyPrestigeStat.findMany({
       where: {
@@ -252,6 +286,13 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
           take: 10,
         })
       : Promise.resolve([]),
+    getKennelPrestigeLeaderboard({ take: 10 }),
+    selectedKennelBreed
+      ? getKennelPrestigeLeaderboard({
+          breedCode2: selectedKennelBreed.code2,
+          take: 10,
+        })
+      : Promise.resolve([]),
   ]);
   const selectedBreedName =
     breedOptions.find((option) => option.breedCode2 === selectedBreedCode)?.dog
@@ -332,6 +373,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                 year: selectedYear,
                 breed: selectedBreedCode,
                 allTimeBreed: selectedAllTimeBreedCode,
+                kennelBreed: selectedKennelBreed?.code2,
               })}
               className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
             >
@@ -365,6 +407,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                 year,
                 breed: selectedBreedCode,
                 allTimeBreed: selectedAllTimeBreedCode,
+                kennelBreed: selectedKennelBreed?.code2,
               })}
               className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                 year === selectedYear
@@ -399,6 +442,13 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
             ) : (
               <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
                 <input type="hidden" name="year" value={selectedYear} />
+                {selectedKennelBreed ? (
+                  <input
+                    type="hidden"
+                    name="kennelBreed"
+                    value={selectedKennelBreed.code2}
+                  />
+                ) : null}
                 {selectedAllTimeBreedCode ? (
                   <input
                     type="hidden"
@@ -440,6 +490,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                     href={buildTopTenHref({
                       year: selectedYear,
                       allTimeBreed: selectedAllTimeBreedCode,
+                      kennelBreed: selectedKennelBreed?.code2,
                     })}
                     className="rounded-xl border border-purple-300/25 bg-white/5 px-5 py-2.5 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
                   >
@@ -483,6 +534,13 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
             ) : (
               <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
                 <input type="hidden" name="year" value={selectedYear} />
+                {selectedKennelBreed ? (
+                  <input
+                    type="hidden"
+                    name="kennelBreed"
+                    value={selectedKennelBreed.code2}
+                  />
+                ) : null}
                 {selectedBreedCode ? (
                   <input type="hidden" name="breed" value={selectedBreedCode} />
                 ) : null}
@@ -520,6 +578,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                     href={buildTopTenHref({
                       year: selectedYear,
                       breed: selectedBreedCode,
+                      kennelBreed: selectedKennelBreed?.code2,
                     })}
                     className="rounded-xl border border-purple-300/25 bg-white/5 px-5 py-2.5 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
                   >
@@ -539,6 +598,90 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
               getMetric={(row) => row.breedDogsBeaten}
             />
           ) : null}
+        </div>
+      </section>
+
+      <section
+        id="kennel-top-ten"
+        className="mt-10 rounded-[28px] border border-fuchsia-300/15 bg-fuchsia-500/10 p-5"
+      >
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.25em] text-fuchsia-100/75">
+              Kennel Prestige
+            </p>
+            <h2 className="mt-2 text-3xl font-bold text-white">
+              Kennel Top Ten
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-purple-100/75">
+              Kennel rankings use the same prestige score shown on kennel
+              profiles, with an overall leaderboard and a breed-specific
+              leaderboard.
+            </p>
+          </div>
+
+          <form className="grid gap-3 sm:grid-cols-[minmax(14rem,1fr)_auto] sm:items-end">
+            <input type="hidden" name="year" value={selectedYear} />
+            {selectedBreedCode ? (
+              <input type="hidden" name="breed" value={selectedBreedCode} />
+            ) : null}
+            {selectedAllTimeBreedCode ? (
+              <input
+                type="hidden"
+                name="allTimeBreed"
+                value={selectedAllTimeBreedCode}
+              />
+            ) : null}
+            <div>
+              <label
+                htmlFor="kennelBreed"
+                className="mb-1 block text-xs uppercase tracking-wide text-fuchsia-100/70"
+              >
+                Kennel Breed
+              </label>
+              <select
+                id="kennelBreed"
+                name="kennelBreed"
+                defaultValue={selectedKennelBreed?.code2 ?? ""}
+                className="w-full rounded-xl border border-fuchsia-300/20 bg-black/25 px-3 py-2 text-sm text-white outline-none"
+              >
+                {kennelBreedOptions.map((breed) => (
+                  <option key={breed.code2} value={breed.code2}>
+                    {breed.name}
+                    {breed.groupName ? ` - ${breed.groupName}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              className="rounded-xl bg-fuchsia-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-fuchsia-500"
+            >
+              View Breed
+            </button>
+          </form>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <KennelRankingPanel
+            title="Top Ten Kennels Overall"
+            subtitle="All-breed kennel prestige"
+            rows={kennelOverallRows}
+          />
+          <KennelRankingPanel
+            title={
+              selectedKennelBreed
+                ? `Top Ten ${selectedKennelBreed.name} Kennels`
+                : "Top Ten Kennels By Breed"
+            }
+            subtitle={
+              selectedKennelBreed
+                ? `Prestige earned through ${selectedKennelBreed.name}s`
+                : "Choose a breed to view breed-specific prestige"
+            }
+            rows={kennelBreedRows}
+          />
         </div>
       </section>
     </main>
@@ -665,6 +808,76 @@ function RankingPanel<T extends {
               </div>
             );
           })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function KennelRankingPanel({
+  title,
+  subtitle,
+  rows,
+}: {
+  title: string;
+  subtitle: string;
+  rows: KennelPrestigeLeaderboardRow[];
+}) {
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
+      <div className="border-b border-white/10 px-5 py-4">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h3 className="text-2xl font-semibold text-white">{title}</h3>
+            <p className="mt-1 text-sm text-purple-100/60">{subtitle}</p>
+          </div>
+          <div className="rounded-full border border-fuchsia-300/25 bg-fuchsia-500/10 px-3 py-1 text-xs font-semibold text-fuchsia-100">
+            Prestige Score
+          </div>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="px-5 py-6 text-sm text-purple-100/70">
+          No kennel prestige has been earned here yet.
+        </div>
+      ) : (
+        <div className="divide-y divide-white/10">
+          {rows.map((row) => (
+            <Link
+              key={row.kennel.id}
+              href={`/kennels/${row.kennel.slug}`}
+              className="grid grid-cols-[3rem_minmax(0,1fr)_6rem] gap-4 px-5 py-3 text-sm transition hover:bg-white/5"
+            >
+              <div className="self-center text-2xl font-semibold text-fuchsia-100">
+                {row.rank}
+              </div>
+              <div className="min-w-0">
+                <div className="truncate font-semibold text-white">
+                  {row.kennel.name}
+                </div>
+                <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-fuchsia-100/70">
+                  {row.prestige.tier.label}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-[0.68rem] font-semibold uppercase tracking-wide text-purple-100/70">
+                  {row.prestige.metrics.championsBred > 0 ? (
+                    <span>{row.prestige.metrics.championsBred} bred CH</span>
+                  ) : null}
+                  {row.prestige.metrics.bestInShowWins > 0 ? (
+                    <span>{row.prestige.metrics.bestInShowWins} BIS</span>
+                  ) : null}
+                  {row.prestige.metrics.groupPlacements > 0 ? (
+                    <span>
+                      {row.prestige.metrics.groupPlacements} group placements
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <div className="self-center text-right text-2xl font-semibold text-white">
+                {row.prestige.score.toLocaleString()}
+              </div>
+            </Link>
+          ))}
         </div>
       )}
     </section>
