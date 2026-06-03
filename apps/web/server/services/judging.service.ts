@@ -53,6 +53,13 @@ const showBlockForJudgingArgs =
                   whelpedEpoch: true,
                 },
               },
+              healthConditionTruths: {
+                select: {
+                  conditionCode: true,
+                  geneticLiability: true,
+                  environmentModifier: true,
+                },
+              },
             },
           },
         },
@@ -101,6 +108,11 @@ type DogForEngine = {
     status: string;
     dueEpoch: number | null;
     whelpedEpoch: number | null;
+  }>;
+  healthConditionTruths?: Array<{
+    conditionCode: string;
+    geneticLiability: number;
+    environmentModifier: number;
   }>;
 };
 
@@ -171,6 +183,7 @@ function toEngineDogRecord(dog: DogForEngine): EngineDog {
     presentation: {
       dueEpoch: activePregnancy?.dueEpoch ?? null,
       lastWhelpedEpoch: latestWhelp?.whelpedEpoch ?? null,
+      phenotypeHealthTruths: dog.healthConditionTruths ?? [],
     },
     traits: {
       head: dog.traitHead,
@@ -1035,6 +1048,13 @@ async function createGroupAwardsForShowDay(args: {
                 whelpedEpoch: true,
               },
             },
+            healthConditionTruths: {
+              select: {
+                conditionCode: true,
+                geneticLiability: true,
+                environmentModifier: true,
+              },
+            },
             breed: {
               select: {
                 groupName: true,
@@ -1220,6 +1240,13 @@ async function createBestInShowAwardsForShowDay(args: {
                 status: true,
                 dueEpoch: true,
                 whelpedEpoch: true,
+              },
+            },
+            healthConditionTruths: {
+              select: {
+                conditionCode: true,
+                geneticLiability: true,
+                environmentModifier: true,
               },
             },
           },

@@ -131,6 +131,71 @@ const postWhelpCoat = presentedValue({
     lastWhelpedEpoch: SHOW_EPOCH - 63,
   },
 });
+const severeHipMovement = presentedValue({
+  ageHours: 3 * SHOW_YEAR_HOURS,
+  category: "MOVEMENT",
+  presentation: {
+    phenotypeHealthTruths: [
+      {
+        conditionCode: "HIP_DYSPLASIA",
+        geneticLiability: 0.9,
+        environmentModifier: 0,
+      },
+    ],
+  },
+});
+const severeHipCondition = presentedValue({
+  ageHours: 3 * SHOW_YEAR_HOURS,
+  category: "CONDITIONING_HANDLING",
+  presentation: {
+    phenotypeHealthTruths: [
+      {
+        conditionCode: "HIP_DYSPLASIA",
+        geneticLiability: 0.9,
+        environmentModifier: 0,
+      },
+    ],
+  },
+});
+const moderateHipMovement = presentedValue({
+  ageHours: 3 * SHOW_YEAR_HOURS,
+  category: "MOVEMENT",
+  presentation: {
+    phenotypeHealthTruths: [
+      {
+        conditionCode: "HIP_DYSPLASIA",
+        geneticLiability: 0.76,
+        environmentModifier: 0,
+      },
+    ],
+  },
+});
+const severeThyroidCondition = presentedValue({
+  ageHours: 3 * SHOW_YEAR_HOURS,
+  category: "CONDITIONING_HANDLING",
+  presentation: {
+    phenotypeHealthTruths: [
+      {
+        conditionCode: "THYROID",
+        geneticLiability: 0.92,
+        environmentModifier: 0,
+      },
+    ],
+  },
+});
+const autoimmuneThyroidMovement = presentedValue({
+  ageHours: 3 * SHOW_YEAR_HOURS,
+  category: "MOVEMENT",
+  presentation: {
+    phenotypeHealthTruths: [
+      {
+        conditionCode: "THYROID",
+        geneticLiability: 0.8,
+        environmentModifier: 0,
+      },
+    ],
+  },
+});
 
 assert.ok(
   sixMonthsMovement.presentedValue > eighteenMonthsMovement.presentedValue,
@@ -174,6 +239,22 @@ assert.ok(
 assert.ok(
   postWhelpCoat.presentedValue > twoYearsMovement.presentedValue,
   "Post-whelp coat presentation should still be affected during the 3-month window."
+);
+assert.ok(
+  severeHipMovement.presentedValue > moderateHipMovement.presentedValue,
+  "Severe hip dysplasia should affect movement more than moderate hip dysplasia."
+);
+assert.ok(
+  severeHipCondition.presentedValue > twoYearsMovement.presentedValue,
+  "Severe hip dysplasia should also affect conditioning."
+);
+assert.ok(
+  severeThyroidCondition.presentedValue > twoYearsMovement.presentedValue,
+  "Severe thyroid results should affect conditioning."
+);
+assert.ok(
+  autoimmuneThyroidMovement.presentedValue > twoYearsMovement.presentedValue,
+  "Autoimmune thyroiditis should have a mild movement presentation effect."
 );
 
 console.table([
@@ -253,6 +334,41 @@ console.table([
     trueValue: postWhelpCoat.baseValue,
     presented: postWhelpCoat.presentedValue,
     multiplier: postWhelpCoat.multiplier,
+  },
+  {
+    stage: "Moderate hip dysplasia",
+    category: "Movement",
+    trueValue: moderateHipMovement.baseValue,
+    presented: moderateHipMovement.presentedValue,
+    multiplier: moderateHipMovement.multiplier,
+  },
+  {
+    stage: "Severe hip dysplasia",
+    category: "Movement",
+    trueValue: severeHipMovement.baseValue,
+    presented: severeHipMovement.presentedValue,
+    multiplier: severeHipMovement.multiplier,
+  },
+  {
+    stage: "Severe hip dysplasia",
+    category: "Condition",
+    trueValue: severeHipCondition.baseValue,
+    presented: severeHipCondition.presentedValue,
+    multiplier: severeHipCondition.multiplier,
+  },
+  {
+    stage: "Autoimmune thyroiditis",
+    category: "Movement",
+    trueValue: autoimmuneThyroidMovement.baseValue,
+    presented: autoimmuneThyroidMovement.presentedValue,
+    multiplier: autoimmuneThyroidMovement.multiplier,
+  },
+  {
+    stage: "Reduced thyroid function",
+    category: "Condition",
+    trueValue: severeThyroidCondition.baseValue,
+    presented: severeThyroidCondition.presentedValue,
+    multiplier: severeThyroidCondition.multiplier,
   },
 ]);
 

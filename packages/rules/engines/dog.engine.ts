@@ -9,6 +9,15 @@ export type DogTraits = Record<TraitKey, number>;
 export type DogPresentationInfluences = {
   dueEpoch?: number | null;
   lastWhelpedEpoch?: number | null;
+  phenotypeHealthTruths?: Array<{
+    conditionCode: string;
+    geneticLiability: number;
+    environmentModifier: number;
+  }>;
+  phenotypeHealthResults?: Array<{
+    testTypeCode: string;
+    resultCode: string;
+  }>;
   conditioningMultiplierByCategory?: Partial<Record<JudgingCategory, number>>;
   groomingMultiplierByCategory?: Partial<Record<JudgingCategory, number>>;
   handlingMultiplierByCategory?: Partial<Record<JudgingCategory, number>>;
