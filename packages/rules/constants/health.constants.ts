@@ -5,6 +5,11 @@ export const PHENOTYPE_HEALTH_TEST_CODES = [
   "THYROID",
 ] as const;
 
+export const BRUCELLOSIS_DISEASE_CODE = "BRUCELLOSIS";
+export const BRUCELLOSIS_TEST_FEE = 75;
+export const BRUCELLOSIS_TEST_VALID_HOURS = 30;
+export const BRUCELLOSIS_FOUNDATION_INFECTION_RATE = 0.004;
+
 export type PhenotypeHealthTestCode =
   (typeof PHENOTYPE_HEALTH_TEST_CODES)[number];
 

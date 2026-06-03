@@ -14,6 +14,7 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
 import {
   BREEDING_FEE,
+  BRUCELLOSIS_TEST_FEE,
   calculatePedigreeCoi,
   DAM_MAX_BREED_AGE_HOURS,
   GESTATION_HOURS,
@@ -61,6 +62,8 @@ type DogCardDto = {
   inBreedingConflict: boolean;
   studListingId: string | null;
   studFeeAmount: number | null;
+  brucellosisValidUntilEpoch: number | null;
+  requiresBrucellosisNegativeDam: boolean;
   coiPercent: number | null;
   lastLitterEpoch: number | null;
   healthTests: HealthTest[];
@@ -118,6 +121,66 @@ function formatGameDate(epoch: number) {
     year: "numeric",
     timeZone: "UTC",
   });
+}
+
+function brucellosisStatusLabel(dog: DogCardDto | null) {
+  if (!dog) return "Select a dog";
+
+  return dog.brucellosisValidUntilEpoch === null
+    ? "No valid negative test"
+    : `Negative through ${formatGameDate(dog.brucellosisValidUntilEpoch)}`;
+}
+
+function requiresDamBrucellosisTest(
+  dam: DogCardDto | null,
+  sire: DogCardDto | null
+) {
+  return Boolean(
+    dam &&
+      sire &&
+      !sire.isOwnedByCurrentKennel &&
+      sire.requiresBrucellosisNegativeDam &&
+      dam.brucellosisValidUntilEpoch === null
+  );
+}
+
+function shouldChargeDamBrucellosisTest(args: {
+  dam: DogCardDto | null;
+  sire: DogCardDto | null;
+  testDamBrucellosis: boolean;
+}) {
+  if (!args.dam || args.dam.brucellosisValidUntilEpoch !== null) {
+    return false;
+  }
+
+  return (
+    args.testDamBrucellosis ||
+    requiresDamBrucellosisTest(args.dam, args.sire)
+  );
+}
+
+function shouldChargeSireBrucellosisTest(args: {
+  sire: DogCardDto | null;
+  testSireBrucellosis: boolean;
+}) {
+  return Boolean(
+    args.sire &&
+      args.sire.isOwnedByCurrentKennel &&
+      args.sire.brucellosisValidUntilEpoch === null &&
+      args.testSireBrucellosis
+  );
+}
+
+function brucellosisTestCost(args: {
+  dam: DogCardDto | null;
+  sire: DogCardDto | null;
+  testDamBrucellosis: boolean;
+  testSireBrucellosis: boolean;
+}) {
+  return (
+    (shouldChargeDamBrucellosisTest(args) ? BRUCELLOSIS_TEST_FEE : 0) +
+    (shouldChargeSireBrucellosisTest(args) ? BRUCELLOSIS_TEST_FEE : 0)
+  );
 }
 
 function formatCategoryName(key: string): string {
@@ -508,6 +571,10 @@ function DogOptionCard({
           <>
             <span>Owner: {dog.ownerKennelName ?? "Player Kennel"}</span>
             <span>Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</span>
+            <span>Brucellosis: {brucellosisStatusLabel(dog)}</span>
+            {dog.requiresBrucellosisNegativeDam ? (
+              <span>Requires negative bitch test</span>
+            ) : null}
           </>
         ) : null}
         {projectedCoi ? (
@@ -682,6 +749,12 @@ function FreeMateCard({
         {outsideKennel ? (
           <span>Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</span>
         ) : null}
+        {dog.sex === "M" ? (
+          <span>Brucellosis: {brucellosisStatusLabel(dog)}</span>
+        ) : null}
+        {outsideKennel && dog.requiresBrucellosisNegativeDam ? (
+          <span>Requires negative bitch test</span>
+        ) : null}
       </div>
       <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-3">
         <MiniTraitSummary dog={dog} />
@@ -694,6 +767,10 @@ function FreeBreedingSummary({
   kennelBalance,
   sire,
   dam,
+  testDamBrucellosis,
+  testSireBrucellosis,
+  onTestDamBrucellosisChange,
+  onTestSireBrucellosisChange,
   submitting,
   redirecting,
   errorMessage,
@@ -703,13 +780,24 @@ function FreeBreedingSummary({
   kennelBalance: number;
   sire: DogCardDto | null;
   dam: DogCardDto | null;
+  testDamBrucellosis: boolean;
+  testSireBrucellosis: boolean;
+  onTestDamBrucellosisChange: (checked: boolean) => void;
+  onTestSireBrucellosisChange: (checked: boolean) => void;
   submitting: boolean;
   redirecting: boolean;
   errorMessage: string;
   successMessage: string;
   onSubmit: () => void;
 }) {
-  const totalCost = BREEDING_FEE + (sire?.studFeeAmount ?? 0);
+  const diseaseTestCost = brucellosisTestCost({
+    dam,
+    sire,
+    testDamBrucellosis,
+    testSireBrucellosis,
+  });
+  const totalCost = BREEDING_FEE + (sire?.studFeeAmount ?? 0) + diseaseTestCost;
+  const damTestRequired = requiresDamBrucellosisTest(dam, sire);
   const canSubmit =
     sire !== null &&
     dam !== null &&
@@ -740,12 +828,68 @@ function FreeBreedingSummary({
           <div className="mt-2 flex justify-between gap-3">
             <span>Stud fee</span><span>{formatMoney(sire?.studFeeAmount ?? 0)}</span>
           </div>
+          <div className="mt-2 flex justify-between gap-3">
+            <span>Brucellosis tests</span><span>{formatMoney(diseaseTestCost)}</span>
+          </div>
           <div className="mt-2 flex justify-between gap-3 border-t border-white/10 pt-2 font-semibold text-white">
             <span>Total</span><span>{formatMoney(totalCost)}</span>
           </div>
           <div className="mt-2 flex justify-between gap-3">
             <span>Balance after</span><span>{formatMoney(kennelBalance - totalCost)}</span>
           </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-purple-100/70">
+          <div className="mb-3 font-semibold text-white">Brucellosis testing</div>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              checked={
+                damTestRequired ||
+                (testDamBrucellosis &&
+                  dam !== null &&
+                  dam.brucellosisValidUntilEpoch === null)
+              }
+              disabled={
+                dam === null ||
+                dam.brucellosisValidUntilEpoch !== null ||
+                damTestRequired
+              }
+              onChange={(event) =>
+                onTestDamBrucellosisChange(event.target.checked)
+              }
+            />
+            <span>
+              Test dam ({formatMoney(BRUCELLOSIS_TEST_FEE)}) -{" "}
+              {brucellosisStatusLabel(dam)}
+              {damTestRequired ? " - required by stud owner" : ""}
+            </span>
+          </label>
+          <label className="mt-2 flex items-start gap-2">
+            <input
+              type="checkbox"
+              checked={
+                testSireBrucellosis &&
+                sire !== null &&
+                sire.isOwnedByCurrentKennel &&
+                sire.brucellosisValidUntilEpoch === null
+              }
+              disabled={
+                sire === null ||
+                !sire.isOwnedByCurrentKennel ||
+                sire.brucellosisValidUntilEpoch !== null
+              }
+              onChange={(event) =>
+                onTestSireBrucellosisChange(event.target.checked)
+              }
+            />
+            <span>
+              Test sire ({formatMoney(BRUCELLOSIS_TEST_FEE)}) -{" "}
+              {brucellosisStatusLabel(sire)}
+              {sire && !sire.isOwnedByCurrentKennel
+                ? " - outside stud owner controls sire testing"
+                : ""}
+            </span>
+          </label>
         </div>
         <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-purple-100/70">
           Pregnancy check in about {PREG_CHECK_HOURS} game days. Expected litter
@@ -980,6 +1124,10 @@ function PairingAnalysis({
   dam,
   sire,
   pedigree,
+  testDamBrucellosis,
+  testSireBrucellosis,
+  onTestDamBrucellosisChange,
+  onTestSireBrucellosisChange,
   submitting,
   redirecting,
   errorMessage,
@@ -991,6 +1139,10 @@ function PairingAnalysis({
   dam: DogCardDto;
   sire: DogCardDto;
   pedigree: PlannerPedigreeDog[];
+  testDamBrucellosis: boolean;
+  testSireBrucellosis: boolean;
+  onTestDamBrucellosisChange: (checked: boolean) => void;
+  onTestSireBrucellosisChange: (checked: boolean) => void;
   submitting: boolean;
   redirecting: boolean;
   errorMessage: string;
@@ -998,7 +1150,14 @@ function PairingAnalysis({
   onSubmit: () => void;
 }) {
   const coi = pairingCoi(sire, dam, pedigree);
-  const totalCost = BREEDING_FEE + (sire.studFeeAmount ?? 0);
+  const diseaseTestCost = brucellosisTestCost({
+    dam,
+    sire,
+    testDamBrucellosis,
+    testSireBrucellosis,
+  });
+  const totalCost = BREEDING_FEE + (sire.studFeeAmount ?? 0) + diseaseTestCost;
+  const damTestRequired = requiresDamBrucellosisTest(dam, sire);
   const bothHealthClear =
     hasAllGreenPhenotypeHealthTests(dam.healthTests) &&
     hasAllGreenPhenotypeHealthTests(sire.healthTests);
@@ -1080,6 +1239,9 @@ function PairingAnalysis({
             <div className="flex justify-between gap-3">
               <span>Stud fee</span><span>{formatMoney(sire.studFeeAmount ?? 0)}</span>
             </div>
+            <div className="flex justify-between gap-3">
+              <span>Brucellosis tests</span><span>{formatMoney(diseaseTestCost)}</span>
+            </div>
             <div className="flex justify-between gap-3 border-t border-white/10 pt-2 font-semibold text-white">
               <span>Total</span><span>{formatMoney(totalCost)}</span>
             </div>
@@ -1094,6 +1256,62 @@ function PairingAnalysis({
             <div>
               Dam may breed again after: {formatGameDate(projectedCooldownUntil)}
             </div>
+          </div>
+
+          <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 text-xs leading-5 text-purple-100/70">
+            <div className="mb-3 font-semibold text-white">
+              Brucellosis testing
+            </div>
+            <label className="flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={
+                  damTestRequired ||
+                  (testDamBrucellosis &&
+                    dam.brucellosisValidUntilEpoch === null)
+                }
+                disabled={
+                  dam.brucellosisValidUntilEpoch !== null || damTestRequired
+                }
+                onChange={(event) =>
+                  onTestDamBrucellosisChange(event.target.checked)
+                }
+              />
+              <span>
+                Test dam ({formatMoney(BRUCELLOSIS_TEST_FEE)}) -{" "}
+                {brucellosisStatusLabel(dam)}
+                {damTestRequired ? " - required by stud owner" : ""}
+              </span>
+            </label>
+            <label className="mt-2 flex items-start gap-2">
+              <input
+                type="checkbox"
+                checked={
+                  testSireBrucellosis &&
+                  sire.isOwnedByCurrentKennel &&
+                  sire.brucellosisValidUntilEpoch === null
+                }
+                disabled={
+                  !sire.isOwnedByCurrentKennel ||
+                  sire.brucellosisValidUntilEpoch !== null
+                }
+                onChange={(event) =>
+                  onTestSireBrucellosisChange(event.target.checked)
+                }
+              />
+              <span>
+                Test sire ({formatMoney(BRUCELLOSIS_TEST_FEE)}) -{" "}
+                {brucellosisStatusLabel(sire)}
+                {!sire.isOwnedByCurrentKennel
+                  ? " - outside stud owner controls sire testing"
+                  : ""}
+              </span>
+            </label>
+            {sire.requiresBrucellosisNegativeDam ? (
+              <div className="mt-2 font-semibold text-sky-100">
+                This stud owner requires a negative bitch test.
+              </div>
+            ) : null}
           </div>
 
           {errorMessage ? (
@@ -1285,6 +1503,8 @@ export default function BreedPageClient({
   const [sireSource, setSireSource] = useState<SireSource>("ALL");
   const [sireSort, setSireSort] = useState<SireSort>("RECOMMENDED");
   const [shortlistedSireIds, setShortlistedSireIds] = useState<string[]>([]);
+  const [testDamBrucellosis, setTestDamBrucellosis] = useState(false);
+  const [testSireBrucellosis, setTestSireBrucellosis] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -1387,12 +1607,16 @@ export default function BreedPageClient({
     if (selectedDam?.breedCode2 !== nextBreedCode) setDamId("");
     if (selectedSire?.breedCode2 !== nextBreedCode) setSireId("");
     setShortlistedSireIds([]);
+    setTestDamBrucellosis(false);
+    setTestSireBrucellosis(false);
   }
 
   function chooseDam(nextDamId: string) {
     if (nextDamId !== damId) {
       setSireId("");
       setShortlistedSireIds([]);
+      setTestDamBrucellosis(false);
+      setTestSireBrucellosis(false);
     }
 
     setDamId(nextDamId);
@@ -1423,6 +1647,15 @@ export default function BreedPageClient({
           primaryDogId: selectedSire.id,
           mateDogId: selectedDam.id,
           studListingId: selectedSire.studListingId,
+          testDamBrucellosis: shouldChargeDamBrucellosisTest({
+            dam: selectedDam,
+            sire: selectedSire,
+            testDamBrucellosis,
+          }),
+          testSireBrucellosis: shouldChargeSireBrucellosisTest({
+            sire: selectedSire,
+            testSireBrucellosis,
+          }),
         }),
       });
       const data = await response.json();
@@ -1476,9 +1709,15 @@ export default function BreedPageClient({
                     key={`${dog.id}-${dog.studListingId ?? "owned"}`}
                     dog={dog}
                     selected={dog.id === selectedMate?.id}
-                    onSelect={() =>
-                      selectingDams ? setDamId(dog.id) : setSireId(dog.id)
-                    }
+                    onSelect={() => {
+                      if (selectingDams) {
+                        setDamId(dog.id);
+                      } else {
+                        setSireId(dog.id);
+                      }
+                      setTestDamBrucellosis(false);
+                      setTestSireBrucellosis(false);
+                    }}
                   />
                 ))
               ) : (
@@ -1493,6 +1732,10 @@ export default function BreedPageClient({
               kennelBalance={kennelBalance}
               sire={selectedSire}
               dam={selectedDam}
+              testDamBrucellosis={testDamBrucellosis}
+              testSireBrucellosis={testSireBrucellosis}
+              onTestDamBrucellosisChange={setTestDamBrucellosis}
+              onTestSireBrucellosisChange={setTestSireBrucellosis}
               submitting={submitting}
               redirecting={redirecting}
               errorMessage={errorMessage}
@@ -1631,7 +1874,11 @@ export default function BreedPageClient({
                           pairingDam={selectedDam}
                           pedigree={pedigree}
                           shortlisted={shortlistedSireIds.includes(dog.id)}
-                          onSelect={() => setSireId(dog.id)}
+                          onSelect={() => {
+                            setSireId(dog.id);
+                            setTestDamBrucellosis(false);
+                            setTestSireBrucellosis(false);
+                          }}
                           onToggleShortlist={() => toggleShortlist(dog.id)}
                         />
                       ))
@@ -1659,6 +1906,10 @@ export default function BreedPageClient({
               dam={selectedDam}
               sire={selectedSire}
               pedigree={pedigree}
+              testDamBrucellosis={testDamBrucellosis}
+              testSireBrucellosis={testSireBrucellosis}
+              onTestDamBrucellosisChange={setTestDamBrucellosis}
+              onTestSireBrucellosisChange={setTestSireBrucellosis}
               submitting={submitting}
               redirecting={redirecting}
               errorMessage={errorMessage}

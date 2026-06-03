@@ -8,6 +8,13 @@ import {
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
+  getValidNegativeBrucellosisTest,
+  infectPuppiesFromDamBrucellosis,
+  runBrucellosisTest,
+  transmitBrucellosisThroughBreeding,
+} from "@/server/services/infectiousDisease.service";
+import {
+  BRUCELLOSIS_TEST_FEE,
   BREEDING_FEE,
   calculatePedigreeCoi,
   COI_CALCULATION_MAX_GENERATIONS,
@@ -621,6 +628,13 @@ export async function resolveBreedingProgressForKennel(args: {
           outcome.puppies.map((puppy) => puppy.dogId)
         );
 
+        await infectPuppiesFromDamBrucellosis(tx, {
+          damId: fresh.damId,
+          puppyDogIds: outcome.puppies.map((puppy) => puppy.dogId),
+          currentEpoch,
+          breedingAttemptId: fresh.id,
+        });
+
         await tx.breedingAttempt.update({
           where: { id: fresh.id },
           data: {
@@ -747,8 +761,16 @@ export async function createBreedingAttemptForKennel(args: {
   mateDogId: string;
   studListingId?: string;
   currentEpoch: number;
+  testDamBrucellosis?: boolean;
+  testSireBrucellosis?: boolean;
 }) {
-  const { kennelId, primaryDogId, mateDogId, studListingId, currentEpoch } = args;
+  const {
+    kennelId,
+    primaryDogId,
+    mateDogId,
+    studListingId,
+    currentEpoch,
+  } = args;
 
   await resolveDogDeaths({ kennelId, currentEpoch });
   await resolveDogDeaths({ currentEpoch, dogIds: [primaryDogId, mateDogId] });
@@ -860,6 +882,7 @@ export async function createBreedingAttemptForKennel(args: {
     let studFeeAmount = 0;
     let studSellerKennelId: string | null = null;
     let studSellerBalanceAfter: number | null = null;
+    let requiresBrucellosisNegativeDam = false;
 
     if (usesPublicStud) {
       const studListing = await tx.dogListing.findFirst({
@@ -874,6 +897,7 @@ export async function createBreedingAttemptForKennel(args: {
           id: true,
           askingPrice: true,
           sellerKennelId: true,
+          requiresBrucellosisNegativeDam: true,
           dog: {
             select: {
               id: true,
@@ -903,7 +927,33 @@ export async function createBreedingAttemptForKennel(args: {
 
       studFeeAmount = studListing.askingPrice;
       studSellerKennelId = studListing.sellerKennelId;
+      requiresBrucellosisNegativeDam =
+        studListing.requiresBrucellosisNegativeDam;
     }
+
+    const publicStudRequiresDamNegative =
+      usesPublicStud && Boolean(requiresBrucellosisNegativeDam);
+    const [validDamBrucellosisTest, validSireBrucellosisTest] =
+      await Promise.all([
+        getValidNegativeBrucellosisTest(tx, {
+          dogId: dam.id,
+          currentEpoch,
+        }),
+        getValidNegativeBrucellosisTest(tx, {
+          dogId: sire.id,
+          currentEpoch,
+        }),
+      ]);
+    const shouldTestDamBrucellosis =
+      Boolean(args.testDamBrucellosis) ||
+      (publicStudRequiresDamNegative && !validDamBrucellosisTest);
+    const shouldTestSireBrucellosis =
+      !usesPublicStud &&
+      Boolean(args.testSireBrucellosis) &&
+      !validSireBrucellosisTest;
+    const brucellosisTestCost =
+      (shouldTestDamBrucellosis ? BRUCELLOSIS_TEST_FEE : 0) +
+      (shouldTestSireBrucellosis ? BRUCELLOSIS_TEST_FEE : 0);
 
     const kennel = await tx.kennel.findUnique({
       where: { id: kennelId },
@@ -915,16 +965,91 @@ export async function createBreedingAttemptForKennel(args: {
     }
 
     const totalCost = BREEDING_FEE + studFeeAmount;
+    const totalCostWithTests = totalCost + brucellosisTestCost;
 
-    if (kennel.balance < totalCost) {
+    if (kennel.balance < totalCostWithTests) {
       throw new Error(
         usesPublicStud
-          ? "Insufficient funds for the breeding and stud fees."
-          : "Insufficient funds for the breeding fee."
+          ? "Insufficient funds for the breeding, stud, and brucellosis test fees."
+          : "Insufficient funds for the breeding and brucellosis test fees."
       );
     }
 
-    const balanceAfterBreedingFee = kennel.balance - BREEDING_FEE;
+    let buyerRunningBalance = kennel.balance;
+    const positiveBrucellosisResults: string[] = [];
+
+    if (shouldTestDamBrucellosis) {
+      const test = await runBrucellosisTest(tx, {
+        dogId: dam.id,
+        currentEpoch,
+      });
+      buyerRunningBalance -= BRUCELLOSIS_TEST_FEE;
+
+      await tx.ledgerTransaction.create({
+        data: {
+          kennelId: kennel.id,
+          transactionType: "HEALTH_TEST_FEE",
+          amount: -BRUCELLOSIS_TEST_FEE,
+          balanceAfter: buyerRunningBalance,
+          occurredAtEpoch: currentEpoch,
+          dogId: dam.id,
+          memo: `Brucellosis test for ${displayDogName(dam)}.`,
+          metadataJson: {
+            diseaseCode: "BRUCELLOSIS",
+            resultCode: test.resultCode,
+          },
+        },
+      });
+
+      if (test.resultCode === "POSITIVE") {
+        positiveBrucellosisResults.push(displayDogName(dam));
+      }
+    }
+
+    if (shouldTestSireBrucellosis) {
+      const test = await runBrucellosisTest(tx, {
+        dogId: sire.id,
+        currentEpoch,
+      });
+      buyerRunningBalance -= BRUCELLOSIS_TEST_FEE;
+
+      await tx.ledgerTransaction.create({
+        data: {
+          kennelId: kennel.id,
+          transactionType: "HEALTH_TEST_FEE",
+          amount: -BRUCELLOSIS_TEST_FEE,
+          balanceAfter: buyerRunningBalance,
+          occurredAtEpoch: currentEpoch,
+          dogId: sire.id,
+          memo: `Brucellosis test for ${displayDogName(sire)}.`,
+          metadataJson: {
+            diseaseCode: "BRUCELLOSIS",
+            resultCode: test.resultCode,
+          },
+        },
+      });
+
+      if (test.resultCode === "POSITIVE") {
+        positiveBrucellosisResults.push(displayDogName(sire));
+      }
+    }
+
+    if (brucellosisTestCost > 0) {
+      await tx.kennel.update({
+        where: { id: kennel.id },
+        data: { balance: buyerRunningBalance },
+      });
+    }
+
+    if (positiveBrucellosisResults.length > 0) {
+      return {
+        blockedMessage: `Breeding stopped. Brucellosis test positive for ${positiveBrucellosisResults.join(
+          " and "
+        )}.`,
+      };
+    }
+
+    const balanceAfterBreedingFee = buyerRunningBalance - BREEDING_FEE;
     const buyerBalanceAfter = balanceAfterBreedingFee - studFeeAmount;
 
     await tx.kennel.update({
@@ -994,8 +1119,16 @@ export async function createBreedingAttemptForKennel(args: {
           damId: dam.id,
           breedingAttemptId: createdAttempt.id,
           studListingId: studListingId ?? null,
+          brucellosisTestCost,
         },
       },
+    });
+
+    await transmitBrucellosisThroughBreeding(tx, {
+      sireId: sire.id,
+      damId: dam.id,
+      currentEpoch,
+      breedingAttemptId: createdAttempt.id,
     });
 
     if (studSellerKennelId && studFeeAmount > 0) {
@@ -1049,16 +1182,22 @@ export async function createBreedingAttemptForKennel(args: {
       });
     }
 
-    return createdAttempt;
+    return {
+      attempt: createdAttempt,
+    };
   });
 
+  if ("blockedMessage" in attempt) {
+    throw new Error(attempt.blockedMessage);
+  }
+
   return {
-    ...attempt,
+    ...attempt.attempt,
     sireName: displayDogName(sire),
     damName: displayDogName(dam),
     sireVisibleCategories: getVisibleCategories(sire),
     damVisibleCategories: getVisibleCategories(dam),
-    hoursUntilPregCheck: Math.max(0, attempt.pregCheckEpoch! - currentEpoch),
-    hoursUntilDue: Math.max(0, attempt.dueEpoch! - currentEpoch),
+    hoursUntilPregCheck: Math.max(0, attempt.attempt.pregCheckEpoch! - currentEpoch),
+    hoursUntilDue: Math.max(0, attempt.attempt.dueEpoch! - currentEpoch),
   };
 }

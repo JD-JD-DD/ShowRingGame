@@ -3,12 +3,13 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { getCurrentEpoch } from "@/lib/gameClock";
+import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import TraitLine from "@/components/ui/TraitLine";
 import {
+  BRUCELLOSIS_DISEASE_CODE,
   CURRENT_BREED_RELEASE,
   MIN_BREED_AGE_HOURS,
   deriveVisibleCategoriesFromTraits,
@@ -41,6 +42,50 @@ function formatCategoryName(key: string): string {
   return key
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatGameDate(epoch: number) {
+  return epochToDate(epoch).toLocaleDateString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function validBrucellosisUntil(
+  dog: {
+    infectiousDiseaseStatuses: Array<{
+      diseaseCode: string;
+      status: string;
+    }>;
+    infectiousDiseaseTests: Array<{
+      diseaseCode: string;
+      resultCode: string;
+      validUntilEpoch: number | null;
+    }>;
+  },
+  currentEpoch: number
+): number | null {
+  const infected = dog.infectiousDiseaseStatuses.some(
+    (status) =>
+      status.diseaseCode === BRUCELLOSIS_DISEASE_CODE &&
+      status.status === "INFECTED"
+  );
+
+  if (infected) {
+    return null;
+  }
+
+  return (
+    dog.infectiousDiseaseTests.find(
+      (test) =>
+        test.diseaseCode === BRUCELLOSIS_DISEASE_CODE &&
+        test.resultCode === "NEGATIVE" &&
+        test.validUntilEpoch !== null &&
+        test.validUntilEpoch >= currentEpoch
+    )?.validUntilEpoch ?? null
+  );
 }
 
 export default async function StudsPage({ searchParams }: PageProps) {
@@ -129,6 +174,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
     select: {
       id: true,
       askingPrice: true,
+      requiresBrucellosisNegativeDam: true,
       dog: {
         select: {
           id: true,
@@ -159,6 +205,26 @@ export default async function StudsPage({ searchParams }: PageProps) {
           traitShowShine: true,
           traitFeet: true,
           traitTopline: true,
+          infectiousDiseaseStatuses: {
+            where: {
+              diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+            },
+            select: {
+              diseaseCode: true,
+              status: true,
+            },
+          },
+          infectiousDiseaseTests: {
+            where: {
+              diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+            },
+            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+            select: {
+              diseaseCode: true,
+              resultCode: true,
+              validUntilEpoch: true,
+            },
+          },
         },
       },
     },
@@ -246,6 +312,10 @@ export default async function StudsPage({ searchParams }: PageProps) {
           <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {listings.map((listing) => {
               const dog = listing.dog;
+              const brucellosisValidUntil = validBrucellosisUntil(
+                dog,
+                currentEpoch
+              );
               const visibleCategories = deriveVisibleCategoriesFromTraits({
                 head: dog.traitHead,
                 forequarters: dog.traitForequarters,
@@ -309,6 +379,28 @@ export default async function StudsPage({ searchParams }: PageProps) {
                         </div>
                         <div className="mt-1 font-medium text-white">
                           {ageLabel(Math.max(0, currentEpoch - dog.birthEpoch))}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-purple-200">
+                          Brucellosis
+                        </div>
+                        <div className="mt-1 font-medium text-white">
+                          {brucellosisValidUntil === null
+                            ? "No valid negative test"
+                            : `Negative through ${formatGameDate(
+                                brucellosisValidUntil
+                              )}`}
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-purple-200">
+                          Bitch Requirement
+                        </div>
+                        <div className="mt-1 font-medium text-white">
+                          {listing.requiresBrucellosisNegativeDam
+                            ? "Negative test required"
+                            : "No test requirement"}
                         </div>
                       </div>
                     </div>

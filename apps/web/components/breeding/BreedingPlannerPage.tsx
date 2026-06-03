@@ -5,6 +5,7 @@ import { getSessionUserId } from "@/lib/session";
 import BreedPageClient from "@/components/breeding/BreedPageClient";
 import {
   DAM_MAX_BREED_AGE_HOURS,
+  BRUCELLOSIS_DISEASE_CODE,
   MIN_BREED_AGE_HOURS,
   WHELPING_COOLDOWN_HOURS,
   deriveVisibleCategoriesFromTraits,
@@ -42,6 +43,8 @@ type DogCardDto = {
   inBreedingConflict: boolean;
   studListingId: string | null;
   studFeeAmount: number | null;
+  brucellosisValidUntilEpoch: number | null;
+  requiresBrucellosisNegativeDam: boolean;
   coiPercent: number | null;
   lastLitterEpoch: number | null;
   healthTests: Array<{
@@ -54,6 +57,41 @@ type DogCardDto = {
 function firstQueryValue(value: string | string[] | undefined): string | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
+}
+
+function validBrucellosisUntil(
+  dog: {
+    infectiousDiseaseStatuses: Array<{
+      diseaseCode: string;
+      status: string;
+    }>;
+    infectiousDiseaseTests: Array<{
+      diseaseCode: string;
+      resultCode: string;
+      validUntilEpoch: number | null;
+    }>;
+  },
+  currentEpoch: number
+): number | null {
+  const infected = dog.infectiousDiseaseStatuses.some(
+    (status) =>
+      status.diseaseCode === BRUCELLOSIS_DISEASE_CODE &&
+      status.status === "INFECTED"
+  );
+
+  if (infected) {
+    return null;
+  }
+
+  return (
+    dog.infectiousDiseaseTests.find(
+      (test) =>
+        test.diseaseCode === BRUCELLOSIS_DISEASE_CODE &&
+        test.resultCode === "NEGATIVE" &&
+        test.validUntilEpoch !== null &&
+        test.validUntilEpoch >= currentEpoch
+    )?.validUntilEpoch ?? null
+  );
 }
 
 export default async function BreedingPlannerPage({
@@ -160,6 +198,26 @@ export default async function BreedingPlannerPage({
           resultCode: true,
         },
       },
+      infectiousDiseaseStatuses: {
+        where: {
+          diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+        },
+        select: {
+          diseaseCode: true,
+          status: true,
+        },
+      },
+      infectiousDiseaseTests: {
+        where: {
+          diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+        },
+        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+        select: {
+          diseaseCode: true,
+          resultCode: true,
+          validUntilEpoch: true,
+        },
+      },
     },
     orderBy: [{ breedCode2: "asc" }, { birthEpoch: "asc" }],
   });
@@ -202,6 +260,8 @@ export default async function BreedingPlannerPage({
       inBreedingConflict: inBreedingConflict || inPostWhelpCooldown,
       studListingId: null,
       studFeeAmount: null,
+      brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
+      requiresBrucellosisNegativeDam: false,
       coiPercent: dog.coiPercent,
       lastLitterEpoch,
       healthTests: dog.healthTests,
@@ -264,6 +324,7 @@ export default async function BreedingPlannerPage({
     select: {
       id: true,
       askingPrice: true,
+      requiresBrucellosisNegativeDam: true,
       dog: {
         select: {
           id: true,
@@ -307,6 +368,26 @@ export default async function BreedingPlannerPage({
               resultCode: true,
             },
           },
+          infectiousDiseaseStatuses: {
+            where: {
+              diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+            },
+            select: {
+              diseaseCode: true,
+              status: true,
+            },
+          },
+          infectiousDiseaseTests: {
+            where: {
+              diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+            },
+            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+            select: {
+              diseaseCode: true,
+              resultCode: true,
+              validUntilEpoch: true,
+            },
+          },
         },
       },
     },
@@ -337,6 +418,9 @@ export default async function BreedingPlannerPage({
       inBreedingConflict: false,
       studListingId: listing.id,
       studFeeAmount: listing.askingPrice,
+      brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
+      requiresBrucellosisNegativeDam:
+        listing.requiresBrucellosisNegativeDam,
       coiPercent: dog.coiPercent,
       lastLitterEpoch: null,
       healthTests: dog.healthTests,

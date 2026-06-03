@@ -53,6 +53,8 @@ export async function POST(
 
     const formData = await request.formData();
     const studFeeAmount = parseWholeDollarPrice(formData.get("studFeeAmount"));
+    const requiresBrucellosisNegativeDam =
+      formData.get("requiresBrucellosisNegativeDam") === "on";
 
     if (studFeeAmount === null || studFeeAmount < 1) {
       return redirectWithSaleError(
@@ -67,6 +69,7 @@ export async function POST(
       sellerKennelId: kennel.id,
       currentEpoch: getCurrentEpoch(),
       studFeeAmount,
+      requiresBrucellosisNegativeDam,
     });
 
     return redirectWithSaleMessage(request, dogId, "Dog listed at stud.");

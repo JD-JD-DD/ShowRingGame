@@ -63,6 +63,8 @@ export async function POST(request: Request) {
       typeof body.mateDogId === "string" ? body.mateDogId.trim() : "";
     const studListingId =
       typeof body.studListingId === "string" ? body.studListingId.trim() : "";
+    const testDamBrucellosis = body.testDamBrucellosis === true;
+    const testSireBrucellosis = body.testSireBrucellosis === true;
 
     if (!primaryDogId || !mateDogId) {
       return fail("primaryDogId and mateDogId are required.", 400);
@@ -76,6 +78,8 @@ export async function POST(request: Request) {
       mateDogId,
       studListingId: studListingId || undefined,
       currentEpoch,
+      testDamBrucellosis,
+      testSireBrucellosis,
     });
 
     return ok({

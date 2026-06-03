@@ -18,6 +18,7 @@ import {
 import { SHOW_WEEK_HOURS } from "@showring/rules";
 import { applyBetaBalanceTopUp } from "@/lib/betaEconomy";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
+import { maybeSeedFoundationBrucellosis } from "@/server/services/infectiousDisease.service";
 
 const FOUNDATION_LISTING_TYPE = "FOUNDATION";
 const FOUNDATION_DESCRIPTION_PUBLIC = "Foundation dog available for purchase.";
@@ -527,6 +528,10 @@ async function createOneFoundationDog(args: {
     });
 
     await ensurePhenotypeHealthTruthsForDogs(tx, [createdDog.id]);
+    await maybeSeedFoundationBrucellosis(tx, {
+      dogId: createdDog.id,
+      currentEpoch,
+    });
 
     await tx.dogListing.create({
       data: {

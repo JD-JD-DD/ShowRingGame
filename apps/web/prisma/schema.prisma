@@ -285,6 +285,9 @@ model Dog {
   titleProgress      DogTitleProgress?
     healthTests        HealthTestRecord[]
     healthConditionTruths DogHealthConditionTruth[]
+    infectiousDiseaseStatuses DogInfectiousDiseaseStatus[] @relation("DogDiseaseStatuses")
+    infectiousDiseaseSourceFor DogInfectiousDiseaseStatus[] @relation("DogDiseaseSource")
+    infectiousDiseaseTests InfectiousDiseaseTestRecord[]
     privateKennelNotes KennelDogPrivateNote[]
     kennelAreaMemberships KennelAreaDog[]
 
@@ -390,6 +393,7 @@ model BreedingAttempt {
   dam             Dog     @relation("BreedingDam", fields: [damId], references: [id])
   createdByKennel Kennel? @relation("BreedingCreatedByKennel", fields: [createdByKennelId], references: [id])
   litter          Litter? @relation("BreedingAttemptLitter", fields: [litterId], references: [id])
+  infectiousDiseaseTests InfectiousDiseaseTestRecord[]
 
   @@index([sireId])
   @@index([damId])
@@ -730,6 +734,7 @@ model DogListing {
   soldAtEpoch       Int?
   buyerKennelId     String?
   descriptionPublic String?
+  requiresBrucellosisNegativeDam Boolean @default(false)
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -742,6 +747,49 @@ model DogListing {
   @@index([buyerKennelId])
   @@index([status])
   @@index([sellerType])
+}
+
+model DogInfectiousDiseaseStatus {
+  id                      String   @id @default(cuid())
+  dogId                   String
+  diseaseCode             String
+  status                  String
+  infectedAtEpoch         Int?
+  sourceDogId             String?
+  sourceBreedingAttemptId String?
+  notes                   String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  dog       Dog  @relation("DogDiseaseStatuses", fields: [dogId], references: [id])
+  sourceDog Dog? @relation("DogDiseaseSource", fields: [sourceDogId], references: [id])
+
+  @@unique([dogId, diseaseCode])
+  @@index([dogId])
+  @@index([diseaseCode])
+  @@index([status])
+  @@index([sourceDogId])
+}
+
+model InfectiousDiseaseTestRecord {
+  id                String   @id @default(cuid())
+  dogId             String
+  diseaseCode       String
+  resultCode        String
+  testedAtEpoch     Int
+  validUntilEpoch   Int?
+  breedingAttemptId String?
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  dog              Dog               @relation(fields: [dogId], references: [id])
+  breedingAttempt  BreedingAttempt?  @relation(fields: [breedingAttemptId], references: [id])
+
+  @@index([dogId, diseaseCode, testedAtEpoch])
+  @@index([dogId, diseaseCode, validUntilEpoch])
+  @@index([diseaseCode])
+  @@index([resultCode])
+  @@index([breedingAttemptId])
 }
 
 model BulletinCategory {

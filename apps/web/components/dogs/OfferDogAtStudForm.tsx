@@ -45,6 +45,17 @@ export default function OfferDogAtStudForm({
         />
       </label>
 
+      <label className="mt-3 flex items-start gap-2 rounded-xl border border-sky-300/20 bg-sky-500/10 p-3 text-xs leading-5 text-sky-100/85">
+        <input
+          type="checkbox"
+          name="requiresBrucellosisNegativeDam"
+          className="mt-1"
+        />
+        <span>
+          Require a valid negative brucellosis test for outside bitches.
+        </span>
+      </label>
+
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           type="submit"

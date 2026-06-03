@@ -590,8 +590,15 @@ export async function listDogAtStud(args: {
   sellerKennelId: string;
   currentEpoch: number;
   studFeeAmount: number;
+  requiresBrucellosisNegativeDam?: boolean;
 }): Promise<string> {
-  const { dogId, sellerKennelId, currentEpoch, studFeeAmount } = args;
+  const {
+    dogId,
+    sellerKennelId,
+    currentEpoch,
+    studFeeAmount,
+    requiresBrucellosisNegativeDam,
+  } = args;
 
   assertWholeDollarAmount(studFeeAmount, "Stud fee");
   await resolveDogDeaths({ currentEpoch, dogIds: [dogId] });
@@ -657,6 +664,8 @@ export async function listDogAtStud(args: {
         listingType: PLAYER_STUD_LISTING_TYPE,
         status: "ACTIVE",
         listedAtEpoch: currentEpoch,
+        requiresBrucellosisNegativeDam:
+          requiresBrucellosisNegativeDam ?? false,
         descriptionPublic: `Stud listing for ${dog.regNumber}.`,
       },
       select: {
