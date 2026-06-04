@@ -2,7 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
+import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import {
+  getShowDistrictRegionName,
+  SHOW_WEEK_HOURS,
+  SHOW_YEAR_HOURS,
+} from "@showring/rules";
 
 
 const primaryActions = [
@@ -24,21 +31,6 @@ const primaryActions = [
     body: "See which kennels are climbing overall and breed-specific prestige rankings.",
     href: "/kennels/top-ten",
     action: "View Rankings",
-  },
-];
-
-const placeholderCommunityCards = [
-  {
-    title: "Recent Champions",
-    body: "Coming soon: a live community feed of newly finished champions.",
-  },
-  {
-    title: "Recent Litters",
-    body: "Coming soon: a running list of fresh litters born around ShowRing.",
-  },
-  {
-    title: "Recent Bulletin Activity",
-    body: "Coming soon: active discussion highlights from the bulletin board.",
   },
 ];
 
@@ -78,23 +70,223 @@ function getNewKennelsCutoff(): Date {
   return new Date(Date.now() - 48 * 60 * 60 * 1000);
 }
 
+function formatGameTimeLabel(epoch: number): string {
+  const year = Math.floor(epoch / SHOW_YEAR_HOURS) + 1;
+  const hourInYear = epoch % SHOW_YEAR_HOURS;
+  const week = Math.floor(hourInYear / SHOW_WEEK_HOURS) + 1;
+  const day = hourInYear % SHOW_WEEK_HOURS;
+
+  return `Y${year} W${week} D${day + 1}`;
+}
+
+function getUpcomingShowStatusLabel(status: string): string {
+  switch (status) {
+    case "OPEN":
+      return "OPEN";
+    case "CLOSED":
+      return "AWAITING JUDGING";
+    default:
+      return status.replaceAll("_", " ");
+  }
+}
+
 export default async function HomePage() {
   const userId = await getSessionUserId();
-  const newKennels = await db.kennel.findMany({
-    where: {
-      createdAt: {
-        gte: getNewKennelsCutoff(),
-      },
-    },
-    orderBy: [{ createdAt: "desc" }],
-    take: 6,
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      createdAt: true,
-    },
-  });
+  const currentEpoch = getCurrentEpoch();
+  const [newKennels, upcomingShows, championNotices, recentLitters] =
+    await Promise.all([
+      db.kennel.findMany({
+        where: {
+          createdAt: {
+            gte: getNewKennelsCutoff(),
+          },
+        },
+        orderBy: [{ createdAt: "desc" }],
+        take: 6,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          createdAt: true,
+        },
+      }),
+      db.showCluster.findMany({
+        where: {
+          endEpoch: {
+            gte: currentEpoch,
+          },
+          status: {
+            in: ["OPEN", "CLOSED"],
+          },
+        },
+        orderBy: [{ startEpoch: "asc" }, { name: "asc" }],
+        take: 5,
+        select: {
+          id: true,
+          name: true,
+          district: true,
+          status: true,
+          startEpoch: true,
+          showDays: {
+            select: {
+              _count: {
+                select: {
+                  showEntries: {
+                    where: {
+                      entryStatus: {
+                        in: ["ENTERED", "JUDGED"],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      db.kennelNotice.findMany({
+        where: {
+          type: "NEW_CHAMPION",
+          linkedDogId: {
+            not: null,
+          },
+        },
+        orderBy: [{ createdAtEpoch: "desc" }],
+        take: 10,
+        select: {
+          id: true,
+          createdAtEpoch: true,
+          kennel: {
+            select: {
+              name: true,
+              slug: true,
+            },
+          },
+          linkedDogId: true,
+        },
+      }),
+      db.litter.findMany({
+        orderBy: [{ bornEpoch: "desc" }],
+        take: 5,
+        select: {
+          id: true,
+          bornEpoch: true,
+          pupCount: true,
+          breed: {
+            select: {
+              name: true,
+            },
+          },
+          sire: {
+            select: {
+              regNumber: true,
+              callName: true,
+              registeredName: true,
+              visibleTitlePrefix: true,
+              visibleTitleSuffix: true,
+            },
+          },
+          dam: {
+            select: {
+              regNumber: true,
+              callName: true,
+              registeredName: true,
+              visibleTitlePrefix: true,
+              visibleTitleSuffix: true,
+            },
+          },
+          bredByKennel: {
+            select: {
+              name: true,
+              slug: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+  const championDogIds = championNotices
+    .map((notice) => notice.linkedDogId)
+    .filter((dogId): dogId is string => Boolean(dogId));
+  const championDogs =
+    championDogIds.length > 0
+      ? await db.dog.findMany({
+          where: {
+            id: {
+              in: championDogIds,
+            },
+          },
+          select: {
+            id: true,
+            regNumber: true,
+            callName: true,
+            registeredName: true,
+            visibleTitlePrefix: true,
+            visibleTitleSuffix: true,
+            breed: {
+              select: {
+                name: true,
+              },
+            },
+            ownerKennel: {
+              select: {
+                name: true,
+                slug: true,
+              },
+            },
+            showAwards: {
+              where: {
+                pointsAwarded: {
+                  gt: 0,
+                },
+              },
+              orderBy: [{ publishedAtEpoch: "desc" }],
+              take: 8,
+              select: {
+                publishedAtEpoch: true,
+                showDay: {
+                  select: {
+                    scheduledEpoch: true,
+                    cluster: {
+                      select: {
+                        id: true,
+                        name: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        })
+      : [];
+  const championDogById = new Map(
+    championDogs.map((dog) => [dog.id, dog] as const)
+  );
+  const recentChampions = championNotices
+    .map((notice) => {
+      const dog = notice.linkedDogId
+        ? championDogById.get(notice.linkedDogId)
+        : null;
+
+      if (!dog) {
+        return null;
+      }
+
+      const finishingAward =
+        dog.showAwards.find(
+          (award) => award.publishedAtEpoch <= notice.createdAtEpoch
+        ) ?? dog.showAwards[0] ?? null;
+
+      return {
+        id: notice.id,
+        createdAtEpoch: notice.createdAtEpoch,
+        dog,
+        ownerKennel: dog.ownerKennel ?? notice.kennel,
+        finishingCluster: finishingAward?.showDay.cluster ?? null,
+      };
+    })
+    .filter((item) => item !== null);
 
   return (
     <main className="min-h-screen px-6 py-8 text-white">
@@ -137,27 +329,168 @@ export default async function HomePage() {
                 Around ShowRing
               </h2>
               <p className="mt-1 text-sm text-purple-100/72">
-                Community activity surfaces will live here as they come online.
+                IMPORTANT: Alpha testing has unlimited funds to encourage large kennels and lots of game play. Go Wild!
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-1">
-              {placeholderCommunityCards.map((card) => (
-                <article
-                  key={card.title}
-                  className="rounded-[22px] border border-white/10 bg-black/20 p-5"
-                >
-                  <div className="mb-3 inline-flex rounded-full border border-amber-300/25 bg-amber-500/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-amber-100">
-                    Future Placeholder
-                  </div>
-                  <h3 className="text-lg font-semibold text-white">
-                    {card.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-purple-100/72">
-                    {card.body}
+              <article className="rounded-[22px] border border-white/10 bg-black/20 p-5">
+                <h3 className="text-lg font-semibold text-white">
+                  Upcoming Shows
+                </h3>
+                <p className="mt-1 text-sm text-purple-100/65">
+                  Next open or soon-to-be judged clusters.
+                </p>
+
+                {upcomingShows.length === 0 ? (
+                  <p className="mt-4 text-sm text-purple-100/72">
+                    No upcoming shows are active right now.
                   </p>
-                </article>
-              ))}
+                ) : (
+                  <div className="mt-4 grid gap-2.5">
+                    {upcomingShows.map((show) => {
+                      const entryCount = show.showDays.reduce(
+                        (total, day) => total + day._count.showEntries,
+                        0
+                      );
+
+                      return (
+                        <Link
+                          key={show.id}
+                          href={`/shows/${show.id}`}
+                          className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-purple-300/35 hover:bg-white/10"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-semibold text-white">
+                                {show.name}
+                              </div>
+                              <div className="mt-1 text-xs text-purple-100/65">
+                                {getShowDistrictRegionName(show.district)} ·{" "}
+                                {formatGameTimeLabel(show.startEpoch)}
+                              </div>
+                            </div>
+                            <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">
+                              {getUpcomingShowStatusLabel(show.status)}
+                            </span>
+                          </div>
+                          <div className="mt-2 text-xs text-purple-100/65">
+                            {entryCount} entries
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </article>
+
+              <article className="rounded-[22px] border border-white/10 bg-black/20 p-5">
+                <h3 className="text-lg font-semibold text-white">
+                  Recent Champions
+                </h3>
+                <p className="mt-1 text-sm text-purple-100/65">
+                  Newly finished champions across the game.
+                </p>
+
+                {recentChampions.length === 0 ? (
+                  <p className="mt-4 text-sm text-purple-100/72">
+                    No new champions have finished recently.
+                  </p>
+                ) : (
+                  <div className="mt-4 grid max-h-[24rem] gap-2.5 overflow-y-auto pr-1">
+                    {recentChampions.map((item) => (
+                      <div
+                        key={item.id}
+                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+                      >
+                        <Link
+                          href={`/dogs/${item.dog.id}`}
+                          className="text-sm font-semibold text-white underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
+                        >
+                          {formatDogDisplayName(item.dog)}
+                        </Link>
+                        <div className="mt-1 text-xs text-purple-100/65">
+                          {item.dog.breed.name}
+                          {item.ownerKennel ? (
+                            <>
+                              {" "}
+                              ·{" "}
+                              <Link
+                                href={`/kennels/${item.ownerKennel.slug}`}
+                                className="underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
+                              >
+                                {item.ownerKennel.name}
+                              </Link>
+                            </>
+                          ) : null}
+                        </div>
+                        <div className="mt-1 text-xs text-purple-100/55">
+                          {item.finishingCluster ? (
+                            <>
+                              Finished at{" "}
+                              <Link
+                                href={`/shows/${item.finishingCluster.id}/results`}
+                                className="underline-offset-4 transition hover:text-sky-100 hover:underline"
+                              >
+                                {item.finishingCluster.name}
+                              </Link>
+                            </>
+                          ) : (
+                            "Finished show details coming soon."
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </article>
+
+              <article className="rounded-[22px] border border-white/10 bg-black/20 p-5">
+                <h3 className="text-lg font-semibold text-white">
+                  Recent Litters
+                </h3>
+                <p className="mt-1 text-sm text-purple-100/65">
+                  The latest litters born around ShowRing.
+                </p>
+
+                {recentLitters.length === 0 ? (
+                  <p className="mt-4 text-sm text-purple-100/72">
+                    No litters have been born recently.
+                  </p>
+                ) : (
+                  <div className="mt-4 grid gap-2.5">
+                    {recentLitters.map((litter) => (
+                      <div
+                        key={litter.id}
+                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+                      >
+                        <div className="text-sm font-semibold text-white">
+                          {litter.breed.name} litter
+                        </div>
+                        <div className="mt-1 text-xs text-purple-100/65">
+                          {formatDogDisplayName(litter.sire)} x{" "}
+                          {formatDogDisplayName(litter.dam)}
+                        </div>
+                        <div className="mt-1 text-xs text-purple-100/55">
+                          {litter.pupCount} puppies · {formatGameTimeLabel(litter.bornEpoch)}
+                          {litter.bredByKennel ? (
+                            <>
+                              {" "}
+                              ·{" "}
+                              <Link
+                                href={`/kennels/${litter.bredByKennel.slug}`}
+                                className="underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
+                              >
+                                {litter.bredByKennel.name}
+                              </Link>
+                            </>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </article>
             </div>
           </section>
 
