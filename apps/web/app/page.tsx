@@ -111,7 +111,7 @@ export default async function HomePage() {
               />
             </div>
             <div className="hidden flex-1 items-center justify-center md:flex">
-              <h1 className="showring-title text-5xl font-black tracking-wide lg:text-7xl">
+              <h1 className="showring-title text-4xl font-black tracking-wide lg:text-5xl">
                 The Show Ring Game
               </h1>
             </div>
