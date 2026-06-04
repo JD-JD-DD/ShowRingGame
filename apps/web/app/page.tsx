@@ -4,6 +4,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 
+
 const primaryActions = [
   {
     title: "Shows",
@@ -110,7 +111,7 @@ export default async function HomePage() {
               />
             </div>
             <div className="hidden flex-1 items-center justify-center md:flex">
-              <h1 className="bg-[length:200%_100%] bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-5xl font-black tracking-wide text-transparent lg:text-7xl animate-[shimmer_3s_linear_infinite]">
+              <h1 className="showring-title text-5xl font-black tracking-wide lg:text-7xl">
                 The Show Ring Game
               </h1>
             </div>
