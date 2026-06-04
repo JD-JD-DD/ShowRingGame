@@ -277,6 +277,10 @@ export default async function ShowsPage({
             >
               District Map
             </Link>
+
+            {/*
+            remove refresh button
+
             <form action="/api/shows" method="post">
               <input type="hidden" name="redirectTo" value="/shows" />
               <button
@@ -286,6 +290,8 @@ export default async function ShowsPage({
                 Refresh Shows
               </button>
             </form>
+            */}
+
             <Link
               href="/kennel"
               className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
@@ -406,9 +412,14 @@ export default async function ShowsPage({
                               <span className="font-semibold text-white">
                                 Year {cluster.year}
                               </span>
+
+                              {/*}
+                              **no need for the date twice
                               <span className="ml-2 text-purple-100/60">
                                 {formatShowDate(cluster.startEpoch)}
                               </span>
+                              */}
+
                               <span
                                 className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone(playerStatus)}`}
                               >
