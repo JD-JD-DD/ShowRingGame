@@ -168,7 +168,7 @@ function getClusterStatus(args: {
     return "SCHEDULED" as const;
   }
 
-  if (args.currentEpoch <= args.entryCloseEpoch) {
+  if (args.currentEpoch < args.entryCloseEpoch) {
     return "OPEN" as const;
   }
 
@@ -185,7 +185,7 @@ function getShowDayStatus(args: {
     return "SCHEDULED" as const;
   }
 
-  if (args.currentEpoch <= args.entryCloseEpoch) {
+  if (args.currentEpoch < args.entryCloseEpoch) {
     return "ENTRY_OPEN" as const;
   }
 
@@ -201,7 +201,7 @@ function getBlockStatus(args: {
     return "SCHEDULED" as const;
   }
 
-  if (args.currentEpoch <= args.entryCloseEpoch) {
+  if (args.currentEpoch < args.entryCloseEpoch) {
     return "ENTRY_OPEN" as const;
   }
 
@@ -218,6 +218,107 @@ function getSeedEntryOpenEpoch(startEpoch: number): number {
 
 function getSeedEntryCloseEpoch(startEpoch: number): number {
   return Math.max(0, startEpoch - SHOW_ENTRY_CLOSE_OFFSET_HOURS);
+}
+
+export async function repairFutureShowEntryWindows(args?: {
+  currentEpoch?: number;
+}): Promise<{
+  clusterCount: number;
+  showDayCount: number;
+  judgingBlockCount: number;
+}> {
+  const currentEpoch = args?.currentEpoch ?? getCurrentEpoch();
+  const clusters = await db.showCluster.findMany({
+    where: {
+      startEpoch: { gt: currentEpoch },
+      status: { notIn: ["COMPLETE", "CANCELLED"] },
+    },
+    select: {
+      id: true,
+      startEpoch: true,
+      endEpoch: true,
+      showDays: {
+        select: {
+          id: true,
+          scheduledEpoch: true,
+          status: true,
+          judgingBlocks: {
+            select: {
+              id: true,
+              startEpoch: true,
+              status: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  let clusterCount = 0;
+  let showDayCount = 0;
+  let judgingBlockCount = 0;
+
+  for (const cluster of clusters) {
+    const entryOpenEpoch = getSeedEntryOpenEpoch(cluster.startEpoch);
+    const entryCloseEpoch = getSeedEntryCloseEpoch(cluster.startEpoch);
+    const clusterStatus = getClusterStatus({
+      currentEpoch,
+      entryOpenEpoch,
+      entryCloseEpoch,
+      endEpoch: cluster.endEpoch,
+    });
+
+    await db.showCluster.update({
+      where: { id: cluster.id },
+      data: {
+        entryOpenEpoch,
+        entryCloseEpoch,
+        status: clusterStatus,
+      },
+    });
+    clusterCount += 1;
+
+    for (const showDay of cluster.showDays) {
+      if (showDay.status !== "JUDGING" && showDay.status !== "RESULTS_PUBLISHED") {
+        await db.showDay.update({
+          where: { id: showDay.id },
+          data: {
+            status: getShowDayStatus({
+              currentEpoch,
+              entryOpenEpoch,
+              entryCloseEpoch,
+              scheduledEpoch: showDay.scheduledEpoch,
+            }),
+          },
+        });
+        showDayCount += 1;
+      }
+
+      for (const block of showDay.judgingBlocks) {
+        if (block.status === "JUDGING" || block.status === "RESULTS_PUBLISHED") {
+          continue;
+        }
+
+        await db.showJudgingBlock.update({
+          where: { id: block.id },
+          data: {
+            status: getBlockStatus({
+              currentEpoch,
+              entryOpenEpoch,
+              entryCloseEpoch,
+            }),
+          },
+        });
+        judgingBlockCount += 1;
+      }
+    }
+  }
+
+  return {
+    clusterCount,
+    showDayCount,
+    judgingBlockCount,
+  };
 }
 
 async function deleteEmptyGeneratedCluster(clusterId: string): Promise<boolean> {
