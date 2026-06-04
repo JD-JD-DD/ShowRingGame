@@ -6,6 +6,7 @@ import {
   finalizeReadyShowDayResults,
   judgeShowBlock,
 } from "@/server/services/judging.service";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,8 @@ const DEFAULT_BLOCK_BATCH_SIZE = 4;
 const MAX_BLOCK_BATCH_SIZE = 12;
 const DEFAULT_FINALIZE_BATCH_SIZE = 4;
 const MAX_FINALIZE_BATCH_SIZE = 12;
+const DB_PREFLIGHT_ATTEMPTS = 4;
+const DB_PREFLIGHT_DELAY_MS = 2000;
 
 function parseBatchSize(
   value: string | undefined,
@@ -28,6 +31,50 @@ function parseBatchSize(
   return Math.min(parsed, maxValue);
 }
 
+function isPrismaConnectivityError(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return true;
+  }
+
+  return (
+    error instanceof Error &&
+    (error.message.includes("P1001") ||
+      error.message.includes("Can't reach database server"))
+  );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function ensureDatabaseReachable(): Promise<void> {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= DB_PREFLIGHT_ATTEMPTS; attempt += 1) {
+    try {
+      await db.$queryRaw`SELECT 1`;
+      return;
+    } catch (error) {
+      lastError = error;
+
+      if (!isPrismaConnectivityError(error) || attempt === DB_PREFLIGHT_ATTEMPTS) {
+        break;
+      }
+
+      console.warn("publish-show-results DB preflight retry", {
+        attempt,
+        remainingAttempts: DB_PREFLIGHT_ATTEMPTS - attempt,
+        error: error instanceof Error ? error.message : error,
+      });
+      await sleep(DB_PREFLIGHT_DELAY_MS);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Database connectivity preflight failed.");
+}
+
 export async function GET(request: Request) {
   const secret = process.env.SHOWRING_JOBS_SECRET;
 
@@ -37,6 +84,22 @@ export async function GET(request: Request) {
 
   if (secret && request.headers.get("authorization") !== `Bearer ${secret}`) {
     return fail("Unauthorized.", 401);
+  }
+
+  // This route is called by GitHub Actions through the deployed app. A quick
+  // DB preflight with retry smooths over transient Neon wake-up/P1001 errors
+  // before we start judging or finalizing any show data.
+  try {
+    await ensureDatabaseReachable();
+  } catch (error) {
+    return fail(
+      "Database is unreachable for publish show results after retries.",
+      503,
+      {
+        code: "P1001",
+        detail: error instanceof Error ? error.message : "Unknown database error.",
+      }
+    );
   }
 
   const currentEpoch = getCurrentEpoch();
