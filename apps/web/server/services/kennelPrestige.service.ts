@@ -30,10 +30,13 @@ type PointAwardRow = {
   };
 };
 
-export type KennelPrestigeSummary = {
-  score: number;
-  tier: PrestigeTier;
-  currentYear: number;
+type KennelMeta = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type KennelPrestigeAccumulator = {
   categories: {
     breeding: number;
     show: number;
@@ -59,13 +62,17 @@ export type KennelPrestigeSummary = {
   };
 };
 
+export type KennelPrestigeSummary = {
+  score: number;
+  tier: PrestigeTier;
+  currentYear: number;
+  categories: KennelPrestigeAccumulator["categories"];
+  metrics: KennelPrestigeAccumulator["metrics"];
+};
+
 export type KennelPrestigeLeaderboardRow = {
   rank: number;
-  kennel: {
-    id: string;
-    name: string;
-    slug: string;
-  };
+  kennel: KennelMeta;
   prestige: KennelPrestigeSummary;
 };
 
@@ -92,16 +99,6 @@ function getPrestigeTier(score: number): PrestigeTier {
     nextLabel: next?.label ?? null,
     nextScore: next?.min ?? null,
   };
-}
-
-function countAward(
-  awards: Array<{ awardCode: string; _count: { awardCode: number } }>,
-  awardCode: string
-): number {
-  return (
-    awards.find((award) => award.awardCode === awardCode)?._count.awardCode ??
-    0
-  );
 }
 
 function rankTopTen<T>(
@@ -203,56 +200,119 @@ function findFinishingAwards(pointAwards: PointAwardRow[]) {
   return finishingAwards;
 }
 
-export async function getKennelPrestigeSummary(
-  kennelId: string,
-  options: KennelPrestigeOptions = {}
-): Promise<KennelPrestigeSummary> {
+function createEmptyAccumulator(): KennelPrestigeAccumulator {
+  return {
+    categories: {
+      breeding: 0,
+      show: 0,
+      legacy: 0,
+      care: 0,
+    },
+    metrics: {
+      championsBred: 0,
+      championProducingLitters: 0,
+      championsFinishedOwnerHandled: 0,
+      championsFinishedWithHandler: 0,
+      allGreenChampionsBred: 0,
+      currentBreedTopTenOwned: 0,
+      currentBreedTopTenBred: 0,
+      currentAllBreedTopTenOwned: 0,
+      currentAllBreedTopTenBred: 0,
+      currentBreedNumberOnes: 0,
+      currentAllBreedNumberOnes: 0,
+      bestInShowWins: 0,
+      reserveBestInShowWins: 0,
+      groupOneWins: 0,
+      groupPlacements: 0,
+    },
+  };
+}
+
+function finalizeSummary(
+  accumulator: KennelPrestigeAccumulator,
+  currentYear: number
+): KennelPrestigeSummary {
+  accumulator.categories.breeding =
+    accumulator.metrics.championsBred * 120 +
+    accumulator.metrics.championProducingLitters * 35;
+  accumulator.categories.show =
+    accumulator.metrics.championsFinishedOwnerHandled * 90 +
+    accumulator.metrics.championsFinishedWithHandler * 65 +
+    accumulator.metrics.bestInShowWins * 90 +
+    accumulator.metrics.reserveBestInShowWins * 60 +
+    accumulator.metrics.groupOneWins * 35 +
+    (accumulator.metrics.groupPlacements - accumulator.metrics.groupOneWins) *
+      12;
+  accumulator.categories.legacy =
+    accumulator.metrics.currentBreedTopTenOwned * 25 +
+    accumulator.metrics.currentBreedTopTenBred * 35 +
+    accumulator.metrics.currentAllBreedTopTenOwned * 60 +
+    accumulator.metrics.currentAllBreedTopTenBred * 75 +
+    accumulator.metrics.currentBreedNumberOnes * 50 +
+    accumulator.metrics.currentAllBreedNumberOnes * 100;
+  accumulator.categories.care =
+    accumulator.metrics.allGreenChampionsBred * 30;
+
+  const score =
+    accumulator.categories.breeding +
+    accumulator.categories.show +
+    accumulator.categories.legacy +
+    accumulator.categories.care;
+
+  return {
+    score,
+    tier: getPrestigeTier(score),
+    currentYear,
+    categories: accumulator.categories,
+    metrics: accumulator.metrics,
+  };
+}
+
+async function buildKennelPrestigeSummaries(
+  options: KennelPrestigeOptions = {},
+  kennelIds?: string[]
+) {
   const currentYear = Math.floor(getCurrentEpoch() / SHOW_YEAR_HOURS) + 1;
   const breedCode2 = options.breedCode2?.trim().toUpperCase() || null;
+  const kennelFilter = kennelIds?.length ? { id: { in: kennelIds } } : {};
+  const kennels = await db.kennel.findMany({
+    where: {
+      isNpc: false,
+      userId: {
+        not: null,
+      },
+      ...kennelFilter,
+    },
+    orderBy: [{ name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+    },
+  });
 
-  const [
-    championDogs,
-    pointAwards,
-    awardCounts,
-    currentYearStats,
-  ] = await Promise.all([
-    db.dog.findMany({
-      where: {
-        ...(breedCode2 ? { breedCode2 } : {}),
-        OR: [
-          { visibleTitlePrefix: CHAMPION_TITLE_CODE },
-          {
-            titleProgress: {
-              is: {
-                currentTitleCode: CHAMPION_TITLE_CODE,
-              },
-            },
+  const kennelMetaById = new Map(kennels.map((kennel) => [kennel.id, kennel]));
+  const playerKennelIds = kennels.map((kennel) => kennel.id);
+  const summariesByKennelId = new Map<string, KennelPrestigeAccumulator>();
+  const championLittersByKennelId = new Map<string, Set<string>>();
+
+  for (const kennel of kennels) {
+    summariesByKennelId.set(kennel.id, createEmptyAccumulator());
+    championLittersByKennelId.set(kennel.id, new Set<string>());
+  }
+
+  if (playerKennelIds.length === 0) {
+    return { currentYear, kennelMetaById, summariesByKennelId };
+  }
+
+  const [championDogs, pointAwards, majorAwards, currentYearStats] =
+    await Promise.all([
+      db.dog.findMany({
+        where: {
+          ...(breedCode2 ? { breedCode2 } : {}),
+          breederKennelId: {
+            in: playerKennelIds,
           },
-        ],
-      },
-      select: {
-        id: true,
-        breederKennelId: true,
-        litterId: true,
-        healthTests: {
-          where: {
-            isPublic: true,
-          },
-          orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
-          select: {
-            testTypeCode: true,
-            resultCode: true,
-          },
-        },
-      },
-    }),
-    db.showAward.findMany({
-      where: {
-        ...(breedCode2 ? { breedCode2 } : {}),
-        pointsAwarded: {
-          gt: 0,
-        },
-        dog: {
           OR: [
             { visibleTitlePrefix: CHAMPION_TITLE_CODE },
             {
@@ -264,94 +324,182 @@ export async function getKennelPrestigeSummary(
             },
           ],
         },
-      },
-      select: {
-        dogId: true,
-        showDayId: true,
-        pointsAwarded: true,
-        isMajor: true,
-        showDay: {
-          select: {
-            scheduledEpoch: true,
-          },
-        },
-        showEntry: {
-          select: {
-            kennelId: true,
-            handlerUsed: true,
-          },
-        },
-      },
-    }),
-    db.showAward.groupBy({
-      by: ["awardCode"],
-      where: {
-        ...(breedCode2 ? { breedCode2 } : {}),
-        awardCode: {
-          in: [...BIS_AWARD_CODES, ...GROUP_AWARD_CODES],
-        },
-        showEntry: {
-          kennelId,
-        },
-      },
-      _count: {
-        awardCode: true,
-      },
-    }),
-    db.dogYearlyPrestigeStat.findMany({
-      where: {
-        gameYear: currentYear,
-        ...(breedCode2 ? { breedCode2 } : {}),
-        OR: [
-          {
-            breedDogsBeaten: {
-              gt: 0,
+        select: {
+          breederKennelId: true,
+          litterId: true,
+          healthTests: {
+            where: {
+              isPublic: true,
+            },
+            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+            select: {
+              testTypeCode: true,
+              resultCode: true,
             },
           },
-          {
-            allBreedDogsBeaten: {
-              gt: 0,
+        },
+      }),
+      db.showAward.findMany({
+        where: {
+          ...(breedCode2 ? { breedCode2 } : {}),
+          pointsAwarded: {
+            gt: 0,
+          },
+          showEntry: {
+            kennelId: {
+              in: playerKennelIds,
             },
           },
-        ],
-      },
-      select: {
-        dogId: true,
-        breedCode2: true,
-        breedDogsBeaten: true,
-        allBreedDogsBeaten: true,
-        breedWinCount: true,
-        groupWinCount: true,
-        bestInShowWinCount: true,
-        dog: {
-          select: {
-            ownerKennelId: true,
-            breederKennelId: true,
+          dog: {
+            OR: [
+              { visibleTitlePrefix: CHAMPION_TITLE_CODE },
+              {
+                titleProgress: {
+                  is: {
+                    currentTitleCode: CHAMPION_TITLE_CODE,
+                  },
+                },
+              },
+            ],
           },
         },
-      },
-    }),
-  ]);
+        select: {
+          dogId: true,
+          showDayId: true,
+          pointsAwarded: true,
+          isMajor: true,
+          showDay: {
+            select: {
+              scheduledEpoch: true,
+            },
+          },
+          showEntry: {
+            select: {
+              kennelId: true,
+              handlerUsed: true,
+            },
+          },
+        },
+      }),
+      db.showAward.findMany({
+        where: {
+          ...(breedCode2 ? { breedCode2 } : {}),
+          awardCode: {
+            in: [...BIS_AWARD_CODES, ...GROUP_AWARD_CODES],
+          },
+          showEntry: {
+            kennelId: {
+              in: playerKennelIds,
+            },
+          },
+        },
+        select: {
+          awardCode: true,
+          showEntry: {
+            select: {
+              kennelId: true,
+            },
+          },
+        },
+      }),
+      db.dogYearlyPrestigeStat.findMany({
+        where: {
+          gameYear: currentYear,
+          ...(breedCode2 ? { breedCode2 } : {}),
+          OR: [
+            {
+              breedDogsBeaten: {
+                gt: 0,
+              },
+            },
+            {
+              allBreedDogsBeaten: {
+                gt: 0,
+              },
+            },
+          ],
+        },
+        select: {
+          dogId: true,
+          breedCode2: true,
+          breedDogsBeaten: true,
+          allBreedDogsBeaten: true,
+          breedWinCount: true,
+          groupWinCount: true,
+          bestInShowWinCount: true,
+          dog: {
+            select: {
+              ownerKennelId: true,
+              breederKennelId: true,
+            },
+          },
+        },
+      }),
+    ]);
 
-  const championsBred = championDogs.filter(
-    (dog) => dog.breederKennelId === kennelId
-  );
-  const championProducingLitters = new Set(
-    championsBred.map((dog) => dog.litterId).filter(Boolean)
-  ).size;
-  const allGreenChampionsBred = championsBred.filter((dog) =>
-    hasAllGreenPhenotypeHealthTests(dog.healthTests)
-  ).length;
+  for (const dog of championDogs) {
+    if (!dog.breederKennelId) {
+      continue;
+    }
 
-  const finishingAwards = findFinishingAwards(pointAwards).filter(
-    (award) => award.showEntry.kennelId === kennelId
-  );
-  const championsFinishedOwnerHandled = finishingAwards.filter(
-    (award) => !award.showEntry.handlerUsed
-  ).length;
-  const championsFinishedWithHandler = finishingAwards.filter(
-    (award) => award.showEntry.handlerUsed
-  ).length;
+    const accumulator = summariesByKennelId.get(dog.breederKennelId);
+    const litterIds = championLittersByKennelId.get(dog.breederKennelId);
+
+    if (!accumulator || !litterIds) {
+      continue;
+    }
+
+    accumulator.metrics.championsBred += 1;
+
+    if (dog.litterId) {
+      litterIds.add(dog.litterId);
+    }
+
+    if (hasAllGreenPhenotypeHealthTests(dog.healthTests)) {
+      accumulator.metrics.allGreenChampionsBred += 1;
+    }
+  }
+
+  for (const [kennelId, litterIds] of championLittersByKennelId.entries()) {
+    const accumulator = summariesByKennelId.get(kennelId);
+
+    if (accumulator) {
+      accumulator.metrics.championProducingLitters = litterIds.size;
+    }
+  }
+
+  for (const award of findFinishingAwards(pointAwards)) {
+    const accumulator = summariesByKennelId.get(award.showEntry.kennelId);
+
+    if (!accumulator) {
+      continue;
+    }
+
+    if (award.showEntry.handlerUsed) {
+      accumulator.metrics.championsFinishedWithHandler += 1;
+    } else {
+      accumulator.metrics.championsFinishedOwnerHandled += 1;
+    }
+  }
+
+  for (const award of majorAwards) {
+    const accumulator = summariesByKennelId.get(award.showEntry.kennelId);
+
+    if (!accumulator) {
+      continue;
+    }
+
+    if (award.awardCode === "BIS") {
+      accumulator.metrics.bestInShowWins += 1;
+    } else if (award.awardCode === "RBIS") {
+      accumulator.metrics.reserveBestInShowWins += 1;
+    } else if (award.awardCode === "G1") {
+      accumulator.metrics.groupOneWins += 1;
+      accumulator.metrics.groupPlacements += 1;
+    } else if (GROUP_AWARD_CODES.includes(award.awardCode as (typeof GROUP_AWARD_CODES)[number])) {
+      accumulator.metrics.groupPlacements += 1;
+    }
+  }
 
   const allBreedTopTen = rankTopTen(
     currentYearStats.filter((stat) => stat.allBreedDogsBeaten > 0),
@@ -359,9 +507,11 @@ export async function getKennelPrestigeSummary(
   );
   const breedStatsByBreed = new Map<string, typeof currentYearStats>();
 
-  for (const stat of currentYearStats.filter(
-    (row) => row.breedDogsBeaten > 0
-  )) {
+  for (const stat of currentYearStats) {
+    if (stat.breedDogsBeaten <= 0) {
+      continue;
+    }
+
     const stats = breedStatsByBreed.get(stat.breedCode2) ?? [];
     stats.push(stat);
     breedStatsByBreed.set(stat.breedCode2, stats);
@@ -370,85 +520,86 @@ export async function getKennelPrestigeSummary(
   const breedTopTen = [...breedStatsByBreed.values()].flatMap((stats) =>
     rankTopTen(stats, compareBreedPrestige)
   );
-  const currentBreedTopTenOwned = breedTopTen.filter(
-    (stat) => stat.dog.ownerKennelId === kennelId
-  ).length;
-  const currentBreedTopTenBred = breedTopTen.filter(
-    (stat) => stat.dog.breederKennelId === kennelId
-  ).length;
-  const currentAllBreedTopTenOwned = allBreedTopTen.filter(
-    (stat) => stat.dog.ownerKennelId === kennelId
-  ).length;
-  const currentAllBreedTopTenBred = allBreedTopTen.filter(
-    (stat) => stat.dog.breederKennelId === kennelId
-  ).length;
-  const currentBreedNumberOnes = breedTopTen.filter(
-    (stat) =>
-      stat.rank === 1 &&
-      (stat.dog.ownerKennelId === kennelId ||
-        stat.dog.breederKennelId === kennelId)
-  ).length;
-  const currentAllBreedNumberOnes = allBreedTopTen.filter(
-    (stat) =>
-      stat.rank === 1 &&
-      (stat.dog.ownerKennelId === kennelId ||
-        stat.dog.breederKennelId === kennelId)
-  ).length;
-  const bestInShowWins = countAward(awardCounts, "BIS");
-  const reserveBestInShowWins = countAward(awardCounts, "RBIS");
-  const groupOneWins = countAward(awardCounts, "G1");
-  const groupPlacements = GROUP_AWARD_CODES.reduce(
-    (total, awardCode) => total + countAward(awardCounts, awardCode),
-    0
-  );
 
-  const breeding =
-    championsBred.length * 120 + championProducingLitters * 35;
-  const show =
-    championsFinishedOwnerHandled * 90 +
-    championsFinishedWithHandler * 65 +
-    bestInShowWins * 90 +
-    reserveBestInShowWins * 60 +
-    groupOneWins * 35 +
-    (groupPlacements - groupOneWins) * 12;
-  const legacy =
-    currentBreedTopTenOwned * 25 +
-    currentBreedTopTenBred * 35 +
-    currentAllBreedTopTenOwned * 60 +
-    currentAllBreedTopTenBred * 75 +
-    currentBreedNumberOnes * 50 +
-    currentAllBreedNumberOnes * 100;
-  const care = allGreenChampionsBred * 30;
-  const score = breeding + show + legacy + care;
+  for (const stat of allBreedTopTen) {
+    const ownerAccumulator = stat.dog.ownerKennelId
+      ? summariesByKennelId.get(stat.dog.ownerKennelId)
+      : null;
+    const breederAccumulator = stat.dog.breederKennelId
+      ? summariesByKennelId.get(stat.dog.breederKennelId)
+      : null;
 
-  return {
-    score,
-    tier: getPrestigeTier(score),
-    currentYear,
-    categories: {
-      breeding,
-      show,
-      legacy,
-      care,
-    },
-    metrics: {
-      championsBred: championsBred.length,
-      championProducingLitters,
-      championsFinishedOwnerHandled,
-      championsFinishedWithHandler,
-      allGreenChampionsBred,
-      currentBreedTopTenOwned,
-      currentBreedTopTenBred,
-      currentAllBreedTopTenOwned,
-      currentAllBreedTopTenBred,
-      currentBreedNumberOnes,
-      currentAllBreedNumberOnes,
-      bestInShowWins,
-      reserveBestInShowWins,
-      groupOneWins,
-      groupPlacements,
-    },
-  };
+    if (ownerAccumulator) {
+      ownerAccumulator.metrics.currentAllBreedTopTenOwned += 1;
+    }
+
+    if (breederAccumulator) {
+      breederAccumulator.metrics.currentAllBreedTopTenBred += 1;
+    }
+
+    if (stat.rank === 1) {
+      const numberOneKennelIds = new Set(
+        [stat.dog.ownerKennelId, stat.dog.breederKennelId].filter(
+          (value): value is string => Boolean(value)
+        )
+      );
+
+      for (const kennelId of numberOneKennelIds) {
+        const accumulator = summariesByKennelId.get(kennelId);
+
+        if (accumulator) {
+          accumulator.metrics.currentAllBreedNumberOnes += 1;
+        }
+      }
+    }
+  }
+
+  for (const stat of breedTopTen) {
+    const ownerAccumulator = stat.dog.ownerKennelId
+      ? summariesByKennelId.get(stat.dog.ownerKennelId)
+      : null;
+    const breederAccumulator = stat.dog.breederKennelId
+      ? summariesByKennelId.get(stat.dog.breederKennelId)
+      : null;
+
+    if (ownerAccumulator) {
+      ownerAccumulator.metrics.currentBreedTopTenOwned += 1;
+    }
+
+    if (breederAccumulator) {
+      breederAccumulator.metrics.currentBreedTopTenBred += 1;
+    }
+
+    if (stat.rank === 1) {
+      const numberOneKennelIds = new Set(
+        [stat.dog.ownerKennelId, stat.dog.breederKennelId].filter(
+          (value): value is string => Boolean(value)
+        )
+      );
+
+      for (const kennelId of numberOneKennelIds) {
+        const accumulator = summariesByKennelId.get(kennelId);
+
+        if (accumulator) {
+          accumulator.metrics.currentBreedNumberOnes += 1;
+        }
+      }
+    }
+  }
+
+  return { currentYear, kennelMetaById, summariesByKennelId };
+}
+
+export async function getKennelPrestigeSummary(
+  kennelId: string,
+  options: KennelPrestigeOptions = {}
+): Promise<KennelPrestigeSummary> {
+  const { currentYear, summariesByKennelId } =
+    await buildKennelPrestigeSummaries(options, [kennelId]);
+  const accumulator =
+    summariesByKennelId.get(kennelId) ?? createEmptyAccumulator();
+
+  return finalizeSummary(accumulator, currentYear);
 }
 
 export async function getKennelPrestigeLeaderboard(args: {
@@ -456,41 +607,34 @@ export async function getKennelPrestigeLeaderboard(args: {
   take?: number;
 } = {}): Promise<KennelPrestigeLeaderboardRow[]> {
   const take = args.take ?? 10;
-  const kennels = await db.kennel.findMany({
-    where: {
-      isNpc: false,
-      userId: {
-        not: null,
-      },
-    },
-    orderBy: [{ name: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-    },
-  });
-  const rows: Array<{
-    kennel: {
-      id: string;
-      name: string;
-      slug: string;
-    };
-    prestige: KennelPrestigeSummary;
-  }> = [];
-
-  for (const kennel of kennels) {
-    rows.push({
-      kennel,
-      prestige: await getKennelPrestigeSummary(kennel.id, {
-        breedCode2: args.breedCode2,
-      }),
+  const { currentYear, kennelMetaById, summariesByKennelId } =
+    await buildKennelPrestigeSummaries({
+      breedCode2: args.breedCode2,
     });
-  }
+  const rows = [...summariesByKennelId.entries()]
+    .map(([kennelId, accumulator]) => {
+      const kennel = kennelMetaById.get(kennelId);
 
-  const filteredRows = rows.filter((row) => row.prestige.score >= 1);
+      if (!kennel) {
+        return null;
+      }
 
-  return filteredRows
+      return {
+        kennel,
+        prestige: finalizeSummary(accumulator, currentYear),
+      };
+    })
+    .filter(
+      (
+        row
+      ): row is {
+        kennel: KennelMeta;
+        prestige: KennelPrestigeSummary;
+      } => Boolean(row)
+    )
+    .filter((row) => row.prestige.score >= 1);
+
+  return rows
     .sort(
       (a, b) =>
         b.prestige.score - a.prestige.score ||

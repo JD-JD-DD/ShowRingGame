@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
+import { SHOW_INSTANCE_GENERATION_HORIZON_HOURS } from "@showring/rules";
 
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { ensureAnnualInvitationalShow } from "@/server/services/invitational.service";
 import { ensureGeneratedShowSchedule } from "@/server/services/showSchedule.service";
-
-const UPCOMING_SHOW_WINDOW_HOURS = 42;
 
 async function getRedirectTo(request: Request): Promise<string | null> {
   const contentType = request.headers.get("content-type") ?? "";
@@ -26,7 +25,7 @@ export async function POST(request: Request) {
     const currentEpoch = getCurrentEpoch();
     const schedule = await ensureGeneratedShowSchedule({
       currentEpoch,
-      horizonHours: UPCOMING_SHOW_WINDOW_HOURS,
+      horizonHours: SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
       includeJudgingBlocks: false,
     });
     const invitational = await ensureAnnualInvitationalShow({ currentEpoch });
