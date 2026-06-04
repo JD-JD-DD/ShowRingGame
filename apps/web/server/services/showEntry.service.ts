@@ -3,6 +3,10 @@ import { hasAllGreenPhenotypeHealthTests } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
+  getShowBlockEntryAvailability,
+  getShowDayEntryAvailability,
+} from "@/server/services/showAvailability.service";
+import {
   DAM_SHOW_POST_WHELP_COOLDOWN_HOURS,
   ENTRY_FEE_PER_SHOW,
   SHOW_WEEK_HOURS,
@@ -406,46 +410,6 @@ export async function getShowWeekendEntryPlanStatus(args: {
   });
 }
 
-function isEntryWindowOpen(args: {
-  block: ShowBlockForEntry;
-  currentEpoch: number;
-}): boolean {
-  const { block, currentEpoch } = args;
-
-  return (
-    currentEpoch >= block.showDay.cluster.entryOpenEpoch &&
-    currentEpoch <= block.showDay.cluster.entryCloseEpoch &&
-    block.showDay.cluster.status !== "COMPLETE" &&
-    block.showDay.cluster.status !== "CANCELLED" &&
-    block.showDay.status === "ENTRY_OPEN" &&
-    block.status === "ENTRY_OPEN"
-  );
-}
-
-function isShowDayEntryWindowOpen(args: {
-  cluster: {
-    entryOpenEpoch: number;
-    entryCloseEpoch: number;
-    status: string;
-  };
-  showDay: {
-    status: string;
-    scheduledEpoch: number;
-  };
-  currentEpoch: number;
-}): boolean {
-  const { cluster, showDay, currentEpoch } = args;
-
-  return (
-    currentEpoch >= cluster.entryOpenEpoch &&
-    currentEpoch <= cluster.entryCloseEpoch &&
-    currentEpoch < showDay.scheduledEpoch &&
-    cluster.status !== "COMPLETE" &&
-    cluster.status !== "CANCELLED" &&
-    showDay.status === "ENTRY_OPEN"
-  );
-}
-
 function getShowDayEntryEligibilityReason(args: {
   dog: DogForEntry;
   cluster: {
@@ -461,17 +425,14 @@ function getShowDayEntryEligibilityReason(args: {
   currentEpoch: number;
 }): string | null {
   const { dog, cluster, showDay, breedCode2, currentEpoch } = args;
+  const dayAvailability = getShowDayEntryAvailability({
+    cluster,
+    showDay,
+    currentEpoch,
+  });
 
-  if (cluster.status === "CANCELLED") {
-    return "Show cluster is cancelled.";
-  }
-
-  if (showDay.status === "CANCELLED") {
-    return "Show day is cancelled.";
-  }
-
-  if (!isShowDayEntryWindowOpen({ cluster, showDay, currentEpoch })) {
-    return "Entry window is closed.";
+  if (!dayAvailability.canEnter) {
+    return dayAvailability.message;
   }
 
   if (dog.ownerKennelId == null) {
@@ -543,25 +504,13 @@ export function getShowEntryEligibilityReason(args: {
   currentEpoch: number;
 }): string | null {
   const { dog, block, currentEpoch } = args;
+  const blockAvailability = getShowBlockEntryAvailability({
+    block,
+    currentEpoch,
+  });
 
-  if (block.showDay.cluster.status === "CANCELLED") {
-    return "Show cluster is cancelled.";
-  }
-
-  if (block.showDay.status === "CANCELLED") {
-    return "Show day is cancelled.";
-  }
-
-  if (block.status === "CANCELLED") {
-    return "Judging block is cancelled.";
-  }
-
-  if (block.status === "RESULTS_PUBLISHED" || block.status === "JUDGING") {
-    return "Judging block is already in progress or published.";
-  }
-
-  if (!isEntryWindowOpen({ block, currentEpoch })) {
-    return "Entry window is closed.";
+  if (!blockAvailability.canEnter) {
+    return blockAvailability.message;
   }
 
   if (dog.ownerKennelId == null) {

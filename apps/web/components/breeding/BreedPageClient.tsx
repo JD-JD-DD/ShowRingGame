@@ -1396,29 +1396,6 @@ function PairingAnalysis({
             ) : null}
           </div>
 
-          {errorMessage ? (
-            <div className="mt-4 rounded-xl border border-red-400/35 bg-red-500/10 px-3 py-2 text-sm text-red-100">
-              {errorMessage}
-            </div>
-          ) : null}
-          {successMessage ? (
-            <div className="mt-4 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
-              {successMessage}
-            </div>
-          ) : null}
-
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={submitting || redirecting || kennelBalance < totalCost}
-            className="mt-4 w-full rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {redirecting
-              ? "Confirmed"
-              : submitting
-                ? "Creating Breeding..."
-                : "Confirm Litter Plan"}
-          </button>
         </aside>
       </div>
 
@@ -1481,6 +1458,76 @@ function PairingAnalysis({
       <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4">
         <h3 className="font-semibold text-white">Visible Trait Outlook</h3>
         <TraitOutlook dam={dam} sire={sire} />
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-fuchsia-300/30 bg-white/5 p-5 shadow-[0_12px_32px_rgba(0,0,0,0.22)]">
+        <h3 className="font-semibold text-white">Final Confirmation</h3>
+        <p className="mt-2 text-sm text-purple-100/70">
+          You have reviewed the pairing preview, health notes, pedigree, and
+          visible trait outlook. Confirm the litter plan when you are ready to
+          proceed.
+        </p>
+
+        <div className="mt-4 grid gap-3 text-sm text-purple-100/75 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="text-[0.65rem] uppercase tracking-[0.18em] text-purple-200/75">
+              Dam
+            </div>
+            <div className="mt-2 font-semibold text-white">
+              <DogName dog={dam} />
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="text-[0.65rem] uppercase tracking-[0.18em] text-purple-200/75">
+              Sire
+            </div>
+            <div className="mt-2 font-semibold text-white">
+              <DogName dog={sire} />
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="text-[0.65rem] uppercase tracking-[0.18em] text-purple-200/75">
+              Total Cost
+            </div>
+            <div className="mt-2 text-lg font-semibold text-white">
+              {formatMoney(totalCost)}
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="text-[0.65rem] uppercase tracking-[0.18em] text-purple-200/75">
+              Balance After
+            </div>
+            <div className="mt-2 text-lg font-semibold text-white">
+              {formatMoney(kennelBalance - totalCost)}
+            </div>
+          </div>
+        </div>
+
+        {errorMessage ? (
+          <div className="mt-4 rounded-xl border border-red-400/35 bg-red-500/10 px-3 py-2 text-sm text-red-100">
+            {errorMessage}
+          </div>
+        ) : null}
+        {successMessage ? (
+          <div className="mt-4 rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
+            {successMessage}
+          </div>
+        ) : null}
+
+        {/* Keep the actual breeding submit at the end of the worksheet so the
+            user reaches it only after the full review pass above. */}
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={submitting || redirecting || kennelBalance < totalCost}
+          className="mt-5 w-full rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {redirecting
+            ? "Confirmed"
+            : submitting
+              ? "Creating Breeding..."
+              : "Confirm Litter Plan"}
+        </button>
       </div>
     </section>
   );

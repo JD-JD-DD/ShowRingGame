@@ -3,6 +3,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import { getShowEntryAvailability } from "@/server/services/showAvailability.service";
 import {
   generateAnnualShowClusterTemplates,
   getShowDistrictRegionName,
@@ -27,6 +28,7 @@ function formatShowDate(epoch: number): string {
 }
 
 type PlayerClusterStatus =
+  | "SCHEDULED"
   | "OPEN"
   | "CLOSED"
   | "AWAITING JUDGING"
@@ -40,6 +42,8 @@ function statusTone(status: PlayerClusterStatus): string {
       return "border-sky-300/25 bg-sky-500/10 text-sky-100";
     case "OPEN":
       return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+    case "SCHEDULED":
+      return "border-purple-300/20 bg-black/20 text-purple-100/70";
     case "AWAITING JUDGING":
     case "JUDGING":
       return "border-amber-300/25 bg-amber-500/10 text-amber-100";
@@ -61,41 +65,37 @@ function derivedStatusTone(
   }
 }
 
-// Cluster statuses are workflow states. Derive a single label that tells
-// players what they can expect from the show at the current game time.
 function getPlayerClusterStatus(args: {
   clusterStatus: string;
-  entryCount: number;
-  hasResults: boolean;
+  hasJudgingActivity: boolean;
   entryOpenEpoch: number;
   entryCloseEpoch: number;
   currentEpoch: number;
 }): PlayerClusterStatus {
-  if (args.clusterStatus === "CANCELLED") {
-    return "CANCELLED";
-  }
+  const availability = getShowEntryAvailability({
+    cluster: {
+      status: args.clusterStatus,
+      entryOpenEpoch: args.entryOpenEpoch,
+      entryCloseEpoch: args.entryCloseEpoch,
+    },
+    currentEpoch: args.currentEpoch,
+    hasJudgingActivity: args.hasJudgingActivity,
+  });
 
-  if (args.entryCount === 0 && args.entryCloseEpoch <= args.currentEpoch) {
-    return "CLOSED";
+  switch (availability.entryStatus) {
+    case "CANCELLED":
+      return "CANCELLED";
+    case "RESULTS_PUBLISHED":
+      return "JUDGED";
+    case "JUDGING":
+      return "JUDGING";
+    case "OPEN":
+      return "OPEN";
+    case "CLOSED":
+      return "AWAITING JUDGING";
+    case "NOT_OPEN":
+      return "SCHEDULED";
   }
-
-  if (args.clusterStatus === "COMPLETE") {
-    return "JUDGED";
-  }
-
-  if (args.hasResults) {
-    return "JUDGING";
-  }
-
-  if (args.entryCloseEpoch <= args.currentEpoch) {
-    return "AWAITING JUDGING";
-  }
-
-  if (args.entryOpenEpoch <= args.currentEpoch) {
-    return "OPEN";
-  }
-
-  return "CLOSED";
 }
 
 function getGeneratedTemplateId(clusterId: string): string | null {
@@ -381,17 +381,22 @@ export default async function ShowsPage({
                       templateClusters.map((cluster) => {
                         const resultCount = clusterResultCount(cluster);
                         const entryCount = clusterEntryCount(cluster);
-                        const hasResults = resultCount > 0;
+                        const hasJudgingActivity =
+                          resultCount > 0 ||
+                          cluster.showDays.some(
+                            (day) =>
+                              day.status === "JUDGING" ||
+                              day.status === "RESULTS_PUBLISHED"
+                          );
                         const playerStatus = getPlayerClusterStatus({
                           clusterStatus: cluster.status,
-                          entryCount,
-                          hasResults,
+                          hasJudgingActivity,
                           entryOpenEpoch: cluster.entryOpenEpoch,
                           entryCloseEpoch: cluster.entryCloseEpoch,
                           currentEpoch,
                         });
                         const judgingOpens =
-                          !hasResults && cluster.startEpoch > currentEpoch
+                          !hasJudgingActivity && cluster.startEpoch > currentEpoch
                             ? cluster.startEpoch
                             : null;
                         const canEnterShow = playerStatus === "OPEN";
@@ -430,10 +435,14 @@ export default async function ShowsPage({
                                   REPRESENTED
                                 </span>
                               ) : null}
-                              {hasResults ? (
+                              {resultCount > 0 ? (
                                 <span className="ml-2 text-sky-100">
                                   {resultCount} result
                                   {resultCount === 1 ? "" : "s"}
+                                </span>
+                              ) : hasJudgingActivity ? (
+                                <span className="ml-2 text-sky-100">
+                                  Judging underway
                                 </span>
                               ) : entryCount > 0 ? (
                                 <span className="ml-2 text-purple-100/70">
@@ -509,10 +518,16 @@ export default async function ShowsPage({
                   invitationalClusters.map((cluster) => {
                     const resultCount = clusterResultCount(cluster);
                     const entryCount = clusterEntryCount(cluster);
+                    const hasJudgingActivity =
+                      resultCount > 0 ||
+                      cluster.showDays.some(
+                        (day) =>
+                          day.status === "JUDGING" ||
+                          day.status === "RESULTS_PUBLISHED"
+                      );
                     const playerStatus = getPlayerClusterStatus({
                       clusterStatus: cluster.status,
-                      entryCount,
-                      hasResults: resultCount > 0,
+                      hasJudgingActivity,
                       entryOpenEpoch: cluster.entryOpenEpoch,
                       entryCloseEpoch: cluster.entryCloseEpoch,
                       currentEpoch,
