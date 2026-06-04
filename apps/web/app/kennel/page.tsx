@@ -123,7 +123,7 @@ export default async function KennelPage() {
           </Link>
           <Link href="/plan-a-litter" className="premium-planner-link">
             <span className="premium-planner-link__spark" aria-hidden="true">
-              \\ â—†
+              
             </span>
             <span>
               <span className="block text-[0.58rem] font-bold uppercase tracking-[0.2em] text-fuchsia-100/85">
