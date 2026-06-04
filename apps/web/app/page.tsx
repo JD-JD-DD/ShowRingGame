@@ -328,8 +328,8 @@ export default async function HomePage() {
               <h2 className="text-2xl font-semibold text-white">
                 Around ShowRing
               </h2>
-              <p className="mt-1 text-sm text-purple-100/72">
-                IMPORTANT: Alpha testing has unlimited funds to encourage large kennels and lots of game play. Go Wild!
+              <p className="mt-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                <span className="font-bold">IMPORTANT:</span> Alpha testing has unlimited funds to encourage large kennels and lots of game play. Go Wild!
               </p>
             </div>
 
@@ -367,16 +367,19 @@ export default async function HomePage() {
                               </div>
                               <div className="mt-1 text-xs text-purple-100/65">
                                 {getShowDistrictRegionName(show.district)} ·{" "}
-                                {formatGameTimeLabel(show.startEpoch)}
+                                {formatGameTimeLabel(show.startEpoch)} ·{" "}
+                                {entryCount} entries
                               </div>
                             </div>
                             <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">
                               {getUpcomingShowStatusLabel(show.status)}
                             </span>
                           </div>
+                          {/*}
                           <div className="mt-2 text-xs text-purple-100/65">
                             {entryCount} entries
                           </div>
+                          */}
                         </Link>
                       );
                     })}
