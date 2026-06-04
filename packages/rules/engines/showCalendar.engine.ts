@@ -3,6 +3,7 @@ import {
   SHOW_CLUSTERS_PER_DISTRICT_PER_YEAR,
   SHOW_CLUSTERS_PER_WEEK,
   SHOW_DISTRICT_COUNT,
+  SHOW_ENTRY_OPEN_LEAD_HOURS,
   SHOW_ENTRY_CLOSE_OFFSET_HOURS,
   SHOW_FOUR_DAY_CLUSTERS_PER_DISTRICT_PER_YEAR,
   SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
@@ -28,6 +29,7 @@ export type ShowClusterTemplate = {
   showDayNames: string[];
   startDayOffset: number;
   endDayOffset: number;
+  entryOpenLeadHours: number;
   entryCloseOffsetHours: number;
   generationHorizonHours: number;
 };
@@ -220,6 +222,7 @@ export function generateAnnualShowClusterTemplates(): ShowClusterTemplate[] {
         showDayNames: getDayNames(showDayOffsets),
         startDayOffset: Math.min(...showDayOffsets),
         endDayOffset: Math.max(...showDayOffsets),
+        entryOpenLeadHours: SHOW_ENTRY_OPEN_LEAD_HOURS,
         entryCloseOffsetHours: SHOW_ENTRY_CLOSE_OFFSET_HOURS,
         generationHorizonHours: SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
       });
@@ -243,6 +246,7 @@ export function showClusterTemplatesToCsv(
     "showDayNames",
     "startDayOffset",
     "endDayOffset",
+    "entryOpenLeadHours",
     "entryCloseOffsetHours",
     "generationHorizonHours",
   ];
@@ -257,6 +261,7 @@ export function showClusterTemplatesToCsv(
     template.showDayNames.join("|"),
     template.startDayOffset,
     template.endDayOffset,
+    template.entryOpenLeadHours,
     template.entryCloseOffsetHours,
     template.generationHorizonHours,
   ]);
@@ -305,7 +310,7 @@ export function generateShowClustersForWeek(
       district,
       startEpoch,
       endEpoch,
-      entryOpenEpoch: Math.max(0, startEpoch - SHOW_INSTANCE_GENERATION_HORIZON_HOURS),
+      entryOpenEpoch: Math.max(0, startEpoch - SHOW_ENTRY_OPEN_LEAD_HOURS),
       entryCloseEpoch: Math.max(0, startEpoch - SHOW_ENTRY_CLOSE_OFFSET_HOURS),
       showDayEpochs,
     };

@@ -3,6 +3,8 @@ import { getCurrentEpoch } from "@/lib/gameClock";
 import { seedJudgePanelFromCsv } from "@/server/services/judgePanel.service";
 import {
   CURRENT_BREED_RELEASE,
+  SHOW_ENTRY_CLOSE_OFFSET_HOURS,
+  SHOW_ENTRY_OPEN_LEAD_HOURS,
   SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
   type GeneratedShowCluster,
   generateShowClustersInHorizon,
@@ -11,7 +13,6 @@ import fs from "node:fs";
 import path from "node:path";
 
 const SHOW_BLOCK_FILENAME = "partialshowblock.csv";
-const ENTRY_OPEN_LEAD_HOURS = 14;
 const GENERATED_SHOW_ENTRY_COUNT_HINT = 2;
 
 const TERMINAL_CLUSTER_STATUSES = new Set(["COMPLETE", "CANCELLED"]);
@@ -209,6 +210,14 @@ function getBlockStatus(args: {
 
 function getGeneratedClusterId(cluster: GeneratedShowCluster): string {
   return `generated-year-${cluster.year}-${cluster.templateId}`;
+}
+
+function getSeedEntryOpenEpoch(startEpoch: number): number {
+  return Math.max(0, startEpoch - SHOW_ENTRY_OPEN_LEAD_HOURS);
+}
+
+function getSeedEntryCloseEpoch(startEpoch: number): number {
+  return Math.max(0, startEpoch - SHOW_ENTRY_CLOSE_OFFSET_HOURS);
 }
 
 async function deleteEmptyGeneratedCluster(clusterId: string): Promise<boolean> {
@@ -556,19 +565,21 @@ export async function ensureGeneratedShowSchedule(args?: {
         },
       },
     });
-    const generatedScheduleChanged =
+    const generatedStructureChanged =
       existingCluster &&
       (existingCluster.district !== cluster.district ||
         existingCluster.startEpoch !== cluster.startEpoch ||
         existingCluster.endEpoch !== cluster.endEpoch ||
-        existingCluster.entryOpenEpoch !== cluster.entryOpenEpoch ||
-        existingCluster.entryCloseEpoch !== cluster.entryCloseEpoch ||
         existingCluster.showDays.length !== showDayEpochs.length ||
         existingCluster.showDays.some(
           (showDay, index) => showDay.scheduledEpoch !== showDayEpochs[index]
         ));
+    const generatedTimingChanged =
+      existingCluster &&
+      (existingCluster.entryOpenEpoch !== cluster.entryOpenEpoch ||
+        existingCluster.entryCloseEpoch !== cluster.entryCloseEpoch);
 
-    if (generatedScheduleChanged) {
+    if (generatedStructureChanged) {
       const deleted = await deleteEmptyGeneratedCluster(clusterId);
 
       if (deleted) {
@@ -579,7 +590,10 @@ export async function ensureGeneratedShowSchedule(args?: {
     }
 
     if (existingCluster) {
-      if (!TERMINAL_CLUSTER_STATUSES.has(existingCluster.status)) {
+      if (
+        generatedTimingChanged ||
+        !TERMINAL_CLUSTER_STATUSES.has(existingCluster.status)
+      ) {
         await db.showCluster.update({
           where: { id: clusterId },
           data: {
@@ -832,12 +846,12 @@ export async function seedShowScheduleFromCsv(): Promise<{
         district: 4,
         startEpoch,
         endEpoch,
-        entryOpenEpoch: Math.max(0, startEpoch - ENTRY_OPEN_LEAD_HOURS),
-        entryCloseEpoch: Math.max(0, startEpoch - 1),
+        entryOpenEpoch: getSeedEntryOpenEpoch(startEpoch),
+        entryCloseEpoch: getSeedEntryCloseEpoch(startEpoch),
         status: getClusterStatus({
           currentEpoch,
-          entryOpenEpoch: Math.max(0, startEpoch - ENTRY_OPEN_LEAD_HOURS),
-          entryCloseEpoch: Math.max(0, startEpoch - 1),
+          entryOpenEpoch: getSeedEntryOpenEpoch(startEpoch),
+          entryCloseEpoch: getSeedEntryCloseEpoch(startEpoch),
           endEpoch,
         }),
       },
@@ -848,12 +862,12 @@ export async function seedShowScheduleFromCsv(): Promise<{
         district: 4,
         startEpoch,
         endEpoch,
-        entryOpenEpoch: Math.max(0, startEpoch - ENTRY_OPEN_LEAD_HOURS),
-        entryCloseEpoch: Math.max(0, startEpoch - 1),
+        entryOpenEpoch: getSeedEntryOpenEpoch(startEpoch),
+        entryCloseEpoch: getSeedEntryCloseEpoch(startEpoch),
         status: getClusterStatus({
           currentEpoch,
-          entryOpenEpoch: Math.max(0, startEpoch - ENTRY_OPEN_LEAD_HOURS),
-          entryCloseEpoch: Math.max(0, startEpoch - 1),
+          entryOpenEpoch: getSeedEntryOpenEpoch(startEpoch),
+          entryCloseEpoch: getSeedEntryCloseEpoch(startEpoch),
           endEpoch,
         }),
       },
@@ -886,8 +900,8 @@ export async function seedShowScheduleFromCsv(): Promise<{
           judgeId: fallbackJudge.id,
           status: getShowDayStatus({
             currentEpoch,
-            entryOpenEpoch: Math.max(0, scheduledEpoch - ENTRY_OPEN_LEAD_HOURS),
-            entryCloseEpoch: Math.max(0, scheduledEpoch - 1),
+            entryOpenEpoch: getSeedEntryOpenEpoch(scheduledEpoch),
+            entryCloseEpoch: getSeedEntryCloseEpoch(scheduledEpoch),
             scheduledEpoch,
           }),
         },
@@ -898,8 +912,8 @@ export async function seedShowScheduleFromCsv(): Promise<{
           judgeId: fallbackJudge.id,
           status: getShowDayStatus({
             currentEpoch,
-            entryOpenEpoch: Math.max(0, scheduledEpoch - ENTRY_OPEN_LEAD_HOURS),
-            entryCloseEpoch: Math.max(0, scheduledEpoch - 1),
+            entryOpenEpoch: getSeedEntryOpenEpoch(scheduledEpoch),
+            entryCloseEpoch: getSeedEntryCloseEpoch(scheduledEpoch),
             scheduledEpoch,
           }),
         },
@@ -941,8 +955,8 @@ export async function seedShowScheduleFromCsv(): Promise<{
             entryCountHint: row.entryCount,
             status: getBlockStatus({
               currentEpoch,
-              entryOpenEpoch: Math.max(0, row.startEpoch - ENTRY_OPEN_LEAD_HOURS),
-              entryCloseEpoch: Math.max(0, row.startEpoch - 1),
+              entryOpenEpoch: getSeedEntryOpenEpoch(row.startEpoch),
+              entryCloseEpoch: getSeedEntryCloseEpoch(row.startEpoch),
             }),
           },
           create: {
@@ -957,8 +971,8 @@ export async function seedShowScheduleFromCsv(): Promise<{
             entryCountHint: row.entryCount,
             status: getBlockStatus({
               currentEpoch,
-              entryOpenEpoch: Math.max(0, row.startEpoch - ENTRY_OPEN_LEAD_HOURS),
-              entryCloseEpoch: Math.max(0, row.startEpoch - 1),
+              entryOpenEpoch: getSeedEntryOpenEpoch(row.startEpoch),
+              entryCloseEpoch: getSeedEntryCloseEpoch(row.startEpoch),
             }),
           },
         });
