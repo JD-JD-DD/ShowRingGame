@@ -500,6 +500,68 @@ export default function KennelDogsPanel() {
     }
   }
 
+  async function deleteArea(area: KennelAreaDto) {
+    if (areaActionLoading || areaCreateLoading) {
+      return;
+    }
+
+    // Require an explicit confirmation so an accidental click on the pill
+    // control does not remove a custom roster view unexpectedly.
+    const confirmed = window.confirm(
+      `Delete kennel area "${area.name}"? Dogs will stay in your kennel.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setAreaActionLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/kennel/areas/${area.id}`, {
+        method: "DELETE",
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        areaId?: string;
+        areaName?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !data.ok || !data.areaId) {
+        throw new Error(data.error || "Failed to delete kennel area.");
+      }
+
+      setAreas((current) =>
+        current.filter((candidate) => candidate.id !== data.areaId)
+      );
+      setDogs((current) =>
+        current.map((dog) => ({
+          ...dog,
+          areaIds: dog.areaIds.filter((areaId) => areaId !== data.areaId),
+        }))
+      );
+
+      if (activeAreaId === data.areaId) {
+        setActiveAreaId("");
+      }
+
+      if (areaActionTargetId === data.areaId) {
+        setAreaActionTargetId("");
+      }
+
+      setMessage(`Deleted kennel area "${data.areaName ?? area.name}".`);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to delete kennel area."
+      );
+    } finally {
+      setAreaActionLoading(false);
+    }
+  }
+
   async function updateSelectedDogsArea(action: "add" | "remove") {
     if (!areaActionTargetId || selectedDogIds.length === 0 || areaActionLoading) {
       return;
@@ -698,23 +760,39 @@ export default function KennelDogsPanel() {
             All Dogs ({dogs.length})
           </button>
           {areas.map((area) => (
-            <button
+            <div
               key={area.id}
-              type="button"
-              onClick={() => {
-                setActiveAreaId(area.id);
-                setSelectedDogIds([]);
-                setBulkAction("");
-                setConfirmingBulkAction(false);
-              }}
-              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+              className={`inline-flex items-center gap-1 rounded-full border pr-1 transition ${
                 activeAreaId === area.id
                   ? "border-fuchsia-200/70 bg-fuchsia-500/20 text-fuchsia-100"
                   : "border-white/10 bg-white/5 text-purple-100/70 hover:bg-white/10"
               }`}
             >
-              {area.name} ({areaCounts.get(area.id) ?? 0})
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveAreaId(area.id);
+                  setSelectedDogIds([]);
+                  setBulkAction("");
+                  setConfirmingBulkAction(false);
+                }}
+                className="rounded-full px-3 py-1.5 text-xs font-semibold"
+              >
+                {area.name} ({areaCounts.get(area.id) ?? 0})
+              </button>
+              <button
+                type="button"
+                aria-label={`Delete kennel area ${area.name}`}
+                title={`Delete ${area.name}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void deleteArea(area);
+                }}
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-black/20 text-[13px] font-bold text-purple-100/75 transition hover:border-red-300/35 hover:bg-red-500/15 hover:text-red-100"
+              >
+                ×
+              </button>
+            </div>
           ))}
           {areas.length === 0 ? (
             <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs text-purple-100/55">
