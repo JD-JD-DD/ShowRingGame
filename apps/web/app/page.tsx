@@ -109,8 +109,8 @@ export default async function HomePage() {
                 priority
               />
             </div>
-            <div className="hidden min-w-0 md:block">
-              <h1 className="truncate text-2xl font-semibold text-white lg:text-3xl">
+            <div className="hidden flex-1 items-center justify-center md:flex">
+              <h1 className="bg-[length:200%_100%] bg-gradient-to-r from-white via-purple-200 to-white bg-clip-text text-5xl font-black tracking-wide text-transparent lg:text-7xl animate-[shimmer_3s_linear_infinite]">
                 The Show Ring Game
               </h1>
             </div>
