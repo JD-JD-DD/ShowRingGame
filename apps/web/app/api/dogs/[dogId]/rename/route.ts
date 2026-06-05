@@ -4,8 +4,26 @@ import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import { validateRegisteredDogName } from "@/server/validation/dogName.validation";
 
-function redirectWithNameError(request: Request, dogId: string, error: string) {
+function normalizeAreaId(value: FormDataEntryValue | null): string | null {
+  const areaId = String(value ?? "").trim();
+  return areaId.length > 0 ? areaId : null;
+}
+
+function buildDogUrl(request: Request, dogId: string, areaId?: string | null) {
   const url = new URL(`/dogs/${dogId}`, request.url);
+  if (areaId) {
+    url.searchParams.set("areaId", areaId);
+  }
+  return url;
+}
+
+function redirectWithNameError(
+  request: Request,
+  dogId: string,
+  error: string,
+  areaId?: string | null
+) {
+  const url = buildDogUrl(request, dogId, areaId);
   url.searchParams.set("nameError", error);
   return NextResponse.redirect(url);
 }
@@ -32,6 +50,7 @@ export async function POST(
     }
 
     const formData = await request.formData();
+    const areaId = normalizeAreaId(formData.get("areaId"));
 
     const dog = await db.dog.findUnique({
       where: { id: dogId },
@@ -57,7 +76,8 @@ export async function POST(
       return redirectWithNameError(
         request,
         dogId,
-        "This dog has already been named."
+        "This dog has already been named.",
+        areaId
       );
     }
 
@@ -71,7 +91,7 @@ export async function POST(
     );
 
     if (!validation.ok) {
-      return redirectWithNameError(request, dogId, validation.error);
+      return redirectWithNameError(request, dogId, validation.error, areaId);
     }
 
     const existingDog = await db.dog.findFirst({
@@ -89,7 +109,8 @@ export async function POST(
       return redirectWithNameError(
         request,
         dogId,
-        "That dog name is already in use."
+        "That dog name is already in use.",
+        areaId
       );
     }
 
@@ -98,7 +119,7 @@ export async function POST(
       data: { registeredName: validation.name },
     });
 
-    return NextResponse.redirect(new URL(`/dogs/${dogId}`, request.url));
+    return NextResponse.redirect(buildDogUrl(request, dogId, areaId));
   } catch (error) {
     console.error("POST /api/dogs/[dogId]/rename failed:", error);
 

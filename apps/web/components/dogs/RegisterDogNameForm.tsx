@@ -4,11 +4,13 @@ import { useState } from "react";
 
 type RegisterDogNameFormProps = {
   action: string;
+  areaId?: string | null;
   nameError: string | null;
 };
 
 export default function RegisterDogNameForm({
   action,
+  areaId,
   nameError,
 }: RegisterDogNameFormProps) {
   const [confirmingName, setConfirmingName] = useState<string | null>(null);
@@ -30,6 +32,7 @@ export default function RegisterDogNameForm({
       onSubmit={handleSubmit}
       className="mt-5 flex max-w-xl flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 sm:flex-row sm:flex-wrap sm:items-end"
     >
+      {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
       <label className="min-w-0 flex-1">
         <span className="text-xs font-semibold uppercase tracking-[0.16em] text-purple-200">
           Registered Name
