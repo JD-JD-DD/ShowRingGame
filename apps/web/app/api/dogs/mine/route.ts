@@ -8,13 +8,14 @@ import { resolveBreedingProgressForKennel } from "@/server/services/breeding.ser
 import {
   DAM_MAX_BREED_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
+  PHENOTYPE_HEALTH_TEST_CODES,
   WHELPING_COOLDOWN_HOURS,
   deriveVisibleCategoriesFromTraits,
 } from "@showring/rules";
 
 const RECENT_BREEDING_RESULT_HOURS = 14;
 
-type MineDog = {
+type RosterDogRecord = {
   id: string;
   callName: string | null;
   registeredName: string | null;
@@ -26,8 +27,6 @@ type MineDog = {
   birthEpoch: number;
   lifecycleState: string;
   marketState: string;
-  originType: string;
-  isFoundation: boolean;
   breed: {
     name: string;
   };
@@ -41,28 +40,6 @@ type MineDog = {
   traitShowShine: number;
   traitFeet: number;
   traitTopline: number;
-  breedingAttemptsAsDam: Array<{
-    id: string;
-    status:
-      | "INITIATED"
-      | "CHECKED_NOT_PREGNANT"
-      | "PREGNANT"
-      | "WHELPED"
-      | "FAILED"
-      | "CANCELLED";
-    createdEpoch: number;
-    pregCheckEpoch: number | null;
-    dueEpoch: number | null;
-    checkedEpoch: number | null;
-    whelpedEpoch: number | null;
-  }>;
-  healthTests: Array<{
-    testTypeCode: string;
-    resultCode: string;
-  }>;
-  kennelAreaMemberships: Array<{
-    kennelAreaId: string;
-  }>;
 };
 
 type BreedingCardStatus = {
@@ -80,7 +57,30 @@ type BreedingCardStatus = {
   cooldownInHours: number | null;
 };
 
-function toVisibleCategories(dog: MineDog) {
+type ActiveDamAttemptSummary = {
+  dogId: string;
+  status: "INITIATED" | "PREGNANT";
+  pregCheckEpoch: number | null;
+  dueEpoch: number | null;
+};
+
+type LatestWhelpedAttemptSummary = {
+  dogId: string;
+  whelpedEpoch: number;
+};
+
+type RecentNotPregnantAttemptSummary = {
+  dogId: string;
+  checkedEpoch: number;
+};
+
+type HealthTestSummary = {
+  dogId: string;
+  testTypeCode: string;
+  resultCode: string;
+};
+
+function toVisibleCategories(dog: RosterDogRecord) {
   return deriveVisibleCategoriesFromTraits({
     head: dog.traitHead,
     forequarters: dog.traitForequarters,
@@ -96,7 +96,12 @@ function toVisibleCategories(dog: MineDog) {
 }
 
 function getBreedingCardStatus(
-  dog: MineDog,
+  dog: Pick<RosterDogRecord, "sex" | "birthEpoch" | "lifecycleState">,
+  breedingSummary: {
+    activeAttempt: ActiveDamAttemptSummary | null;
+    latestWhelpedAttempt: LatestWhelpedAttemptSummary | null;
+    recentNotPregnantAttempt: RecentNotPregnantAttemptSummary | null;
+  },
   currentEpoch: number
 ): BreedingCardStatus {
   const ageHours = Math.max(0, currentEpoch - dog.birthEpoch);
@@ -125,46 +130,38 @@ function getBreedingCardStatus(
     };
   }
 
-  const activeDamAttempt =
-    dog.breedingAttemptsAsDam.find(
-      (attempt) =>
-        attempt.status === "PREGNANT" || attempt.status === "INITIATED"
-    ) ?? null;
-
-  if (activeDamAttempt?.status === "PREGNANT") {
+  if (breedingSummary.activeAttempt?.status === "PREGNANT") {
     return {
       label: "Pregnant",
       pregCheckInHours: null,
       dueInHours:
-        activeDamAttempt.dueEpoch == null
+        breedingSummary.activeAttempt.dueEpoch == null
           ? null
-          : Math.max(0, activeDamAttempt.dueEpoch - currentEpoch),
+          : Math.max(0, breedingSummary.activeAttempt.dueEpoch - currentEpoch),
       cooldownInHours: null,
     };
   }
 
-  if (activeDamAttempt?.status === "INITIATED") {
+  if (breedingSummary.activeAttempt?.status === "INITIATED") {
     return {
       label: "Pending Pregnancy Confirmation",
       pregCheckInHours:
-        activeDamAttempt.pregCheckEpoch == null
+        breedingSummary.activeAttempt.pregCheckEpoch == null
           ? null
-          : Math.max(0, activeDamAttempt.pregCheckEpoch - currentEpoch),
+          : Math.max(
+              0,
+              breedingSummary.activeAttempt.pregCheckEpoch - currentEpoch
+            ),
       dueInHours: null,
       cooldownInHours: null,
     };
   }
 
-  const latestWhelpedAttempt =
-    dog.breedingAttemptsAsDam.find(
-      (attempt) =>
-        attempt.status === "WHELPED" &&
-        attempt.whelpedEpoch !== null
-    ) ?? null;
   const cooldownUntil =
-    latestWhelpedAttempt?.whelpedEpoch == null
+    breedingSummary.latestWhelpedAttempt?.whelpedEpoch == null
       ? null
-      : latestWhelpedAttempt.whelpedEpoch + WHELPING_COOLDOWN_HOURS;
+      : breedingSummary.latestWhelpedAttempt.whelpedEpoch +
+        WHELPING_COOLDOWN_HOURS;
 
   if (cooldownUntil !== null && currentEpoch < cooldownUntil) {
     return {
@@ -176,8 +173,9 @@ function getBreedingCardStatus(
   }
 
   if (
-    latestWhelpedAttempt?.whelpedEpoch != null &&
-    currentEpoch - latestWhelpedAttempt.whelpedEpoch <= RECENT_BREEDING_RESULT_HOURS
+    breedingSummary.latestWhelpedAttempt?.whelpedEpoch != null &&
+    currentEpoch - breedingSummary.latestWhelpedAttempt.whelpedEpoch <=
+      RECENT_BREEDING_RESULT_HOURS
   ) {
     return {
       label: "Whelped",
@@ -187,15 +185,7 @@ function getBreedingCardStatus(
     };
   }
 
-  const recentNotPregnantAttempt =
-    dog.breedingAttemptsAsDam.find(
-      (attempt) =>
-        attempt.status === "CHECKED_NOT_PREGNANT" &&
-        attempt.checkedEpoch !== null &&
-        currentEpoch - attempt.checkedEpoch <= RECENT_BREEDING_RESULT_HOURS
-    ) ?? null;
-
-  if (recentNotPregnantAttempt) {
+  if (breedingSummary.recentNotPregnantAttempt) {
     return {
       label: "Did Not Take",
       pregCheckInHours: null,
@@ -210,6 +200,39 @@ function getBreedingCardStatus(
     dueInHours: null,
     cooldownInHours: null,
   };
+}
+
+function groupAreaIdsByDog(
+  memberships: Array<{ dogId: string; kennelAreaId: string }>
+) {
+  const areaIdsByDogId = new Map<string, string[]>();
+
+  for (const membership of memberships) {
+    const areaIds = areaIdsByDogId.get(membership.dogId) ?? [];
+    areaIds.push(membership.kennelAreaId);
+    areaIdsByDogId.set(membership.dogId, areaIds);
+  }
+
+  return areaIdsByDogId;
+}
+
+function groupHealthTestsByDog(healthTests: HealthTestSummary[]) {
+  const testsByDogId = new Map<string, Array<{ testTypeCode: string; resultCode: string }>>();
+
+  for (const test of healthTests) {
+    const tests = testsByDogId.get(test.dogId) ?? [];
+    tests.push({
+      testTypeCode: test.testTypeCode,
+      resultCode: test.resultCode,
+    });
+    testsByDogId.set(test.dogId, tests);
+  }
+
+  return testsByDogId;
+}
+
+function mapByDogId<T extends { dogId: string }>(rows: T[]) {
+  return new Map(rows.map((row) => [row.dogId, row]));
 }
 
 export async function GET() {
@@ -229,7 +252,7 @@ export async function GET() {
     const currentEpoch = getCurrentEpoch();
     await resolveBreedingProgressForKennel({ kennelId: kennel.id, currentEpoch });
 
-    const dogs: MineDog[] = await db.dog.findMany({
+    const dogs: RosterDogRecord[] = await db.dog.findMany({
       where: {
         ownerKennelId: kennel.id,
         lifecycleState: "ALIVE",
@@ -247,8 +270,6 @@ export async function GET() {
         birthEpoch: true,
         lifecycleState: true,
         marketState: true,
-        originType: true,
-        isFoundation: true,
         breed: {
           select: {
             name: true,
@@ -264,62 +285,161 @@ export async function GET() {
         traitShowShine: true,
         traitFeet: true,
         traitTopline: true,
-        breedingAttemptsAsDam: {
-          orderBy: [{ createdEpoch: "desc" }],
-          take: 5,
-          select: {
-            id: true,
-            status: true,
-            createdEpoch: true,
-            pregCheckEpoch: true,
-            dueEpoch: true,
-            checkedEpoch: true,
-            whelpedEpoch: true,
-          },
-        },
-        healthTests: {
-          where: {
-            isPublic: true,
-          },
-          orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
-          select: {
-            testTypeCode: true,
-            resultCode: true,
-          },
-        },
-        kennelAreaMemberships: {
-          where: {
-            area: {
+      },
+    });
+    const dogIds = dogs.map((dog) => dog.id);
+    const [
+      areaMemberships,
+      activeDamAttempts,
+      latestWhelpedAttempts,
+      recentNotPregnantAttempts,
+      latestHealthTests,
+      areas,
+    ] = dogIds.length
+      ? await Promise.all([
+          db.kennelAreaDog.findMany({
+            where: {
+              dogId: {
+                in: dogIds,
+              },
+              area: {
+                kennelId: kennel.id,
+              },
+            },
+            select: {
+              dogId: true,
+              kennelAreaId: true,
+            },
+          }),
+          db.breedingAttempt.findMany({
+            where: {
+              damId: {
+                in: dogIds,
+              },
+              status: {
+                in: ["INITIATED", "PREGNANT"],
+              },
+            },
+            orderBy: [{ damId: "asc" }, { createdEpoch: "desc" }],
+            distinct: ["damId"],
+            select: {
+              damId: true,
+              status: true,
+              pregCheckEpoch: true,
+              dueEpoch: true,
+            },
+          }),
+          db.breedingAttempt.findMany({
+            where: {
+              damId: {
+                in: dogIds,
+              },
+              status: "WHELPED",
+              whelpedEpoch: {
+                not: null,
+              },
+            },
+            orderBy: [{ damId: "asc" }, { whelpedEpoch: "desc" }],
+            distinct: ["damId"],
+            select: {
+              damId: true,
+              whelpedEpoch: true,
+            },
+          }),
+          db.breedingAttempt.findMany({
+            where: {
+              damId: {
+                in: dogIds,
+              },
+              status: "CHECKED_NOT_PREGNANT",
+              checkedEpoch: {
+                not: null,
+                gte: currentEpoch - RECENT_BREEDING_RESULT_HOURS,
+              },
+            },
+            orderBy: [{ damId: "asc" }, { checkedEpoch: "desc" }],
+            distinct: ["damId"],
+            select: {
+              damId: true,
+              checkedEpoch: true,
+            },
+          }),
+          db.healthTestRecord.findMany({
+            where: {
+              dogId: {
+                in: dogIds,
+              },
+              isPublic: true,
+              testTypeCode: {
+                in: [...PHENOTYPE_HEALTH_TEST_CODES],
+              },
+            },
+            orderBy: [
+              { dogId: "asc" },
+              { testTypeCode: "asc" },
+              { testedAtEpoch: "desc" },
+              { createdAt: "desc" },
+            ],
+            distinct: ["dogId", "testTypeCode"],
+            select: {
+              dogId: true,
+              testTypeCode: true,
+              resultCode: true,
+            },
+          }),
+          db.kennelArea.findMany({
+            where: {
               kennelId: kennel.id,
             },
-          },
-          select: {
-            kennelAreaId: true,
-          },
-        },
-      },
-    });
-    const areas = await db.kennelArea.findMany({
-      where: {
-        kennelId: kennel.id,
-      },
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: {
-        id: true,
-        name: true,
-        sortOrder: true,
-      },
-    });
+            orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+            select: {
+              id: true,
+              name: true,
+              sortOrder: true,
+            },
+          }),
+        ])
+      : [[], [], [], [], [], []];
+    const areaIdsByDogId = groupAreaIdsByDog(areaMemberships);
+    const activeAttemptByDogId = mapByDogId(
+      activeDamAttempts.map((attempt) => ({
+        dogId: attempt.damId,
+        status: (
+          attempt.status === "PREGNANT" ? "PREGNANT" : "INITIATED"
+        ) as ActiveDamAttemptSummary["status"],
+        pregCheckEpoch: attempt.pregCheckEpoch,
+        dueEpoch: attempt.dueEpoch,
+      }))
+    );
+    const latestWhelpedByDogId = mapByDogId(
+      latestWhelpedAttempts
+        .filter(
+          (attempt): attempt is {
+            damId: string;
+            whelpedEpoch: number;
+          } => attempt.whelpedEpoch !== null
+        )
+        .map((attempt) => ({
+          dogId: attempt.damId,
+          whelpedEpoch: attempt.whelpedEpoch,
+        }))
+    );
+    const recentNotPregnantByDogId = mapByDogId(
+      recentNotPregnantAttempts
+        .filter(
+          (attempt): attempt is {
+            damId: string;
+            checkedEpoch: number;
+          } => attempt.checkedEpoch !== null
+        )
+        .map((attempt) => ({
+          dogId: attempt.damId,
+          checkedEpoch: attempt.checkedEpoch,
+        }))
+    );
+    const healthTestsByDogId = groupHealthTestsByDog(latestHealthTests);
 
     return ok({
-      kennel: {
-        id: kennel.id,
-        name: kennel.name,
-        slug: kennel.slug,
-        balance: kennel.balance,
-        homeDistrict: kennel.homeDistrict,
-        dogCount: dogs.length,
-      },
       areas,
       dogs: dogs.map((dog) => ({
         dogId: dog.id,
@@ -331,18 +451,24 @@ export async function GET() {
         breedCode2: dog.breedCode2,
         breedName: dog.breed.name,
         sex: dog.sex,
-        birthEpoch: dog.birthEpoch,
         ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
         lifecycleState: dog.lifecycleState,
         marketState: dog.marketState,
-        originType: dog.originType,
-        isFoundation: dog.isFoundation,
-        hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(dog.healthTests),
-        areaIds: dog.kennelAreaMemberships.map(
-          (membership) => membership.kennelAreaId
+        hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(
+          healthTestsByDogId.get(dog.id) ?? []
         ),
+        areaIds: areaIdsByDogId.get(dog.id) ?? [],
         visibleCategories: toVisibleCategories(dog),
-        breedingCardStatus: getBreedingCardStatus(dog, currentEpoch),
+        breedingCardStatus: getBreedingCardStatus(
+          dog,
+          {
+            activeAttempt: activeAttemptByDogId.get(dog.id) ?? null,
+            latestWhelpedAttempt: latestWhelpedByDogId.get(dog.id) ?? null,
+            recentNotPregnantAttempt:
+              recentNotPregnantByDogId.get(dog.id) ?? null,
+          },
+          currentEpoch
+        ),
       })),
     });
   } catch (error) {

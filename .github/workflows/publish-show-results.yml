@@ -28,6 +28,11 @@ jobs:
             exit 1
           fi
 
+          # Keep this at one request per scheduled run on the current
+          # infrastructure tier. When it's time to speed judging back up, do it
+          # by increasing schedule cadence or the server-side batch sizes inside
+          # /api/jobs/publish-show-results, not by reintroducing a client-side
+          # loop of repeated curl calls.
           curl --fail-with-body --show-error --silent \
             --header "Authorization: Bearer ${SHOWRING_JOBS_SECRET}" \
             "${SHOWRING_JOBS_BASE_URL%/}/api/jobs/publish-show-results"

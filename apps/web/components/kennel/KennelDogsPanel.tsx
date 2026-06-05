@@ -37,12 +37,9 @@ type KennelDogDto = {
   breedCode2: string;
   breedName: string;
   sex: "M" | "F";
-  birthEpoch: number;
   ageHours: number;
   lifecycleState: string;
   marketState: string;
-  originType: string;
-  isFoundation: boolean;
   hasAllGreenHealthTests: boolean;
   areaIds: string[];
   visibleCategories: VisibleCategories;
@@ -55,18 +52,8 @@ type KennelAreaDto = {
   sortOrder: number;
 };
 
-type KennelSummary = {
-  id: string;
-  name: string;
-  slug: string;
-  balance: number;
-  homeDistrict: string;
-  dogCount: number;
-};
-
 type KennelDogsResponse = {
   ok: boolean;
-  kennel?: KennelSummary;
   dogs?: KennelDogDto[];
   areas?: KennelAreaDto[];
   error?: string;
