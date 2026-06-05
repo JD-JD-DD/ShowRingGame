@@ -1124,7 +1124,14 @@ export default function KennelDogsPanel() {
                   </td>
                   <td className="px-3 py-3 text-right">
                     <Link
-                      href={`/dogs/${dog.dogId}`}
+                      href={
+                        activeAreaId
+                          ? {
+                              pathname: `/dogs/${dog.dogId}`,
+                              query: { areaId: activeAreaId },
+                            }
+                          : `/dogs/${dog.dogId}`
+                      }
                       className="inline-flex rounded-xl border border-purple-300/25 bg-white/5 px-3 py-1.5 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
                     >
                       Open

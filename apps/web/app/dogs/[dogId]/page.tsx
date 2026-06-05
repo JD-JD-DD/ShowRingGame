@@ -48,6 +48,7 @@ type PageProps = {
     dogId: string;
   }>;
   searchParams?: Promise<{
+    areaId?: string | string[];
     nameError?: string | string[];
     saleError?: string | string[];
     saleMessage?: string | string[];
@@ -187,6 +188,15 @@ type PedigreeHealthSeverity = "green" | "yellow" | "red";
 type PedigreeHealthSummary = {
   label: string;
   severity: PedigreeHealthSeverity;
+};
+
+type AreaNavigationDog = {
+  id: string;
+  callName: string | null;
+  registeredName: string | null;
+  regNumber: string;
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
 };
 
 const PEDIGREE_HEALTH_SEVERITY_STYLES: Record<
@@ -461,6 +471,7 @@ function PedigreeCard({
 export default async function DogPage({ params, searchParams }: PageProps) {
   const { dogId } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
+  const areaId = firstQueryValue(resolvedSearchParams.areaId);
   const nameError = firstQueryValue(resolvedSearchParams.nameError);
   const saleError = firstQueryValue(resolvedSearchParams.saleError);
   const saleMessage = firstQueryValue(resolvedSearchParams.saleMessage);
@@ -746,6 +757,68 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
+  let areaNavigation:
+    | {
+        previous: AreaNavigationDog | null;
+        next: AreaNavigationDog | null;
+        areaId: string;
+      }
+    | null = null;
+
+  if (areaId && dog.ownerKennel?.id === currentKennel.id) {
+    const kennelArea = await db.kennelArea.findFirst({
+      where: {
+        id: areaId,
+        kennelId: currentKennel.id,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (kennelArea) {
+      const areaDogs = await db.dog.findMany({
+        where: {
+          ownerKennelId: currentKennel.id,
+          lifecycleState: "ALIVE",
+          kennelAreaMemberships: {
+            some: {
+              kennelAreaId: kennelArea.id,
+            },
+          },
+        },
+        orderBy: [
+          {
+            breed: {
+              name: "asc",
+            },
+          },
+          { birthEpoch: "desc" },
+          { regNumber: "asc" },
+        ],
+        select: {
+          id: true,
+          callName: true,
+          registeredName: true,
+          regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
+        },
+      });
+
+      const currentIndex = areaDogs.findIndex((candidate) => candidate.id === dog.id);
+
+      if (currentIndex >= 0) {
+        areaNavigation = {
+          previous: currentIndex > 0 ? areaDogs[currentIndex - 1] : null,
+          next:
+            currentIndex < areaDogs.length - 1 ? areaDogs[currentIndex + 1] : null,
+          areaId: kennelArea.id,
+        };
+      }
+    }
+  }
+
   const pedigreeAncestors = await getPedigreeAncestors(dog);
   const pedigreeSire = getPedigreeParent(pedigreeAncestors, dog, "sireId");
   const pedigreeDam = getPedigreeParent(pedigreeAncestors, dog, "damId");
@@ -1003,6 +1076,42 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                       {award.awardCode}
                     </Link>
                   ))}
+                </div>
+              ) : null}
+
+              {areaNavigation ? (
+                <div className="mt-5 flex flex-wrap gap-3">
+                  {areaNavigation.previous ? (
+                    <Link
+                      href={{
+                        pathname: `/dogs/${areaNavigation.previous.id}`,
+                        query: { areaId: areaNavigation.areaId },
+                      }}
+                      className="inline-flex items-center rounded-2xl border border-purple-300/25 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                    >
+                      Previous Dog: {formatDogDisplayName(areaNavigation.previous)}
+                    </Link>
+                  ) : (
+                    <div className="inline-flex items-center rounded-2xl border border-white/10 bg-black/20 px-4 py-2 text-sm font-semibold text-purple-100/40">
+                      Previous Dog
+                    </div>
+                  )}
+
+                  {areaNavigation.next ? (
+                    <Link
+                      href={{
+                        pathname: `/dogs/${areaNavigation.next.id}`,
+                        query: { areaId: areaNavigation.areaId },
+                      }}
+                      className="inline-flex items-center rounded-2xl border border-purple-300/25 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                    >
+                      Next Dog: {formatDogDisplayName(areaNavigation.next)}
+                    </Link>
+                  ) : (
+                    <div className="inline-flex items-center rounded-2xl border border-white/10 bg-black/20 px-4 py-2 text-sm font-semibold text-purple-100/40">
+                      Next Dog
+                    </div>
+                  )}
                 </div>
               ) : null}
 
