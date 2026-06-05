@@ -807,12 +807,14 @@ export default async function DogPage({ params, searchParams }: PageProps) {
       });
 
       const currentIndex = areaDogs.findIndex((candidate) => candidate.id === dog.id);
+      const previousDog = currentIndex > 0 ? areaDogs[currentIndex - 1] : null;
+      const nextDog =
+        currentIndex < areaDogs.length - 1 ? areaDogs[currentIndex + 1] : null;
 
       if (currentIndex >= 0) {
         areaNavigation = {
-          previous: currentIndex > 0 ? areaDogs[currentIndex - 1] : null,
-          next:
-            currentIndex < areaDogs.length - 1 ? areaDogs[currentIndex + 1] : null,
+          previous: previousDog,
+          next: nextDog,
           areaId: kennelArea.id,
         };
       }
@@ -1027,6 +1029,34 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
   return (
     <main className="min-h-screen px-6 py-8 text-white">
+      {areaNavigation?.previous ? (
+        <Link
+          href={{
+            pathname: `/dogs/${areaNavigation.previous.id}`,
+            query: { areaId: areaNavigation.areaId },
+          }}
+          className="fixed left-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-2xl border border-purple-300/25 bg-purple-950/70 px-3 py-4 text-center text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-purple-100 shadow-[0_20px_40px_rgba(0,0,0,0.35)] transition hover:border-purple-200/40 hover:bg-purple-900/85 lg:flex lg:flex-col lg:items-center"
+        >
+          <span className="text-lg leading-none text-white">&lt;</span>
+          <span>Prev</span>
+          <span>Dog</span>
+        </Link>
+      ) : null}
+
+      {areaNavigation?.next ? (
+        <Link
+          href={{
+            pathname: `/dogs/${areaNavigation.next.id}`,
+            query: { areaId: areaNavigation.areaId },
+          }}
+          className="fixed right-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-2xl border border-purple-300/25 bg-purple-950/70 px-3 py-4 text-center text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-purple-100 shadow-[0_20px_40px_rgba(0,0,0,0.35)] transition hover:border-purple-200/40 hover:bg-purple-900/85 lg:flex lg:flex-col lg:items-center"
+        >
+          <span className="text-lg leading-none text-white">&gt;</span>
+          <span>Next</span>
+          <span>Dog</span>
+        </Link>
+      ) : null}
+
       <div className="mx-auto max-w-7xl">
         <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -1076,42 +1106,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                       {award.awardCode}
                     </Link>
                   ))}
-                </div>
-              ) : null}
-
-              {areaNavigation ? (
-                <div className="mt-5 flex flex-wrap gap-3">
-                  {areaNavigation.previous ? (
-                    <Link
-                      href={{
-                        pathname: `/dogs/${areaNavigation.previous.id}`,
-                        query: { areaId: areaNavigation.areaId },
-                      }}
-                      className="inline-flex items-center rounded-2xl border border-purple-300/25 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-                    >
-                      Previous Dog: {formatDogDisplayName(areaNavigation.previous)}
-                    </Link>
-                  ) : (
-                    <div className="inline-flex items-center rounded-2xl border border-white/10 bg-black/20 px-4 py-2 text-sm font-semibold text-purple-100/40">
-                      Previous Dog
-                    </div>
-                  )}
-
-                  {areaNavigation.next ? (
-                    <Link
-                      href={{
-                        pathname: `/dogs/${areaNavigation.next.id}`,
-                        query: { areaId: areaNavigation.areaId },
-                      }}
-                      className="inline-flex items-center rounded-2xl border border-purple-300/25 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
-                    >
-                      Next Dog: {formatDogDisplayName(areaNavigation.next)}
-                    </Link>
-                  ) : (
-                    <div className="inline-flex items-center rounded-2xl border border-white/10 bg-black/20 px-4 py-2 text-sm font-semibold text-purple-100/40">
-                      Next Dog
-                    </div>
-                  )}
                 </div>
               ) : null}
 
