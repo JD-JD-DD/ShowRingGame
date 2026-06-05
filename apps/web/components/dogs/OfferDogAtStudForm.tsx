@@ -4,10 +4,12 @@ import { useState } from "react";
 
 type OfferDogAtStudFormProps = {
   action: string;
+  areaId?: string | null;
 };
 
 export default function OfferDogAtStudForm({
   action,
+  areaId,
 }: OfferDogAtStudFormProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -29,6 +31,7 @@ export default function OfferDogAtStudForm({
       method="post"
       className="rounded-2xl border border-sky-300/20 bg-black/20 p-3"
     >
+      {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
       <label className="block">
         <span className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-100/80">
           Stud Fee

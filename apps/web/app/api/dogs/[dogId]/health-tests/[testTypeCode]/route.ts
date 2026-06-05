@@ -1,20 +1,13 @@
 import { NextResponse } from "next/server";
 
+import {
+  normalizeAreaId,
+  redirectToDogPageWithField,
+} from "@/lib/dogPageAreaContext";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { runPhenotypeHealthTestForKennel } from "@/server/services/healthTest.service";
-
-function redirectWithHealthMessage(
-  request: Request,
-  dogId: string,
-  field: "healthError" | "healthMessage",
-  message: string
-) {
-  const url = new URL(`/dogs/${dogId}`, request.url);
-  url.searchParams.set(field, message);
-  return NextResponse.redirect(url);
-}
 
 export async function POST(
   request: Request,
@@ -23,6 +16,7 @@ export async function POST(
   }: { params: Promise<{ dogId: string; testTypeCode: string }> }
 ) {
   const { dogId, testTypeCode } = await params;
+  let areaId: string | null = null;
 
   try {
     const userId = await getSessionUserId();
@@ -37,6 +31,9 @@ export async function POST(
       return NextResponse.json({ error: "Kennel not found." }, { status: 404 });
     }
 
+    const formData = await request.formData();
+    areaId = normalizeAreaId(formData.get("areaId"));
+
     await runPhenotypeHealthTestForKennel({
       kennelId: kennel.id,
       dogId,
@@ -44,11 +41,12 @@ export async function POST(
       currentEpoch: getCurrentEpoch(),
     });
 
-    return redirectWithHealthMessage(
+    return redirectToDogPageWithField(
       request,
       dogId,
       "healthMessage",
-      "Health test completed."
+      "Health test completed.",
+      areaId
     );
   } catch (error) {
     console.error(
@@ -56,11 +54,12 @@ export async function POST(
       error
     );
 
-    return redirectWithHealthMessage(
+    return redirectToDogPageWithField(
       request,
       dogId,
       "healthError",
-      error instanceof Error ? error.message : "Failed to complete health test."
+      error instanceof Error ? error.message : "Failed to complete health test.",
+      areaId
     );
   }
 }

@@ -1,24 +1,12 @@
 import { NextResponse } from "next/server";
 
+import {
+  normalizeAreaId,
+  redirectToDogPageWithField,
+} from "@/lib/dogPageAreaContext";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { updatePlayerStudListingPrice } from "@/server/services/market.service";
-
-function redirectWithSaleError(request: Request, dogId: string, error: string) {
-  const url = new URL(`/dogs/${dogId}`, request.url);
-  url.searchParams.set("saleError", error);
-  return NextResponse.redirect(url);
-}
-
-function redirectWithSaleMessage(
-  request: Request,
-  dogId: string,
-  message: string
-) {
-  const url = new URL(`/dogs/${dogId}`, request.url);
-  url.searchParams.set("saleMessage", message);
-  return NextResponse.redirect(url);
-}
 
 function parseWholeDollarPrice(value: FormDataEntryValue | null): number | null {
   const rawValue = String(value ?? "").trim();
@@ -36,6 +24,7 @@ export async function POST(
   { params }: { params: Promise<{ listingId: string }> }
 ) {
   let dogIdForError = "";
+  let areaId: string | null = null;
 
   try {
     const { listingId } = await params;
@@ -53,14 +42,17 @@ export async function POST(
 
     const formData = await request.formData();
     dogIdForError = String(formData.get("dogId") ?? "");
+    areaId = normalizeAreaId(formData.get("areaId"));
 
     const studFeeAmount = parseWholeDollarPrice(formData.get("studFeeAmount"));
 
     if (studFeeAmount === null || studFeeAmount < 1) {
-      return redirectWithSaleError(
+      return redirectToDogPageWithField(
         request,
         dogIdForError,
-        "Stud fee must be a whole dollar amount of at least $1."
+        "saleError",
+        "Stud fee must be a whole dollar amount of at least $1.",
+        areaId
       );
     }
 
@@ -70,17 +62,25 @@ export async function POST(
       studFeeAmount,
     });
 
-    return redirectWithSaleMessage(request, dogId, "Stud fee updated.");
+    return redirectToDogPageWithField(
+      request,
+      dogId,
+      "saleMessage",
+      "Stud fee updated.",
+      areaId
+    );
   } catch (error) {
     console.error(
       "POST /api/stud-listings/[listingId]/update-price failed:",
       error
     );
 
-    return redirectWithSaleError(
+    return redirectToDogPageWithField(
       request,
       dogIdForError,
-      error instanceof Error ? error.message : "Failed to update stud fee."
+      "saleError",
+      error instanceof Error ? error.message : "Failed to update stud fee.",
+      areaId
     );
   }
 }

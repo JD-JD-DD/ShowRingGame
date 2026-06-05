@@ -4,6 +4,7 @@ import { useState } from "react";
 
 type DogPrivateNotesEditorProps = {
   action: string;
+  areaId?: string | null;
   initialNotes: string;
   notesError: string | null;
   notesMessage: string | null;
@@ -11,6 +12,7 @@ type DogPrivateNotesEditorProps = {
 
 export default function DogPrivateNotesEditor({
   action,
+  areaId,
   initialNotes,
   notesError,
   notesMessage,
@@ -51,6 +53,7 @@ export default function DogPrivateNotesEditor({
 
       {isEditing ? (
         <form action={action} method="post" className="mt-4">
+          {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
           <textarea
             name="notes"
             defaultValue={initialNotes}

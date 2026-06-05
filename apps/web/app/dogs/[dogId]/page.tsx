@@ -1206,6 +1206,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               {canOfferForSale ? (
                 <OfferDogForSaleForm
                   action={`/api/dogs/${dog.id}/list-for-sale`}
+                  areaId={areaId}
                 />
               ) : isOwnedByCurrentKennel && activeSaleListing ? (
                 <ManageDogListingForm
@@ -1214,12 +1215,14 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   currentPrice={activeSaleListing.askingPrice}
                   updateAction={`/api/market-dogs/${activeSaleListing.id}/update-price`}
                   cancelAction={`/api/market-dogs/${activeSaleListing.id}/cancel`}
+                  areaId={areaId}
                 />
               ) : null}
 
               {canOfferAtStud ? (
                 <OfferDogAtStudForm
                   action={`/api/dogs/${dog.id}/list-at-stud`}
+                  areaId={areaId}
                 />
               ) : isOwnedByCurrentKennel && activeStudListing ? (
                 <ManageDogStudListingForm
@@ -1228,6 +1231,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   currentPrice={activeStudListing.askingPrice}
                   updateAction={`/api/stud-listings/${activeStudListing.id}/update-price`}
                   cancelAction={`/api/stud-listings/${activeStudListing.id}/cancel`}
+                  areaId={areaId}
                 />
               ) : null}
 
@@ -1240,6 +1244,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   action={`/api/dogs/${dog.id}/rehome`}
                   dogName={displayName}
                   payout={rehomePayout}
+                  areaId={areaId}
                 />
               ) : null}
             </div>
@@ -1515,6 +1520,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     action={`/api/dogs/${dog.id}/health-tests/${testTypeCode}`}
                     method="post"
                   >
+                    {areaId ? (
+                      <input type="hidden" name="areaId" value={areaId} />
+                    ) : null}
                     <button
                       type="submit"
                       className="shrink-0 rounded-xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500"
@@ -1726,6 +1734,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                                 method="post"
                               >
                                 <input type="hidden" name="dogId" value={dog.id} />
+                                {areaId ? (
+                                  <input type="hidden" name="areaId" value={areaId} />
+                                ) : null}
                                 <button
                                   type="submit"
                                   className="rounded-lg border border-red-300/30 bg-red-500/10 px-2.5 py-1 text-xs font-bold text-red-100 transition hover:bg-red-500/20"
@@ -1961,6 +1972,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           >
             <DogPrivateNotesEditor
               action={`/api/dogs/${dog.id}/notes`}
+              areaId={areaId}
               initialNotes={dog.privateKennelNotes[0]?.notes ?? ""}
               notesError={notesError}
               notesMessage={notesMessage}

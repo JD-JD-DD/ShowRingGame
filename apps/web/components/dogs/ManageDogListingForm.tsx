@@ -8,6 +8,7 @@ type ManageDogListingFormProps = {
   currentPrice: number;
   updateAction: string;
   cancelAction: string;
+  areaId?: string | null;
 };
 
 function formatMoney(amount: number): string {
@@ -20,6 +21,7 @@ export default function ManageDogListingForm({
   currentPrice,
   updateAction,
   cancelAction,
+  areaId,
 }: ManageDogListingFormProps) {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -57,6 +59,7 @@ export default function ManageDogListingForm({
           <form action={updateAction} method="post" className="mt-3">
             <input type="hidden" name="dogId" value={dogId} />
             <input type="hidden" name="listingId" value={listingId} />
+            {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
             <input
               type="number"
               name="askingPrice"
@@ -78,6 +81,7 @@ export default function ManageDogListingForm({
           <form action={cancelAction} method="post" onSubmit={confirmCancel}>
             <input type="hidden" name="dogId" value={dogId} />
             <input type="hidden" name="listingId" value={listingId} />
+            {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
             <button
               type="submit"
               className="mt-2 w-full rounded-xl border border-red-300/25 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20"

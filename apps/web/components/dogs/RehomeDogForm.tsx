@@ -4,12 +4,14 @@ type RehomeDogFormProps = {
   action: string;
   dogName: string;
   payout: number;
+  areaId?: string | null;
 };
 
 export default function RehomeDogForm({
   action,
   dogName,
   payout,
+  areaId,
 }: RehomeDogFormProps) {
   function confirmRehome(event: React.FormEvent<HTMLFormElement>) {
     const payoutMessage =
@@ -27,6 +29,7 @@ export default function RehomeDogForm({
 
   return (
     <form action={action} method="post" onSubmit={confirmRehome}>
+      {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
       <button
         type="submit"
         className="w-full rounded-2xl border border-red-300/25 bg-red-500/10 px-5 py-3 text-center text-sm font-semibold text-red-100 transition hover:bg-red-500/20"

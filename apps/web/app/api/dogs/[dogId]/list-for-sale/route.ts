@@ -1,25 +1,13 @@
 import { NextResponse } from "next/server";
 
+import {
+  normalizeAreaId,
+  redirectToDogPageWithField,
+} from "@/lib/dogPageAreaContext";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { listDogForSale } from "@/server/services/market.service";
-
-function redirectWithSaleError(request: Request, dogId: string, error: string) {
-  const url = new URL(`/dogs/${dogId}`, request.url);
-  url.searchParams.set("saleError", error);
-  return NextResponse.redirect(url);
-}
-
-function redirectWithSaleMessage(
-  request: Request,
-  dogId: string,
-  message: string
-) {
-  const url = new URL(`/dogs/${dogId}`, request.url);
-  url.searchParams.set("saleMessage", message);
-  return NextResponse.redirect(url);
-}
 
 function parseWholeDollarPrice(value: FormDataEntryValue | null): number | null {
   const rawValue = String(value ?? "").trim();
@@ -37,6 +25,7 @@ export async function POST(
   { params }: { params: Promise<{ dogId: string }> }
 ) {
   const { dogId } = await params;
+  let areaId: string | null = null;
 
   try {
     const userId = await getSessionUserId();
@@ -52,13 +41,16 @@ export async function POST(
     }
 
     const formData = await request.formData();
+    areaId = normalizeAreaId(formData.get("areaId"));
     const askingPrice = parseWholeDollarPrice(formData.get("askingPrice"));
 
     if (askingPrice === null || askingPrice < 1) {
-      return redirectWithSaleError(
+      return redirectToDogPageWithField(
         request,
         dogId,
-        "Sale price must be a whole dollar amount of at least $1."
+        "saleError",
+        "Sale price must be a whole dollar amount of at least $1.",
+        areaId
       );
     }
 
@@ -69,14 +61,22 @@ export async function POST(
       askingPrice,
     });
 
-    return redirectWithSaleMessage(request, dogId, "Dog listed for sale.");
+    return redirectToDogPageWithField(
+      request,
+      dogId,
+      "saleMessage",
+      "Dog listed for sale.",
+      areaId
+    );
   } catch (error) {
     console.error("POST /api/dogs/[dogId]/list-for-sale failed:", error);
 
-    return redirectWithSaleError(
+    return redirectToDogPageWithField(
       request,
       dogId,
-      error instanceof Error ? error.message : "Failed to list dog for sale."
+      "saleError",
+      error instanceof Error ? error.message : "Failed to list dog for sale.",
+      areaId
     );
   }
 }
