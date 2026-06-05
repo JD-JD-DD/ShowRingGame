@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import GlobalUtcClock from "@/components/GlobalUtcClock";
@@ -34,7 +35,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <GlobalUtcClock />
-        <NotificationInboxLink />
+        <Suspense fallback={null}>
+          <NotificationInboxLink />
+        </Suspense>
         {children}
         <Analytics />
       </body>

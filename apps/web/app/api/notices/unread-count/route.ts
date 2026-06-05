@@ -6,17 +6,31 @@ import { getUnreadKennelNoticeCount } from "@/server/services/kennelNotice.servi
 
 export const dynamic = "force-dynamic";
 
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store",
+} as const;
+
 export async function GET() {
   const userId = await getSessionUserId();
 
   if (!userId) {
-    return NextResponse.json({ unreadCount: 0 });
+    return NextResponse.json(
+      { unreadCount: 0 },
+      {
+        headers: NO_STORE_HEADERS,
+      }
+    );
   }
 
   const kennel = await getKennelForUser(userId);
 
   if (!kennel) {
-    return NextResponse.json({ unreadCount: 0 });
+    return NextResponse.json(
+      { unreadCount: 0 },
+      {
+        headers: NO_STORE_HEADERS,
+      }
+    );
   }
 
   const unreadCount = await getUnreadKennelNoticeCount(kennel.id);
@@ -24,9 +38,7 @@ export async function GET() {
   return NextResponse.json(
     { unreadCount },
     {
-      headers: {
-        "Cache-Control": "no-store",
-      },
+      headers: NO_STORE_HEADERS,
     }
   );
 }

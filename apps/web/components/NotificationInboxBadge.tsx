@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type UnreadCountResponse = {
   unreadCount?: number;
@@ -12,11 +12,19 @@ export default function NotificationInboxBadge({
   initialUnreadCount: number;
 }) {
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
+  const shouldRefreshOnFocusRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
+    let isRefreshing = false;
 
     async function refreshUnreadCount() {
+      if (isRefreshing) {
+        return;
+      }
+
+      isRefreshing = true;
+
       try {
         const response = await fetch("/api/notices/unread-count", {
           cache: "no-store",
@@ -33,27 +41,42 @@ export default function NotificationInboxBadge({
         }
       } catch {
         // The server-rendered count remains useful if a background poll fails.
+      } finally {
+        isRefreshing = false;
       }
     }
 
-    refreshUnreadCount();
+    function markTabInactive() {
+      shouldRefreshOnFocusRef.current = true;
+    }
 
-    const intervalId = window.setInterval(refreshUnreadCount, 30_000);
-
-    function refreshOnFocus() {
-      if (!document.hidden) {
+    function refreshOnTabReturn() {
+      if (!document.hidden && shouldRefreshOnFocusRef.current) {
+        shouldRefreshOnFocusRef.current = false;
         refreshUnreadCount();
       }
     }
 
-    document.addEventListener("visibilitychange", refreshOnFocus);
-    window.addEventListener("focus", refreshUnreadCount);
+    function handleVisibilityChange() {
+      if (document.hidden) {
+        markTabInactive();
+        return;
+      }
+
+      refreshOnTabReturn();
+    }
+
+    // The initial badge count is server-rendered in the root layout. Only
+    // refresh after the user returns to the tab so we avoid steady polling.
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", markTabInactive);
+    window.addEventListener("focus", refreshOnTabReturn);
 
     return () => {
       isMounted = false;
-      window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", refreshOnFocus);
-      window.removeEventListener("focus", refreshUnreadCount);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", markTabInactive);
+      window.removeEventListener("focus", refreshOnTabReturn);
     };
   }, []);
 
