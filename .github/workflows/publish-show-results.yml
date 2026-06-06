@@ -17,6 +17,7 @@ jobs:
         env:
           SHOWRING_JOBS_BASE_URL: ${{ secrets.SHOWRING_JOBS_BASE_URL }}
           SHOWRING_JOBS_SECRET: ${{ secrets.SHOWRING_JOBS_SECRET }}
+          SHOWRING_JOBS_RUNS: ${{ vars.SHOWRING_JOBS_RUNS || '5' }}
         run: |
           if [ -z "$SHOWRING_JOBS_BASE_URL" ]; then
             echo "SHOWRING_JOBS_BASE_URL is not set"
@@ -28,12 +29,22 @@ jobs:
             exit 1
           fi
 
-          # Keep this at one request per scheduled run on the current
-          # infrastructure tier. When it's time to speed judging back up, do it
-          # by increasing schedule cadence or the server-side batch sizes inside
-          # /api/jobs/publish-show-results, not by reintroducing a client-side
-          # loop of repeated curl calls.
-          curl --fail-with-body --show-error --silent \
-            --header "Authorization: Bearer ${SHOWRING_JOBS_SECRET}" \
-            "${SHOWRING_JOBS_BASE_URL%/}/api/jobs/publish-show-results"
-          echo
+          if ! echo "$SHOWRING_JOBS_RUNS" | grep -Eq '^[1-9][0-9]*$'; then
+            echo "SHOWRING_JOBS_RUNS must be a positive integer"
+            exit 1
+          fi
+
+          # Keep throughput configurable while infrastructure is constrained.
+          # Default to five endpoint passes per scheduled run; raise or lower
+          # SHOWRING_JOBS_RUNS from GitHub variables as capacity changes.
+          for run in $(seq 1 "${SHOWRING_JOBS_RUNS}"); do
+            echo "Publish show results pass ${run}/${SHOWRING_JOBS_RUNS}"
+            curl --fail-with-body --show-error --silent \
+              --header "Authorization: Bearer ${SHOWRING_JOBS_SECRET}" \
+              "${SHOWRING_JOBS_BASE_URL%/}/api/jobs/publish-show-results"
+            echo
+
+            if [ "$run" -lt "$SHOWRING_JOBS_RUNS" ]; then
+              sleep 2
+            fi
+          done

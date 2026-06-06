@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import { getShowEntryAvailability } from "@/server/services/showAvailability.service";
 import {
   getShowDistrictRegionName,
   SHOW_WEEK_HOURS,
@@ -79,14 +80,32 @@ function formatGameTimeLabel(epoch: number): string {
   return `Y${year} W${week} D${day + 1}`;
 }
 
-function getUpcomingShowStatusLabel(status: string): string {
-  switch (status) {
+function getUpcomingShowStatusLabel(
+  show: {
+    status: string;
+    entryOpenEpoch: number;
+    entryCloseEpoch: number;
+  },
+  currentEpoch: number
+): string {
+  const availability = getShowEntryAvailability({
+    cluster: show,
+    currentEpoch,
+  });
+
+  switch (availability.entryStatus) {
+    case "NOT_OPEN":
+      return "SCHEDULED";
     case "OPEN":
       return "OPEN";
     case "CLOSED":
       return "AWAITING JUDGING";
-    default:
-      return status.replaceAll("_", " ");
+    case "JUDGING":
+      return "JUDGING";
+    case "RESULTS_PUBLISHED":
+      return "JUDGED";
+    case "CANCELLED":
+      return "CANCELLED";
   }
 }
 
@@ -116,7 +135,7 @@ export default async function HomePage() {
             gte: currentEpoch,
           },
           status: {
-            in: ["OPEN", "CLOSED"],
+            notIn: ["COMPLETE", "CANCELLED"],
           },
         },
         orderBy: [{ startEpoch: "asc" }, { name: "asc" }],
@@ -127,21 +146,8 @@ export default async function HomePage() {
           district: true,
           status: true,
           startEpoch: true,
-          showDays: {
-            select: {
-              _count: {
-                select: {
-                  showEntries: {
-                    where: {
-                      entryStatus: {
-                        in: ["ENTERED", "JUDGED"],
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
+          entryOpenEpoch: true,
+          entryCloseEpoch: true,
         },
       }),
       db.kennelNotice.findMany({
@@ -348,13 +354,7 @@ export default async function HomePage() {
                   </p>
                 ) : (
                   <div className="mt-4 grid gap-2.5">
-                    {upcomingShows.map((show) => {
-                      const entryCount = show.showDays.reduce(
-                        (total, day) => total + day._count.showEntries,
-                        0
-                      );
-
-                      return (
+                    {upcomingShows.map((show) => (
                         <Link
                           key={show.id}
                           href={`/shows/${show.id}`}
@@ -367,22 +367,15 @@ export default async function HomePage() {
                               </div>
                               <div className="mt-1 text-xs text-purple-100/65">
                                 {getShowDistrictRegionName(show.district)} ·{" "}
-                                {formatGameTimeLabel(show.startEpoch)} ·{" "}
-                                {entryCount} entries
+                                {formatGameTimeLabel(show.startEpoch)}
                               </div>
                             </div>
                             <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">
-                              {getUpcomingShowStatusLabel(show.status)}
+                              {getUpcomingShowStatusLabel(show, currentEpoch)}
                             </span>
                           </div>
-                          {/*}
-                          <div className="mt-2 text-xs text-purple-100/65">
-                            {entryCount} entries
-                          </div>
-                          */}
                         </Link>
-                      );
-                    })}
+                      ))}
                   </div>
                 )}
               </article>
