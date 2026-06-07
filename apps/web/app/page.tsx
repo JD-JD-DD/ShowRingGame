@@ -221,6 +221,7 @@ export default async function HomePage() {
             id: {
               in: championDogIds,
             },
+            isPlayerVisible: true,
           },
           select: {
             id: true,

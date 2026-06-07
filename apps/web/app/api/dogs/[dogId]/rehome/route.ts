@@ -32,6 +32,7 @@ export async function POST(
         id: true,
         birthEpoch: true,
         ownerKennelId: true,
+        isPlayerVisible: true,
         lifecycleState: true,
         marketState: true,
       },
@@ -41,7 +42,7 @@ export async function POST(
       return NextResponse.json({ error: "Dog not found." }, { status: 404 });
     }
 
-    if (dog.ownerKennelId !== kennel.id) {
+    if (dog.ownerKennelId !== kennel.id || !dog.isPlayerVisible) {
       return NextResponse.json({ error: "You do not own this dog." }, { status: 403 });
     }
 

@@ -43,6 +43,8 @@ export default async function MemoriumPage() {
     where: {
       ownerKennelId: kennel.id,
       lifecycleState: "DECEASED",
+      isPlayerVisible: true,
+      showInMemoriam: true,
     },
     orderBy: [{ deathEpoch: "desc" }, { regNumber: "asc" }],
     select: {
@@ -57,13 +59,22 @@ export default async function MemoriumPage() {
       visibleTitleSuffix: true,
       _count: {
         select: {
-          sireOf: true,
-          damOf: true,
+          sireOf: {
+            where: {
+              isPlayerVisible: true,
+            },
+          },
+          damOf: {
+            where: {
+              isPlayerVisible: true,
+            },
+          },
         },
       },
       sireOf: {
         where: {
           visibleTitlePrefix: "CH",
+          isPlayerVisible: true,
         },
         select: {
           id: true,
@@ -72,6 +83,7 @@ export default async function MemoriumPage() {
       damOf: {
         where: {
           visibleTitlePrefix: "CH",
+          isPlayerVisible: true,
         },
         select: {
           id: true,
@@ -109,11 +121,12 @@ export default async function MemoriumPage() {
           </section>
         ) : (
           <section className="overflow-hidden rounded-[28px] border border-rose-200/15 bg-[linear-gradient(180deg,rgba(45,25,48,0.96),rgba(18,10,24,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.3)]">
-            <div className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem] gap-4 border-b border-white/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-rose-100/80">
+            <div className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem_8rem] gap-4 border-b border-white/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-rose-100/80">
               <div>Name</div>
               <div className="text-right">Died</div>
               <div className="text-right">Progeny</div>
               <div className="text-right">CH</div>
+              <div className="text-right">Memorial</div>
             </div>
 
             <div className="divide-y divide-white/10">
@@ -126,14 +139,16 @@ export default async function MemoriumPage() {
                   dog.sex === "M" ? dog.sireOf.length : dog.damOf.length;
 
                 return (
-                  <Link
+                  <div
                     key={dog.id}
-                    href={`/dogs/${dog.id}`}
-                    className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem] gap-4 px-5 py-2.5 text-sm transition hover:bg-white/5"
+                    className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem_8rem] gap-4 px-5 py-2.5 text-sm transition hover:bg-white/5"
                   >
-                    <div className="min-w-0 truncate self-center font-semibold text-white">
+                    <Link
+                      href={`/dogs/${dog.id}`}
+                      className="min-w-0 truncate self-center font-semibold text-white underline-offset-4 hover:underline"
+                    >
                       {name}
-                    </div>
+                    </Link>
                     <div className="self-center text-right font-semibold text-purple-100">
                       {formatDate(deathEpoch)}
                     </div>
@@ -143,7 +158,19 @@ export default async function MemoriumPage() {
                     <div className="self-center text-right font-semibold text-white">
                       {championProgenyCount}
                     </div>
-                  </Link>
+                    <form
+                      action={`/api/dogs/${dog.id}/memoriam`}
+                      method="post"
+                      className="self-center text-right"
+                    >
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-rose-200/20 bg-black/20 px-2.5 py-1 text-xs font-semibold text-rose-100/80 transition hover:bg-rose-500/15 hover:text-rose-50"
+                      >
+                        Remove
+                      </button>
+                    </form>
+                  </div>
                 );
               })}
             </div>

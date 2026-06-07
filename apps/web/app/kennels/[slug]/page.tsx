@@ -69,6 +69,7 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
       where: {
         ownerKennelId: kennel.id,
         lifecycleState: "ALIVE",
+        isPlayerVisible: true,
       },
       orderBy: [
         { breedCode2: "asc" },
@@ -104,6 +105,7 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
         },
         dog: {
           lifecycleState: "ALIVE",
+          isPlayerVisible: true,
           ownerKennelId: kennel.id,
         },
       },

@@ -280,6 +280,7 @@ export async function GET() {
       where: {
         ownerKennelId: kennel.id,
         lifecycleState: "ALIVE",
+        isPlayerVisible: true,
       },
       orderBy: [{ birthEpoch: "desc" }],
       select: {

@@ -19,6 +19,11 @@ enum DogLifecycleState {
   RETIRED
 }
 
+enum DogVisibilityState {
+  VISIBLE
+  HIDDEN_NEONATAL_LOSS
+}
+
 enum DogMarketState {
   NOT_FOR_SALE
   LISTED_PLAYER
@@ -226,6 +231,9 @@ model Dog {
   birthEpoch         Int
   deathEpoch         Int?
   lifecycleState     DogLifecycleState @default(ALIVE)
+  visibilityState    DogVisibilityState @default(VISIBLE)
+  isPlayerVisible    Boolean           @default(true)
+  showInMemoriam     Boolean           @default(true)
   marketState        DogMarketState    @default(NOT_FOR_SALE)
   originType         DogOriginType
   isFoundation       Boolean           @default(false)
@@ -298,6 +306,8 @@ model Dog {
   @@index([damId])
   @@index([litterId])
   @@index([lifecycleState])
+  @@index([visibilityState])
+  @@index([isPlayerVisible])
   @@index([marketState])
 }
 

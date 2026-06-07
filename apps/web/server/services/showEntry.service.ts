@@ -862,6 +862,7 @@ export async function listEligibleDogsByShowBlock(args: {
   const dogs = await db.dog.findMany({
     where: {
       ownerKennelId: kennelId,
+      isPlayerVisible: true,
       breedCode2: { in: breedCodes },
       showEntries: {
         none: {
@@ -943,6 +944,7 @@ export async function listEligibleDogsForShowBlock(args: {
   const dogs = await db.dog.findMany({
     where: {
       ownerKennelId: kennelId,
+      isPlayerVisible: true,
       breedCode2: block.breedCode2,
       showEntries: {
         none: {
@@ -1012,6 +1014,7 @@ export async function listShowEntryBreedOptions(args: {
     where: {
       ownerKennelId: kennelId,
       lifecycleState: "ALIVE",
+      isPlayerVisible: true,
     },
     orderBy: [{ breedCode2: "asc" }, { registeredName: "asc" }, { regNumber: "asc" }],
     include: {
@@ -1128,6 +1131,7 @@ export async function getShowEntryPlanner(args: {
   const dogs = await db.dog.findMany({
     where: {
       ownerKennelId: kennelId,
+      isPlayerVisible: true,
       breedCode2,
       ...(selectedDogIds && selectedDogIds.size > 0
         ? { id: { in: [...selectedDogIds] } }

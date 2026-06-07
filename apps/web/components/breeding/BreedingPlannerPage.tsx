@@ -150,6 +150,7 @@ export default async function BreedingPlannerPage({
     where: {
       ownerKennelId: kennel.id,
       lifecycleState: "ALIVE",
+      isPlayerVisible: true,
     },
     select: {
       id: true,
@@ -341,6 +342,7 @@ export default async function BreedingPlannerPage({
       },
       dog: {
         lifecycleState: "ALIVE",
+        isPlayerVisible: true,
         sex: "M",
         ownerKennelId: {
           not: null,

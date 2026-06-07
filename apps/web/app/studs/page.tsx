@@ -157,6 +157,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
       dog: {
         ...(selectedBreedCode2 ? { breedCode2: selectedBreedCode2 } : {}),
         lifecycleState: "ALIVE",
+        isPlayerVisible: true,
         sex: "M",
         birthEpoch: {
           lte: currentEpoch - MIN_BREED_AGE_HOURS,

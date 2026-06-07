@@ -140,6 +140,7 @@ export async function listMarketDogs(args: {
           dog: {
             ...dogBreedFilter,
             lifecycleState: "ALIVE",
+            isPlayerVisible: true,
             marketState: "LISTED_NPC",
             ownerKennelId: null,
           },
@@ -150,6 +151,7 @@ export async function listMarketDogs(args: {
           dog: {
             ...dogBreedFilter,
             lifecycleState: "ALIVE",
+            isPlayerVisible: true,
             marketState: "LISTED_PLAYER",
             ownerKennelId: {
               not: null,

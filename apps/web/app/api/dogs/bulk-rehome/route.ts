@@ -41,6 +41,7 @@ export async function POST(request: Request) {
       where: {
         id: { in: dogIds },
         ownerKennelId: kennel.id,
+        isPlayerVisible: true,
       },
       select: {
         id: true,

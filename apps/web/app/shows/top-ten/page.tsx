@@ -270,6 +270,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
       id: {
         in: allTimeDogIds,
       },
+      isPlayerVisible: true,
     },
     include: {
       breed: true,

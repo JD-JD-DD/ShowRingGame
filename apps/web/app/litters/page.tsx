@@ -201,9 +201,15 @@ export default async function LittersPage() {
                       </p>
 
                       <div className="mt-4 flex flex-wrap gap-3 text-sm text-purple-100/80">
-                        <span>{litter.pupCount} puppies</span>
+                        <span>Born: {litter.pupCount}</span>
+                        <span>Survived: {litter.survivedCount}</span>
                         <span>{litter.maleCount} dogs</span>
                         <span>{litter.femaleCount} bitches</span>
+                        {litter.neonatalLossCount > 0 ? (
+                          <span>
+                            Lost before placement: {litter.neonatalLossCount}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
 

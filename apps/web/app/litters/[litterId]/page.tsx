@@ -85,16 +85,23 @@ export default async function LitterDetailPage({ params }: PageProps) {
               <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
                 {litter.dam.displayName} x {litter.sire.displayName}
               </h1>
-              <p className="mt-2 text-sm leading-6 text-purple-100/75">
-                {litter.breedName} ({litter.breedCode2}) litter {litter.serial7},
-                whelped {formatGameDays(litter.ageHours)} ago.
+            <p className="mt-2 text-sm leading-6 text-purple-100/75">
+              {litter.breedName} ({litter.breedCode2}) litter {litter.serial7},
+              whelped {formatGameDays(litter.ageHours)} ago.
+            </p>
+            {litter.neonatalLossCount > 0 ? (
+              <p className="mt-3 text-sm leading-6 text-rose-100/80">
+                {litter.neonatalLossCount === 1
+                  ? "One puppy was lost before placement age."
+                  : `${litter.neonatalLossCount} puppies were lost before placement age.`}
               </p>
-            </div>
+            ) : null}
+          </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                 <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Puppies
+                  Born
                 </div>
                 <div className="mt-1 text-2xl font-semibold leading-none">
                   {litter.pupCount}
@@ -102,18 +109,28 @@ export default async function LitterDetailPage({ params }: PageProps) {
               </div>
               <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                 <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Dogs
+                  Survived
                 </div>
                 <div className="mt-1 text-2xl font-semibold leading-none">
-                  {litter.maleCount}
+                  {litter.survivedCount}
                 </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
                 <div className="text-xs uppercase tracking-wide text-purple-200">
-                  Bitches
+                  Lost
                 </div>
                 <div className="mt-1 text-2xl font-semibold leading-none">
-                  {litter.femaleCount}
+                  {litter.neonatalLossCount}
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
+                <div className="text-xs uppercase tracking-wide text-purple-200">
+                  Sexes
+                </div>
+                <div className="mt-1 text-sm font-semibold leading-5">
+                  {litter.maleCount} dogs
+                  <br />
+                  {litter.femaleCount} bitches
                 </div>
               </div>
             </div>
@@ -188,12 +205,18 @@ export default async function LitterDetailPage({ params }: PageProps) {
                       <div className="text-xs uppercase tracking-wide text-emerald-100">
                         Puppy {puppy.litterOrder ?? "-"} / {puppy.sex}
                       </div>
-                      <Link
-                        href={`/dogs/${puppy.dogId}`}
-                        className="mt-2 block text-xl font-semibold hover:underline"
-                      >
-                        {puppy.displayName}
-                      </Link>
+                      {puppy.isNeonatalLoss ? (
+                        <div className="mt-2 text-xl font-semibold text-white">
+                          Litter loss
+                        </div>
+                      ) : (
+                        <Link
+                          href={`/dogs/${puppy.dogId}`}
+                          className="mt-2 block text-xl font-semibold hover:underline"
+                        >
+                          {puppy.displayName}
+                        </Link>
+                      )}
                       <div className="mt-1 text-sm text-purple-100/65">
                         {puppy.regNumber}
                       </div>
@@ -203,20 +226,27 @@ export default async function LitterDetailPage({ params }: PageProps) {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
-                    {visibleCategories.map(([key, value]) => (
-                      <TraitLine
-                        key={key}
-                        label={formatCategoryName(key)}
-                        value={value}
-                        min={0}
-                        max={20}
-                        ideal={10}
-                        leftLabel="Poor"
-                        rightLabel="Poor"
-                      />
-                    ))}
-                  </div>
+                  {puppy.isNeonatalLoss ? (
+                    <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+                      This puppy was lost before placement age and is preserved
+                      here as part of the litter record.
+                    </div>
+                  ) : (
+                    <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                      {visibleCategories.map(([key, value]) => (
+                        <TraitLine
+                          key={key}
+                          label={formatCategoryName(key)}
+                          value={value}
+                          min={0}
+                          max={20}
+                          ideal={10}
+                          leftLabel="Poor"
+                          rightLabel="Poor"
+                        />
+                      ))}
+                    </div>
+                  )}
                 </article>
               );
             })}

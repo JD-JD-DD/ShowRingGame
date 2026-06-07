@@ -13,7 +13,10 @@ type ParentDogInput = {
 
 type PuppyDogInput = ParentDogInput & {
   birthEpoch: number;
+  deathEpoch: number | null;
   lifecycleState: string;
+  visibilityState: string;
+  isPlayerVisible: boolean;
   marketState: string;
   litterOrder: number | null;
   traitHead: number;
@@ -66,7 +69,11 @@ export type LitterParentDto = {
 
 export type LitterPuppyDto = LitterParentDto & {
   ageHours: number;
+  deathEpoch: number | null;
   lifecycleState: string;
+  visibilityState: string;
+  isPlayerVisible: boolean;
+  isNeonatalLoss: boolean;
   marketState: string;
   litterOrder: number | null;
   visibleCategories: ReturnType<typeof deriveVisibleCategoriesFromTraits>;
@@ -80,6 +87,8 @@ export type LitterListItemDto = {
   bornEpoch: number;
   ageHours: number;
   pupCount: number;
+  survivedCount: number;
+  neonatalLossCount: number;
   maleCount: number;
   femaleCount: number;
   createdAt: string;
@@ -117,10 +126,16 @@ function mapParent(dog: ParentDogInput): LitterParentDto {
 }
 
 function mapPuppy(dog: PuppyDogInput, currentEpoch: number): LitterPuppyDto {
+  const isNeonatalLoss = dog.visibilityState === "HIDDEN_NEONATAL_LOSS";
+
   return {
     ...mapParent(dog),
     ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
+    deathEpoch: dog.deathEpoch,
     lifecycleState: dog.lifecycleState,
+    visibilityState: dog.visibilityState,
+    isPlayerVisible: dog.isPlayerVisible,
+    isNeonatalLoss,
     marketState: dog.marketState,
     litterOrder: dog.litterOrder,
     visibleCategories: deriveVisibleCategoriesFromTraits({
@@ -143,6 +158,8 @@ export function mapLitterListItem(
   currentEpoch: number
 ): LitterListItemDto {
   const puppies = litter.puppies.map((puppy) => mapPuppy(puppy, currentEpoch));
+  const visiblePuppies = puppies.filter((puppy) => !puppy.isNeonatalLoss);
+  const neonatalLossCount = puppies.length - visiblePuppies.length;
 
   return {
     litterId: litter.id,
@@ -152,13 +169,15 @@ export function mapLitterListItem(
     bornEpoch: litter.bornEpoch,
     ageHours: Math.max(0, currentEpoch - litter.bornEpoch),
     pupCount: litter.pupCount,
+    survivedCount: visiblePuppies.length,
+    neonatalLossCount,
     maleCount: puppies.filter((puppy) => puppy.sex === "M").length,
     femaleCount: puppies.filter((puppy) => puppy.sex === "F").length,
     createdAt: litter.createdAt.toISOString(),
     bredByKennelName: litter.bredByKennel?.name ?? null,
     sire: mapParent(litter.sire),
     dam: mapParent(litter.dam),
-    puppiesPreview: puppies.slice(0, 4),
+    puppiesPreview: visiblePuppies.slice(0, 4),
   };
 }
 

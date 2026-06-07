@@ -520,6 +520,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
       birthEpoch: true,
       deathEpoch: true,
       lifecycleState: true,
+      visibilityState: true,
+      isPlayerVisible: true,
+      showInMemoriam: true,
       marketState: true,
       originType: true,
       isFoundation: true,
@@ -586,6 +589,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         },
       },
       sireOf: {
+        where: {
+          isPlayerVisible: true,
+        },
         orderBy: [{ birthEpoch: "desc" }, { regNumber: "asc" }],
         select: {
           id: true,
@@ -598,6 +604,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         },
       },
       damOf: {
+        where: {
+          isPlayerVisible: true,
+        },
         orderBy: [{ birthEpoch: "desc" }, { regNumber: "asc" }],
         select: {
           id: true,
@@ -759,6 +768,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
+  if (!dog.isPlayerVisible) {
+    notFound();
+  }
+
   let areaNavigation:
     | {
         previous: AreaNavigationDog | null;
@@ -783,6 +796,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         where: {
           ownerKennelId: currentKennel.id,
           lifecycleState: "ALIVE",
+          isPlayerVisible: true,
           kennelAreaMemberships: {
             some: {
               kennelAreaId: kennelArea.id,

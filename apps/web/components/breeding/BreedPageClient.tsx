@@ -106,15 +106,6 @@ const TRAIT_NUMBER_TONES = {
   hardWatch: "border-red-400/35 bg-red-500/10 text-red-100",
 };
 
-function logBreedingPlannerDebug(
-  event: string,
-  details: Record<string, unknown>
-) {
-  if (process.env.NODE_ENV !== "production") {
-    console.info(`[breeding-planner] ${event}`, details);
-  }
-}
-
 function dogDisplayName(dog: DogCardDto) {
   return formatDogDisplayName(dog);
 }
@@ -1800,16 +1791,6 @@ export default function BreedPageClient({
     setSuccessMessage("");
     let unlockSubmit = true;
 
-    logBreedingPlannerDebug("submit:start", {
-      returnMode,
-      effectiveReturnMode,
-      pathname,
-      selectedDamId: selectedDam.id,
-      selectedSireId: selectedSire.id,
-      initialDogId,
-      initialStudListingId,
-    });
-
     try {
       const response = await fetch("/api/breedings", {
         method: "POST",
@@ -1831,20 +1812,6 @@ export default function BreedPageClient({
       });
       const data = await response.json();
 
-      logBreedingPlannerDebug("submit:response", {
-        returnMode,
-        effectiveReturnMode,
-        pathname,
-        ok: response.ok,
-        dataOk: data?.ok,
-        status: response.status,
-        dataKeys:
-          data && typeof data === "object" ? Object.keys(data) : [],
-        attemptId: data?.attempt?.id,
-        attemptDamId: data?.attempt?.damId,
-        nextPath: data?.nextPath,
-      });
-
       if (!response.ok || !data?.ok) {
         setErrorMessage(data?.error ?? "Breeding could not be created.");
         return;
@@ -1853,14 +1820,6 @@ export default function BreedPageClient({
       if (effectiveReturnMode === "stayOnPlanner") {
         const damName = dogDisplayName(selectedDam);
         const sireName = dogDisplayName(selectedSire);
-
-        logBreedingPlannerDebug("submit:stay-on-planner", {
-          returnMode,
-          effectiveReturnMode,
-          pathname,
-          selectedDamId: selectedDam.id,
-          selectedSireId: selectedSire.id,
-        });
 
         setBreedCode2("");
         setDamId("");
@@ -1883,14 +1842,6 @@ export default function BreedPageClient({
       setRedirecting(true);
       unlockSubmit = false;
       const returnDogId = initialDog?.id ?? selectedDam.id;
-      logBreedingPlannerDebug("submit:redirect-dog-page", {
-        returnMode,
-        effectiveReturnMode,
-        pathname,
-        returnDogId,
-        selectedDamId: selectedDam.id,
-        selectedSireId: selectedSire.id,
-      });
       setSuccessMessage("Confirmed. Returning to the dog's page...");
       window.setTimeout(() => router.push(`/dogs/${returnDogId}`), 900);
     } catch {
@@ -1987,14 +1938,6 @@ export default function BreedPageClient({
       {successMessage ? (
         <div className="mb-6 rounded-2xl border border-emerald-300/35 bg-emerald-500/10 px-5 py-4 text-sm font-semibold text-emerald-100 shadow-[0_12px_32px_rgba(0,0,0,0.2)]">
           {successMessage}
-        </div>
-      ) : null}
-
-      {process.env.NODE_ENV !== "production" ? (
-        <div className="mb-4 rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-xs font-semibold text-amber-100">
-          Planner debug: returnMode={returnMode}; effectiveReturnMode=
-          {effectiveReturnMode}; route={pathname}; damId=
-          {selectedDam?.id ?? "none"}; sireId={selectedSire?.id ?? "none"}
         </div>
       ) : null}
 
