@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import TraitLine from "@/components/ui/TraitLine";
@@ -79,6 +79,7 @@ type DogCardDto = {
 
 type Props = {
   experience: "breed-dog" | "worksheet";
+  returnMode: "damPage" | "stayOnPlanner";
   kennelId: string;
   kennelName: string;
   kennelBalance: number;
@@ -1596,6 +1597,7 @@ function Shortlist({
 
 export default function BreedPageClient({
   experience,
+  returnMode,
   kennelName,
   kennelBalance,
   currentEpoch,
@@ -1643,6 +1645,7 @@ export default function BreedPageClient({
   const [redirecting, setRedirecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const submitInFlightRef = useRef(false);
   const eligibleDogs = useMemo(
     () => dogs.filter((dog) => dog.isEligibleToBreed),
     [dogs]
@@ -1742,6 +1745,7 @@ export default function BreedPageClient({
     .filter((dog): dog is DogCardDto => Boolean(dog));
 
   function chooseBreed(nextBreedCode: string) {
+    setSuccessMessage("");
     setBreedCode2(nextBreedCode);
 
     if (selectedDam?.breedCode2 !== nextBreedCode) setDamId("");
@@ -1752,6 +1756,8 @@ export default function BreedPageClient({
   }
 
   function chooseDam(nextDamId: string) {
+    setSuccessMessage("");
+
     if (nextDamId !== damId) {
       setSireId("");
       setShortlistedSireIds([]);
@@ -1774,10 +1780,13 @@ export default function BreedPageClient({
 
   async function handleSubmit() {
     if (!selectedSire || !selectedDam) return;
+    if (submitInFlightRef.current) return;
 
+    submitInFlightRef.current = true;
     setSubmitting(true);
     setErrorMessage("");
     setSuccessMessage("");
+    let unlockSubmit = true;
 
     try {
       const response = await fetch("/api/breedings", {
@@ -1805,7 +1814,30 @@ export default function BreedPageClient({
         return;
       }
 
+      if (returnMode === "stayOnPlanner") {
+        const damName = dogDisplayName(selectedDam);
+        const sireName = dogDisplayName(selectedSire);
+
+        setBreedCode2("");
+        setDamId("");
+        setSireId("");
+        setSireSource("ALL");
+        setSireSort("RECOMMENDED");
+        setShortlistedSireIds([]);
+        setTestDamBrucellosis(false);
+        setTestSireBrucellosis(false);
+        setSuccessMessage(
+          `Breeding confirmed for ${damName} x ${sireName}.`
+        );
+        router.refresh();
+        window.setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }, 0);
+        return;
+      }
+
       setRedirecting(true);
+      unlockSubmit = false;
       const returnDogId = initialDog?.id ?? selectedDam.id;
       setSuccessMessage("Confirmed. Returning to the dog's page...");
       window.setTimeout(() => router.push(`/dogs/${returnDogId}`), 900);
@@ -1813,6 +1845,9 @@ export default function BreedPageClient({
       setErrorMessage("Something went wrong while creating the breeding.");
     } finally {
       setSubmitting(false);
+      if (unlockSubmit) {
+        submitInFlightRef.current = false;
+      }
     }
   }
 
@@ -1897,6 +1932,12 @@ export default function BreedPageClient({
 
   return (
     <div>
+      {successMessage ? (
+        <div className="mb-6 rounded-2xl border border-emerald-300/35 bg-emerald-500/10 px-5 py-4 text-sm font-semibold text-emerald-100 shadow-[0_12px_32px_rgba(0,0,0,0.2)]">
+          {successMessage}
+        </div>
+      ) : null}
+
       <section className="relative overflow-hidden rounded-[28px] border border-fuchsia-300/55 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.22),transparent_42%),linear-gradient(135deg,rgba(88,28,135,0.78),rgba(30,17,48,0.95))] p-6 shadow-[0_0_42px_rgba(192,132,252,0.18),0_20px_60px_rgba(0,0,0,0.34)]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-100 to-transparent" />
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -2015,6 +2056,7 @@ export default function BreedPageClient({
                           pedigree={pedigree}
                           shortlisted={shortlistedSireIds.includes(dog.id)}
                           onSelect={() => {
+                            setSuccessMessage("");
                             setSireId(dog.id);
                             setTestDamBrucellosis(false);
                             setTestSireBrucellosis(false);

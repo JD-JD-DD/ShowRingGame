@@ -88,7 +88,7 @@ export default async function MemoriumPage() {
             <p className="text-sm uppercase tracking-[0.25em] text-rose-200/80">
               {kennel.name}
             </p>
-            <h1 className="mt-2 text-3xl font-semibold">Memorium</h1>
+            <h1 className="mt-2 text-3xl font-semibold">In Memoriam</h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-purple-100/70">
               Dogs who have passed stay here for pedigree, show record, and
               kennel history.
@@ -105,7 +105,7 @@ export default async function MemoriumPage() {
 
         {dogs.length === 0 ? (
           <section className="rounded-[28px] border border-white/10 bg-white/5 p-8 text-sm text-purple-100/70 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
-            No dogs are in the memorium.
+            No dogs are listed in In Memoriam.
           </section>
         ) : (
           <section className="overflow-hidden rounded-[28px] border border-rose-200/15 bg-[linear-gradient(180deg,rgba(45,25,48,0.96),rgba(18,10,24,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.3)]">

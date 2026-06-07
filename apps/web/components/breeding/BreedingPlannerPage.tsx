@@ -561,6 +561,7 @@ export default async function BreedingPlannerPage({
       <BreedPageClient
         key={initialDogId ?? initialStudListingId ?? experience}
         experience={experience}
+        returnMode={experience === "worksheet" ? "stayOnPlanner" : "damPage"}
         kennelId={kennel.id}
         kennelName={kennel.name}
         kennelBalance={kennel.balance}
