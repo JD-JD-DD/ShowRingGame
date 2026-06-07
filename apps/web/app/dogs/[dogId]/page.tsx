@@ -30,6 +30,7 @@ import ManageDogStudListingForm from "@/components/dogs/ManageDogStudListingForm
 import DogPrivateNotesEditor from "@/components/dogs/DogPrivateNotesEditor";
 import CollapsibleDogSection from "@/components/dogs/CollapsibleDogSection";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
+import HealthTestingPanel from "@/components/dogs/HealthTestingPanel";
 import OfferDogAtStudForm from "@/components/dogs/OfferDogAtStudForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
 import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
@@ -1481,68 +1482,32 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             </div>
           ) : null}
 
-          <div className="mt-5 grid gap-3 lg:grid-cols-2">
-            {healthTestRows.map(({ testTypeCode, definition, latestResult, severity }) => (
-              <div
-                key={testTypeCode}
-                className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <div className="text-sm font-semibold text-white">
-                    {definition.label}
-                  </div>
-                  {latestResult ? (
-                    <>
-                      <div
-                        className={`mt-1 text-sm font-semibold ${PEDIGREE_HEALTH_SEVERITY_STYLES[severity ?? "yellow"].text}`}
-                      >
-                        {getPhenotypeHealthResultLabel(
-                          testTypeCode as PhenotypeHealthTestCode,
-                          latestResult.resultCode
-                        )}
-                      </div>
-                      <div className="mt-1 text-xs text-purple-100/55">
-                        {latestResult.testedAtEpoch === null
+          <HealthTestingPanel
+            dogId={dog.id}
+            areaId={areaId}
+            kennelBalance={currentKennel.balance}
+            canOrderHealthTests={canOrderHealthTests}
+            rows={healthTestRows.map(
+              ({ testTypeCode, definition, latestResult, severity }) => ({
+                testTypeCode,
+                label: definition.label,
+                fee: definition.fee,
+                result: latestResult
+                  ? {
+                      label: getPhenotypeHealthResultLabel(
+                        testTypeCode as PhenotypeHealthTestCode,
+                        latestResult.resultCode
+                      ),
+                      testedLabel:
+                        latestResult.testedAtEpoch === null
                           ? "Test date unavailable"
-                          : `Tested ${formatShowDate(latestResult.testedAtEpoch)}`}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="mt-1 text-sm text-purple-100/55">
-                      Not tested
-                    </div>
-                  )}
-                </div>
-
-                {latestResult ? (
-                  <span
-                    className="shrink-0 rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100"
-                  >
-                    Complete
-                  </span>
-                ) : canOrderHealthTests ? (
-                  <form
-                    action={`/api/dogs/${dog.id}/health-tests/${testTypeCode}`}
-                    method="post"
-                  >
-                    {areaId ? (
-                      <input type="hidden" name="areaId" value={areaId} />
-                    ) : null}
-                    <button
-                      type="submit"
-                      className="shrink-0 rounded-xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500"
-                    >
-                      Test {formatMoney(definition.fee)}
-                    </button>
-                  </form>
-                ) : (
-                  <span className="shrink-0 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/45">
-                    Breeding age
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
+                          : `Tested ${formatShowDate(latestResult.testedAtEpoch)}`,
+                      severity: severity ?? "yellow",
+                    }
+                  : null,
+              })
+            )}
+          />
         </CollapsibleDogSection>
 
         <CollapsibleDogSection

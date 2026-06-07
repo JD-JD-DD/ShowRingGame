@@ -202,13 +202,36 @@ export async function runPhenotypeHealthTestForKennel(args: {
   testTypeCode: string;
   currentEpoch: number;
 }) {
-  const { kennelId, dogId, testTypeCode, currentEpoch } = args;
+  const [record] = await runPhenotypeHealthTestsForKennel({
+    kennelId: args.kennelId,
+    dogId: args.dogId,
+    testTypeCodes: [args.testTypeCode],
+    currentEpoch: args.currentEpoch,
+  });
 
-  if (!isPhenotypeHealthTestCode(testTypeCode)) {
-    throw new Error("That health test is not available.");
+  return record;
+}
+
+export async function runPhenotypeHealthTestsForKennel(args: {
+  kennelId: string;
+  dogId: string;
+  testTypeCodes: string[];
+  currentEpoch: number;
+}) {
+  const { kennelId, dogId, currentEpoch } = args;
+  const testTypeCodes: PhenotypeHealthTestCode[] = [];
+
+  for (const testTypeCode of new Set(args.testTypeCodes)) {
+    if (!isPhenotypeHealthTestCode(testTypeCode)) {
+      throw new Error("That health test is not available.");
+    }
+
+    testTypeCodes.push(testTypeCode);
   }
 
-  const definition = PHENOTYPE_HEALTH_TESTS[testTypeCode];
+  if (testTypeCodes.length === 0) {
+    throw new Error("Choose at least one health test.");
+  }
 
   return db.$transaction(async (tx) => {
     const dog = await tx.dog.findUnique({
@@ -241,7 +264,9 @@ export async function runPhenotypeHealthTestForKennel(args: {
     const existingTest = await tx.healthTestRecord.findFirst({
       where: {
         dogId,
-        testTypeCode,
+        testTypeCode: {
+          in: testTypeCodes,
+        },
       },
       select: { id: true },
     });
@@ -250,6 +275,10 @@ export async function runPhenotypeHealthTestForKennel(args: {
       throw new Error("This dog has already completed that health test.");
     }
 
+    const totalFee = testTypeCodes.reduce(
+      (sum, testTypeCode) => sum + PHENOTYPE_HEALTH_TESTS[testTypeCode].fee,
+      0
+    );
     const kennel = await tx.kennel.findUnique({
       where: { id: kennelId },
       select: {
@@ -262,17 +291,21 @@ export async function runPhenotypeHealthTestForKennel(args: {
       throw new Error("Kennel not found.");
     }
 
-    if (kennel.balance < definition.fee) {
-      throw new Error("Insufficient funds for that health test.");
+    if (kennel.balance < totalFee) {
+      throw new Error(
+        testTypeCodes.length === 1
+          ? "Insufficient funds for that health test."
+          : "Insufficient funds for the selected health tests."
+      );
     }
 
     await ensurePhenotypeHealthTruthsForDogs(tx, [dog.id]);
 
-    const truth = await tx.dogHealthConditionTruth.findUnique({
+    const truths = await tx.dogHealthConditionTruth.findMany({
       where: {
-        dogId_conditionCode: {
-          dogId,
-          conditionCode: testTypeCode,
+        dogId,
+        conditionCode: {
+          in: testTypeCodes,
         },
       },
       select: {
@@ -281,53 +314,72 @@ export async function runPhenotypeHealthTestForKennel(args: {
         environmentModifier: true,
       },
     });
+    const truthByCode = new Map(
+      truths.map((truth) => [truth.conditionCode, truth])
+    );
 
-    if (!truth) {
+    if (testTypeCodes.some((testTypeCode) => !truthByCode.has(testTypeCode))) {
       throw new Error("Health profile could not be generated.");
     }
-
-    const result = revealPhenotypeHealthTestResult({
-      conditionCode: testTypeCode,
-      geneticLiability: truth.geneticLiability,
-      environmentModifier: truth.environmentModifier,
-    });
-    const balanceAfter = kennel.balance - definition.fee;
 
     await tx.kennel.update({
       where: { id: kennel.id },
       data: {
-        balance: balanceAfter,
+        balance: kennel.balance - totalFee,
       },
     });
 
-    await tx.ledgerTransaction.create({
-      data: {
-        kennelId: kennel.id,
-        transactionType: "HEALTH_TEST_FEE",
-        amount: -definition.fee,
-        balanceAfter,
-        occurredAtEpoch: currentEpoch,
-        dogId: dog.id,
-        memo: `${definition.label} screening for ${dog.regNumber}.`,
-        metadataJson: {
-          testTypeCode,
-        },
-      },
-    });
+    const createdRecords = [];
+    let runningBalance = kennel.balance;
 
-    return tx.healthTestRecord.create({
-      data: {
-        dogId: dog.id,
-        testTypeCode,
-        resultCode: result.resultCode,
-        testedAtEpoch: currentEpoch,
-        revealedAtEpoch: currentEpoch,
-        isPublic: true,
-        notes: "Phenotype screening result.",
-        detailsJson: {
-          screeningType: "PHENOTYPE",
+    for (const testTypeCode of testTypeCodes) {
+      const definition = PHENOTYPE_HEALTH_TESTS[testTypeCode];
+      const truth = truthByCode.get(testTypeCode);
+
+      if (!truth) {
+        throw new Error("Health profile could not be generated.");
+      }
+
+      const result = revealPhenotypeHealthTestResult({
+        conditionCode: testTypeCode,
+        geneticLiability: truth.geneticLiability,
+        environmentModifier: truth.environmentModifier,
+      });
+      runningBalance -= definition.fee;
+
+      await tx.ledgerTransaction.create({
+        data: {
+          kennelId: kennel.id,
+          transactionType: "HEALTH_TEST_FEE",
+          amount: -definition.fee,
+          balanceAfter: runningBalance,
+          occurredAtEpoch: currentEpoch,
+          dogId: dog.id,
+          memo: `${definition.label} screening for ${dog.regNumber}.`,
+          metadataJson: {
+            testTypeCode,
+          },
         },
-      },
-    });
+      });
+
+      createdRecords.push(
+        await tx.healthTestRecord.create({
+          data: {
+            dogId: dog.id,
+            testTypeCode,
+            resultCode: result.resultCode,
+            testedAtEpoch: currentEpoch,
+            revealedAtEpoch: currentEpoch,
+            isPublic: true,
+            notes: "Phenotype screening result.",
+            detailsJson: {
+              screeningType: "PHENOTYPE",
+            },
+          },
+        })
+      );
+    }
+
+    return createdRecords;
   });
 }
