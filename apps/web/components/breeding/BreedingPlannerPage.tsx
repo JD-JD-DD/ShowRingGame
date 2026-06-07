@@ -19,6 +19,7 @@ import {
 
 type BreedingPlannerPageProps = {
   experience: "breed-dog" | "worksheet";
+  returnMode: "damPage" | "stayOnPlanner";
   searchParams?: Promise<{
     dogId?: string | string[];
     studListingId?: string | string[];
@@ -105,6 +106,7 @@ function validBrucellosisUntil(
 
 export default async function BreedingPlannerPage({
   experience,
+  returnMode,
   searchParams,
 }: BreedingPlannerPageProps) {
   const userId = await getSessionUserId();
@@ -561,7 +563,7 @@ export default async function BreedingPlannerPage({
       <BreedPageClient
         key={initialDogId ?? initialStudListingId ?? experience}
         experience={experience}
-        returnMode={experience === "worksheet" ? "stayOnPlanner" : "damPage"}
+        returnMode={returnMode}
         kennelId={kennel.id}
         kennelName={kennel.name}
         kennelBalance={kennel.balance}

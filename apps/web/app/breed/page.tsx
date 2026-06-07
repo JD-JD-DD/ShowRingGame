@@ -11,6 +11,7 @@ export default function BreedDogPage({ searchParams }: PageProps) {
   return (
     <BreedingPlannerPage
       experience="breed-dog"
+      returnMode="damPage"
       searchParams={searchParams}
     />
   );
