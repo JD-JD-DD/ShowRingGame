@@ -12,7 +12,10 @@ import {
 } from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
-import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
+import {
+  PLAYER_SALE_LISTING_TYPE,
+  PLAYER_STUD_LISTING_TYPE,
+} from "@/server/services/market.service";
 
 type BreedingPlannerPageProps = {
   experience: "breed-dog" | "worksheet";
@@ -39,6 +42,8 @@ type DogCardDto = {
   lifecycleState: string;
   ownerKennelName: string | null;
   isOwnedByCurrentKennel: boolean;
+  isListedForSale: boolean;
+  isListedAtStud: boolean;
   isEligibleToBreed: boolean;
   inBreedingConflict: boolean;
   studListingId: string | null;
@@ -222,6 +227,17 @@ export default async function BreedingPlannerPage({
           validUntilEpoch: true,
         },
       },
+      listings: {
+        where: {
+          status: "ACTIVE",
+          listingType: {
+            in: [PLAYER_SALE_LISTING_TYPE, PLAYER_STUD_LISTING_TYPE],
+          },
+        },
+        select: {
+          listingType: true,
+        },
+      },
     },
     orderBy: [{ breedCode2: "asc" }, { birthEpoch: "asc" }],
   });
@@ -255,6 +271,12 @@ export default async function BreedingPlannerPage({
       lifecycleState: dog.lifecycleState,
       ownerKennelName: dog.ownerKennel?.name ?? null,
       isOwnedByCurrentKennel: true,
+      isListedForSale: dog.listings.some(
+        (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
+      ),
+      isListedAtStud: dog.listings.some(
+        (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
+      ),
       isEligibleToBreed:
         alive &&
         oldEnough &&
@@ -426,6 +448,8 @@ export default async function BreedingPlannerPage({
       lifecycleState: dog.lifecycleState,
       ownerKennelName: dog.ownerKennel?.name ?? null,
       isOwnedByCurrentKennel: false,
+      isListedForSale: false,
+      isListedAtStud: true,
       isEligibleToBreed: alive && oldEnough,
       inBreedingConflict: false,
       studListingId: listing.id,

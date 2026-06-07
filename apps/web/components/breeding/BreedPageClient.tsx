@@ -3,9 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import HealthClearBadge from "@/components/dogs/HealthClearBadge";
+import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import TraitLine from "@/components/ui/TraitLine";
 import {
+  getPhenotypeHealthBadgeStatus,
   getPhenotypeHealthSeverity,
   hasAllGreenPhenotypeHealthTests,
   type PhenotypeHealthSeverity,
@@ -58,6 +59,8 @@ type DogCardDto = {
   lifecycleState: string;
   ownerKennelName: string | null;
   isOwnedByCurrentKennel: boolean;
+  isListedForSale: boolean;
+  isListedAtStud: boolean;
   isEligibleToBreed: boolean;
   inBreedingConflict: boolean;
   studListingId: string | null;
@@ -535,9 +538,11 @@ function DogName({ dog }: { dog: DogCardDto }) {
   return (
     <div className="flex items-center gap-1.5">
       <span>{dogDisplayName(dog)}</span>
-      {hasAllGreenPhenotypeHealthTests(dog.healthTests) ? (
-        <HealthClearBadge />
-      ) : null}
+      <DogStatusBadges
+        healthStatus={getPhenotypeHealthBadgeStatus(dog.healthTests)}
+        isListedForSale={dog.isListedForSale}
+        isListedAtStud={dog.isListedAtStud || Boolean(dog.studListingId)}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ type PublicPhenotypeHealthTest = {
 };
 
 export type PhenotypeHealthSeverity = "green" | "yellow" | "red";
+export type PhenotypeHealthBadgeStatus = PhenotypeHealthSeverity;
 
 export function isGreenPhenotypeHealthResult(
   testTypeCode: string,
@@ -62,4 +63,34 @@ export function hasAllGreenPhenotypeHealthTests(
       isGreenPhenotypeHealthResult(testTypeCode, latestResult.resultCode)
     );
   });
+}
+
+export function getPhenotypeHealthBadgeStatus(
+  testsNewestFirst: PublicPhenotypeHealthTest[]
+): PhenotypeHealthBadgeStatus | null {
+  const latestResults = PHENOTYPE_HEALTH_TEST_CODES.flatMap((testTypeCode) => {
+    const latestResult = testsNewestFirst.find(
+      (test) => test.testTypeCode === testTypeCode
+    );
+
+    return latestResult ? [{ testTypeCode, resultCode: latestResult.resultCode }] : [];
+  });
+
+  if (
+    latestResults.some(
+      (test) => getPhenotypeHealthSeverity(test.testTypeCode, test.resultCode) === "red"
+    )
+  ) {
+    return "red";
+  }
+
+  if (
+    latestResults.some(
+      (test) => getPhenotypeHealthSeverity(test.testTypeCode, test.resultCode) === "yellow"
+    )
+  ) {
+    return "yellow";
+  }
+
+  return hasAllGreenPhenotypeHealthTests(testsNewestFirst) ? "green" : null;
 }

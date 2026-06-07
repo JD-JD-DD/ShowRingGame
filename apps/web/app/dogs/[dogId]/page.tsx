@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import {
-  hasAllGreenPhenotypeHealthTests,
+  getPhenotypeHealthBadgeStatus,
   isGreenPhenotypeHealthResult,
 } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -29,7 +29,7 @@ import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import ManageDogStudListingForm from "@/components/dogs/ManageDogStudListingForm";
 import DogPrivateNotesEditor from "@/components/dogs/DogPrivateNotesEditor";
 import CollapsibleDogSection from "@/components/dogs/CollapsibleDogSection";
-import HealthClearBadge from "@/components/dogs/HealthClearBadge";
+import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import OfferDogAtStudForm from "@/components/dogs/OfferDogAtStudForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
 import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
@@ -390,9 +390,9 @@ function PedigreeCard({
   const healthResults = latestHealthTests.map((test) =>
     getPedigreeHealthSummary(test.testTypeCode, test.resultCode)
   );
-  const hasAllGreenHealthTests = dog
-    ? hasAllGreenPhenotypeHealthTests(dog.healthTests)
-    : false;
+  const healthBadgeStatus = dog
+    ? getPhenotypeHealthBadgeStatus(dog.healthTests)
+    : null;
   const healthCounts = healthResults.reduce(
     (counts, result) => ({
       ...counts,
@@ -409,7 +409,7 @@ function PedigreeCard({
       </div>
       <div className="mt-1 flex items-center gap-1.5 text-sm font-semibold leading-tight text-white">
         <span>{dog ? formatDogDisplayName(dog) : "Unknown"}</span>
-        {hasAllGreenHealthTests ? <HealthClearBadge /> : null}
+        <DogStatusBadges healthStatus={healthBadgeStatus} />
       </div>
       {dog ? (
         <div className="mt-1 truncate text-[0.68rem] text-purple-100/55">
@@ -1024,7 +1024,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         : null,
     };
   });
-  const hasAllGreenHealthTests = hasAllGreenPhenotypeHealthTests(dog.healthTests);
+  const healthBadgeStatus = getPhenotypeHealthBadgeStatus(dog.healthTests);
   const canOrderHealthTests =
     isOwnedByCurrentKennel && isAlive && ageHours >= MIN_BREED_AGE_HOURS;
 
@@ -1073,7 +1073,12 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
               <h1 className="mt-2 flex flex-wrap items-center gap-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
                 <span>{displayName}</span>
-                {hasAllGreenHealthTests ? <HealthClearBadge size="lg" /> : null}
+                <DogStatusBadges
+                  healthStatus={healthBadgeStatus}
+                  isListedForSale={isListedForSale}
+                  isListedAtStud={Boolean(activeStudListing)}
+                  size="lg"
+                />
               </h1>
 
               <div className="mt-3 text-sm text-purple-100/70">

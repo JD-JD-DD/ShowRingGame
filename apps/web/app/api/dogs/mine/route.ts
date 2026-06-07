@@ -2,9 +2,16 @@ import { fail, ok } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { db } from "@/lib/db";
-import { hasAllGreenPhenotypeHealthTests } from "@/lib/dogHealth";
+import {
+  getPhenotypeHealthBadgeStatus,
+  hasAllGreenPhenotypeHealthTests,
+} from "@/lib/dogHealth";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { resolveBreedingProgressForKennel } from "@/server/services/breeding.service";
+import {
+  PLAYER_SALE_LISTING_TYPE,
+  PLAYER_STUD_LISTING_TYPE,
+} from "@/server/services/market.service";
 import {
   DAM_MAX_BREED_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
@@ -78,6 +85,11 @@ type HealthTestSummary = {
   dogId: string;
   testTypeCode: string;
   resultCode: string;
+};
+
+type ActiveListingSummary = {
+  dogId: string;
+  listingType: string;
 };
 
 function toVisibleCategories(dog: RosterDogRecord) {
@@ -231,6 +243,18 @@ function groupHealthTestsByDog(healthTests: HealthTestSummary[]) {
   return testsByDogId;
 }
 
+function groupActiveListingTypesByDog(listings: ActiveListingSummary[]) {
+  const listingTypesByDogId = new Map<string, Set<string>>();
+
+  for (const listing of listings) {
+    const listingTypes = listingTypesByDogId.get(listing.dogId) ?? new Set<string>();
+    listingTypes.add(listing.listingType);
+    listingTypesByDogId.set(listing.dogId, listingTypes);
+  }
+
+  return listingTypesByDogId;
+}
+
 function mapByDogId<T extends { dogId: string }>(rows: T[]) {
   return new Map(rows.map((row) => [row.dogId, row]));
 }
@@ -294,6 +318,7 @@ export async function GET() {
       latestWhelpedAttempts,
       recentNotPregnantAttempts,
       latestHealthTests,
+      activeListings,
       areas,
     ] = dogIds.length
       ? await Promise.all([
@@ -387,6 +412,22 @@ export async function GET() {
               resultCode: true,
             },
           }),
+          db.dogListing.findMany({
+            where: {
+              dogId: {
+                in: dogIds,
+              },
+              sellerKennelId: kennel.id,
+              status: "ACTIVE",
+              listingType: {
+                in: [PLAYER_SALE_LISTING_TYPE, PLAYER_STUD_LISTING_TYPE],
+              },
+            },
+            select: {
+              dogId: true,
+              listingType: true,
+            },
+          }),
           db.kennelArea.findMany({
             where: {
               kennelId: kennel.id,
@@ -399,7 +440,7 @@ export async function GET() {
             },
           }),
         ])
-      : [[], [], [], [], [], []];
+      : [[], [], [], [], [], [], []];
     const areaIdsByDogId = groupAreaIdsByDog(areaMemberships);
     const activeAttemptByDogId = mapByDogId(
       activeDamAttempts.map((attempt) => ({
@@ -438,38 +479,45 @@ export async function GET() {
         }))
     );
     const healthTestsByDogId = groupHealthTestsByDog(latestHealthTests);
+    const activeListingTypesByDogId = groupActiveListingTypesByDog(activeListings);
 
     return ok({
       areas,
-      dogs: dogs.map((dog) => ({
-        dogId: dog.id,
-        callName: dog.callName,
-        registeredName: dog.registeredName,
-        regNumber: dog.regNumber,
-        visibleTitlePrefix: dog.visibleTitlePrefix,
-        visibleTitleSuffix: dog.visibleTitleSuffix,
-        breedCode2: dog.breedCode2,
-        breedName: dog.breed.name,
-        sex: dog.sex,
-        ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
-        lifecycleState: dog.lifecycleState,
-        marketState: dog.marketState,
-        hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(
-          healthTestsByDogId.get(dog.id) ?? []
-        ),
-        areaIds: areaIdsByDogId.get(dog.id) ?? [],
-        visibleCategories: toVisibleCategories(dog),
-        breedingCardStatus: getBreedingCardStatus(
-          dog,
-          {
-            activeAttempt: activeAttemptByDogId.get(dog.id) ?? null,
-            latestWhelpedAttempt: latestWhelpedByDogId.get(dog.id) ?? null,
-            recentNotPregnantAttempt:
-              recentNotPregnantByDogId.get(dog.id) ?? null,
-          },
-          currentEpoch
-        ),
-      })),
+      dogs: dogs.map((dog) => {
+        const healthTests = healthTestsByDogId.get(dog.id) ?? [];
+        const activeListingTypes = activeListingTypesByDogId.get(dog.id) ?? new Set<string>();
+
+        return {
+          dogId: dog.id,
+          callName: dog.callName,
+          registeredName: dog.registeredName,
+          regNumber: dog.regNumber,
+          visibleTitlePrefix: dog.visibleTitlePrefix,
+          visibleTitleSuffix: dog.visibleTitleSuffix,
+          breedCode2: dog.breedCode2,
+          breedName: dog.breed.name,
+          sex: dog.sex,
+          ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
+          lifecycleState: dog.lifecycleState,
+          marketState: dog.marketState,
+          hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(healthTests),
+          healthBadgeStatus: getPhenotypeHealthBadgeStatus(healthTests),
+          isListedForSale: activeListingTypes.has(PLAYER_SALE_LISTING_TYPE),
+          isListedAtStud: activeListingTypes.has(PLAYER_STUD_LISTING_TYPE),
+          areaIds: areaIdsByDogId.get(dog.id) ?? [],
+          visibleCategories: toVisibleCategories(dog),
+          breedingCardStatus: getBreedingCardStatus(
+            dog,
+            {
+              activeAttempt: activeAttemptByDogId.get(dog.id) ?? null,
+              latestWhelpedAttempt: latestWhelpedByDogId.get(dog.id) ?? null,
+              recentNotPregnantAttempt:
+                recentNotPregnantByDogId.get(dog.id) ?? null,
+            },
+            currentEpoch
+          ),
+        };
+      }),
     });
   } catch (error) {
     console.error("GET /api/dogs/mine failed", error);

@@ -1,6 +1,14 @@
 import { db } from "@/lib/db";
-import { hasAllGreenPhenotypeHealthTests } from "@/lib/dogHealth";
+import {
+  getPhenotypeHealthBadgeStatus,
+  hasAllGreenPhenotypeHealthTests,
+  type PhenotypeHealthBadgeStatus,
+} from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import {
+  PLAYER_SALE_LISTING_TYPE,
+  PLAYER_STUD_LISTING_TYPE,
+} from "@/server/services/market.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
   getShowBlockEntryAvailability,
@@ -56,6 +64,17 @@ const dogForEntryArgs = Prisma.validator<Prisma.DogDefaultArgs>()({
       select: {
         testTypeCode: true,
         resultCode: true,
+      },
+    },
+    listings: {
+      where: {
+        status: "ACTIVE",
+        listingType: {
+          in: [PLAYER_SALE_LISTING_TYPE, PLAYER_STUD_LISTING_TYPE],
+        },
+      },
+      select: {
+        listingType: true,
       },
     },
     breedingAttemptsAsDam: {
@@ -144,6 +163,9 @@ export type EligibleShowDogDto = {
   conditioningSnapshot: number;
   fatigueSnapshot: number;
   hasAllGreenHealthTests: boolean;
+  healthBadgeStatus: PhenotypeHealthBadgeStatus | null;
+  isListedForSale: boolean;
+  isListedAtStud: boolean;
 };
 
 export type EligibleDogsByBlockDto = Record<string, EligibleShowDogDto[]>;
@@ -889,6 +911,13 @@ export async function listEligibleDogsByShowBlock(args: {
           hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(
             dog.healthTests
           ),
+          healthBadgeStatus: getPhenotypeHealthBadgeStatus(dog.healthTests),
+          isListedForSale: dog.listings.some(
+            (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
+          ),
+          isListedAtStud: dog.listings.some(
+            (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
+          ),
         })),
     ])
   );
@@ -943,6 +972,13 @@ export async function listEligibleDogsForShowBlock(args: {
       conditioningSnapshot: getConditioningSnapshot(dog),
       fatigueSnapshot: dog.fatiguePoints,
       hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(dog.healthTests),
+      healthBadgeStatus: getPhenotypeHealthBadgeStatus(dog.healthTests),
+      isListedForSale: dog.listings.some(
+        (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
+      ),
+      isListedAtStud: dog.listings.some(
+        (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
+      ),
     }));
 }
 
@@ -1003,6 +1039,17 @@ export async function listShowEntryBreedOptions(args: {
         select: {
           testTypeCode: true,
           resultCode: true,
+        },
+      },
+      listings: {
+        where: {
+          status: "ACTIVE",
+          listingType: {
+            in: [PLAYER_SALE_LISTING_TYPE, PLAYER_STUD_LISTING_TYPE],
+          },
+        },
+        select: {
+          listingType: true,
         },
       },
     },
@@ -1171,6 +1218,13 @@ export async function getShowEntryPlanner(args: {
           fatigueSnapshot: dog.fatiguePoints,
           hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(
             dog.healthTests
+          ),
+          healthBadgeStatus: getPhenotypeHealthBadgeStatus(dog.healthTests),
+          isListedForSale: dog.listings.some(
+            (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
+          ),
+          isListedAtStud: dog.listings.some(
+            (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
           ),
           eligibleShowDayIds,
           alreadyEnteredShowDayIds,

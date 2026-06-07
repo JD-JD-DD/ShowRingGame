@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import HealthClearBadge from "@/components/dogs/HealthClearBadge";
+import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import {
   PUPPY_SALE_MIN_AGE_HOURS,
@@ -40,7 +40,9 @@ type KennelDogDto = {
   ageHours: number;
   lifecycleState: string;
   marketState: string;
-  hasAllGreenHealthTests: boolean;
+  healthBadgeStatus: "green" | "yellow" | "red" | null;
+  isListedForSale: boolean;
+  isListedAtStud: boolean;
   areaIds: string[];
   visibleCategories: VisibleCategories;
   breedingCardStatus: BreedingCardStatus;
@@ -1132,7 +1134,11 @@ export default function KennelDogsPanel() {
                   <td className="px-3 py-3 text-white font-medium">
                     <div className="flex items-center gap-1.5">
                       <span>{getDogDisplayName(dog)}</span>
-                      {dog.hasAllGreenHealthTests ? <HealthClearBadge /> : null}
+                      <DogStatusBadges
+                        healthStatus={dog.healthBadgeStatus}
+                        isListedForSale={dog.isListedForSale}
+                        isListedAtStud={dog.isListedAtStud}
+                      />
                     </div>
                   </td>
 
