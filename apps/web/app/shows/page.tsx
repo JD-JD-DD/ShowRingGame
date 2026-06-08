@@ -115,6 +115,33 @@ function clusterEntryCount(cluster: {
   );
 }
 
+async function needsGeneratedShowScheduleRefresh(args: {
+  currentEpoch: number;
+  horizonHours: number;
+}): Promise<boolean> {
+  const coverage = await db.showCluster.aggregate({
+    where: {
+      id: {
+        startsWith: "generated-year-",
+      },
+      endEpoch: {
+        gte: args.currentEpoch,
+      },
+      status: {
+        not: "CANCELLED",
+      },
+    },
+    _max: {
+      endEpoch: true,
+    },
+  });
+  const generatedThroughEpoch = coverage._max.endEpoch ?? 0;
+  const minimumUsefulCoverage =
+    args.currentEpoch + args.horizonHours - SHOW_WEEK_HOURS;
+
+  return generatedThroughEpoch < minimumUsefulCoverage;
+}
+
 export default async function ShowsPage({
   searchParams,
 }: {
@@ -134,14 +161,25 @@ export default async function ShowsPage({
     : "";
   const currentEpoch = getCurrentEpoch();
   const currentCalendarPosition = getCurrentCalendarPosition(currentEpoch);
+  const calendarDisplayStartEpoch =
+    (currentCalendarPosition.year - 1) * SHOW_YEAR_HOURS;
+  const calendarDisplayEndEpoch =
+    currentEpoch + SHOW_INSTANCE_GENERATION_HORIZON_HOURS + SHOW_WEEK_HOURS;
   const templates = generateAnnualShowClusterTemplates();
 
   try {
-    await ensureGeneratedShowSchedule({
+    const shouldRefreshSchedule = await needsGeneratedShowScheduleRefresh({
       currentEpoch,
       horizonHours: SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
-      includeJudgingBlocks: false,
     });
+
+    if (shouldRefreshSchedule) {
+      await ensureGeneratedShowSchedule({
+        currentEpoch,
+        horizonHours: SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
+        includeJudgingBlocks: false,
+      });
+    }
   } catch (error) {
     console.error("Shows page failed to refresh generated schedule:", error);
     autoGenerateError =
@@ -157,6 +195,14 @@ export default async function ShowsPage({
     : null;
 
   const clusters = await db.showCluster.findMany({
+    where: {
+      startEpoch: {
+        lte: calendarDisplayEndEpoch,
+      },
+      endEpoch: {
+        gte: calendarDisplayStartEpoch,
+      },
+    },
     orderBy: [{ year: "desc" }, { startEpoch: "desc" }],
     include: {
       showDays: {
@@ -178,28 +224,34 @@ export default async function ShowsPage({
       },
     },
   });
+  const displayedClusterIds = clusters.map((cluster) => cluster.id);
   const [enteredClusters, stewardedClusterIds] = currentKennel
     ? await Promise.all([
-        db.showCluster.findMany({
-          where: {
-            showDays: {
-              some: {
-                showEntries: {
+        displayedClusterIds.length > 0
+          ? db.showCluster.findMany({
+              where: {
+                id: {
+                  in: displayedClusterIds,
+                },
+                showDays: {
                   some: {
-                    kennelId: currentKennel.id,
-                    entryStatus: {
-                      in: ["ENTERED", "JUDGED"],
+                    showEntries: {
+                      some: {
+                        kennelId: currentKennel.id,
+                        entryStatus: {
+                          in: ["ENTERED", "JUDGED"],
+                        },
+                      },
                     },
                   },
                 },
               },
-            },
-          },
-          select: { id: true },
-        }),
+              select: { id: true },
+            })
+          : Promise.resolve([]),
         getClubStewardingClaimedClusterIds({
           kennelId: currentKennel.id,
-          showClusterIds: clusters.map((cluster) => cluster.id),
+          showClusterIds: displayedClusterIds,
         }),
       ])
     : [[], new Set<string>()];
