@@ -139,6 +139,12 @@ export default async function KennelPage() {
             Ledger
           </Link>
           <Link
+            href="/kennel/services"
+            className="rounded-md border border-emerald-300/40 px-5 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-950/40"
+          >
+            Services
+          </Link>
+          <Link
             href="/memorium"
             className="rounded-md border border-rose-300/40 px-5 py-2 text-sm font-semibold text-rose-100 hover:bg-rose-950/40"
           >

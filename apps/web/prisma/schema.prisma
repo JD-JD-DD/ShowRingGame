@@ -116,6 +116,7 @@ enum LedgerTransactionType {
   PUPPY_REHOME
   STUD_FEE_IN
   STUD_FEE_OUT
+  KENNEL_SERVICE_PAYOUT
   LISTING_FEE
   UPKEEP
   PRIZE_WINNINGS
@@ -132,6 +133,22 @@ enum KennelNoticeType {
   STUD_FEE_RECEIVED
   DOG_SOLD
   INVITATIONAL_INVITE
+  KENNEL_SERVICE
+}
+
+enum KennelServiceType {
+  CLUB_STEWARDING
+  GROOMING_ASSISTANCE
+  BOARDING
+  PUPPY_SOCIALIZATION
+  TRANSPORT_ASSISTANCE
+  HANDLING_ASSISTANCE
+}
+
+enum KennelServiceClaimStatus {
+  CLAIMED
+  COMPLETED
+  CANCELLED
 }
 
 model User {
@@ -190,6 +207,7 @@ model Kennel {
     notices                 KennelNotice[]
     privateDogNotes         KennelDogPrivateNote[]
     areas                   KennelArea[]
+    serviceClaims           KennelServiceClaim[]
 
   @@index([userId])
   @@index([homeDistrict])
@@ -298,6 +316,7 @@ model Dog {
     infectiousDiseaseTests InfectiousDiseaseTestRecord[]
     privateKennelNotes KennelDogPrivateNote[]
     kennelAreaMemberships KennelAreaDog[]
+    serviceClaims KennelServiceClaim[]
 
   @@index([breedCode2])
   @@index([ownerKennelId])
@@ -452,6 +471,7 @@ model ShowCluster {
   showDays           ShowDay[]
   ledgerTransactions LedgerTransaction[]
   primaryWeekendPlans KennelShowWeekendPlan[] @relation("PrimaryShowWeekendCluster")
+  serviceClaims      KennelServiceClaim[]
 
   @@index([district])
   @@index([year])
@@ -729,6 +749,34 @@ model LedgerTransaction {
   @@index([counterpartyKennelId])
   @@index([occurredAtEpoch])
   @@index([transactionType])
+}
+
+model KennelServiceClaim {
+  id               String                   @id @default(cuid())
+  kennelId         String
+  serviceType      KennelServiceType
+  showClusterId    String?
+  dogId            String?
+  weekendKey       String?
+  status           KennelServiceClaimStatus @default(CLAIMED)
+  payoutAmount     Int
+  claimedAtEpoch   Int
+  completedAtEpoch Int?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  kennel      Kennel       @relation(fields: [kennelId], references: [id])
+  showCluster ShowCluster? @relation(fields: [showClusterId], references: [id])
+  dog         Dog?         @relation(fields: [dogId], references: [id])
+
+  @@unique([kennelId, serviceType, showClusterId])
+  @@unique([kennelId, serviceType, weekendKey])
+  @@index([kennelId])
+  @@index([serviceType])
+  @@index([showClusterId])
+  @@index([dogId])
+  @@index([weekendKey])
+  @@index([status])
 }
 
 model DogListing {

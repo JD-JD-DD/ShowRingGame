@@ -1,0 +1,206 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { db } from "@/lib/db";
+import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
+import { getSessionUserId } from "@/lib/session";
+import { listStewardingOpportunities } from "@/server/services/kennelService.service";
+
+type PageProps = {
+  searchParams?: Promise<{
+    message?: string | string[];
+    error?: string | string[];
+  }>;
+};
+
+function firstQueryValue(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
+function formatMoney(amount: number): string {
+  return `$${amount.toLocaleString()}`;
+}
+
+function formatDate(epoch: number): string {
+  return epochToDate(epoch).toLocaleDateString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+export default async function KennelServicesPage({ searchParams }: PageProps) {
+  const userId = await getSessionUserId();
+
+  if (!userId) {
+    redirect("/login");
+  }
+
+  const kennel = await db.kennel.findUnique({
+    where: { userId },
+    select: {
+      id: true,
+      name: true,
+      balance: true,
+    },
+  });
+
+  if (!kennel) {
+    redirect("/onboarding");
+  }
+
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const message = firstQueryValue(resolvedSearchParams.message);
+  const error = firstQueryValue(resolvedSearchParams.error);
+  const currentEpoch = getCurrentEpoch();
+  const opportunities = await listStewardingOpportunities({
+    kennelId: kennel.id,
+    currentEpoch,
+  });
+
+  return (
+    <main className="mx-auto max-w-7xl px-6 py-8 text-white">
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm uppercase tracking-[0.25em] text-emerald-200/80">
+            Kennel Services
+          </p>
+          <h1 className="mt-2 text-3xl font-semibold">Work Board</h1>
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
+            Earn practical kennel income through dog-world service work. Club
+            stewarding is available now; more service types can be added later.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/kennel"
+            className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+          >
+            Back to My Kennel
+          </Link>
+          <div className="rounded-2xl border border-purple-300/15 bg-white/5 px-5 py-4">
+            <div className="text-xs uppercase tracking-wide text-purple-200">
+              Balance
+            </div>
+            <div className="mt-1 text-xl font-semibold">
+              {formatMoney(kennel.balance)}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {message ? (
+        <div className="mb-5 rounded-2xl border border-emerald-300/35 bg-emerald-500/10 px-5 py-4 text-sm font-semibold text-emerald-100">
+          {message}
+        </div>
+      ) : null}
+      {error ? (
+        <div className="mb-5 rounded-2xl border border-red-300/35 bg-red-500/10 px-5 py-4 text-sm font-semibold text-red-100">
+          {error}
+        </div>
+      ) : null}
+
+      <section className="rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+        <div className="mb-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100/80">
+              Club Stewarding
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              Available Assignments
+            </h2>
+          </div>
+        </div>
+
+        {opportunities.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-6 text-sm text-purple-100/70">
+            No stewarding assignments are available right now.
+          </div>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {opportunities.map((opportunity) => (
+              <article
+                key={opportunity.showClusterId}
+                className="rounded-2xl border border-white/10 bg-black/20 p-5"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">
+                      {opportunity.name}
+                    </h3>
+                    <p className="mt-1 text-sm text-purple-100/65">
+                      {opportunity.districtName} District
+                    </p>
+                  </div>
+                  <div className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-100">
+                    {formatMoney(opportunity.payoutAmount)}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 text-sm text-purple-100/75 sm:grid-cols-3">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                      Dates
+                    </div>
+                    <div className="mt-1 font-semibold text-white">
+                      {formatDate(opportunity.startEpoch)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                      Days
+                    </div>
+                    <div className="mt-1 font-semibold text-white">
+                      {opportunity.dayCount}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                      Status
+                    </div>
+                    <div className="mt-1 font-semibold text-white">
+                      {opportunity.alreadyStewarded ? "Claimed" : "Open"}
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-4 text-xs leading-5 text-purple-100/65">
+                  Stewarding pays {formatMoney(opportunity.payoutAmount)}, but
+                  you cannot owner-handle dogs in this exact show/cluster.
+                </p>
+
+                {opportunity.blockedReason ? (
+                  <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-purple-100/70">
+                    {opportunity.blockedReason}
+                  </div>
+                ) : null}
+
+                <form
+                  action="/api/kennel/services/stewarding/claim"
+                  method="post"
+                  className="mt-4"
+                >
+                  <input
+                    type="hidden"
+                    name="showClusterId"
+                    value={opportunity.showClusterId}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!opportunity.canClaim}
+                    className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Steward this show
+                  </button>
+                </form>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}

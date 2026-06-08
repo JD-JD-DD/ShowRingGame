@@ -10,6 +10,7 @@ import {
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import { assertCanCreateOwnerHandledEntriesForCluster } from "@/server/services/kennelService.service";
 import {
   getShowBlockEntryAvailability,
   getShowDayEntryAvailability,
@@ -637,6 +638,14 @@ async function createShowEntryWithTx(args: {
 
   if (!kennel) {
     throw new Error("Owner kennel not found.");
+  }
+
+  if (!handlerUsed) {
+    await assertCanCreateOwnerHandledEntriesForCluster({
+      client: tx,
+      kennelId: kennel.id,
+      showClusterId: block.showDay.clusterId,
+    });
   }
 
   if (kennel.balance < ENTRY_FEE_PER_SHOW) {
@@ -1339,6 +1348,14 @@ export async function createShowEntriesForCluster(args: {
     if (!kennel) {
       throw new Error("Kennel not found.");
     }
+
+    // Bulk cluster entry does not currently expose a per-entry handler choice,
+    // so stewarded exact clusters use the safest restriction here.
+    await assertCanCreateOwnerHandledEntriesForCluster({
+      client: tx,
+      kennelId: kennel.id,
+      showClusterId: cluster.id,
+    });
 
     const weekendKey = getWeekendKeyForCluster(cluster);
     const weekendPlan = await tx.kennelShowWeekendPlan.findUnique({
