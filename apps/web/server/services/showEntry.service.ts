@@ -182,6 +182,7 @@ export type ShowEntryPlannerDayDto = {
 export type ShowEntryBreedOptionDto = {
   code2: string;
   name: string;
+  groupName: string | null;
   eligibleDogCount: number;
 };
 
@@ -1027,7 +1028,7 @@ export async function listShowEntryBreedOptions(args: {
     },
     orderBy: [{ breedCode2: "asc" }, { registeredName: "asc" }, { regNumber: "asc" }],
     include: {
-      breed: { select: { code2: true, name: true } },
+      breed: { select: { code2: true, name: true, groupName: true } },
       breedingAttemptsAsDam: {
         where: {
           OR: [
@@ -1103,6 +1104,7 @@ export async function listShowEntryBreedOptions(args: {
       optionByBreed.set(dog.breedCode2, {
         code2: dog.breed.code2,
         name: dog.breed.name,
+        groupName: dog.breed.groupName,
         eligibleDogCount: 1,
       });
     }

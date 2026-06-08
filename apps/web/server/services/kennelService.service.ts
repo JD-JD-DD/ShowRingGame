@@ -10,6 +10,8 @@ import {
 
 const CLUB_STEWARDING_TWO_DAY_PAYOUT = 1_500;
 const CLUB_STEWARDING_FOUR_DAY_PAYOUT = 3_000;
+const CLUB_STEWARDING_SPACES_PER_SHOW = 6;
+const ACTIVE_STEWARDING_CLAIM_STATUSES = ["CLAIMED", "COMPLETED"] as const;
 
 type StewardingCluster = {
   id: string;
@@ -40,6 +42,9 @@ export type StewardingOpportunityDto = {
   dayCount: number;
   weekendKey: string;
   payoutAmount: number;
+  totalSpaces: number;
+  claimedSpaces: number;
+  availableSpaces: number;
   alreadyStewarded: boolean;
   blockedReason: string | null;
   canClaim: boolean;
@@ -135,7 +140,7 @@ export async function hasClubStewardingClaimForCluster(args: {
       serviceType: "CLUB_STEWARDING",
       showClusterId: args.showClusterId,
       status: {
-        in: ["CLAIMED", "COMPLETED"],
+        in: [...ACTIVE_STEWARDING_CLAIM_STATUSES],
       },
     },
     select: {
@@ -164,7 +169,7 @@ export async function getClubStewardingClaimedClusterIds(args: {
         in: showClusterIds,
       },
       status: {
-        in: ["CLAIMED", "COMPLETED"],
+        in: [...ACTIVE_STEWARDING_CLAIM_STATUSES],
       },
     },
     select: {
@@ -202,7 +207,7 @@ export async function getClubStewardingCommitmentForShow(args: {
       serviceType: "CLUB_STEWARDING",
       weekendKey,
       status: {
-        in: ["CLAIMED", "COMPLETED"],
+        in: [...ACTIVE_STEWARDING_CLAIM_STATUSES],
       },
     },
     select: {
@@ -270,13 +275,13 @@ export async function listStewardingOpportunities(args: {
   });
   const weekendKeys = clusters.map((cluster) => getWeekendKeyForCluster(cluster));
   const clusterIds = clusters.map((cluster) => cluster.id);
-  const [claims, entryCounts] = await Promise.all([
+  const [claims, claimCounts, entryCounts] = await Promise.all([
     db.kennelServiceClaim.findMany({
       where: {
         kennelId: args.kennelId,
         serviceType: "CLUB_STEWARDING",
         status: {
-          in: ["CLAIMED", "COMPLETED"],
+          in: [...ACTIVE_STEWARDING_CLAIM_STATUSES],
         },
         OR: [
           {
@@ -294,6 +299,21 @@ export async function listStewardingOpportunities(args: {
       select: {
         showClusterId: true,
         weekendKey: true,
+      },
+    }),
+    db.kennelServiceClaim.groupBy({
+      by: ["showClusterId"],
+      where: {
+        serviceType: "CLUB_STEWARDING",
+        showClusterId: {
+          in: clusterIds,
+        },
+        status: {
+          in: [...ACTIVE_STEWARDING_CLAIM_STATUSES],
+        },
+      },
+      _count: {
+        _all: true,
       },
     }),
     db.showEntry.groupBy({
@@ -317,7 +337,13 @@ export async function listStewardingOpportunities(args: {
   const claimedWeekendKeys = new Set(
     claims.map((claim) => claim.weekendKey).filter(Boolean)
   );
+  const claimCountsByClusterId = new Map<string, number>();
   const entryCountsByClusterId = new Map<string, number>();
+
+  for (const row of claimCounts) {
+    if (!row.showClusterId) continue;
+    claimCountsByClusterId.set(row.showClusterId, row._count._all);
+  }
 
   if (entryCounts.length > 0) {
     const showDays = await db.showDay.findMany({
@@ -351,6 +377,11 @@ export async function listStewardingOpportunities(args: {
     const sameWindowClaimed =
       !alreadyStewarded && claimedWeekendKeys.has(weekendKey);
     const hasExactEntries = (entryCountsByClusterId.get(cluster.id) ?? 0) > 0;
+    const claimedSpaces = claimCountsByClusterId.get(cluster.id) ?? 0;
+    const availableSpaces = Math.max(
+      0,
+      CLUB_STEWARDING_SPACES_PER_SHOW - claimedSpaces
+    );
     const baseReason = getBaseIneligibilityReason(cluster, args.currentEpoch);
     const blockedReason =
       baseReason ??
@@ -360,7 +391,9 @@ export async function listStewardingOpportunities(args: {
           ? "You already have a stewarding assignment in this show weekend."
           : hasExactEntries
             ? "You already have entries in this show."
-            : null);
+            : availableSpaces <= 0
+              ? "All stewarding spaces for this show are filled."
+              : null);
 
     return {
       showClusterId: cluster.id,
@@ -372,6 +405,9 @@ export async function listStewardingOpportunities(args: {
       dayCount: cluster.showDays.length,
       weekendKey,
       payoutAmount: getClubStewardingPayout(cluster.showDays.length),
+      totalSpaces: CLUB_STEWARDING_SPACES_PER_SHOW,
+      claimedSpaces,
+      availableSpaces,
       alreadyStewarded,
       blockedReason,
       canClaim: blockedReason === null,
@@ -384,182 +420,217 @@ export async function claimStewardingAssignment(args: {
   showClusterId: string;
   currentEpoch: number;
 }): Promise<StewardingClaimResultDto> {
-  return db.$transaction(async (tx) => {
-    const [kennel, cluster] = await Promise.all([
-      tx.kennel.findUnique({
-        where: { id: args.kennelId },
-        select: {
-          id: true,
-          balance: true,
-        },
-      }),
-      tx.showCluster.findUnique({
-        where: { id: args.showClusterId },
-        select: {
-          id: true,
-          name: true,
-          district: true,
-          startEpoch: true,
-          endEpoch: true,
-          entryOpenEpoch: true,
-          entryCloseEpoch: true,
-          status: true,
-          showDays: {
-            orderBy: [{ dayIndex: "asc" }],
+  try {
+    return await db.$transaction(
+      async (tx) => {
+        const [kennel, cluster] = await Promise.all([
+          tx.kennel.findUnique({
+            where: { id: args.kennelId },
             select: {
               id: true,
+              balance: true,
+            },
+          }),
+          tx.showCluster.findUnique({
+            where: { id: args.showClusterId },
+            select: {
+              id: true,
+              name: true,
+              district: true,
+              startEpoch: true,
+              endEpoch: true,
+              entryOpenEpoch: true,
+              entryCloseEpoch: true,
               status: true,
-              scheduledEpoch: true,
-              _count: {
+              showDays: {
+                orderBy: [{ dayIndex: "asc" }],
                 select: {
-                  showResults: true,
+                  id: true,
+                  status: true,
+                  scheduledEpoch: true,
+                  _count: {
+                    select: {
+                      showResults: true,
+                    },
+                  },
                 },
               },
             },
+          }),
+        ]);
+
+        if (!kennel) {
+          throw new Error("Kennel not found.");
+        }
+
+        if (!cluster) {
+          throw new Error("Show not found.");
+        }
+
+        const baseReason = getBaseIneligibilityReason(
+          cluster,
+          args.currentEpoch
+        );
+        if (baseReason) {
+          throw new Error(baseReason);
+        }
+
+        const existingEntryCount = await getExactClusterEntryCount({
+          client: tx,
+          kennelId: kennel.id,
+          showClusterId: cluster.id,
+        });
+
+        if (existingEntryCount > 0) {
+          throw new Error(
+            "You already have entries in this show, so you cannot steward it."
+          );
+        }
+
+        const weekendKey = getWeekendKeyForCluster(cluster);
+        const existingClaim = await tx.kennelServiceClaim.findFirst({
+          where: {
+            kennelId: kennel.id,
+            serviceType: "CLUB_STEWARDING",
+            weekendKey,
+            status: {
+              in: [...ACTIVE_STEWARDING_CLAIM_STATUSES],
+            },
           },
-        },
-      }),
-    ]);
-
-    if (!kennel) {
-      throw new Error("Kennel not found.");
-    }
-
-    if (!cluster) {
-      throw new Error("Show not found.");
-    }
-
-    const baseReason = getBaseIneligibilityReason(cluster, args.currentEpoch);
-    if (baseReason) {
-      throw new Error(baseReason);
-    }
-
-    const existingEntryCount = await getExactClusterEntryCount({
-      client: tx,
-      kennelId: kennel.id,
-      showClusterId: cluster.id,
-    });
-
-    if (existingEntryCount > 0) {
-      throw new Error(
-        "You already have entries in this show, so you cannot steward it."
-      );
-    }
-
-    const weekendKey = getWeekendKeyForCluster(cluster);
-    const existingClaim = await tx.kennelServiceClaim.findFirst({
-      where: {
-        kennelId: kennel.id,
-        serviceType: "CLUB_STEWARDING",
-        weekendKey,
-        status: {
-          in: ["CLAIMED", "COMPLETED"],
-        },
-      },
-      select: {
-        showCluster: {
           select: {
-            name: true,
+            showCluster: {
+              select: {
+                name: true,
+              },
+            },
           },
-        },
-      },
-    });
+        });
 
-    if (existingClaim) {
+        if (existingClaim) {
+          throw new Error(
+            `You already have a stewarding assignment in this show weekend${existingClaim.showCluster?.name ? `: ${existingClaim.showCluster.name}` : ""}.`
+          );
+        }
+
+        const claimedSpaces = await tx.kennelServiceClaim.count({
+          where: {
+            serviceType: "CLUB_STEWARDING",
+            showClusterId: cluster.id,
+            status: {
+              in: [...ACTIVE_STEWARDING_CLAIM_STATUSES],
+            },
+          },
+        });
+
+        if (claimedSpaces >= CLUB_STEWARDING_SPACES_PER_SHOW) {
+          throw new Error("All stewarding spaces for this show are filled.");
+        }
+
+        const payoutAmount = getClubStewardingPayout(cluster.showDays.length);
+        const updatedKennel = await tx.kennel.update({
+          where: { id: kennel.id },
+          data: {
+            balance: {
+              increment: payoutAmount,
+            },
+          },
+          select: {
+            balance: true,
+          },
+        });
+        const claim = await tx.kennelServiceClaim.create({
+          data: {
+            kennelId: kennel.id,
+            serviceType: "CLUB_STEWARDING",
+            showClusterId: cluster.id,
+            weekendKey,
+            status: "COMPLETED",
+            payoutAmount,
+            claimedAtEpoch: args.currentEpoch,
+            completedAtEpoch: args.currentEpoch,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        const weekendPlan = await tx.kennelShowWeekendPlan.findUnique({
+          where: {
+            kennelId_weekendKey: {
+              kennelId: kennel.id,
+              weekendKey,
+            },
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (!weekendPlan) {
+          await tx.kennelShowWeekendPlan.create({
+            data: {
+              kennelId: kennel.id,
+              weekendKey,
+              primaryClusterId: cluster.id,
+              travelFeeCharged: 0,
+              createdAtEpoch: args.currentEpoch,
+            },
+          });
+        }
+
+        await tx.ledgerTransaction.create({
+          data: {
+            kennelId: kennel.id,
+            transactionType: "KENNEL_SERVICE_PAYOUT",
+            amount: payoutAmount,
+            balanceAfter: updatedKennel.balance,
+            occurredAtEpoch: args.currentEpoch,
+            showClusterId: cluster.id,
+            memo: `Club stewarding payout for ${cluster.name}.`,
+            metadataJson: {
+              serviceType: "CLUB_STEWARDING",
+              claimId: claim.id,
+            },
+          },
+        });
+
+        await createKennelNotice({
+          client: tx,
+          kennelId: kennel.id,
+          type: "KENNEL_SERVICE",
+          title: "Club stewarding assignment",
+          body: `You stewarded ${cluster.name} and were paid $${payoutAmount.toLocaleString()}.`,
+          currentEpoch: args.currentEpoch,
+          linkedShowId: cluster.id,
+          metadataJson: {
+            serviceType: "CLUB_STEWARDING",
+            claimId: claim.id,
+          },
+        });
+
+        return {
+          claimId: claim.id,
+          showClusterId: cluster.id,
+          payoutAmount,
+          balanceAfter: updatedKennel.balance,
+        };
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      }
+    );
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2034"
+    ) {
       throw new Error(
-        `You already have a stewarding assignment in this show weekend${existingClaim.showCluster?.name ? `: ${existingClaim.showCluster.name}` : ""}.`
+        "Stewarding spaces changed while you were claiming. Please try again."
       );
     }
 
-    const payoutAmount = getClubStewardingPayout(cluster.showDays.length);
-    const updatedKennel = await tx.kennel.update({
-      where: { id: kennel.id },
-      data: {
-        balance: {
-          increment: payoutAmount,
-        },
-      },
-      select: {
-        balance: true,
-      },
-    });
-    const claim = await tx.kennelServiceClaim.create({
-      data: {
-        kennelId: kennel.id,
-        serviceType: "CLUB_STEWARDING",
-        showClusterId: cluster.id,
-        weekendKey,
-        status: "COMPLETED",
-        payoutAmount,
-        claimedAtEpoch: args.currentEpoch,
-        completedAtEpoch: args.currentEpoch,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    const weekendPlan = await tx.kennelShowWeekendPlan.findUnique({
-      where: {
-        kennelId_weekendKey: {
-          kennelId: kennel.id,
-          weekendKey,
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (!weekendPlan) {
-      await tx.kennelShowWeekendPlan.create({
-        data: {
-          kennelId: kennel.id,
-          weekendKey,
-          primaryClusterId: cluster.id,
-          travelFeeCharged: 0,
-          createdAtEpoch: args.currentEpoch,
-        },
-      });
-    }
-
-    await tx.ledgerTransaction.create({
-      data: {
-        kennelId: kennel.id,
-        transactionType: "KENNEL_SERVICE_PAYOUT",
-        amount: payoutAmount,
-        balanceAfter: updatedKennel.balance,
-        occurredAtEpoch: args.currentEpoch,
-        showClusterId: cluster.id,
-        memo: `Club stewarding payout for ${cluster.name}.`,
-        metadataJson: {
-          serviceType: "CLUB_STEWARDING",
-          claimId: claim.id,
-        },
-      },
-    });
-
-    await createKennelNotice({
-      client: tx,
-      kennelId: kennel.id,
-      type: "KENNEL_SERVICE",
-      title: "Club stewarding assignment",
-      body: `You stewarded ${cluster.name} and were paid $${payoutAmount.toLocaleString()}.`,
-      currentEpoch: args.currentEpoch,
-      linkedShowId: cluster.id,
-      metadataJson: {
-        serviceType: "CLUB_STEWARDING",
-        claimId: claim.id,
-      },
-    });
-
-    return {
-      claimId: claim.id,
-      showClusterId: cluster.id,
-      payoutAmount,
-      balanceAfter: updatedKennel.balance,
-    };
-  });
+    throw error;
+  }
 }
 
 export async function assertCanCreateOwnerHandledEntriesForCluster(args: {

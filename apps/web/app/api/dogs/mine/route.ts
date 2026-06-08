@@ -36,6 +36,7 @@ type RosterDogRecord = {
   marketState: string;
   breed: {
     name: string;
+    groupName: string | null;
   };
   traitHead: number;
   traitForequarters: number;
@@ -298,6 +299,7 @@ export async function GET() {
         breed: {
           select: {
             name: true,
+            groupName: true,
           },
         },
         traitHead: true,
@@ -497,6 +499,7 @@ export async function GET() {
           visibleTitleSuffix: dog.visibleTitleSuffix,
           breedCode2: dog.breedCode2,
           breedName: dog.breed.name,
+          breedGroupName: dog.breed.groupName,
           sex: dog.sex,
           ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
           lifecycleState: dog.lifecycleState,

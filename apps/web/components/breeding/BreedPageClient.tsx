@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
+import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import TraitLine from "@/components/ui/TraitLine";
 import {
   getPhenotypeHealthBadgeStatus,
@@ -53,6 +54,7 @@ type DogCardDto = {
   visibleTitleSuffix: string | null;
   breedCode2: string;
   breedName: string;
+  breedGroupName: string | null;
   sex: "M" | "F";
   birthEpoch: number;
   ageHours: number;
@@ -1655,17 +1657,22 @@ export default function BreedPageClient({
   );
 
   const breeds = useMemo(() => {
-    const breedByCode = new Map<string, string>();
+    const breedByCode = new Map<
+      string,
+      { code2: string; name: string; groupName: string | null }
+    >();
 
     for (const dog of eligibleDogs) {
       if (dog.isOwnedByCurrentKennel && dog.sex === "F") {
-        breedByCode.set(dog.breedCode2, dog.breedName);
+        breedByCode.set(dog.breedCode2, {
+          code2: dog.breedCode2,
+          name: dog.breedName,
+          groupName: dog.breedGroupName,
+        });
       }
     }
 
-    return [...breedByCode.entries()]
-      .map(([code2, name]) => ({ code2, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return [...breedByCode.values()];
   }, [eligibleDogs]);
 
   const selectedDam = eligibleDogs.find((dog) => dog.id === damId) ?? null;
@@ -1964,11 +1971,7 @@ export default function BreedPageClient({
               className="rounded-xl border border-fuchsia-200/55 bg-purple-950/80 px-4 py-3 font-semibold text-white shadow-[0_0_20px_rgba(192,132,252,0.15)] outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-300/25"
             >
               <option value="">Choose a breed...</option>
-              {breeds.map((breed) => (
-                <option key={breed.code2} value={breed.code2}>
-                  {breed.name}
-                </option>
-              ))}
+              <BreedSelectOptions options={breeds} />
             </select>
           </label>
         </div>

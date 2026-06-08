@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import { db } from "@/lib/db";
 import {
   getKennelPrestigeLeaderboard,
@@ -107,6 +108,7 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
     select: {
       code2: true,
       name: true,
+      groupName: true,
     },
   });
   const selectedBreed =
@@ -181,11 +183,7 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
                     className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
                   >
                     <option value="">Choose a breed...</option>
-                    {breeds.map((breed) => (
-                      <option key={breed.code2} value={breed.code2}>
-                        {breed.name} ({breed.code2})
-                      </option>
-                    ))}
+                    <BreedSelectOptions options={breeds} />
                   </select>
                 </div>
 

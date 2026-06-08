@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
@@ -101,6 +102,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
             breed: {
               select: {
                 name: true,
+                groupName: true,
               },
             },
           },
@@ -122,6 +124,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
             breed: {
               select: {
                 name: true,
+                groupName: true,
               },
             },
           },
@@ -142,6 +145,16 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
   const yearOptions = [
     ...new Set([fallbackYear, ...years.map((year) => year.gameYear)]),
   ].sort((a, b) => b - a);
+  const currentYearBreedSelectOptions = breedOptions.map((option) => ({
+    code2: option.breedCode2,
+    name: option.dog.breed.name,
+    groupName: option.dog.breed.groupName,
+  }));
+  const allTimeBreedSelectOptions = allTimeBreedOptions.map((option) => ({
+    code2: option.breedCode2,
+    name: option.dog.breed.name,
+    groupName: option.dog.breed.groupName,
+  }));
   const [
     allBreedRows,
     breedRows,
@@ -423,11 +436,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                     className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
                   >
                     <option value="">Choose a breed...</option>
-                    {breedOptions.map((option) => (
-                      <option key={option.breedCode2} value={option.breedCode2}>
-                        {option.dog.breed.name} ({option.breedCode2})
-                      </option>
-                    ))}
+                    <BreedSelectOptions options={currentYearBreedSelectOptions} />
                   </select>
                 </div>
 
@@ -503,11 +512,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                     className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
                   >
                     <option value="">Choose a breed...</option>
-                    {allTimeBreedOptions.map((option) => (
-                      <option key={option.breedCode2} value={option.breedCode2}>
-                        {option.dog.breed.name} ({option.breedCode2})
-                      </option>
-                    ))}
+                    <BreedSelectOptions options={allTimeBreedSelectOptions} />
                   </select>
                 </div>
 

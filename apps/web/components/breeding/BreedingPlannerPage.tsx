@@ -37,6 +37,7 @@ type DogCardDto = {
   visibleTitleSuffix: string | null;
   breedCode2: string;
   breedName: string;
+  breedGroupName: string | null;
   sex: "M" | "F";
   birthEpoch: number;
   ageHours: number;
@@ -177,6 +178,7 @@ export default async function BreedingPlannerPage({
       breed: {
         select: {
           name: true,
+          groupName: true,
         },
       },
       ownerKennel: {
@@ -268,6 +270,7 @@ export default async function BreedingPlannerPage({
       visibleTitleSuffix: dog.visibleTitleSuffix,
       breedCode2: dog.breedCode2,
       breedName: dog.breed.name,
+      breedGroupName: dog.breed.groupName,
       sex: dog.sex,
       birthEpoch: dog.birthEpoch,
       ageHours,
@@ -389,6 +392,7 @@ export default async function BreedingPlannerPage({
           breed: {
             select: {
               name: true,
+              groupName: true,
             },
           },
           ownerKennel: {
@@ -446,6 +450,7 @@ export default async function BreedingPlannerPage({
       visibleTitleSuffix: dog.visibleTitleSuffix,
       breedCode2: dog.breedCode2,
       breedName: dog.breed.name,
+      breedGroupName: dog.breed.groupName,
       sex: dog.sex,
       birthEpoch: dog.birthEpoch,
       ageHours,

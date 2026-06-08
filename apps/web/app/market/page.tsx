@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  BreedSelectOptions,
+  compareBreedGroupNames,
+  normalizeBreedGroupName,
+} from "@/components/breeds/BreedSelectOptions";
 import TraitLine from "@/components/ui/TraitLine";
 
 type VisibleCategories = Record<string, number>;
@@ -121,22 +126,22 @@ export default function MarketPage() {
       new Set(
         breedCatalog
           .map((breed) => breed.groupName)
+          .map((groupName) => normalizeBreedGroupName(groupName))
           .filter((group): group is string => !!group)
       )
-    ).sort();
+    ).sort(compareBreedGroupNames);
   }, [breedCatalog]);
 
   const filteredBreeds = useMemo(() => {
     return breedCatalog
       .filter((breed) =>
-        groupFilter ? breed.groupName === groupFilter : true
+        groupFilter ? normalizeBreedGroupName(breed.groupName) === groupFilter : true
       )
       .filter((breed) =>
         breedSearch.trim()
           ? breed.name.toLowerCase().includes(breedSearch.trim().toLowerCase())
           : true
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
+      );
   }, [breedCatalog, groupFilter, breedSearch]);
 
   async function loadDogs(breedCode2: string) {
@@ -311,11 +316,7 @@ export default function MarketPage() {
                   className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
                 >
                   <option value="">Select a breed</option>
-                  {filteredBreeds.map((breed) => (
-                    <option key={breed.code2} value={breed.code2}>
-                      {breed.name}
-                    </option>
-                  ))}
+                  <BreedSelectOptions options={filteredBreeds} />
                 </select>
               </div>
 

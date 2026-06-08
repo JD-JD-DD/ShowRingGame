@@ -70,7 +70,8 @@ export default async function KennelServicesPage({ searchParams }: PageProps) {
           <h1 className="mt-2 text-3xl font-semibold">Work Board</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
             Earn practical kennel income through dog-world service work. Club
-            stewarding is available now; more service types can be added later.
+            stewarding is available now, with six spaces per show and one
+            stewarding commitment per kennel each show weekend.
           </p>
         </div>
 
@@ -113,6 +114,12 @@ export default async function KennelServicesPage({ searchParams }: PageProps) {
               Available Assignments
             </h2>
           </div>
+          <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-50">
+            Taking a stewarding assignment makes that show/cluster your primary
+            show commitment for the weekend. You cannot enter dogs in that show.
+            Secondary shows in the same weekend may still be entered with
+            traveling handlers where required.
+          </div>
         </div>
 
         {opportunities.length === 0 ? (
@@ -140,7 +147,7 @@ export default async function KennelServicesPage({ searchParams }: PageProps) {
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 text-sm text-purple-100/75 sm:grid-cols-3">
+                <div className="mt-4 grid gap-3 text-sm text-purple-100/75 sm:grid-cols-4">
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <div className="text-xs uppercase tracking-wide text-purple-200/70">
                       Dates
@@ -162,14 +169,27 @@ export default async function KennelServicesPage({ searchParams }: PageProps) {
                       Status
                     </div>
                     <div className="mt-1 font-semibold text-white">
-                      {opportunity.alreadyStewarded ? "Claimed" : "Open"}
+                      {opportunity.alreadyStewarded
+                        ? "Claimed"
+                        : opportunity.availableSpaces > 0
+                          ? "Open"
+                          : "Full"}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                      Spaces
+                    </div>
+                    <div className="mt-1 font-semibold text-white">
+                      {opportunity.availableSpaces} / {opportunity.totalSpaces}
                     </div>
                   </div>
                 </div>
 
                 <p className="mt-4 text-xs leading-5 text-purple-100/65">
                   Stewarding pays {formatMoney(opportunity.payoutAmount)}, but
-                  you cannot owner-handle dogs in this exact show/cluster.
+                  you cannot owner-handle dogs in this exact show/cluster. Each
+                  kennel may hold one stewarding assignment per show weekend.
                 </p>
 
                 {opportunity.blockedReason ? (

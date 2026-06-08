@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import {
@@ -36,6 +37,7 @@ type KennelDogDto = {
   visibleTitleSuffix?: string | null;
   breedCode2: string;
   breedName: string;
+  breedGroupName: string | null;
   sex: "M" | "F";
   ageHours: number;
   lifecycleState: string;
@@ -275,9 +277,20 @@ export default function KennelDogsPanel() {
   }, [activeAreaId, areaActionTargetId, areas]);
 
   const breedOptions = useMemo(() => {
-    return Array.from(new Set(dogs.map((dog) => dog.breedName))).sort((a, b) =>
-      a.localeCompare(b)
-    );
+    const breedByCode = new Map<
+      string,
+      { code2: string; name: string; groupName: string | null }
+    >();
+
+    for (const dog of dogs) {
+      breedByCode.set(dog.breedCode2, {
+        code2: dog.breedCode2,
+        name: dog.breedName,
+        groupName: dog.breedGroupName,
+      });
+    }
+
+    return [...breedByCode.values()];
   }, [dogs]);
 
   const filteredDogs = useMemo(() => {
@@ -286,7 +299,7 @@ export default function KennelDogsPanel() {
     const list = dogs.filter((dog) => {
       const name = getDogDisplayName(dog).toLowerCase();
 
-      const breedMatch = breedFilter ? dog.breedName === breedFilter : true;
+      const breedMatch = breedFilter ? dog.breedCode2 === breedFilter : true;
       const areaMatch = activeAreaId ? dog.areaIds.includes(activeAreaId) : true;
       const sexMatch = sexFilter ? dog.sex === sexFilter : true;
       const searchMatch =
@@ -816,11 +829,7 @@ export default function KennelDogsPanel() {
             className="min-w-0 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
           >
             <option value="">All Breeds</option>
-            {breedOptions.map((breed) => (
-              <option key={breed} value={breed}>
-                {breed}
-              </option>
-            ))}
+            <BreedSelectOptions options={breedOptions} />
           </select>
 
           <select

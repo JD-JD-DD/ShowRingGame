@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
@@ -439,11 +440,12 @@ export default async function ShowDetailPage({
                   className="rounded-xl border border-purple-300/20 bg-black/35 px-4 py-3 text-sm font-semibold text-white outline-none"
                 >
                   <option value="">Choose a breed...</option>
-                  {breedOptions.map((breed) => (
-                    <option key={breed.code2} value={breed.code2}>
-                      {breed.name} ({breed.eligibleDogCount})
-                    </option>
-                  ))}
+                  <BreedSelectOptions
+                    options={breedOptions}
+                    getLabel={(breed) =>
+                      `${breed.name} (${breed.eligibleDogCount})`
+                    }
+                  />
                 </select>
               </label>
               <button

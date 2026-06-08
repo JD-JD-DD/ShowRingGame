@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
@@ -284,12 +285,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                 className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
               >
                 <option value="">All breeds</option>
-                {breeds.map((breed) => (
-                  <option key={breed.code2} value={breed.code2}>
-                    {breed.name}
-                    {breed.groupName ? ` - ${breed.groupName}` : ""}
-                  </option>
-                ))}
+                <BreedSelectOptions options={breeds} />
               </select>
             </div>
 
