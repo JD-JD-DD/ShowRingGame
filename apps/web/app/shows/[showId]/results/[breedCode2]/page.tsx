@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
+import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
 
 const AWARD_SORT_ORDER: Record<string, number> = {
   "1": 1,
@@ -19,10 +20,6 @@ const AWARD_SORT_ORDER: Record<string, number> = {
   BOS: 9,
   AOM: 10,
 };
-
-function formatShowDate(epoch: number): string {
-  return epochToDate(epoch).toLocaleDateString();
-}
 
 function formatPublishedDate(epoch: number): string {
   return epochToDate(epoch).toLocaleString();
@@ -305,7 +302,7 @@ export default async function BreedResultsPage({
           {cluster.name}
         </h1>
         <p className="mt-4 text-2xl font-semibold text-purple-100">
-          {formatShowDate(cluster.startEpoch)}
+          {formatShowCalendarLabel(cluster.startEpoch)}
         </p>
         <h2 className="mt-8 text-2xl font-bold uppercase tracking-[0.08em] text-white">
           {firstBlock.breed.name}
@@ -365,7 +362,7 @@ export default async function BreedResultsPage({
                   Show Day
                 </p>
                 <h3 className="mt-2 text-2xl font-bold text-white">
-                  Day {day.dayIndex} - {formatShowDate(day.scheduledEpoch)}
+                  {formatShowCalendarLabel(day.scheduledEpoch)}
                 </h3>
                 <p className="mt-2 text-sm font-semibold text-purple-100">
                   Judge:{" "}

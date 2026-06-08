@@ -8,7 +8,6 @@ import {
   finalizeReadyShowDayResults,
   judgeShowBlock,
 } from "@/server/services/judging.service";
-import { SHOW_INSTANCE_GENERATION_HORIZON_HOURS } from "@showring/rules";
 import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +18,7 @@ const DEFAULT_FINALIZE_BATCH_SIZE = 4;
 const MAX_FINALIZE_BATCH_SIZE = 12;
 const DB_PREFLIGHT_ATTEMPTS = 4;
 const DB_PREFLIGHT_DELAY_MS = 2000;
+const PUBLISH_JOB_SCHEDULE_TOP_UP_HORIZON_HOURS = 0;
 
 function parseBatchSize(
   value: string | undefined,
@@ -79,6 +79,21 @@ async function ensureDatabaseReachable(): Promise<void> {
 }
 
 export async function GET(request: Request) {
+  const jobStartedAtMs = Date.now();
+  const phaseDurationsMs: Record<string, number> = {};
+  const runPhase = async <T>(
+    phaseName: string,
+    action: () => Promise<T>
+  ): Promise<T> => {
+    const startedAtMs = Date.now();
+
+    try {
+      return await action();
+    } finally {
+      phaseDurationsMs[phaseName] =
+        (phaseDurationsMs[phaseName] ?? 0) + Date.now() - startedAtMs;
+    }
+  };
   const secret = process.env.SHOWRING_JOBS_SECRET;
 
   if (!secret && process.env.NODE_ENV === "production") {
@@ -93,7 +108,7 @@ export async function GET(request: Request) {
   // DB preflight with retry smooths over transient Neon wake-up/P1001 errors
   // before we start judging or finalizing any show data.
   try {
-    await ensureDatabaseReachable();
+    await runPhase("dbPreflight", ensureDatabaseReachable);
   } catch (error) {
     return fail(
       "Database is unreachable for publish show results after retries.",
@@ -106,11 +121,13 @@ export async function GET(request: Request) {
   }
 
   const currentEpoch = getCurrentEpoch();
-  const schedule = await ensureGeneratedShowSchedule({
-    currentEpoch,
-    horizonHours: SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
-    includeJudgingBlocks: false,
-  });
+  const schedule = await runPhase("scheduleTopUp", () =>
+    ensureGeneratedShowSchedule({
+      currentEpoch,
+      horizonHours: PUBLISH_JOB_SCHEDULE_TOP_UP_HORIZON_HOURS,
+      includeJudgingBlocks: false,
+    })
+  );
   const blockBatchSize = parseBatchSize(
     process.env.SHOW_RESULTS_JOB_BLOCK_BATCH_SIZE ??
       process.env.SHOW_RESULTS_JOB_BATCH_SIZE,
@@ -122,41 +139,43 @@ export async function GET(request: Request) {
     DEFAULT_FINALIZE_BATCH_SIZE,
     MAX_FINALIZE_BATCH_SIZE
   );
-  const readyBlocks = await db.showJudgingBlock.findMany({
-    where: {
-      startEpoch: { lte: currentEpoch },
-      status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
-      showEntries: {
-        some: {},
-      },
-      showDay: {
-        scheduledEpoch: { lte: currentEpoch },
-        status: { not: "CANCELLED" },
-        cluster: {
+  const readyBlocks = await runPhase("findReadyBlocks", () =>
+    db.showJudgingBlock.findMany({
+      where: {
+        startEpoch: { lte: currentEpoch },
+        status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
+        showEntries: {
+          some: {},
+        },
+        showDay: {
+          scheduledEpoch: { lte: currentEpoch },
           status: { not: "CANCELLED" },
+          cluster: {
+            status: { not: "CANCELLED" },
+          },
         },
       },
-    },
-    orderBy: [
-      { showDay: { scheduledEpoch: "asc" } },
-      { showDay: { dayIndex: "asc" } },
-      { startEpoch: "asc" },
-      { ringNumber: "asc" },
-      { blockOrder: "asc" },
-    ],
-    select: {
-      id: true,
-      showDayId: true,
-      breedCode2: true,
-      showDay: {
-        select: {
-          clusterId: true,
-          dayIndex: true,
+      orderBy: [
+        { showDay: { scheduledEpoch: "asc" } },
+        { showDay: { dayIndex: "asc" } },
+        { startEpoch: "asc" },
+        { ringNumber: "asc" },
+        { blockOrder: "asc" },
+      ],
+      select: {
+        id: true,
+        showDayId: true,
+        breedCode2: true,
+        showDay: {
+          select: {
+            clusterId: true,
+            dayIndex: true,
+          },
         },
       },
-    },
-    take: blockBatchSize,
-  });
+      take: blockBatchSize,
+    })
+  );
   const earliestReadyShowDayId = readyBlocks[0]?.showDayId;
   const selectedBlocks = earliestReadyShowDayId
     ? readyBlocks.filter((block) => block.showDayId === earliestReadyShowDayId)
@@ -165,20 +184,24 @@ export async function GET(request: Request) {
   const finalized = [];
   const errors = [];
   const touchedShowDayIds = new Set<string>();
-  const emptyClosed = await closeReadyEmptyShowDays({
-    currentEpoch,
-    batchSize: finalizeBatchSize,
-  });
+  const emptyClosed = await runPhase("closeReadyEmptyShowDays", () =>
+    closeReadyEmptyShowDays({
+      currentEpoch,
+      batchSize: finalizeBatchSize,
+    })
+  );
 
   // Keep each workflow run within one show day. This lets Group and BIS finals
   // update championship titles before any later-day breed blocks are judged,
   // so a newly finished champion moves from the classes into specials.
   for (const block of selectedBlocks) {
     try {
-      const result = await judgeShowBlock({
-        judgingBlockId: block.id,
-        currentEpoch,
-      });
+      const result = await runPhase("judgeSelectedBlocks", () =>
+        judgeShowBlock({
+          judgingBlockId: block.id,
+          currentEpoch,
+        })
+      );
 
       touchedShowDayIds.add(block.showDayId);
       processedBlocks.push({
@@ -210,78 +233,82 @@ export async function GET(request: Request) {
     }
   }
 
-  const readyToFinalize = await db.showDay.findMany({
-    where: {
-      scheduledEpoch: { lte: currentEpoch },
-      status: { not: "CANCELLED" },
-      showEntries: {
-        some: {},
-      },
-      cluster: {
+  const readyToFinalize = await runPhase("findReadyFinalizers", () =>
+    db.showDay.findMany({
+      where: {
+        scheduledEpoch: { lte: currentEpoch },
         status: { not: "CANCELLED" },
-      },
-      judgingBlocks: {
-        none: {
-          status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
-          showEntries: {
-            some: {},
+        showEntries: {
+          some: {},
+        },
+        cluster: {
+          status: { not: "CANCELLED" },
+        },
+        judgingBlocks: {
+          none: {
+            status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
+            showEntries: {
+              some: {},
+            },
           },
         },
+        OR: [
+          { status: { not: "RESULTS_PUBLISHED" } },
+          {
+            AND: [
+              { status: "RESULTS_PUBLISHED" },
+              {
+                showAwards: {
+                  some: {
+                    awardGroup: "BREED",
+                    awardCode: "BOB",
+                  },
+                },
+              },
+              {
+                showAwards: {
+                  none: {
+                    awardGroup: "GROUP",
+                  },
+                },
+              },
+            ],
+          },
+          {
+            AND: [
+              { status: "RESULTS_PUBLISHED" },
+              {
+                showAwards: {
+                  some: {},
+                },
+              },
+              {
+                prestigeCalculatedAtEpoch: null,
+              },
+            ],
+          },
+        ],
       },
-      OR: [
-        { status: { not: "RESULTS_PUBLISHED" } },
-        {
-          AND: [
-            { status: "RESULTS_PUBLISHED" },
-            {
-              showAwards: {
-                some: {
-                  awardGroup: "BREED",
-                  awardCode: "BOB",
-                },
-              },
-            },
-            {
-              showAwards: {
-                none: {
-                  awardGroup: "GROUP",
-                },
-              },
-            },
-          ],
-        },
-        {
-          AND: [
-            { status: "RESULTS_PUBLISHED" },
-            {
-              showAwards: {
-                some: {},
-              },
-            },
-            {
-              prestigeCalculatedAtEpoch: null,
-            },
-          ],
-        },
-      ],
-    },
-    orderBy: [{ scheduledEpoch: "asc" }, { dayIndex: "asc" }],
-    select: {
-      id: true,
-      clusterId: true,
-      dayIndex: true,
-    },
-    take: finalizeBatchSize,
-  });
+      orderBy: [{ scheduledEpoch: "asc" }, { dayIndex: "asc" }],
+      select: {
+        id: true,
+        clusterId: true,
+        dayIndex: true,
+      },
+      take: finalizeBatchSize,
+    })
+  );
 
   for (const showDay of readyToFinalize) {
     touchedShowDayIds.add(showDay.id);
 
     try {
-      const result = await finalizeReadyShowDayResults({
-        showDayId: showDay.id,
-        currentEpoch,
-      });
+      const result = await runPhase("finalizeReadyShowDays", () =>
+        finalizeReadyShowDayResults({
+          showDayId: showDay.id,
+          currentEpoch,
+        })
+      );
 
       finalized.push({
         showDayId: showDay.id,
@@ -307,13 +334,30 @@ export async function GET(request: Request) {
     }
   }
 
-  const invitational = await ensureAnnualInvitationalShow({ currentEpoch });
+  const invitational = await runPhase("ensureAnnualInvitationalShow", () =>
+    ensureAnnualInvitationalShow({ currentEpoch })
+  );
+  const jobDurationMs = Date.now() - jobStartedAtMs;
+  const summary = {
+    candidatesFound: readyBlocks.length,
+    selectedForJudging: selectedBlocks.length,
+    judged: processedBlocks.length,
+    cancelledNoEntries: emptyClosed.closedShowDayIds.length,
+    selectedFinalizers: readyToFinalize.length,
+    finalized: finalized.length,
+    skippedFuture: 0,
+    skippedFutureReason:
+      "Future shows are not loaded by the publish job; due queries require epoch <= currentEpoch.",
+    durationMs: jobDurationMs,
+    phaseDurationsMs,
+  };
   const payload = {
     currentEpoch,
     blockBatchSize,
     finalizeBatchSize,
     selectedBlocks: selectedBlocks.length,
     selectedFinalizers: readyToFinalize.length,
+    summary,
     emptyClosed,
     schedule,
     touchedShowDayIds: [...touchedShowDayIds],
@@ -322,6 +366,8 @@ export async function GET(request: Request) {
     invitational,
     errors,
   };
+
+  console.info("publish-show-results summary", summary);
 
   // The workflow calls this endpoint with curl --fail. Preserve the detailed
   // payload, but return a failing status so a repeated judging error is visible.

@@ -3,12 +3,8 @@ import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { epochToDate } from "@/lib/gameClock";
+import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
 import { getShowDistrictRegionName } from "@showring/rules";
-
-function formatShowDate(epoch: number): string {
-  return epochToDate(epoch).toLocaleDateString();
-}
 
 function normalizeGroupName(groupName: string | null): string {
   return groupName?.trim() || "Other Breeds";
@@ -206,7 +202,7 @@ export default async function ShowResultsIndexPage({
           {cluster.name}
         </h1>
         <p className="mt-4 text-2xl font-semibold text-purple-100">
-          {formatShowDate(cluster.startEpoch)}
+          {formatShowCalendarLabel(cluster.startEpoch)}
         </p>
 
         <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm">
@@ -306,7 +302,7 @@ export default async function ShowResultsIndexPage({
                     className="rounded-2xl border border-white/10 bg-black/20 p-5"
                   >
                     <h3 className="text-lg font-semibold text-purple-100">
-                      Day {day.dayIndex} - {formatShowDate(day.scheduledEpoch)}
+                      {formatShowCalendarLabel(day.scheduledEpoch)}
                     </h3>
 
                     {bestInShowAwards.length > 0 ? (
