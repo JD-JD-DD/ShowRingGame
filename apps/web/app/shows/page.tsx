@@ -8,7 +8,6 @@ import {
   type ShowDisplayStatus,
 } from "@/server/services/showAvailability.service";
 import { getClubStewardingClaimedClusterIds } from "@/server/services/kennelService.service";
-import { ensureGeneratedShowSchedule } from "@/server/services/showSchedule.service";
 import {
   generateAnnualShowClusterTemplates,
   getShowDistrictRegionName,
@@ -115,76 +114,6 @@ function clusterEntryCount(cluster: {
   );
 }
 
-async function needsGeneratedShowScheduleRefresh(args: {
-  currentEpoch: number;
-  horizonHours: number;
-}): Promise<boolean> {
-  const generatedWindowEndEpoch = args.currentEpoch + args.horizonHours;
-  const coverage = await db.showCluster.aggregate({
-    where: {
-      id: {
-        startsWith: "generated-year-",
-      },
-      endEpoch: {
-        gte: args.currentEpoch,
-      },
-      status: {
-        not: "CANCELLED",
-      },
-    },
-    _max: {
-      endEpoch: true,
-    },
-  });
-  const generatedThroughEpoch = coverage._max.endEpoch ?? 0;
-  const minimumUsefulCoverage =
-    args.currentEpoch + args.horizonHours - SHOW_WEEK_HOURS;
-
-  if (generatedThroughEpoch < minimumUsefulCoverage) {
-    return true;
-  }
-
-  const generatedClusters = await db.showCluster.findMany({
-    where: {
-      id: {
-        startsWith: "generated-year-",
-      },
-      startEpoch: {
-        lte: generatedWindowEndEpoch,
-      },
-      endEpoch: {
-        gte: args.currentEpoch,
-      },
-      status: {
-        notIn: ["COMPLETE", "CANCELLED"],
-      },
-    },
-    select: {
-      startEpoch: true,
-      endEpoch: true,
-      showDays: {
-        orderBy: [{ dayIndex: "asc" }],
-        select: {
-          scheduledEpoch: true,
-        },
-      },
-    },
-  });
-
-  return generatedClusters.some((cluster) => {
-    const expectedEndEpoch =
-      cluster.startEpoch + Math.max(0, cluster.showDays.length - 1);
-
-    return (
-      cluster.endEpoch !== expectedEndEpoch ||
-      cluster.showDays.some(
-        (showDay, dayOffset) =>
-          showDay.scheduledEpoch !== cluster.startEpoch + dayOffset
-      )
-    );
-  });
-}
-
 export default async function ShowsPage({
   searchParams,
 }: {
@@ -198,7 +127,26 @@ export default async function ShowsPage({
   const selectedDogIdsQuery = firstQueryValue(resolvedSearchParams.dogIds) ?? "";
   const generated = firstQueryValue(resolvedSearchParams.generated);
   const generateError = firstQueryValue(resolvedSearchParams.generateError);
-  let autoGenerateError: string | null = null;
+  const pageStartedAtMs = Date.now();
+  const phaseDurationsMs = {
+    coverageCheckMs: 0,
+    repairCheckMs: 0,
+    ensureScheduleMs: 0,
+    clusterQueryMs: 0,
+    badgeQueryMs: 0,
+  };
+  const runPhase = async <T,>(
+    phaseName: keyof typeof phaseDurationsMs,
+    action: () => Promise<T>
+  ): Promise<T> => {
+    const startedAtMs = Date.now();
+
+    try {
+      return await action();
+    } finally {
+      phaseDurationsMs[phaseName] += Date.now() - startedAtMs;
+    }
+  };
   const showDetailQuery = selectedDogIdsQuery
     ? `?dogIds=${encodeURIComponent(selectedDogIdsQuery)}`
     : "";
@@ -210,25 +158,6 @@ export default async function ShowsPage({
     currentEpoch + SHOW_INSTANCE_GENERATION_HORIZON_HOURS + SHOW_WEEK_HOURS;
   const templates = generateAnnualShowClusterTemplates();
 
-  try {
-    const shouldRefreshSchedule = await needsGeneratedShowScheduleRefresh({
-      currentEpoch,
-      horizonHours: SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
-    });
-
-    if (shouldRefreshSchedule) {
-      await ensureGeneratedShowSchedule({
-        currentEpoch,
-        horizonHours: SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
-        includeJudgingBlocks: false,
-      });
-    }
-  } catch (error) {
-    console.error("Shows page failed to refresh generated schedule:", error);
-    autoGenerateError =
-      error instanceof Error ? error.message : "Failed to refresh shows.";
-  }
-
   const userId = await getSessionUserId();
   const currentKennel = userId
     ? await db.kennel.findUnique({
@@ -237,67 +166,89 @@ export default async function ShowsPage({
       })
     : null;
 
-  const clusters = await db.showCluster.findMany({
-    where: {
-      startEpoch: {
-        lte: calendarDisplayEndEpoch,
+  const clusters = await runPhase("clusterQueryMs", () =>
+    db.showCluster.findMany({
+      where: {
+        startEpoch: {
+          lte: calendarDisplayEndEpoch,
+        },
+        endEpoch: {
+          gte: calendarDisplayStartEpoch,
+        },
       },
-      endEpoch: {
-        gte: calendarDisplayStartEpoch,
-      },
-    },
-    orderBy: [{ year: "desc" }, { startEpoch: "desc" }],
-    include: {
-      showDays: {
-        orderBy: [{ dayIndex: "asc" }],
-        include: {
-          _count: {
-            select: {
-              showEntries: {
-                where: {
-                  entryStatus: {
-                    in: ["ENTERED", "JUDGED"],
+      orderBy: [{ year: "desc" }, { startEpoch: "desc" }],
+      include: {
+        showDays: {
+          orderBy: [{ dayIndex: "asc" }],
+          include: {
+            _count: {
+              select: {
+                showEntries: {
+                  where: {
+                    entryStatus: {
+                      in: ["ENTERED", "JUDGED"],
+                    },
                   },
                 },
+                showResults: true,
               },
-              showResults: true,
             },
           },
         },
       },
-    },
-  });
+    })
+  );
   const displayedClusterIds = clusters.map((cluster) => cluster.id);
-  const [enteredClusters, stewardedClusterIds] = currentKennel
-    ? await Promise.all([
-        displayedClusterIds.length > 0
-          ? db.showCluster.findMany({
-              where: {
-                id: {
-                  in: displayedClusterIds,
-                },
-                showDays: {
-                  some: {
-                    showEntries: {
+  const [enteredClusters, stewardedClusterIds] = await runPhase(
+    "badgeQueryMs",
+    () =>
+      currentKennel
+        ? Promise.all([
+            displayedClusterIds.length > 0
+              ? db.showCluster.findMany({
+                  where: {
+                    id: {
+                      in: displayedClusterIds,
+                    },
+                    showDays: {
                       some: {
-                        kennelId: currentKennel.id,
-                        entryStatus: {
-                          in: ["ENTERED", "JUDGED"],
+                        showEntries: {
+                          some: {
+                            kennelId: currentKennel.id,
+                            entryStatus: {
+                              in: ["ENTERED", "JUDGED"],
+                            },
+                          },
                         },
                       },
                     },
                   },
-                },
-              },
-              select: { id: true },
-            })
-          : Promise.resolve([]),
-        getClubStewardingClaimedClusterIds({
-          kennelId: currentKennel.id,
-          showClusterIds: displayedClusterIds,
-        }),
-      ])
-    : [[], new Set<string>()];
+                  select: { id: true },
+                })
+              : Promise.resolve([]),
+            getClubStewardingClaimedClusterIds({
+              kennelId: currentKennel.id,
+              showClusterIds: displayedClusterIds,
+            }),
+          ])
+        : Promise.resolve([[], new Set<string>()])
+  );
+  const totalMs = Date.now() - pageStartedAtMs;
+
+  console.info("shows page timing", {
+    currentEpoch,
+    displayedClusterCount: clusters.length,
+    displayedShowDayCount: clusters.reduce(
+      (total, cluster) => total + cluster.showDays.length,
+      0
+    ),
+    coverageCheckMs: phaseDurationsMs.coverageCheckMs,
+    repairCheckMs: phaseDurationsMs.repairCheckMs,
+    ensureScheduleMs: phaseDurationsMs.ensureScheduleMs,
+    clusterQueryMs: phaseDurationsMs.clusterQueryMs,
+    badgeQueryMs: phaseDurationsMs.badgeQueryMs,
+    totalMs,
+  });
   const enteredClusterIds = new Set(enteredClusters.map((cluster) => cluster.id));
   const clustersByTemplate = new Map<string, typeof clusters>();
   const invitationalClusters = clusters.filter((cluster) =>
@@ -396,9 +347,9 @@ export default async function ShowsPage({
           </div>
         ) : null}
 
-        {generateError || autoGenerateError ? (
+        {generateError ? (
           <div className="mt-3 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-            {generateError ?? autoGenerateError}
+            {generateError}
           </div>
         ) : null}
       </section>

@@ -1,0 +1,34 @@
+name: Maintain show schedule
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: maintain-show-schedule
+  cancel-in-progress: false
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Maintain generated show schedule
+        env:
+          SHOWRING_JOBS_BASE_URL: ${{ secrets.SHOWRING_JOBS_BASE_URL }}
+          SHOWRING_JOBS_SECRET: ${{ secrets.SHOWRING_JOBS_SECRET }}
+        run: |
+          if [ -z "$SHOWRING_JOBS_BASE_URL" ]; then
+            echo "SHOWRING_JOBS_BASE_URL is not set"
+            exit 1
+          fi
+
+          if [ -z "$SHOWRING_JOBS_SECRET" ]; then
+            echo "SHOWRING_JOBS_SECRET is not set"
+            exit 1
+          fi
+
+          curl --fail-with-body --show-error --silent \
+            --header "Authorization: Bearer ${SHOWRING_JOBS_SECRET}" \
+            "${SHOWRING_JOBS_BASE_URL%/}/api/jobs/maintain-show-schedule"
+          echo

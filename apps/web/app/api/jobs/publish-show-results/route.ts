@@ -2,7 +2,6 @@ import { fail, ok } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { db } from "@/lib/db";
 import { ensureAnnualInvitationalShow } from "@/server/services/invitational.service";
-import { ensureGeneratedShowSchedule } from "@/server/services/showSchedule.service";
 import {
   closeReadyEmptyShowDays,
   finalizeReadyShowDayResults,
@@ -18,7 +17,6 @@ const DEFAULT_FINALIZE_BATCH_SIZE = 4;
 const MAX_FINALIZE_BATCH_SIZE = 12;
 const DB_PREFLIGHT_ATTEMPTS = 4;
 const DB_PREFLIGHT_DELAY_MS = 2000;
-const PUBLISH_JOB_SCHEDULE_TOP_UP_HORIZON_HOURS = 0;
 
 function parseBatchSize(
   value: string | undefined,
@@ -121,13 +119,6 @@ export async function GET(request: Request) {
   }
 
   const currentEpoch = getCurrentEpoch();
-  const schedule = await runPhase("scheduleTopUp", () =>
-    ensureGeneratedShowSchedule({
-      currentEpoch,
-      horizonHours: PUBLISH_JOB_SCHEDULE_TOP_UP_HORIZON_HOURS,
-      includeJudgingBlocks: false,
-    })
-  );
   const blockBatchSize = parseBatchSize(
     process.env.SHOW_RESULTS_JOB_BLOCK_BATCH_SIZE ??
       process.env.SHOW_RESULTS_JOB_BATCH_SIZE,
@@ -359,7 +350,6 @@ export async function GET(request: Request) {
     selectedFinalizers: readyToFinalize.length,
     summary,
     emptyClosed,
-    schedule,
     touchedShowDayIds: [...touchedShowDayIds],
     processedBlocks,
     finalized,
