@@ -7,6 +7,7 @@ import {
   getShowClusterDisplayStatus,
   type ShowDisplayStatus,
 } from "@/server/services/showAvailability.service";
+import { getClubStewardingClaimedClusterIds } from "@/server/services/kennelService.service";
 import {
   generateAnnualShowClusterTemplates,
   getShowDistrictRegionName,
@@ -139,31 +140,31 @@ export default async function ShowsPage({
       })
     : null;
 
-  const [clusters, enteredClusters] = await Promise.all([
-    db.showCluster.findMany({
-      orderBy: [{ year: "desc" }, { startEpoch: "desc" }],
-      include: {
-        showDays: {
-          orderBy: [{ dayIndex: "asc" }],
-          include: {
-            _count: {
-              select: {
-                showEntries: {
-                  where: {
-                    entryStatus: {
-                      in: ["ENTERED", "JUDGED"],
-                    },
+  const clusters = await db.showCluster.findMany({
+    orderBy: [{ year: "desc" }, { startEpoch: "desc" }],
+    include: {
+      showDays: {
+        orderBy: [{ dayIndex: "asc" }],
+        include: {
+          _count: {
+            select: {
+              showEntries: {
+                where: {
+                  entryStatus: {
+                    in: ["ENTERED", "JUDGED"],
                   },
                 },
-                showResults: true,
               },
+              showResults: true,
             },
           },
         },
       },
-    }),
-    currentKennel
-      ? db.showCluster.findMany({
+    },
+  });
+  const [enteredClusters, stewardedClusterIds] = currentKennel
+    ? await Promise.all([
+        db.showCluster.findMany({
           where: {
             showDays: {
               some: {
@@ -179,9 +180,13 @@ export default async function ShowsPage({
             },
           },
           select: { id: true },
-        })
-      : Promise.resolve([]),
-  ]);
+        }),
+        getClubStewardingClaimedClusterIds({
+          kennelId: currentKennel.id,
+          showClusterIds: clusters.map((cluster) => cluster.id),
+        }),
+      ])
+    : [[], new Set<string>()];
   const enteredClusterIds = new Set(enteredClusters.map((cluster) => cluster.id));
   const clustersByTemplate = new Map<string, typeof clusters>();
   const invitationalClusters = clusters.filter((cluster) =>
@@ -396,6 +401,11 @@ export default async function ShowsPage({
                                   REPRESENTED
                                 </span>
                               ) : null}
+                              {stewardedClusterIds.has(cluster.id) ? (
+                                <span className="ml-2 rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-100">
+                                  STEWARDING
+                                </span>
+                              ) : null}
                               {resultCount > 0 ? (
                                 <span className="ml-2 text-sky-100">
                                   {resultCount} result
@@ -509,6 +519,11 @@ export default async function ShowsPage({
                         {enteredClusterIds.has(cluster.id) ? (
                           <span className="ml-2 rounded-full border border-emerald-300/35 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">
                             REPRESENTED
+                          </span>
+                        ) : null}
+                        {stewardedClusterIds.has(cluster.id) ? (
+                          <span className="ml-2 rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-100">
+                            STEWARDING
                           </span>
                         ) : null}
                         <span className="ml-2 text-amber-100/80">

@@ -52,6 +52,14 @@ export type StewardingClaimResultDto = {
   balanceAfter: number;
 };
 
+export type ClubStewardingCommitmentDto = {
+  claimId: string;
+  showClusterId: string;
+  showClusterName: string;
+  weekendKey: string;
+  isCurrentShow: boolean;
+};
+
 function getWeekendKeyForCluster(
   cluster: Pick<StewardingCluster, "id" | "startEpoch">
 ): string {
@@ -136,6 +144,89 @@ export async function hasClubStewardingClaimForCluster(args: {
   });
 
   return Boolean(claim);
+}
+
+export async function getClubStewardingClaimedClusterIds(args: {
+  kennelId: string;
+  showClusterIds: string[];
+}): Promise<Set<string>> {
+  const showClusterIds = [...new Set(args.showClusterIds)].filter(Boolean);
+
+  if (showClusterIds.length === 0) {
+    return new Set();
+  }
+
+  const claims = await db.kennelServiceClaim.findMany({
+    where: {
+      kennelId: args.kennelId,
+      serviceType: "CLUB_STEWARDING",
+      showClusterId: {
+        in: showClusterIds,
+      },
+      status: {
+        in: ["CLAIMED", "COMPLETED"],
+      },
+    },
+    select: {
+      showClusterId: true,
+    },
+  });
+
+  return new Set(
+    claims
+      .map((claim) => claim.showClusterId)
+      .filter((showClusterId): showClusterId is string => Boolean(showClusterId))
+  );
+}
+
+export async function getClubStewardingCommitmentForShow(args: {
+  kennelId: string;
+  showClusterId: string;
+}): Promise<ClubStewardingCommitmentDto | null> {
+  const cluster = await db.showCluster.findUnique({
+    where: { id: args.showClusterId },
+    select: {
+      id: true,
+      startEpoch: true,
+    },
+  });
+
+  if (!cluster) {
+    return null;
+  }
+
+  const weekendKey = getWeekendKeyForCluster(cluster);
+  const claim = await db.kennelServiceClaim.findFirst({
+    where: {
+      kennelId: args.kennelId,
+      serviceType: "CLUB_STEWARDING",
+      weekendKey,
+      status: {
+        in: ["CLAIMED", "COMPLETED"],
+      },
+    },
+    select: {
+      id: true,
+      showClusterId: true,
+      showCluster: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!claim?.showClusterId) {
+    return null;
+  }
+
+  return {
+    claimId: claim.id,
+    showClusterId: claim.showClusterId,
+    showClusterName: claim.showCluster?.name ?? "another show",
+    weekendKey,
+    isCurrentShow: claim.showClusterId === args.showClusterId,
+  };
 }
 
 export async function listStewardingOpportunities(args: {

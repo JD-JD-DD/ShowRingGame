@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
+import { getClubStewardingCommitmentForShow } from "@/server/services/kennelService.service";
 import {
   getShowClusterDisplayStatus,
   getShowDayDisplayStatus,
@@ -48,12 +49,16 @@ function statusTone(status: string): string {
     case "OPEN":
     case "ENTRY_OPEN":
       return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+    case "CLOSED":
+      return "border-purple-300/20 bg-black/20 text-purple-100/65";
     case "SCHEDULED":
     case "JUDGING":
     case "ENTRY_LOCKED":
+    case "AWAITING JUDGING":
       return "border-amber-300/25 bg-amber-500/10 text-amber-100";
     case "RESULTS_PUBLISHED":
     case "COMPLETE":
+    case "JUDGED":
       return "border-sky-300/25 bg-sky-500/10 text-sky-100";
     case "CANCELLED":
       return "border-red-300/25 bg-red-500/10 text-red-100";
@@ -162,13 +167,23 @@ export default async function ShowDetailPage({
         kennelId: kennel.id,
       })
     : null;
+  const stewardingCommitment = kennel
+    ? await getClubStewardingCommitmentForShow({
+        kennelId: kennel.id,
+        showClusterId: cluster.id,
+      })
+    : null;
+  const isStewardingThisShow = Boolean(stewardingCommitment?.isCurrentShow);
+  const isStewardingAnotherShowThisWeekend = Boolean(
+    stewardingCommitment && !stewardingCommitment.isCurrentShow
+  );
   const hasDifferentPrimaryShow = Boolean(
     weekendPlanStatus?.primaryClusterId &&
       weekendPlanStatus.primaryClusterId !== cluster.id
   );
   const showRole = hasDifferentPrimaryShow ? "SECONDARY" : "PRIMARY";
   const breedOptions =
-    kennel && clusterAvailability.canEnter
+    kennel && clusterAvailability.canEnter && !isStewardingThisShow
       ? await listShowEntryBreedOptions({
           showId: cluster.id,
           kennelId: kennel.id,
@@ -201,7 +216,9 @@ export default async function ShowDetailPage({
               {cluster.name}
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
-              Choose a breed, then enter each dog for one day or the full cluster.
+              {isStewardingThisShow
+                ? "Review your stewarding assignment and show schedule for this cluster."
+                : "Choose a breed, then enter each dog for one day or the full cluster."}
             </p>
           </div>
 
@@ -270,6 +287,31 @@ export default async function ShowDetailPage({
           </div>
         ) : null}
 
+        {isStewardingThisShow ? (
+          <div className="mt-5 rounded-2xl border border-cyan-300/35 bg-cyan-500/10 px-5 py-4 text-sm leading-6 text-cyan-50">
+            <div className="font-semibold text-white">
+              Club Stewarding Assignment
+            </div>
+            <p className="mt-2">
+              You are stewarding this show/cluster. Stewarding pays kennel
+              income, but it makes this your primary show commitment for the
+              weekend.
+            </p>
+            <p className="mt-2">
+              You cannot enter dogs in this show/cluster while stewarding it.
+              You may still enter eligible dogs in other secondary shows during
+              this same weekend, but those entries will use traveling handlers
+              where required.
+            </p>
+            <Link
+              href="/kennel/services"
+              className="mt-3 inline-flex rounded-xl border border-cyan-200/35 bg-white/10 px-4 py-2 text-xs font-semibold text-cyan-50 transition hover:bg-white/15"
+            >
+              View Kennel Services
+            </Link>
+          </div>
+        ) : null}
+
         {kennel && weekendPlanStatus && !weekendPlanStatus.primaryClusterId ? (
           <div className="mt-5 rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-100">
             Submitting entries here will make this your primary show for the
@@ -284,7 +326,22 @@ export default async function ShowDetailPage({
           </div>
         ) : null}
 
-        {kennel && hasDifferentPrimaryShow ? (
+        {kennel && hasDifferentPrimaryShow && isStewardingAnotherShowThisWeekend ? (
+          <div className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            Your primary commitment this weekend is stewarding{" "}
+            {stewardingCommitment?.showClusterName ?? "another show"}.
+            Entries here use traveling handlers, and dogs already committed to
+            another show this weekend are not available.
+            <div className="mt-3">
+              <Link
+                href="/kennel/services"
+                className="inline-flex rounded-xl border border-amber-200/35 bg-white/10 px-4 py-2 text-xs font-semibold text-amber-50 transition hover:bg-white/15"
+              >
+                View Kennel Services
+              </Link>
+            </div>
+          </div>
+        ) : kennel && hasDifferentPrimaryShow ? (
           <div className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
             Your primary show for this weekend is{" "}
             {weekendPlanStatus?.primaryClusterName ?? "another show"}.
@@ -350,6 +407,11 @@ export default async function ShowDetailPage({
         {!kennel ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
             Log in to enter dogs from your kennel.
+          </div>
+        ) : isStewardingThisShow ? (
+          <div className="mt-6 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4 text-sm text-cyan-50">
+            Entry is unavailable because you are stewarding this show/cluster.
+            Stewarding is your primary show commitment for this weekend.
           </div>
         ) : !clusterAvailability.canEnter ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
