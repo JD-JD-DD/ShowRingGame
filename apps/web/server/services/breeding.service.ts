@@ -250,6 +250,27 @@ function displayDogName(dog: {
   return formatDogDisplayName(dog);
 }
 
+function displayDogNameOrFallback(
+  dog: {
+    registeredName?: string | null;
+    callName: string | null;
+    regNumber: string;
+    visibleTitlePrefix?: string | null;
+    visibleTitleSuffix?: string | null;
+  },
+  fallback: string
+) {
+  if (!dog.registeredName?.trim() && !dog.callName?.trim()) {
+    return fallback;
+  }
+
+  return displayDogName(dog);
+}
+
+function formatCurrency(amount: number) {
+  return `$${amount.toLocaleString()}`;
+}
+
 function hasCompletedAllPhenotypeHealthTests(
   tests: DogForBreeding["healthTests"]
 ): boolean {
@@ -1075,7 +1096,7 @@ export async function createBreedingAttemptForKennel(args: {
 
     const kennel = await tx.kennel.findUnique({
       where: { id: kennelId },
-      select: { id: true, balance: true },
+      select: { id: true, balance: true, name: true },
     });
 
     if (!kennel) {
@@ -1293,7 +1314,15 @@ export async function createBreedingAttemptForKennel(args: {
         kennelId: studSellerKennelId,
         type: "STUD_FEE_RECEIVED",
         title: "Stud fee received",
-        body: `$${studFeeAmount.toLocaleString()} received for ${displayDogName(sire)}.`,
+        body: `${displayDogNameOrFallback(
+          sire,
+          "your stud dog"
+        )} was used by ${
+          kennel.name?.trim() || "another kennel"
+        } with ${displayDogNameOrFallback(
+          dam,
+          "their bitch"
+        )}. Stud fee of ${formatCurrency(studFeeAmount)} was paid to you.`,
         currentEpoch,
         linkedDogId: sire.id,
         linkedListingId: studListingId ?? null,
