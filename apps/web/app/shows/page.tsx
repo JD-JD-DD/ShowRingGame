@@ -3,7 +3,10 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
-import { getShowEntryAvailability } from "@/server/services/showAvailability.service";
+import {
+  getShowClusterDisplayStatus,
+  type ShowDisplayStatus,
+} from "@/server/services/showAvailability.service";
 import {
   generateAnnualShowClusterTemplates,
   getShowDistrictRegionName,
@@ -27,16 +30,7 @@ function formatShowDate(epoch: number): string {
   });
 }
 
-type PlayerClusterStatus =
-  | "SCHEDULED"
-  | "OPEN"
-  | "CLOSED"
-  | "AWAITING JUDGING"
-  | "JUDGING"
-  | "JUDGED"
-  | "CANCELLED";
-
-function statusTone(status: PlayerClusterStatus): string {
+function statusTone(status: ShowDisplayStatus): string {
   switch (status) {
     case "JUDGED":
       return "border-sky-300/25 bg-sky-500/10 text-sky-100";
@@ -62,39 +56,6 @@ function derivedStatusTone(
       return "border-fuchsia-300/30 bg-fuchsia-500/10 text-fuchsia-100";
     case "JUDGING_OPENS":
       return "border-purple-300/20 bg-black/20 text-purple-100/70";
-  }
-}
-
-function getPlayerClusterStatus(args: {
-  clusterStatus: string;
-  hasJudgingActivity: boolean;
-  entryOpenEpoch: number;
-  entryCloseEpoch: number;
-  currentEpoch: number;
-}): PlayerClusterStatus {
-  const availability = getShowEntryAvailability({
-    cluster: {
-      status: args.clusterStatus,
-      entryOpenEpoch: args.entryOpenEpoch,
-      entryCloseEpoch: args.entryCloseEpoch,
-    },
-    currentEpoch: args.currentEpoch,
-    hasJudgingActivity: args.hasJudgingActivity,
-  });
-
-  switch (availability.entryStatus) {
-    case "CANCELLED":
-      return "CANCELLED";
-    case "RESULTS_PUBLISHED":
-      return "JUDGED";
-    case "JUDGING":
-      return "JUDGING";
-    case "OPEN":
-      return "OPEN";
-    case "CLOSED":
-      return "AWAITING JUDGING";
-    case "NOT_OPEN":
-      return "SCHEDULED";
   }
 }
 
@@ -388,12 +349,12 @@ export default async function ShowsPage({
                               day.status === "JUDGING" ||
                               day.status === "RESULTS_PUBLISHED"
                           );
-                        const playerStatus = getPlayerClusterStatus({
-                          clusterStatus: cluster.status,
+                        const playerStatus = getShowClusterDisplayStatus({
+                          cluster,
                           hasJudgingActivity,
-                          entryOpenEpoch: cluster.entryOpenEpoch,
-                          entryCloseEpoch: cluster.entryCloseEpoch,
                           currentEpoch,
+                          entryCount,
+                          resultCount,
                         });
                         const judgingOpens =
                           !hasJudgingActivity && cluster.startEpoch > currentEpoch
@@ -443,11 +404,6 @@ export default async function ShowsPage({
                               ) : hasJudgingActivity ? (
                                 <span className="ml-2 text-sky-100">
                                   Judging underway
-                                </span>
-                              ) : entryCount > 0 ? (
-                                <span className="ml-2 text-purple-100/70">
-                                  {entryCount} entr
-                                  {entryCount === 1 ? "y" : "ies"}
                                 </span>
                               ) : null}
                               {judgingOpens ? (
@@ -525,12 +481,12 @@ export default async function ShowsPage({
                           day.status === "JUDGING" ||
                           day.status === "RESULTS_PUBLISHED"
                       );
-                    const playerStatus = getPlayerClusterStatus({
-                      clusterStatus: cluster.status,
+                    const playerStatus = getShowClusterDisplayStatus({
+                      cluster,
                       hasJudgingActivity,
-                      entryOpenEpoch: cluster.entryOpenEpoch,
-                      entryCloseEpoch: cluster.entryCloseEpoch,
                       currentEpoch,
+                      entryCount,
+                      resultCount,
                     });
 
                     return (

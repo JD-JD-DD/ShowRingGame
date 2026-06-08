@@ -3,6 +3,7 @@ import { getCurrentEpoch } from "@/lib/gameClock";
 import { db } from "@/lib/db";
 import { ensureAnnualInvitationalShow } from "@/server/services/invitational.service";
 import {
+  closeReadyEmptyShowDays,
   finalizeReadyShowDayResults,
   judgeShowBlock,
 } from "@/server/services/judging.service";
@@ -157,6 +158,10 @@ export async function GET(request: Request) {
   const finalized = [];
   const errors = [];
   const touchedShowDayIds = new Set<string>();
+  const emptyClosed = await closeReadyEmptyShowDays({
+    currentEpoch,
+    batchSize: finalizeBatchSize,
+  });
 
   // Keep each workflow run within one show day. This lets Group and BIS finals
   // update championship titles before any later-day breed blocks are judged,
@@ -302,6 +307,7 @@ export async function GET(request: Request) {
     finalizeBatchSize,
     selectedBlocks: selectedBlocks.length,
     selectedFinalizers: readyToFinalize.length,
+    emptyClosed,
     touchedShowDayIds: [...touchedShowDayIds],
     processedBlocks,
     finalized,

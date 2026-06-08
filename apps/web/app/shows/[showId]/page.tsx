@@ -6,9 +6,9 @@ import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import {
-  getShowDayEntryAvailability,
+  getShowClusterDisplayStatus,
+  getShowDayDisplayStatus,
   getShowEntryAvailability,
-  type ShowEntryStatus,
 } from "@/server/services/showAvailability.service";
 import { getShowDistrictRegionName } from "@showring/rules";
 import {
@@ -59,23 +59,6 @@ function statusTone(status: string): string {
       return "border-red-300/25 bg-red-500/10 text-red-100";
     default:
       return "border-purple-300/20 bg-white/5 text-purple-100";
-  }
-}
-
-function showDisplayStatus(status: ShowEntryStatus): string {
-  switch (status) {
-    case "NOT_OPEN":
-      return "SCHEDULED";
-    case "OPEN":
-      return "OPEN";
-    case "CLOSED":
-      return "AWAITING JUDGING";
-    case "JUDGING":
-      return "JUDGING";
-    case "RESULTS_PUBLISHED":
-      return "JUDGED";
-    case "CANCELLED":
-      return "CANCELLED";
   }
 }
 
@@ -162,6 +145,17 @@ export default async function ShowDetailPage({
     currentEpoch,
     hasJudgingActivity,
   });
+  const clusterEntryCount = cluster.showDays.reduce(
+    (total, day) => total + day._count.showEntries,
+    0
+  );
+  const clusterDisplayStatus = getShowClusterDisplayStatus({
+    cluster,
+    currentEpoch,
+    entryCount: clusterEntryCount,
+    resultCount,
+    hasJudgingActivity,
+  });
   const weekendPlanStatus = kennel
     ? await getShowWeekendEntryPlanStatus({
         showId: cluster.id,
@@ -239,9 +233,9 @@ export default async function ShowDetailPage({
 
         <div className="mt-5 flex flex-wrap gap-3 text-sm">
           <div
-            className={`rounded-full border px-3 py-1 font-semibold ${statusTone(showDisplayStatus(clusterAvailability.entryStatus))}`}
+            className={`rounded-full border px-3 py-1 font-semibold ${statusTone(clusterDisplayStatus)}`}
           >
-            {showDisplayStatus(clusterAvailability.entryStatus)}
+            {clusterDisplayStatus}
           </div>
           <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
             {getShowDistrictRegionName(cluster.district)}
@@ -303,10 +297,12 @@ export default async function ShowDetailPage({
       <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {cluster.showDays.map((day) => {
-            const dayAvailability = getShowDayEntryAvailability({
+            const dayDisplayStatus = getShowDayDisplayStatus({
               cluster,
               showDay: day,
               currentEpoch,
+              entryCount: day._count.showEntries,
+              resultCount: day._count.showResults,
               hasJudgingActivity:
                 day.status === "JUDGING" ||
                 day.status === "RESULTS_PUBLISHED" ||
@@ -323,9 +319,9 @@ export default async function ShowDetailPage({
                     Day {day.dayIndex}
                   </div>
                   <div
-                    className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone(showDisplayStatus(dayAvailability.entryStatus))}`}
+                    className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone(dayDisplayStatus)}`}
                   >
-                    {showDisplayStatus(dayAvailability.entryStatus)}
+                    {dayDisplayStatus}
                   </div>
                 </div>
                 <div className="mt-3 text-sm text-purple-100/75">
@@ -340,9 +336,12 @@ export default async function ShowDetailPage({
                     {day.judge.name}
                   </Link>
                 </div>
-                <div className="mt-2 text-xs text-purple-100/50">
-                  {day._count.showEntries} entered
-                </div>
+                {dayDisplayStatus === "JUDGING" ||
+                dayDisplayStatus === "JUDGED" ? (
+                  <div className="mt-2 text-xs text-purple-100/50">
+                    {day._count.showEntries} entered
+                  </div>
+                ) : null}
               </div>
             );
           })}

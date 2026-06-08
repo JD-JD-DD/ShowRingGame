@@ -140,6 +140,8 @@ export default async function ShowResultsIndexPage({
       ),
     0
   );
+  const canShowEntryCount =
+    resultCount > 0 || cluster.status === "COMPLETE";
   const breedBlocks = new Map<
     string,
     {
@@ -216,9 +218,11 @@ export default async function ShowResultsIndexPage({
           <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
             {getShowDistrictRegionName(cluster.district)}
           </div>
-          <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
-            Entries: {entryCount}
-          </div>
+          {canShowEntryCount ? (
+            <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
+              Entries: {entryCount}
+            </div>
+          ) : null}
           {resultCount > 0 ? (
             <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
               Results: {resultCount}

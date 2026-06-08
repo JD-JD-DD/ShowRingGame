@@ -55,6 +55,7 @@ const DAY_NAME_BY_WEEK_OFFSET: Record<number, string> = {
   4: "Friday",
   5: "Saturday",
   6: "Sunday",
+  7: "Monday",
 };
 
 function assertNonNegativeInteger(value: number, label: string): void {

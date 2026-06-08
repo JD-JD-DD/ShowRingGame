@@ -938,41 +938,48 @@ export async function seedShowScheduleFromCsv(): Promise<{
     const endEpoch = Math.max(...clusterRows.map((row) => row.startEpoch));
     const clusterId = `seed-${slugify(firstRow.showName)}-${firstRow.showDateEpoch}`;
     const year = Math.floor(firstRow.showDateEpoch / 365) + 1;
-
-    await db.showCluster.upsert({
-      where: { id: clusterId },
-      update: {
-        name: firstRow.showName,
-        year,
-        district: 4,
-        startEpoch,
-        endEpoch,
-        entryOpenEpoch: getSeedEntryOpenEpoch(startEpoch),
-        entryCloseEpoch: getSeedEntryCloseEpoch(startEpoch),
-        status: getClusterStatus({
-          currentEpoch,
-          entryOpenEpoch: getSeedEntryOpenEpoch(startEpoch),
-          entryCloseEpoch: getSeedEntryCloseEpoch(startEpoch),
-          endEpoch,
-        }),
-      },
-      create: {
-        id: clusterId,
-        name: firstRow.showName,
-        year,
-        district: 4,
-        startEpoch,
-        endEpoch,
-        entryOpenEpoch: getSeedEntryOpenEpoch(startEpoch),
-        entryCloseEpoch: getSeedEntryCloseEpoch(startEpoch),
-        status: getClusterStatus({
-          currentEpoch,
-          entryOpenEpoch: getSeedEntryOpenEpoch(startEpoch),
-          entryCloseEpoch: getSeedEntryCloseEpoch(startEpoch),
-          endEpoch,
-        }),
-      },
+    const clusterStatus = getClusterStatus({
+      currentEpoch,
+      entryOpenEpoch: getSeedEntryOpenEpoch(startEpoch),
+      entryCloseEpoch: getSeedEntryCloseEpoch(startEpoch),
+      endEpoch,
     });
+    const existingCluster = await db.showCluster.findUnique({
+      where: { id: clusterId },
+      select: { status: true },
+    });
+
+    if (existingCluster) {
+      await db.showCluster.update({
+        where: { id: clusterId },
+        data: {
+          name: firstRow.showName,
+          year,
+          district: 4,
+          startEpoch,
+          endEpoch,
+          entryOpenEpoch: getSeedEntryOpenEpoch(startEpoch),
+          entryCloseEpoch: getSeedEntryCloseEpoch(startEpoch),
+          ...(TERMINAL_CLUSTER_STATUSES.has(existingCluster.status)
+            ? {}
+            : { status: clusterStatus }),
+        },
+      });
+    } else {
+      await db.showCluster.create({
+        data: {
+          id: clusterId,
+          name: firstRow.showName,
+          year,
+          district: 4,
+          startEpoch,
+          endEpoch,
+          entryOpenEpoch: getSeedEntryOpenEpoch(startEpoch),
+          entryCloseEpoch: getSeedEntryCloseEpoch(startEpoch),
+          status: clusterStatus,
+        },
+      });
+    }
 
     const rowsByDate = new Map<number, ShowBlockCsvRow[]>();
 
@@ -988,38 +995,49 @@ export async function seedShowScheduleFromCsv(): Promise<{
       const dayRows = rowsByDate.get(showDateEpoch) ?? [];
       const scheduledEpoch = Math.min(...dayRows.map((row) => row.startEpoch));
       const fallbackJudge = judges[dateIndex % judges.length] ?? judges[0];
-
-      const showDay = await db.showDay.upsert({
+      const dayStatus = getShowDayStatus({
+        currentEpoch,
+        entryOpenEpoch: getSeedEntryOpenEpoch(scheduledEpoch),
+        entryCloseEpoch: getSeedEntryCloseEpoch(scheduledEpoch),
+        scheduledEpoch,
+      });
+      const existingDay = await db.showDay.findUnique({
         where: {
           clusterId_dayIndex: {
             clusterId,
             dayIndex: dateIndex + 1,
           },
         },
-        update: {
-          scheduledEpoch,
-          judgeId: fallbackJudge.id,
-          status: getShowDayStatus({
-            currentEpoch,
-            entryOpenEpoch: getSeedEntryOpenEpoch(scheduledEpoch),
-            entryCloseEpoch: getSeedEntryCloseEpoch(scheduledEpoch),
-            scheduledEpoch,
-          }),
-        },
-        create: {
-          clusterId,
-          scheduledEpoch,
-          dayIndex: dateIndex + 1,
-          judgeId: fallbackJudge.id,
-          status: getShowDayStatus({
-            currentEpoch,
-            entryOpenEpoch: getSeedEntryOpenEpoch(scheduledEpoch),
-            entryCloseEpoch: getSeedEntryCloseEpoch(scheduledEpoch),
-            scheduledEpoch,
-          }),
-        },
-        select: { id: true },
+        select: { id: true, status: true },
       });
+      let showDayId: string;
+
+      if (existingDay) {
+        showDayId = existingDay.id;
+
+        if (!TERMINAL_DAY_STATUSES.has(existingDay.status)) {
+          await db.showDay.update({
+            where: { id: existingDay.id },
+            data: {
+              scheduledEpoch,
+              judgeId: fallbackJudge.id,
+              status: dayStatus,
+            },
+          });
+        }
+      } else {
+        const showDay = await db.showDay.create({
+          data: {
+            clusterId,
+            scheduledEpoch,
+            dayIndex: dateIndex + 1,
+            judgeId: fallbackJudge.id,
+            status: dayStatus,
+          },
+          select: { id: true },
+        });
+        showDayId = showDay.id;
+      }
 
       showDayCount += 1;
 
@@ -1039,48 +1057,58 @@ export async function seedShowScheduleFromCsv(): Promise<{
           );
         }
 
-        await db.showJudgingBlock.upsert({
+        const blockStatus = getBlockStatus({
+          currentEpoch,
+          entryOpenEpoch: getSeedEntryOpenEpoch(row.startEpoch),
+          entryCloseEpoch: getSeedEntryCloseEpoch(row.startEpoch),
+        });
+        const existingBlock = await db.showJudgingBlock.findUnique({
           where: {
             showDayId_ringNumber_blockOrder: {
-              showDayId: showDay.id,
+              showDayId,
               ringNumber: row.ringNumber,
               blockOrder: row.blockOrder,
             },
           },
-          update: {
-            judgeId: assignedJudge.id,
-            breedCode2: row.breedCode2,
-            ringName: row.ringName || null,
-            startEpoch: row.startEpoch,
-            classType: row.classType,
-            entryCountHint: row.entryCount,
-            status: getBlockStatus({
-              currentEpoch,
-              entryOpenEpoch: getSeedEntryOpenEpoch(row.startEpoch),
-              entryCloseEpoch: getSeedEntryCloseEpoch(row.startEpoch),
-            }),
-          },
-          create: {
-            showDayId: showDay.id,
-            judgeId: assignedJudge.id,
-            breedCode2: row.breedCode2,
-            ringNumber: row.ringNumber,
-            ringName: row.ringName || null,
-            startEpoch: row.startEpoch,
-            classType: row.classType,
-            blockOrder: row.blockOrder,
-            entryCountHint: row.entryCount,
-            status: getBlockStatus({
-              currentEpoch,
-              entryOpenEpoch: getSeedEntryOpenEpoch(row.startEpoch),
-              entryCloseEpoch: getSeedEntryCloseEpoch(row.startEpoch),
-            }),
-          },
+          select: { id: true, status: true },
         });
+
+        if (existingBlock) {
+          if (!TERMINAL_BLOCK_STATUSES.has(existingBlock.status)) {
+            await db.showJudgingBlock.update({
+              where: { id: existingBlock.id },
+              data: {
+                judgeId: assignedJudge.id,
+                breedCode2: row.breedCode2,
+                ringName: row.ringName || null,
+                startEpoch: row.startEpoch,
+                classType: row.classType,
+                entryCountHint: row.entryCount,
+                status: blockStatus,
+              },
+            });
+          }
+        } else {
+          await db.showJudgingBlock.create({
+            data: {
+              showDayId,
+              judgeId: assignedJudge.id,
+              breedCode2: row.breedCode2,
+              ringNumber: row.ringNumber,
+              ringName: row.ringName || null,
+              startEpoch: row.startEpoch,
+              classType: row.classType,
+              blockOrder: row.blockOrder,
+              entryCountHint: row.entryCount,
+              status: blockStatus,
+            },
+          });
+        }
 
         judgingBlockCount += 1;
       }
     }
+
   }
 
   return {

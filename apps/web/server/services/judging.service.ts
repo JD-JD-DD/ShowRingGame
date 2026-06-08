@@ -336,6 +336,10 @@ function canBlockMoveToJudging(
   block: ShowBlockForJudging,
   currentEpoch: number
 ): boolean {
+  if (currentEpoch < block.startEpoch) {
+    return false;
+  }
+
   if (block.status === "ENTRY_LOCKED" || block.status === "JUDGING") {
     return true;
   }
@@ -377,6 +381,71 @@ function isEntryEligibleForBlockJudging(
     showEligibleAtBlockStart &&
     entry.dog.ownerKennelId === entry.kennelId
   );
+}
+
+async function cancelReadyEmptyShowDay(args: {
+  tx: Prisma.TransactionClient;
+  showDayId: string;
+  currentEpoch: number;
+}): Promise<boolean> {
+  const showDay = await args.tx.showDay.findUnique({
+    where: { id: args.showDayId },
+    select: {
+      scheduledEpoch: true,
+      status: true,
+      _count: {
+        select: {
+          showEntries: {
+            where: {
+              entryStatus: {
+                in: ["ENTERED", "JUDGED"],
+              },
+            },
+          },
+          showResults: true,
+        },
+      },
+    },
+  });
+
+  if (
+    !showDay ||
+    showDay.status === "RESULTS_PUBLISHED" ||
+    showDay.status === "CANCELLED" ||
+    args.currentEpoch < showDay.scheduledEpoch ||
+    showDay._count.showEntries > 0 ||
+    showDay._count.showResults > 0
+  ) {
+    return false;
+  }
+
+  // TODO: Replace CANCELLED with an explicit NO_ENTRIES status when the show
+  // lifecycle enum grows one.
+  await args.tx.showJudgingBlock.updateMany({
+    where: {
+      showDayId: args.showDayId,
+      status: {
+        notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
+      },
+      showEntries: {
+        none: {
+          entryStatus: {
+            in: ["ENTERED", "JUDGED"],
+          },
+        },
+      },
+    },
+    data: {
+      status: "CANCELLED",
+    },
+  });
+
+  await args.tx.showDay.update({
+    where: { id: args.showDayId },
+    data: { status: "CANCELLED" },
+  });
+
+  return true;
 }
 
 function mapPersistedResult(result: {
@@ -620,6 +689,28 @@ export async function judgeShowBlock(args: {
       return repairPublishedBlockState({ tx, block, currentEpoch });
     }
 
+    if (block.showEntries.every((entry) => entry.entryStatus !== "ENTERED")) {
+      await tx.showJudgingBlock.update({
+        where: { id: judgingBlockId },
+        data: { status: "CANCELLED" },
+      });
+      await cancelReadyEmptyShowDay({
+        tx,
+        showDayId: block.showDayId,
+        currentEpoch,
+      });
+
+      return {
+        judgingBlockId,
+        showDayId: block.showDayId,
+        status: ShowJudgingBlockStatus.CANCELLED,
+        alreadyPublished: false,
+        eligibleEntryCount: 0,
+        ineligibleEntryCount: 0,
+        results: [],
+      };
+    }
+
     await tx.showJudgingBlock.update({
       where: { id: judgingBlockId },
       data: { status: "JUDGING" },
@@ -646,6 +737,28 @@ export async function judgeShowBlock(args: {
         where: { id: { in: ineligibleEntryIds } },
         data: { entryStatus: "INELIGIBLE" },
       });
+    }
+
+    if (eligibleEntries.length === 0) {
+      await tx.showJudgingBlock.update({
+        where: { id: judgingBlockId },
+        data: { status: "CANCELLED" },
+      });
+      await cancelReadyEmptyShowDay({
+        tx,
+        showDayId: block.showDayId,
+        currentEpoch,
+      });
+
+      return {
+        judgingBlockId,
+        showDayId: block.showDayId,
+        status: ShowJudgingBlockStatus.CANCELLED,
+        alreadyPublished: false,
+        eligibleEntryCount: 0,
+        ineligibleEntryCount: ineligibleEntryIds.length,
+        results: [],
+      };
     }
 
     const uniqueKennelsInCompetition = new Set(
@@ -1459,6 +1572,14 @@ export async function finalizeReadyShowDayResults(args: {
     };
   }
 
+  await db.$transaction((tx) =>
+    cancelReadyEmptyShowDay({
+      tx,
+      showDayId: args.showDayId,
+      currentEpoch: args.currentEpoch,
+    })
+  );
+
   const remainingEntryBlocks = await db.showJudgingBlock.count({
     where: {
       showDayId: args.showDayId,
@@ -1519,6 +1640,55 @@ export async function finalizeReadyShowDayResults(args: {
     groupAwardsCreated,
     bestInShowAwardsCreated,
   };
+}
+
+export async function closeReadyEmptyShowDays(args: {
+  currentEpoch: number;
+  batchSize?: number;
+}): Promise<{
+  closedShowDayIds: string[];
+}> {
+  const showDays = await db.showDay.findMany({
+    where: {
+      scheduledEpoch: { lte: args.currentEpoch },
+      status: {
+        notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
+      },
+      showEntries: {
+        none: {
+          entryStatus: {
+            in: ["ENTERED", "JUDGED"],
+          },
+        },
+      },
+      showResults: {
+        none: {},
+      },
+      cluster: {
+        status: { not: "CANCELLED" },
+      },
+    },
+    orderBy: [{ scheduledEpoch: "asc" }, { dayIndex: "asc" }],
+    select: { id: true },
+    take: args.batchSize ?? 24,
+  });
+  const closedShowDayIds: string[] = [];
+
+  for (const showDay of showDays) {
+    const closed = await db.$transaction((tx) =>
+      cancelReadyEmptyShowDay({
+        tx,
+        showDayId: showDay.id,
+        currentEpoch: args.currentEpoch,
+      })
+    );
+
+    if (closed) {
+      closedShowDayIds.push(showDay.id);
+    }
+  }
+
+  return { closedShowDayIds };
 }
 
 export async function publishReadyShowResultsForCluster(args: {

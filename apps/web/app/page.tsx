@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
-import { getShowEntryAvailability } from "@/server/services/showAvailability.service";
+import { getShowClusterDisplayStatus } from "@/server/services/showAvailability.service";
 import {
   getShowDistrictRegionName,
   SHOW_WEEK_HOURS,
@@ -83,30 +83,40 @@ function formatGameTimeLabel(epoch: number): string {
 function getUpcomingShowStatusLabel(
   show: {
     status: string;
+    startEpoch: number;
     entryOpenEpoch: number;
     entryCloseEpoch: number;
+    showDays: Array<{
+      status: string;
+      _count: {
+        showEntries: number;
+        showResults: number;
+      };
+    }>;
   },
   currentEpoch: number
 ): string {
-  const availability = getShowEntryAvailability({
+  const resultCount = show.showDays.reduce(
+    (total, day) => total + day._count.showResults,
+    0
+  );
+  const entryCount = show.showDays.reduce(
+    (total, day) => total + day._count.showEntries,
+    0
+  );
+  const hasJudgingActivity =
+    resultCount > 0 ||
+    show.showDays.some(
+      (day) => day.status === "JUDGING" || day.status === "RESULTS_PUBLISHED"
+    );
+
+  return getShowClusterDisplayStatus({
     cluster: show,
     currentEpoch,
+    entryCount,
+    resultCount,
+    hasJudgingActivity,
   });
-
-  switch (availability.entryStatus) {
-    case "NOT_OPEN":
-      return "SCHEDULED";
-    case "OPEN":
-      return "OPEN";
-    case "CLOSED":
-      return "AWAITING JUDGING";
-    case "JUDGING":
-      return "JUDGING";
-    case "RESULTS_PUBLISHED":
-      return "JUDGED";
-    case "CANCELLED":
-      return "CANCELLED";
-  }
 }
 
 export default async function HomePage() {
@@ -148,6 +158,23 @@ export default async function HomePage() {
           startEpoch: true,
           entryOpenEpoch: true,
           entryCloseEpoch: true,
+          showDays: {
+            select: {
+              status: true,
+              _count: {
+                select: {
+                  showEntries: {
+                    where: {
+                      entryStatus: {
+                        in: ["ENTERED", "JUDGED"],
+                      },
+                    },
+                  },
+                  showResults: true,
+                },
+              },
+            },
+          },
         },
       }),
       db.kennelNotice.findMany({

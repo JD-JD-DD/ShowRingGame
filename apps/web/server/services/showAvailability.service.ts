@@ -14,10 +14,23 @@ export type ShowEntryAvailability = {
   message: string;
 };
 
+export type ShowDisplayStatus =
+  | "SCHEDULED"
+  | "OPEN"
+  | "CLOSED"
+  | "AWAITING JUDGING"
+  | "JUDGING"
+  | "JUDGED"
+  | "CANCELLED";
+
 type ClusterLike = {
   status: string;
   entryOpenEpoch: number;
   entryCloseEpoch: number;
+};
+
+type DisplayClusterLike = ClusterLike & {
+  startEpoch: number;
 };
 
 type ShowDayLike = {
@@ -182,4 +195,94 @@ export function getShowBlockEntryAvailability(args: {
   }
 
   return dayAvailability;
+}
+
+export function getShowClusterDisplayStatus(args: {
+  cluster: DisplayClusterLike;
+  currentEpoch: number;
+  entryCount?: number;
+  resultCount?: number;
+  hasJudgingActivity?: boolean;
+}): ShowDisplayStatus {
+  const {
+    cluster,
+    currentEpoch,
+    entryCount = 0,
+    resultCount = 0,
+    hasJudgingActivity = false,
+  } = args;
+
+  if (cluster.status === "CANCELLED") {
+    return "CANCELLED";
+  }
+
+  if (cluster.status === "COMPLETE" || resultCount > 0) {
+    return "JUDGED";
+  }
+
+  if (hasJudgingActivity) {
+    return "JUDGING";
+  }
+
+  if (currentEpoch < cluster.entryOpenEpoch) {
+    return "SCHEDULED";
+  }
+
+  if (currentEpoch < cluster.entryCloseEpoch) {
+    return "OPEN";
+  }
+
+  if (currentEpoch < cluster.startEpoch || entryCount === 0) {
+    return "CLOSED";
+  }
+
+  return "AWAITING JUDGING";
+}
+
+export function getShowDayDisplayStatus(args: {
+  cluster: ClusterLike;
+  showDay: ShowDayLike;
+  currentEpoch: number;
+  entryCount?: number;
+  resultCount?: number;
+  hasJudgingActivity?: boolean;
+}): ShowDisplayStatus {
+  const {
+    cluster,
+    showDay,
+    currentEpoch,
+    entryCount = 0,
+    resultCount = 0,
+    hasJudgingActivity = false,
+  } = args;
+
+  if (showDay.status === "CANCELLED") {
+    return "CANCELLED";
+  }
+
+  if (showDay.status === "RESULTS_PUBLISHED" || resultCount > 0) {
+    return "JUDGED";
+  }
+
+  if (showDay.status === "JUDGING" || hasJudgingActivity) {
+    return "JUDGING";
+  }
+
+  if (cluster.status === "CANCELLED") {
+    return "CANCELLED";
+  }
+
+  if (currentEpoch < cluster.entryOpenEpoch) {
+    return "SCHEDULED";
+  }
+
+  if (currentEpoch < cluster.entryCloseEpoch) {
+    return "OPEN";
+  }
+
+  if (currentEpoch < showDay.scheduledEpoch || entryCount === 0) {
+    return "CLOSED";
+  }
+
+  return "AWAITING JUDGING";
 }

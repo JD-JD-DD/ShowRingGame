@@ -1,6 +1,9 @@
 import {
   generateAnnualShowClusterTemplates,
   generateShowClustersForWeek,
+  SHOW_ENTRY_CLOSE_OFFSET_HOURS,
+  SHOW_ENTRY_OPEN_LEAD_HOURS,
+  SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
   SHOW_DISTRICT_COUNT,
 } from "../src/index";
 
@@ -11,6 +14,32 @@ function assertEqual<T>(actual: T, expected: T, label: string): void {
 }
 
 const templates = generateAnnualShowClusterTemplates();
+const firstFourDayTemplate = templates.find(
+  (template) => template.type === "FOUR_DAY"
+);
+
+assertEqual(
+  SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
+  120,
+  "show generation horizon"
+);
+assertEqual(SHOW_ENTRY_OPEN_LEAD_HOURS, 120, "show entry open lead");
+assertEqual(SHOW_ENTRY_CLOSE_OFFSET_HOURS, 14, "show entry close offset");
+
+if (!firstFourDayTemplate) {
+  throw new Error("expected at least one four-day cluster template");
+}
+
+assertEqual(
+  firstFourDayTemplate.showDayOffsets.join("|"),
+  "4|5|6|7",
+  "four-day cluster chronological offsets"
+);
+assertEqual(
+  firstFourDayTemplate.showDayNames.join("|"),
+  "Friday|Saturday|Sunday|Monday",
+  "four-day cluster chronological day names"
+);
 
 assertEqual(templates.length, 150, "annual regular district show count");
 assertEqual(
