@@ -2,11 +2,13 @@ import { fail, ok } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { db } from "@/lib/db";
 import { ensureAnnualInvitationalShow } from "@/server/services/invitational.service";
+import { ensureGeneratedShowSchedule } from "@/server/services/showSchedule.service";
 import {
   closeReadyEmptyShowDays,
   finalizeReadyShowDayResults,
   judgeShowBlock,
 } from "@/server/services/judging.service";
+import { SHOW_INSTANCE_GENERATION_HORIZON_HOURS } from "@showring/rules";
 import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -104,6 +106,11 @@ export async function GET(request: Request) {
   }
 
   const currentEpoch = getCurrentEpoch();
+  const schedule = await ensureGeneratedShowSchedule({
+    currentEpoch,
+    horizonHours: SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
+    includeJudgingBlocks: false,
+  });
   const blockBatchSize = parseBatchSize(
     process.env.SHOW_RESULTS_JOB_BLOCK_BATCH_SIZE ??
       process.env.SHOW_RESULTS_JOB_BATCH_SIZE,
@@ -308,6 +315,7 @@ export async function GET(request: Request) {
     selectedBlocks: selectedBlocks.length,
     selectedFinalizers: readyToFinalize.length,
     emptyClosed,
+    schedule,
     touchedShowDayIds: [...touchedShowDayIds],
     processedBlocks,
     finalized,

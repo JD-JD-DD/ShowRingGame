@@ -8,9 +8,11 @@ import {
   type ShowDisplayStatus,
 } from "@/server/services/showAvailability.service";
 import { getClubStewardingClaimedClusterIds } from "@/server/services/kennelService.service";
+import { ensureGeneratedShowSchedule } from "@/server/services/showSchedule.service";
 import {
   generateAnnualShowClusterTemplates,
   getShowDistrictRegionName,
+  SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
   SHOW_WEEK_HOURS,
   SHOW_YEAR_HOURS,
 } from "@showring/rules";
@@ -126,12 +128,26 @@ export default async function ShowsPage({
   const selectedDogIdsQuery = firstQueryValue(resolvedSearchParams.dogIds) ?? "";
   const generated = firstQueryValue(resolvedSearchParams.generated);
   const generateError = firstQueryValue(resolvedSearchParams.generateError);
+  let autoGenerateError: string | null = null;
   const showDetailQuery = selectedDogIdsQuery
     ? `?dogIds=${encodeURIComponent(selectedDogIdsQuery)}`
     : "";
   const currentEpoch = getCurrentEpoch();
   const currentCalendarPosition = getCurrentCalendarPosition(currentEpoch);
   const templates = generateAnnualShowClusterTemplates();
+
+  try {
+    await ensureGeneratedShowSchedule({
+      currentEpoch,
+      horizonHours: SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
+      includeJudgingBlocks: false,
+    });
+  } catch (error) {
+    console.error("Shows page failed to refresh generated schedule:", error);
+    autoGenerateError =
+      error instanceof Error ? error.message : "Failed to refresh shows.";
+  }
+
   const userId = await getSessionUserId();
   const currentKennel = userId
     ? await db.kennel.findUnique({
@@ -285,9 +301,9 @@ export default async function ShowsPage({
           </div>
         ) : null}
 
-        {generateError ? (
+        {generateError || autoGenerateError ? (
           <div className="mt-3 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-            {generateError}
+            {generateError ?? autoGenerateError}
           </div>
         ) : null}
       </section>
