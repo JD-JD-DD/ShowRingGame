@@ -15,6 +15,7 @@ import {
   SHOW_WEEK_HOURS,
   SHOW_YEAR_HOURS,
 } from "@showring/rules";
+import { JumpToCurrentWeekButton } from "./JumpToCurrentWeekButton";
 
 export const dynamic = "force-dynamic";
 
@@ -287,11 +288,12 @@ export default async function ShowsPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <JumpToCurrentWeekButton />
             <Link
-              href="#current-week"
-              className="rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 px-5 py-3 text-sm font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/20"
+              href="/shows/history"
+              className="rounded-2xl border border-sky-300/30 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
             >
-              Jump to Current Week
+              Historical Results
             </Link>
             <Link
               href="/shows/top-ten"
