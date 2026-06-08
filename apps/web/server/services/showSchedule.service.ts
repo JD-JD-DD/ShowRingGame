@@ -475,6 +475,124 @@ async function getActiveJudgesForShows(): Promise<ActiveJudgeForShows[]> {
   });
 }
 
+function canRepairGeneratedClusterStructure(cluster: {
+  status: string;
+  showDays: Array<{
+    status: string;
+    _count: {
+      showResults: number;
+      showAwards: number;
+      prestigeCredits: number;
+    };
+    judgingBlocks: Array<{
+      status: string;
+      _count: {
+        showResults: number;
+        showAwards: number;
+      };
+    }>;
+  }>;
+}, expectedShowDayCount: number): boolean {
+  return (
+    !TERMINAL_CLUSTER_STATUSES.has(cluster.status) &&
+    cluster.showDays.length === expectedShowDayCount &&
+    cluster.showDays.every(
+      (showDay) =>
+        showDay.status !== "JUDGING" &&
+        !TERMINAL_DAY_STATUSES.has(showDay.status) &&
+        showDay._count.showResults === 0 &&
+        showDay._count.showAwards === 0 &&
+        showDay._count.prestigeCredits === 0 &&
+        showDay.judgingBlocks.every(
+          (block) =>
+            block.status !== "JUDGING" &&
+            !TERMINAL_BLOCK_STATUSES.has(block.status) &&
+            block._count.showResults === 0 &&
+            block._count.showAwards === 0
+        )
+    )
+  );
+}
+
+async function repairGeneratedClusterStructure(args: {
+  clusterId: string;
+  cluster: GeneratedShowCluster;
+  currentEpoch: number;
+  showDayEpochs: number[];
+  judges: ActiveJudgeForShows[];
+}): Promise<void> {
+  const entryOpenEpoch = args.cluster.entryOpenEpoch;
+  const entryCloseEpoch = args.cluster.entryCloseEpoch;
+  const clusterStatus = getClusterStatus({
+    currentEpoch: args.currentEpoch,
+    entryOpenEpoch,
+    entryCloseEpoch,
+    endEpoch: args.cluster.endEpoch,
+  });
+
+  await db.$transaction(async (tx) => {
+    await tx.showCluster.update({
+      where: { id: args.clusterId },
+      data: {
+        name: args.cluster.name,
+        year: args.cluster.year,
+        district: args.cluster.district,
+        startEpoch: args.cluster.startEpoch,
+        endEpoch: args.cluster.endEpoch,
+        entryOpenEpoch,
+        entryCloseEpoch,
+        status: clusterStatus,
+      },
+    });
+
+    for (const [dayOffset, scheduledEpoch] of args.showDayEpochs.entries()) {
+      const dayIndex = dayOffset + 1;
+      const fallbackJudge =
+        args.judges[(args.cluster.weekIndex + dayIndex) % args.judges.length];
+      const dayStatus = getShowDayStatus({
+        currentEpoch: args.currentEpoch,
+        entryOpenEpoch,
+        entryCloseEpoch,
+        scheduledEpoch,
+      });
+      const blockStatus = getBlockStatus({
+        currentEpoch: args.currentEpoch,
+        entryOpenEpoch,
+        entryCloseEpoch,
+      });
+      const updatedDay = await tx.showDay.update({
+        where: {
+          clusterId_dayIndex: {
+            clusterId: args.clusterId,
+            dayIndex,
+          },
+        },
+        data: {
+          scheduledEpoch,
+          judgeId: fallbackJudge.id,
+          status: dayStatus,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      await tx.showJudgingBlock.updateMany({
+        where: {
+          showDayId: updatedDay.id,
+          status: {
+            notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
+          },
+        },
+        data: {
+          startEpoch: scheduledEpoch,
+          status: blockStatus,
+        },
+      });
+    }
+  });
+}
+
 async function ensureJudgingBlocksForShowDays(args: {
   weekIndex: number;
   slotIndex: number;
@@ -662,10 +780,32 @@ export async function ensureGeneratedShowSchedule(args?: {
         entryCloseEpoch: true,
         showDays: {
           orderBy: [{ dayIndex: "asc" }],
-          select: { scheduledEpoch: true },
+          select: {
+            scheduledEpoch: true,
+            status: true,
+            _count: {
+              select: {
+                showResults: true,
+                showAwards: true,
+                prestigeCredits: true,
+              },
+            },
+            judgingBlocks: {
+              select: {
+                status: true,
+                _count: {
+                  select: {
+                    showResults: true,
+                    showAwards: true,
+                  },
+                },
+              },
+            },
+          },
         },
       },
     });
+    let generatedStructureRepaired = false;
     const generatedStructureChanged =
       existingCluster &&
       (existingCluster.district !== cluster.district ||
@@ -685,6 +825,21 @@ export async function ensureGeneratedShowSchedule(args?: {
 
       if (deleted) {
         existingCluster = null;
+      } else if (
+        existingCluster &&
+        canRepairGeneratedClusterStructure(
+          existingCluster,
+          showDayEpochs.length
+        )
+      ) {
+        await repairGeneratedClusterStructure({
+          clusterId,
+          cluster,
+          currentEpoch,
+          showDayEpochs,
+          judges,
+        });
+        generatedStructureRepaired = true;
       } else {
         continue;
       }
@@ -692,8 +847,9 @@ export async function ensureGeneratedShowSchedule(args?: {
 
     if (existingCluster) {
       if (
-        generatedTimingChanged ||
-        !TERMINAL_CLUSTER_STATUSES.has(existingCluster.status)
+        !generatedStructureRepaired &&
+        (generatedTimingChanged ||
+          !TERMINAL_CLUSTER_STATUSES.has(existingCluster.status))
       ) {
         await db.showCluster.update({
           where: { id: clusterId },

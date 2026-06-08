@@ -217,7 +217,10 @@ export function ShowEntryPlanner({
               <th className="px-3 py-2">Age</th>
               {days.map((day) => (
                 <th key={day.showDayId} className="w-28 px-3 py-2 text-center">
-                  Day {day.dayIndex}
+                  <div>Day {day.dayIndex}</div>
+                  <div className="mt-1 normal-case tracking-normal text-purple-100/60">
+                    {day.label}
+                  </div>
                 </th>
               ))}
               <th className="px-3 py-2 text-right">Quick</th>

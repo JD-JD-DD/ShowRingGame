@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
+import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { getClubStewardingCommitmentForShow } from "@/server/services/kennelService.service";
@@ -383,6 +384,9 @@ export default async function ShowDetailPage({
                   </div>
                 </div>
                 <div className="mt-3 text-sm text-purple-100/75">
+                  {formatShowCalendarLabel(day.scheduledEpoch)}
+                </div>
+                <div className="mt-1 text-sm text-purple-100/60">
                   {formatShowDateTime(day.scheduledEpoch)}
                 </div>
                 <div className="mt-2 text-sm text-purple-100/75">
@@ -480,7 +484,7 @@ export default async function ShowDetailPage({
                   breedCode2={selectedBreed.code2}
                   days={planner.days.map((day) => ({
                     ...day,
-                    label: formatShowDateTime(day.scheduledEpoch),
+                    label: formatShowCalendarLabel(day.scheduledEpoch),
                   }))}
                   dogs={planner.dogs.map((dog) => ({
                     ...dog,

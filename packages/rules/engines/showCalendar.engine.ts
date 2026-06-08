@@ -290,8 +290,10 @@ export function generateShowClustersForWeek(
       slotIndex,
     });
     const dayOffsets = getShowClusterDayOffsets(type);
+    const firstShowDayEpoch =
+      normalizedWeekStartEpoch + Math.min(...dayOffsets);
     const showDayEpochs = dayOffsets
-      .map((offset) => normalizedWeekStartEpoch + offset)
+      .map((_, dayIndex) => firstShowDayEpoch + dayIndex)
       .filter((epoch) => !isAnnualEventHour(epoch));
     const startEpoch = Math.min(...showDayEpochs);
     const endEpoch = Math.max(...showDayEpochs);

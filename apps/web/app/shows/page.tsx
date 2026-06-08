@@ -119,6 +119,7 @@ async function needsGeneratedShowScheduleRefresh(args: {
   currentEpoch: number;
   horizonHours: number;
 }): Promise<boolean> {
+  const generatedWindowEndEpoch = args.currentEpoch + args.horizonHours;
   const coverage = await db.showCluster.aggregate({
     where: {
       id: {
@@ -139,7 +140,49 @@ async function needsGeneratedShowScheduleRefresh(args: {
   const minimumUsefulCoverage =
     args.currentEpoch + args.horizonHours - SHOW_WEEK_HOURS;
 
-  return generatedThroughEpoch < minimumUsefulCoverage;
+  if (generatedThroughEpoch < minimumUsefulCoverage) {
+    return true;
+  }
+
+  const generatedClusters = await db.showCluster.findMany({
+    where: {
+      id: {
+        startsWith: "generated-year-",
+      },
+      startEpoch: {
+        lte: generatedWindowEndEpoch,
+      },
+      endEpoch: {
+        gte: args.currentEpoch,
+      },
+      status: {
+        notIn: ["COMPLETE", "CANCELLED"],
+      },
+    },
+    select: {
+      startEpoch: true,
+      endEpoch: true,
+      showDays: {
+        orderBy: [{ dayIndex: "asc" }],
+        select: {
+          scheduledEpoch: true,
+        },
+      },
+    },
+  });
+
+  return generatedClusters.some((cluster) => {
+    const expectedEndEpoch =
+      cluster.startEpoch + Math.max(0, cluster.showDays.length - 1);
+
+    return (
+      cluster.endEpoch !== expectedEndEpoch ||
+      cluster.showDays.some(
+        (showDay, dayOffset) =>
+          showDay.scheduledEpoch !== cluster.startEpoch + dayOffset
+      )
+    );
+  });
 }
 
 export default async function ShowsPage({

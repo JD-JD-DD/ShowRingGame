@@ -17,6 +17,9 @@ const templates = generateAnnualShowClusterTemplates();
 const firstFourDayTemplate = templates.find(
   (template) => template.type === "FOUR_DAY"
 );
+const firstTwoDayTemplate = templates.find(
+  (template) => template.type === "TWO_DAY"
+);
 
 assertEqual(
   SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
@@ -30,6 +33,10 @@ if (!firstFourDayTemplate) {
   throw new Error("expected at least one four-day cluster template");
 }
 
+if (!firstTwoDayTemplate) {
+  throw new Error("expected at least one two-day cluster template");
+}
+
 assertEqual(
   firstFourDayTemplate.showDayOffsets.join("|"),
   "4|5|6|7",
@@ -39,6 +46,36 @@ assertEqual(
   firstFourDayTemplate.showDayNames.join("|"),
   "Friday|Saturday|Sunday|Monday",
   "four-day cluster chronological day names"
+);
+
+const generatedFourDayCluster = generateShowClustersForWeek(
+  (firstFourDayTemplate.weekInYear - 1) * 7
+).find((cluster) => cluster.type === "FOUR_DAY");
+const generatedTwoDayCluster = generateShowClustersForWeek(
+  (firstTwoDayTemplate.weekInYear - 1) * 7
+).find((cluster) => cluster.type === "TWO_DAY");
+
+if (!generatedFourDayCluster) {
+  throw new Error("expected generated four-day cluster");
+}
+
+if (!generatedTwoDayCluster) {
+  throw new Error("expected generated two-day cluster");
+}
+
+assertEqual(
+  generatedFourDayCluster.showDayEpochs
+    .map((epoch) => epoch - generatedFourDayCluster.startEpoch)
+    .join("|"),
+  "0|1|2|3",
+  "four-day generated judging epoch offsets"
+);
+assertEqual(
+  generatedTwoDayCluster.showDayEpochs
+    .map((epoch) => epoch - generatedTwoDayCluster.startEpoch)
+    .join("|"),
+  "0|1",
+  "two-day generated judging epoch offsets"
 );
 
 assertEqual(templates.length, 150, "annual regular district show count");
