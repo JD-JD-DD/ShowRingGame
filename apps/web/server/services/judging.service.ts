@@ -116,6 +116,11 @@ type DogForEngine = {
   }>;
 };
 
+type EntryPrepSnapshot = {
+  conditioningSnapshot: number | null;
+  fatigueSnapshot: number | null;
+};
+
 export type JudgedShowResultDto = {
   showEntryId: string;
   showDayId: string;
@@ -160,7 +165,10 @@ function toEngineJudge(judge: JudgeForEngine): EngineJudge {
   };
 }
 
-function toEngineDogRecord(dog: DogForEngine): EngineDog {
+function toEngineDogRecord(
+  dog: DogForEngine,
+  prepSnapshot?: EntryPrepSnapshot
+): EngineDog {
   const breedingAttemptsAsDam = dog.breedingAttemptsAsDam ?? [];
   const activePregnancy = breedingAttemptsAsDam.find(
     (attempt) => attempt.status === "PREGNANT"
@@ -183,6 +191,8 @@ function toEngineDogRecord(dog: DogForEngine): EngineDog {
     presentation: {
       dueEpoch: activePregnancy?.dueEpoch ?? null,
       lastWhelpedEpoch: latestWhelp?.whelpedEpoch ?? null,
+      conditioningSnapshot: prepSnapshot?.conditioningSnapshot ?? null,
+      fatigueSnapshot: prepSnapshot?.fatigueSnapshot ?? null,
       phenotypeHealthTruths: dog.healthConditionTruths ?? [],
     },
     traits: {
@@ -201,7 +211,10 @@ function toEngineDogRecord(dog: DogForEngine): EngineDog {
 }
 
 function toEngineDog(entry: EntryForJudging): EngineDog {
-  return toEngineDogRecord(entry.dog);
+  return toEngineDogRecord(entry.dog, {
+    conditioningSnapshot: entry.conditioningSnapshot,
+    fatigueSnapshot: entry.fatigueSnapshot,
+  });
 }
 
 function isChampionEntry(entry: EntryForJudging): boolean {
@@ -1122,6 +1135,8 @@ async function createGroupAwardsForShowDay(args: {
         showEntry: {
           select: {
             kennelId: true,
+            conditioningSnapshot: true,
+            fatigueSnapshot: true,
           },
         },
         dog: {
@@ -1210,7 +1225,10 @@ async function createGroupAwardsForShowDay(args: {
         showEpoch: showDayTiming.scheduledEpoch,
         entries: groupAwards.map((award) => ({
           showEntryId: award.showEntryId,
-          dog: toEngineDogRecord(award.dog),
+          dog: toEngineDogRecord(award.dog, {
+            conditioningSnapshot: award.showEntry.conditioningSnapshot,
+            fatigueSnapshot: award.showEntry.fatigueSnapshot,
+          }),
         })),
       });
 
@@ -1316,6 +1334,8 @@ async function createBestInShowAwardsForShowDay(args: {
         showEntry: {
           select: {
             kennelId: true,
+            conditioningSnapshot: true,
+            fatigueSnapshot: true,
           },
         },
         dog: {
@@ -1382,7 +1402,10 @@ async function createBestInShowAwardsForShowDay(args: {
       showEpoch: showDayTiming.scheduledEpoch,
       entries: groupOneAwards.map((award) => ({
         showEntryId: award.showEntryId,
-        dog: toEngineDogRecord(award.dog),
+        dog: toEngineDogRecord(award.dog, {
+          conditioningSnapshot: award.showEntry.conditioningSnapshot,
+          fatigueSnapshot: award.showEntry.fatigueSnapshot,
+        }),
       })),
     });
     const awardsToCreate: Prisma.ShowAwardCreateManyInput[] = [];

@@ -26,6 +26,12 @@ function formatCategoryName(key: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function geneticVisibleCategoryEntries(categories: Record<string, number>) {
+  return Object.entries(categories).filter(
+    ([key]) => key !== "conditioningHandling"
+  );
+}
+
 function statusLabel(status: string): string {
   return status
     .replace(/_/g, " ")
@@ -193,7 +199,9 @@ export default async function LitterDetailPage({ params }: PageProps) {
 
           <div className="grid gap-5 lg:grid-cols-2">
             {litter.puppies.map((puppy) => {
-              const visibleCategories = Object.entries(puppy.visibleCategories);
+              const visibleCategories = geneticVisibleCategoryEntries(
+                puppy.visibleCategories
+              );
 
               return (
                 <article

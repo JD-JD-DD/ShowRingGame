@@ -21,6 +21,7 @@ import {
   MIN_BREED_AGE_HOURS,
   PHENOTYPE_HEALTH_TEST_CODES,
   WHELPING_COOLDOWN_HOURS,
+  deriveConditioningHandlingScore,
   deriveVisibleCategoriesFromTraits,
 } from "@showring/rules";
 
@@ -52,6 +53,10 @@ type RosterDogRecord = {
   traitShowShine: number;
   traitFeet: number;
   traitTopline: number;
+  ringObedience: number;
+  muscleTone: number;
+  coatCondition: number;
+  fatiguePoints: number;
 };
 
 type BreedingCardStatus = {
@@ -98,7 +103,8 @@ type ActiveListingSummary = {
 };
 
 function toVisibleCategories(dog: RosterDogRecord) {
-  return deriveVisibleCategoriesFromTraits({
+  return {
+    ...deriveVisibleCategoriesFromTraits({
     head: dog.traitHead,
     forequarters: dog.traitForequarters,
     hindquarters: dog.traitHindquarters,
@@ -109,7 +115,14 @@ function toVisibleCategories(dog: RosterDogRecord) {
     show_shine: dog.traitShowShine,
     feet: dog.traitFeet,
     topline: dog.traitTopline,
-  });
+    }),
+    conditioningHandling: deriveConditioningHandlingScore({
+      coatCondition: dog.coatCondition,
+      muscleTone: dog.muscleTone,
+      ringObedience: dog.ringObedience,
+      fatiguePoints: dog.fatiguePoints,
+    }),
+  };
 }
 
 function getBreedingCardStatus(
@@ -316,6 +329,10 @@ export async function GET() {
         traitShowShine: true,
         traitFeet: true,
         traitTopline: true,
+        ringObedience: true,
+        muscleTone: true,
+        coatCondition: true,
+        fatiguePoints: true,
       },
     });
     const dogIds = dogs.map((dog) => dog.id);

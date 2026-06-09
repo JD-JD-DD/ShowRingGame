@@ -3,20 +3,14 @@ import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
-import { getShowClusterDisplayStatus } from "@/server/services/showAvailability.service";
-import {
-  getShowDistrictRegionName,
-  SHOW_WEEK_HOURS,
-  SHOW_YEAR_HOURS,
-} from "@showring/rules";
+import { SHOW_WEEK_HOURS, SHOW_YEAR_HOURS } from "@showring/rules";
 
 
 const primaryActions = [
   {
     title: "Shows",
-    body: "Placeholder for the current week show calendar. This will become the quick home-page view into open and upcoming shows.",
+    body: "Open the show calendar to browse clusters, entries, results, and planning details.",
     href: "/shows",
     action: "Open Show Calendar",
     featured: true,
@@ -80,163 +74,84 @@ function formatGameTimeLabel(epoch: number): string {
   return `Y${year} W${week} D${day + 1}`;
 }
 
-function getUpcomingShowStatusLabel(
-  show: {
-    status: string;
-    startEpoch: number;
-    entryOpenEpoch: number;
-    entryCloseEpoch: number;
-    showDays: Array<{
-      status: string;
-      _count: {
-        showEntries: number;
-        showResults: number;
-      };
-    }>;
-  },
-  currentEpoch: number
-): string {
-  const resultCount = show.showDays.reduce(
-    (total, day) => total + day._count.showResults,
-    0
-  );
-  const entryCount = show.showDays.reduce(
-    (total, day) => total + day._count.showEntries,
-    0
-  );
-  const hasJudgingActivity =
-    resultCount > 0 ||
-    show.showDays.some(
-      (day) => day.status === "JUDGING" || day.status === "RESULTS_PUBLISHED"
-    );
-
-  return getShowClusterDisplayStatus({
-    cluster: show,
-    currentEpoch,
-    entryCount,
-    resultCount,
-    hasJudgingActivity,
-  });
-}
-
 export default async function HomePage() {
   const userId = await getSessionUserId();
-  const currentEpoch = getCurrentEpoch();
-  const [newKennels, upcomingShows, championNotices, recentLitters] =
-    await Promise.all([
-      db.kennel.findMany({
-        where: {
-          createdAt: {
-            gte: getNewKennelsCutoff(),
+  const [newKennels, championNotices, recentLitters] = await Promise.all([
+    db.kennel.findMany({
+      where: {
+        createdAt: {
+          gte: getNewKennelsCutoff(),
+        },
+      },
+      orderBy: [{ createdAt: "desc" }],
+      take: 6,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        createdAt: true,
+      },
+    }),
+    db.kennelNotice.findMany({
+      where: {
+        type: "NEW_CHAMPION",
+        linkedDogId: {
+          not: null,
+        },
+      },
+      orderBy: [{ createdAtEpoch: "desc" }],
+      take: 10,
+      select: {
+        id: true,
+        createdAtEpoch: true,
+        kennel: {
+          select: {
+            name: true,
+            slug: true,
           },
         },
-        orderBy: [{ createdAt: "desc" }],
-        take: 6,
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          createdAt: true,
-        },
-      }),
-      db.showCluster.findMany({
-        where: {
-          endEpoch: {
-            gte: currentEpoch,
-          },
-          status: {
-            notIn: ["COMPLETE", "CANCELLED"],
+        linkedDogId: true,
+      },
+    }),
+    db.litter.findMany({
+      orderBy: [{ bornEpoch: "desc" }],
+      take: 5,
+      select: {
+        id: true,
+        bornEpoch: true,
+        pupCount: true,
+        breed: {
+          select: {
+            name: true,
           },
         },
-        orderBy: [{ startEpoch: "asc" }, { name: "asc" }],
-        take: 5,
-        select: {
-          id: true,
-          name: true,
-          district: true,
-          status: true,
-          startEpoch: true,
-          entryOpenEpoch: true,
-          entryCloseEpoch: true,
-          showDays: {
-            select: {
-              status: true,
-              _count: {
-                select: {
-                  showEntries: {
-                    where: {
-                      entryStatus: {
-                        in: ["ENTERED", "JUDGED"],
-                      },
-                    },
-                  },
-                  showResults: true,
-                },
-              },
-            },
+        sire: {
+          select: {
+            regNumber: true,
+            callName: true,
+            registeredName: true,
+            visibleTitlePrefix: true,
+            visibleTitleSuffix: true,
           },
         },
-      }),
-      db.kennelNotice.findMany({
-        where: {
-          type: "NEW_CHAMPION",
-          linkedDogId: {
-            not: null,
+        dam: {
+          select: {
+            regNumber: true,
+            callName: true,
+            registeredName: true,
+            visibleTitlePrefix: true,
+            visibleTitleSuffix: true,
           },
         },
-        orderBy: [{ createdAtEpoch: "desc" }],
-        take: 10,
-        select: {
-          id: true,
-          createdAtEpoch: true,
-          kennel: {
-            select: {
-              name: true,
-              slug: true,
-            },
-          },
-          linkedDogId: true,
-        },
-      }),
-      db.litter.findMany({
-        orderBy: [{ bornEpoch: "desc" }],
-        take: 5,
-        select: {
-          id: true,
-          bornEpoch: true,
-          pupCount: true,
-          breed: {
-            select: {
-              name: true,
-            },
-          },
-          sire: {
-            select: {
-              regNumber: true,
-              callName: true,
-              registeredName: true,
-              visibleTitlePrefix: true,
-              visibleTitleSuffix: true,
-            },
-          },
-          dam: {
-            select: {
-              regNumber: true,
-              callName: true,
-              registeredName: true,
-              visibleTitlePrefix: true,
-              visibleTitleSuffix: true,
-            },
-          },
-          bredByKennel: {
-            select: {
-              name: true,
-              slug: true,
-            },
+        bredByKennel: {
+          select: {
+            name: true,
+            slug: true,
           },
         },
-      }),
-    ]);
+      },
+    }),
+  ]);
 
   const championDogIds = championNotices
     .map((notice) => notice.linkedDogId)
@@ -367,47 +282,7 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-1">
-              <article className="rounded-[22px] border border-white/10 bg-black/20 p-5">
-                <h3 className="text-lg font-semibold text-white">
-                  Upcoming Shows
-                </h3>
-                <p className="mt-1 text-sm text-purple-100/65">
-                  Next open or soon-to-be judged clusters.
-                </p>
-
-                {upcomingShows.length === 0 ? (
-                  <p className="mt-4 text-sm text-purple-100/72">
-                    No upcoming shows are active right now.
-                  </p>
-                ) : (
-                  <div className="mt-4 grid gap-2.5">
-                    {upcomingShows.map((show) => (
-                        <Link
-                          key={show.id}
-                          href={`/shows/${show.id}`}
-                          className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-purple-300/35 hover:bg-white/10"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-white">
-                                {show.name}
-                              </div>
-                              <div className="mt-1 text-xs text-purple-100/65">
-                                {getShowDistrictRegionName(show.district)} ·{" "}
-                                {formatGameTimeLabel(show.startEpoch)}
-                              </div>
-                            </div>
-                            <span className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">
-                              {getUpcomingShowStatusLabel(show, currentEpoch)}
-                            </span>
-                          </div>
-                        </Link>
-                      ))}
-                  </div>
-                )}
-              </article>
-
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
               <article className="rounded-[22px] border border-white/10 bg-black/20 p-5">
                 <h3 className="text-lg font-semibold text-white">
                   Recent Champions

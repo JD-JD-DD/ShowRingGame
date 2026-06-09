@@ -144,19 +144,6 @@ const severeHipMovement = presentedValue({
     ],
   },
 });
-const severeHipCondition = presentedValue({
-  ageHours: 3 * SHOW_YEAR_HOURS,
-  category: "CONDITIONING_HANDLING",
-  presentation: {
-    phenotypeHealthTruths: [
-      {
-        conditionCode: "HIP_DYSPLASIA",
-        geneticLiability: 0.9,
-        environmentModifier: 0,
-      },
-    ],
-  },
-});
 const moderateHipMovement = presentedValue({
   ageHours: 3 * SHOW_YEAR_HOURS,
   category: "MOVEMENT",
@@ -165,19 +152,6 @@ const moderateHipMovement = presentedValue({
       {
         conditionCode: "HIP_DYSPLASIA",
         geneticLiability: 0.76,
-        environmentModifier: 0,
-      },
-    ],
-  },
-});
-const severeThyroidCondition = presentedValue({
-  ageHours: 3 * SHOW_YEAR_HOURS,
-  category: "CONDITIONING_HANDLING",
-  presentation: {
-    phenotypeHealthTruths: [
-      {
-        conditionCode: "THYROID",
-        geneticLiability: 0.92,
         environmentModifier: 0,
       },
     ],
@@ -245,16 +219,21 @@ assert.ok(
   "Severe hip dysplasia should affect movement more than moderate hip dysplasia."
 );
 assert.ok(
-  severeHipCondition.presentedValue > twoYearsMovement.presentedValue,
-  "Severe hip dysplasia should also affect conditioning."
-);
-assert.ok(
-  severeThyroidCondition.presentedValue > twoYearsMovement.presentedValue,
-  "Severe thyroid results should affect conditioning."
-);
-assert.ok(
   autoimmuneThyroidMovement.presentedValue > twoYearsMovement.presentedValue,
   "Autoimmune thyroiditis should have a mild movement presentation effect."
+);
+assert.equal(
+  deriveShowCharacteristicsFromTraits(traits).CONDITIONING_HANDLING,
+  0,
+  "Conditioning/handling should not be genetically derived from show_shine."
+);
+assert.equal(
+  deriveShowCharacteristicsFromTraits({
+    ...traits,
+    show_shine: 20,
+  }).CONDITIONING_HANDLING,
+  0,
+  "Changing show_shine should not change conditioning/handling."
 );
 
 console.table([
@@ -350,25 +329,11 @@ console.table([
     multiplier: severeHipMovement.multiplier,
   },
   {
-    stage: "Severe hip dysplasia",
-    category: "Condition",
-    trueValue: severeHipCondition.baseValue,
-    presented: severeHipCondition.presentedValue,
-    multiplier: severeHipCondition.multiplier,
-  },
-  {
     stage: "Autoimmune thyroiditis",
     category: "Movement",
     trueValue: autoimmuneThyroidMovement.baseValue,
     presented: autoimmuneThyroidMovement.presentedValue,
     multiplier: autoimmuneThyroidMovement.multiplier,
-  },
-  {
-    stage: "Reduced thyroid function",
-    category: "Condition",
-    trueValue: severeThyroidCondition.baseValue,
-    presented: severeThyroidCondition.presentedValue,
-    multiplier: severeThyroidCondition.multiplier,
   },
 ]);
 

@@ -6,7 +6,8 @@ import {
 } from "../constants/genetics.constants";
 import {
   CATEGORY_TRAIT_MAP,
-  JUDGING_CATEGORIES,
+  GENETIC_JUDGING_CATEGORIES,
+  type GeneticJudgingCategory,
   type JudgingCategory,
 } from "../constants/judging.constants";
 import type { Dog, DogTraits } from "./dog.engine";
@@ -299,7 +300,7 @@ function generateCandidateTraits(
 }
 
 
-function mapCategoryKey(category: JudgingCategory): keyof VisibleCategories {
+function mapCategoryKey(category: GeneticJudgingCategory): keyof VisibleCategories {
   switch (category) {
     case "TYPE_EXPRESSION":
       return "typeExpression";
@@ -311,8 +312,6 @@ function mapCategoryKey(category: JudgingCategory): keyof VisibleCategories {
       return "coatPresentation";
     case "TEMPERAMENT_RING_BEHAVIOR":
       return "temperamentRingBehavior";
-    case "CONDITIONING_HANDLING":
-      return "conditioningHandling";
   }
 }
 
@@ -337,7 +336,7 @@ export function deriveVisibleCategoriesFromTraits(
     conditioningHandling: 0,
   };
 
-  for (const category of JUDGING_CATEGORIES) {
+  for (const category of GENETIC_JUDGING_CATEGORIES) {
     const traitKeys = CATEGORY_TRAIT_MAP[category];
     const values = traitKeys.map((traitKey) => traits[traitKey]);
     const score = Number(average(values).toFixed(1));
@@ -346,6 +345,18 @@ export function deriveVisibleCategoriesFromTraits(
   }
 
   return visibleCategories;
+}
+
+function geneticVisibleCategoryValues(
+  visibleCategories: VisibleCategories
+): number[] {
+  return [
+    visibleCategories.typeExpression,
+    visibleCategories.structureBalance,
+    visibleCategories.movement,
+    visibleCategories.coatPresentation,
+    visibleCategories.temperamentRingBehavior,
+  ];
 }
 
 function countTraitsInRange(
@@ -387,7 +398,7 @@ function traitSpread(traits: DogTraits): number {
 
 function isFoundationCandidateAcceptable(traits: DogTraits): boolean {
   const visible = deriveVisibleCategoriesFromTraits(traits);
-  const categoryValues = Object.values(visible);
+  const categoryValues = geneticVisibleCategoryValues(visible);
   const traitValues = TRAIT_KEYS.map((traitKey) => traits[traitKey]);
 
   const eliteTraitCount = countEliteTraits(traits);
@@ -458,7 +469,7 @@ function generateFoundationTraits(
     }
 
     const visible = deriveVisibleCategoriesFromTraits(candidate);
-    const categoryValues = Object.values(visible);
+    const categoryValues = geneticVisibleCategoryValues(visible);
     const visibleQuality = averageIdealScore(categoryValues);
     const visibleFaultPressure = averageIdealDistance(categoryValues);
     const spread = traitSpread(candidate);
@@ -485,7 +496,9 @@ function calculateSuggestedPrice(
   visibleCategories: VisibleCategories,
   band: FoundationQualityBand
 ): number {
-  const visibleQuality = averageIdealScore(Object.values(visibleCategories));
+  const visibleQuality = averageIdealScore(
+    geneticVisibleCategoryValues(visibleCategories)
+  );
 
   let bandAdjustment = 0;
   switch (band) {

@@ -78,6 +78,12 @@ function formatCategoryName(key: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function geneticVisibleCategoryEntries(categories: VisibleCategories) {
+  return Object.entries(categories).filter(
+    ([key]) => key !== "conditioningHandling"
+  );
+}
+
 export default function MarketPage() {
   const [breedCatalog, setBreedCatalog] = useState<BreedCatalogDto[]>([]);
   const [loadingBreeds, setLoadingBreeds] = useState(true);
@@ -430,18 +436,20 @@ export default function MarketPage() {
                     </h3>
 
                     <div className="space-y-3">
-                      {Object.entries(dog.visibleCategories).map(([key, value]) => (
-                        <TraitLine
-                          key={key}
-                          label={formatCategoryName(key)}
-                          value={value}
-                          min={0}
-                          max={20}
-                          ideal={10}
-                          leftLabel="0"
-                          rightLabel="20"
-                        />
-                      ))}
+                      {geneticVisibleCategoryEntries(dog.visibleCategories).map(
+                        ([key, value]) => (
+                          <TraitLine
+                            key={key}
+                            label={formatCategoryName(key)}
+                            value={value}
+                            min={0}
+                            max={20}
+                            ideal={10}
+                            leftLabel="0"
+                            rightLabel="20"
+                          />
+                        )
+                      )}
                     </div>
                   </div>
 

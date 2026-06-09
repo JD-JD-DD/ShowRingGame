@@ -17,15 +17,29 @@ export const JUDGING_CATEGORIES = [
 
 export type JudgingCategory = typeof JUDGING_CATEGORIES[number];
 
+export const GENETIC_JUDGING_CATEGORIES = [
+  "TYPE_EXPRESSION",
+  "STRUCTURE_BALANCE",
+  "MOVEMENT",
+  "COAT_PRESENTATION",
+  "TEMPERAMENT_RING_BEHAVIOR",
+] as const;
+
+export type GeneticJudgingCategory =
+  typeof GENETIC_JUDGING_CATEGORIES[number];
+
 export const JUDGING_CATEGORY_COUNT = JUDGING_CATEGORIES.length;
 
 // ===============================
 // Trait → Category Mapping
 // ===============================
 
-// Used by deriveShowCharacteristics()
+// Used by deriveShowCharacteristics() for inherited trait categories only.
 
-export const CATEGORY_TRAIT_MAP: Record<JudgingCategory, readonly TraitKey[]> = {
+export const CATEGORY_TRAIT_MAP: Record<
+  GeneticJudgingCategory,
+  readonly TraitKey[]
+> = {
   TYPE_EXPRESSION: ["head", "size", "show_shine"],
 
   STRUCTURE_BALANCE: [
@@ -48,12 +62,6 @@ export const CATEGORY_TRAIT_MAP: Record<JudgingCategory, readonly TraitKey[]> = 
 
   TEMPERAMENT_RING_BEHAVIOR: [
     "temperament",
-    "show_shine",
-  ],
-
-  // for now this stays partly genetic,
-  // later training/handling/session data can be added on top
-  CONDITIONING_HANDLING: [
     "show_shine",
   ],
 };

@@ -199,6 +199,16 @@ function formatCategoryName(key: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function geneticVisibleCategoryEntries(categories: VisibleCategories) {
+  return Object.entries(categories).filter(
+    ([key]) => key !== "conditioningHandling"
+  );
+}
+
+function geneticVisibleCategoryKeys(categories: VisibleCategories) {
+  return geneticVisibleCategoryEntries(categories).map(([key]) => key);
+}
+
 function latestHealthTests(dog: DogCardDto) {
   return PHENOTYPE_HEALTH_TEST_CODES.map((testTypeCode) => ({
     testTypeCode,
@@ -293,7 +303,7 @@ function traitNumberTone(value: number) {
 }
 
 function visibleTraitNotes(dog: DogCardDto) {
-  const categories = Object.entries(dog.visibleCategories)
+  const categories = geneticVisibleCategoryEntries(dog.visibleCategories)
     .map(([key, value]) => ({
       label: formatCategoryName(key),
       value,
@@ -516,7 +526,7 @@ function coiLabel(coiPercent: number | null) {
 function complementCount(dam: DogCardDto | null, sire: DogCardDto) {
   if (!dam) return 0;
 
-  return Object.keys(dam.visibleCategories).filter((key) => {
+  return geneticVisibleCategoryKeys(dam.visibleCategories).filter((key) => {
     const damDistance = Math.abs((dam.visibleCategories[key] ?? 10) - 10);
     const sireDistance = Math.abs((sire.visibleCategories[key] ?? 10) - 10);
     return damDistance >= 2 && sireDistance < damDistance;
@@ -586,7 +596,7 @@ function TraitNumberGrid({
 }) {
   return (
     <div className={`grid gap-2 ${columns}`}>
-      {Object.entries(dog.visibleCategories).map(([key, value]) => (
+      {geneticVisibleCategoryEntries(dog.visibleCategories).map(([key, value]) => (
         <div
           key={key}
           className={`rounded-xl border px-3 py-2 ${traitNumberTone(value)}`}
@@ -749,7 +759,7 @@ function DogOptionCard({
 function MiniTraitSummary({ dog }: { dog: DogCardDto }) {
   return (
     <div className="space-y-3">
-      {Object.entries(dog.visibleCategories).map(([key, value]) => (
+      {geneticVisibleCategoryEntries(dog.visibleCategories).map(([key, value]) => (
         <TraitLine
           key={key}
           label={formatCategoryName(key)}
@@ -1026,7 +1036,7 @@ function TraitOutlook({ dam, sire }: { dam: DogCardDto; sire: DogCardDto }) {
           </tr>
         </thead>
         <tbody>
-          {Object.entries(dam.visibleCategories).map(([key, damValue]) => {
+          {geneticVisibleCategoryEntries(dam.visibleCategories).map(([key, damValue]) => {
             const sireValue = sire.visibleCategories[key] ?? damValue;
             const midpoint = (damValue + sireValue) / 2;
             const low = Math.max(0, midpoint - 2);

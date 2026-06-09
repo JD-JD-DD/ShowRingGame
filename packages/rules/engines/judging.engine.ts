@@ -3,12 +3,14 @@
 import type { Dog, DogTraits } from "./dog.engine";
 import type { Judge } from "./judge.engine";
 import {
-  JUDGING_CATEGORIES,
   CATEGORY_TRAIT_MAP,
   DOG_DAY_VARIANCE,
+  GENETIC_JUDGING_CATEGORIES,
+  JUDGING_CATEGORIES,
   RING_RANDOMNESS,
   type JudgingCategory,
 } from "../constants/judging.constants";
+import { deriveConditioningHandlingScore } from "./conditioning.engine";
 import { applyPresentationModifiersToCharacteristics } from "./presentation.engine";
 import { scoreValueAgainstIdeal } from "./idealScoring.engine";
 
@@ -124,11 +126,13 @@ export function deriveShowCharacteristicsFromTraits(
 ): ShowCharacteristics {
   const result = {} as ShowCharacteristics;
 
-  for (const category of JUDGING_CATEGORIES) {
+  for (const category of GENETIC_JUDGING_CATEGORIES) {
     const traitKeys = CATEGORY_TRAIT_MAP[category];
     const values = traitKeys.map((trait) => traits[trait]);
     result[category] = roundScore(average(values));
   }
+
+  result.CONDITIONING_HANDLING = deriveConditioningHandlingScore();
 
   return result;
 }
@@ -143,6 +147,9 @@ export function scoreDogByJudgeWeights(args: {
   const random01 = args.random01 ?? Math.random;
 
   const baseCharacteristics = deriveShowCharacteristicsFromTraits(dog.traits);
+  baseCharacteristics.CONDITIONING_HANDLING = deriveConditioningHandlingScore(
+    dog.presentation
+  );
   const characteristics =
     args.showEpoch == null
       ? baseCharacteristics

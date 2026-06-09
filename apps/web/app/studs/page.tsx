@@ -45,6 +45,12 @@ function formatCategoryName(key: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function geneticVisibleCategoryEntries(categories: Record<string, number>) {
+  return Object.entries(categories).filter(
+    ([key]) => key !== "conditioningHandling"
+  );
+}
+
 function formatGameDate(epoch: number) {
   return epochToDate(epoch).toLocaleDateString("en-US", {
     month: "numeric",
@@ -431,18 +437,20 @@ export default async function StudsPage({ searchParams }: PageProps) {
                       </h3>
 
                       <div className="space-y-3">
-                        {Object.entries(visibleCategories).map(([key, value]) => (
-                          <TraitLine
-                            key={key}
-                            label={formatCategoryName(key)}
-                            value={value}
-                            min={0}
-                            max={20}
-                            ideal={10}
-                            leftLabel="0"
-                            rightLabel="20"
-                          />
-                        ))}
+                        {geneticVisibleCategoryEntries(visibleCategories).map(
+                          ([key, value]) => (
+                            <TraitLine
+                              key={key}
+                              label={formatCategoryName(key)}
+                              value={value}
+                              min={0}
+                              max={20}
+                              ideal={10}
+                              leftLabel="0"
+                              rightLabel="20"
+                            />
+                          )
+                        )}
                       </div>
                     </div>
 

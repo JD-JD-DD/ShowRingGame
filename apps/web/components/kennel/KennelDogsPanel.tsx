@@ -1250,7 +1250,7 @@ export default function KennelDogsPanel() {
                     direction={sortDirection}
                     onClick={() => toggleSort("conditioningHandling")}
                   >
-                    Cond.
+                    Prep
                   </SortButton>
                 </th>
                 <th className="px-3 py-2">Status</th>

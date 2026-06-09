@@ -9,6 +9,12 @@ export type DogTraits = Record<TraitKey, number>;
 export type DogPresentationInfluences = {
   dueEpoch?: number | null;
   lastWhelpedEpoch?: number | null;
+  coatCondition?: number | null;
+  muscleTone?: number | null;
+  ringObedience?: number | null;
+  fatiguePoints?: number | null;
+  conditioningSnapshot?: number | null;
+  fatigueSnapshot?: number | null;
   phenotypeHealthTruths?: Array<{
     conditionCode: string;
     geneticLiability: number;

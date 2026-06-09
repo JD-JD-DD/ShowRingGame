@@ -10,7 +10,6 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
-import { deriveVisibleCategoriesFromTraits } from "@showring/rules";
 import {
   DAM_MAX_BREED_AGE_HOURS,
   MAX_SHOW_AGE_HOURS,
@@ -20,6 +19,8 @@ import {
   PHENOTYPE_HEALTH_TESTS,
   PUPPY_SALE_MIN_AGE_HOURS,
   WHELPING_COOLDOWN_HOURS,
+  deriveConditioningHandlingScore,
+  deriveVisibleCategoriesFromTraits,
   getPuppyRehomePayoutForAgeHours,
   getPhenotypeHealthResultLabel,
   getShowDistrictRegionName,
@@ -920,18 +921,26 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const ageHours = Math.max(0, currentEpoch - dog.birthEpoch);
   const rehomePayout = getPuppyRehomePayoutForAgeHours(ageHours);
 
-  const visibleCategories = deriveVisibleCategoriesFromTraits({
-    head: dog.traitHead,
-    forequarters: dog.traitForequarters,
-    hindquarters: dog.traitHindquarters,
-    gait: dog.traitGait,
-    coat: dog.traitCoat,
-    size: dog.traitSize,
-    temperament: dog.traitTemperament,
-    show_shine: dog.traitShowShine,
-    feet: dog.traitFeet,
-    topline: dog.traitTopline,
-  });
+  const visibleCategories = {
+    ...deriveVisibleCategoriesFromTraits({
+      head: dog.traitHead,
+      forequarters: dog.traitForequarters,
+      hindquarters: dog.traitHindquarters,
+      gait: dog.traitGait,
+      coat: dog.traitCoat,
+      size: dog.traitSize,
+      temperament: dog.traitTemperament,
+      show_shine: dog.traitShowShine,
+      feet: dog.traitFeet,
+      topline: dog.traitTopline,
+    }),
+    conditioningHandling: deriveConditioningHandlingScore({
+      coatCondition: dog.coatCondition,
+      muscleTone: dog.muscleTone,
+      ringObedience: dog.ringObedience,
+      fatiguePoints: dog.fatiguePoints,
+    }),
+  };
 
   const isOwnedByCurrentKennel = dog.ownerKennel?.id === currentKennel.id;
   const [groomingSummary, groomingStatusMap] = isOwnedByCurrentKennel
@@ -1444,7 +1453,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         <section className="mb-8 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <CollapsibleDogSection
             title="Visible Trait Categories"
-            description="Player-facing trait summaries shown on a 0-20 scale, with 10 as ideal."
+            description="Inherited categories use a 0-20 scale with 10 as ideal. Conditioning Handling is owner-built preparation scored from 0-10."
             className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]"
             contentClassName="mt-6 space-y-4"
           >
@@ -1454,10 +1463,14 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 label={formatCategoryName(key)}
                 value={value}
                 min={0}
-                max={20}
+                max={key === "conditioningHandling" ? 10 : 20}
                 ideal={10}
-                leftLabel="Poor"
-                rightLabel="Poor"
+                leftLabel={
+                  key === "conditioningHandling" ? "Unprepared" : "Poor"
+                }
+                rightLabel={
+                  key === "conditioningHandling" ? "Prepared" : "Poor"
+                }
               />
             ))}
           </CollapsibleDogSection>
