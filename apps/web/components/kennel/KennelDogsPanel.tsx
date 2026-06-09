@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
@@ -158,48 +157,12 @@ function colorClassForVisibleValue(value: number): string {
   return "text-red-300";
 }
 
-function formatBreedingStatus(status: BreedingCardStatus): string {
-  if (
-    status.label === "Pregnant" &&
-    typeof status.dueInHours === "number" &&
-    Number.isFinite(status.dueInHours)
-  ) {
-    return `Pregnant, due in ${status.dueInHours}d`;
-  }
-
-  if (
-    status.label === "Pending Pregnancy Confirmation" &&
-    typeof status.pregCheckInHours === "number" &&
-    Number.isFinite(status.pregCheckInHours)
-  ) {
-    return `Check in ${status.pregCheckInHours}d`;
-  }
-
-  if (
-    status.label === "Post-Whelp Cooldown" &&
-    typeof status.cooldownInHours === "number" &&
-    Number.isFinite(status.cooldownInHours)
-  ) {
-    return `Cooldown ${status.cooldownInHours}d`;
-  }
-
-  return status.label;
-}
-
 function StatCell({ value }: { value: number }) {
   return (
     <div className={`text-sm font-semibold ${colorClassForVisibleValue(value)}`}>
       {value.toFixed(1)}
     </div>
   );
-}
-
-function formatCondition(value: number): string {
-  return value.toFixed(2);
-}
-
-function formatSignedCondition(value: number): string {
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
 }
 
 function SortButton({
@@ -655,22 +618,6 @@ export default function KennelDogsPanel() {
     } finally {
       setGroomingActionDogId(null);
     }
-  }
-
-  async function cancelGroomingListing(dog: KennelDogDto) {
-    const listingId = dog.groomingStatus.openListingId;
-
-    if (!listingId) {
-      return;
-    }
-
-    await runGroomingAction({
-      dogId: dog.dogId,
-      endpoint: `/api/services/grooming/listings/${listingId}/cancel`,
-      confirmMessage: `Cancel outside grooming listing for ${getDogDisplayName(
-        dog
-      )}?`,
-    });
   }
 
   async function updateSelectedDogsArea(action: "add" | "remove") {
@@ -1164,11 +1111,11 @@ export default function KennelDogsPanel() {
           No dogs match your current filters.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-[1360px] w-full border-separate border-spacing-y-2 text-sm">
+        <div className="overflow-hidden">
+          <table className="w-full table-fixed border-separate border-spacing-y-2 text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
-                <th className="px-3 py-2">
+                <th className="w-10 px-2 py-2">
                   <button
                     type="button"
                     onClick={toggleVisibleSelection}
@@ -1177,8 +1124,7 @@ export default function KennelDogsPanel() {
                     Select
                   </button>
                 </th>
-                <th className="px-3 py-2 text-right">Open</th>
-                <th className="px-3 py-2">
+                <th className="w-[12%] px-2 py-2">
                   <SortButton
                     active={sortKey === "breed"}
                     direction={sortDirection}
@@ -1187,7 +1133,7 @@ export default function KennelDogsPanel() {
                     Breed
                   </SortButton>
                 </th>
-                <th className="px-3 py-2">
+                <th className="w-[18%] px-2 py-2">
                   <SortButton
                     active={sortKey === "name"}
                     direction={sortDirection}
@@ -1196,7 +1142,7 @@ export default function KennelDogsPanel() {
                     Dog
                   </SortButton>
                 </th>
-                <th className="px-3 py-2">
+                <th className="w-12 px-2 py-2">
                   <SortButton
                     active={sortKey === "sex"}
                     direction={sortDirection}
@@ -1205,7 +1151,7 @@ export default function KennelDogsPanel() {
                     Sex
                   </SortButton>
                 </th>
-                <th className="px-3 py-2">
+                <th className="w-16 px-2 py-2">
                   <SortButton
                     active={sortKey === "age"}
                     direction={sortDirection}
@@ -1214,7 +1160,7 @@ export default function KennelDogsPanel() {
                     Age
                   </SortButton>
                 </th>
-                <th className="px-3 py-2">
+                <th className="w-14 px-2 py-2">
                   <SortButton
                     active={sortKey === "typeExpression"}
                     direction={sortDirection}
@@ -1223,7 +1169,7 @@ export default function KennelDogsPanel() {
                     Type
                   </SortButton>
                 </th>
-                <th className="px-3 py-2">
+                <th className="w-16 px-2 py-2">
                   <SortButton
                     active={sortKey === "structureBalance"}
                     direction={sortDirection}
@@ -1232,7 +1178,7 @@ export default function KennelDogsPanel() {
                     Struct.
                   </SortButton>
                 </th>
-                <th className="px-3 py-2">
+                <th className="w-14 px-2 py-2">
                   <SortButton
                     active={sortKey === "movement"}
                     direction={sortDirection}
@@ -1241,7 +1187,7 @@ export default function KennelDogsPanel() {
                     Move.
                   </SortButton>
                 </th>
-                <th className="px-3 py-2">
+                <th className="w-14 px-2 py-2">
                   <SortButton
                     active={sortKey === "coatPresentation"}
                     direction={sortDirection}
@@ -1250,7 +1196,7 @@ export default function KennelDogsPanel() {
                     Coat
                   </SortButton>
                 </th>
-                <th className="px-3 py-2">
+                <th className="w-14 px-2 py-2">
                   <SortButton
                     active={sortKey === "temperamentRingBehavior"}
                     direction={sortDirection}
@@ -1259,7 +1205,7 @@ export default function KennelDogsPanel() {
                     Temp.
                   </SortButton>
                 </th>
-                <th className="px-3 py-2">
+                <th className="w-14 px-2 py-2">
                   <SortButton
                     active={sortKey === "conditioningHandling"}
                     direction={sortDirection}
@@ -1268,49 +1214,68 @@ export default function KennelDogsPanel() {
                     Prep
                   </SortButton>
                 </th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Grooming</th>
-                <th className="px-3 py-2">Areas</th>
+                <th className="w-[72px] px-2 py-2 text-center">Groom</th>
+                <th className="w-[72px] px-2 py-2 text-center">Offer</th>
               </tr>
             </thead>
 
             <tbody>
-              {filteredDogs.map((dog) => (
-                <tr
-                  key={dog.dogId}
-                  className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
-                >
-                  <td className="rounded-l-2xl px-3 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedDogIds.includes(dog.dogId)}
-                      onChange={() => toggleDogSelection(dog.dogId)}
-                      aria-label={`Select ${getDogDisplayName(dog)}`}
-                    />
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <Link
-                      href={
-                        activeAreaId
-                          ? {
-                              pathname: `/dogs/${dog.dogId}`,
-                              query: { areaId: activeAreaId },
-                            }
-                          : `/dogs/${dog.dogId}`
+              {filteredDogs.map((dog) => {
+                const dogHref = activeAreaId
+                  ? `/dogs/${dog.dogId}?areaId=${encodeURIComponent(
+                      activeAreaId
+                    )}`
+                  : `/dogs/${dog.dogId}`;
+                const groomingBusy = groomingActionDogId === dog.dogId;
+                const hasOpenGroomingListing = Boolean(
+                  dog.groomingStatus.openListingId
+                );
+                const canUseGroomingAction =
+                  (groomingSummary?.groomingActionsRemainingThisWeek ?? 0) > 0;
+                const groomDisabled =
+                  dog.groomingStatus.groomedThisWeek ||
+                  hasOpenGroomingListing ||
+                  !canUseGroomingAction ||
+                  groomingBusy;
+                const offerDisabled =
+                  dog.groomingStatus.groomedThisWeek ||
+                  hasOpenGroomingListing ||
+                  groomingBusy;
+
+                return (
+                  <tr
+                    key={dog.dogId}
+                    role="link"
+                    tabIndex={0}
+                    onClick={() => router.push(dogHref)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        router.push(dogHref);
                       }
-                      className="inline-flex rounded-xl border border-purple-300/25 bg-white/5 px-3 py-1.5 text-xs font-semibold text-purple-100 transition hover:bg-white/10"
-                    >
-                      Open
-                    </Link>
+                    }}
+                    className="cursor-pointer border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)] transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-300/45"
+                  >
+                    <td className="rounded-l-2xl px-2 py-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedDogIds.includes(dog.dogId)}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        onChange={() => toggleDogSelection(dog.dogId)}
+                        aria-label={`Select ${getDogDisplayName(dog)}`}
+                      />
+                    </td>
+
+                  <td className="px-2 py-2 text-white font-medium">
+                    <div className="truncate text-xs leading-4">
+                      {dog.breedName}
+                    </div>
                   </td>
 
-                  <td className="px-3 py-3 text-white font-medium">
-                    {dog.breedName}
-                  </td>
-
-                  <td className="px-3 py-3 text-white font-medium">
-                    <div className="flex items-center gap-1.5">
-                      <span>{getDogDisplayName(dog)}</span>
+                  <td className="px-2 py-2 text-white font-medium">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate">{getDogDisplayName(dog)}</span>
                       <DogStatusBadges
                         healthStatus={dog.healthBadgeStatus}
                         isListedForSale={dog.isListedForSale}
@@ -1319,135 +1284,74 @@ export default function KennelDogsPanel() {
                     </div>
                   </td>
 
-                  <td className="px-3 py-3 text-white">{dog.sex}</td>
-                  <td className="px-3 py-3 text-white">
+                  <td className="px-2 py-2 text-white">{dog.sex}</td>
+                  <td className="px-2 py-2 text-white">
                     {formatAge(dog.ageHours)}
                   </td>
 
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2">
                     <StatCell value={dog.visibleCategories.typeExpression ?? 0} />
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2">
                     <StatCell value={dog.visibleCategories.structureBalance ?? 0} />
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2">
                     <StatCell value={dog.visibleCategories.movement ?? 0} />
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2">
                     <StatCell value={dog.visibleCategories.coatPresentation ?? 0} />
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2">
                     <StatCell
                       value={dog.visibleCategories.temperamentRingBehavior ?? 0}
                     />
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2">
                     <StatCell
                       value={dog.visibleCategories.conditioningHandling ?? 0}
                     />
                   </td>
 
-                  <td className="px-3 py-3 text-xs text-purple-100/80 whitespace-nowrap">
-                    {formatBreedingStatus(dog.breedingCardStatus)}
+                  <td className="px-2 py-2">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void runGroomingAction({
+                          dogId: dog.dogId,
+                          endpoint: "/api/services/grooming/self-groom",
+                        });
+                      }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      disabled={groomDisabled}
+                      className="w-full rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[0.7rem] font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Groom
+                    </button>
                   </td>
-                  <td className="px-3 py-3">
-                    <div className="grid min-w-[180px] gap-2">
-                      <span
-                        className={
-                          dog.groomingStatus.groomedThisWeek
-                            ? "rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2 py-1 text-center text-[0.66rem] font-semibold text-emerald-100"
-                            : dog.groomingStatus.openListingId
-                              ? "rounded-full border border-sky-300/25 bg-sky-500/10 px-2 py-1 text-center text-[0.66rem] font-semibold text-sky-100"
-                              : "rounded-full border border-purple-300/20 bg-black/20 px-2 py-1 text-center text-[0.66rem] font-semibold text-purple-100/70"
-                        }
-                      >
-                        {dog.groomingStatus.groomingStatusLabel}
-                      </span>
-                      <div className="grid grid-cols-2 gap-1 text-[0.68rem] text-purple-100/70">
-                        <span>Coat: {formatCondition(dog.groomingStatus.currentCoatCondition)}</span>
-                        <span>
-                          Net:{" "}
-                          {formatSignedCondition(
-                            dog.groomingStatus.netGroomingImpact
-                          )}
-                        </span>
-                      </div>
-                      {dog.groomingStatus.openListingId ? (
-                        <button
-                          type="button"
-                          onClick={() => void cancelGroomingListing(dog)}
-                          disabled={groomingActionDogId === dog.dogId}
-                          className="rounded-lg border border-red-300/25 bg-red-500/10 px-2 py-1 text-[0.7rem] font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45"
-                        >
-                          Cancel Listing
-                        </button>
-                      ) : (
-                        <div className="grid grid-cols-2 gap-1">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void runGroomingAction({
-                                dogId: dog.dogId,
-                                endpoint: "/api/services/grooming/self-groom",
-                              })
-                            }
-                            disabled={
-                              dog.groomingStatus.groomedThisWeek ||
-                              (groomingSummary?.groomingActionsRemainingThisWeek ??
-                                0) <= 0 ||
-                              groomingActionDogId === dog.dogId
-                            }
-                            className="rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[0.7rem] font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-45"
-                          >
-                            Groom
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void runGroomingAction({
-                                dogId: dog.dogId,
-                                endpoint: "/api/services/grooming/list",
-                                confirmMessage: `Offer ${getDogDisplayName(
-                                  dog
-                                )} for outside grooming?`,
-                              })
-                            }
-                            disabled={
-                              dog.groomingStatus.groomedThisWeek ||
-                              groomingActionDogId === dog.dogId
-                            }
-                            className="rounded-lg border border-sky-300/25 bg-sky-500/10 px-2 py-1 text-[0.7rem] font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
-                          >
-                            Offer
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="rounded-r-2xl px-3 py-3">
-                    <div className="flex max-w-[220px] flex-wrap gap-1.5">
-                      {dog.areaIds.length > 0 ? (
-                        dog.areaIds.map((areaId) => {
-                          const area = areas.find(
-                            (candidate) => candidate.id === areaId
-                          );
-
-                          return area ? (
-                            <span
-                              key={`${dog.dogId}-${area.id}`}
-                              className="rounded-full border border-sky-300/25 bg-sky-500/10 px-2 py-0.5 text-[0.66rem] font-semibold text-sky-100"
-                            >
-                              {area.name}
-                            </span>
-                          ) : null;
-                        })
-                      ) : (
-                        <span className="text-xs text-purple-100/35">-</span>
-                      )}
-                    </div>
+                  <td className="rounded-r-2xl px-2 py-2">
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void runGroomingAction({
+                          dogId: dog.dogId,
+                          endpoint: "/api/services/grooming/list",
+                          confirmMessage: `Offer ${getDogDisplayName(
+                            dog
+                          )} for outside grooming?`,
+                        });
+                      }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                      disabled={offerDisabled}
+                      className="w-full rounded-lg border border-sky-300/25 bg-sky-500/10 px-2 py-1 text-[0.7rem] font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      Offer
+                    </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
