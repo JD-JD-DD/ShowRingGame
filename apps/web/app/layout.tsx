@@ -5,6 +5,7 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import GlobalUtcClock from "@/components/GlobalUtcClock";
 import NotificationInboxLink from "@/components/NotificationInboxLink";
+import ReturnToTopButton from "@/components/ReturnToTopButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,6 +40,7 @@ export default function RootLayout({
           <NotificationInboxLink />
         </Suspense>
         {children}
+        <ReturnToTopButton />
         <Analytics />
       </body>
     </html>
