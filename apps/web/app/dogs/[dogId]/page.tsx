@@ -86,6 +86,14 @@ function formatMoney(amount: number): string {
   return `$${amount.toLocaleString()}`;
 }
 
+function formatCondition(value: number): string {
+  return value.toFixed(2);
+}
+
+function formatSignedCondition(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
+}
+
 function formatShowDate(epoch: number): string {
   return epochToDate(epoch).toLocaleDateString("en-US", {
     month: "numeric",
@@ -942,7 +950,14 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const groomingStatus = groomingStatusMap.get(dog.id) ?? {
     dogId: dog.id,
     groomedThisWeek: false,
+    listedForGrooming: false,
     openListingId: null,
+    currentCoatCondition: dog.coatCondition,
+    totalGroomingGain: 0,
+    totalGroomingDecay: 0,
+    netGroomingImpact: 0,
+    lastGroomedEpoch: null,
+    currentGroomingWeek: 0,
     groomingStatusLabel: "Needs grooming" as const,
   };
   const upcomingShowEntries = isOwnedByCurrentKennel
@@ -1297,22 +1312,53 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               ) : null}
 
               {isOwnedByCurrentKennel && isAlive ? (
-                <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-100/80">
-                    Grooming
-                  </div>
-                  <div className="mt-2 text-sm text-purple-100/75">
-                    {groomingStatus.groomingStatusLabel}
-                    {groomingSummary ? (
-                      <>
-                        {" "}
-                        - {groomingSummary.groomingActionsRemainingThisWeek} of{" "}
-                        {groomingSummary.totalGroomingActionLimit} actions
-                        remaining this week.
-                      </>
+                <details className="group">
+                  <summary className="list-none rounded-2xl bg-amber-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-amber-500 [&::-webkit-details-marker]:hidden">
+                    Groom Dog
+                  </summary>
+                  <div className="mt-3 rounded-2xl border border-amber-300/20 bg-black/25 p-4">
+                    <div className="text-sm font-semibold text-white">
+                      Grooming
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-purple-100/75">
+                      Grooming improves coat condition and uses one of your
+                      kennel&apos;s weekly grooming actions.
+                    </p>
+                    <div className="mt-3 grid gap-2 text-sm text-purple-100/75">
+                      <div>
+                        Grooming actions remaining this week:{" "}
+                        {groomingSummary?.groomingActionsRemainingThisWeek ?? 0}{" "}
+                        / {groomingSummary?.totalGroomingActionLimit ?? 10}
+                      </div>
+                      <div>
+                        Current coat condition:{" "}
+                        {formatCondition(groomingStatus.currentCoatCondition)}
+                      </div>
+                      <div>
+                        Net grooming effect:{" "}
+                        {formatSignedCondition(
+                          groomingStatus.netGroomingImpact
+                        )}
+                      </div>
+                      <div>Status: {groomingStatus.groomingStatusLabel}</div>
+                    </div>
+                    {groomingStatus.openListingId ? (
+                      <div className="mt-3 rounded-xl border border-sky-300/20 bg-sky-500/10 px-3 py-2 text-xs leading-5 text-sky-100">
+                        This dog is listed for outside grooming. Cancel the
+                        listing before grooming this dog yourself.
+                      </div>
+                    ) : groomingStatus.groomedThisWeek ? (
+                      <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-xs leading-5 text-emerald-100">
+                        This dog has already been groomed this week.
+                      </div>
+                    ) : (groomingSummary?.groomingActionsRemainingThisWeek ??
+                        0) <= 0 ? (
+                      <div className="mt-3 rounded-xl border border-red-300/20 bg-red-500/10 px-3 py-2 text-xs leading-5 text-red-100">
+                        You have used all 10 grooming actions for this game
+                        week.
+                      </div>
                     ) : null}
-                  </div>
-                  <div className="mt-3 grid gap-2">
+                    <div className="mt-3 grid gap-2">
                     {groomingStatus.openListingId ? (
                       <form
                         action={`/api/services/grooming/listings/${groomingStatus.openListingId}/cancel`}
@@ -1351,7 +1397,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                             }
                             className="w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-45"
                           >
-                            Groom Dog
+                            Confirm Groom Dog
                           </button>
                         </form>
                         <form
@@ -1369,13 +1415,14 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                             disabled={groomingStatus.groomedThisWeek}
                             className="w-full rounded-xl border border-sky-300/25 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
                           >
-                            Offer for Grooming
+                            Offer for Outside Grooming
                           </ConfirmSubmitButton>
                         </form>
                       </>
                     )}
+                    </div>
                   </div>
-                </div>
+                </details>
               ) : null}
 
               {isOwnedByCurrentKennel &&
@@ -1488,7 +1535,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     Coat Condition
                   </div>
                   <div className="mt-1 text-sm font-medium text-white">
-                    {dog.coatCondition.toFixed(2)}
+                    {formatCondition(groomingStatus.currentCoatCondition)}
                   </div>
                 </div>
 
@@ -1499,6 +1546,30 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     </div>
                     <div className="mt-1 text-sm font-medium text-white">
                       {groomingStatus.groomingStatusLabel}
+                    </div>
+                  </div>
+                ) : null}
+
+                {isOwnedByCurrentKennel ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                    <div className="text-xs uppercase tracking-wide text-purple-200">
+                      Net Grooming Effect
+                    </div>
+                    <div className="mt-1 text-sm font-medium text-white">
+                      {formatSignedCondition(groomingStatus.netGroomingImpact)}
+                    </div>
+                  </div>
+                ) : null}
+
+                {isOwnedByCurrentKennel ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                    <div className="text-xs uppercase tracking-wide text-purple-200">
+                      Grooming History
+                    </div>
+                    <div className="mt-1 text-sm font-medium text-white">
+                      +{formatCondition(groomingStatus.totalGroomingGain)} gain
+                      / -{formatCondition(groomingStatus.totalGroomingDecay)}{" "}
+                      decay
                     </div>
                   </div>
                 ) : null}

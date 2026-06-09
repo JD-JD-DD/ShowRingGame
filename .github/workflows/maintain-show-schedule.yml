@@ -32,3 +32,8 @@ jobs:
             --header "Authorization: Bearer ${SHOWRING_JOBS_SECRET}" \
             "${SHOWRING_JOBS_BASE_URL%/}/api/jobs/maintain-show-schedule"
           echo
+
+          curl --fail-with-body --show-error --silent \
+            --header "Authorization: Bearer ${SHOWRING_JOBS_SECRET}" \
+            "${SHOWRING_JOBS_BASE_URL%/}/api/jobs/apply-grooming-decay"
+          echo

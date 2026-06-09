@@ -164,6 +164,11 @@ enum GroomingServiceActionType {
   OUTSIDE_GROOM
 }
 
+enum DogConditionEventType {
+  GROOMING_GAIN
+  MISSED_GROOMING_DECAY
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -225,6 +230,8 @@ model Kennel {
     groomingListingsClaimed GroomingListing[] @relation("GroomingListingGroomerKennel")
     groomingActionsOwned    GroomingServiceAction[] @relation("GroomingActionOwnerKennel")
     groomingActionsPerformed GroomingServiceAction[] @relation("GroomingActionGroomerKennel")
+    conditionEventsActed    DogConditionEvent[] @relation("DogConditionEventActorKennel")
+    conditionEventsOwned    DogConditionEvent[] @relation("DogConditionEventOwnerKennel")
     serviceProfile          KennelServiceProfile?
 
   @@index([userId])
@@ -337,6 +344,7 @@ model Dog {
     serviceClaims KennelServiceClaim[]
     groomingListings GroomingListing[]
     groomingServiceActions GroomingServiceAction[]
+    conditionEvents DogConditionEvent[]
 
   @@index([breedCode2])
   @@index([ownerKennelId])
@@ -844,6 +852,32 @@ model GroomingServiceAction {
   @@index([groomerKennelId])
   @@index([occurredAtEpoch])
   @@index([actionType])
+}
+
+model DogConditionEvent {
+  id                  String                @id @default(cuid())
+  dogId               String
+  actorKennelId       String?
+  ownerKennelIdAtEvent String?
+  eventType           DogConditionEventType
+  amount              Float
+  conditionBefore     Float
+  conditionAfter      Float
+  groomingWeek        Int
+  occurredAtEpoch     Int
+  decayKey            String?               @unique
+  note                String?
+  createdAt           DateTime              @default(now())
+
+  dog                 Dog     @relation(fields: [dogId], references: [id])
+  actorKennel         Kennel? @relation("DogConditionEventActorKennel", fields: [actorKennelId], references: [id])
+  ownerKennelAtEvent  Kennel? @relation("DogConditionEventOwnerKennel", fields: [ownerKennelIdAtEvent], references: [id])
+
+  @@index([dogId])
+  @@index([actorKennelId])
+  @@index([ownerKennelIdAtEvent])
+  @@index([eventType])
+  @@index([groomingWeek])
 }
 
 model KennelServiceProfile {

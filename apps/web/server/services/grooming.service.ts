@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
+import { MIN_SHOW_AGE_HOURS } from "@showring/rules";
 
 type DbClient = typeof db | Prisma.TransactionClient;
 
@@ -10,11 +11,13 @@ export const GROOMING_BASE_PAY = 500;
 export const TOTAL_GROOMING_ACTION_LIMIT_PER_WEEK = 10;
 export const DOG_GROOM_LIMIT_PER_WEEK = 1;
 export const BASE_COAT_CONDITION_GAIN = 0.2;
+export const MISSED_GROOMING_DECAY = 0.05;
 export const GROOMING_XP_PER_ACTION = 1;
 export const GROOMING_LEVEL_XP_INTERVAL = 10;
 export const GROOMING_WEEK_HOURS = 7;
 
 const MAX_COAT_CONDITION = 20;
+const MIN_COAT_CONDITION = 0;
 
 export type KennelGroomingSummaryDto = {
   groomingActionsUsedThisWeek: number;
@@ -39,6 +42,10 @@ export type OpenGroomingJobDto = {
   breedName: string;
   ownerKennelName: string;
   currentCoatCondition: number;
+  groomingStatusLabel: "Groomed this week" | "Listed for grooming" | "Needs grooming";
+  totalGroomingGain: number;
+  totalGroomingDecay: number;
+  netGroomingImpact: number;
   price: number;
   listedAtEpoch: number;
 };
@@ -46,8 +53,34 @@ export type OpenGroomingJobDto = {
 export type OwnedDogGroomingStatusDto = {
   dogId: string;
   groomedThisWeek: boolean;
+  listedForGrooming: boolean;
   openListingId: string | null;
+  currentCoatCondition: number;
+  totalGroomingGain: number;
+  totalGroomingDecay: number;
+  netGroomingImpact: number;
+  lastGroomedEpoch: number | null;
+  currentGroomingWeek: number;
   groomingStatusLabel: "Groomed this week" | "Listed for grooming" | "Needs grooming";
+};
+
+export type DogGroomingConditionSummaryDto = OwnedDogGroomingStatusDto;
+
+export type MissedGroomingDecayResultDto = {
+  dogId: string;
+  groomingWeek: number;
+  applied: boolean;
+  decayAmount: number;
+  reason: string | null;
+};
+
+export type GroomingDecayMaintenanceResultDto = {
+  currentGroomingWeek: number;
+  completedGroomingWeek: number | null;
+  checked: number;
+  applied: number;
+  skipped: number;
+  results: MissedGroomingDecayResultDto[];
 };
 
 export type GroomingActionResultDto = {
@@ -78,6 +111,14 @@ export function getGroomingWeekStartEpoch(currentEpoch: number): number {
   return getGroomingWeekIndex(currentEpoch) * GROOMING_WEEK_HOURS;
 }
 
+function getGroomingWeekStartEpochByIndex(groomingWeek: number): number {
+  return groomingWeek * GROOMING_WEEK_HOURS;
+}
+
+function getGroomingWeekEndEpochByIndex(groomingWeek: number): number {
+  return getGroomingWeekStartEpochByIndex(groomingWeek) + GROOMING_WEEK_HOURS;
+}
+
 function formatMoney(amount: number): string {
   return `$${amount.toLocaleString()}`;
 }
@@ -88,6 +129,10 @@ function formatCoatGain(gain: number): string {
 
 function calculateGroomingLevel(xp: number): number {
   return Math.floor(xp / GROOMING_LEVEL_XP_INTERVAL);
+}
+
+function getMissedGroomingDecayKey(dogId: string, groomingWeek: number): string {
+  return `missed-grooming:${dogId}:${groomingWeek}`;
 }
 
 function applyCoatGain(currentCoatCondition: number): {
@@ -103,6 +148,53 @@ function applyCoatGain(currentCoatCondition: number): {
     nextCoatCondition,
     actualGain: Math.max(0, nextCoatCondition - currentCoatCondition),
   };
+}
+
+function applyCoatDecay(
+  currentCoatCondition: number,
+  decayAmount: number
+): {
+  nextCoatCondition: number;
+  actualDecay: number;
+} {
+  const nextCoatCondition = Math.max(
+    MIN_COAT_CONDITION,
+    currentCoatCondition - decayAmount
+  );
+
+  return {
+    nextCoatCondition,
+    actualDecay: Math.max(0, currentCoatCondition - nextCoatCondition),
+  };
+}
+
+async function createGroomingGainConditionEvent(args: {
+  client: DbClient;
+  dogId: string;
+  actorKennelId: string;
+  ownerKennelIdAtEvent: string;
+  conditionBefore: number;
+  conditionAfter: number;
+  amount: number;
+  currentEpoch: number;
+}) {
+  if (args.amount <= 0) {
+    return null;
+  }
+
+  return args.client.dogConditionEvent.create({
+    data: {
+      dogId: args.dogId,
+      actorKennelId: args.actorKennelId,
+      ownerKennelIdAtEvent: args.ownerKennelIdAtEvent,
+      eventType: "GROOMING_GAIN",
+      amount: args.amount,
+      conditionBefore: args.conditionBefore,
+      conditionAfter: args.conditionAfter,
+      groomingWeek: getGroomingWeekIndex(args.currentEpoch),
+      occurredAtEpoch: args.currentEpoch,
+    },
+  });
 }
 
 async function getOrCreateServiceProfile(args: {
@@ -280,12 +372,20 @@ export async function getOwnedDogGroomingStatuses(args: {
 }): Promise<Map<string, OwnedDogGroomingStatusDto>> {
   const dogIds = [...new Set(args.dogIds)].filter(Boolean);
   const statuses = new Map<string, OwnedDogGroomingStatusDto>();
+  const currentGroomingWeek = getGroomingWeekIndex(args.currentEpoch);
 
   for (const dogId of dogIds) {
     statuses.set(dogId, {
       dogId,
       groomedThisWeek: false,
+      listedForGrooming: false,
       openListingId: null,
+      currentCoatCondition: 0,
+      totalGroomingGain: 0,
+      totalGroomingDecay: 0,
+      netGroomingImpact: 0,
+      lastGroomedEpoch: null,
+      currentGroomingWeek,
       groomingStatusLabel: "Needs grooming",
     });
   }
@@ -295,7 +395,19 @@ export async function getOwnedDogGroomingStatuses(args: {
   }
 
   const weekStartEpoch = getGroomingWeekStartEpoch(args.currentEpoch);
-  const [actions, listings] = await Promise.all([
+  const [dogs, actions, lastGrooms, listings, conditionTotals] = await Promise.all([
+    db.dog.findMany({
+      where: {
+        id: {
+          in: dogIds,
+        },
+        ownerKennelId: args.kennelId,
+      },
+      select: {
+        id: true,
+        coatCondition: true,
+      },
+    }),
     db.groomingServiceAction.findMany({
       where: {
         dogId: {
@@ -307,6 +419,19 @@ export async function getOwnedDogGroomingStatuses(args: {
       },
       select: {
         dogId: true,
+      },
+    }),
+    db.groomingServiceAction.findMany({
+      where: {
+        dogId: {
+          in: dogIds,
+        },
+      },
+      orderBy: [{ dogId: "asc" }, { occurredAtEpoch: "desc" }],
+      distinct: ["dogId"],
+      select: {
+        dogId: true,
+        occurredAtEpoch: true,
       },
     }),
     db.groomingListing.findMany({
@@ -322,7 +447,24 @@ export async function getOwnedDogGroomingStatuses(args: {
         dogId: true,
       },
     }),
+    db.dogConditionEvent.groupBy({
+      by: ["dogId", "eventType"],
+      where: {
+        dogId: {
+          in: dogIds,
+        },
+      },
+      _sum: {
+        amount: true,
+      },
+    }),
   ]);
+
+  for (const dog of dogs) {
+    const status = statuses.get(dog.id);
+    if (!status) continue;
+    status.currentCoatCondition = dog.coatCondition;
+  }
 
   for (const action of actions) {
     const status = statuses.get(action.dogId);
@@ -331,16 +473,68 @@ export async function getOwnedDogGroomingStatuses(args: {
     status.groomingStatusLabel = "Groomed this week";
   }
 
+  for (const lastGroom of lastGrooms) {
+    const status = statuses.get(lastGroom.dogId);
+    if (!status) continue;
+    status.lastGroomedEpoch = lastGroom.occurredAtEpoch;
+  }
+
   for (const listing of listings) {
     const status = statuses.get(listing.dogId);
     if (!status) continue;
+    status.listedForGrooming = true;
     status.openListingId = listing.id;
     if (!status.groomedThisWeek) {
       status.groomingStatusLabel = "Listed for grooming";
     }
   }
 
+  for (const total of conditionTotals) {
+    const status = statuses.get(total.dogId);
+    const amount = total._sum.amount ?? 0;
+    if (!status) continue;
+
+    if (total.eventType === "GROOMING_GAIN") {
+      status.totalGroomingGain = amount;
+    } else if (total.eventType === "MISSED_GROOMING_DECAY") {
+      status.totalGroomingDecay = Math.abs(amount);
+    }
+  }
+
+  for (const status of statuses.values()) {
+    status.netGroomingImpact = Math.max(
+      0,
+      status.totalGroomingGain - status.totalGroomingDecay
+    );
+  }
+
   return statuses;
+}
+
+export async function getDogGroomingConditionSummary(args: {
+  dogId: string;
+  currentEpoch: number;
+}): Promise<DogGroomingConditionSummaryDto | null> {
+  const dog = await db.dog.findUnique({
+    where: {
+      id: args.dogId,
+    },
+    select: {
+      ownerKennelId: true,
+    },
+  });
+
+  if (!dog?.ownerKennelId) {
+    return null;
+  }
+
+  const summaries = await getOwnedDogGroomingStatuses({
+    kennelId: dog.ownerKennelId,
+    dogIds: [args.dogId],
+    currentEpoch: args.currentEpoch,
+  });
+
+  return summaries.get(args.dogId) ?? null;
 }
 
 export async function selfGroomDog(args: {
@@ -426,6 +620,16 @@ export async function selfGroomDog(args: {
         coatGain: actualGain,
         occurredAtEpoch: args.currentEpoch,
       },
+    });
+    await createGroomingGainConditionEvent({
+      client: tx,
+      dogId: dog.id,
+      actorKennelId: args.kennelId,
+      ownerKennelIdAtEvent: args.kennelId,
+      conditionBefore: dog.coatCondition,
+      conditionAfter: updatedDog.coatCondition,
+      amount: actualGain,
+      currentEpoch: args.currentEpoch,
     });
     await incrementServiceProfile({
       client: tx,
@@ -621,19 +825,68 @@ export async function listOpenGroomingJobs(args: {
       },
     },
   });
+  const dogIds = listings.map((listing) => listing.dog.id);
+  const conditionTotals =
+    dogIds.length > 0
+      ? await db.dogConditionEvent.groupBy({
+          by: ["dogId", "eventType"],
+          where: {
+            dogId: {
+              in: dogIds,
+            },
+          },
+          _sum: {
+            amount: true,
+          },
+        })
+      : [];
+  const totalsByDogId = new Map<
+    string,
+    { totalGroomingGain: number; totalGroomingDecay: number }
+  >();
 
-  return listings.map((listing) => ({
-    listingId: listing.id,
-    dogId: listing.dog.id,
-    dogDisplayName: formatDogDisplayName(listing.dog),
-    regNumber: listing.dog.regNumber,
-    breedCode2: listing.dog.breedCode2,
-    breedName: listing.dog.breed.name,
-    ownerKennelName: listing.ownerKennel.name,
-    currentCoatCondition: listing.dog.coatCondition,
-    price: listing.price,
-    listedAtEpoch: listing.listedAtEpoch,
-  }));
+  for (const total of conditionTotals) {
+    const existing = totalsByDogId.get(total.dogId) ?? {
+      totalGroomingGain: 0,
+      totalGroomingDecay: 0,
+    };
+    const amount = total._sum.amount ?? 0;
+
+    if (total.eventType === "GROOMING_GAIN") {
+      existing.totalGroomingGain = amount;
+    } else if (total.eventType === "MISSED_GROOMING_DECAY") {
+      existing.totalGroomingDecay = Math.abs(amount);
+    }
+
+    totalsByDogId.set(total.dogId, existing);
+  }
+
+  return listings.map((listing) => {
+    const totals = totalsByDogId.get(listing.dog.id) ?? {
+      totalGroomingGain: 0,
+      totalGroomingDecay: 0,
+    };
+
+    return {
+      listingId: listing.id,
+      dogId: listing.dog.id,
+      dogDisplayName: formatDogDisplayName(listing.dog),
+      regNumber: listing.dog.regNumber,
+      breedCode2: listing.dog.breedCode2,
+      breedName: listing.dog.breed.name,
+      ownerKennelName: listing.ownerKennel.name,
+      currentCoatCondition: listing.dog.coatCondition,
+      groomingStatusLabel: "Listed for grooming",
+      totalGroomingGain: totals.totalGroomingGain,
+      totalGroomingDecay: totals.totalGroomingDecay,
+      netGroomingImpact: Math.max(
+        0,
+        totals.totalGroomingGain - totals.totalGroomingDecay
+      ),
+      price: listing.price,
+      listedAtEpoch: listing.listedAtEpoch,
+    };
+  });
 }
 
 export async function acceptGroomingJob(args: {
@@ -757,6 +1010,16 @@ export async function acceptGroomingJob(args: {
         occurredAtEpoch: args.currentEpoch,
       },
     });
+    await createGroomingGainConditionEvent({
+      client: tx,
+      dogId: listing.dog.id,
+      actorKennelId: args.groomerKennelId,
+      ownerKennelIdAtEvent: listing.ownerKennelId,
+      conditionBefore: listing.dog.coatCondition,
+      conditionAfter: updatedDog.coatCondition,
+      amount: actualGain,
+      currentEpoch: args.currentEpoch,
+    });
     await tx.ledgerTransaction.create({
       data: {
         kennelId: args.groomerKennelId,
@@ -812,4 +1075,315 @@ export async function acceptGroomingJob(args: {
       },
     };
   });
+}
+
+async function getDogNetGroomingImpact(args: {
+  client: DbClient;
+  dogId: string;
+}): Promise<{
+  totalGroomingGain: number;
+  totalGroomingDecay: number;
+  netGroomingImpact: number;
+}> {
+  const totals = await args.client.dogConditionEvent.groupBy({
+    by: ["eventType"],
+    where: {
+      dogId: args.dogId,
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+  const totalGroomingGain =
+    totals.find((row) => row.eventType === "GROOMING_GAIN")?._sum.amount ?? 0;
+  const totalGroomingDecay = Math.abs(
+    totals.find((row) => row.eventType === "MISSED_GROOMING_DECAY")?._sum
+      .amount ?? 0
+  );
+
+  return {
+    totalGroomingGain,
+    totalGroomingDecay,
+    netGroomingImpact: Math.max(0, totalGroomingGain - totalGroomingDecay),
+  };
+}
+
+export async function applyMissedGroomingDecayForCompletedWeek(args: {
+  dogId: string;
+  completedGroomingWeek: number;
+  currentEpoch: number;
+}): Promise<MissedGroomingDecayResultDto> {
+  const currentGroomingWeek = getGroomingWeekIndex(args.currentEpoch);
+  const decayKey = getMissedGroomingDecayKey(
+    args.dogId,
+    args.completedGroomingWeek
+  );
+
+  if (args.completedGroomingWeek >= currentGroomingWeek) {
+    return {
+      dogId: args.dogId,
+      groomingWeek: args.completedGroomingWeek,
+      applied: false,
+      decayAmount: 0,
+      reason: "Cannot decay the active grooming week.",
+    };
+  }
+
+  try {
+    return await db.$transaction(async (tx) => {
+      const dog = await tx.dog.findUnique({
+        where: {
+          id: args.dogId,
+        },
+        select: {
+          id: true,
+          ownerKennelId: true,
+          lifecycleState: true,
+          visibilityState: true,
+          isPlayerVisible: true,
+          birthEpoch: true,
+          coatCondition: true,
+        },
+      });
+
+      if (!dog) {
+        return {
+          dogId: args.dogId,
+          groomingWeek: args.completedGroomingWeek,
+          applied: false,
+          decayAmount: 0,
+          reason: "Dog not found.",
+        };
+      }
+
+      const completedWeekStart = getGroomingWeekStartEpochByIndex(
+        args.completedGroomingWeek
+      );
+      const completedWeekEnd = getGroomingWeekEndEpochByIndex(
+        args.completedGroomingWeek
+      );
+      const ageAtCompletedWeekEnd = completedWeekEnd - dog.birthEpoch;
+
+      if (
+        dog.ownerKennelId === null ||
+        dog.lifecycleState !== "ALIVE" ||
+        dog.visibilityState !== "VISIBLE" ||
+        !dog.isPlayerVisible ||
+        ageAtCompletedWeekEnd < MIN_SHOW_AGE_HOURS
+      ) {
+        return {
+          dogId: dog.id,
+          groomingWeek: args.completedGroomingWeek,
+          applied: false,
+          decayAmount: 0,
+          reason: "Dog is not eligible for grooming decay.",
+        };
+      }
+
+      const [groomedThisWeek, existingDecay] = await Promise.all([
+        tx.groomingServiceAction.findFirst({
+          where: {
+            dogId: dog.id,
+            occurredAtEpoch: {
+              gte: completedWeekStart,
+              lt: completedWeekEnd,
+            },
+          },
+          select: {
+            id: true,
+          },
+        }),
+        tx.dogConditionEvent.findUnique({
+          where: {
+            decayKey,
+          },
+          select: {
+            id: true,
+          },
+        }),
+      ]);
+
+      if (groomedThisWeek) {
+        return {
+          dogId: dog.id,
+          groomingWeek: args.completedGroomingWeek,
+          applied: false,
+          decayAmount: 0,
+          reason: "Dog was groomed during the completed grooming week.",
+        };
+      }
+
+      if (existingDecay) {
+        return {
+          dogId: dog.id,
+          groomingWeek: args.completedGroomingWeek,
+          applied: false,
+          decayAmount: 0,
+          reason: "Decay already applied for this grooming week.",
+        };
+      }
+
+      const { netGroomingImpact } = await getDogNetGroomingImpact({
+        client: tx,
+        dogId: dog.id,
+      });
+
+      if (netGroomingImpact <= 0) {
+        return {
+          dogId: dog.id,
+          groomingWeek: args.completedGroomingWeek,
+          applied: false,
+          decayAmount: 0,
+          reason: "Dog has no positive grooming impact to decay.",
+        };
+      }
+
+      const requestedDecayAmount = Math.min(
+        MISSED_GROOMING_DECAY,
+        netGroomingImpact
+      );
+      const { nextCoatCondition, actualDecay } = applyCoatDecay(
+        dog.coatCondition,
+        requestedDecayAmount
+      );
+
+      if (actualDecay <= 0) {
+        return {
+          dogId: dog.id,
+          groomingWeek: args.completedGroomingWeek,
+          applied: false,
+          decayAmount: 0,
+          reason: "Dog coat condition is already at the minimum.",
+        };
+      }
+
+      await tx.dog.update({
+        where: {
+          id: dog.id,
+        },
+        data: {
+          coatCondition: nextCoatCondition,
+        },
+      });
+      await tx.dogConditionEvent.create({
+        data: {
+          dogId: dog.id,
+          actorKennelId: null,
+          ownerKennelIdAtEvent: dog.ownerKennelId,
+          eventType: "MISSED_GROOMING_DECAY",
+          amount: -actualDecay,
+          conditionBefore: dog.coatCondition,
+          conditionAfter: nextCoatCondition,
+          groomingWeek: args.completedGroomingWeek,
+          occurredAtEpoch: args.currentEpoch,
+          decayKey,
+          note: "Missed grooming decay for completed grooming week.",
+        },
+      });
+
+      return {
+        dogId: dog.id,
+        groomingWeek: args.completedGroomingWeek,
+        applied: true,
+        decayAmount: actualDecay,
+        reason: null,
+      };
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return {
+        dogId: args.dogId,
+        groomingWeek: args.completedGroomingWeek,
+        applied: false,
+        decayAmount: 0,
+        reason: "Decay already applied for this grooming week.",
+      };
+    }
+
+    throw error;
+  }
+}
+
+export async function applyMissedGroomingDecayForDueDogs(args: {
+  currentEpoch: number;
+  limit?: number;
+}): Promise<GroomingDecayMaintenanceResultDto> {
+  const currentGroomingWeek = getGroomingWeekIndex(args.currentEpoch);
+  const completedGroomingWeek = currentGroomingWeek - 1;
+  const limit = args.limit ?? 100;
+
+  if (completedGroomingWeek < 0) {
+    return {
+      currentGroomingWeek,
+      completedGroomingWeek: null,
+      checked: 0,
+      applied: 0,
+      skipped: 0,
+      results: [],
+    };
+  }
+
+  const completedWeekStart = getGroomingWeekStartEpochByIndex(
+    completedGroomingWeek
+  );
+  const completedWeekEnd = getGroomingWeekEndEpochByIndex(
+    completedGroomingWeek
+  );
+  const dogs = await db.dog.findMany({
+    where: {
+      ownerKennelId: {
+        not: null,
+      },
+      lifecycleState: "ALIVE",
+      visibilityState: "VISIBLE",
+      isPlayerVisible: true,
+      birthEpoch: {
+        lte: completedWeekEnd - MIN_SHOW_AGE_HOURS,
+      },
+      groomingServiceActions: {
+        none: {
+          occurredAtEpoch: {
+            gte: completedWeekStart,
+            lt: completedWeekEnd,
+          },
+        },
+      },
+      conditionEvents: {
+        none: {
+          eventType: "MISSED_GROOMING_DECAY",
+          groomingWeek: completedGroomingWeek,
+        },
+      },
+    },
+    orderBy: [{ birthEpoch: "asc" }, { regNumber: "asc" }],
+    take: limit,
+    select: {
+      id: true,
+    },
+  });
+  const results: MissedGroomingDecayResultDto[] = [];
+
+  for (const dog of dogs) {
+    results.push(
+      await applyMissedGroomingDecayForCompletedWeek({
+        dogId: dog.id,
+        completedGroomingWeek,
+        currentEpoch: args.currentEpoch,
+      })
+    );
+  }
+
+  const applied = results.filter((result) => result.applied).length;
+
+  return {
+    currentGroomingWeek,
+    completedGroomingWeek,
+    checked: results.length,
+    applied,
+    skipped: results.length - applied,
+    results,
+  };
 }

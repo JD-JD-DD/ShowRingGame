@@ -48,7 +48,14 @@ type KennelDogDto = {
   groomingStatus: {
     dogId: string;
     groomedThisWeek: boolean;
+    listedForGrooming: boolean;
     openListingId: string | null;
+    currentCoatCondition: number;
+    totalGroomingGain: number;
+    totalGroomingDecay: number;
+    netGroomingImpact: number;
+    lastGroomedEpoch: number | null;
+    currentGroomingWeek: number;
     groomingStatusLabel:
       | "Groomed this week"
       | "Listed for grooming"
@@ -184,6 +191,14 @@ function StatCell({ value }: { value: number }) {
       {value.toFixed(1)}
     </div>
   );
+}
+
+function formatCondition(value: number): string {
+  return value.toFixed(2);
+}
+
+function formatSignedCondition(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
 }
 
 function SortButton({
@@ -1333,6 +1348,15 @@ export default function KennelDogsPanel() {
                       >
                         {dog.groomingStatus.groomingStatusLabel}
                       </span>
+                      <div className="grid grid-cols-2 gap-1 text-[0.68rem] text-purple-100/70">
+                        <span>Coat: {formatCondition(dog.groomingStatus.currentCoatCondition)}</span>
+                        <span>
+                          Net:{" "}
+                          {formatSignedCondition(
+                            dog.groomingStatus.netGroomingImpact
+                          )}
+                        </span>
+                      </div>
                       {dog.groomingStatus.openListingId ? (
                         <button
                           type="button"

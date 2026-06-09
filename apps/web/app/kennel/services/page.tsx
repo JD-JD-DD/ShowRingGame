@@ -40,6 +40,10 @@ function formatNumber(value: number): string {
   return value.toFixed(2);
 }
 
+function formatSignedNumber(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
+}
+
 export default async function KennelServicesPage({ searchParams }: PageProps) {
   const userId = await getSessionUserId();
 
@@ -339,7 +343,7 @@ export default async function KennelServicesPage({ searchParams }: PageProps) {
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 text-sm text-purple-100/75 sm:grid-cols-3">
+                <div className="mt-4 grid gap-3 text-sm text-purple-100/75 sm:grid-cols-4">
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <div className="text-xs uppercase tracking-wide text-purple-200/70">
                       Coat
@@ -350,13 +354,29 @@ export default async function KennelServicesPage({ searchParams }: PageProps) {
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                      Grooming
+                    </div>
+                    <div className="mt-1 font-semibold text-white">
+                      {job.groomingStatusLabel}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                      Net
+                    </div>
+                    <div className="mt-1 font-semibold text-white">
+                      {formatSignedNumber(job.netGroomingImpact)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="text-xs uppercase tracking-wide text-purple-200/70">
                       Listed
                     </div>
                     <div className="mt-1 font-semibold text-white">
                       Epoch {job.listedAtEpoch}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:col-span-4">
                     <div className="text-xs uppercase tracking-wide text-purple-200/70">
                       Paid By
                     </div>
