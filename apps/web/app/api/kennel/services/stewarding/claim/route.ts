@@ -7,15 +7,22 @@ import { claimStewardingAssignment } from "@/server/services/kennelService.servi
 
 function redirectToServices(
   request: Request,
-  params: { message?: string; error?: string }
+  params: { message?: string; error?: string },
+  returnTo?: string | null
 ) {
-  const url = new URL("/kennel/services", request.url);
+  const path =
+    returnTo?.startsWith("/kennel/services")
+      ? returnTo
+      : "/kennel/services/stewarding";
+  const url = new URL(path, request.url);
   if (params.message) url.searchParams.set("message", params.message);
   if (params.error) url.searchParams.set("error", params.error);
   return NextResponse.redirect(url, { status: 303 });
 }
 
 export async function POST(request: Request) {
+  let returnTo: string | null = null;
+
   try {
     const userId = await getSessionUserId();
 
@@ -30,12 +37,13 @@ export async function POST(request: Request) {
     }
 
     const formData = await request.formData();
+    returnTo = String(formData.get("returnTo") ?? "").trim() || null;
     const showClusterId = String(formData.get("showClusterId") ?? "").trim();
 
     if (!showClusterId) {
       return redirectToServices(request, {
         error: "Choose a show to steward.",
-      });
+      }, returnTo);
     }
 
     const result = await claimStewardingAssignment({
@@ -46,7 +54,7 @@ export async function POST(request: Request) {
 
     return redirectToServices(request, {
       message: `Stewarding assignment claimed. $${result.payoutAmount.toLocaleString()} was paid to your kennel.`,
-    });
+    }, returnTo);
   } catch (error) {
     console.error("POST /api/kennel/services/stewarding/claim failed:", error);
     return redirectToServices(request, {
@@ -54,6 +62,6 @@ export async function POST(request: Request) {
         error instanceof Error
           ? error.message
           : "Unable to claim stewarding assignment.",
-    });
+    }, returnTo);
   }
 }
