@@ -45,6 +45,15 @@ type KennelDogDto = {
   healthBadgeStatus: "green" | "yellow" | "red" | null;
   isListedForSale: boolean;
   isListedAtStud: boolean;
+  groomingStatus: {
+    dogId: string;
+    groomedThisWeek: boolean;
+    openListingId: string | null;
+    groomingStatusLabel:
+      | "Groomed this week"
+      | "Listed for grooming"
+      | "Needs grooming";
+  };
   areaIds: string[];
   visibleCategories: VisibleCategories;
   breedingCardStatus: BreedingCardStatus;
@@ -60,7 +69,18 @@ type KennelDogsResponse = {
   ok: boolean;
   dogs?: KennelDogDto[];
   areas?: KennelAreaDto[];
+  groomingSummary?: GroomingSummaryDto;
   error?: string;
+};
+
+type GroomingSummaryDto = {
+  groomingActionsUsedThisWeek: number;
+  groomingActionsRemainingThisWeek: number;
+  totalGroomingActionLimit: number;
+  selfGroomsCompletedThisWeek: number;
+  outsideGroomsCompletedThisWeek: number;
+  groomingXp: number;
+  groomingLevel: number;
 };
 
 type SortKey =
@@ -200,12 +220,17 @@ export default function KennelDogsPanel() {
   const [message, setMessage] = useState<string | null>(null);
   const [dogs, setDogs] = useState<KennelDogDto[]>([]);
   const [areas, setAreas] = useState<KennelAreaDto[]>([]);
+  const [groomingSummary, setGroomingSummary] =
+    useState<GroomingSummaryDto | null>(null);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<BulkAction>("");
   const [confirmingBulkAction, setConfirmingBulkAction] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [areaActionLoading, setAreaActionLoading] = useState(false);
   const [areaCreateLoading, setAreaCreateLoading] = useState(false);
+  const [groomingActionDogId, setGroomingActionDogId] = useState<string | null>(
+    null
+  );
 
   const [activeAreaId, setActiveAreaId] = useState("");
   const [newAreaName, setNewAreaName] = useState("");
@@ -219,34 +244,39 @@ export default function KennelDogsPanel() {
   const [sortKey, setSortKey] = useState<SortKey>("breed");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
-  useEffect(() => {
-    async function loadDogs() {
+  async function loadDogs(options?: { preserveLoadingState?: boolean }) {
+    if (!options?.preserveLoadingState) {
       setLoading(true);
-      setError(null);
+    }
+    setError(null);
 
-      try {
-        const response = await fetch("/api/dogs/mine", {
-          method: "GET",
-          cache: "no-store",
-        });
+    try {
+      const response = await fetch("/api/dogs/mine", {
+        method: "GET",
+        cache: "no-store",
+      });
 
-        const data: KennelDogsResponse = await response.json();
+      const data: KennelDogsResponse = await response.json();
 
-        if (!response.ok || !data.ok) {
-          throw new Error(data.error || "Failed to load kennel dogs.");
-        }
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Failed to load kennel dogs.");
+      }
 
-        setDogs(data.dogs ?? []);
-        setAreas(data.areas ?? []);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load kennel dogs."
-        );
-      } finally {
+      setDogs(data.dogs ?? []);
+      setAreas(data.areas ?? []);
+      setGroomingSummary(data.groomingSummary ?? null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load kennel dogs."
+      );
+    } finally {
+      if (!options?.preserveLoadingState) {
         setLoading(false);
       }
     }
+  }
 
+  useEffect(() => {
     loadDogs();
   }, []);
 
@@ -564,6 +594,68 @@ export default function KennelDogsPanel() {
     }
   }
 
+  async function runGroomingAction(args: {
+    dogId: string;
+    endpoint: string;
+    confirmMessage?: string;
+  }) {
+    if (groomingActionDogId) {
+      return;
+    }
+
+    if (args.confirmMessage && !window.confirm(args.confirmMessage)) {
+      return;
+    }
+
+    setGroomingActionDogId(args.dogId);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch(args.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ dogId: args.dogId }),
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Unable to update grooming status.");
+      }
+
+      setMessage(data.message ?? "Grooming status updated.");
+      await loadDogs({ preserveLoadingState: true });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to update grooming status."
+      );
+    } finally {
+      setGroomingActionDogId(null);
+    }
+  }
+
+  async function cancelGroomingListing(dog: KennelDogDto) {
+    const listingId = dog.groomingStatus.openListingId;
+
+    if (!listingId) {
+      return;
+    }
+
+    await runGroomingAction({
+      dogId: dog.dogId,
+      endpoint: `/api/services/grooming/listings/${listingId}/cancel`,
+      confirmMessage: `Cancel outside grooming listing for ${getDogDisplayName(
+        dog
+      )}?`,
+    });
+  }
+
   async function updateSelectedDogsArea(action: "add" | "remove") {
     if (!areaActionTargetId || selectedDogIds.length === 0 || areaActionLoading) {
       return;
@@ -803,6 +895,51 @@ export default function KennelDogsPanel() {
           ) : null}
         </div>
       </div>
+
+      {groomingSummary ? (
+        <div className="mb-5 rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-100">
+                Grooming Assistance
+              </div>
+              <p className="mt-2 text-sm leading-6 text-purple-100/75">
+                Grooming actions used this week:{" "}
+                {groomingSummary.groomingActionsUsedThisWeek} /{" "}
+                {groomingSummary.totalGroomingActionLimit}. Own dogs groomed:{" "}
+                {groomingSummary.selfGroomsCompletedThisWeek}. Outside jobs
+                completed: {groomingSummary.outsideGroomsCompletedThisWeek}.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                  Remaining
+                </div>
+                <div className="mt-1 font-semibold text-white">
+                  {groomingSummary.groomingActionsRemainingThisWeek}
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                  Level
+                </div>
+                <div className="mt-1 font-semibold text-white">
+                  {groomingSummary.groomingLevel}
+                </div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                  XP
+                </div>
+                <div className="mt-1 font-semibold text-white">
+                  {groomingSummary.groomingXp}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
@@ -1102,6 +1239,7 @@ export default function KennelDogsPanel() {
                   </SortButton>
                 </th>
                 <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Grooming</th>
                 <th className="px-3 py-2">Areas</th>
               </tr>
             </thead>
@@ -1181,6 +1319,71 @@ export default function KennelDogsPanel() {
 
                   <td className="px-3 py-3 text-xs text-purple-100/80 whitespace-nowrap">
                     {formatBreedingStatus(dog.breedingCardStatus)}
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="grid min-w-[180px] gap-2">
+                      <span
+                        className={
+                          dog.groomingStatus.groomedThisWeek
+                            ? "rounded-full border border-emerald-300/25 bg-emerald-500/10 px-2 py-1 text-center text-[0.66rem] font-semibold text-emerald-100"
+                            : dog.groomingStatus.openListingId
+                              ? "rounded-full border border-sky-300/25 bg-sky-500/10 px-2 py-1 text-center text-[0.66rem] font-semibold text-sky-100"
+                              : "rounded-full border border-purple-300/20 bg-black/20 px-2 py-1 text-center text-[0.66rem] font-semibold text-purple-100/70"
+                        }
+                      >
+                        {dog.groomingStatus.groomingStatusLabel}
+                      </span>
+                      {dog.groomingStatus.openListingId ? (
+                        <button
+                          type="button"
+                          onClick={() => void cancelGroomingListing(dog)}
+                          disabled={groomingActionDogId === dog.dogId}
+                          className="rounded-lg border border-red-300/25 bg-red-500/10 px-2 py-1 text-[0.7rem] font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                        >
+                          Cancel Listing
+                        </button>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void runGroomingAction({
+                                dogId: dog.dogId,
+                                endpoint: "/api/services/grooming/self-groom",
+                              })
+                            }
+                            disabled={
+                              dog.groomingStatus.groomedThisWeek ||
+                              (groomingSummary?.groomingActionsRemainingThisWeek ??
+                                0) <= 0 ||
+                              groomingActionDogId === dog.dogId
+                            }
+                            className="rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[0.7rem] font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            Groom
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void runGroomingAction({
+                                dogId: dog.dogId,
+                                endpoint: "/api/services/grooming/list",
+                                confirmMessage: `Offer ${getDogDisplayName(
+                                  dog
+                                )} for outside grooming?`,
+                              })
+                            }
+                            disabled={
+                              dog.groomingStatus.groomedThisWeek ||
+                              groomingActionDogId === dog.dogId
+                            }
+                            className="rounded-lg border border-sky-300/25 bg-sky-500/10 px-2 py-1 text-[0.7rem] font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            Offer
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="rounded-r-2xl px-3 py-3">
                     <div className="flex max-w-[220px] flex-wrap gap-1.5">

@@ -122,6 +122,8 @@ enum LedgerTransactionType {
   PRIZE_WINNINGS
   HEALTH_TEST_FEE
   REFUND
+  GROOMING_INCOME
+  STEWARDING_INCOME
 }
 
 enum KennelNoticeType {
@@ -149,6 +151,17 @@ enum KennelServiceClaimStatus {
   CLAIMED
   COMPLETED
   CANCELLED
+}
+
+enum GroomingListingStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
+enum GroomingServiceActionType {
+  SELF_GROOM
+  OUTSIDE_GROOM
 }
 
 model User {
@@ -208,6 +221,11 @@ model Kennel {
     privateDogNotes         KennelDogPrivateNote[]
     areas                   KennelArea[]
     serviceClaims           KennelServiceClaim[]
+    groomingListingsOwned   GroomingListing[] @relation("GroomingListingOwnerKennel")
+    groomingListingsClaimed GroomingListing[] @relation("GroomingListingGroomerKennel")
+    groomingActionsOwned    GroomingServiceAction[] @relation("GroomingActionOwnerKennel")
+    groomingActionsPerformed GroomingServiceAction[] @relation("GroomingActionGroomerKennel")
+    serviceProfile          KennelServiceProfile?
 
   @@index([userId])
   @@index([homeDistrict])
@@ -277,7 +295,7 @@ model Dog {
   // Current mutable dog state
   ringObedience Int @default(0)
   muscleTone    Int @default(0)
-  coatCondition Int @default(0)
+  coatCondition Float @default(0)
   fatiguePoints Int @default(0)
 
   createdAt DateTime @default(now())
@@ -317,6 +335,8 @@ model Dog {
     privateKennelNotes KennelDogPrivateNote[]
     kennelAreaMemberships KennelAreaDog[]
     serviceClaims KennelServiceClaim[]
+    groomingListings GroomingListing[]
+    groomingServiceActions GroomingServiceAction[]
 
   @@index([breedCode2])
   @@index([ownerKennelId])
@@ -777,6 +797,67 @@ model KennelServiceClaim {
   @@index([dogId])
   @@index([weekendKey])
   @@index([status])
+}
+
+model GroomingListing {
+  id               String                @id @default(cuid())
+  dogId            String
+  ownerKennelId    String
+  status           GroomingListingStatus @default(OPEN)
+  price            Int
+  listedAtEpoch    Int
+  completedAtEpoch Int?
+  groomerKennelId  String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  dog          Dog     @relation(fields: [dogId], references: [id])
+  ownerKennel  Kennel  @relation("GroomingListingOwnerKennel", fields: [ownerKennelId], references: [id])
+  groomerKennel Kennel? @relation("GroomingListingGroomerKennel", fields: [groomerKennelId], references: [id])
+  serviceActions GroomingServiceAction[]
+
+  @@index([status])
+  @@index([dogId])
+  @@index([ownerKennelId])
+  @@index([groomerKennelId])
+}
+
+model GroomingServiceAction {
+  id              String                    @id @default(cuid())
+  dogId           String
+  ownerKennelId   String
+  groomerKennelId String
+  listingId       String?
+  actionType      GroomingServiceActionType
+  amountPaid      Int
+  coatGain        Float
+  occurredAtEpoch Int
+  createdAt       DateTime                  @default(now())
+
+  dog           Dog              @relation(fields: [dogId], references: [id])
+  ownerKennel   Kennel           @relation("GroomingActionOwnerKennel", fields: [ownerKennelId], references: [id])
+  groomerKennel Kennel           @relation("GroomingActionGroomerKennel", fields: [groomerKennelId], references: [id])
+  listing       GroomingListing? @relation(fields: [listingId], references: [id])
+
+  @@index([dogId])
+  @@index([ownerKennelId])
+  @@index([groomerKennelId])
+  @@index([occurredAtEpoch])
+  @@index([actionType])
+}
+
+model KennelServiceProfile {
+  id                             String   @id @default(cuid())
+  kennelId                       String   @unique
+  groomingXp                     Int      @default(0)
+  groomingLevel                  Int      @default(0)
+  groomingActionsCompleted       Int      @default(0)
+  outsideGroomingJobsCompleted   Int      @default(0)
+  selfGroomingActionsCompleted   Int      @default(0)
+  createdAt                      DateTime @default(now())
+  updatedAt                      DateTime @updatedAt
+
+  kennel Kennel @relation(fields: [kennelId], references: [id])
 }
 
 model DogListing {

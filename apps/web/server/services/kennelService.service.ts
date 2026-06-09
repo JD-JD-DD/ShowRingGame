@@ -581,7 +581,7 @@ export async function claimStewardingAssignment(args: {
         await tx.ledgerTransaction.create({
           data: {
             kennelId: kennel.id,
-            transactionType: "KENNEL_SERVICE_PAYOUT",
+            transactionType: "STEWARDING_INCOME",
             amount: payoutAmount,
             balanceAfter: updatedKennel.balance,
             occurredAtEpoch: args.currentEpoch,

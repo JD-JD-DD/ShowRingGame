@@ -7,6 +7,10 @@ import {
   hasAllGreenPhenotypeHealthTests,
 } from "@/lib/dogHealth";
 import { getKennelForUser } from "@/server/services/kennel.service";
+import {
+  getKennelGroomingSummary,
+  getOwnedDogGroomingStatuses,
+} from "@/server/services/grooming.service";
 import { resolveBreedingProgressForKennel } from "@/server/services/breeding.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -323,6 +327,8 @@ export async function GET() {
       latestHealthTests,
       activeListings,
       areas,
+      groomingStatuses,
+      groomingSummary,
     ] = dogIds.length
       ? await Promise.all([
           db.kennelAreaDog.findMany({
@@ -442,8 +448,30 @@ export async function GET() {
               sortOrder: true,
             },
           }),
+          getOwnedDogGroomingStatuses({
+            kennelId: kennel.id,
+            dogIds,
+            currentEpoch,
+          }),
+          getKennelGroomingSummary({
+            kennelId: kennel.id,
+            currentEpoch,
+          }),
         ])
-      : [[], [], [], [], [], [], []];
+      : [
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          [],
+          new Map(),
+          await getKennelGroomingSummary({
+            kennelId: kennel.id,
+            currentEpoch,
+          }),
+        ];
     const areaIdsByDogId = groupAreaIdsByDog(areaMemberships);
     const activeAttemptByDogId = mapByDogId(
       activeDamAttempts.map((attempt) => ({
@@ -456,36 +484,36 @@ export async function GET() {
       }))
     );
     const latestWhelpedByDogId = mapByDogId(
-      latestWhelpedAttempts
-        .filter(
-          (attempt): attempt is {
-            damId: string;
-            whelpedEpoch: number;
-          } => attempt.whelpedEpoch !== null
-        )
-        .map((attempt) => ({
-          dogId: attempt.damId,
-          whelpedEpoch: attempt.whelpedEpoch,
-        }))
+      latestWhelpedAttempts.flatMap<LatestWhelpedAttemptSummary>((attempt) =>
+        attempt.whelpedEpoch === null
+          ? []
+          : [
+              {
+                dogId: attempt.damId,
+                whelpedEpoch: attempt.whelpedEpoch,
+              },
+            ]
+      )
     );
     const recentNotPregnantByDogId = mapByDogId(
-      recentNotPregnantAttempts
-        .filter(
-          (attempt): attempt is {
-            damId: string;
-            checkedEpoch: number;
-          } => attempt.checkedEpoch !== null
-        )
-        .map((attempt) => ({
-          dogId: attempt.damId,
-          checkedEpoch: attempt.checkedEpoch,
-        }))
+      recentNotPregnantAttempts.flatMap<RecentNotPregnantAttemptSummary>(
+        (attempt) =>
+          attempt.checkedEpoch === null
+            ? []
+            : [
+                {
+                  dogId: attempt.damId,
+                  checkedEpoch: attempt.checkedEpoch,
+                },
+              ]
+      )
     );
     const healthTestsByDogId = groupHealthTestsByDog(latestHealthTests);
     const activeListingTypesByDogId = groupActiveListingTypesByDog(activeListings);
 
     return ok({
       areas,
+      groomingSummary,
       dogs: dogs.map((dog) => {
         const healthTests = healthTestsByDogId.get(dog.id) ?? [];
         const activeListingTypes = activeListingTypesByDogId.get(dog.id) ?? new Set<string>();
@@ -508,6 +536,12 @@ export async function GET() {
           healthBadgeStatus: getPhenotypeHealthBadgeStatus(healthTests),
           isListedForSale: activeListingTypes.has(PLAYER_SALE_LISTING_TYPE),
           isListedAtStud: activeListingTypes.has(PLAYER_STUD_LISTING_TYPE),
+          groomingStatus: groomingStatuses.get(dog.id) ?? {
+            dogId: dog.id,
+            groomedThisWeek: false,
+            openListingId: null,
+            groomingStatusLabel: "Needs grooming",
+          },
           areaIds: areaIdsByDogId.get(dog.id) ?? [],
           visibleCategories: toVisibleCategories(dog),
           breedingCardStatus: getBreedingCardStatus(

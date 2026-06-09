@@ -35,7 +35,12 @@ import OfferDogAtStudForm from "@/components/dogs/OfferDogAtStudForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
 import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
 import RehomeDogForm from "@/components/dogs/RehomeDogForm";
+import ConfirmSubmitButton from "@/components/ui/ConfirmSubmitButton";
 import TraitLine from "@/components/ui/TraitLine";
+import {
+  getKennelGroomingSummary,
+  getOwnedDogGroomingStatuses,
+} from "@/server/services/grooming.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -54,6 +59,8 @@ type PageProps = {
     nameError?: string | string[];
     saleError?: string | string[];
     saleMessage?: string | string[];
+    error?: string | string[];
+    message?: string | string[];
     healthError?: string | string[];
     healthMessage?: string | string[];
     notesError?: string | string[];
@@ -477,6 +484,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const nameError = firstQueryValue(resolvedSearchParams.nameError);
   const saleError = firstQueryValue(resolvedSearchParams.saleError);
   const saleMessage = firstQueryValue(resolvedSearchParams.saleMessage);
+  const groomingError = firstQueryValue(resolvedSearchParams.error);
+  const groomingMessage = firstQueryValue(resolvedSearchParams.message);
   const healthError = firstQueryValue(resolvedSearchParams.healthError);
   const healthMessage = firstQueryValue(resolvedSearchParams.healthMessage);
   const notesError = firstQueryValue(resolvedSearchParams.notesError);
@@ -917,6 +926,25 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   });
 
   const isOwnedByCurrentKennel = dog.ownerKennel?.id === currentKennel.id;
+  const [groomingSummary, groomingStatusMap] = isOwnedByCurrentKennel
+    ? await Promise.all([
+        getKennelGroomingSummary({
+          kennelId: currentKennel.id,
+          currentEpoch,
+        }),
+        getOwnedDogGroomingStatuses({
+          kennelId: currentKennel.id,
+          dogIds: [dog.id],
+          currentEpoch,
+        }),
+      ])
+    : [null, new Map()];
+  const groomingStatus = groomingStatusMap.get(dog.id) ?? {
+    dogId: dog.id,
+    groomedThisWeek: false,
+    openListingId: null,
+    groomingStatusLabel: "Needs grooming" as const,
+  };
   const upcomingShowEntries = isOwnedByCurrentKennel
     ? await db.showEntry.findMany({
         where: {
@@ -989,6 +1017,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         dog.breedingAttemptsAsDam.length === 0));
 
   const displayName = formatDogDisplayName(dog);
+  const dogPageReturnTo = `/dogs/${dog.id}${areaId ? `?areaId=${encodeURIComponent(areaId)}` : ""}`;
   const canNameDog = isOwnedByCurrentKennel && !dog.registeredName?.trim();
   const canOfferForSale =
     isOwnedByCurrentKennel &&
@@ -1177,6 +1206,18 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   {saleError}
                 </div>
               ) : null}
+
+              {groomingMessage ? (
+                <div className="mt-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                  {groomingMessage}
+                </div>
+              ) : null}
+
+              {groomingError ? (
+                <div className="mt-4 rounded-2xl border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                  {groomingError}
+                </div>
+              ) : null}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:w-[360px] lg:grid-cols-1">
@@ -1253,6 +1294,88 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   cancelAction={`/api/stud-listings/${activeStudListing.id}/cancel`}
                   areaId={areaId}
                 />
+              ) : null}
+
+              {isOwnedByCurrentKennel && isAlive ? (
+                <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-100/80">
+                    Grooming
+                  </div>
+                  <div className="mt-2 text-sm text-purple-100/75">
+                    {groomingStatus.groomingStatusLabel}
+                    {groomingSummary ? (
+                      <>
+                        {" "}
+                        - {groomingSummary.groomingActionsRemainingThisWeek} of{" "}
+                        {groomingSummary.totalGroomingActionLimit} actions
+                        remaining this week.
+                      </>
+                    ) : null}
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {groomingStatus.openListingId ? (
+                      <form
+                        action={`/api/services/grooming/listings/${groomingStatus.openListingId}/cancel`}
+                        method="post"
+                      >
+                        <input
+                          type="hidden"
+                          name="returnTo"
+                          value={dogPageReturnTo}
+                        />
+                        <ConfirmSubmitButton
+                          message={`Cancel outside grooming listing for ${displayName}?`}
+                          className="w-full rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
+                        >
+                          Cancel Grooming Listing
+                        </ConfirmSubmitButton>
+                      </form>
+                    ) : (
+                      <>
+                        <form
+                          action="/api/services/grooming/self-groom"
+                          method="post"
+                        >
+                          <input type="hidden" name="dogId" value={dog.id} />
+                          <input
+                            type="hidden"
+                            name="returnTo"
+                            value={dogPageReturnTo}
+                          />
+                          <button
+                            type="submit"
+                            disabled={
+                              groomingStatus.groomedThisWeek ||
+                              (groomingSummary?.groomingActionsRemainingThisWeek ??
+                                0) <= 0
+                            }
+                            className="w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            Groom Dog
+                          </button>
+                        </form>
+                        <form
+                          action="/api/services/grooming/list"
+                          method="post"
+                        >
+                          <input type="hidden" name="dogId" value={dog.id} />
+                          <input
+                            type="hidden"
+                            name="returnTo"
+                            value={dogPageReturnTo}
+                          />
+                          <ConfirmSubmitButton
+                            message={`Offer ${displayName} for outside grooming?`}
+                            disabled={groomingStatus.groomedThisWeek}
+                            className="w-full rounded-xl border border-sky-300/25 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            Offer for Grooming
+                          </ConfirmSubmitButton>
+                        </form>
+                      </>
+                    )}
+                  </div>
+                </div>
               ) : null}
 
               {isOwnedByCurrentKennel &&
@@ -1359,6 +1482,26 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     {dog.marketState}
                   </div>
                 </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                    Coat Condition
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-white">
+                    {dog.coatCondition.toFixed(2)}
+                  </div>
+                </div>
+
+                {isOwnedByCurrentKennel ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                    <div className="text-xs uppercase tracking-wide text-purple-200">
+                      Grooming
+                    </div>
+                    <div className="mt-1 text-sm font-medium text-white">
+                      {groomingStatus.groomingStatusLabel}
+                    </div>
+                  </div>
+                ) : null}
 
                 {dog.deathEpoch !== null ? (
                   <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
