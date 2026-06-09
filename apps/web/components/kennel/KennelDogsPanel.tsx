@@ -103,6 +103,7 @@ type SortKey =
   | "conditioningHandling";
 
 type BulkAction = "" | "show-entry" | "rehome" | "add-area" | "remove-area";
+type GroomingStateFilter = "" | "groomed" | "ungroomed";
 
 function formatAge(ageHours: number): string {
   const weeks = Math.floor(ageHours / 7);
@@ -252,9 +253,11 @@ export default function KennelDogsPanel() {
   const [areaActionTargetId, setAreaActionTargetId] = useState("");
   const [breedFilter, setBreedFilter] = useState("");
   const [sexFilter, setSexFilter] = useState<"" | "M" | "F">("");
-  const [search, setSearch] = useState("");
   const [onlyBreedable, setOnlyBreedable] = useState(false);
-  const [onlyShowEligible, setOnlyShowEligible] = useState(false);
+  const [onlyForSale, setOnlyForSale] = useState(false);
+  const [onlyAtStud, setOnlyAtStud] = useState(false);
+  const [groomingStateFilter, setGroomingStateFilter] =
+    useState<GroomingStateFilter>("");
 
   const [sortKey, setSortKey] = useState<SortKey>("breed");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -339,35 +342,33 @@ export default function KennelDogsPanel() {
   }, [dogs]);
 
   const filteredDogs = useMemo(() => {
-    const q = search.trim().toLowerCase();
-
     const list = dogs.filter((dog) => {
-      const name = getDogDisplayName(dog).toLowerCase();
-
       const breedMatch = breedFilter ? dog.breedCode2 === breedFilter : true;
       const areaMatch = activeAreaId ? dog.areaIds.includes(activeAreaId) : true;
       const sexMatch = sexFilter ? dog.sex === sexFilter : true;
-      const searchMatch =
-        !q || name.includes(q) || dog.breedName.toLowerCase().includes(q);
 
       const breedableMatch = onlyBreedable
         ? dog.breedingCardStatus.label === "Open" ||
           dog.breedingCardStatus.label === "Available for Stud"
         : true;
 
-      const showEligibleMatch = onlyShowEligible
-        ? dog.ageHours >= 182 &&
-          dog.ageHours <= 3840 &&
-          dog.lifecycleState === "ALIVE"
+      const forSaleMatch = onlyForSale ? dog.isListedForSale : true;
+      const atStudMatch = onlyAtStud ? dog.isListedAtStud : true;
+      const groomingMatch =
+        groomingStateFilter === "groomed"
+          ? dog.groomingStatus.groomedThisWeek
+          : groomingStateFilter === "ungroomed"
+            ? !dog.groomingStatus.groomedThisWeek
         : true;
 
       return (
         breedMatch &&
         areaMatch &&
         sexMatch &&
-        searchMatch &&
         breedableMatch &&
-        showEligibleMatch
+        forSaleMatch &&
+        atStudMatch &&
+        groomingMatch
       );
     });
 
@@ -392,9 +393,10 @@ export default function KennelDogsPanel() {
     activeAreaId,
     breedFilter,
     sexFilter,
-    search,
     onlyBreedable,
-    onlyShowEligible,
+    onlyForSale,
+    onlyAtStud,
+    groomingStateFilter,
     sortKey,
     sortDirection,
   ]);
@@ -966,15 +968,7 @@ export default function KennelDogsPanel() {
             {filteredDogs.length === 1 ? "" : "s"}
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_minmax(280px,1fr)_minmax(150px,0.7fr)_minmax(130px,0.7fr)_minmax(150px,0.8fr)]">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name or breed..."
-            className="min-w-0 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-purple-100/40"
-          />
-
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(260px,1.2fr)_minmax(150px,0.7fr)_minmax(130px,0.7fr)_minmax(120px,0.6fr)_minmax(120px,0.6fr)_minmax(180px,0.9fr)]">
           <select
             value={breedFilter}
             onChange={(e) => setBreedFilter(e.target.value)}
@@ -1006,11 +1000,32 @@ export default function KennelDogsPanel() {
           <label className="flex items-center gap-2 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-purple-100">
             <input
               type="checkbox"
-              checked={onlyShowEligible}
-              onChange={(e) => setOnlyShowEligible(e.target.checked)}
+              checked={onlyForSale}
+              onChange={(e) => setOnlyForSale(e.target.checked)}
             />
-            Show Eligible
+            For Sale
           </label>
+
+          <label className="flex items-center gap-2 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-purple-100">
+            <input
+              type="checkbox"
+              checked={onlyAtStud}
+              onChange={(e) => setOnlyAtStud(e.target.checked)}
+            />
+            At Stud
+          </label>
+
+          <select
+            value={groomingStateFilter}
+            onChange={(e) =>
+              setGroomingStateFilter(e.target.value as GroomingStateFilter)
+            }
+            className="min-w-0 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+          >
+            <option value="">All Grooming</option>
+            <option value="groomed">Groomed</option>
+            <option value="ungroomed">Ungroomed</option>
+          </select>
         </div>
       </div>
 
