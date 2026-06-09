@@ -599,7 +599,7 @@ export async function claimStewardingAssignment(args: {
           kennelId: kennel.id,
           type: "KENNEL_SERVICE",
           title: "Club stewarding assignment",
-          body: `You stewarded ${cluster.name} and were paid $${payoutAmount.toLocaleString()}.`,
+          body: `You agreed to steward the ${cluster.name} and were paid $${payoutAmount.toLocaleString()}.`,
           currentEpoch: args.currentEpoch,
           linkedShowId: cluster.id,
           metadataJson: {

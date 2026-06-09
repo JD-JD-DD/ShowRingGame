@@ -171,6 +171,46 @@ function deathNoticeBody(displayName: string, cause: DogDeathCause): string {
   }
 }
 
+function possessiveName(name: string): string {
+  return name.endsWith("s") ? `${name}'` : `${name}'s`;
+}
+
+async function getLitterLossNoticeBody(args: {
+  client: DbClient;
+  litterId: string | null | undefined;
+}): Promise<string> {
+  if (!args.litterId) {
+    return "One puppy from a litter was lost before placement age.";
+  }
+
+  const litter = await args.client.litter.findUnique({
+    where: {
+      id: args.litterId,
+    },
+    select: {
+      dam: {
+        select: {
+          regNumber: true,
+          registeredName: true,
+          callName: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
+        },
+      },
+    },
+  });
+
+  if (!litter) {
+    return "One puppy from a litter was lost before placement age.";
+  }
+
+  const damName = formatDogDisplayName(litter.dam);
+
+  return `One puppy from ${possessiveName(
+    damName
+  )} litter was lost before placement age.`;
+}
+
 function breedingFailureNote(regNumber: string, cause: DogDeathCause): string {
   if (cause === "ACCIDENT_ILLNESS") {
     return `Dam ${regNumber} died after an illness or accident before the breeding could be completed.`;
@@ -272,14 +312,19 @@ export async function markDogDeceased(args: {
   });
 
   if (ownerKennelId) {
+    const noticeBody = isNeonatalLoss
+      ? await getLitterLossNoticeBody({ client, litterId })
+      : deathNoticeBody(displayName, cause);
+
     await createKennelNotice({
       client,
       kennelId: ownerKennelId,
       type: "DOG_DEATH",
-      title: "Dog death",
-      body: deathNoticeBody(displayName, cause),
+      title: isNeonatalLoss ? "Litter loss" : "Dog death",
+      body: noticeBody,
       currentEpoch: deathEpoch,
-      linkedDogId: dogId,
+      linkedDogId: isNeonatalLoss ? null : dogId,
+      linkedLitterId: isNeonatalLoss ? litterId ?? null : null,
       metadataJson: {
         cause,
       },
