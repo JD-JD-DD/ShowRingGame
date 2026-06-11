@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { epochToDate } from "@/lib/gameClock";
 import {
   MIN_SHOW_AGE_HOURS,
   PUPPY_SALE_MIN_AGE_HOURS,
@@ -86,6 +87,9 @@ type GroomingSummaryDto = {
   groomingActionsUsedThisWeek: number;
   groomingActionsRemainingThisWeek: number;
   totalGroomingActionLimit: number;
+  currentGroomingWeek: number;
+  groomingWeekStartEpoch: number;
+  nextGroomingResetEpoch: number;
   selfGroomsCompletedThisWeek: number;
   outsideGroomsCompletedThisWeek: number;
   groomingXp: number;
@@ -164,6 +168,44 @@ function StatCell({ value }: { value: number }) {
   return (
     <div className={`text-sm font-semibold ${colorClassForVisibleValue(value)}`}>
       {value.toFixed(1)}
+    </div>
+  );
+}
+
+function formatCountdown(msRemaining: number): string {
+  if (msRemaining <= 0) {
+    return "Reset available soon";
+  }
+
+  const totalMinutes = Math.ceil(msRemaining / (1000 * 60));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+  const parts: string[] = [];
+
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0 || days > 0) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+
+  return parts.join(" ");
+}
+
+function GroomingResetCountdown({ resetEpoch }: { resetEpoch: number }) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const resetMs = epochToDate(resetEpoch).getTime();
+  const msRemaining = resetMs - nowMs;
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 30_000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  return (
+    <div className="mt-1 font-semibold text-white">
+      {formatCountdown(msRemaining)}
     </div>
   );
 }
@@ -882,7 +924,7 @@ export default function KennelDogsPanel() {
                 completed: {groomingSummary.outsideGroomsCompletedThisWeek}.
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+            <div className="grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-4">
               <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
                 <div className="text-xs uppercase tracking-wide text-purple-200/70">
                   Remaining
@@ -890,6 +932,14 @@ export default function KennelDogsPanel() {
                 <div className="mt-1 font-semibold text-white">
                   {groomingSummary.groomingActionsRemainingThisWeek}
                 </div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                  Next Reset
+                </div>
+                <GroomingResetCountdown
+                  resetEpoch={groomingSummary.nextGroomingResetEpoch}
+                />
               </div>
               <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
                 <div className="text-xs uppercase tracking-wide text-purple-200/70">

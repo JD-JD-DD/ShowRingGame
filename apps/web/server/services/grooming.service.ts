@@ -23,6 +23,9 @@ export type KennelGroomingSummaryDto = {
   groomingActionsUsedThisWeek: number;
   groomingActionsRemainingThisWeek: number;
   totalGroomingActionLimit: number;
+  currentGroomingWeek: number;
+  groomingWeekStartEpoch: number;
+  nextGroomingResetEpoch: number;
   selfGroomsCompletedThisWeek: number;
   outsideGroomsCompletedThisWeek: number;
   openListingsOwnedCount: number;
@@ -328,6 +331,12 @@ export async function getKennelGroomingSummary(args: {
   client?: DbClient;
 }): Promise<KennelGroomingSummaryDto> {
   const client = args.client ?? db;
+  const currentGroomingWeek = getGroomingWeekIndex(args.currentEpoch);
+  const groomingWeekStartEpoch =
+    getGroomingWeekStartEpochByIndex(currentGroomingWeek);
+  const nextGroomingResetEpoch = getGroomingWeekEndEpochByIndex(
+    currentGroomingWeek
+  );
   const [actionCounts, openListingsOwnedCount, profile] = await Promise.all([
     countKennelActionsThisWeek({
       client,
@@ -361,6 +370,9 @@ export async function getKennelGroomingSummary(args: {
       TOTAL_GROOMING_ACTION_LIMIT_PER_WEEK - groomingActionsUsedThisWeek
     ),
     totalGroomingActionLimit: TOTAL_GROOMING_ACTION_LIMIT_PER_WEEK,
+    currentGroomingWeek,
+    groomingWeekStartEpoch,
+    nextGroomingResetEpoch,
     selfGroomsCompletedThisWeek,
     outsideGroomsCompletedThisWeek,
     openListingsOwnedCount,
