@@ -11,6 +11,7 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import { getStoredProducerMeritForDog } from "@/server/services/producerMerit.service";
 import {
   DAM_MAX_BREED_AGE_HOURS,
   MAX_SHOW_AGE_HOURS,
@@ -1048,6 +1049,15 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         dog.breedingAttemptsAsDam.length === 0));
 
   const displayName = formatDogDisplayName(dog);
+  const producerMerit = await getStoredProducerMeritForDog({ dogId: dog.id });
+  const producerRecord = producerMerit ?? {
+    championOffspringCount: 0,
+    producerMeritLabel: null,
+    producerMeritSuffix: null,
+    producerMeritLevel: "NONE" as const,
+    nextMeritLabel: dog.sex === "M" ? "Sire of Merit" : "Dam of Merit",
+    nextMeritThreshold: dog.sex === "M" ? 10 : 5,
+  };
   const dogPageReturnTo = `/dogs/${dog.id}${areaId ? `?areaId=${encodeURIComponent(areaId)}` : ""}`;
   const canNameDog = isOwnedByCurrentKennel && !dog.registeredName?.trim();
   const canOfferForSale =
@@ -1628,6 +1638,33 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   <div className="mt-1 text-sm font-medium text-white">
                     {canBreed ? "Eligible" : "Not eligible"}
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 sm:col-span-2">
+                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                    Breeding Record
+                  </div>
+                  <div className="mt-1 text-sm font-medium text-white">
+                    Champion offspring: {producerRecord.championOffspringCount}
+                  </div>
+                  <div className="mt-1 text-xs text-purple-100/65">
+                    Current merit:{" "}
+                    {producerRecord.producerMeritLabel
+                      ? `${producerRecord.producerMeritLabel} (${producerRecord.producerMeritSuffix})`
+                      : "None"}
+                  </div>
+                  {producerRecord.nextMeritLabel &&
+                  producerRecord.nextMeritThreshold !== null ? (
+                    <div className="mt-1 text-xs text-purple-100/55">
+                      Progress toward {producerRecord.nextMeritLabel}:{" "}
+                      {producerRecord.championOffspringCount} /{" "}
+                      {producerRecord.nextMeritThreshold}
+                    </div>
+                  ) : (
+                    <div className="mt-1 text-xs text-amber-100/70">
+                      Highest producer merit reached.
+                    </div>
+                  )}
                 </div>
             </CollapsibleDogSection>
 

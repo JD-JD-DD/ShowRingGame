@@ -169,6 +169,14 @@ enum DogConditionEventType {
   MISSED_GROOMING_DECAY
 }
 
+enum ProducerMeritLevel {
+  NONE
+  MERIT
+  EXCELLENT
+  ELITE
+  LEGACY
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -285,6 +293,10 @@ model Dog {
 
   visibleTitlePrefix String?
   visibleTitleSuffix String?
+  championOffspringCount Int @default(0)
+  producerMeritLevel ProducerMeritLevel @default(NONE)
+  producerMeritSuffix String?
+  producerMeritLabel String?
   notesPublic        String?
 
   // Hidden inherited traits
@@ -356,6 +368,7 @@ model Dog {
   @@index([visibilityState])
   @@index([isPlayerVisible])
   @@index([marketState])
+  @@index([producerMeritLevel])
 }
 
   model KennelDogPrivateNote {

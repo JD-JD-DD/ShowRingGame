@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
+import { recalculateProducerMeritForDogs } from "@/server/services/producerMerit.service";
 
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
 const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
@@ -88,6 +89,8 @@ export async function recalculateDogTitleProgress(args: {
         registeredName: true,
         callName: true,
         regNumber: true,
+        sireId: true,
+        damId: true,
         visibleTitlePrefix: true,
         visibleTitleSuffix: true,
       },
@@ -136,6 +139,10 @@ export async function recalculateDogTitleProgress(args: {
     },
   });
 
+  const becameChampion =
+    summary.currentTitleCode === CHAMPION_TITLE_CODE &&
+    previousProgress?.currentTitleCode !== CHAMPION_TITLE_CODE;
+
   if (summary.currentTitleCode === CHAMPION_TITLE_CODE) {
     await tx.dog.update({
       where: { id: dogId },
@@ -144,10 +151,14 @@ export async function recalculateDogTitleProgress(args: {
       },
     });
 
-    if (
-      dog?.ownerKennelId &&
-      previousProgress?.currentTitleCode !== CHAMPION_TITLE_CODE
-    ) {
+    if (becameChampion && dog) {
+      await recalculateProducerMeritForDogs({
+        tx,
+        dogIds: [dog.sireId, dog.damId],
+      });
+    }
+
+    if (dog?.ownerKennelId && becameChampion) {
       await createKennelNotice({
         client: tx,
         kennelId: dog.ownerKennelId,
