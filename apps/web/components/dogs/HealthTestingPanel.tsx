@@ -60,7 +60,7 @@ export default function HealthTestingPanel({
     .filter((row) => validSelectedCodes.includes(row.testTypeCode))
     .reduce((sum, row) => sum + row.fee, 0);
   const balanceAfter = kennelBalance - selectedTotal;
-  const canRunSelected = validSelectedCodes.length > 0;
+  const canRunSelected = validSelectedCodes.length > 0 && balanceAfter >= 0;
 
   function toggleSelected(testTypeCode: string, checked: boolean) {
     if (!selectableCodes.has(testTypeCode)) {
@@ -77,73 +77,81 @@ export default function HealthTestingPanel({
   return (
     <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
       <div className="grid min-w-0 gap-3 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-        {rows.map((row) => (
-          <div
-            key={row.testTypeCode}
-            className="flex min-h-[150px] flex-col justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-4"
-          >
-            <div>
-              <div className="text-sm font-semibold text-white">{row.label}</div>
-              {row.result ? (
-                <>
-                  <div
-                    className={`mt-1 text-sm font-semibold ${HEALTH_SEVERITY_TEXT_STYLES[row.result.severity]}`}
-                  >
-                    {row.result.label}
-                  </div>
-                  <div className="mt-1 text-xs text-purple-100/55">
-                    {row.result.testedLabel}
-                  </div>
-                </>
-              ) : (
-                <div className="mt-1 text-sm text-purple-100/55">Not tested</div>
-              )}
-            </div>
+        {rows.map((row) => {
+          const availabilityText = row.isAvailable
+            ? "Available now"
+            : row.availabilityLabel;
 
-            <div className="flex items-center justify-between gap-3">
-              {row.result ? (
-                <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">
-                  Complete
-                </span>
-              ) : canOrderHealthTests && row.isAvailable ? (
-                <form
-                  action={`/api/dogs/${dogId}/health-tests/${row.testTypeCode}`}
-                  method="post"
-                >
-                  {areaId ? (
-                    <input type="hidden" name="areaId" value={areaId} />
-                  ) : null}
-                  <button
-                    type="submit"
-                    className="rounded-xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500"
+          return (
+            <div
+              key={row.testTypeCode}
+              className="flex min-h-[150px] flex-col justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-4"
+            >
+              <div>
+                <div className="text-sm font-semibold text-white">{row.label}</div>
+                {row.result ? (
+                  <>
+                    <div
+                      className={`mt-1 text-sm font-semibold ${HEALTH_SEVERITY_TEXT_STYLES[row.result.severity]}`}
+                    >
+                      {row.result.label}
+                    </div>
+                    <div className="mt-1 text-xs text-purple-100/55">
+                      {row.result.testedLabel}
+                    </div>
+                  </>
+                ) : (
+                  <div className="mt-1 text-sm text-purple-100/55">
+                    Not tested
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                {row.result ? (
+                  <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">
+                    Complete
+                  </span>
+                ) : canOrderHealthTests && row.isAvailable ? (
+                  <form
+                    action={`/api/dogs/${dogId}/health-tests/${row.testTypeCode}`}
+                    method="post"
                   >
-                    Test {formatMoney(row.fee)}
+                    {areaId ? (
+                      <input type="hidden" name="areaId" value={areaId} />
+                    ) : null}
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500"
+                    >
+                      Test {formatMoney(row.fee)}
+                    </button>
+                  </form>
+                ) : (
+                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/45">
+                    {availabilityText}
+                  </span>
+                )}
+                {!row.result && canOrderHealthTests && row.isAvailable ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      toggleSelected(
+                        row.testTypeCode,
+                        !validSelectedCodes.includes(row.testTypeCode)
+                      )
+                    }
+                    className="text-xs font-semibold text-purple-100/65 transition hover:text-white"
+                  >
+                    {validSelectedCodes.includes(row.testTypeCode)
+                      ? "Selected"
+                      : "Add"}
                   </button>
-                </form>
-              ) : (
-                <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/45">
-                  {row.availabilityLabel}
-                </span>
-              )}
-              {!row.result && canOrderHealthTests && row.isAvailable ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    toggleSelected(
-                      row.testTypeCode,
-                      !validSelectedCodes.includes(row.testTypeCode)
-                    )
-                  }
-                  className="text-xs font-semibold text-purple-100/65 transition hover:text-white"
-                >
-                  {validSelectedCodes.includes(row.testTypeCode)
-                    ? "Selected"
-                    : "Add"}
-                </button>
-              ) : null}
+                ) : null}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <form
@@ -159,6 +167,9 @@ export default function HealthTestingPanel({
             const checked = validSelectedCodes.includes(row.testTypeCode);
             const disabled =
               row.result !== null || !canOrderHealthTests || !row.isAvailable;
+            const availabilityText = row.isAvailable
+              ? "Available now"
+              : row.availabilityLabel;
 
             return (
               <label
@@ -188,9 +199,7 @@ export default function HealthTestingPanel({
                     <span className="mt-0.5 block text-xs text-purple-100/55">
                       {row.result
                         ? "Already complete"
-                        : canOrderHealthTests && row.isAvailable
-                          ? "Available"
-                          : row.availabilityLabel}
+                        : availabilityText}
                     </span>
                   </span>
                 </span>
