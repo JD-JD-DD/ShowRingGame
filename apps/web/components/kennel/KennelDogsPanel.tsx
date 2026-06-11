@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
@@ -212,6 +213,9 @@ export default function KennelDogsPanel() {
   const [groomingActionDogId, setGroomingActionDogId] = useState<string | null>(
     null
   );
+  const [expandedGroomingDogId, setExpandedGroomingDogId] = useState<
+    string | null
+  >(null);
 
   const [activeAreaId, setActiveAreaId] = useState("");
   const [newAreaName, setNewAreaName] = useState("");
@@ -590,6 +594,7 @@ export default function KennelDogsPanel() {
     }
 
     setGroomingActionDogId(args.dogId);
+    setExpandedGroomingDogId(null);
     setError(null);
     setMessage(null);
 
@@ -1113,8 +1118,8 @@ export default function KennelDogsPanel() {
           No dogs match your current filters.
         </div>
       ) : (
-        <div className="overflow-hidden">
-          <table className="w-full table-fixed border-separate border-spacing-y-2 text-sm">
+        <div className="overflow-x-auto pb-1 touch-pan-x">
+          <table className="w-full min-w-[980px] table-fixed border-separate border-spacing-y-2 text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
                 <th className="w-10 px-2 py-2">
@@ -1126,6 +1131,7 @@ export default function KennelDogsPanel() {
                     Select
                   </button>
                 </th>
+                <th className="w-[58px] px-2 py-2 text-center">Open</th>
                 <th className="w-[12%] px-2 py-2">
                   <SortButton
                     active={sortKey === "breed"}
@@ -1216,8 +1222,7 @@ export default function KennelDogsPanel() {
                     Prep
                   </SortButton>
                 </th>
-                <th className="w-[72px] px-2 py-2 text-center">Groom</th>
-                <th className="w-[72px] px-2 py-2 text-center">Offer</th>
+                <th className="w-[118px] px-2 py-2 text-center">Groom</th>
               </tr>
             </thead>
 
@@ -1250,6 +1255,9 @@ export default function KennelDogsPanel() {
                 const groomingAgeTitle = isGroomingAgeEligible
                   ? undefined
                   : "Dogs must be show eligible age before grooming.";
+                const groomingMenuOpen = expandedGroomingDogId === dog.dogId;
+                const groomingMenuDisabled = groomDisabled && offerDisabled;
+                const groomingMenuId = `grooming-actions-${dog.dogId}`;
 
                 return (
                   <tr
@@ -1274,6 +1282,18 @@ export default function KennelDogsPanel() {
                         onChange={() => toggleDogSelection(dog.dogId)}
                         aria-label={`Select ${getDogDisplayName(dog)}`}
                       />
+                    </td>
+
+                    <td className="px-2 py-2 text-center">
+                      <Link
+                        href={dogHref}
+                        aria-label={`View ${dog.callName ?? dog.regNumber}`}
+                        onClick={(event) => event.stopPropagation()}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        className="inline-flex rounded-lg border border-purple-300/25 bg-purple-500/10 px-2 py-1 text-[0.68rem] font-semibold text-purple-100 transition hover:bg-purple-500/20 focus:outline-none focus:ring-2 focus:ring-purple-300/45"
+                      >
+                        Open
+                      </Link>
                     </td>
 
                   <td className="px-2 py-2 text-white font-medium">
@@ -1322,44 +1342,65 @@ export default function KennelDogsPanel() {
                     />
                   </td>
 
-                  <td className="px-2 py-2">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void runGroomingAction({
-                          dogId: dog.dogId,
-                          endpoint: "/api/services/grooming/self-groom",
-                        });
-                      }}
-                      onKeyDown={(event) => event.stopPropagation()}
-                      disabled={groomDisabled}
-                      title={groomingAgeTitle}
-                      className="w-full rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[0.7rem] font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-45"
-                    >
-                      Groom
-                    </button>
-                  </td>
                   <td className="rounded-r-2xl px-2 py-2">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void runGroomingAction({
-                          dogId: dog.dogId,
-                          endpoint: "/api/services/grooming/list",
-                          confirmMessage: `Offer ${getDogDisplayName(
-                            dog
-                          )} for outside grooming?`,
-                        });
-                      }}
-                      onKeyDown={(event) => event.stopPropagation()}
-                      disabled={offerDisabled}
-                      title={groomingAgeTitle}
-                      className="w-full rounded-lg border border-sky-300/25 bg-sky-500/10 px-2 py-1 text-[0.7rem] font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
-                    >
-                      Offer
-                    </button>
+                    <div className="grid gap-1">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setExpandedGroomingDogId((current) =>
+                            current === dog.dogId ? null : dog.dogId
+                          );
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        disabled={groomingMenuDisabled}
+                        title={groomingAgeTitle}
+                        aria-expanded={groomingMenuOpen}
+                        aria-controls={groomingMenuId}
+                        className="w-full rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[0.7rem] font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        Groom
+                      </button>
+                      {groomingMenuOpen ? (
+                        <div id={groomingMenuId} className="grid gap-1">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void runGroomingAction({
+                                dogId: dog.dogId,
+                                endpoint: "/api/services/grooming/self-groom",
+                              });
+                            }}
+                            onKeyDown={(event) => event.stopPropagation()}
+                            disabled={groomDisabled}
+                            title={groomingAgeTitle}
+                            className="w-full rounded-md border border-amber-300/20 bg-black/20 px-2 py-1 text-[0.64rem] font-semibold text-amber-100 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            Groom yourself
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void runGroomingAction({
+                                dogId: dog.dogId,
+                                endpoint: "/api/services/grooming/list",
+                                confirmMessage: `Offer ${getDogDisplayName(
+                                  dog
+                                )} for outside grooming?`,
+                              });
+                            }}
+                            onKeyDown={(event) => event.stopPropagation()}
+                            disabled={offerDisabled}
+                            title={groomingAgeTitle}
+                            className="w-full rounded-md border border-sky-300/20 bg-sky-500/10 px-2 py-1 text-[0.64rem] font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            Offer for grooming
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
                 );
