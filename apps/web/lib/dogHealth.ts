@@ -1,5 +1,6 @@
 import {
   PHENOTYPE_HEALTH_TEST_CODES,
+  PHENOTYPE_HEALTH_TESTS,
   type PhenotypeHealthTestCode,
 } from "@showring/rules";
 
@@ -15,39 +16,17 @@ export function isGreenPhenotypeHealthResult(
   testTypeCode: string,
   resultCode: string
 ): boolean {
-  switch (testTypeCode as PhenotypeHealthTestCode) {
-    case "HIP_DYSPLASIA":
-      return (
-        resultCode === "EXCELLENT" ||
-        resultCode === "GOOD" ||
-        resultCode === "FAIR"
-      );
-    case "CARDIAC":
-    case "CAER_EYE":
-    case "THYROID":
-      return resultCode === "NORMAL";
-    default:
-      return false;
-  }
+  return getPhenotypeHealthSeverity(testTypeCode, resultCode) === "green";
 }
 
 export function getPhenotypeHealthSeverity(
   testTypeCode: string,
   resultCode: string
 ): PhenotypeHealthSeverity {
-  if (isGreenPhenotypeHealthResult(testTypeCode, resultCode)) {
-    return "green";
-  }
+  const definition =
+    PHENOTYPE_HEALTH_TESTS[testTypeCode as PhenotypeHealthTestCode];
 
-  if (
-    resultCode === "BORDERLINE" ||
-    resultCode === "EQUIVOCAL" ||
-    resultCode === "BREEDER_OPTION"
-  ) {
-    return "yellow";
-  }
-
-  return "red";
+  return definition?.resultSeverityByCode[resultCode] ?? "red";
 }
 
 export function hasAllGreenPhenotypeHealthTests(
@@ -92,5 +71,11 @@ export function getPhenotypeHealthBadgeStatus(
     return "yellow";
   }
 
-  return hasAllGreenPhenotypeHealthTests(testsNewestFirst) ? "green" : null;
+  return latestResults.length > 0 ? "green" : null;
+}
+
+export function hasFullPhenotypeHealthClearance(
+  testsNewestFirst: PublicPhenotypeHealthTest[]
+): boolean {
+  return hasAllGreenPhenotypeHealthTests(testsNewestFirst);
 }

@@ -43,6 +43,7 @@ type KennelDogDto = {
   lifecycleState: string;
   marketState: string;
   healthBadgeStatus: "green" | "yellow" | "red" | null;
+  hasAllGreenHealthTests: boolean;
   isListedForSale: boolean;
   isListedAtStud: boolean;
   groomingStatus: {
@@ -1286,6 +1287,7 @@ export default function KennelDogsPanel() {
                       <span className="truncate">{getDogDisplayName(dog)}</span>
                       <DogStatusBadges
                         healthStatus={dog.healthBadgeStatus}
+                        fullHealthClearance={dog.hasAllGreenHealthTests}
                         isListedForSale={dog.isListedForSale}
                         isListedAtStud={dog.isListedAtStud}
                       />

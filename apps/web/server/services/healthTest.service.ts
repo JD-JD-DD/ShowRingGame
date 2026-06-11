@@ -3,7 +3,6 @@ import {
   generateFoundationPhenotypeHealthTruths,
   inheritPhenotypeHealthTruths,
   isPhenotypeHealthTestCode,
-  MIN_BREED_AGE_HOURS,
   PHENOTYPE_HEALTH_TEST_CODES,
   PHENOTYPE_HEALTH_TESTS,
   revealPhenotypeHealthTestResult,
@@ -52,6 +51,10 @@ export function createDeterministicPhenotypeHealthRandom(
   dogId: string
 ): () => number {
   return createSeededRandom(`phenotype-health:${dogId}`);
+}
+
+function getAgeHours(currentEpoch: number, birthEpoch: number): number {
+  return Math.max(0, currentEpoch - birthEpoch);
 }
 
 function mapTruths(
@@ -257,8 +260,16 @@ export async function runPhenotypeHealthTestsForKennel(args: {
       throw new Error("Only living dogs can complete health testing.");
     }
 
-    if (currentEpoch - dog.birthEpoch < MIN_BREED_AGE_HOURS) {
-      throw new Error("Health testing becomes available at breeding age.");
+    const dogAgeHours = getAgeHours(currentEpoch, dog.birthEpoch);
+    const unavailableTest = testTypeCodes.find(
+      (testTypeCode) =>
+        dogAgeHours < PHENOTYPE_HEALTH_TESTS[testTypeCode].minimumAgeHours
+    );
+
+    if (unavailableTest) {
+      throw new Error(
+        `${PHENOTYPE_HEALTH_TESTS[unavailableTest].label} is not available yet. ${PHENOTYPE_HEALTH_TESTS[unavailableTest].minimumAgeLabel}.`
+      );
     }
 
     const existingTest = await tx.healthTestRecord.findFirst({

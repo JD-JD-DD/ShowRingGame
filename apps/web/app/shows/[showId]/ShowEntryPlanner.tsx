@@ -237,6 +237,7 @@ export function ShowEntryPlanner({
                     <span>{dog.displayName}</span>
                     <DogStatusBadges
                       healthStatus={dog.healthBadgeStatus}
+                      fullHealthClearance={dog.hasAllGreenHealthTests}
                       isListedForSale={dog.isListedForSale}
                       isListedAtStud={dog.isListedAtStud}
                     />

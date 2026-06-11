@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import {
   getPhenotypeHealthBadgeStatus,
+  hasAllGreenPhenotypeHealthTests,
   isGreenPhenotypeHealthResult,
 } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -410,6 +411,9 @@ function PedigreeCard({
   const healthBadgeStatus = dog
     ? getPhenotypeHealthBadgeStatus(dog.healthTests)
     : null;
+  const fullHealthClearance = dog
+    ? hasAllGreenPhenotypeHealthTests(dog.healthTests)
+    : false;
   const healthCounts = healthResults.reduce(
     (counts, result) => ({
       ...counts,
@@ -426,7 +430,10 @@ function PedigreeCard({
       </div>
       <div className="mt-1 flex items-center gap-1.5 text-sm font-semibold leading-tight text-white">
         <span>{dog ? formatDogDisplayName(dog) : "Unknown"}</span>
-        <DogStatusBadges healthStatus={healthBadgeStatus} />
+        <DogStatusBadges
+          healthStatus={healthBadgeStatus}
+          fullHealthClearance={fullHealthClearance}
+        />
       </div>
       {dog ? (
         <div className="mt-1 truncate text-[0.68rem] text-purple-100/55">
@@ -1082,19 +1089,21 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const healthTestRows = PHENOTYPE_HEALTH_TEST_CODES.map((testTypeCode) => {
     const latestResult =
       dog.healthTests.find((test) => test.testTypeCode === testTypeCode) ?? null;
+    const definition = PHENOTYPE_HEALTH_TESTS[testTypeCode];
 
     return {
       testTypeCode,
-      definition: PHENOTYPE_HEALTH_TESTS[testTypeCode],
+      definition,
       latestResult,
+      isAvailable: ageHours >= definition.minimumAgeHours,
       severity: latestResult
         ? getPedigreeHealthSummary(testTypeCode, latestResult.resultCode).severity
         : null,
     };
   });
   const healthBadgeStatus = getPhenotypeHealthBadgeStatus(dog.healthTests);
-  const canOrderHealthTests =
-    isOwnedByCurrentKennel && isAlive && ageHours >= MIN_BREED_AGE_HOURS;
+  const fullHealthClearance = hasAllGreenPhenotypeHealthTests(dog.healthTests);
+  const canOrderHealthTests = isOwnedByCurrentKennel && isAlive;
 
   return (
     <main className="min-h-screen px-6 py-8 text-white">
@@ -1143,6 +1152,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <span>{displayName}</span>
                 <DogStatusBadges
                   healthStatus={healthBadgeStatus}
+                  fullHealthClearance={fullHealthClearance}
                   isListedForSale={isListedForSale}
                   isListedAtStud={Boolean(activeStudListing)}
                   size="lg"
@@ -1691,7 +1701,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
         <CollapsibleDogSection
           title="Health Testing"
-          description="Public phenotype screening results. Testing becomes available at breeding age."
+          description="Public phenotype screening results. Each test becomes available at its required age."
           badge={
             <div className="flex items-center gap-2">
               <Link
@@ -1733,6 +1743,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 testTypeCode,
                 label: definition.label,
                 fee: definition.fee,
+                isAvailable: ageHours >= definition.minimumAgeHours,
+                availabilityLabel: definition.minimumAgeLabel,
                 result: latestResult
                   ? {
                       label: getPhenotypeHealthResultLabel(

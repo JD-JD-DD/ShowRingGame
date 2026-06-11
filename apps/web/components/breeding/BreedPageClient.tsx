@@ -553,6 +553,7 @@ function DogName({ dog }: { dog: DogCardDto }) {
       <span>{dogDisplayName(dog)}</span>
       <DogStatusBadges
         healthStatus={getPhenotypeHealthBadgeStatus(dog.healthTests)}
+        fullHealthClearance={hasAllGreenPhenotypeHealthTests(dog.healthTests)}
         isListedForSale={dog.isListedForSale}
         isListedAtStud={dog.isListedAtStud || Boolean(dog.studListingId)}
       />

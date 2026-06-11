@@ -3,6 +3,7 @@ import type { PhenotypeHealthBadgeStatus } from "@/lib/dogHealth";
 
 type DogStatusBadgesProps = {
   healthStatus?: PhenotypeHealthBadgeStatus | null;
+  fullHealthClearance?: boolean;
   isListedForSale?: boolean;
   isListedAtStud?: boolean;
   size?: "sm" | "lg";
@@ -15,6 +16,7 @@ const LISTING_SIZE_STYLES = {
 
 export default function DogStatusBadges({
   healthStatus = null,
+  fullHealthClearance = false,
   isListedForSale = false,
   isListedAtStud = false,
   size = "sm",
@@ -26,7 +28,11 @@ export default function DogStatusBadges({
   return (
     <span className="inline-flex shrink-0 items-center gap-1">
       {healthStatus ? (
-        <HealthClearBadge status={healthStatus} size={size} />
+        <HealthClearBadge
+          status={healthStatus}
+          fullClearance={fullHealthClearance}
+          size={size}
+        />
       ) : null}
       {isListedForSale ? (
         <span

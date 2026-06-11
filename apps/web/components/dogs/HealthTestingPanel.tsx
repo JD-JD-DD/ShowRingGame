@@ -6,6 +6,8 @@ type HealthTestPanelRow = {
   testTypeCode: string;
   label: string;
   fee: number;
+  isAvailable: boolean;
+  availabilityLabel: string;
   result: {
     label: string;
     testedLabel: string;
@@ -42,7 +44,10 @@ export default function HealthTestingPanel({
     () =>
       new Set(
         rows
-          .filter((row) => row.result === null && canOrderHealthTests)
+          .filter(
+            (row) =>
+              row.result === null && canOrderHealthTests && row.isAvailable
+          )
           .map((row) => row.testTypeCode)
       ),
     [canOrderHealthTests, rows]
@@ -100,7 +105,7 @@ export default function HealthTestingPanel({
                 <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">
                   Complete
                 </span>
-              ) : canOrderHealthTests ? (
+              ) : canOrderHealthTests && row.isAvailable ? (
                 <form
                   action={`/api/dogs/${dogId}/health-tests/${row.testTypeCode}`}
                   method="post"
@@ -117,10 +122,10 @@ export default function HealthTestingPanel({
                 </form>
               ) : (
                 <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/45">
-                  Breeding age
+                  {row.availabilityLabel}
                 </span>
               )}
-              {!row.result && canOrderHealthTests ? (
+              {!row.result && canOrderHealthTests && row.isAvailable ? (
                 <button
                   type="button"
                   onClick={() =>
@@ -152,7 +157,8 @@ export default function HealthTestingPanel({
         <div className="mt-4 space-y-2 text-sm text-purple-100/75">
           {rows.map((row) => {
             const checked = validSelectedCodes.includes(row.testTypeCode);
-            const disabled = row.result !== null || !canOrderHealthTests;
+            const disabled =
+              row.result !== null || !canOrderHealthTests || !row.isAvailable;
 
             return (
               <label
@@ -182,9 +188,9 @@ export default function HealthTestingPanel({
                     <span className="mt-0.5 block text-xs text-purple-100/55">
                       {row.result
                         ? "Already complete"
-                        : canOrderHealthTests
+                        : canOrderHealthTests && row.isAvailable
                           ? "Available"
-                          : "Available at breeding age"}
+                          : row.availabilityLabel}
                     </span>
                   </span>
                 </span>
