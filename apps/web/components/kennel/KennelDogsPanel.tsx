@@ -6,6 +6,7 @@ import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import {
+  MIN_SHOW_AGE_HOURS,
   PUPPY_SALE_MIN_AGE_HOURS,
   getPuppyRehomePayoutForAgeHours,
 } from "@showring/rules";
@@ -1232,15 +1233,22 @@ export default function KennelDogsPanel() {
                 );
                 const canUseGroomingAction =
                   (groomingSummary?.groomingActionsRemainingThisWeek ?? 0) > 0;
+                const isGroomingAgeEligible =
+                  dog.ageHours >= MIN_SHOW_AGE_HOURS;
                 const groomDisabled =
+                  !isGroomingAgeEligible ||
                   dog.groomingStatus.groomedThisWeek ||
                   hasOpenGroomingListing ||
                   !canUseGroomingAction ||
                   groomingBusy;
                 const offerDisabled =
+                  !isGroomingAgeEligible ||
                   dog.groomingStatus.groomedThisWeek ||
                   hasOpenGroomingListing ||
                   groomingBusy;
+                const groomingAgeTitle = isGroomingAgeEligible
+                  ? undefined
+                  : "Dogs must be show eligible age before grooming.";
 
                 return (
                   <tr
@@ -1324,6 +1332,7 @@ export default function KennelDogsPanel() {
                       }}
                       onKeyDown={(event) => event.stopPropagation()}
                       disabled={groomDisabled}
+                      title={groomingAgeTitle}
                       className="w-full rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[0.7rem] font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       Groom
@@ -1344,6 +1353,7 @@ export default function KennelDogsPanel() {
                       }}
                       onKeyDown={(event) => event.stopPropagation()}
                       disabled={offerDisabled}
+                      title={groomingAgeTitle}
                       className="w-full rounded-lg border border-sky-300/25 bg-sky-500/10 px-2 py-1 text-[0.7rem] font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       Offer

@@ -127,6 +127,13 @@ function formatCoatGain(gain: number): string {
   return gain.toFixed(2);
 }
 
+function isShowAgeEligibleForGrooming(args: {
+  birthEpoch: number;
+  currentEpoch: number;
+}): boolean {
+  return Math.max(0, args.currentEpoch - args.birthEpoch) >= MIN_SHOW_AGE_HOURS;
+}
+
 function calculateGroomingLevel(xp: number): number {
   return Math.floor(xp / GROOMING_LEVEL_XP_INTERVAL);
 }
@@ -556,6 +563,7 @@ export async function selfGroomDog(args: {
         visibleTitleSuffix: true,
         ownerKennelId: true,
         lifecycleState: true,
+        birthEpoch: true,
         coatCondition: true,
         isPlayerVisible: true,
       },
@@ -567,6 +575,15 @@ export async function selfGroomDog(args: {
 
     if (dog.lifecycleState !== "ALIVE") {
       throw new Error("Only living dogs can be groomed.");
+    }
+
+    if (
+      !isShowAgeEligibleForGrooming({
+        birthEpoch: dog.birthEpoch,
+        currentEpoch: args.currentEpoch,
+      })
+    ) {
+      throw new Error("Dogs must be show eligible age before they can be groomed.");
     }
 
     await assertDogNotGroomedThisWeek({
@@ -674,6 +691,7 @@ export async function listDogForOutsideGrooming(args: {
         visibleTitleSuffix: true,
         ownerKennelId: true,
         lifecycleState: true,
+        birthEpoch: true,
         isPlayerVisible: true,
       },
     });
@@ -684,6 +702,17 @@ export async function listDogForOutsideGrooming(args: {
 
     if (dog.lifecycleState !== "ALIVE") {
       throw new Error("Only living dogs can be offered for grooming.");
+    }
+
+    if (
+      !isShowAgeEligibleForGrooming({
+        birthEpoch: dog.birthEpoch,
+        currentEpoch: args.currentEpoch,
+      })
+    ) {
+      throw new Error(
+        "Dogs must be show eligible age before they can be offered for grooming."
+      );
     }
 
     await assertDogNotGroomedThisWeek({
@@ -786,6 +815,9 @@ export async function listOpenGroomingJobs(args: {
       dog: {
         lifecycleState: "ALIVE",
         isPlayerVisible: true,
+        birthEpoch: {
+          lte: args.currentEpoch - MIN_SHOW_AGE_HOURS,
+        },
         groomingServiceActions: {
           none: {
             occurredAtEpoch: {
@@ -913,6 +945,7 @@ export async function acceptGroomingJob(args: {
             visibleTitlePrefix: true,
             visibleTitleSuffix: true,
             lifecycleState: true,
+            birthEpoch: true,
             coatCondition: true,
             isPlayerVisible: true,
           },
@@ -929,6 +962,15 @@ export async function acceptGroomingJob(args: {
     }
 
     if (!listing.dog.isPlayerVisible || listing.dog.lifecycleState !== "ALIVE") {
+      throw new Error("This dog is no longer eligible for grooming.");
+    }
+
+    if (
+      !isShowAgeEligibleForGrooming({
+        birthEpoch: listing.dog.birthEpoch,
+        currentEpoch: args.currentEpoch,
+      })
+    ) {
       throw new Error("This dog is no longer eligible for grooming.");
     }
 
