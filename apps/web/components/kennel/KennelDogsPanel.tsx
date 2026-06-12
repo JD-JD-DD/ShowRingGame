@@ -440,8 +440,7 @@ export default function KennelDogsPanel() {
     selectedDogs.every(
       (dog) =>
         dog.ageHours >= PUPPY_SALE_MIN_AGE_HOURS &&
-        dog.lifecycleState === "ALIVE" &&
-        dog.marketState === "NOT_FOR_SALE"
+        dog.lifecycleState === "ALIVE"
     );
   const canApplyBulkAction =
     bulkAction === "show-entry" ||
@@ -1110,22 +1109,25 @@ export default function KennelDogsPanel() {
 
           {bulkAction === "rehome" && !canBulkRehome ? (
             <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-              Only dogs at least 8 weeks old that are active and not listed for sale
-              can be re-homed in bulk.
+              Only dogs at least 8 weeks old that are active and owned by your
+              kennel can be re-homed in bulk. Sale and stud listings do not
+              need to be removed first.
             </div>
           ) : null}
 
           {confirmingBulkAction && bulkAction === "rehome" ? (
             <div className="mt-3 rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-3">
               <div className="text-sm font-semibold text-red-100">
-                Confirm re-home for {selectedDogIds.length} selected dog
-                {selectedDogIds.length === 1 ? "" : "s"}.
+                Re-home selected dogs?
               </div>
               <div className="mt-1 text-sm leading-6 text-red-100/75">
-                This cannot be undone. The selected dog
-                {selectedDogIds.length === 1 ? "" : "s"} will leave your kennel
-                and you will no longer be able to use{" "}
-                {selectedDogIds.length === 1 ? "it" : "them"}.
+                This cannot be undone. The selected dogs, even if they are for
+                sale or at stud, will leave your kennel and you will no longer
+                be able to use them.
+              </div>
+              <div className="mt-2 text-sm text-red-100/75">
+                You are about to re-home {selectedDogIds.length} dog
+                {selectedDogIds.length === 1 ? "" : "s"}.
               </div>
               {selectedRehomeCredits > 0 ? (
                 <div className="mt-2 text-sm font-semibold text-emerald-100">
@@ -1140,14 +1142,16 @@ export default function KennelDogsPanel() {
                   disabled={bulkActionLoading}
                   className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
                 >
-                  {bulkActionLoading ? "Re-Homing..." : "Confirm Re-Home"}
+                  {bulkActionLoading
+                    ? "Re-Homing..."
+                    : "Yes, Re-Home Selected Dogs"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmingBulkAction(false)}
                   className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
                 >
-                  Cancel
+                  Keep Dogs
                 </button>
               </div>
             </div>

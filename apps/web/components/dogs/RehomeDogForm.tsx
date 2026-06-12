@@ -37,8 +37,8 @@ export default function RehomeDogForm({
           Re-home this dog?
         </div>
         <p className="mt-1 text-xs leading-5 text-red-100/75">
-          This cannot be undone. The dog will leave your kennel and you will no
-          longer be able to use it.
+          This cannot be undone. The dog even if it is for sale or at stud will
+          leave your kennel and you will no longer be able to use it.
         </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <form action={action} method="post">

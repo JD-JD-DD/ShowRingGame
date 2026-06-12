@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
-import { canRehomeDog, getPuppyRehomePayout } from "@showring/rules";
+import {
+  RehomeError,
+  rehomeOwnedDogs,
+} from "@/server/services/rehome.service";
 
 export async function POST(
   request: Request,
@@ -26,91 +29,10 @@ export async function POST(
       return NextResponse.json({ error: "Kennel not found." }, { status: 404 });
     }
 
-    const dog = await db.dog.findUnique({
-      where: { id: dogId },
-      select: {
-        id: true,
-        birthEpoch: true,
-        ownerKennelId: true,
-        isPlayerVisible: true,
-        lifecycleState: true,
-        marketState: true,
-      },
-    });
-
-    if (!dog) {
-      return NextResponse.json({ error: "Dog not found." }, { status: 404 });
-    }
-
-    if (dog.ownerKennelId !== kennel.id || !dog.isPlayerVisible) {
-      return NextResponse.json({ error: "You do not own this dog." }, { status: 403 });
-    }
-
-    if (!canRehomeDog(currentEpoch, dog.birthEpoch, dog.lifecycleState)) {
-      return NextResponse.json(
-        { error: "Dogs cannot be re-homed until they are at least 8 weeks old." },
-        { status: 400 }
-      );
-    }
-
-    if (dog.marketState !== "NOT_FOR_SALE") {
-      return NextResponse.json(
-        { error: "Dogs listed for sale must be removed from the market before re-homing." },
-        { status: 400 }
-      );
-    }
-
-    const payout = getPuppyRehomePayout(currentEpoch, dog.birthEpoch);
-
-    await db.$transaction(async (tx) => {
-      const transfer = await tx.dog.updateMany({
-        where: {
-          id: dogId,
-          ownerKennelId: kennel.id,
-          lifecycleState: "ALIVE",
-          marketState: "NOT_FOR_SALE",
-        },
-        data: {
-          ownerKennelId: null,
-          marketState: "NOT_FOR_SALE",
-          lifecycleState: "TRANSFERRED",
-        },
-      });
-
-      if (transfer.count !== 1) {
-        throw new Error("Dog is no longer available to re-home.");
-      }
-
-      await tx.kennelAreaDog.deleteMany({
-        where: {
-          dogId,
-          area: {
-            kennelId: kennel.id,
-          },
-        },
-      });
-
-      if (payout === 0) {
-        return;
-      }
-
-      const updatedKennel = await tx.kennel.update({
-        where: { id: kennel.id },
-        data: { balance: { increment: payout } },
-        select: { balance: true },
-      });
-
-      await tx.ledgerTransaction.create({
-        data: {
-          kennelId: kennel.id,
-          transactionType: "PUPPY_REHOME",
-          amount: payout,
-          balanceAfter: updatedKennel.balance,
-          occurredAtEpoch: currentEpoch,
-          dogId,
-          memo: "Baseline puppy re-home placement",
-        },
-      });
+    await rehomeOwnedDogs({
+      kennelId: kennel.id,
+      dogIds: [dogId],
+      currentEpoch,
     });
 
     return NextResponse.redirect(new URL("/kennel", request.url));
@@ -118,8 +40,11 @@ export async function POST(
     console.error("POST /api/dogs/[dogId]/rehome failed:", error);
 
     return NextResponse.json(
-      { error: "Failed to re-home dog." },
-      { status: 500 }
+      {
+        error:
+          error instanceof Error ? error.message : "Failed to re-home dog.",
+      },
+      { status: error instanceof RehomeError ? error.status : 500 }
     );
   }
 }

@@ -1456,9 +1456,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
               {isOwnedByCurrentKennel &&
               isAlive &&
-              ageHours >= PUPPY_SALE_MIN_AGE_HOURS &&
-              dog.marketState === "NOT_FOR_SALE" &&
-              !activeListing ? (
+              ageHours >= PUPPY_SALE_MIN_AGE_HOURS ? (
                 <RehomeDogForm
                   action={`/api/dogs/${dog.id}/rehome`}
                   dogName={displayName}
