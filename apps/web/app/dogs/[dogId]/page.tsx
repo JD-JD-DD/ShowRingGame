@@ -977,6 +977,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     currentGroomingWeek: 0,
     groomingStatusLabel: "Needs grooming" as const,
   };
+  const groomingActionsRemaining =
+    groomingSummary?.groomingActionsRemainingThisWeek ?? 0;
+  const noGroomingActionsRemaining = groomingActionsRemaining <= 0;
   const upcomingShowEntries = isOwnedByCurrentKennel
     ? await db.showEntry.findMany({
         where: {
@@ -1380,8 +1383,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                       <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-xs leading-5 text-emerald-100">
                         This dog has already been groomed this week.
                       </div>
-                    ) : (groomingSummary?.groomingActionsRemainingThisWeek ??
-                        0) <= 0 ? (
+                    ) : noGroomingActionsRemaining ? (
                       <div className="mt-3 rounded-xl border border-red-300/20 bg-red-500/10 px-3 py-2 text-xs leading-5 text-red-100">
                         You have used all 10 grooming actions for this game
                         week.
@@ -1421,12 +1423,18 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                             type="submit"
                             disabled={
                               groomingStatus.groomedThisWeek ||
-                              (groomingSummary?.groomingActionsRemainingThisWeek ??
-                                0) <= 0
+                              noGroomingActionsRemaining
+                            }
+                            title={
+                              noGroomingActionsRemaining
+                                ? "No grooming actions remaining this week."
+                                : undefined
                             }
                             className="w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-45"
                           >
-                            Confirm Groom Dog
+                            {noGroomingActionsRemaining
+                              ? "No Grooming Left"
+                              : "Confirm Groom Dog"}
                           </button>
                         </form>
                         <form

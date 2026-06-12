@@ -37,6 +37,8 @@ export default async function GroomingServicesPage({
       currentEpoch,
     }),
   ]);
+  const noGroomingActionsRemaining =
+    groomingSummary.groomingActionsRemainingThisWeek <= 0;
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8 text-white">
@@ -201,12 +203,17 @@ export default async function GroomingServicesPage({
                   />
                   <ConfirmSubmitButton
                     message={`Accept grooming job for ${job.dogDisplayName}?`}
-                    disabled={
-                      groomingSummary.groomingActionsRemainingThisWeek <= 0
+                    disabled={noGroomingActionsRemaining}
+                    title={
+                      noGroomingActionsRemaining
+                        ? "No grooming actions remaining this week."
+                        : undefined
                     }
                     className="w-full rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    Accept Grooming Job
+                    {noGroomingActionsRemaining
+                      ? "No Grooming Left"
+                      : "Accept Grooming Job"}
                   </ConfirmSubmitButton>
                 </form>
               </article>

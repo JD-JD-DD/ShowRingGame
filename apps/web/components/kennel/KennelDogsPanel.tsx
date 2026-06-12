@@ -637,6 +637,15 @@ export default function KennelDogsPanel() {
       return;
     }
 
+    if (
+      args.endpoint === "/api/services/grooming/self-groom" &&
+      (groomingSummary?.groomingActionsRemainingThisWeek ?? 0) <= 0
+    ) {
+      setError("No grooming actions remaining this week.");
+      setExpandedGroomingDogId(null);
+      return;
+    }
+
     setGroomingActionDogId(args.dogId);
     setExpandedGroomingDogId(null);
     setError(null);
@@ -1327,6 +1336,7 @@ export default function KennelDogsPanel() {
                 );
                 const canUseGroomingAction =
                   (groomingSummary?.groomingActionsRemainingThisWeek ?? 0) > 0;
+                const noGroomingActionsRemaining = !canUseGroomingAction;
                 const isGroomingAgeEligible =
                   dog.ageHours >= MIN_SHOW_AGE_HOURS;
                 const groomDisabled =
@@ -1343,9 +1353,23 @@ export default function KennelDogsPanel() {
                 const groomingAgeTitle = isGroomingAgeEligible
                   ? undefined
                   : "Dogs must be show eligible age before grooming.";
+                const groomingCapacityTitle = noGroomingActionsRemaining
+                  ? "No grooming actions remaining this week."
+                  : undefined;
+                const groomingSelfActionTitle =
+                  groomingAgeTitle ?? groomingCapacityTitle;
+                const groomingMenuTitle =
+                  groomingAgeTitle ??
+                  (noGroomingActionsRemaining && offerDisabled
+                    ? groomingCapacityTitle
+                    : undefined);
                 const groomingMenuOpen = expandedGroomingDogId === dog.dogId;
                 const groomingMenuDisabled = groomDisabled && offerDisabled;
                 const groomingMenuId = `grooming-actions-${dog.dogId}`;
+                const groomingMenuLabel =
+                  noGroomingActionsRemaining && !offerDisabled
+                    ? "Offer"
+                    : "Groom";
 
                 return (
                   <tr
@@ -1442,12 +1466,12 @@ export default function KennelDogsPanel() {
                         }}
                         onKeyDown={(event) => event.stopPropagation()}
                         disabled={groomingMenuDisabled}
-                        title={groomingAgeTitle}
+                        title={groomingMenuTitle}
                         aria-expanded={groomingMenuOpen}
                         aria-controls={groomingMenuId}
                         className="w-full rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[0.7rem] font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-45"
                       >
-                        Groom
+                        {groomingMenuLabel}
                       </button>
                       {groomingMenuOpen ? (
                         <div id={groomingMenuId} className="grid gap-1">
@@ -1462,10 +1486,12 @@ export default function KennelDogsPanel() {
                             }}
                             onKeyDown={(event) => event.stopPropagation()}
                             disabled={groomDisabled}
-                            title={groomingAgeTitle}
+                            title={groomingSelfActionTitle}
                             className="w-full rounded-md border border-amber-300/20 bg-black/20 px-2 py-1 text-[0.64rem] font-semibold text-amber-100 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-45"
                           >
-                            Groom yourself
+                            {noGroomingActionsRemaining
+                              ? "No Grooming Left"
+                              : "Groom yourself"}
                           </button>
                           <button
                             type="button"
