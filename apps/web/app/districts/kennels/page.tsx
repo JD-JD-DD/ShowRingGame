@@ -10,15 +10,22 @@ type KennelDirectoryRow = {
   id: string;
   name: string;
   slug: string;
-  lastLoginAt: Date | null;
+  lastLoginAt: Date | string | null;
 };
 
-function formatLastActive(lastLoginAt: Date | null | undefined): string {
+function formatLastActive(lastLoginAt: Date | string | null | undefined): string {
   if (!lastLoginAt) {
     return "Last active unknown";
   }
 
-  return `Last active ${lastLoginAt.toLocaleDateString("en-US", {
+  const lastLoginDate =
+    lastLoginAt instanceof Date ? lastLoginAt : new Date(lastLoginAt);
+
+  if (Number.isNaN(lastLoginDate.getTime())) {
+    return "Last active unknown";
+  }
+
+  return `Last active ${lastLoginDate.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -38,7 +45,7 @@ export default async function AllKennelsPage() {
       kennel."id",
       kennel."name",
       kennel."slug",
-      "user"."lastLoginAt"
+      "user"."lastLoginAt" AS "lastLoginAt"
     FROM "Kennel" kennel
     LEFT JOIN "User" "user" ON "user"."id" = kennel."userId"
     WHERE kennel."isNpc" = false

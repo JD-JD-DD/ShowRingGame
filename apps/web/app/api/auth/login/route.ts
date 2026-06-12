@@ -36,14 +36,14 @@ export async function POST(request: Request) {
       );
     }
 
-    await Promise.all([
-      db.$executeRaw`
-        UPDATE "User"
-        SET "lastLoginAt" = ${new Date()}
-        WHERE "id" = ${user.id}
-      `,
-      createSession(user.id),
-    ]);
+    const loggedInAt = new Date();
+
+    await db.$executeRaw`
+      UPDATE "User"
+      SET "lastLoginAt" = ${loggedInAt}
+      WHERE "id" = ${user.id}
+    `;
+    await createSession(user.id);
 
     return NextResponse.json({
       ok: true,
