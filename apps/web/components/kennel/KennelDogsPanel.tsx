@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -258,6 +258,8 @@ export default function KennelDogsPanel() {
   const [expandedGroomingDogId, setExpandedGroomingDogId] = useState<
     string | null
   >(null);
+  const [confirmingGroomingOfferDogId, setConfirmingGroomingOfferDogId] =
+    useState<string | null>(null);
 
   const [activeAreaId, setActiveAreaId] = useState("");
   const [newAreaName, setNewAreaName] = useState("");
@@ -315,6 +317,9 @@ export default function KennelDogsPanel() {
   useEffect(() => {
     setSelectedDogIds((current) =>
       current.filter((dogId) => dogs.some((dog) => dog.dogId === dogId))
+    );
+    setConfirmingGroomingOfferDogId((current) =>
+      current && dogs.some((dog) => dog.dogId === current) ? current : null
     );
   }, [dogs]);
 
@@ -460,6 +465,13 @@ export default function KennelDogsPanel() {
     ((bulkAction === "add-area" || bulkAction === "remove-area") &&
       Boolean(areaActionTargetId) &&
       !areaActionLoading);
+  const filteredDogIds = filteredDogs.map((dog) => dog.dogId);
+  const selectedVisibleDogCount = filteredDogIds.filter((dogId) =>
+    selectedDogIds.includes(dogId)
+  ).length;
+  const allFilteredDogsSelected =
+    filteredDogIds.length > 0 &&
+    filteredDogIds.every((dogId) => selectedDogIds.includes(dogId));
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -481,13 +493,9 @@ export default function KennelDogsPanel() {
   }
 
   function toggleVisibleSelection() {
-    const visibleIds = filteredDogs.map((dog) => dog.dogId);
-    const visibleIdSet = new Set(visibleIds);
-    const allVisibleSelected =
-      visibleIds.length > 0 &&
-      visibleIds.every((dogId) => selectedDogIds.includes(dogId));
+    const visibleIdSet = new Set(filteredDogIds);
 
-    if (allVisibleSelected) {
+    if (allFilteredDogsSelected) {
       setConfirmingBulkAction(false);
       setSelectedDogIds((current) =>
         current.filter((dogId) => !visibleIdSet.has(dogId))
@@ -496,7 +504,15 @@ export default function KennelDogsPanel() {
     }
 
     setConfirmingBulkAction(false);
-    setSelectedDogIds((current) => Array.from(new Set([...current, ...visibleIds])));
+    setSelectedDogIds((current) =>
+      Array.from(new Set([...current, ...filteredDogIds]))
+    );
+  }
+
+  function clearSelection() {
+    setSelectedDogIds([]);
+    setBulkAction("");
+    setConfirmingBulkAction(false);
   }
 
   function updateBulkAction(action: BulkAction) {
@@ -627,13 +643,8 @@ export default function KennelDogsPanel() {
   async function runGroomingAction(args: {
     dogId: string;
     endpoint: string;
-    confirmMessage?: string;
   }) {
     if (groomingActionDogId) {
-      return;
-    }
-
-    if (args.confirmMessage && !window.confirm(args.confirmMessage)) {
       return;
     }
 
@@ -648,6 +659,7 @@ export default function KennelDogsPanel() {
 
     setGroomingActionDogId(args.dogId);
     setExpandedGroomingDogId(null);
+    setConfirmingGroomingOfferDogId(null);
     setError(null);
     setMessage(null);
 
@@ -1081,6 +1093,38 @@ export default function KennelDogsPanel() {
         </div>
       ) : null}
 
+      <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-purple-300/15 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-sm font-semibold text-white">
+            Selection
+          </div>
+          <div className="mt-1 text-xs text-purple-100/65">
+            {selectedDogIds.length} selected
+            {filteredDogs.length > 0
+              ? `, ${selectedVisibleDogCount} visible under current filters`
+              : ""}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={toggleVisibleSelection}
+            disabled={filteredDogs.length === 0}
+            className="rounded-xl border border-purple-300/25 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {allFilteredDogsSelected ? "Deselect Filtered" : "Select All Filtered"}
+          </button>
+          <button
+            type="button"
+            onClick={clearSelection}
+            disabled={selectedDogIds.length === 0}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            Clear Selection
+          </button>
+        </div>
+      </div>
+
       {selectedDogIds.length > 0 ? (
         <div className="mb-4 rounded-2xl border border-purple-300/15 bg-black/20 p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -1138,11 +1182,7 @@ export default function KennelDogsPanel() {
 
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedDogIds([]);
-                  setBulkAction("");
-                  setConfirmingBulkAction(false);
-                }}
+                onClick={clearSelection}
                 className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
               >
                 Clear
@@ -1364,6 +1404,8 @@ export default function KennelDogsPanel() {
                     ? groomingCapacityTitle
                     : undefined);
                 const groomingMenuOpen = expandedGroomingDogId === dog.dogId;
+                const groomingOfferConfirmOpen =
+                  confirmingGroomingOfferDogId === dog.dogId;
                 const groomingMenuDisabled = groomDisabled && offerDisabled;
                 const groomingMenuId = `grooming-actions-${dog.dogId}`;
                 const groomingMenuLabel =
@@ -1372,8 +1414,8 @@ export default function KennelDogsPanel() {
                     : "Groom";
 
                 return (
+                  <Fragment key={dog.dogId}>
                   <tr
-                    key={dog.dogId}
                     role="link"
                     tabIndex={0}
                     onClick={() => router.push(dogHref)}
@@ -1463,6 +1505,7 @@ export default function KennelDogsPanel() {
                           setExpandedGroomingDogId((current) =>
                             current === dog.dogId ? null : dog.dogId
                           );
+                          setConfirmingGroomingOfferDogId(null);
                         }}
                         onKeyDown={(event) => event.stopPropagation()}
                         disabled={groomingMenuDisabled}
@@ -1497,13 +1540,7 @@ export default function KennelDogsPanel() {
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              void runGroomingAction({
-                                dogId: dog.dogId,
-                                endpoint: "/api/services/grooming/list",
-                                confirmMessage: `Offer ${getDogDisplayName(
-                                  dog
-                                )} for outside grooming?`,
-                              });
+                              setConfirmingGroomingOfferDogId(dog.dogId);
                             }}
                             onKeyDown={(event) => event.stopPropagation()}
                             disabled={offerDisabled}
@@ -1517,6 +1554,52 @@ export default function KennelDogsPanel() {
                     </div>
                   </td>
                 </tr>
+                  {groomingOfferConfirmOpen ? (
+                    <tr className="border border-white/10 bg-black/20">
+                      <td colSpan={13} className="rounded-2xl px-4 py-3">
+                        <div className="rounded-xl border border-sky-300/25 bg-sky-500/10 p-3">
+                          <div className="text-sm font-semibold text-sky-100">
+                            Offer this dog for outside grooming?
+                          </div>
+                          <p className="mt-1 text-xs leading-5 text-sky-50/80">
+                            Offer {getDogDisplayName(dog)} for outside
+                            grooming? This dog will be listed for another
+                            player to groom.
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void runGroomingAction({
+                                  dogId: dog.dogId,
+                                  endpoint: "/api/services/grooming/list",
+                                });
+                              }}
+                              disabled={groomingBusy || offerDisabled}
+                              className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-45"
+                            >
+                              {groomingBusy
+                                ? "Offering..."
+                                : "Yes, Offer for Grooming"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setConfirmingGroomingOfferDogId(null);
+                              }}
+                              disabled={groomingBusy}
+                              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                            >
+                              Keep Dog Here
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                  </Fragment>
                 );
               })}
             </tbody>
