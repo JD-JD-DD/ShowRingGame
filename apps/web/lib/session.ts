@@ -4,6 +4,25 @@ import {
   decodeSessionToken,
   SESSION_COOKIE_NAME
 } from "@/lib/sessionToken";
+import { db } from "@/lib/db";
+
+function getUtcDayStart(date: Date): Date {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+  );
+}
+
+async function touchUserLastActive(userId: string): Promise<void> {
+  const now = new Date();
+  const todayStart = getUtcDayStart(now);
+
+  await db.$executeRaw`
+    UPDATE "User"
+    SET "lastActiveAt" = ${now}
+    WHERE "id" = ${userId}
+      AND ("lastActiveAt" IS NULL OR "lastActiveAt" < ${todayStart})
+  `;
+}
 
 export async function createSession(userId: string): Promise<void> {
   const store = await cookies();
@@ -33,5 +52,11 @@ export async function getSessionUserId(): Promise<string | null> {
   if (!token) return null;
 
   const payload = decodeSessionToken(token);
-  return payload?.userId ?? null;
+  const userId = payload?.userId ?? null;
+
+  if (userId) {
+    await touchUserLastActive(userId);
+  }
+
+  return userId;
 }

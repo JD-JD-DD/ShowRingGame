@@ -10,22 +10,22 @@ type KennelDirectoryRow = {
   id: string;
   name: string;
   slug: string;
-  lastLoginAt: Date | string | null;
+  lastActiveAt: Date | string | null;
 };
 
-function formatLastActive(lastLoginAt: Date | string | null | undefined): string {
-  if (!lastLoginAt) {
+function formatLastActive(lastActiveAt: Date | string | null | undefined): string {
+  if (!lastActiveAt) {
     return "Last active unknown";
   }
 
-  const lastLoginDate =
-    lastLoginAt instanceof Date ? lastLoginAt : new Date(lastLoginAt);
+  const lastActiveDate =
+    lastActiveAt instanceof Date ? lastActiveAt : new Date(lastActiveAt);
 
-  if (Number.isNaN(lastLoginDate.getTime())) {
+  if (Number.isNaN(lastActiveDate.getTime())) {
     return "Last active unknown";
   }
 
-  return `Last active ${lastLoginDate.toLocaleDateString("en-US", {
+  return `Last active ${lastActiveDate.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -45,7 +45,7 @@ export default async function AllKennelsPage() {
       kennel."id",
       kennel."name",
       kennel."slug",
-      "user"."lastLoginAt" AS "lastLoginAt"
+      "user"."lastActiveAt" AS "lastActiveAt"
     FROM "Kennel" kennel
     LEFT JOIN "User" "user" ON "user"."id" = kennel."userId"
     WHERE kennel."isNpc" = false
@@ -121,7 +121,7 @@ export default async function AllKennelsPage() {
                   </span>
                   <span className="text-purple-100/60"> &middot; </span>
                   <span className="text-purple-100/75">
-                    {formatLastActive(kennel.lastLoginAt)}
+                    {formatLastActive(kennel.lastActiveAt)}
                   </span>
                 </Link>
               ))}

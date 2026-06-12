@@ -183,6 +183,7 @@ model User {
   passwordHash String
   displayName  String?
   lastLoginAt  DateTime?
+  lastActiveAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

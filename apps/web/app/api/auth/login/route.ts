@@ -40,7 +40,9 @@ export async function POST(request: Request) {
 
     await db.$executeRaw`
       UPDATE "User"
-      SET "lastLoginAt" = ${loggedInAt}
+      SET
+        "lastLoginAt" = ${loggedInAt},
+        "lastActiveAt" = ${loggedInAt}
       WHERE "id" = ${user.id}
     `;
     await createSession(user.id);
