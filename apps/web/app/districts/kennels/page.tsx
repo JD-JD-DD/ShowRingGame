@@ -6,6 +6,26 @@ import { getSessionUserId } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
+type KennelDirectoryRow = {
+  id: string;
+  name: string;
+  slug: string;
+  lastLoginAt: Date | null;
+};
+
+function formatLastActive(lastLoginAt: Date | null | undefined): string {
+  if (!lastLoginAt) {
+    return "Last active unknown";
+  }
+
+  return `Last active ${lastLoginAt.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  })}`;
+}
+
 export default async function AllKennelsPage() {
   const userId = await getSessionUserId();
 
@@ -13,18 +33,17 @@ export default async function AllKennelsPage() {
     redirect("/login");
   }
 
-  const kennels = await db.kennel.findMany({
-    where: {
-      isNpc: false,
-    },
-    orderBy: [{ name: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      reputationScore: true,
-    },
-  });
+  const kennels = await db.$queryRaw<KennelDirectoryRow[]>`
+    SELECT
+      kennel."id",
+      kennel."name",
+      kennel."slug",
+      "user"."lastLoginAt"
+    FROM "Kennel" kennel
+    LEFT JOIN "User" "user" ON "user"."id" = kennel."userId"
+    WHERE kennel."isNpc" = false
+    ORDER BY kennel."name" ASC
+  `;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8 text-white">
@@ -95,7 +114,7 @@ export default async function AllKennelsPage() {
                   </span>
                   <span className="text-purple-100/60"> &middot; </span>
                   <span className="text-purple-100/75">
-                    Prestige {kennel.reputationScore.toLocaleString()}
+                    {formatLastActive(kennel.lastLoginAt)}
                   </span>
                 </Link>
               ))}

@@ -36,7 +36,14 @@ export async function POST(request: Request) {
       );
     }
 
-    await createSession(user.id);
+    await Promise.all([
+      db.$executeRaw`
+        UPDATE "User"
+        SET "lastLoginAt" = ${new Date()}
+        WHERE "id" = ${user.id}
+      `,
+      createSession(user.id),
+    ]);
 
     return NextResponse.json({
       ok: true,
