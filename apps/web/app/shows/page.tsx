@@ -66,35 +66,34 @@ type EntryActivityLevel = "NONE" | "LOW" | "MODERATE" | "HEAVY";
 
 type EntryActivity = {
   level: EntryActivityLevel;
-  label: string;
 };
 
 function getEntryActivity(entryCount: number): EntryActivity {
   if (entryCount <= 0) {
-    return { level: "NONE", label: "No entries yet" };
+    return { level: "NONE" };
   }
 
   if (entryCount <= 100) {
-    return { level: "LOW", label: "Low Entry" };
+    return { level: "LOW" };
   }
 
   if (entryCount <= 999) {
-    return { level: "MODERATE", label: "Moderate Entry" };
+    return { level: "MODERATE" };
   }
 
-  return { level: "HEAVY", label: "Heavy Entry" };
+  return { level: "HEAVY" };
 }
 
-function entryActivityTone(level: EntryActivityLevel): string {
+function entryActivityButtonTone(level: EntryActivityLevel): string {
   switch (level) {
     case "NONE":
-      return "border-purple-300/25 bg-transparent text-purple-100/70";
+      return "border-purple-300/30 bg-transparent text-purple-100 hover:bg-purple-500/10";
     case "LOW":
-      return "border-purple-300/30 bg-purple-500/10 text-purple-100";
+      return "border-purple-300/35 bg-purple-500/15 text-purple-100 hover:bg-purple-500/25";
     case "MODERATE":
-      return "border-purple-200/45 bg-purple-500/20 text-purple-50";
+      return "border-purple-200/50 bg-purple-500/35 text-purple-50 hover:bg-purple-500/45";
     case "HEAVY":
-      return "border-fuchsia-200/65 bg-purple-500/35 text-white shadow-[0_0_18px_rgba(168,85,247,0.22)]";
+      return "border-fuchsia-200/70 bg-purple-600 text-white shadow-[0_0_18px_rgba(168,85,247,0.26)] hover:bg-purple-500";
   }
 }
 
@@ -390,6 +389,11 @@ export default async function ShowsPage({
             {generateError}
           </div>
         ) : null}
+
+        <div className="mt-4 rounded-2xl border border-purple-300/15 bg-black/20 px-4 py-3 text-xs text-purple-100/65">
+          Entry activity is shown by Enter button intensity: outline = none,
+          light = low, medium = moderate, solid = heavy.
+        </div>
       </section>
 
       <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
@@ -462,9 +466,6 @@ export default async function ShowsPage({
                           resultCount,
                         });
                         const entryActivity = getEntryActivity(entryCount);
-                        const showEntryActivity =
-                          playerStatus !== "JUDGED" &&
-                          playerStatus !== "CANCELLED";
                         const judgingOpens =
                           !hasJudgingActivity && cluster.startEpoch > currentEpoch
                             ? cluster.startEpoch
@@ -510,13 +511,6 @@ export default async function ShowsPage({
                                   STEWARDING
                                 </span>
                               ) : null}
-                              {showEntryActivity ? (
-                                <span
-                                  className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${entryActivityTone(entryActivity.level)}`}
-                                >
-                                  {entryActivity.label}
-                                </span>
-                              ) : null}
                               {resultCount > 0 ? (
                                 <span className="ml-2 text-sky-100">
                                   {resultCount} result
@@ -539,7 +533,7 @@ export default async function ShowsPage({
                             {canEnterShow ? (
                               <Link
                                 href={`/shows/${cluster.id}${showDetailQuery}`}
-                                className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition hover:bg-purple-500/30 ${entryActivityTone(entryActivity.level)}`}
+                                className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${entryActivityButtonTone(entryActivity.level)}`}
                               >
                                 Enter
                               </Link>
