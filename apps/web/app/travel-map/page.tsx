@@ -57,6 +57,12 @@ export default async function TravelMapPage() {
               All Shows
             </Link>
             <Link
+              href="/districts/kennels"
+              className="rounded-2xl border border-fuchsia-300/25 bg-fuchsia-500/10 px-5 py-3 text-sm font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/20"
+            >
+              All Kennels
+            </Link>
+            <Link
               href="/kennel"
               className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
             >
