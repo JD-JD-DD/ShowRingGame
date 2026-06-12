@@ -316,9 +316,7 @@ export default async function ShowsPage({
               Annual Show Calendar
             </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
-              Browse the annual district show calendar, open upcoming clusters,
-              and review results from generated years. Week 52 is reserved for
-              the invitational show.
+              Week 52 is reserved for the invitational show.
             </p>
           </div>
 
@@ -391,8 +389,7 @@ export default async function ShowsPage({
         ) : null}
 
         <div className="mt-4 rounded-2xl border border-purple-300/15 bg-black/20 px-4 py-3 text-xs text-purple-100/65">
-          Entry activity is shown by Enter button intensity: outline = none,
-          light = low, medium = moderate, solid = heavy.
+          Entry activity is shown by Enter button color intensity.
         </div>
       </section>
 
