@@ -262,6 +262,9 @@ export default function KennelDogsPanel() {
   const [activeAreaId, setActiveAreaId] = useState("");
   const [newAreaName, setNewAreaName] = useState("");
   const [areaActionTargetId, setAreaActionTargetId] = useState("");
+  const [confirmingDeleteAreaId, setConfirmingDeleteAreaId] = useState<
+    string | null
+  >(null);
   const [breedFilter, setBreedFilter] = useState("");
   const [sexFilter, setSexFilter] = useState<"" | "M" | "F">("");
   const [onlyBreedable, setOnlyBreedable] = useState(false);
@@ -333,7 +336,14 @@ export default function KennelDogsPanel() {
     ) {
       setAreaActionTargetId("");
     }
-  }, [activeAreaId, areaActionTargetId, areas]);
+
+    if (
+      confirmingDeleteAreaId &&
+      !areas.some((area) => area.id === confirmingDeleteAreaId)
+    ) {
+      setConfirmingDeleteAreaId(null);
+    }
+  }, [activeAreaId, areaActionTargetId, confirmingDeleteAreaId, areas]);
 
   const breedOptions = useMemo(() => {
     const breedByCode = new Map<
@@ -430,6 +440,8 @@ export default function KennelDogsPanel() {
     return counts;
   }, [dogs]);
   const activeArea = areas.find((area) => area.id === activeAreaId) ?? null;
+  const confirmingDeleteArea =
+    areas.find((area) => area.id === confirmingDeleteAreaId) ?? null;
   const selectedRehomeCredits = selectedDogs.reduce(
     (total, dog) =>
       total + getPuppyRehomePayoutForAgeHours(dog.ageHours),
@@ -564,16 +576,6 @@ export default function KennelDogsPanel() {
       return;
     }
 
-    // Require an explicit confirmation so an accidental click on the pill
-    // control does not remove a custom roster view unexpectedly.
-    const confirmed = window.confirm(
-      `Delete kennel area "${area.name}"? Dogs will stay in your kennel.`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
     setAreaActionLoading(true);
     setError(null);
     setMessage(null);
@@ -611,6 +613,7 @@ export default function KennelDogsPanel() {
         setAreaActionTargetId("");
       }
 
+      setConfirmingDeleteAreaId(null);
       setMessage(`Deleted kennel area "${data.areaName ?? area.name}".`);
     } catch (err) {
       setError(
@@ -856,6 +859,7 @@ export default function KennelDogsPanel() {
               setSelectedDogIds([]);
               setBulkAction("");
               setConfirmingBulkAction(false);
+              setConfirmingDeleteAreaId(null);
             }}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
               activeAreaId === ""
@@ -881,6 +885,7 @@ export default function KennelDogsPanel() {
                   setSelectedDogIds([]);
                   setBulkAction("");
                   setConfirmingBulkAction(false);
+                  setConfirmingDeleteAreaId(null);
                 }}
                 className="rounded-full px-3 py-1.5 text-xs font-semibold"
               >
@@ -892,7 +897,7 @@ export default function KennelDogsPanel() {
                 title={`Delete ${area.name}`}
                 onClick={(event) => {
                   event.stopPropagation();
-                  void deleteArea(area);
+                  setConfirmingDeleteAreaId(area.id);
                 }}
                 className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-black/20 text-[13px] font-bold text-purple-100/75 transition hover:border-red-300/35 hover:bg-red-500/15 hover:text-red-100"
               >
@@ -906,6 +911,35 @@ export default function KennelDogsPanel() {
             </span>
           ) : null}
         </div>
+        {confirmingDeleteArea ? (
+          <div className="mt-3 rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-3">
+            <div className="text-sm font-semibold text-red-100">
+              Delete kennel area?
+            </div>
+            <p className="mt-1 text-sm leading-6 text-red-100/75">
+              Delete kennel area &ldquo;{confirmingDeleteArea.name}&rdquo;?
+              Dogs will stay in your kennel.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void deleteArea(confirmingDeleteArea)}
+                disabled={areaActionLoading || areaCreateLoading}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {areaActionLoading ? "Deleting..." : "Yes, Delete Area"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingDeleteAreaId(null)}
+                disabled={areaActionLoading}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Keep Area
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {groomingSummary ? (
