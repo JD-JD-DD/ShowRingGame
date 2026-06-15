@@ -38,6 +38,18 @@ enum DogOriginType {
   IMPORTED
 }
 
+enum DogPlannerTagType {
+  KEEP
+  WATCH
+  SELL_CANDIDATE
+  REHOME_CANDIDATE
+  NO_ACTION
+}
+
+enum DogPlannerTagSource {
+  PROGRAM_PLANNER
+}
+
 enum BreedingAttemptStatus {
   INITIATED
   CHECKED_NOT_PREGNANT
@@ -243,6 +255,7 @@ model Kennel {
     conditionEventsActed    DogConditionEvent[] @relation("DogConditionEventActorKennel")
     conditionEventsOwned    DogConditionEvent[] @relation("DogConditionEventOwnerKennel")
     serviceProfile          KennelServiceProfile?
+    plannerTags             DogPlannerTag[]
 
   @@index([userId])
   @@index([homeDistrict])
@@ -359,6 +372,7 @@ model Dog {
     groomingListings GroomingListing[]
     groomingServiceActions GroomingServiceAction[]
     conditionEvents DogConditionEvent[]
+    plannerTags DogPlannerTag[]
 
   @@index([breedCode2])
   @@index([ownerKennelId])
@@ -371,6 +385,28 @@ model Dog {
   @@index([isPlayerVisible])
   @@index([marketState])
   @@index([producerMeritLevel])
+}
+
+model DogPlannerTag {
+  id                 String              @id @default(cuid())
+  dogId              String
+  kennelId           String
+  tagType            DogPlannerTagType
+  source             DogPlannerTagSource @default(PROGRAM_PLANNER)
+  breedCode2         String
+  goalKey            String
+  note               String?
+  isVisibleOnDogPage Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  dog    Dog    @relation(fields: [dogId], references: [id], onDelete: Cascade)
+  kennel Kennel @relation(fields: [kennelId], references: [id], onDelete: Cascade)
+
+  @@unique([kennelId, dogId, source])
+  @@index([dogId])
+  @@index([kennelId, breedCode2])
+  @@index([tagType])
 }
 
   model KennelDogPrivateNote {

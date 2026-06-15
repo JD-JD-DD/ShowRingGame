@@ -89,6 +89,23 @@ function formatMoney(amount: number): string {
   return `$${amount.toLocaleString()}`;
 }
 
+function formatPlannerTagType(tagType: string): string {
+  switch (tagType) {
+    case "KEEP":
+      return "Keep";
+    case "WATCH":
+      return "Watch";
+    case "SELL_CANDIDATE":
+      return "Sell Candidate";
+    case "REHOME_CANDIDATE":
+      return "Re-home Candidate";
+    case "NO_ACTION":
+      return "No Action";
+    default:
+      return tagType;
+  }
+}
+
 function formatCondition(value: number): string {
   return value.toFixed(2);
 }
@@ -588,6 +605,22 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               notes: true,
             },
             take: 1,
+          }
+        : false,
+      plannerTags: currentKennel
+        ? {
+            where: {
+              kennelId: currentKennel.id,
+              source: "PROGRAM_PLANNER",
+              isVisibleOnDogPage: true,
+            },
+            select: {
+              tagType: true,
+              goalKey: true,
+              note: true,
+              updatedAt: true,
+            },
+            orderBy: [{ updatedAt: "desc" }],
           }
         : false,
       ringObedience: true,
@@ -2227,6 +2260,43 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             )}
           </CollapsibleDogSection>
         </section>
+
+        {isOwnedByCurrentKennel && dog.plannerTags.length > 0 ? (
+          <CollapsibleDogSection
+            title="Program Planner"
+            description="Private planner tags saved from your breed review."
+            className="mt-6"
+            contentClassName="mt-4"
+            titleClassName="text-xl"
+          >
+            <div className="grid gap-3">
+              {dog.plannerTags.map((plannerTag) => (
+                <div
+                  key={`${plannerTag.goalKey}-${plannerTag.updatedAt.toISOString()}`}
+                  className="rounded-2xl border border-fuchsia-300/20 bg-fuchsia-500/10 p-4 text-sm leading-6 text-purple-50/80"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-white">
+                      {formatPlannerTagType(plannerTag.tagType)}
+                    </span>
+                    <span className="text-xs uppercase tracking-wide text-fuchsia-100/70">
+                      {plannerTag.goalKey.replace(/-/g, " ")}
+                    </span>
+                  </div>
+                  {plannerTag.note ? (
+                    <div className="mt-3 whitespace-pre-wrap text-purple-50/75">
+                      {plannerTag.note}
+                    </div>
+                  ) : (
+                    <div className="mt-3 text-purple-100/60">
+                      No planner note saved for this tag.
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CollapsibleDogSection>
+        ) : null}
 
         {isOwnedByCurrentKennel ? (
           <CollapsibleDogSection
