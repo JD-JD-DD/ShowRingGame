@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
+
 type TagType =
   | "KEEP"
   | "WATCH"
@@ -86,11 +88,13 @@ type PlannerData = {
   availableBreeds: Array<{
     breedCode2: string;
     breedName: string;
+    breedGroupName: string | null;
     count: number;
   }>;
   selectedBreed: {
     breedCode2: string;
     breedName: string;
+    breedGroupName: string | null;
     count: number;
   } | null;
   selectedGoalKey: string | null;
@@ -270,6 +274,7 @@ export default function ProgramPlannerClient() {
   const [kennelName, setKennelName] = useState<string>("");
   const [selectedBreed, setSelectedBreed] = useState("");
   const [selectedGoal, setSelectedGoal] = useState("");
+  const [visibleStep, setVisibleStep] = useState(1);
   const [filters, setFilters] = useState<Set<string>>(new Set());
   const [buckets, setBuckets] = useState<Record<string, TagType>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -307,6 +312,7 @@ export default function ProgramPlannerClient() {
 
         if (!selectedBreed && loadedPlanner.selectedBreed) {
           setSelectedBreed(loadedPlanner.selectedBreed.breedCode2);
+          setVisibleStep(2);
         }
 
         setBuckets((current) => {
@@ -363,6 +369,25 @@ export default function ProgramPlannerClient() {
       ),
     [dogs, selectedFilters]
   );
+  const dynamicFilterCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const item of planner?.filterCounts ?? []) {
+      const otherActiveFilters = selectedFilters.filter(
+        (filterKey) => filterKey !== item.key
+      );
+      const count = dogs.filter(
+        (dog) =>
+          otherActiveFilters.every((filterKey) =>
+            filterMatchesDog(filterKey, dog)
+          ) && filterMatchesDog(item.key, dog)
+      ).length;
+
+      counts.set(item.key, count);
+    }
+
+    return counts;
+  }, [dogs, planner?.filterCounts, selectedFilters]);
   const bucketCounts = useMemo(
     () =>
       Object.fromEntries(
@@ -386,6 +411,20 @@ export default function ProgramPlannerClient() {
       else next.add(key);
       return next;
     });
+  }
+
+  function chooseBreed(nextBreed: string) {
+    setSelectedBreed(nextBreed);
+    setSelectedGoal("");
+    setFilters(new Set());
+    setMessage(null);
+    setVisibleStep(nextBreed ? 2 : 1);
+  }
+
+  function chooseGoal(nextGoal: string) {
+    setSelectedGoal(nextGoal);
+    setMessage(null);
+    setVisibleStep(3);
   }
 
   async function saveTags() {
@@ -489,21 +528,27 @@ export default function ProgramPlannerClient() {
                 Choose a breed to review your kennel&apos;s current direction.
               </p>
             </div>
-            <select
-              value={selectedBreed}
-              onChange={(event) => {
-                setSelectedBreed(event.target.value);
-                setFilters(new Set());
-              }}
-              className="min-w-64 rounded-2xl border border-purple-300/25 bg-black/35 px-4 py-3 text-sm font-semibold text-white outline-none focus:border-fuchsia-300/60"
-            >
-              <option value="">Choose a breed</option>
-              {(planner?.availableBreeds ?? []).map((breed) => (
-                <option key={breed.breedCode2} value={breed.breedCode2}>
-                  {breed.breedName} ({breed.count})
-                </option>
-              ))}
-            </select>
+            <label className="grid min-w-[280px] gap-2 text-sm text-purple-100/75">
+              Breed
+              <select
+                autoComplete="off"
+                value={selectedBreed}
+                onChange={(event) => chooseBreed(event.target.value)}
+                className="rounded-xl border border-fuchsia-200/55 bg-purple-950/80 px-4 py-3 font-semibold text-white shadow-[0_0_20px_rgba(192,132,252,0.15)] outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-300/25"
+              >
+                <option value="">Choose a breed...</option>
+                <BreedSelectOptions
+                  groupSort="alphabetical"
+                  options={(planner?.availableBreeds ?? []).map((breed) => ({
+                    code2: breed.breedCode2,
+                    name: breed.breedName,
+                    groupName: breed.breedGroupName,
+                    count: breed.count,
+                  }))}
+                  getLabel={(breed) => `${breed.name} (${breed.count})`}
+                />
+              </select>
+            </label>
           </div>
 
           {!selectedBreed && !isLoading ? (
@@ -570,6 +615,7 @@ export default function ProgramPlannerClient() {
           ) : null}
         </div>
 
+        {visibleStep >= 2 && planner?.selectedBreed ? (
         <div className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-fuchsia-200/80">
             Step 2
@@ -585,7 +631,7 @@ export default function ProgramPlannerClient() {
               <button
                 key={goal.key}
                 type="button"
-                onClick={() => setSelectedGoal(goal.key)}
+                onClick={() => chooseGoal(goal.key)}
                 className={`rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition ${
                   selectedGoal === goal.key
                     ? "border-fuchsia-200 bg-fuchsia-500/20 text-white shadow-[0_0_28px_rgba(217,70,239,0.16)]"
@@ -602,8 +648,9 @@ export default function ProgramPlannerClient() {
             </div>
           ) : null}
         </div>
+        ) : null}
 
-        {planner?.selectedBreed ? (
+        {visibleStep >= 3 && planner?.selectedBreed && selectedGoal ? (
           <>
             <div className="rounded-[28px] border border-purple-300/15 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -656,18 +703,33 @@ export default function ProgramPlannerClient() {
                               : "border-white/10 bg-black/20 text-purple-100/75 hover:bg-white/10"
                           }`}
                         >
-                          {item.label}: {item.count}
+                          {item.label}:{" "}
+                          {dynamicFilterCounts.get(item.key) ?? item.count}
                         </button>
                       ))}
                     </div>
                   </div>
                 ))}
               </div>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setVisibleStep((step) => Math.max(step, 4))}
+                  className="rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500"
+                >
+                  Continue to Dog Review
+                </button>
+                <span className="text-sm text-purple-100/60">
+                  Filters are optional. Continue when your review lens is set.
+                </span>
+              </div>
             </div>
 
+            {visibleStep >= 4 ? (
+            <>
             <div className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(135deg,rgba(76,29,149,0.5),rgba(15,23,42,0.72))] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.32)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-fuchsia-200/80">
-                Step 4
+                Program Summary
               </p>
               <h2 className="mt-1 text-2xl font-semibold text-white">
                 Your kennel pattern in this breed
@@ -694,7 +756,7 @@ export default function ProgramPlannerClient() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-fuchsia-200/80">
-                    Step 5
+                    Step 4
                   </p>
                   <h2 className="mt-1 text-2xl font-semibold text-white">
                     Dog Review Cards and Buckets
@@ -857,11 +919,25 @@ export default function ProgramPlannerClient() {
                   </div>
                 )}
               </div>
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setVisibleStep((step) => Math.max(step, 5))}
+                  disabled={dogs.length === 0}
+                  className="rounded-2xl bg-fuchsia-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-500 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Review Final Buckets
+                </button>
+                <span className="text-sm text-purple-100/60">
+                  Bucket choices stay editable after final review opens.
+                </span>
+              </div>
             </div>
 
+            {visibleStep >= 5 ? (
             <div className="rounded-[28px] border border-fuchsia-300/20 bg-[linear-gradient(180deg,rgba(76,29,149,0.65),rgba(15,23,42,0.95))] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.38)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-fuchsia-200/80">
-                Step 6
+                Step 5
               </p>
               <h2 className="mt-1 text-2xl font-semibold text-white">
                 Final Review
@@ -918,6 +994,9 @@ export default function ProgramPlannerClient() {
                 </span>
               </div>
             </div>
+            ) : null}
+            </>
+            ) : null}
           </>
         ) : null}
       </section>

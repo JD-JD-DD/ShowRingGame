@@ -61,7 +61,8 @@ export function compareBreedOptions(
 }
 
 export function groupBreedOptions<Option extends BreedSelectOption>(
-  options: Option[]
+  options: Option[],
+  groupSort: "standard" | "alphabetical" = "standard"
 ): Array<BreedSelectGroup<Option>> {
   const groups = new Map<string, Option[]>();
 
@@ -73,7 +74,11 @@ export function groupBreedOptions<Option extends BreedSelectOption>(
   }
 
   return [...groups.entries()]
-    .sort(([groupA], [groupB]) => compareBreedGroupNames(groupA, groupB))
+    .sort(([groupA], [groupB]) =>
+      groupSort === "alphabetical"
+        ? groupA.localeCompare(groupB)
+        : compareBreedGroupNames(groupA, groupB)
+    )
     .map(([groupName, groupOptions]) => ({
       groupName,
       options: [...groupOptions].sort(compareBreedOptions),
@@ -83,13 +88,15 @@ export function groupBreedOptions<Option extends BreedSelectOption>(
 export function BreedSelectOptions<Option extends BreedSelectOption>({
   options,
   getLabel,
+  groupSort = "standard",
 }: {
   options: Option[];
   getLabel?: (option: Option) => string;
+  groupSort?: "standard" | "alphabetical";
 }) {
   return (
     <>
-      {groupBreedOptions(options).map((group) => (
+      {groupBreedOptions(options, groupSort).map((group) => (
         <optgroup key={group.groupName} label={`-- ${group.groupName} --`}>
           {group.options.map((option) => (
             <option key={option.code2} value={option.code2}>

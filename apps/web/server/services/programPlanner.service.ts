@@ -1047,13 +1047,19 @@ export async function getProgramPlannerData(args: {
   const allDogs = await fetchProgramPlannerDogs({ kennelId: args.kennelId });
   const breedCounts = new Map<
     string,
-    { breedCode2: string; breedName: string; count: number }
+    {
+      breedCode2: string;
+      breedName: string;
+      breedGroupName: string | null;
+      count: number;
+    }
   >();
 
   for (const dog of allDogs) {
     const current = breedCounts.get(dog.breedCode2) ?? {
       breedCode2: dog.breedCode2,
       breedName: dog.breed.name,
+      breedGroupName: dog.breed.groupName,
       count: 0,
     };
     current.count += 1;
@@ -1061,6 +1067,7 @@ export async function getProgramPlannerData(args: {
   }
 
   const availableBreeds = [...breedCounts.values()].sort((a, b) =>
+    (a.breedGroupName ?? "Misc").localeCompare(b.breedGroupName ?? "Misc") ||
     a.breedName.localeCompare(b.breedName)
   );
   const selectedBreedCode2 =
