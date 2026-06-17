@@ -538,7 +538,6 @@ export default function ProgramPlannerClient() {
               >
                 <option value="">Choose a breed...</option>
                 <BreedSelectOptions
-                  groupSort="alphabetical"
                   options={(planner?.availableBreeds ?? []).map((breed) => ({
                     code2: breed.breedCode2,
                     name: breed.breedName,

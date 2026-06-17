@@ -119,10 +119,30 @@ export type EnsureAnnualInvitationalResult = {
   invitationCount: number;
 };
 
-export async function ensureAnnualInvitationalShow(args: {
+export type EnsureDueAnnualInvitationalsResult = {
+  currentYear: number;
+  dueThroughYear: number;
+  checkedYears: number[];
+  results: EnsureAnnualInvitationalResult[];
+};
+
+function getCurrentCalendarYear(currentEpoch: number): number {
+  return Math.floor(currentEpoch / SHOW_YEAR_HOURS) + 1;
+}
+
+function getDueInvitationalEndYear(currentEpoch: number): number {
+  const currentYear = getCurrentCalendarYear(currentEpoch);
+
+  return currentEpoch >= getInvitationalWeekStartEpoch(currentYear)
+    ? currentYear
+    : currentYear - 1;
+}
+
+async function ensureInvitationalShowForYear(args: {
+  year: number;
   currentEpoch: number;
 }): Promise<EnsureAnnualInvitationalResult> {
-  const year = getInvitationalYearForEpoch(args.currentEpoch);
+  const year = args.year;
   const clusterId = getInvitationalClusterId(year);
   const existingCluster = await db.showCluster.findUnique({
     where: { id: clusterId },
@@ -382,5 +402,75 @@ export async function ensureAnnualInvitationalShow(args: {
     ready: true,
     created: true,
     invitationCount,
+  };
+}
+
+export async function ensureAnnualInvitationalShow(args: {
+  currentEpoch: number;
+}): Promise<EnsureAnnualInvitationalResult> {
+  return ensureInvitationalShowForYear({
+    year: getInvitationalYearForEpoch(args.currentEpoch),
+    currentEpoch: args.currentEpoch,
+  });
+}
+
+export async function ensureDueAnnualInvitationalShows(args: {
+  currentEpoch: number;
+}): Promise<EnsureDueAnnualInvitationalsResult> {
+  const currentYear = getCurrentCalendarYear(args.currentEpoch);
+  const dueThroughYear = getDueInvitationalEndYear(args.currentEpoch);
+
+  if (dueThroughYear < 1) {
+    return {
+      currentYear,
+      dueThroughYear,
+      checkedYears: [],
+      results: [],
+    };
+  }
+
+  const existingInvitationals = await db.showCluster.findMany({
+    where: {
+      id: {
+        startsWith: "invitational-year-",
+      },
+    },
+    select: {
+      year: true,
+    },
+  });
+  const existingYears = existingInvitationals
+    .map((cluster) => cluster.year)
+    .filter((year) => Number.isInteger(year) && year > 0);
+  const existingYearSet = new Set(existingYears);
+  const firstTrackedYear =
+    existingYears.length > 0
+      ? Math.min(...existingYears)
+      : getInvitationalYearForEpoch(args.currentEpoch);
+  const checkedYears: number[] = [];
+  const results: EnsureAnnualInvitationalResult[] = [];
+
+  for (let year = firstTrackedYear; year <= dueThroughYear; year += 1) {
+    if (existingYearSet.has(year)) {
+      continue;
+    }
+
+    checkedYears.push(year);
+    const result = await ensureInvitationalShowForYear({
+      year,
+      currentEpoch: args.currentEpoch,
+    });
+    results.push(result);
+
+    if (result.created) {
+      existingYearSet.add(year);
+    }
+  }
+
+  return {
+    currentYear,
+    dueThroughYear,
+    checkedYears,
+    results,
   };
 }

@@ -1,7 +1,10 @@
 import { fail, ok } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { db } from "@/lib/db";
-import { ensureAnnualInvitationalShow } from "@/server/services/invitational.service";
+import {
+  ensureAnnualInvitationalShow,
+  ensureDueAnnualInvitationalShows,
+} from "@/server/services/invitational.service";
 import {
   closeReadyEmptyShowDays,
   finalizeReadyShowDayResults,
@@ -129,6 +132,10 @@ export async function GET(request: Request) {
     process.env.SHOW_RESULTS_JOB_FINALIZE_BATCH_SIZE,
     DEFAULT_FINALIZE_BATCH_SIZE,
     MAX_FINALIZE_BATCH_SIZE
+  );
+  const invitationalsBeforeJudging = await runPhase(
+    "ensureDueAnnualInvitationalShows",
+    () => ensureDueAnnualInvitationalShows({ currentEpoch })
   );
   const readyBlocks = await runPhase("findReadyBlocks", () =>
     db.showJudgingBlock.findMany({
@@ -325,9 +332,19 @@ export async function GET(request: Request) {
     }
   }
 
-  const invitational = await runPhase("ensureAnnualInvitationalShow", () =>
-    ensureAnnualInvitationalShow({ currentEpoch })
+  const invitationalsAfterFinalization = await runPhase(
+    "ensureDueAnnualInvitationalShows",
+    () => ensureDueAnnualInvitationalShows({ currentEpoch })
   );
+  const invitationalResults = [
+    ...invitationalsBeforeJudging.results,
+    ...invitationalsAfterFinalization.results,
+  ];
+  const invitational =
+    invitationalResults.at(-1) ??
+    (await runPhase("ensureAnnualInvitationalShow", () =>
+      ensureAnnualInvitationalShow({ currentEpoch })
+    ));
   const jobDurationMs = Date.now() - jobStartedAtMs;
   const summary = {
     candidatesFound: readyBlocks.length,
@@ -339,6 +356,8 @@ export async function GET(request: Request) {
     skippedFuture: 0,
     skippedFutureReason:
       "Future shows are not loaded by the publish job; due queries require epoch <= currentEpoch.",
+    invitationalsCreated: invitationalResults.filter((result) => result.created)
+      .length,
     durationMs: jobDurationMs,
     phaseDurationsMs,
   };
@@ -354,6 +373,10 @@ export async function GET(request: Request) {
     processedBlocks,
     finalized,
     invitational,
+    invitationals: {
+      beforeJudging: invitationalsBeforeJudging,
+      afterFinalization: invitationalsAfterFinalization,
+    },
     errors,
   };
 

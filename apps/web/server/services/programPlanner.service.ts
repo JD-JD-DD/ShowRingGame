@@ -14,6 +14,10 @@ import {
 import { getPhenotypeHealthSeverity } from "@/lib/dogHealth";
 import { db } from "@/lib/db";
 import {
+  compareBreedGroupNames,
+  normalizeBreedGroupName,
+} from "@/components/breeds/BreedSelectOptions";
+import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
@@ -1067,7 +1071,10 @@ export async function getProgramPlannerData(args: {
   }
 
   const availableBreeds = [...breedCounts.values()].sort((a, b) =>
-    (a.breedGroupName ?? "Misc").localeCompare(b.breedGroupName ?? "Misc") ||
+    compareBreedGroupNames(
+      normalizeBreedGroupName(a.breedGroupName),
+      normalizeBreedGroupName(b.breedGroupName)
+    ) ||
     a.breedName.localeCompare(b.breedName)
   );
   const selectedBreedCode2 =
