@@ -224,13 +224,7 @@ export default async function HistoricalShowResultsPage({
             include: {
               _count: {
                 select: {
-                  showEntries: {
-                    where: {
-                      entryStatus: {
-                        in: ["ENTERED", "JUDGED"],
-                      },
-                    },
-                  },
+                  showEntries: true,
                   showResults: true,
                 },
               },

@@ -38,24 +38,42 @@ async function main() {
     const isReleased =
       releaseVersion !== null && releaseVersion <= CURRENT_BREED_RELEASE;
 
-    await prisma.breed.upsert({
-      where: {
-        code2: row.code2.trim(),
-      },
-      update: {
-        name: row.breed_name.trim(),
-        groupName: row.group.trim(),
-        isActive: isReleased,
-        releaseVersion,
-      },
-      create: {
-        code2: row.code2.trim(),
-        name: row.breed_name.trim(),
-        groupName: row.group.trim(),
-        isActive: isReleased,
-        releaseVersion,
-      },
+    const code2 = row.code2.trim();
+    const name = row.breed_name.trim();
+    const data = {
+      code2,
+      name,
+      groupName: row.group.trim(),
+      isActive: isReleased,
+      releaseVersion,
+    };
+    const existingByCode = await prisma.breed.findUnique({
+      where: { code2 },
+      select: { code2: true },
     });
+
+    if (existingByCode) {
+      await prisma.breed.update({
+        where: { code2 },
+        data,
+      });
+      continue;
+    }
+
+    const existingByName = await prisma.breed.findUnique({
+      where: { name },
+      select: { name: true },
+    });
+
+    if (existingByName) {
+      await prisma.breed.update({
+        where: { name },
+        data,
+      });
+      continue;
+    }
+
+    await prisma.breed.create({ data });
   }
 
   console.log(`Seeded ${rows.length} breeds`);

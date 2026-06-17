@@ -75,13 +75,7 @@ export default async function ShowResultsIndexPage({
               breed: { select: { name: true, code2: true, groupName: true } },
               _count: {
                 select: {
-                  showEntries: {
-                    where: {
-                      entryStatus: {
-                        in: ["ENTERED", "JUDGED"],
-                      },
-                    },
-                  },
+                  showEntries: true,
                   showResults: true,
                 },
               },

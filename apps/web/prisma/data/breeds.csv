@@ -20,48 +20,48 @@ French Bulldog,FB,Non-Sporting,TRUE,1
 German Shepherd Dog,GM,Herding,TRUE,1
 Border Collie,BC,Herding,TRUE,1
 Australian Shepherd,AS,Herding,TRUE,1
-Chesapeake Bay Retriever,CB,Sporting,FALSE,2
-Vizsla,VZ,Sporting,FALSE,2
-Weimaraner,WM,Sporting,FALSE,2
-Greyhound,GH,Hound,FALSE,2
-Pharaoh Hound,PH,Hound,FALSE,2
-Great Dane,GD,Working,FALSE,2
-Bernese Mountain Dog,MD,Working,FALSE,2
-Cane Corso,CC,Working,FALSE,2
-Scottish Terrier,SC,Terrier,FALSE,2
-Welsh Terrier,WT,Terrier,FALSE,2
-Papillon,PP,Toy,FALSE,2
-Toy Poodle,TP,Toy,FALSE,2
-Chinese Crested,CI,Toy,FALSE,2
-Dalmatian,DL,Non-Sporting,FALSE,2
-Chow Chow,CO,Non-Sporting,FALSE,2
-Schipperke,SK,Non-Sporting,FALSE,2
-Belgian Sheepdog,AY,Herding,FALSE,2
-Briard,BR,Herding,FALSE,2
-Puli,PU,Herding,FALSE,2
-American Pit Bull Terrier,PB,Terrier,FALSE,2
-Borzoi,BZ,Hound,FALSE,2
-Nova Scotia Duck Tolling Retriever,DT,Sporting,FALSE,3
-Gordon Setter,GS,Sporting,FALSE,3
-Irish Setter,IS,Sporting,FALSE,3
-Bloodhound,BL,Hound,FALSE,3
-Tibetan Mastiff,TM,Working,FALSE,3
-Samoyed,SY,Working,FALSE,3
-Airedale Terrier,AT,Terrier,FALSE,3
-Bull Terrier,BU,Terrier,FALSE,3
-Parson Russell Terrier,PR,Terrier,FALSE,3
-Affenpinscher,AP,Toy,FALSE,3
-Cavalier King Charles Spaniel,CK,Toy,FALSE,3
-Havanese,HV,Toy,FALSE,3
-Shiba Inu,SI,Non-Sporting,FALSE,3
-Lhasa Apso,LA,Non-Sporting,FALSE,3
-Boston Terrier,BS,Non-Sporting,FALSE,3
-Smooth Collie,SO,Herding,FALSE,3
-Komondor,KM,Herding,FALSE,3
-Canaan Dog,CG,Herding,FALSE,3
-American Bulldog,AB,Working,FALSE,3
-Otterhound,OH,Hound,FALSE,3
-Harrier,HR,Hound,FALSE,3
+Chesapeake Bay Retriever,CB,Sporting,TRUE,2
+Vizsla,VZ,Sporting,TRUE,2
+Weimaraner,WM,Sporting,TRUE,2
+Greyhound,GH,Hound,TRUE,2
+Pharaoh Hound,PH,Hound,TRUE,2
+Great Dane,GD,Working,TRUE,2
+Bernese Mountain Dog,MD,Working,TRUE,2
+Cane Corso,CC,Working,TRUE,2
+Scottish Terrier,SC,Terrier,TRUE,2
+Welsh Terrier,WT,Terrier,TRUE,2
+Papillon,PP,Toy,TRUE,2
+Toy Poodle,TP,Toy,TRUE,2
+Chinese Crested,CI,Toy,TRUE,2
+Dalmatian,DL,Non-Sporting,TRUE,2
+Chow Chow,CO,Non-Sporting,TRUE,2
+Schipperke,SK,Non-Sporting,TRUE,2
+Belgian Sheepdog,AY,Herding,TRUE,2
+Briard,BR,Herding,TRUE,2
+Puli,PU,Herding,TRUE,2
+American Pit Bull Terrier,PB,Terrier,TRUE,2
+Borzoi,BZ,Hound,TRUE,2
+Nova Scotia Duck Tolling Retriever,DT,Sporting,TRUE,3
+Gordon Setter,GS,Sporting,TRUE,3
+Irish Setter,IS,Sporting,TRUE,3
+Bloodhound,BL,Hound,TRUE,3
+Tibetan Mastiff,TM,Working,TRUE,3
+Samoyed,SY,Working,TRUE,3
+Airedale Terrier,AT,Terrier,TRUE,3
+Bull Terrier,BU,Terrier,TRUE,3
+Parson Russell Terrier,PR,Terrier,TRUE,3
+Affenpinscher,AP,Toy,TRUE,3
+Cavalier King Charles Spaniel,CK,Toy,TRUE,3
+Havanese,HV,Toy,TRUE,3
+Shiba Inu,SI,Non-Sporting,TRUE,3
+Lhasa Apso,LA,Non-Sporting,TRUE,3
+Boston Terrier,BS,Non-Sporting,TRUE,3
+Smooth Collie,SO,Herding,TRUE,3
+Komondor,KM,Herding,TRUE,3
+Canaan Dog,CG,Herding,TRUE,3
+American Bulldog,AB,Working,TRUE,3
+Otterhound,OH,Hound,TRUE,3
+Harrier,HR,Hound,TRUE,3
 Wirehaired Vizsla,WV,Sporting,FALSE,4
 Pointer,PT,Sporting,FALSE,4
 Spinone Italiano,SP,Sporting,FALSE,4
@@ -208,6 +208,6 @@ Kai Ken,KN,Miscellaneous,FALSE,13
 Norbottenspets,NB,Miscellaneous,FALSE,13
 Pyrenean Mastiff,PN,Miscellaneous,FALSE,13
 Yakutian Laika,YL,Miscellaneous,FALSE,13
-Australian Cattle Dog,QR,Herding,FALSE,14
+Australian Cattle Dog,YY,Herding,FALSE,14
 English Cocker,QM,Sporting,FALSE,14
 American Cocker,QE,Sporting,FALSE,14

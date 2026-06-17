@@ -114,13 +114,7 @@ export default async function InvitationalsPage() {
         include: {
           _count: {
             select: {
-              showEntries: {
-                where: {
-                  entryStatus: {
-                    in: ["ENTERED", "JUDGED"],
-                  },
-                },
-              },
+              showEntries: true,
               showResults: true,
             },
           },

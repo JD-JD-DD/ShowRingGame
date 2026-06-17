@@ -92,6 +92,39 @@ type ResultRow = {
   }>;
 };
 
+type EntryRow = {
+  id: string;
+  entryStatus: string;
+  enteredKennelName: string | null;
+  enteredKennelSlug: string | null;
+  dog: {
+    id: string;
+    registeredName: string | null;
+    callName: string | null;
+    regNumber: string;
+    visibleTitlePrefix: string | null;
+    visibleTitleSuffix: string | null;
+    sex: "M" | "F";
+  };
+  kennel: {
+    name: string;
+    slug: string;
+  };
+  showResult: {
+    id: string;
+    finalRank: number | null;
+    publishedAtEpoch: number;
+    showAwards: Array<{
+      awardCode: string;
+      awardGroup: string;
+      sex: "M" | "F" | null;
+      rank: number | null;
+      pointsAwarded: number;
+      isMajor: boolean;
+    }>;
+  } | null;
+};
+
 function showEntryKennelName(entry: ResultRow["showEntry"]): string {
   return entry.enteredKennelName?.trim() || entry.kennel.name;
 }
@@ -193,6 +226,106 @@ function ResultSection({
   );
 }
 
+function AllEntriesTable({ entries }: { entries: EntryRow[] }) {
+  const sortedEntries = [...entries].sort((a, b) => {
+    const rankDifference =
+      (a.showResult?.finalRank ?? 9999) - (b.showResult?.finalRank ?? 9999);
+
+    if (rankDifference !== 0) return rankDifference;
+
+    return formatDogDisplayName(a.dog).localeCompare(formatDogDisplayName(b.dog));
+  });
+
+  if (sortedEntries.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="mt-6">
+      <h3 className="text-lg font-semibold text-sky-100">All Entered Dogs</h3>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full min-w-[860px] border-separate border-spacing-y-2 text-sm">
+          <thead>
+            <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+              <th className="px-3 py-2">Rank</th>
+              <th className="px-3 py-2">Awards</th>
+              <th className="px-3 py-2">Dog</th>
+              <th className="px-3 py-2">Kennel</th>
+              <th className="px-3 py-2">Sex</th>
+              <th className="px-3 py-2">Published</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedEntries.map((entry) => {
+              const awards = sortAwards(entry.showResult?.showAwards ?? []);
+              const kennelName = entry.enteredKennelName?.trim() || entry.kennel.name;
+
+              return (
+                <tr
+                  key={`all-entries-${entry.id}`}
+                  className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                >
+                  <td className="rounded-l-2xl px-3 py-3 font-semibold text-white">
+                    {entry.showResult?.finalRank ?? "-"}
+                  </td>
+                  <td className="px-3 py-3">
+                    {awards.length > 0 ? (
+                      <div className="flex min-w-24 flex-wrap gap-2">
+                        {awards.map((award) => (
+                          <span
+                            key={`${entry.id}-${award.awardCode}-${award.awardGroup}-${award.rank ?? "none"}`}
+                            className="inline-flex items-center justify-center gap-2 rounded-full border border-sky-300/25 bg-sky-500/10 px-3 py-1 font-semibold text-sky-100"
+                          >
+                            <span>{award.awardCode}</span>
+                            {award.pointsAwarded > 0 ? (
+                              <span className="font-bold text-white">
+                                {formatPoints(award.pointsAwarded)}
+                              </span>
+                            ) : null}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-purple-100/35">-</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <Link
+                      href={`/dogs/${entry.dog.id}`}
+                      className="font-semibold text-white underline-offset-4 hover:underline"
+                    >
+                      {formatDogDisplayName(entry.dog)}
+                    </Link>
+                    <div className="text-xs text-purple-100/55">
+                      {entry.dog.regNumber}
+                      {entry.entryStatus !== "JUDGED" ? (
+                        <span className="ml-2 text-amber-100/70">
+                          {entry.entryStatus}
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-purple-100/75">
+                    {kennelName}
+                  </td>
+                  <td className="px-3 py-3 text-purple-100/75">
+                    {entry.dog.sex}
+                  </td>
+                  <td className="rounded-r-2xl px-3 py-3 text-purple-100/65">
+                    {entry.showResult
+                      ? formatPublishedDate(entry.showResult.publishedAtEpoch)
+                      : "-"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export default async function BreedResultsPage({
   params,
 }: {
@@ -219,14 +352,39 @@ export default async function BreedResultsPage({
               breed: { select: { name: true, code2: true, groupName: true } },
               _count: {
                 select: {
-                  showEntries: {
-                    where: {
-                      entryStatus: {
-                        in: ["ENTERED", "JUDGED"],
+                  showEntries: true,
+                  showResults: true,
+                },
+              },
+              showEntries: {
+                orderBy: [{ id: "asc" }],
+                include: {
+                  dog: {
+                    select: {
+                      id: true,
+                      registeredName: true,
+                      callName: true,
+                      regNumber: true,
+                      visibleTitlePrefix: true,
+                      visibleTitleSuffix: true,
+                      sex: true,
+                    },
+                  },
+                  kennel: { select: { name: true, slug: true } },
+                  showResult: {
+                    include: {
+                      showAwards: {
+                        select: {
+                          awardCode: true,
+                          awardGroup: true,
+                          sex: true,
+                          rank: true,
+                          pointsAwarded: true,
+                          isMajor: true,
+                        },
                       },
                     },
                   },
-                  showResults: true,
                 },
               },
               showResults: {
@@ -396,6 +554,8 @@ export default async function BreedResultsPage({
                         {block.status}
                       </div>
                     </div>
+
+                    <AllEntriesTable entries={block.showEntries} />
 
                     <ResultSection
                       title={`${block.breed.name}, Dogs`}
