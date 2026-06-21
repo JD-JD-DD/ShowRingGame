@@ -230,13 +230,15 @@ function buildVisibleCategories(scores: {
   return VISIBLE_CATEGORY_DEFINITIONS.map(({ key, label }) => ({
     key,
     label,
-    score: scores[key],
+    numericScore: scores[key],
     min: 0,
     ideal: 10,
     max: 20,
     leftLabel: "Under ideal",
     centerLabel: "Ideal",
     rightLabel: "Over ideal",
+    scaleMeaning:
+      "Scores below 10 appear under ideal; scores above 10 appear over ideal.",
   }));
 }
 

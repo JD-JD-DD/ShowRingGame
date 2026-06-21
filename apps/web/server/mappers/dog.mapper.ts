@@ -50,13 +50,14 @@ export type DogProfileSnapshotDto = {
 export type DogProfileVisibleCategoryDto = {
   key: string;
   label: string;
-  score: number;
+  numericScore: number;
   min: number;
   ideal: number;
   max: number;
   leftLabel: "Under ideal";
   centerLabel: "Ideal";
   rightLabel: "Over ideal";
+  scaleMeaning: "Scores below 10 appear under ideal; scores above 10 appear over ideal.";
 };
 
 export type DogProfileQualityPresentationDto = {
@@ -230,13 +231,14 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
         (category) => ({
           key: category.key,
           label: category.label,
-          score: category.score,
+          numericScore: category.numericScore,
           min: category.min,
           ideal: category.ideal,
           max: category.max,
           leftLabel: category.leftLabel,
           centerLabel: category.centerLabel,
           rightLabel: category.rightLabel,
+          scaleMeaning: category.scaleMeaning,
         })
       ),
     },
