@@ -20,11 +20,11 @@ export default function DogPrivateNotesEditor({
   const [isEditing, setIsEditing] = useState(false);
 
   return (
-    <section className="mt-8 rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+    <section className="dog-card rounded-2xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-white">Private Notes</h2>
-          <p className="mt-2 text-sm leading-6 text-purple-100/65">
+          <h2 className="dog-heading text-xl font-semibold">Private Notes</h2>
+          <p className="dog-copy mt-2 text-sm leading-6">
             Your kennel notepad for this dog. Only you can view these notes.
           </p>
         </div>
@@ -32,7 +32,7 @@ export default function DogPrivateNotesEditor({
           <button
             type="button"
             onClick={() => setIsEditing(true)}
-            className="rounded-xl border border-purple-300/25 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+            className="dog-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
           >
             Edit
           </button>
@@ -59,7 +59,7 @@ export default function DogPrivateNotesEditor({
             defaultValue={initialNotes}
             maxLength={5000}
             rows={8}
-            className="w-full resize-y rounded-2xl border border-purple-300/20 bg-black/30 px-4 py-3 text-sm leading-7 text-white outline-none placeholder:text-purple-100/35 focus:border-purple-300/50"
+            className="dog-control w-full resize-y rounded-2xl px-4 py-3 text-sm leading-7 outline-none placeholder:text-purple-400/60 focus:border-purple-400"
             placeholder="Keep private breeding plans, observations, or reminders here."
           />
           <div className="mt-3 flex flex-wrap gap-2">
@@ -72,14 +72,14 @@ export default function DogPrivateNotesEditor({
             <button
               type="button"
               onClick={() => setIsEditing(false)}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              className="dog-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
             >
               Cancel
             </button>
           </div>
         </form>
       ) : (
-        <div className="mt-4 whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-purple-100/75">
+        <div className="dog-card dog-copy mt-4 whitespace-pre-wrap rounded-2xl p-4 text-sm leading-7">
           {initialNotes || "No private notes yet."}
         </div>
       )}

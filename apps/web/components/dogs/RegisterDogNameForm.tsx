@@ -30,11 +30,11 @@ export default function RegisterDogNameForm({
       action={action}
       method="post"
       onSubmit={handleSubmit}
-      className="mt-5 flex max-w-xl flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 sm:flex-row sm:flex-wrap sm:items-end"
+      className="dog-card mt-5 flex max-w-xl flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:flex-wrap sm:items-end"
     >
       {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
       <label className="min-w-0 flex-1">
-        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-purple-200">
+        <span className="dog-label text-xs font-semibold uppercase tracking-[0.16em]">
           Registered Name
         </span>
         <input
@@ -44,7 +44,7 @@ export default function RegisterDogNameForm({
           maxLength={45}
           required
           onChange={() => setConfirmingName(null)}
-          className="mt-2 w-full rounded-xl border border-purple-300/20 bg-black/30 px-3 py-2 text-sm text-white outline-none placeholder:text-purple-100/35 focus:border-purple-300/50"
+          className="dog-control mt-2 w-full rounded-xl px-3 py-2 text-sm outline-none placeholder:text-purple-400/60 focus:border-purple-400"
           placeholder="Register Your Dog's Name"
         />
       </label>
@@ -78,7 +78,7 @@ export default function RegisterDogNameForm({
             <button
               type="button"
               onClick={() => setConfirmingName(null)}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              className="dog-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
             >
               Cancel
             </button>

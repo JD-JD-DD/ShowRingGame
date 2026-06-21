@@ -226,7 +226,7 @@ function SortButton({
       type="button"
       onClick={onClick}
       className={`inline-flex items-center gap-1 transition ${
-        active ? "text-white" : "text-purple-200/80 hover:text-white"
+        active ? "theme-heading" : "theme-label hover:opacity-80"
       }`}
     >
       <span>{children}</span>
@@ -820,28 +820,28 @@ export default function KennelDogsPanel() {
   }
 
   return (
-    <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+    <section className="theme-panel rounded-[28px] p-5">
       <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-[0.18em] text-purple-200">
+          <div className="theme-label text-sm font-semibold uppercase tracking-[0.18em]">
             My Dogs
           </div>
-          <h2 className="mt-2 text-2xl font-semibold text-white">
+          <h2 className="theme-heading mt-2 text-2xl font-semibold">
             Kennel Roster
           </h2>
-          <p className="mt-2 text-sm leading-7 text-purple-100/70">
+          <p className="theme-copy mt-2 text-sm leading-7">
             Sort, filter, and compare your dogs in one working roster.
           </p>
         </div>
       </div>
 
-      <div className="mb-5 rounded-2xl border border-sky-300/15 bg-sky-500/5 p-4">
+      <div className="theme-card mb-5 rounded-2xl p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100">
               Kennel Areas
             </div>
-            <p className="mt-2 text-sm leading-6 text-purple-100/70">
+            <p className="theme-copy mt-2 text-sm leading-6">
               Create private views for groups like puppies to show, brood bitches,
               or health testing.
             </p>
@@ -859,7 +859,7 @@ export default function KennelDogsPanel() {
                 }
               }}
               placeholder="New area name..."
-              className="min-w-[220px] rounded-xl border border-sky-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-purple-100/40"
+              className="theme-control min-w-[220px] rounded-xl px-3 py-2 text-sm outline-none"
             />
             <button
               type="button"
@@ -885,7 +885,7 @@ export default function KennelDogsPanel() {
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
               activeAreaId === ""
                 ? "border-sky-200/70 bg-sky-500/20 text-sky-100"
-                : "border-white/10 bg-white/5 text-purple-100/70 hover:bg-white/10"
+                : "theme-neutral-badge hover:opacity-80"
             }`}
           >
             All Dogs ({dogs.length})
@@ -896,7 +896,7 @@ export default function KennelDogsPanel() {
               className={`inline-flex items-center gap-1 rounded-full border pr-1 transition ${
                 activeAreaId === area.id
                   ? "border-fuchsia-200/70 bg-fuchsia-500/20 text-fuchsia-100"
-                  : "border-white/10 bg-white/5 text-purple-100/70 hover:bg-white/10"
+                  : "theme-neutral-badge hover:opacity-80"
               }`}
             >
               <button
@@ -920,14 +920,14 @@ export default function KennelDogsPanel() {
                   event.stopPropagation();
                   setConfirmingDeleteAreaId(area.id);
                 }}
-                className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-black/20 text-[13px] font-bold text-purple-100/75 transition hover:border-red-300/35 hover:bg-red-500/15 hover:text-red-100"
+                className="theme-neutral-badge inline-flex h-6 w-6 items-center justify-center rounded-full text-[13px] font-bold transition hover:border-red-300/35 hover:bg-red-500/15 hover:text-red-100"
               >
                 ×
               </button>
             </div>
           ))}
           {areas.length === 0 ? (
-            <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs text-purple-100/55">
+            <span className="theme-neutral-badge rounded-full px-3 py-1.5 text-xs">
               No custom areas yet
             </span>
           ) : null}
@@ -954,7 +954,7 @@ export default function KennelDogsPanel() {
                 type="button"
                 onClick={() => setConfirmingDeleteAreaId(null)}
                 disabled={areaActionLoading}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
               >
                 Keep Area
               </button>
@@ -970,7 +970,7 @@ export default function KennelDogsPanel() {
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-100">
                 Grooming Assistance
               </div>
-              <p className="mt-2 text-sm leading-6 text-purple-100/75">
+              <p className="theme-copy mt-2 text-sm leading-6">
                 Grooming actions used this week:{" "}
                 {groomingSummary.groomingActionsUsedThisWeek} /{" "}
                 {groomingSummary.totalGroomingActionLimit}. Own dogs groomed:{" "}
@@ -979,35 +979,35 @@ export default function KennelDogsPanel() {
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-4">
-              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                <div className="text-xs uppercase tracking-wide text-purple-200/70">
+              <div className="theme-card rounded-xl px-3 py-2">
+                <div className="theme-label text-xs uppercase tracking-wide">
                   Remaining
                 </div>
-                <div className="mt-1 font-semibold text-white">
+                <div className="theme-heading mt-1 font-semibold">
                   {groomingSummary.groomingActionsRemainingThisWeek}
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                <div className="text-xs uppercase tracking-wide text-purple-200/70">
+              <div className="theme-card rounded-xl px-3 py-2">
+                <div className="theme-label text-xs uppercase tracking-wide">
                   Next Reset
                 </div>
                 <GroomingResetCountdown
                   resetEpoch={groomingSummary.nextGroomingResetEpoch}
                 />
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                <div className="text-xs uppercase tracking-wide text-purple-200/70">
+              <div className="theme-card rounded-xl px-3 py-2">
+                <div className="theme-label text-xs uppercase tracking-wide">
                   Level
                 </div>
-                <div className="mt-1 font-semibold text-white">
+                <div className="theme-heading mt-1 font-semibold">
                   {groomingSummary.groomingLevel}
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                <div className="text-xs uppercase tracking-wide text-purple-200/70">
+              <div className="theme-card rounded-xl px-3 py-2">
+                <div className="theme-label text-xs uppercase tracking-wide">
                   XP
                 </div>
-                <div className="mt-1 font-semibold text-white">
+                <div className="theme-heading mt-1 font-semibold">
                   {groomingSummary.groomingXp}
                 </div>
               </div>
@@ -1018,10 +1018,10 @@ export default function KennelDogsPanel() {
 
       <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200/80">
+          <div className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
             {activeArea ? activeArea.name : "All Dogs"} View
           </div>
-          <div className="mt-1 text-sm text-purple-100/60">
+          <div className="theme-copy mt-1 text-sm">
             {filteredDogs.length} visible dog
             {filteredDogs.length === 1 ? "" : "s"}
           </div>
@@ -1030,7 +1030,7 @@ export default function KennelDogsPanel() {
           <select
             value={breedFilter}
             onChange={(e) => setBreedFilter(e.target.value)}
-            className="min-w-0 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+            className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
           >
             <option value="">All Breeds</option>
             <BreedSelectOptions options={breedOptions} />
@@ -1039,14 +1039,14 @@ export default function KennelDogsPanel() {
           <select
             value={sexFilter}
             onChange={(e) => setSexFilter(e.target.value as "" | "M" | "F")}
-            className="min-w-0 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+            className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
           >
             <option value="">All Sexes</option>
             <option value="M">Dogs</option>
             <option value="F">Bitches</option>
           </select>
 
-          <label className="flex items-center gap-2 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-purple-100">
+          <label className="theme-control flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
             <input
               type="checkbox"
               checked={onlyBreedable}
@@ -1055,7 +1055,7 @@ export default function KennelDogsPanel() {
             Breedable
           </label>
 
-          <label className="flex items-center gap-2 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-purple-100">
+          <label className="theme-control flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
             <input
               type="checkbox"
               checked={onlyForSale}
@@ -1064,7 +1064,7 @@ export default function KennelDogsPanel() {
             For Sale
           </label>
 
-          <label className="flex items-center gap-2 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-purple-100">
+          <label className="theme-control flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
             <input
               type="checkbox"
               checked={onlyAtStud}
@@ -1078,7 +1078,7 @@ export default function KennelDogsPanel() {
             onChange={(e) =>
               setGroomingStateFilter(e.target.value as GroomingStateFilter)
             }
-            className="min-w-0 rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+            className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
           >
             <option value="">All Grooming</option>
             <option value="groomed">Groomed</option>
@@ -1093,12 +1093,12 @@ export default function KennelDogsPanel() {
         </div>
       ) : null}
 
-      <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-purple-300/15 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="theme-card mb-4 flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="text-sm font-semibold text-white">
+          <div className="theme-heading text-sm font-semibold">
             Selection
           </div>
-          <div className="mt-1 text-xs text-purple-100/65">
+          <div className="theme-copy mt-1 text-xs">
             {selectedDogIds.length} selected
             {filteredDogs.length > 0
               ? `, ${selectedVisibleDogCount} visible under current filters`
@@ -1118,7 +1118,7 @@ export default function KennelDogsPanel() {
             type="button"
             onClick={clearSelection}
             disabled={selectedDogIds.length === 0}
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
           >
             Clear Selection
           </button>
@@ -1126,13 +1126,13 @@ export default function KennelDogsPanel() {
       </div>
 
       {selectedDogIds.length > 0 ? (
-        <div className="mb-4 rounded-2xl border border-purple-300/15 bg-black/20 p-4">
+        <div className="theme-card mb-4 rounded-2xl p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <div className="text-sm font-semibold text-white">
+              <div className="theme-heading text-sm font-semibold">
                 {selectedDogIds.length} selected
               </div>
-              <div className="mt-1 text-xs text-purple-100/65">
+              <div className="theme-copy mt-1 text-xs">
                 Choose a bulk action, then apply it.
               </div>
             </div>
@@ -1143,7 +1143,7 @@ export default function KennelDogsPanel() {
                 onChange={(event) =>
                   updateBulkAction(event.target.value as BulkAction)
                 }
-                className="rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+                className="theme-control rounded-xl px-3 py-2 text-sm outline-none"
               >
                 <option value="">Bulk action...</option>
                 <option value="add-area">Add to Area</option>
@@ -1156,7 +1156,7 @@ export default function KennelDogsPanel() {
                 <select
                   value={areaActionTargetId}
                   onChange={(event) => setAreaActionTargetId(event.target.value)}
-                  className="rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+                  className="theme-control rounded-xl px-3 py-2 text-sm outline-none"
                 >
                   <option value="">Choose area...</option>
                   {areas.map((area) => (
@@ -1183,7 +1183,7 @@ export default function KennelDogsPanel() {
               <button
                 type="button"
                 onClick={clearSelection}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
               >
                 Clear
               </button>
@@ -1232,7 +1232,7 @@ export default function KennelDogsPanel() {
                 <button
                   type="button"
                   onClick={() => setConfirmingBulkAction(false)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                  className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
                 >
                   Keep Dogs
                 </button>
@@ -1243,7 +1243,7 @@ export default function KennelDogsPanel() {
       ) : null}
 
       {loading ? (
-        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-6 text-sm text-purple-100/70">
+        <div className="theme-card theme-copy rounded-2xl px-4 py-6 text-sm">
           Loading kennel dogs...
         </div>
       ) : error ? (
@@ -1251,14 +1251,14 @@ export default function KennelDogsPanel() {
           {error}
         </div>
       ) : filteredDogs.length === 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-6 text-sm text-purple-100/70">
+        <div className="theme-card theme-copy rounded-2xl px-4 py-6 text-sm">
           No dogs match your current filters.
         </div>
       ) : (
         <div className="overflow-x-auto pb-1 touch-pan-x">
           <table className="w-full min-w-[980px] table-fixed border-separate border-spacing-y-2 text-sm">
             <thead>
-              <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+              <tr className="theme-label text-left text-xs uppercase tracking-[0.16em]">
                 <th className="w-10 px-2 py-2">
                   <button
                     type="button"
@@ -1425,7 +1425,7 @@ export default function KennelDogsPanel() {
                         router.push(dogHref);
                       }
                     }}
-                    className="cursor-pointer border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)] transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-300/45"
+                    className="theme-card-interactive cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-purple-300/45"
                   >
                     <td className="rounded-l-2xl px-2 py-2">
                       <input
@@ -1450,13 +1450,13 @@ export default function KennelDogsPanel() {
                       </Link>
                     </td>
 
-                  <td className="px-2 py-2 text-white font-medium">
+                  <td className="theme-heading px-2 py-2 font-medium">
                     <div className="truncate text-xs leading-4">
                       {dog.breedName}
                     </div>
                   </td>
 
-                  <td className="px-2 py-2 text-white font-medium">
+                  <td className="theme-heading px-2 py-2 font-medium">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <span className="truncate">{getDogDisplayName(dog)}</span>
                       <DogStatusBadges
@@ -1468,8 +1468,8 @@ export default function KennelDogsPanel() {
                     </div>
                   </td>
 
-                  <td className="px-2 py-2 text-white">{dog.sex}</td>
-                  <td className="px-2 py-2 text-white">
+                  <td className="theme-heading px-2 py-2">{dog.sex}</td>
+                  <td className="theme-heading px-2 py-2">
                     {formatAge(dog.ageHours)}
                   </td>
 
@@ -1555,7 +1555,7 @@ export default function KennelDogsPanel() {
                   </td>
                 </tr>
                   {groomingOfferConfirmOpen ? (
-                    <tr className="border border-white/10 bg-black/20">
+                    <tr className="theme-card">
                       <td colSpan={13} className="rounded-2xl px-4 py-3">
                         <div className="rounded-xl border border-sky-300/25 bg-sky-500/10 p-3">
                           <div className="text-sm font-semibold text-sky-100">
@@ -1590,7 +1590,7 @@ export default function KennelDogsPanel() {
                                 setConfirmingGroomingOfferDogId(null);
                               }}
                               disabled={groomingBusy}
-                              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                              className="theme-secondary-button rounded-xl px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                             >
                               Keep Dog Here
                             </button>

@@ -41,13 +41,13 @@ export default function TraitLine({
   return (
     <div>
       <div className="mb-1 text-sm">
-        <span className="text-purple-100/85">{label} </span>
-        <span className="font-semibold text-white">{safeValue.toFixed(1)}</span>
+        <span className="dog-copy">{label} </span>
+        <span className="dog-heading font-semibold">{safeValue.toFixed(1)}</span>
     </div>
 
       <div className="relative mt-2 h-6">
         {/* baseline line */}
-        <div className="absolute top-1/2 left-0 right-0 h-[2px] -translate-y-1/2 rounded bg-white/20" />
+        <div className="dog-trait-track absolute top-1/2 left-0 right-0 h-[2px] -translate-y-1/2 rounded" />
 
         {/* ideal tick */}
         <div
@@ -57,7 +57,7 @@ export default function TraitLine({
 
         {/* value marker */}
         <div
-          className="absolute top-1/2 h-5 w-[6px] -translate-x-1/2 -translate-y-1/2 rounded-sm shadow-[0_0_0_1px_rgba(255,255,255,0.2)]"
+          className="dog-trait-marker absolute top-1/2 h-5 w-[6px] -translate-x-1/2 -translate-y-1/2 rounded-sm"
           style={{
             left: `${valuePercent}%`,
             backgroundColor: markerColor,
@@ -66,7 +66,7 @@ export default function TraitLine({
         />
       </div>
 
-      <div className="mt-1 flex items-center justify-between text-[11px] uppercase tracking-wide text-purple-100/50">
+      <div className="dog-copy mt-1 flex items-center justify-between text-[11px] uppercase tracking-wide">
         <span>{leftLabel}</span>
         <span className="text-emerald-300/80">10</span>
         <span>{rightLabel}</span>

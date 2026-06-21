@@ -15,6 +15,15 @@
   --gold-soft: #f4d58d;
   --text-soft: #5f4b6b;
   --text-muted: #766581;
+  --dog-panel: rgba(255, 255, 255, 0.9);
+  --dog-card: rgba(246, 240, 252, 0.82);
+  --dog-control: rgba(255, 255, 255, 0.96);
+  --dog-border: rgba(109, 40, 160, 0.18);
+  --dog-border-strong: rgba(109, 40, 160, 0.32);
+  --dog-heading: #2d1839;
+  --dog-copy: #624e6e;
+  --dog-label: #6b287f;
+  --dog-shadow: 0 20px 55px rgba(67, 24, 92, 0.11);
   color-scheme: light;
 }
 
@@ -26,6 +35,15 @@ html[data-theme="dark"] {
   --border: rgba(170, 120, 255, 0.26);
   --text-soft: #cfc3df;
   --text-muted: #a695ba;
+  --dog-panel: rgba(34, 18, 48, 0.88);
+  --dog-card: rgba(15, 7, 21, 0.48);
+  --dog-control: rgba(15, 7, 21, 0.72);
+  --dog-border: rgba(216, 180, 254, 0.16);
+  --dog-border-strong: rgba(216, 180, 254, 0.34);
+  --dog-heading: #f5efff;
+  --dog-copy: #cfc3df;
+  --dog-label: #d8b4fe;
+  --dog-shadow: 0 20px 55px rgba(0, 0, 0, 0.3);
   color-scheme: dark;
 }
 
@@ -165,6 +183,115 @@ html:not([data-theme="dark"]) .showring-title-sweep {
   color: #3c174d;
   text-shadow: 0 1px 0 #fff, 0 0 14px rgba(124, 58, 237, 0.12);
   filter: none;
+}
+
+/* Semantic Dog-page surfaces replace the page's former mix of opaque gradients,
+   pale translucent panels, and black inset cards. */
+:is(.dog-page, .shows-page, .kennel-page) {
+  color: var(--foreground);
+}
+
+:is(.dog-panel, .theme-panel) {
+  border: 1px solid var(--dog-border);
+  background: var(--dog-panel);
+  box-shadow: var(--dog-shadow);
+}
+
+:is(.dog-card, .theme-card) {
+  border: 1px solid var(--dog-border);
+  background: var(--dog-card);
+}
+
+:is(.dog-card-interactive, .theme-card-interactive) {
+  border: 1px solid var(--dog-border);
+  background: var(--dog-card);
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+:is(.dog-card-interactive, .theme-card-interactive):hover {
+  border-color: var(--dog-border-strong);
+  background: color-mix(in srgb, var(--dog-card) 82%, var(--purple-main) 18%);
+}
+
+:is(.dog-control, .theme-control) {
+  border: 1px solid var(--dog-border);
+  background: var(--dog-control);
+  color: var(--dog-heading);
+}
+
+:is(.dog-heading, .theme-heading) {
+  color: var(--dog-heading);
+}
+
+:is(.dog-copy, .theme-copy) {
+  color: var(--dog-copy);
+}
+
+:is(.dog-label, .theme-label) {
+  color: var(--dog-label);
+}
+
+:is(.dog-neutral-badge, .theme-neutral-badge) {
+  border: 1px solid var(--dog-border);
+  background: var(--dog-card);
+  color: var(--dog-heading);
+}
+
+:is(.dog-secondary-button, .theme-secondary-button) {
+  border: 1px solid var(--dog-border-strong);
+  background: var(--dog-card);
+  color: var(--dog-heading);
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+:is(.dog-secondary-button, .theme-secondary-button):hover {
+  border-color: var(--purple-bright);
+  background: color-mix(in srgb, var(--dog-card) 78%, var(--purple-main) 22%);
+}
+
+.dog-section-toggle {
+  border: 1px solid var(--dog-border-strong);
+  background: color-mix(in srgb, var(--dog-card) 78%, var(--purple-main) 22%);
+  color: var(--dog-heading);
+}
+
+.dog-trait-track {
+  background: var(--dog-border-strong);
+}
+
+.dog-trait-marker {
+  box-shadow: 0 0 0 1px var(--dog-border-strong);
+}
+
+/* Keep older nested Dog-page fragments on the same semantic surfaces while
+   they are shared with listing and pedigree subcomponents. */
+:is(.dog-page, .shows-page, .kennel-page) :is([class~="bg-black/15"], [class~="bg-black/20"], [class~="bg-black/25"], [class~="bg-black/30"], [class~="bg-white/5"], [class~="bg-purple-800/40"]) {
+  border-color: var(--dog-border);
+  background: var(--dog-card);
+}
+
+:is(.dog-page, .shows-page, .kennel-page) :is([class~="border-white/10"], [class~="border-purple-300/15"], [class~="border-purple-300/20"], [class~="border-purple-300/25"], [class~="border-purple-900"]) {
+  border-color: var(--dog-border);
+}
+
+html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page) :is([class~="text-emerald-100"], [class~="text-emerald-200"]) {
+  color: #047857;
+}
+
+html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page) :is([class~="text-amber-100"], [class~="text-amber-200"], [class~="text-amber-100/70"], [class~="text-amber-100/75"], [class~="text-amber-100/80"]) {
+  color: #92400e;
+}
+
+html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page) :is([class~="text-red-100"], [class~="text-red-200"], [class~="text-rose-100"]) {
+  color: #b91c1c;
+}
+
+html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page) :is([class~="text-sky-100"], [class~="text-sky-200"], [class~="text-cyan-100"]) {
+  color: #0369a1;
+}
+
+html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page) :is([class~="text-fuchsia-100"], [class~="text-fuchsia-200"], [class~="text-fuchsia-100/70"], [class~="text-fuchsia-100/75"], [class~="text-fuchsia-100/80"], [class~="text-fuchsia-100/85"]) {
+  color: #a21caf;
 }
 
 @keyframes premium-planner-shimmer {

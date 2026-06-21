@@ -40,12 +40,12 @@ function statusTone(status: ShowDisplayStatus): string {
     case "OPEN":
       return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
     case "SCHEDULED":
-      return "border-purple-300/20 bg-black/20 text-purple-100/70";
+      return "theme-neutral-badge";
     case "AWAITING JUDGING":
     case "JUDGING":
       return "border-amber-300/25 bg-amber-500/10 text-amber-100";
     case "CLOSED":
-      return "border-purple-300/20 bg-black/20 text-purple-100/65";
+      return "theme-neutral-badge opacity-75";
     case "CANCELLED":
       return "border-red-300/25 bg-red-500/10 text-red-100";
   }
@@ -58,7 +58,7 @@ function derivedStatusTone(
     case "CURRENT_WEEK":
       return "border-fuchsia-300/30 bg-fuchsia-500/10 text-fuchsia-100";
     case "JUDGING_OPENS":
-      return "border-purple-300/20 bg-black/20 text-purple-100/70";
+      return "theme-neutral-badge";
   }
 }
 
@@ -87,7 +87,7 @@ function getEntryActivity(entryCount: number): EntryActivity {
 function entryActivityButtonTone(level: EntryActivityLevel): string {
   switch (level) {
     case "NONE":
-      return "border-purple-300/30 bg-transparent text-purple-100 hover:bg-purple-500/10";
+      return "theme-secondary-button";
     case "LOW":
       return "border-purple-300/35 bg-purple-500/15 text-purple-100 hover:bg-purple-500/25";
     case "MODERATE":
@@ -308,14 +308,14 @@ export default async function ShowsPage({
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-8 text-white">
-      <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+    <main className="shows-page mx-auto max-w-7xl px-6 py-8">
+      <section className="theme-panel mb-8 rounded-[28px] px-6 py-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-white">
+            <h1 className="theme-heading text-4xl font-bold tracking-tight">
               Annual Show Calendar
             </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
+            <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
               Week 52 is reserved for the invitational show.
             </p>
           </div>
@@ -363,7 +363,7 @@ export default async function ShowsPage({
 
             <Link
               href="/kennel"
-              className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               My Kennel
             </Link>
@@ -394,12 +394,12 @@ export default async function ShowsPage({
           </div>
         ) : null}
 
-        <div className="mt-4 rounded-2xl border border-purple-300/15 bg-black/20 px-4 py-3 text-xs text-purple-100/65">
+        <div className="theme-card theme-copy mt-4 rounded-2xl px-4 py-3 text-xs">
           Entry activity is shown by Enter button color intensity.
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+      <section className="theme-panel rounded-[28px] p-6">
         <div className="grid gap-3">
           {templates.map((template, templateIndex) => {
             const templateId = `week-${template.weekInYear}-slot-${
@@ -418,12 +418,12 @@ export default async function ShowsPage({
                 className={
                   isCurrentWeek
                     ? "scroll-mt-6 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[0_0_0_1px_rgba(240,171,252,0.08)]"
-                    : "scroll-mt-6 rounded-2xl border border-white/10 bg-white/5 p-4"
+                    : "theme-card scroll-mt-6 rounded-2xl p-4"
                 }
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-purple-200/70">
+                    <div className="theme-label flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em]">
                       <span>
                         Week {template.weekInYear} - Slot{" "}
                         {template.slotIndex + 1}
@@ -436,10 +436,10 @@ export default async function ShowsPage({
                         </span>
                       ) : null}
                     </div>
-                    <h2 className="mt-1 text-lg font-semibold text-white">
+                    <h2 className="theme-heading mt-1 text-lg font-semibold">
                       {template.name}
                     </h2>
-                    <div className="mt-2 text-sm text-purple-100/65">
+                    <div className="theme-copy mt-2 text-sm">
                       {formatShowDayNames(template.showDayNames)} -{" "}
                       {getShowDistrictRegionName(template.district)}
                     </div>
@@ -447,7 +447,7 @@ export default async function ShowsPage({
 
                   <div className="flex min-w-0 flex-1 flex-wrap justify-start gap-2 lg:justify-end">
                     {templateClusters.length === 0 ? (
-                      <span className="rounded-full border border-purple-300/20 bg-black/20 px-3 py-1 text-xs text-purple-100/60">
+                      <span className="theme-neutral-badge rounded-full px-3 py-1 text-xs opacity-70">
                         No generated years yet
                       </span>
                     ) : (
@@ -482,13 +482,13 @@ export default async function ShowsPage({
                         return (
                           <div
                             key={cluster.id}
-                            className="flex flex-wrap items-center justify-end gap-2 rounded-xl border border-purple-300/25 bg-black/20 px-3 py-2 text-sm text-purple-100"
+                            className="theme-card flex flex-wrap items-center justify-end gap-2 rounded-xl px-3 py-2 text-sm"
                           >
                             <Link
                               href={clusterHref}
                               className="transition hover:text-sky-100"
                             >
-                              <span className="font-semibold text-white">
+                              <span className="theme-heading font-semibold">
                                 Year {cluster.year}
                               </span>
 
@@ -574,7 +574,7 @@ export default async function ShowsPage({
                     </span>
                   ) : null}
                 </div>
-                <h2 className="mt-1 text-lg font-semibold text-white">
+                <h2 className="theme-heading mt-1 text-lg font-semibold">
                   Invitational Show
                 </h2>
                 <div className="mt-2 text-sm text-amber-100/75">
@@ -585,7 +585,7 @@ export default async function ShowsPage({
 
               <div className="flex min-w-0 flex-1 flex-wrap justify-start gap-2 lg:justify-end">
                 {invitationalClusters.length === 0 ? (
-                  <span className="rounded-full border border-amber-300/20 bg-black/20 px-3 py-1 text-xs text-amber-100/70">
+                  <span className="theme-neutral-badge rounded-full px-3 py-1 text-xs">
                     Invitations pending
                   </span>
                 ) : (
@@ -611,9 +611,9 @@ export default async function ShowsPage({
                       <Link
                         key={cluster.id}
                         href={`/shows/${cluster.id}/results`}
-                        className="rounded-xl border border-amber-300/25 bg-black/20 px-3 py-2 text-sm text-amber-100 transition hover:text-white"
+                        className="theme-card-interactive rounded-xl px-3 py-2 text-sm"
                       >
-                        <span className="font-semibold text-white">
+                        <span className="theme-heading font-semibold">
                           Year {cluster.year}
                         </span>
                         <span className="ml-2 text-amber-100/70">

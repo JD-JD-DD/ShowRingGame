@@ -37,39 +37,39 @@ export default async function KennelPage() {
   const prestige = await getKennelPrestigeSummary(kennel.id);
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-8">
+    <main className="kennel-page mx-auto max-w-7xl px-6 py-8">
       <section className="mb-6 grid gap-3 lg:grid-cols-[1.35fr_0.85fr_0.85fr_1fr]">
-        <div className="rounded-2xl border border-purple-900 bg-purple-800/40 p-3 shadow-sm">
-          <div className="text-xs uppercase tracking-[0.16em] text-neutral-500">
+        <div className="theme-card rounded-2xl p-3">
+          <div className="theme-label text-xs uppercase tracking-[0.16em]">
             Kennel
           </div>
-          <div className="mt-0.5 text-base font-semibold">{kennel.name}</div>
-          <div className="mt-1 text-xs text-neutral-600">{kennel.slug}</div>
+          <div className="theme-heading mt-0.5 text-base font-semibold">{kennel.name}</div>
+          <div className="theme-copy mt-1 text-xs">{kennel.slug}</div>
         </div>
 
         <div
           style={homeRegion ? getDistrictPanelStyle(homeRegion) : undefined}
-          className="rounded-2xl border border-purple-900 bg-purple-800/40 p-3 shadow-sm"
+          className="theme-card rounded-2xl p-3"
         >
-          <div className="text-xs uppercase tracking-[0.16em] text-neutral-500">
+          <div className="theme-label text-xs uppercase tracking-[0.16em]">
             Region
           </div>
-          <div className="mt-0.5 text-base font-semibold">
+          <div className="theme-heading mt-0.5 text-base font-semibold">
             {homeRegion?.name ?? "-"}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-purple-900 bg-purple-800/40 p-3 shadow-sm">
-          <div className="text-xs uppercase tracking-[0.16em] text-neutral-500">
+        <div className="theme-card rounded-2xl p-3">
+          <div className="theme-label text-xs uppercase tracking-[0.16em]">
             Balance
           </div>
-          <div className="mt-0.5 text-base font-semibold">
+          <div className="theme-heading mt-0.5 text-base font-semibold">
             ${kennel.balance.toLocaleString()}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-purple-900 bg-purple-800/40 p-3 shadow-sm">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-neutral-500">
+        <div className="theme-card rounded-2xl p-3">
+          <div className="theme-label flex items-center gap-2 text-xs uppercase tracking-[0.16em]">
             <span>Prestige</span>
             <Link
               href="/faq#kennel-prestige"
@@ -79,10 +79,10 @@ export default async function KennelPage() {
               ?
             </Link>
           </div>
-          <div className="mt-0.5 text-base font-semibold">
+          <div className="theme-heading mt-0.5 text-base font-semibold">
             {prestige.score.toLocaleString()}
           </div>
-          <div className="mt-1 text-xs text-neutral-600">
+          <div className="theme-copy mt-1 text-xs">
             {prestige.tier.label}
           </div>
           <Link
@@ -98,7 +98,7 @@ export default async function KennelPage() {
         <div className="mb-3 flex flex-wrap items-center gap-3">
           <Link
             href="/"
-            className="rounded-md border border-purple-500 px-5 py-2 text-sm font-semibold text-purple-200 hover:bg-purple-950/40"
+            className="theme-secondary-button rounded-md px-5 py-2 text-sm font-semibold"
           >
             Home
           </Link>
@@ -122,7 +122,7 @@ export default async function KennelPage() {
           </Link>
           <Link
             href="/market"
-            className="rounded-md border border-purple-300/40 px-5 py-2 text-sm font-semibold text-purple-100 hover:bg-purple-950/40"
+            className="theme-secondary-button rounded-md px-5 py-2 text-sm font-semibold"
           >
             Market
           </Link>
@@ -134,7 +134,7 @@ export default async function KennelPage() {
           </Link>
           <Link
             href="/ledger"
-            className="rounded-md border border-purple-300/40 px-5 py-2 text-sm font-semibold text-purple-100 hover:bg-purple-950/40"
+            className="theme-secondary-button rounded-md px-5 py-2 text-sm font-semibold"
           >
             Ledger
           </Link>
@@ -157,7 +157,7 @@ export default async function KennelPage() {
         </div>
       </section>
 
-      <section className="mb-8 rounded-2xl border border-white/10 bg-black/20 p-4">
+      <section className="theme-card mb-8 rounded-2xl p-4">
         <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-100/75">
           Premium Features
         </div>

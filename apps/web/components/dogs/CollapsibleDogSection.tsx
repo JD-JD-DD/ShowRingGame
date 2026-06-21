@@ -34,9 +34,9 @@ export default function CollapsibleDogSection({
         aria-expanded={isOpen}
       >
         <div>
-          <h2 className={`${titleClassName} font-semibold text-white`}>{title}</h2>
+          <h2 className={`${titleClassName} dog-heading font-semibold`}>{title}</h2>
           {description ? (
-            <p className="mt-2 text-sm leading-7 text-purple-100/70">
+            <p className="dog-copy mt-2 text-sm leading-7">
               {description}
             </p>
           ) : null}
@@ -45,7 +45,7 @@ export default function CollapsibleDogSection({
         <div className="flex shrink-0 items-center gap-3">
           {badge}
           <span
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-full border border-purple-300/30 bg-purple-500/10 text-sm font-bold text-purple-100 transition ${
+            className={`dog-section-toggle inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition ${
               isOpen ? "rotate-90" : "rotate-0"
             }`}
             aria-hidden="true"

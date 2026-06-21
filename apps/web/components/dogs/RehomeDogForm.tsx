@@ -48,7 +48,7 @@ export default function RehomeDogForm({
           <button
             type="button"
             onClick={() => setIsConfirmingRehome(false)}
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+            className="dog-secondary-button rounded-xl px-3 py-2 text-sm font-semibold"
           >
             Keep Dog
           </button>

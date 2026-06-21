@@ -42,11 +42,11 @@ export default function ManageDogListingForm({
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
 
   return (
-    <div className="rounded-2xl border border-emerald-300/20 bg-black/20 p-3">
+    <div className="dog-card rounded-2xl p-3">
       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-100/80">
         Listed For Sale
       </div>
-      <div className="mt-1 text-sm font-semibold text-white">
+      <div className="dog-heading mt-1 text-sm font-semibold">
         {formatMoney(currentPrice)}
       </div>
 
@@ -74,7 +74,7 @@ export default function ManageDogListingForm({
               required
               inputMode="numeric"
               defaultValue={currentPrice}
-              className="w-full rounded-xl border border-emerald-300/20 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-emerald-300/50"
+              className="dog-control w-full rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-400"
             />
             <button
               type="submit"
@@ -104,7 +104,7 @@ export default function ManageDogListingForm({
                 <button
                   type="button"
                   onClick={() => setIsConfirmingCancel(false)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                  className="dog-secondary-button rounded-xl px-3 py-2 text-sm font-semibold"
                 >
                   Keep Listing
                 </button>

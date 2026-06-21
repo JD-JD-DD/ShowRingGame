@@ -53,6 +53,8 @@ import {
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
 const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
 const INVITATIONAL_PLACEMENT_CODES = ["BIS", "RBIS", "G1", "G2", "G3", "G4"];
+const DOG_PANEL_CLASS = "dog-panel rounded-[28px] p-6";
+const DOG_CARD_CLASS = "dog-card rounded-2xl px-4 py-3";
 
 type PageProps = {
   params: Promise<{
@@ -441,13 +443,13 @@ function PedigreeCard({
     { red: 0, yellow: 0, green: 0 }
   );
   const className =
-    "flex min-h-0 flex-col justify-center rounded-2xl border border-white/10 bg-black/20 px-3 py-2 transition";
+    "dog-card-interactive flex min-h-0 flex-col justify-center rounded-2xl px-3 py-2";
   const content = (
     <>
-      <div className="text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-purple-200/70">
+      <div className="dog-label text-[0.62rem] font-semibold uppercase tracking-[0.14em]">
         {relationship}
       </div>
-      <div className="mt-1 flex items-center gap-1.5 text-sm font-semibold leading-tight text-white">
+      <div className="dog-heading mt-1 flex items-center gap-1.5 text-sm font-semibold leading-tight">
         <span>{dog ? formatDogDisplayName(dog) : "Unknown"}</span>
         <DogStatusBadges
           healthStatus={healthBadgeStatus}
@@ -455,11 +457,11 @@ function PedigreeCard({
         />
       </div>
       {dog ? (
-        <div className="mt-1 truncate text-[0.68rem] text-purple-100/55">
+        <div className="dog-copy mt-1 truncate text-[0.68rem]">
           {dog.regNumber}
         </div>
       ) : null}
-      <div className="mt-2 text-[0.65rem] text-purple-100/55">
+      <div className="dog-copy mt-2 text-[0.65rem]">
         <span>Color: Pending</span>
         {healthResults.length === 0 ? (
           <span className="ml-3">Health: Not tested</span>
@@ -501,7 +503,7 @@ function PedigreeCard({
     <Link
       href={`/dogs/${dog.id}`}
       style={style}
-      className={`${className} hover:border-purple-300/45 hover:bg-white/10`}
+      className={className}
     >
       {content}
     </Link>
@@ -1153,16 +1155,16 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const canOrderHealthTests = isOwnedByCurrentKennel && isAlive;
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="dog-page min-h-screen px-6 py-8">
       {areaNavigation?.previous ? (
         <Link
           href={{
             pathname: `/dogs/${areaNavigation.previous.id}`,
             query: { areaId: areaNavigation.areaId },
           }}
-          className="fixed left-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-2xl border border-purple-300/25 bg-purple-950/70 px-3 py-4 text-center text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-purple-100 shadow-[0_20px_40px_rgba(0,0,0,0.35)] transition hover:border-purple-200/40 hover:bg-purple-900/85 lg:flex lg:flex-col lg:items-center"
+        className="dog-secondary-button fixed left-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-2xl px-3 py-4 text-center text-[0.7rem] font-semibold uppercase tracking-[0.18em] shadow-lg lg:flex lg:flex-col lg:items-center"
         >
-          <span className="text-lg leading-none text-white">&lt;</span>
+          <span className="dog-heading text-lg leading-none">&lt;</span>
           <span>Prev</span>
           <span>Dog</span>
         </Link>
@@ -1174,16 +1176,16 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             pathname: `/dogs/${areaNavigation.next.id}`,
             query: { areaId: areaNavigation.areaId },
           }}
-          className="fixed right-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-2xl border border-purple-300/25 bg-purple-950/70 px-3 py-4 text-center text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-purple-100 shadow-[0_20px_40px_rgba(0,0,0,0.35)] transition hover:border-purple-200/40 hover:bg-purple-900/85 lg:flex lg:flex-col lg:items-center"
+        className="dog-secondary-button fixed right-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-2xl px-3 py-4 text-center text-[0.7rem] font-semibold uppercase tracking-[0.18em] shadow-lg lg:flex lg:flex-col lg:items-center"
         >
-          <span className="text-lg leading-none text-white">&gt;</span>
+          <span className="dog-heading text-lg leading-none">&gt;</span>
           <span>Next</span>
           <span>Dog</span>
         </Link>
       ) : null}
 
       <div className="mx-auto max-w-7xl">
-        <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur">
+      <section className="dog-panel mb-8 rounded-[28px] px-6 py-6 backdrop-blur">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-4xl">
               <div className="mb-3 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
@@ -1192,10 +1194,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
               <div className="text-sm font-medium text-purple-200">
                 {dog.breed.name}{" "}
-                <span className="text-purple-100/60">({dog.breedCode2})</span>
+              <span className="dog-copy">({dog.breedCode2})</span>
               </div>
 
-              <h1 className="mt-2 flex flex-wrap items-center gap-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
+            <h1 className="dog-heading mt-2 flex flex-wrap items-center gap-2 text-4xl font-bold tracking-tight sm:text-5xl">
                 <span>{displayName}</span>
                 <DogStatusBadges
                   healthStatus={healthBadgeStatus}
@@ -1206,7 +1208,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 />
               </h1>
 
-              <div className="mt-3 text-sm text-purple-100/70">
+            <div className="dog-copy mt-3 text-sm">
                 {dog.regNumber}
               </div>
 
@@ -1219,7 +1221,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               ) : null}
 
               {(dog.visibleTitlePrefix || dog.visibleTitleSuffix) && (
-                <div className="mt-3 text-sm text-purple-100/80">
+              <div className="dog-copy mt-3 text-sm">
                   {[dog.visibleTitlePrefix, dog.visibleTitleSuffix]
                     .filter(Boolean)
                     .join(" / ")}
@@ -1242,13 +1244,13 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               ) : null}
 
               <div className="mt-5 flex flex-wrap gap-2">
-                <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-medium text-purple-100">
+              <div className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
                   Sex: {dog.sex}
                 </div>
-                <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-medium text-purple-100">
+              <div className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
                   Age: {formatAge(ageHours)}
                 </div>
-                <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-medium text-purple-100">
+              <div className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
                   Status: {dog.lifecycleState}
                 </div>
                 {dog.deathEpoch !== null ? (
@@ -1256,7 +1258,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     Died: {formatShowDate(dog.deathEpoch)}
                   </div>
                 ) : null}
-                <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-medium text-purple-100">
+              <div className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
                   Origin: {dog.originType}
                 </div>
                 {dog.isFoundation ? (
@@ -1304,7 +1306,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             <div className="grid gap-3 sm:grid-cols-2 lg:w-[360px] lg:grid-cols-1">
               <Link
                 href="/kennel"
-                className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              className="dog-secondary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"
               >
                 Back to My Kennel
               </Link>
@@ -1317,7 +1319,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   Breed Dog
                 </Link>
               ) : (
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-5 py-3 text-center text-sm font-semibold text-purple-100/45">
+              <div className="dog-card dog-copy rounded-2xl px-5 py-3 text-center text-sm font-semibold opacity-60">
                   Breed Dog
                 </div>
               )}
@@ -1382,15 +1384,15 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   <summary className="list-none rounded-2xl bg-amber-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-amber-500 [&::-webkit-details-marker]:hidden">
                     Groom Dog
                   </summary>
-                  <div className="mt-3 rounded-2xl border border-amber-300/20 bg-black/25 p-4">
-                    <div className="text-sm font-semibold text-white">
+                  <div className="dog-card mt-3 rounded-2xl p-4">
+                    <div className="dog-heading text-sm font-semibold">
                       Grooming
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-purple-100/75">
+                    <p className="dog-copy mt-2 text-sm leading-6">
                       Grooming improves coat condition and uses one of your
                       kennel&apos;s weekly grooming actions.
                     </p>
-                    <div className="mt-3 grid gap-2 text-sm text-purple-100/75">
+                    <div className="dog-copy mt-3 grid gap-2 text-sm">
                       <div>
                         Grooming actions remaining this week:{" "}
                         {groomingSummary?.groomingActionsRemainingThisWeek ?? 0}{" "}
@@ -1502,7 +1504,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           <CollapsibleDogSection
             title="Visible Trait Categories"
             description="Inherited categories use a 0-20 scale with 10 as ideal. Conditioning Handling is owner-built preparation scored from 0-10."
-            className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]"
+            className={DOG_PANEL_CLASS}
             contentClassName="mt-6 space-y-4"
           >
             {categoryEntries.map(([key, value]) => (
@@ -1526,42 +1528,42 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           <div className="grid gap-6">
             <CollapsibleDogSection
               title="Identity"
-              className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+              className={DOG_PANEL_CLASS}
               contentClassName="mt-4 grid gap-3 sm:grid-cols-2"
               titleClassName="text-xl"
             >
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Breed
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     {dog.breed.name} ({dog.breedCode2})
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Registration
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     {dog.regNumber}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Owner
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     {dog.ownerKennel?.name ?? "Unowned"}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Breeder
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     {dog.breederKennel?.name ?? "System"}
                   </div>
                 </div>
@@ -1569,65 +1571,65 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
             <CollapsibleDogSection
               title="Current Status"
-              className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+              className={DOG_PANEL_CLASS}
               contentClassName="mt-4 grid gap-3 sm:grid-cols-2"
               titleClassName="text-xl"
             >
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Lifecycle
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     {dog.lifecycleState}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Market State
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     {dog.marketState}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Coat Condition
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     {formatCondition(groomingStatus.currentCoatCondition)}
                   </div>
                 </div>
 
                 {isOwnedByCurrentKennel ? (
-                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                    <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                       Grooming
                     </div>
-                    <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                       {groomingStatus.groomingStatusLabel}
                     </div>
                   </div>
                 ) : null}
 
                 {isOwnedByCurrentKennel ? (
-                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                    <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                       Net Grooming Effect
                     </div>
-                    <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                       {formatSignedCondition(groomingStatus.netGroomingImpact)}
                     </div>
                   </div>
                 ) : null}
 
                 {isOwnedByCurrentKennel ? (
-                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                    <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                       Grooming History
                     </div>
-                    <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                       +{formatCondition(groomingStatus.totalGroomingGain)} gain
                       / -{formatCondition(groomingStatus.totalGroomingDecay)}{" "}
                       decay
@@ -1636,21 +1638,21 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 ) : null}
 
                 {dog.deathEpoch !== null ? (
-                  <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                    <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                       Death Date
                     </div>
-                    <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                       {formatShowDate(dog.deathEpoch)}
                     </div>
                   </div>
                 ) : null}
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Show Eligibility
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     {isAlive &&
                     ageHours >= MIN_SHOW_AGE_HOURS &&
                     ageHours <= MAX_SHOW_AGE_HOURS
@@ -1659,23 +1661,23 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Breeding Eligibility
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     {canBreed ? "Eligible" : "Not eligible"}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 sm:col-span-2">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={`${DOG_CARD_CLASS} sm:col-span-2`}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Breeding Record
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     Champion offspring: {producerRecord.championOffspringCount}
                   </div>
-                  <div className="mt-1 text-xs text-purple-100/65">
+                  <div className="dog-copy mt-1 text-xs">
                     Current merit:{" "}
                     {producerRecord.producerMeritLabel
                       ? `${producerRecord.producerMeritLabel} (${producerRecord.producerMeritSuffix})`
@@ -1683,7 +1685,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </div>
                   {producerRecord.nextMeritLabel &&
                   producerRecord.nextMeritThreshold !== null ? (
-                    <div className="mt-1 text-xs text-purple-100/55">
+                    <div className="dog-copy mt-1 text-xs">
                       Progress toward {producerRecord.nextMeritLabel}:{" "}
                       {producerRecord.championOffspringCount} /{" "}
                       {producerRecord.nextMeritThreshold}
@@ -1706,33 +1708,33 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </span>
                 ) : undefined
               }
-              className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+              className={DOG_PANEL_CLASS}
               contentClassName="mt-4"
               titleClassName="text-xl"
             >
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Points
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     {championshipPoints}/{CHAMPIONSHIP_POINTS_REQUIRED}
                   </div>
-                  <div className="mt-1 text-xs text-purple-100/55">
+                  <div className="dog-copy mt-1 text-xs">
                     {pointsNeeded === 0
                       ? "Point requirement met"
                       : `${pointsNeeded} more needed`}
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+                <div className={DOG_CARD_CLASS}>
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Majors
                   </div>
-                  <div className="mt-1 text-sm font-medium text-white">
+                  <div className="dog-heading mt-1 text-sm font-medium">
                     {majorCount}/{CHAMPIONSHIP_MAJORS_REQUIRED}
                   </div>
-                  <div className="mt-1 text-xs text-purple-100/55">
+                  <div className="dog-copy mt-1 text-xs">
                     {majorsNeeded === 0
                       ? "Major requirement met"
                       : `${majorsNeeded} more needed`}
@@ -1741,8 +1743,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               </div>
 
               {championshipPointWins.length > 0 ? (
-                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <div className="text-xs uppercase tracking-wide text-purple-200">
+              <div className="dog-card mt-4 rounded-2xl p-4">
+                  <div className="dog-label text-xs uppercase tracking-wide">
                     Recent Point Wins
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -1782,7 +1784,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               </span>
             </div>
           }
-          className="mb-8 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]"
+          className={`${DOG_PANEL_CLASS} mb-8`}
           contentClassName="mt-4"
         >
 
@@ -1832,24 +1834,24 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           title="Show Record"
           description="Published breed results for this dog."
           badge={
-            <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm font-semibold text-purple-100/75">
+            <div className="dog-neutral-badge rounded-full px-3 py-1 text-sm font-semibold">
               {showResults.length} result{showResults.length === 1 ? "" : "s"} -{" "}
               {totalShowPoints} point{totalShowPoints === 1 ? "" : "s"}
             </div>
           }
-          className="mb-8 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]"
+          className={`${DOG_PANEL_CLASS} mb-8`}
           contentClassName="mt-5"
         >
 
           {showResults.length === 0 ? (
-            <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
+            <div className="dog-card dog-copy mt-5 rounded-2xl p-4 text-sm">
               No published show results yet.
             </div>
           ) : (
             <div className="mt-5 overflow-x-auto">
               <table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-sm">
                 <thead>
-                  <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+              <tr className="dog-label text-left text-xs uppercase tracking-[0.16em]">
                     <th className="px-3 py-2">Show</th>
                     <th className="px-3 py-2">Breed</th>
                     <th className="px-3 py-2">Judge</th>
@@ -1864,16 +1866,16 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     return (
                       <tr
                         key={result.id}
-                        className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                      className="dog-card"
                       >
                         <td className="rounded-l-2xl px-3 py-3">
                           <Link
                             href={`/shows/${result.showDay.cluster.id}`}
-                            className="font-semibold text-white underline-offset-4 hover:underline"
+                            className="dog-heading font-semibold underline-offset-4 hover:underline"
                           >
                             {result.showDay.cluster.name}
                           </Link>
-                          <div className="text-xs text-purple-100/55">
+                          <div className="dog-copy text-xs">
                             {formatShowDate(result.showDay.scheduledEpoch)} - Day{" "}
                             {result.showDay.dayIndex} -{" "}
                             {getShowDistrictRegionName(
@@ -1892,7 +1894,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                         <td className="px-3 py-3">
                           <Link
                             href={`/judges/${result.judge.judgeCode}`}
-                            className="font-semibold text-white underline-offset-4 hover:underline"
+                            className="dog-heading font-semibold underline-offset-4 hover:underline"
                           >
                             {result.judge.name}
                           </Link>
@@ -1910,10 +1912,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                               ))}
                             </div>
                           ) : (
-                            <span className="text-purple-100/45">None</span>
+                            <span className="dog-copy opacity-60">None</span>
                           )}
                         </td>
-                        <td className="rounded-r-2xl px-3 py-3 text-right font-semibold text-white">
+                        <td className="dog-heading rounded-r-2xl px-3 py-3 text-right font-semibold">
                           {result.pointsAwarded}
                           {result.isMajor ? (
                             <div className="text-xs font-medium text-amber-100">
@@ -1940,7 +1942,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 {upcomingShowEntries.length === 1 ? "y" : "ies"}
               </div>
             }
-            className="mb-8 rounded-[28px] border border-emerald-300/15 bg-emerald-500/5 p-6 shadow-[0_22px_60px_rgba(0,0,0,0.3)]"
+            className={`${DOG_PANEL_CLASS} mb-8`}
             contentClassName="mt-4"
           >
 
@@ -1957,14 +1959,14 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           ) : null}
 
           {upcomingShowEntries.length === 0 ? (
-              <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
+              <div className="dog-card dog-copy mt-5 rounded-2xl p-4 text-sm">
                 No upcoming show entries.
               </div>
             ) : (
               <div className="mt-5 overflow-x-auto">
                 <table className="w-full min-w-[680px] border-separate border-spacing-y-2 text-sm">
                   <thead>
-                    <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+                <tr className="dog-label text-left text-xs uppercase tracking-[0.16em]">
                       <th className="px-3 py-2">Show</th>
                       <th className="px-3 py-2">Breed</th>
                       <th className="px-3 py-2">Judge</th>
@@ -1975,16 +1977,16 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     {upcomingShowEntries.map((entry) => (
                       <tr
                         key={entry.id}
-                        className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                        className="dog-card"
                       >
                         <td className="rounded-l-2xl px-3 py-3">
                           <Link
                             href={`/shows/${entry.showDay.cluster.id}`}
-                            className="font-semibold text-white underline-offset-4 hover:underline"
+                            className="dog-heading font-semibold underline-offset-4 hover:underline"
                           >
                             {entry.showDay.cluster.name}
                           </Link>
-                          <div className="text-xs text-purple-100/55">
+                          <div className="dog-copy text-xs">
                             {formatShowDate(entry.showDay.scheduledEpoch)} - Day{" "}
                             {entry.showDay.dayIndex} -{" "}
                             {getShowDistrictRegionName(
@@ -1992,13 +1994,13 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                             )}
                           </div>
                         </td>
-                        <td className="px-3 py-3 font-semibold text-white">
+                        <td className="dog-heading px-3 py-3 font-semibold">
                           {entry.breed.name}
                         </td>
                         <td className="px-3 py-3">
                           <Link
                             href={`/judges/${entry.showDay.judge.judgeCode}`}
-                            className="font-semibold text-white underline-offset-4 hover:underline"
+                            className="dog-heading font-semibold underline-offset-4 hover:underline"
                           >
                             {entry.showDay.judge.name}
                           </Link>
@@ -2048,7 +2050,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           <CollapsibleDogSection
             title="Sire History"
             description="Breeding uses recorded for this dog, including outside stud services."
-            className="mb-8 rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+            className={`${DOG_PANEL_CLASS} mb-8`}
             contentClassName="mt-4"
             titleClassName="text-xl"
           >
@@ -2058,25 +2060,25 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 {dog.breedingAttemptsAsSire.map((attempt) => (
                   <div
                     key={attempt.id}
-                    className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                  className="dog-card flex flex-col gap-2 rounded-2xl px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="text-purple-100/80">
+                    <div className="dog-copy">
                       {attempt.createdByKennel ? (
                         <Link
                           href={`/kennels/${attempt.createdByKennel.slug}`}
-                          className="font-semibold text-white underline-offset-4 hover:underline"
+                          className="dog-heading font-semibold underline-offset-4 hover:underline"
                         >
                           {attempt.createdByKennel.name}
                         </Link>
                       ) : (
-                        <span className="font-semibold text-white">
+                        <span className="dog-heading font-semibold">
                           Unknown kennel
                         </span>
                       )}{" "}
                       used him on {formatShowDate(attempt.createdEpoch)} with{" "}
                       <Link
                         href={`/dogs/${attempt.dam.id}`}
-                        className="font-semibold text-white underline-offset-4 hover:underline"
+                        className="dog-heading font-semibold underline-offset-4 hover:underline"
                       >
                         {formatDogDisplayName(attempt.dam)}
                       </Link>
@@ -2106,7 +2108,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
+              <div className="dog-card dog-copy rounded-2xl p-4 text-sm">
                 No breeding uses recorded.
               </div>
             )}
@@ -2125,34 +2127,34 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   : `${dog.coiPercent.toFixed(2)}%`}
               </span>
               {dog.coiPercent !== null && dog.coiGenerationDepth !== null ? (
-                <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/70">
+                <span className="dog-neutral-badge rounded-full px-3 py-1 text-xs">
                   {dog.coiGenerationDepth} generation calculation
                 </span>
               ) : null}
-              <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/70">
+              <span className="dog-neutral-badge rounded-full px-3 py-1 text-xs">
                 Color: Pending
               </span>
-              <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100/70">
+              <span className="dog-neutral-badge rounded-full px-3 py-1 text-xs">
                 Health tests: {completedHealthTestCodes.size}/
                 {PHENOTYPE_HEALTH_TEST_CODES.length}
               </span>
             </div>
           }
-          className="mb-8 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]"
+          className={`${DOG_PANEL_CLASS} mb-8`}
           contentClassName="mt-5"
         >
           <div className="overflow-x-auto pb-2">
             <div className="grid min-w-[1440px] grid-cols-4 gap-3 text-xs">
-              <div className="font-semibold uppercase tracking-[0.18em] text-purple-200/75">
+              <div className="dog-label font-semibold uppercase tracking-[0.18em]">
                 Parents
               </div>
-              <div className="font-semibold uppercase tracking-[0.18em] text-purple-200/75">
+              <div className="dog-label font-semibold uppercase tracking-[0.18em]">
                 Grandparents
               </div>
-              <div className="font-semibold uppercase tracking-[0.18em] text-purple-200/75">
+              <div className="dog-label font-semibold uppercase tracking-[0.18em]">
                 Great-Grandparents
               </div>
-              <div className="font-semibold uppercase tracking-[0.18em] text-purple-200/75">
+              <div className="dog-label font-semibold uppercase tracking-[0.18em]">
                 Great-Great-Grandparents
               </div>
             </div>
@@ -2194,7 +2196,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         <section className="grid gap-6 lg:grid-cols-2">
           <CollapsibleDogSection
             title="Progeny"
-            className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+            className={DOG_PANEL_CLASS}
             contentClassName="mt-4"
             titleClassName="text-xl"
           >
@@ -2205,19 +2207,19 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   <Link
                     key={puppy.id}
                     href={`/dogs/${puppy.id}`}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm transition hover:border-purple-300/35 hover:bg-white/10"
+                  className="dog-card-interactive flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm"
                   >
-                    <span className="font-medium text-white">
+                    <span className="dog-heading font-medium">
                       {formatDogDisplayName(puppy)}
                     </span>
-                    <span className="shrink-0 text-purple-100/70">
+                    <span className="dog-copy shrink-0">
                       {puppy.sex}
                     </span>
                   </Link>
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
+              <div className="dog-card dog-copy rounded-2xl p-4 text-sm">
                 No progeny recorded.
               </div>
             )}
@@ -2225,25 +2227,25 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
           <CollapsibleDogSection
             title="Active Listing"
-            className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+            className={DOG_PANEL_CLASS}
             contentClassName="mt-4"
             titleClassName="text-xl"
           >
 
             {activeListing ? (
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-purple-100/75">
-                <div className="mt-2 text-white">
+              <div className="dog-card dog-copy rounded-2xl p-4 text-sm leading-7">
+                <div className="dog-heading mt-2">
                   {formatListingType(activeListing.listingType)} ·{" "}
                   {formatMoney(activeListing.askingPrice)}
                 </div>
                 {activeListing.descriptionPublic ? (
-                  <div className="mt-2 text-purple-100/70">
+                  <div className="dog-copy mt-2">
                     {activeListing.descriptionPublic}
                   </div>
                 ) : null}
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-purple-100/75">
+              <div className="dog-card dog-copy rounded-2xl p-4 text-sm leading-7">
                 No active listing.
               </div>
             )}
@@ -2254,7 +2256,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           <CollapsibleDogSection
             title="Program Planner"
             description="Private planner tags saved from your breed review."
-            className="mt-6"
+            className={`${DOG_PANEL_CLASS} mt-6`}
             contentClassName="mt-4"
             titleClassName="text-xl"
           >
@@ -2262,10 +2264,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               {dog.plannerTags.map((plannerTag) => (
                 <div
                   key={`${plannerTag.goalKey}-${plannerTag.updatedAt.toISOString()}`}
-                  className="rounded-2xl border border-fuchsia-300/20 bg-fuchsia-500/10 p-4 text-sm leading-6 text-purple-50/80"
+                  className="dog-card dog-copy rounded-2xl p-4 text-sm leading-6"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-semibold text-white">
+                    <span className="dog-heading font-semibold">
                       {formatPlannerTagType(plannerTag.tagType)}
                     </span>
                     <span className="text-xs uppercase tracking-wide text-fuchsia-100/70">
@@ -2273,11 +2275,11 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     </span>
                   </div>
                   {plannerTag.note ? (
-                    <div className="mt-3 whitespace-pre-wrap text-purple-50/75">
+                    <div className="dog-copy mt-3 whitespace-pre-wrap">
                       {plannerTag.note}
                     </div>
                   ) : (
-                    <div className="mt-3 text-purple-100/60">
+                    <div className="dog-copy mt-3">
                       No planner note saved for this tag.
                     </div>
                   )}
@@ -2291,7 +2293,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           <CollapsibleDogSection
             title="Notes"
             description="Private notes for your kennel only."
-            className="mt-6"
+            className={`${DOG_PANEL_CLASS} mt-6`}
             contentClassName="mt-4"
             titleClassName="text-xl"
           >
