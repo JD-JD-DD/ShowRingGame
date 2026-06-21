@@ -36,6 +36,7 @@ import {
   PUPPY_SALE_MIN_AGE_HOURS,
   deriveConditioningHandlingScore,
   deriveVisibleCategoriesFromTraits,
+  getPuppyRehomePayoutForAgeHours,
   getPhenotypeHealthResultLabel,
   getShowDistrictRegionName,
   type PhenotypeHealthTestCode,
@@ -1179,6 +1180,7 @@ export async function getDogProfile(args: {
             netGroomingEffect: groomingStatus.netGroomingImpact,
             groomingStatus: groomingStatus.groomingStatusLabel,
             listedForOutsideGrooming: groomingStatus.listedForGrooming,
+            outsideGroomingListingId: groomingStatus.openListingId,
             totalHistoricalGain: groomingStatus.totalGroomingGain,
             totalHistoricalDecay: groomingStatus.totalGroomingDecay,
             canGroom,
@@ -1255,7 +1257,15 @@ export async function getDogProfile(args: {
         }
       : null,
     actions: {
+      canName: isOwnedByCurrentKennel && !dog.registeredName?.trim(),
       canBreed: isOwnedByCurrentKennel && breedingEligible,
+      canBuyActiveListing:
+        !isOwnedByCurrentKennel && isAlive && Boolean(activeSaleListing),
+      canUseActiveStudListing:
+        !isOwnedByCurrentKennel &&
+        isAlive &&
+        dog.sex === Sex.M &&
+        Boolean(activeStudListing),
       canOfferForSale,
       canEditSaleListing:
         isOwnedByCurrentKennel &&
@@ -1274,6 +1284,12 @@ export async function getDogProfile(args: {
         isOwnedByCurrentKennel &&
         isAlive &&
         ageHours >= PUPPY_SALE_MIN_AGE_HOURS,
+      rehomePayout:
+        isOwnedByCurrentKennel &&
+        isAlive &&
+        ageHours >= PUPPY_SALE_MIN_AGE_HOURS
+          ? getPuppyRehomePayoutForAgeHours(ageHours)
+          : null,
       canPullEntries,
     },
     viewerContext: {

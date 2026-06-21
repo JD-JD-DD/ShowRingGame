@@ -152,6 +152,7 @@ export type DogProfileGroomingDetailsDto = {
   netGroomingEffect: number;
   groomingStatus: string;
   listedForOutsideGrooming: boolean;
+  outsideGroomingListingId: string | null;
   totalHistoricalGain: number;
   totalHistoricalDecay: number;
   canGroom: boolean;
@@ -308,7 +309,10 @@ export type DogProfilePrivatePlanningDto = {
 } | null;
 
 export type DogProfileActionsDto = {
+  canName: boolean;
   canBreed: boolean;
+  canBuyActiveListing: boolean;
+  canUseActiveStudListing: boolean;
   canOfferForSale: boolean;
   canEditSaleListing: boolean;
   canCancelSaleListing: boolean;
@@ -316,6 +320,7 @@ export type DogProfileActionsDto = {
   canEditStudFee: boolean;
   canCancelStudListing: boolean;
   canRehome: boolean;
+  rehomePayout: number | null;
   canPullEntries: boolean;
 };
 
@@ -477,6 +482,8 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
           groomingStatus: input.groomingDetails.groomingStatus,
           listedForOutsideGrooming:
             input.groomingDetails.listedForOutsideGrooming,
+          outsideGroomingListingId:
+            input.groomingDetails.outsideGroomingListingId,
           totalHistoricalGain: input.groomingDetails.totalHistoricalGain,
           totalHistoricalDecay: input.groomingDetails.totalHistoricalDecay,
           canGroom: input.groomingDetails.canGroom,
@@ -621,7 +628,10 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
         }
       : null,
     actions: {
+      canName: input.actions.canName,
       canBreed: input.actions.canBreed,
+      canBuyActiveListing: input.actions.canBuyActiveListing,
+      canUseActiveStudListing: input.actions.canUseActiveStudListing,
       canOfferForSale: input.actions.canOfferForSale,
       canEditSaleListing: input.actions.canEditSaleListing,
       canCancelSaleListing: input.actions.canCancelSaleListing,
@@ -629,6 +639,7 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       canEditStudFee: input.actions.canEditStudFee,
       canCancelStudListing: input.actions.canCancelStudListing,
       canRehome: input.actions.canRehome,
+      rehomePayout: input.actions.rehomePayout,
       canPullEntries: input.actions.canPullEntries,
     },
     viewerContext: {
