@@ -150,14 +150,14 @@ export default async function MyShowResultsPage() {
   });
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-8 text-white">
-      <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+    <main className="results-page mx-auto max-w-7xl px-6 py-8">
+      <section className="theme-panel mb-8 rounded-[28px] px-6 py-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-white">
+            <h1 className="theme-heading text-4xl font-bold tracking-tight">
               My Show Results
             </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
+            <p className="theme-copy mt-3 max-w-3xl text-sm leading-7">
               The latest 100 judged show results and absences for dogs in{" "}
               {kennel.name}.
             </p>
@@ -165,7 +165,7 @@ export default async function MyShowResultsPage() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/shows"
-              className="rounded-2xl border border-sky-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-white/10"
+              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               Show Calendar
             </Link>
@@ -179,16 +179,16 @@ export default async function MyShowResultsPage() {
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+      <section className="theme-panel rounded-[28px] p-6">
         {entries.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/75">
+          <div className="theme-card theme-copy rounded-2xl p-4 text-sm">
             No judged show results yet.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[960px] border-separate border-spacing-y-2 text-sm">
               <thead>
-                <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+                <tr className="theme-label text-left text-xs uppercase tracking-[0.16em]">
                   <th className="px-3 py-2">Dog</th>
                   <th className="px-3 py-2">Show</th>
                   <th className="px-3 py-2">Date</th>
@@ -204,47 +204,47 @@ export default async function MyShowResultsPage() {
                   return (
                     <tr
                       key={entry.id}
-                      className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                      className="theme-card"
                     >
                       <td className="rounded-l-2xl px-3 py-3">
                         <Link
                           href={`/dogs/${entry.dog.id}`}
-                          className="font-semibold text-white underline-offset-4 hover:underline"
+                          className="theme-heading font-semibold underline-offset-4 hover:underline"
                         >
                           {formatDogDisplayName(entry.dog)}
                         </Link>
-                        <div className="text-xs text-purple-100/55">
+                        <div className="theme-copy text-xs">
                           {entry.dog.regNumber}
                         </div>
                       </td>
                       <td className="px-3 py-3">
                         <Link
                           href={`/shows/${entry.showDay.cluster.id}/results`}
-                          className="font-semibold text-white underline-offset-4 hover:underline"
+                          className="theme-heading font-semibold underline-offset-4 hover:underline"
                         >
                           {entry.showDay.cluster.name}
                         </Link>
-                        <div className="text-xs text-purple-100/55">
+                        <div className="theme-copy text-xs">
                           {getShowDistrictRegionName(
                             entry.showDay.cluster.district
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-3 text-purple-100/80">
+                      <td className="theme-copy px-3 py-3">
                         {formatShowDate(entry.showDay.scheduledEpoch)}
-                        <div className="text-xs text-purple-100/55">
+                        <div className="theme-copy text-xs">
                           Day {entry.showDay.dayIndex}
                         </div>
                       </td>
-                      <td className="px-3 py-3 text-purple-100/80">
+                      <td className="theme-copy px-3 py-3">
                         {entry.breed.name} ({entry.breed.code2})
                       </td>
-                      <td className="px-3 py-3 font-semibold text-white">
+                      <td className="theme-heading px-3 py-3 font-semibold">
                         {formatResult(entry)}
                       </td>
-                      <td className="rounded-r-2xl px-3 py-3 font-semibold text-white">
+                      <td className="theme-heading rounded-r-2xl px-3 py-3 font-semibold">
                         {pointsAwarded ?? (
-                          <span className="text-purple-100/35">-</span>
+                          <span className="theme-copy opacity-50">-</span>
                         )}
                       </td>
                     </tr>
