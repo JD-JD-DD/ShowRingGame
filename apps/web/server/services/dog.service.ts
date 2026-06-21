@@ -212,6 +212,43 @@ function formatTestedDateLabel(testedAtEpoch: number | null): string | null {
   return `Tested ${epochToDate(testedAtEpoch).toISOString().slice(0, 10)}`;
 }
 
+function formatGameDateLabel(epoch: number): string {
+  return epochToDate(epoch).toISOString().slice(0, 10);
+}
+
+function formatBreedingAttemptStatus(status: string): string {
+  switch (status) {
+    case "INITIATED":
+      return "Pending pregnancy confirmation";
+    case "CHECKED_NOT_PREGNANT":
+      return "Did not take";
+    case "PREGNANT":
+      return "Pregnant";
+    case "WHELPED":
+      return "Litter born";
+    case "FAILED":
+      return "Unsuccessful";
+    case "CANCELLED":
+      return "Cancelled";
+    default:
+      return "Status unavailable";
+  }
+}
+
+function formatOffspringTitleSummary(dog: {
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
+  titleProgress: { currentTitleCode: string | null } | null;
+}): string | null {
+  const titleParts = [
+    dog.visibleTitlePrefix,
+    dog.titleProgress?.currentTitleCode,
+    dog.visibleTitleSuffix,
+  ].filter((part): part is string => Boolean(part?.trim()));
+
+  return titleParts.length > 0 ? [...new Set(titleParts)].join(" / ") : null;
+}
+
 function getRecentPointWins(value: unknown): DogProfilePointWinDto[] {
   if (
     typeof value !== "object" ||
@@ -457,8 +494,56 @@ export async function getDogProfile(args: {
         },
       },
       breedingAttemptsAsDam: {
-        where: { status: { in: ["INITIATED", "PREGNANT"] } },
-        select: { id: true },
+        orderBy: [{ createdEpoch: "desc" }],
+        select: {
+          id: true,
+          createdEpoch: true,
+          whelpedEpoch: true,
+          status: true,
+          sire: {
+            select: {
+              id: true,
+              callName: true,
+              registeredName: true,
+              regNumber: true,
+              visibleTitlePrefix: true,
+              visibleTitleSuffix: true,
+            },
+          },
+          litter: {
+            select: {
+              id: true,
+              pupCount: true,
+              puppies: {
+                select: { visibilityState: true },
+              },
+            },
+          },
+        },
+      },
+      breedingAttemptsAsSire: {
+        orderBy: [{ createdEpoch: "desc" }],
+        select: {
+          id: true,
+          createdEpoch: true,
+          status: true,
+          createdByKennel: {
+            select: { name: true, slug: true },
+          },
+          dam: {
+            select: {
+              id: true,
+              callName: true,
+              registeredName: true,
+              regNumber: true,
+              visibleTitlePrefix: true,
+              visibleTitleSuffix: true,
+            },
+          },
+          litter: {
+            select: { id: true },
+          },
+        },
       },
       listings: {
         where: { status: "ACTIVE" },
@@ -466,10 +551,41 @@ export async function getDogProfile(args: {
           id: true,
           listingType: true,
           sellerKennelId: true,
+          askingPrice: true,
+          status: true,
         },
       },
-      _count: {
-        select: { sireOf: true, damOf: true },
+      sireOf: {
+        where: { isPlayerVisible: true },
+        orderBy: [{ birthEpoch: "desc" }, { regNumber: "asc" }],
+        select: {
+          id: true,
+          callName: true,
+          registeredName: true,
+          regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
+          sex: true,
+          titleProgress: {
+            select: { currentTitleCode: true },
+          },
+        },
+      },
+      damOf: {
+        where: { isPlayerVisible: true },
+        orderBy: [{ birthEpoch: "desc" }, { regNumber: "asc" }],
+        select: {
+          id: true,
+          callName: true,
+          registeredName: true,
+          regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
+          sex: true,
+          titleProgress: {
+            select: { currentTitleCode: true },
+          },
+        },
       },
     },
   });
@@ -498,7 +614,9 @@ export async function getDogProfile(args: {
     ageHours >= MIN_BREED_AGE_HOURS &&
     (dog.sex === Sex.M ||
       (ageHours <= DAM_MAX_BREED_AGE_HOURS &&
-        dog.breedingAttemptsAsDam.length === 0));
+        !dog.breedingAttemptsAsDam.some((attempt) =>
+          ["INITIATED", "PREGNANT"].includes(attempt.status)
+        )));
 
   const ownerData = isOwnedByCurrentKennel
     ? await db.dog.findUnique({
@@ -730,6 +848,57 @@ export async function getDogProfile(args: {
     0,
     CHAMPIONSHIP_MAJORS_REQUIRED - majorsEarned
   );
+  const sireHistory =
+    dog.sex === Sex.M
+      ? dog.breedingAttemptsAsSire.map((attempt) => ({
+          attemptId: attempt.id,
+          usingKennelName:
+            attempt.createdByKennel?.name ?? "Kennel unavailable",
+          usingKennelSlug: attempt.createdByKennel?.slug ?? null,
+          dateUsedLabel: formatGameDateLabel(attempt.createdEpoch),
+          damDogId: attempt.dam.id,
+          damName: formatDogDisplayName(attempt.dam),
+          damUrl: `/dogs/${attempt.dam.id}`,
+          litterId: attempt.litter?.id ?? null,
+          litterUrl: attempt.litter ? `/litters/${attempt.litter.id}` : null,
+          attemptStatusLabel: formatBreedingAttemptStatus(attempt.status),
+        }))
+      : [];
+  const damHistory =
+    dog.sex === Sex.F
+      ? dog.breedingAttemptsAsDam.map((attempt) => ({
+          attemptId: attempt.id,
+          sireDogId: attempt.sire.id,
+          sireName: formatDogDisplayName(attempt.sire),
+          sireUrl: `/dogs/${attempt.sire.id}`,
+          litterId: attempt.litter?.id ?? null,
+          litterUrl: attempt.litter ? `/litters/${attempt.litter.id}` : null,
+          breedingDateLabel: formatGameDateLabel(attempt.createdEpoch),
+          whelpedDateLabel:
+            attempt.whelpedEpoch === null
+              ? null
+              : formatGameDateLabel(attempt.whelpedEpoch),
+          puppyCount: attempt.litter?.pupCount ?? null,
+          survivedCount: attempt.litter
+            ? attempt.litter.puppies.filter(
+                (puppy) => puppy.visibilityState !== "HIDDEN_NEONATAL_LOSS"
+              ).length
+            : null,
+          attemptStatusLabel: formatBreedingAttemptStatus(attempt.status),
+        }))
+      : [];
+  const progenyDogs = dog.sex === Sex.M ? dog.sireOf : dog.damOf;
+  const progeny = progenyDogs.map((offspring) => ({
+    dogId: offspring.id,
+    displayName: formatDogDisplayName(offspring),
+    dogUrl: `/dogs/${offspring.id}`,
+    sexLabel: formatSexLabel(offspring.sex),
+    titleSummary: formatOffspringTitleSummary(offspring),
+  }));
+  const highestMeritReached = producerRecord.nextMeritThreshold === null;
+  const producerProgressLabel = highestMeritReached
+    ? "Highest producer merit reached"
+    : `${producerRecord.championOffspringCount} of ${producerRecord.nextMeritThreshold} champion offspring toward ${producerRecord.nextMeritLabel}`;
 
   return mapDogProfile({
     header: {
@@ -846,13 +1015,37 @@ export async function getDogProfile(args: {
           }
         : null,
     breedingAndProduction: {
+      breedingEligibilityLabel: formatEligibilityLabel(breedingEligible),
+      productionRoleLabel: dog.sex === Sex.M ? "Stud/Sire" : "Dam/Brood",
+      activeStudListing: activeStudListing
+        ? {
+            isAtStud: true,
+            studFee: activeStudListing.askingPrice,
+            listingId: activeStudListing.id,
+            listingStatusLabel: "Active",
+          }
+        : null,
+      activeSaleListing: activeSaleListing
+        ? {
+            isForSale: true,
+            askingPrice: activeSaleListing.askingPrice,
+            listingId: activeSaleListing.id,
+            listingStatusLabel: "Active",
+          }
+        : null,
+      sireHistory,
+      damHistory,
+      progeny,
       championOffspringCount: producerRecord.championOffspringCount,
-      producerMeritLabel: producerRecord.producerMeritLabel,
-      producerMeritSuffix: producerRecord.producerMeritSuffix,
-      producerMeritLevel: producerRecord.producerMeritLevel,
-      nextMeritLabel: producerRecord.nextMeritLabel,
-      nextMeritThreshold: producerRecord.nextMeritThreshold,
-      progenyCount: dog.sex === Sex.M ? dog._count.sireOf : dog._count.damOf,
+      producerMerit: {
+        currentMeritLabel: producerRecord.producerMeritLabel,
+        currentMeritSuffix: producerRecord.producerMeritSuffix,
+        nextMeritLabel: producerRecord.nextMeritLabel,
+        progressCurrent: producerRecord.championOffspringCount,
+        progressRequired: producerRecord.nextMeritThreshold,
+        progressLabel: producerProgressLabel,
+        highestMeritReached,
+      },
     },
     pedigree: {
       coiPercent: dog.coiPercent,

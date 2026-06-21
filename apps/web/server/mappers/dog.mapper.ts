@@ -159,14 +159,75 @@ export type DogProfileGroomingDetailsDto = {
   canCancelOutsideGrooming: boolean;
 };
 
-export type DogProfileBreedingProductionDto = {
-  championOffspringCount: number;
-  producerMeritLabel: string | null;
-  producerMeritSuffix: string | null;
-  producerMeritLevel: string;
+export type DogProfileStudListingDto = {
+  isAtStud: true;
+  studFee: number;
+  listingId: string;
+  listingStatusLabel: string;
+};
+
+export type DogProfileSaleListingDto = {
+  isForSale: true;
+  askingPrice: number;
+  listingId: string;
+  listingStatusLabel: string;
+};
+
+export type DogProfileSireHistoryItemDto = {
+  attemptId: string;
+  usingKennelName: string;
+  usingKennelSlug: string | null;
+  dateUsedLabel: string;
+  damDogId: string;
+  damName: string;
+  damUrl: string;
+  litterId: string | null;
+  litterUrl: string | null;
+  attemptStatusLabel: string;
+};
+
+export type DogProfileDamHistoryItemDto = {
+  attemptId: string;
+  sireDogId: string;
+  sireName: string;
+  sireUrl: string;
+  litterId: string | null;
+  litterUrl: string | null;
+  breedingDateLabel: string;
+  whelpedDateLabel: string | null;
+  puppyCount: number | null;
+  survivedCount: number | null;
+  attemptStatusLabel: string;
+};
+
+export type DogProfileProgenyDto = {
+  dogId: string;
+  displayName: string;
+  dogUrl: string;
+  sexLabel: string;
+  titleSummary: string | null;
+};
+
+export type DogProfileProducerMeritDto = {
+  currentMeritLabel: string | null;
+  currentMeritSuffix: string | null;
   nextMeritLabel: string | null;
-  nextMeritThreshold: number | null;
-  progenyCount: number;
+  progressCurrent: number;
+  progressRequired: number | null;
+  progressLabel: string;
+  highestMeritReached: boolean;
+};
+
+export type DogProfileBreedingProductionDto = {
+  breedingEligibilityLabel: string;
+  productionRoleLabel: string;
+  activeStudListing: DogProfileStudListingDto | null;
+  activeSaleListing: DogProfileSaleListingDto | null;
+  sireHistory: DogProfileSireHistoryItemDto[];
+  damHistory: DogProfileDamHistoryItemDto[];
+  progeny: DogProfileProgenyDto[];
+  championOffspringCount: number;
+  producerMerit: DogProfileProducerMeritDto;
 };
 
 export type DogProfilePedigreeDogDto = {
@@ -394,14 +455,78 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
         }
       : null,
     breedingAndProduction: {
+      breedingEligibilityLabel:
+        input.breedingAndProduction.breedingEligibilityLabel,
+      productionRoleLabel: input.breedingAndProduction.productionRoleLabel,
+      activeStudListing: input.breedingAndProduction.activeStudListing
+        ? {
+            isAtStud: true,
+            studFee: input.breedingAndProduction.activeStudListing.studFee,
+            listingId: input.breedingAndProduction.activeStudListing.listingId,
+            listingStatusLabel:
+              input.breedingAndProduction.activeStudListing.listingStatusLabel,
+          }
+        : null,
+      activeSaleListing: input.breedingAndProduction.activeSaleListing
+        ? {
+            isForSale: true,
+            askingPrice:
+              input.breedingAndProduction.activeSaleListing.askingPrice,
+            listingId: input.breedingAndProduction.activeSaleListing.listingId,
+            listingStatusLabel:
+              input.breedingAndProduction.activeSaleListing.listingStatusLabel,
+          }
+        : null,
+      sireHistory: input.breedingAndProduction.sireHistory.map((item) => ({
+        attemptId: item.attemptId,
+        usingKennelName: item.usingKennelName,
+        usingKennelSlug: item.usingKennelSlug,
+        dateUsedLabel: item.dateUsedLabel,
+        damDogId: item.damDogId,
+        damName: item.damName,
+        damUrl: item.damUrl,
+        litterId: item.litterId,
+        litterUrl: item.litterUrl,
+        attemptStatusLabel: item.attemptStatusLabel,
+      })),
+      damHistory: input.breedingAndProduction.damHistory.map((item) => ({
+        attemptId: item.attemptId,
+        sireDogId: item.sireDogId,
+        sireName: item.sireName,
+        sireUrl: item.sireUrl,
+        litterId: item.litterId,
+        litterUrl: item.litterUrl,
+        breedingDateLabel: item.breedingDateLabel,
+        whelpedDateLabel: item.whelpedDateLabel,
+        puppyCount: item.puppyCount,
+        survivedCount: item.survivedCount,
+        attemptStatusLabel: item.attemptStatusLabel,
+      })),
+      progeny: input.breedingAndProduction.progeny.map((offspring) => ({
+        dogId: offspring.dogId,
+        displayName: offspring.displayName,
+        dogUrl: offspring.dogUrl,
+        sexLabel: offspring.sexLabel,
+        titleSummary: offspring.titleSummary,
+      })),
       championOffspringCount:
         input.breedingAndProduction.championOffspringCount,
-      producerMeritLabel: input.breedingAndProduction.producerMeritLabel,
-      producerMeritSuffix: input.breedingAndProduction.producerMeritSuffix,
-      producerMeritLevel: input.breedingAndProduction.producerMeritLevel,
-      nextMeritLabel: input.breedingAndProduction.nextMeritLabel,
-      nextMeritThreshold: input.breedingAndProduction.nextMeritThreshold,
-      progenyCount: input.breedingAndProduction.progenyCount,
+      producerMerit: {
+        currentMeritLabel:
+          input.breedingAndProduction.producerMerit.currentMeritLabel,
+        currentMeritSuffix:
+          input.breedingAndProduction.producerMerit.currentMeritSuffix,
+        nextMeritLabel:
+          input.breedingAndProduction.producerMerit.nextMeritLabel,
+        progressCurrent:
+          input.breedingAndProduction.producerMerit.progressCurrent,
+        progressRequired:
+          input.breedingAndProduction.producerMerit.progressRequired,
+        progressLabel:
+          input.breedingAndProduction.producerMerit.progressLabel,
+        highestMeritReached:
+          input.breedingAndProduction.producerMerit.highestMeritReached,
+      },
     },
     pedigree: {
       coiPercent: input.pedigree.coiPercent,
