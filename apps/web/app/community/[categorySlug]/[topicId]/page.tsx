@@ -103,7 +103,12 @@ export default async function CommunityTopicPage({
               </div>
               <div className="mt-4"><CommunityAuthor kennel={topic.kennel} badges={topic.badges} /></div>
             </div>
-            <Link href={`/community/${topic.category.slug}`} className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold">Back to category</Link>
+            <div className="flex flex-wrap gap-3">
+              <a href="#reply-composer" className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500">
+                Jump to Reply
+              </a>
+              <Link href={`/community/${topic.category.slug}`} className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold">Back to category</Link>
+            </div>
           </div>
         </header>
 
@@ -204,7 +209,7 @@ export default async function CommunityTopicPage({
           ))}
         </section>
 
-        <section className="theme-panel mt-8 rounded-[24px] p-5">
+        <section id="reply-composer" className="theme-panel mt-8 scroll-mt-6 rounded-[24px] p-5">
           <h2 className="theme-heading text-xl font-semibold">Reply</h2>
           {canReply ? (
             <form action={`/api/bulletin/threads/${topic.id}/posts`} method="post" className="mt-5 grid gap-4">
