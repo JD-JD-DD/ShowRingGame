@@ -206,6 +206,12 @@ function formatHealthStatusLabel(
   return `Health ${status.charAt(0).toUpperCase()}${status.slice(1)}`;
 }
 
+function formatTestedDateLabel(testedAtEpoch: number | null): string | null {
+  if (testedAtEpoch === null) return null;
+
+  return `Tested ${epochToDate(testedAtEpoch).toISOString().slice(0, 10)}`;
+}
+
 function getRecentPointWins(value: unknown): DogProfilePointWinDto[] {
   if (
     typeof value !== "object" ||
@@ -498,6 +504,9 @@ export async function getDogProfile(args: {
     ? await db.dog.findUnique({
         where: { id: dog.id },
         select: {
+          ownerKennel: {
+            select: { balance: true },
+          },
           privateKennelNotes: {
             where: { kennelId: viewerKennelId },
             select: { notes: true },
@@ -592,6 +601,39 @@ export async function getDogProfile(args: {
     badgeStatus: healthBadgeStatus,
     hasFullClearance,
   };
+  const healthTests = PHENOTYPE_HEALTH_TEST_CODES.map((testCode) => {
+    const definition = PHENOTYPE_HEALTH_TESTS[testCode];
+    const result = latestHealthTests.find(
+      (test) => test.testTypeCode === testCode
+    );
+
+    return {
+      testCode,
+      displayName: definition.label,
+      resultLabel: result
+        ? getPhenotypeHealthResultLabel(
+            testCode as PhenotypeHealthTestCode,
+            result.resultCode
+          )
+        : null,
+      severityKey: result
+        ? getPhenotypeHealthSeverity(testCode, result.resultCode)
+        : null,
+      testedDateLabel: result
+        ? formatTestedDateLabel(result.testedAtEpoch)
+        : null,
+      isComplete: Boolean(result),
+      minimumAgeLabel: definition.minimumAgeLabel,
+      isCurrentlyAvailable: ageHours >= definition.minimumAgeHours,
+      cost: definition.fee,
+    };
+  });
+  const availableHealthTests = healthTests.filter(
+    (test) => isAlive && !test.isComplete && test.isCurrentlyAvailable
+  );
+  const kennelBalance = ownerData?.ownerKennel?.balance ?? 0;
+  const checkoutNeeded =
+    isOwnedByCurrentKennel && availableHealthTests.length > 0;
   const visibleScores = {
     ...deriveVisibleCategoriesFromTraits({
       head: dog.traitHead,
@@ -650,6 +692,16 @@ export async function getDogProfile(args: {
   const canPullEntries = Boolean(
     ownerData?.showEntries.some((entry) => entry.entryStatus === "ENTERED")
   );
+  const canGroom =
+    isOwnedByCurrentKennel &&
+    isAlive &&
+    Boolean(groomingStatus) &&
+    !groomingStatus?.groomedThisWeek &&
+    !groomingStatus?.openListingId &&
+    (groomingSummary?.groomingActionsRemainingThisWeek ?? 0) > 0;
+  const canOfferOutsideGrooming = canGroom;
+  const canCancelOutsideGrooming =
+    isOwnedByCurrentKennel && Boolean(groomingStatus?.openListingId);
   const producerRecord = producerMerit ?? {
     championOffspringCount: 0,
     producerMeritLabel: null,
@@ -747,33 +799,52 @@ export async function getDogProfile(args: {
       fullShowRecordUrl: `/api/dogs/${dog.id}/show-record`,
     },
     healthTesting: {
-      summary: healthSummary,
-      tests: PHENOTYPE_HEALTH_TEST_CODES.map((testTypeCode) => {
-        const definition = PHENOTYPE_HEALTH_TESTS[testTypeCode];
-        const result = latestHealthTests.find(
-          (test) => test.testTypeCode === testTypeCode
-        );
-
-        return {
-          testTypeCode,
-          label: definition.label,
-          resultLabel: result
-            ? getPhenotypeHealthResultLabel(
-                testTypeCode as PhenotypeHealthTestCode,
-                result.resultCode
-              )
-            : null,
-          severity: result
-            ? getPhenotypeHealthSeverity(testTypeCode, result.resultCode)
-            : null,
-          testedAtEpoch: result?.testedAtEpoch ?? null,
-          isComplete: Boolean(result),
-          isAvailable: ageHours >= definition.minimumAgeHours,
-          availabilityLabel: definition.minimumAgeLabel,
-          fee: definition.fee,
-        };
-      }),
+      completedCount: healthSummary.completedCount,
+      totalCount: healthSummary.totalCount,
+      summaryLabel: healthSummary.label,
+      tests: healthTests,
+      ownerControls: isOwnedByCurrentKennel
+        ? {
+            canRunAnyTests:
+              checkoutNeeded &&
+              availableHealthTests.some((test) => test.cost <= kennelBalance),
+            availableTests: availableHealthTests.map((test) => ({
+              testCode: test.testCode,
+              displayName: test.displayName,
+              minimumAgeLabel: test.minimumAgeLabel,
+              cost: test.cost,
+            })),
+            kennelBalance,
+            checkoutNeeded,
+            selectedTestSupportData: {
+              selectableTestCodes: availableHealthTests.map(
+                (test) => test.testCode
+              ),
+              totalAvailableCost: availableHealthTests.reduce(
+                (total, test) => total + test.cost,
+                0
+              ),
+            },
+          }
+        : null,
     },
+    groomingDetails:
+      isOwnedByCurrentKennel && groomingSummary && groomingStatus
+        ? {
+            weeklyActionsRemaining:
+              groomingSummary.groomingActionsRemainingThisWeek,
+            weeklyActionLimit: groomingSummary.totalGroomingActionLimit,
+            currentCoatCondition: groomingStatus.currentCoatCondition,
+            netGroomingEffect: groomingStatus.netGroomingImpact,
+            groomingStatus: groomingStatus.groomingStatusLabel,
+            listedForOutsideGrooming: groomingStatus.listedForGrooming,
+            totalHistoricalGain: groomingStatus.totalGroomingGain,
+            totalHistoricalDecay: groomingStatus.totalGroomingDecay,
+            canGroom,
+            canOfferOutsideGrooming,
+            canCancelOutsideGrooming,
+          }
+        : null,
     breedingAndProduction: {
       championOffspringCount: producerRecord.championOffspringCount,
       producerMeritLabel: producerRecord.producerMeritLabel,
@@ -820,13 +891,6 @@ export async function getDogProfile(args: {
       : null,
     actions: {
       canBreed: isOwnedByCurrentKennel && breedingEligible,
-      canGroom:
-        isOwnedByCurrentKennel &&
-        isAlive &&
-        Boolean(groomingStatus) &&
-        !groomingStatus?.groomedThisWeek &&
-        !groomingStatus?.openListingId &&
-        (groomingSummary?.groomingActionsRemainingThisWeek ?? 0) > 0,
       canOfferForSale,
       canEditSaleListing:
         isOwnedByCurrentKennel &&

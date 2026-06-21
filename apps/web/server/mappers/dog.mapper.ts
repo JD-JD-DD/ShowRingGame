@@ -108,20 +108,55 @@ export type DogProfileShowCareerDto = {
 };
 
 export type DogProfileHealthTestDto = {
-  testTypeCode: string;
-  label: string;
+  testCode: string;
+  displayName: string;
   resultLabel: string | null;
-  severity: "green" | "yellow" | "red" | null;
-  testedAtEpoch: number | null;
+  severityKey: "green" | "yellow" | "red" | null;
+  testedDateLabel: string | null;
   isComplete: boolean;
-  isAvailable: boolean;
-  availabilityLabel: string;
-  fee: number;
+  minimumAgeLabel: string;
+  isCurrentlyAvailable: boolean;
+  cost: number;
+};
+
+export type DogProfileAvailableHealthTestDto = {
+  testCode: string;
+  displayName: string;
+  minimumAgeLabel: string;
+  cost: number;
+};
+
+export type DogProfileHealthOwnerControlsDto = {
+  canRunAnyTests: boolean;
+  availableTests: DogProfileAvailableHealthTestDto[];
+  kennelBalance: number;
+  checkoutNeeded: boolean;
+  selectedTestSupportData: {
+    selectableTestCodes: string[];
+    totalAvailableCost: number;
+  };
 };
 
 export type DogProfileHealthTestingDto = {
-  summary: DogProfileHealthSummaryDto;
+  completedCount: number;
+  totalCount: number;
+  summaryLabel: string;
   tests: DogProfileHealthTestDto[];
+  ownerControls: DogProfileHealthOwnerControlsDto | null;
+};
+
+export type DogProfileGroomingDetailsDto = {
+  weeklyActionsRemaining: number;
+  weeklyActionLimit: number;
+  currentCoatCondition: number;
+  netGroomingEffect: number;
+  groomingStatus: string;
+  listedForOutsideGrooming: boolean;
+  totalHistoricalGain: number;
+  totalHistoricalDecay: number;
+  canGroom: boolean;
+  canOfferOutsideGrooming: boolean;
+  canCancelOutsideGrooming: boolean;
 };
 
 export type DogProfileBreedingProductionDto = {
@@ -181,7 +216,6 @@ export type DogProfilePrivatePlanningDto = {
 
 export type DogProfileActionsDto = {
   canBreed: boolean;
-  canGroom: boolean;
   canOfferForSale: boolean;
   canEditSaleListing: boolean;
   canCancelSaleListing: boolean;
@@ -206,6 +240,7 @@ export type DogProfileDto = {
   qualityAndPresentation: DogProfileQualityPresentationDto;
   titlesAndShowCareer: DogProfileShowCareerDto;
   healthTesting: DogProfileHealthTestingDto;
+  groomingDetails: DogProfileGroomingDetailsDto | null;
   breedingAndProduction: DogProfileBreedingProductionDto;
   pedigree: DogProfilePedigreeDto;
   entries: DogProfileEntriesDto;
@@ -301,19 +336,63 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       fullShowRecordUrl: input.titlesAndShowCareer.fullShowRecordUrl,
     },
     healthTesting: {
-      summary: mapHealthSummary(input.healthTesting.summary),
+      completedCount: input.healthTesting.completedCount,
+      totalCount: input.healthTesting.totalCount,
+      summaryLabel: input.healthTesting.summaryLabel,
       tests: input.healthTesting.tests.map((test) => ({
-        testTypeCode: test.testTypeCode,
-        label: test.label,
+        testCode: test.testCode,
+        displayName: test.displayName,
         resultLabel: test.resultLabel,
-        severity: test.severity,
-        testedAtEpoch: test.testedAtEpoch,
+        severityKey: test.severityKey,
+        testedDateLabel: test.testedDateLabel,
         isComplete: test.isComplete,
-        isAvailable: test.isAvailable,
-        availabilityLabel: test.availabilityLabel,
-        fee: test.fee,
+        minimumAgeLabel: test.minimumAgeLabel,
+        isCurrentlyAvailable: test.isCurrentlyAvailable,
+        cost: test.cost,
       })),
+      ownerControls: input.healthTesting.ownerControls
+        ? {
+            canRunAnyTests: input.healthTesting.ownerControls.canRunAnyTests,
+            availableTests: input.healthTesting.ownerControls.availableTests.map(
+              (test) => ({
+                testCode: test.testCode,
+                displayName: test.displayName,
+                minimumAgeLabel: test.minimumAgeLabel,
+                cost: test.cost,
+              })
+            ),
+            kennelBalance: input.healthTesting.ownerControls.kennelBalance,
+            checkoutNeeded: input.healthTesting.ownerControls.checkoutNeeded,
+            selectedTestSupportData: {
+              selectableTestCodes:
+                input.healthTesting.ownerControls.selectedTestSupportData.selectableTestCodes.map(
+                  (testCode) => testCode
+                ),
+              totalAvailableCost:
+                input.healthTesting.ownerControls.selectedTestSupportData
+                  .totalAvailableCost,
+            },
+          }
+        : null,
     },
+    groomingDetails: input.groomingDetails
+      ? {
+          weeklyActionsRemaining: input.groomingDetails.weeklyActionsRemaining,
+          weeklyActionLimit: input.groomingDetails.weeklyActionLimit,
+          currentCoatCondition: input.groomingDetails.currentCoatCondition,
+          netGroomingEffect: input.groomingDetails.netGroomingEffect,
+          groomingStatus: input.groomingDetails.groomingStatus,
+          listedForOutsideGrooming:
+            input.groomingDetails.listedForOutsideGrooming,
+          totalHistoricalGain: input.groomingDetails.totalHistoricalGain,
+          totalHistoricalDecay: input.groomingDetails.totalHistoricalDecay,
+          canGroom: input.groomingDetails.canGroom,
+          canOfferOutsideGrooming:
+            input.groomingDetails.canOfferOutsideGrooming,
+          canCancelOutsideGrooming:
+            input.groomingDetails.canCancelOutsideGrooming,
+        }
+      : null,
     breedingAndProduction: {
       championOffspringCount:
         input.breedingAndProduction.championOffspringCount,
@@ -364,7 +443,6 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       : null,
     actions: {
       canBreed: input.actions.canBreed,
-      canGroom: input.actions.canGroom,
       canOfferForSale: input.actions.canOfferForSale,
       canEditSaleListing: input.actions.canEditSaleListing,
       canCancelSaleListing: input.actions.canCancelSaleListing,
