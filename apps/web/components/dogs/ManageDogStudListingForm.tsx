@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 
 type ManageDogStudListingFormProps = {
   dogId: string;
@@ -15,6 +16,20 @@ function formatMoney(amount: number): string {
   return `$${amount.toLocaleString()}`;
 }
 
+function CancelStudListingSubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
+    >
+      {pending ? "Canceling..." : "Yes, Cancel Listing"}
+    </button>
+  );
+}
+
 export default function ManageDogStudListingForm({
   dogId,
   listingId,
@@ -24,16 +39,7 @@ export default function ManageDogStudListingForm({
   areaId,
 }: ManageDogStudListingFormProps) {
   const [isEditing, setIsEditing] = useState(false);
-
-  function confirmCancel(event: React.FormEvent<HTMLFormElement>) {
-    const confirmed = window.confirm(
-      "Cancel this stud listing? The dog will be removed from stud availability."
-    );
-
-    if (!confirmed) {
-      event.preventDefault();
-    }
-  }
+  const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
 
   return (
     <div className="rounded-2xl border border-sky-300/20 bg-black/20 p-3">
@@ -78,17 +84,41 @@ export default function ManageDogStudListingForm({
             </button>
           </form>
 
-          <form action={cancelAction} method="post" onSubmit={confirmCancel}>
-            <input type="hidden" name="dogId" value={dogId} />
-            <input type="hidden" name="listingId" value={listingId} />
-            {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
+          {isConfirmingCancel ? (
+            <div className="mt-3 rounded-xl border border-red-300/25 bg-red-500/10 p-3">
+              <div className="text-sm font-semibold text-red-100">
+                Cancel this stud listing?
+              </div>
+              <p className="mt-1 text-xs leading-5 text-red-100/75">
+                The dog will be removed from stud availability.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <form action={cancelAction} method="post">
+                  <input type="hidden" name="dogId" value={dogId} />
+                  <input type="hidden" name="listingId" value={listingId} />
+                  {areaId ? (
+                    <input type="hidden" name="areaId" value={areaId} />
+                  ) : null}
+                  <CancelStudListingSubmitButton />
+                </form>
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmingCancel(false)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                >
+                  Keep Listing
+                </button>
+              </div>
+            </div>
+          ) : (
             <button
-              type="submit"
+              type="button"
+              onClick={() => setIsConfirmingCancel(true)}
               className="mt-2 w-full rounded-xl border border-red-300/25 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
             >
               Cancel Stud Listing
             </button>
-          </form>
+          )}
         </>
       ) : null}
     </div>

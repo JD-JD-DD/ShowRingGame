@@ -4,22 +4,10 @@ import {
   createPasswordResetToken
 } from "@/lib/passwordReset";
 import { sendPasswordResetEmail } from "@/lib/passwordResetEmail";
+import { getAppBaseUrl } from "@/lib/appBaseUrl";
 
 const GENERIC_MESSAGE =
   "If an account exists for that email, a password reset link has been sent.";
-
-function getAppBaseUrl(request: Request): string {
-  const configuredUrl = process.env.APP_BASE_URL?.trim();
-  if (configuredUrl) return configuredUrl;
-
-  // Never build a production recovery link from a request Host header. The
-  // known deployment URL is a safe fallback until APP_BASE_URL is configured.
-  if (process.env.NODE_ENV === "production") {
-    return "https://show-ring-game.vercel.app";
-  }
-
-  return new URL(request.url).origin;
-}
 
 function successResponse(resetUrl?: string) {
   return NextResponse.json({

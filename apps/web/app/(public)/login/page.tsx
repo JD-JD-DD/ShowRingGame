@@ -45,7 +45,13 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(data.nextPath ?? "/kennel");
+      const requestedPath = new URLSearchParams(window.location.search).get("next");
+      const safeRequestedPath =
+        requestedPath?.startsWith("/") && !requestedPath.startsWith("//")
+          ? requestedPath
+          : null;
+
+      router.push(safeRequestedPath ?? data.nextPath ?? "/kennel");
       router.refresh();
 
     } catch (err) {

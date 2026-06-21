@@ -38,6 +38,7 @@ import OfferDogAtStudForm from "@/components/dogs/OfferDogAtStudForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
 import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
 import RehomeDogForm from "@/components/dogs/RehomeDogForm";
+import CancelGroomingListingForm from "@/components/dogs/CancelGroomingListingForm";
 import ConfirmSubmitButton from "@/components/ui/ConfirmSubmitButton";
 import TraitLine from "@/components/ui/TraitLine";
 import {
@@ -1424,22 +1425,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     ) : null}
                     <div className="mt-3 grid gap-2">
                     {groomingStatus.openListingId ? (
-                      <form
+                      <CancelGroomingListingForm
                         action={`/api/services/grooming/listings/${groomingStatus.openListingId}/cancel`}
-                        method="post"
-                      >
-                        <input
-                          type="hidden"
-                          name="returnTo"
-                          value={dogPageReturnTo}
-                        />
-                        <ConfirmSubmitButton
-                          message={`Cancel outside grooming listing for ${displayName}?`}
-                          className="w-full rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
-                        >
-                          Cancel Grooming Listing
-                        </ConfirmSubmitButton>
-                      </form>
+                        dogName={displayName}
+                      />
                     ) : (
                       <>
                         <form
