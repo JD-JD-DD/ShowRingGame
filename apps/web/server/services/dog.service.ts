@@ -10,8 +10,11 @@ import {
   type DogProfileBadgeDto,
   type DogProfileDto,
   type DogProfilePedigreeDogDto,
+  type DogProfilePointWinDto,
+  type DogProfileShowResultDto,
   type DogProfileVisibleCategoryDto,
 } from "@/server/mappers/dog.mapper";
+import { epochToDate } from "@/lib/gameClock";
 import {
   getKennelGroomingSummary,
   getOwnedDogGroomingStatuses,
@@ -34,9 +37,14 @@ import {
   deriveConditioningHandlingScore,
   deriveVisibleCategoriesFromTraits,
   getPhenotypeHealthResultLabel,
+  getShowDistrictRegionName,
   type PhenotypeHealthTestCode,
 } from "@showring/rules";
 import { DogLifecycleState, DogMarketState, DogOriginType, Sex } from "@prisma/client";
+
+const CHAMPIONSHIP_POINTS_REQUIRED = 15;
+const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
+const RECENT_SHOW_RESULT_LIMIT = 6;
 
 function mapSex(sex: "M" | "F"): Sex {
   return sex === "M" ? Sex.M : Sex.F;
@@ -198,6 +206,114 @@ function formatHealthStatusLabel(
   return `Health ${status.charAt(0).toUpperCase()}${status.slice(1)}`;
 }
 
+function getRecentPointWins(value: unknown): DogProfilePointWinDto[] {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !Array.isArray(
+      (value as { championshipPointWins?: unknown }).championshipPointWins
+    )
+  ) {
+    return [];
+  }
+
+  return (value as { championshipPointWins: unknown[] }).championshipPointWins
+    .filter(
+      (win): win is DogProfilePointWinDto =>
+        typeof win === "object" &&
+        win !== null &&
+        typeof (win as DogProfilePointWinDto).showDayId === "string" &&
+        typeof (win as DogProfilePointWinDto).awardCode === "string" &&
+        typeof (win as DogProfilePointWinDto).pointsAwarded === "number" &&
+        typeof (win as DogProfilePointWinDto).isMajor === "boolean"
+    )
+    .slice(-RECENT_SHOW_RESULT_LIMIT)
+    .reverse();
+}
+
+async function listPublishedDogShowResults(args: {
+  dogId: string;
+  take?: number;
+}): Promise<DogProfileShowResultDto[]> {
+  const results = await db.showResult.findMany({
+    where: { dogId: args.dogId },
+    orderBy: [{ publishedAtEpoch: "desc" }, { finalRank: "asc" }],
+    ...(args.take ? { take: args.take } : {}),
+    select: {
+      id: true,
+      pointsAwarded: true,
+      isMajor: true,
+      breed: {
+        select: { code2: true },
+      },
+      judge: {
+        select: { judgeCode: true, name: true },
+      },
+      showAwards: {
+        orderBy: [{ rank: "asc" }, { awardCode: "asc" }],
+        select: { awardCode: true },
+      },
+      showDay: {
+        select: {
+          dayIndex: true,
+          scheduledEpoch: true,
+          cluster: {
+            select: {
+              id: true,
+              name: true,
+              district: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return results.map((result) => {
+    const showId = result.showDay.cluster.id;
+    const breedCode2 = result.breed.code2;
+
+    return {
+      resultId: result.id,
+      showId,
+      showUrl: `/shows/${showId}`,
+      showName: result.showDay.cluster.name,
+      scheduledEpoch: result.showDay.scheduledEpoch,
+      showDateLabel: epochToDate(result.showDay.scheduledEpoch)
+        .toISOString()
+        .slice(0, 10),
+      showDayNumber: result.showDay.dayIndex,
+      districtRegion: getShowDistrictRegionName(
+        result.showDay.cluster.district
+      ),
+      breedCode2,
+      breedResultUrl: `/shows/${showId}/results/${breedCode2}`,
+      judgeCode: result.judge.judgeCode,
+      judgeName: result.judge.name,
+      judgeProfileUrl: `/judges/${result.judge.judgeCode}`,
+      awardCodes: result.showAwards.map((award) => award.awardCode),
+      pointsAwarded: result.pointsAwarded,
+      isMajor: result.isMajor,
+    };
+  });
+}
+
+export async function getDogShowRecord(args: {
+  dogId: string;
+}): Promise<DogProfileShowResultDto[] | null> {
+  const dog = await db.dog.findFirst({
+    where: {
+      id: args.dogId,
+      isPlayerVisible: true,
+    },
+    select: { id: true },
+  });
+
+  if (!dog) return null;
+
+  return listPublishedDogShowResults({ dogId: dog.id });
+}
+
 function mapPedigreeDog(
   dog: {
     id: string;
@@ -319,6 +435,7 @@ export async function getDogProfile(args: {
           currentTitleCode: true,
           championshipPoints: true,
           majorCount: true,
+          winsByTypeJson: true,
         },
       },
       healthTests: {
@@ -332,9 +449,6 @@ export async function getDogProfile(args: {
           resultCode: true,
           testedAtEpoch: true,
         },
-      },
-      showResults: {
-        select: { pointsAwarded: true },
       },
       breedingAttemptsAsDam: {
         where: { status: { in: ["INITIATED", "PREGNANT"] } },
@@ -431,7 +545,12 @@ export async function getDogProfile(args: {
       })
     : null;
 
-  const [producerMerit, groomingSummary, groomingStatuses] = await Promise.all([
+  const [
+    producerMerit,
+    groomingSummary,
+    groomingStatuses,
+    recentShowResults,
+  ] = await Promise.all([
     getStoredProducerMeritForDog({ dogId: dog.id }),
     isOwnedByCurrentKennel
       ? getKennelGroomingSummary({
@@ -446,6 +565,10 @@ export async function getDogProfile(args: {
           currentEpoch,
         })
       : Promise.resolve(null),
+    listPublishedDogShowResults({
+      dogId: dog.id,
+      take: RECENT_SHOW_RESULT_LIMIT,
+    }),
   ]);
   const groomingStatus = groomingStatuses?.get(dog.id) ?? null;
   const latestHealthTests = PHENOTYPE_HEALTH_TEST_CODES.flatMap(
@@ -543,6 +666,18 @@ export async function getDogProfile(args: {
       tone: "purple",
     });
   }
+  const pointsEarned = dog.titleProgress?.championshipPoints ?? 0;
+  const majorsEarned = dog.titleProgress?.majorCount ?? 0;
+  const currentTitleCode = dog.titleProgress?.currentTitleCode ?? null;
+  const isChampionFinished = currentTitleCode === "CH";
+  const pointsRemaining = Math.max(
+    0,
+    CHAMPIONSHIP_POINTS_REQUIRED - pointsEarned
+  );
+  const majorsRemaining = Math.max(
+    0,
+    CHAMPIONSHIP_MAJORS_REQUIRED - majorsEarned
+  );
 
   return mapDogProfile({
     header: {
@@ -592,14 +727,24 @@ export async function getDogProfile(args: {
       visibleCategories: buildVisibleCategories(visibleScores),
     },
     titlesAndShowCareer: {
-      currentTitleCode: dog.titleProgress?.currentTitleCode ?? null,
-      championshipPoints: dog.titleProgress?.championshipPoints ?? 0,
-      majorCount: dog.titleProgress?.majorCount ?? 0,
-      resultCount: dog.showResults.length,
-      totalPoints: dog.showResults.reduce(
-        (total, result) => total + result.pointsAwarded,
-        0
+      currentTitleCode,
+      isChampionFinished,
+      pointsEarned,
+      pointsRequired: CHAMPIONSHIP_POINTS_REQUIRED,
+      majorsEarned,
+      majorsRequired: CHAMPIONSHIP_MAJORS_REQUIRED,
+      pointsRemaining,
+      majorsRemaining,
+      pointRequirementMet: pointsRemaining === 0,
+      majorRequirementMet: majorsRemaining === 0,
+      summaryLabel: isChampionFinished
+        ? `Champion, finished with ${pointsEarned} points and ${majorsEarned} majors`
+        : `Championship progress: ${pointsEarned} of ${CHAMPIONSHIP_POINTS_REQUIRED} points and ${majorsEarned} of ${CHAMPIONSHIP_MAJORS_REQUIRED} majors`,
+      recentPointWins: getRecentPointWins(
+        dog.titleProgress?.winsByTypeJson
       ),
+      recentShowResults,
+      fullShowRecordUrl: `/api/dogs/${dog.id}/show-record`,
     },
     healthTesting: {
       summary: healthSummary,

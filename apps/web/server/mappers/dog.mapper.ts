@@ -64,12 +64,47 @@ export type DogProfileQualityPresentationDto = {
   visibleCategories: DogProfileVisibleCategoryDto[];
 };
 
+export type DogProfilePointWinDto = {
+  showDayId: string;
+  awardCode: string;
+  pointsAwarded: number;
+  isMajor: boolean;
+};
+
+export type DogProfileShowResultDto = {
+  resultId: string;
+  showId: string;
+  showUrl: string;
+  showName: string;
+  scheduledEpoch: number;
+  showDateLabel: string;
+  showDayNumber: number | null;
+  districtRegion: string;
+  breedCode2: string;
+  breedResultUrl: string;
+  judgeCode: string;
+  judgeName: string;
+  judgeProfileUrl: string;
+  awardCodes: string[];
+  pointsAwarded: number;
+  isMajor: boolean;
+};
+
 export type DogProfileShowCareerDto = {
   currentTitleCode: string | null;
-  championshipPoints: number;
-  majorCount: number;
-  resultCount: number;
-  totalPoints: number;
+  isChampionFinished: boolean;
+  pointsEarned: number;
+  pointsRequired: number;
+  majorsEarned: number;
+  majorsRequired: number;
+  pointsRemaining: number;
+  majorsRemaining: number;
+  pointRequirementMet: boolean;
+  majorRequirementMet: boolean;
+  summaryLabel: string;
+  recentPointWins: DogProfilePointWinDto[];
+  recentShowResults: DogProfileShowResultDto[];
+  fullShowRecordUrl: string;
 };
 
 export type DogProfileHealthTestDto = {
@@ -244,10 +279,26 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
     },
     titlesAndShowCareer: {
       currentTitleCode: input.titlesAndShowCareer.currentTitleCode,
-      championshipPoints: input.titlesAndShowCareer.championshipPoints,
-      majorCount: input.titlesAndShowCareer.majorCount,
-      resultCount: input.titlesAndShowCareer.resultCount,
-      totalPoints: input.titlesAndShowCareer.totalPoints,
+      isChampionFinished: input.titlesAndShowCareer.isChampionFinished,
+      pointsEarned: input.titlesAndShowCareer.pointsEarned,
+      pointsRequired: input.titlesAndShowCareer.pointsRequired,
+      majorsEarned: input.titlesAndShowCareer.majorsEarned,
+      majorsRequired: input.titlesAndShowCareer.majorsRequired,
+      pointsRemaining: input.titlesAndShowCareer.pointsRemaining,
+      majorsRemaining: input.titlesAndShowCareer.majorsRemaining,
+      pointRequirementMet: input.titlesAndShowCareer.pointRequirementMet,
+      majorRequirementMet: input.titlesAndShowCareer.majorRequirementMet,
+      summaryLabel: input.titlesAndShowCareer.summaryLabel,
+      recentPointWins: input.titlesAndShowCareer.recentPointWins.map((win) => ({
+        showDayId: win.showDayId,
+        awardCode: win.awardCode,
+        pointsAwarded: win.pointsAwarded,
+        isMajor: win.isMajor,
+      })),
+      recentShowResults: input.titlesAndShowCareer.recentShowResults.map(
+        (result) => mapDogProfileShowResult(result)
+      ),
+      fullShowRecordUrl: input.titlesAndShowCareer.fullShowRecordUrl,
     },
     healthTesting: {
       summary: mapHealthSummary(input.healthTesting.summary),
@@ -330,6 +381,29 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       canManage: input.viewerContext.canManage,
       canViewPrivatePlanning: input.viewerContext.canViewPrivatePlanning,
     },
+  };
+}
+
+export function mapDogProfileShowResult(
+  result: DogProfileShowResultDto
+): DogProfileShowResultDto {
+  return {
+    resultId: result.resultId,
+    showId: result.showId,
+    showUrl: result.showUrl,
+    showName: result.showName,
+    scheduledEpoch: result.scheduledEpoch,
+    showDateLabel: result.showDateLabel,
+    showDayNumber: result.showDayNumber,
+    districtRegion: result.districtRegion,
+    breedCode2: result.breedCode2,
+    breedResultUrl: result.breedResultUrl,
+    judgeCode: result.judgeCode,
+    judgeName: result.judgeName,
+    judgeProfileUrl: result.judgeProfileUrl,
+    awardCodes: result.awardCodes.map((awardCode) => awardCode),
+    pointsAwarded: result.pointsAwarded,
+    isMajor: result.isMajor,
   };
 }
 
