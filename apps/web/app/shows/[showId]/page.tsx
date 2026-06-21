@@ -52,7 +52,7 @@ function statusTone(status: string): string {
     case "ENTRY_OPEN":
       return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
     case "CLOSED":
-      return "border-purple-300/20 bg-black/20 text-purple-100/65";
+      return "theme-neutral-badge opacity-75";
     case "SCHEDULED":
     case "JUDGING":
     case "ENTRY_LOCKED":
@@ -65,7 +65,7 @@ function statusTone(status: string): string {
     case "CANCELLED":
       return "border-red-300/25 bg-red-500/10 text-red-100";
     default:
-      return "border-purple-300/20 bg-white/5 text-purple-100";
+      return "theme-neutral-badge";
   }
 }
 
@@ -207,17 +207,17 @@ export default async function ShowDetailPage({
       : null;
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-8 text-white">
-      <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+    <main className="shows-page mx-auto max-w-7xl px-6 py-8">
+      <section className="theme-panel mb-8 rounded-[28px] px-6 py-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.22em] text-purple-300/80">
+            <p className="theme-label text-sm uppercase tracking-[0.22em]">
               Show Entry
             </p>
-            <h1 className="mt-2 text-4xl font-bold tracking-tight text-white">
+            <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
               {cluster.name}
             </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
+            <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
               {isStewardingThisShow
                 ? "Review your stewarding assignment and show schedule for this cluster."
                 : "Choose a breed, then enter each dog for one day or the full cluster."}
@@ -230,14 +230,14 @@ export default async function ShowDetailPage({
               className={
                 resultCount > 0
                   ? "rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500"
-                  : "rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                  : "theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               }
             >
               Results
             </Link>
             <Link
               href="/shows"
-              className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               All Shows
             </Link>
@@ -256,10 +256,10 @@ export default async function ShowDetailPage({
           >
             {clusterDisplayStatus}
           </div>
-          <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
+          <div className="theme-neutral-badge rounded-full px-3 py-1">
             {getShowDistrictRegionName(cluster.district)}
           </div>
-          <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
+          <div className="theme-neutral-badge rounded-full px-3 py-1">
             Entries close {formatShowDateTime(cluster.entryCloseEpoch)}
           </div>
         </div>
@@ -290,8 +290,8 @@ export default async function ShowDetailPage({
         ) : null}
 
         {isStewardingThisShow ? (
-          <div className="mt-5 rounded-2xl border border-cyan-300/35 bg-cyan-500/10 px-5 py-4 text-sm leading-6 text-cyan-50">
-            <div className="font-semibold text-white">
+          <div className="theme-copy mt-5 rounded-2xl border border-cyan-300/35 bg-cyan-500/10 px-5 py-4 text-sm leading-6">
+            <div className="theme-heading font-semibold">
               Club Stewarding Assignment
             </div>
             <p className="mt-2">
@@ -307,7 +307,7 @@ export default async function ShowDetailPage({
             </p>
             <Link
               href="/kennel/services"
-              className="mt-3 inline-flex rounded-xl border border-cyan-200/35 bg-white/10 px-4 py-2 text-xs font-semibold text-cyan-50 transition hover:bg-white/15"
+              className="theme-secondary-button mt-3 inline-flex rounded-xl px-4 py-2 text-xs font-semibold"
             >
               View Kennel Services
             </Link>
@@ -315,7 +315,7 @@ export default async function ShowDetailPage({
         ) : null}
 
         {kennel && weekendPlanStatus && !weekendPlanStatus.primaryClusterId ? (
-          <div className="mt-5 rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-100">
+          <div className="theme-copy mt-5 rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm">
             Submitting entries here will make this your primary show for the
             weekend.
           </div>
@@ -337,7 +337,7 @@ export default async function ShowDetailPage({
             <div className="mt-3">
               <Link
                 href="/kennel/services"
-                className="inline-flex rounded-xl border border-amber-200/35 bg-white/10 px-4 py-2 text-xs font-semibold text-amber-50 transition hover:bg-white/15"
+                className="theme-secondary-button inline-flex rounded-xl px-4 py-2 text-xs font-semibold"
               >
                 View Kennel Services
               </Link>
@@ -353,7 +353,7 @@ export default async function ShowDetailPage({
         ) : null}
       </section>
 
-      <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+      <section className="theme-panel rounded-[28px] p-6">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {cluster.showDays.map((day) => {
             const dayDisplayStatus = getShowDayDisplayStatus({
@@ -371,10 +371,10 @@ export default async function ShowDetailPage({
             return (
               <div
                 key={day.id}
-                className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                className="theme-card rounded-2xl p-4"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-white">
+                  <div className="theme-heading text-sm font-semibold">
                     Day {day.dayIndex}
                   </div>
                   <div
@@ -383,24 +383,24 @@ export default async function ShowDetailPage({
                     {dayDisplayStatus}
                   </div>
                 </div>
-                <div className="mt-3 text-sm text-purple-100/75">
+                <div className="theme-copy mt-3 text-sm">
                   {formatShowCalendarLabel(day.scheduledEpoch)}
                 </div>
-                <div className="mt-1 text-sm text-purple-100/60">
+                <div className="theme-copy mt-1 text-sm opacity-75">
                   {formatShowDateTime(day.scheduledEpoch)}
                 </div>
-                <div className="mt-2 text-sm text-purple-100/75">
+                <div className="theme-copy mt-2 text-sm">
                   Judge:{" "}
                   <Link
                     href={`/judges/${day.judge.judgeCode}`}
-                    className="font-semibold text-white underline-offset-4 hover:underline"
+                    className="theme-heading font-semibold underline-offset-4 hover:underline"
                   >
                     {day.judge.name}
                   </Link>
                 </div>
                 {dayDisplayStatus === "JUDGING" ||
                 dayDisplayStatus === "JUDGED" ? (
-                  <div className="mt-2 text-xs text-purple-100/50">
+                  <div className="theme-copy mt-2 text-xs opacity-70">
                     {day._count.showEntries} entered
                   </div>
                 ) : null}
@@ -410,20 +410,20 @@ export default async function ShowDetailPage({
         </div>
 
         {!kennel ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+          <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
             Log in to enter dogs from your kennel.
           </div>
         ) : isStewardingThisShow ? (
-          <div className="mt-6 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4 text-sm text-cyan-50">
+          <div className="theme-copy mt-6 rounded-2xl border border-cyan-300/25 bg-cyan-500/10 p-4 text-sm">
             Entry is unavailable because you are stewarding this show/cluster.
             Stewarding is your primary show commitment for this weekend.
           </div>
         ) : !clusterAvailability.canEnter ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+          <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
             {clusterAvailability.message}
           </div>
         ) : breedOptions.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+          <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
             No eligible kennel dogs are available for this show.
           </div>
         ) : (
@@ -436,12 +436,12 @@ export default async function ShowDetailPage({
               {typeof dogIds === "string" && dogIds.trim() ? (
                 <input type="hidden" name="dogIds" value={dogIds} />
               ) : null}
-              <label className="grid gap-2 text-sm text-purple-100/75">
+              <label className="theme-label grid gap-2 text-sm">
                 Breed to Enter
                 <select
                   name="breedCode2"
                   defaultValue={selectedBreed?.code2 ?? ""}
-                  className="rounded-xl border border-purple-300/20 bg-black/35 px-4 py-3 text-sm font-semibold text-white outline-none"
+                  className="theme-control rounded-xl px-4 py-3 text-sm font-semibold outline-none"
                 >
                   <option value="">Choose a breed...</option>
                   <BreedSelectOptions
@@ -461,21 +461,21 @@ export default async function ShowDetailPage({
             </form>
 
             {!selectedBreedCode ? (
-              <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+              <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
                 Choose a breed to see eligible kennel dogs for this show.
               </div>
             ) : selectedBreed && planner && planner.dogs.length > 0 ? (
               <>
                 <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
                   <div>
-                    <h2 className="text-2xl font-semibold text-white">
+                    <h2 className="theme-heading text-2xl font-semibold">
                       {selectedBreed.name}
                     </h2>
-                    <p className="mt-1 text-sm text-purple-100/65">
+                    <p className="theme-copy mt-1 text-sm">
                       Select one or more show days for each dog.
                     </p>
                   </div>
-                  <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-sm text-purple-100/75">
+                  <div className="theme-neutral-badge rounded-full px-3 py-1 text-sm">
                     Balance ${kennel.balance.toLocaleString("en-US")}
                   </div>
                 </div>
@@ -502,11 +502,11 @@ export default async function ShowDetailPage({
                 />
               </>
             ) : selectedBreed ? (
-              <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+              <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
                 No eligible {selectedBreed.name} dogs are available for open days in this show.
               </div>
             ) : (
-              <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/70">
+              <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
                 No eligible kennel dogs are available for this show.
               </div>
             )}

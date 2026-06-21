@@ -1878,8 +1878,8 @@ export default function BreedPageClient({
 
     return (
       <div>
-        <div className="mb-5 rounded-2xl border border-purple-300/15 bg-white/5 px-4 py-3">
-          <p className="text-sm text-purple-100/75">
+        <div className="theme-card mb-5 rounded-2xl px-4 py-3">
+          <p className="theme-copy text-sm">
             Choose an eligible mate for the selected dog.
           </p>
         </div>
@@ -1887,14 +1887,14 @@ export default function BreedPageClient({
           <div className="lg:col-span-3">
             <FreeAnchorCard dog={anchorDog} />
           </div>
-          <section className="rounded-2xl border border-purple-300/15 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] lg:col-span-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+          <section className="theme-panel rounded-2xl p-5 lg:col-span-6">
+            <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
               Eligible Mates
             </p>
-            <h2 className="mt-2 text-xl font-semibold text-white">
+            <h2 className="theme-heading mt-2 text-xl font-semibold">
               Choose {selectingDams ? "A Dam" : "A Sire"}
             </h2>
-            <p className="mt-2 text-sm text-purple-100/70">
+            <p className="theme-copy mt-2 text-sm">
               Only dogs currently eligible for this breeding are shown. Outside
               studs are highlighted in blue.
             </p>
@@ -1917,7 +1917,7 @@ export default function BreedPageClient({
                   />
                 ))
               ) : (
-                <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/65">
+                <div className="theme-card theme-copy rounded-xl p-4 text-sm">
                   No eligible mates are currently available for this dog.
                 </div>
               )}
@@ -1959,27 +1959,27 @@ export default function BreedPageClient({
         </div>
       ) : null}
 
-      <section className="relative overflow-hidden rounded-[28px] border border-fuchsia-300/55 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.22),transparent_42%),linear-gradient(135deg,rgba(88,28,135,0.78),rgba(30,17,48,0.95))] p-6 shadow-[0_0_42px_rgba(192,132,252,0.18),0_20px_60px_rgba(0,0,0,0.34)]">
+      <section className="theme-panel relative overflow-hidden rounded-[28px] p-6">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-100 to-transparent" />
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-fuchsia-100">
+            <p className="theme-label text-xs font-semibold uppercase tracking-[0.22em]">
               Step 1
             </p>
-            <h2 className="mt-2 text-2xl font-semibold text-white">
+            <h2 className="theme-heading mt-2 text-2xl font-semibold">
               Choose A Breed
             </h2>
-            <p className="mt-2 text-sm text-purple-100/70">
+            <p className="theme-copy mt-2 text-sm">
               Parent choices and planning tools appear after you select a breed.
             </p>
           </div>
-          <label className="grid min-w-[280px] gap-2 text-sm text-purple-100/75">
+          <label className="theme-label grid min-w-[280px] gap-2 text-sm">
             Breed
             <select
               autoComplete="off"
               value={breedCode2}
               onChange={(event) => chooseBreed(event.target.value)}
-              className="rounded-xl border border-fuchsia-200/55 bg-purple-950/80 px-4 py-3 font-semibold text-white shadow-[0_0_20px_rgba(192,132,252,0.15)] outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-300/25"
+              className="theme-control rounded-xl px-4 py-3 font-semibold outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-300/25"
             >
               <option value="">Choose a breed...</option>
               <BreedSelectOptions options={breeds} />
@@ -1991,12 +1991,12 @@ export default function BreedPageClient({
       {breedCode2 ? (
         <>
           <section className="mt-6 grid gap-6 lg:grid-cols-2">
-            <div className="rounded-[28px] border border-fuchsia-300/35 bg-[linear-gradient(155deg,rgba(88,28,135,0.42),rgba(17,24,39,0.78))] p-5 shadow-[0_0_30px_rgba(192,132,252,0.1),0_20px_60px_rgba(0,0,0,0.3)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+            <div className="theme-panel rounded-[28px] p-5">
+              <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
                 Step 2A
               </p>
-              <h2 className="mt-2 text-xl font-semibold text-white">Choose Dam</h2>
-              <p className="mt-2 text-sm text-purple-100/70">
+              <h2 className="theme-heading mt-2 text-xl font-semibold">Choose Dam</h2>
+              <p className="theme-copy mt-2 text-sm">
                 Your kennel&apos;s eligible females for this breed.
               </p>
               <div className="mt-5 space-y-3">
@@ -2012,20 +2012,20 @@ export default function BreedPageClient({
                     />
                   ))
                 ) : (
-                  <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/65">
+                  <div className="theme-card theme-copy rounded-xl p-4 text-sm">
                     No females of this breed are currently in your kennel.
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-sky-300/35 bg-[linear-gradient(155deg,rgba(14,116,144,0.28),rgba(17,24,39,0.8))] p-5 shadow-[0_0_30px_rgba(56,189,248,0.1),0_20px_60px_rgba(0,0,0,0.3)]">
+            <div className="theme-panel rounded-[28px] p-5">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+                  <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
                     Step 2B
                   </p>
-                  <h2 className="mt-2 text-xl font-semibold text-white">Choose Sire</h2>
+                  <h2 className="theme-heading mt-2 text-xl font-semibold">Choose Sire</h2>
                 </div>
                 {selectedDam ? (
                   <div className="flex flex-wrap gap-2">
@@ -2037,7 +2037,7 @@ export default function BreedPageClient({
                         className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                           sireSource === source
                             ? "border-sky-300/50 bg-sky-500/20 text-sky-100"
-                            : "border-white/10 bg-white/5 text-purple-100/70"
+                            : "theme-neutral-badge"
                         }`}
                       >
                         {source === "OWNED" ? "My Kennel" : source === "PUBLIC" ? "Outside Studs" : "All"}
@@ -2048,12 +2048,12 @@ export default function BreedPageClient({
               </div>
               {selectedDam ? (
                 <>
-                  <label className="mt-4 grid gap-2 text-xs uppercase tracking-wide text-purple-200/70">
+                  <label className="theme-label mt-4 grid gap-2 text-xs uppercase tracking-wide">
                     Sort Sires
                     <select
                       value={sireSort}
                       onChange={(event) => setSireSort(event.target.value as SireSort)}
-                      className="rounded-xl border border-purple-300/20 bg-black/35 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-white outline-none"
+                      className="theme-control rounded-xl px-3 py-2 text-sm font-semibold normal-case tracking-normal outline-none"
                     >
                       <option value="RECOMMENDED">Recommended</option>
                       <option value="LOWEST_COI">Lowest Litter COI</option>
@@ -2082,14 +2082,14 @@ export default function BreedPageClient({
                         />
                       ))
                     ) : (
-                      <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/65">
+                      <div className="theme-card theme-copy rounded-xl p-4 text-sm">
                         No sires match this breed and source filter.
                       </div>
                     )}
                   </div>
                 </>
               ) : (
-                <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-purple-100/65">
+                <div className="theme-card theme-copy mt-5 rounded-xl p-4 text-sm">
                   Select an eligible dam first to compare available sires.
                 </div>
               )}
@@ -2116,7 +2116,7 @@ export default function BreedPageClient({
               onSubmit={handleSubmit}
             />
           ) : (
-            <div className="mt-6 rounded-2xl border border-fuchsia-300/30 bg-[linear-gradient(90deg,rgba(88,28,135,0.3),rgba(14,116,144,0.16))] p-5 text-sm text-purple-100/80 shadow-[0_0_24px_rgba(192,132,252,0.08)]">
+            <div className="theme-card theme-copy mt-6 rounded-2xl p-5 text-sm">
               Select a dam and sire to unlock the full pairing preview.
             </div>
           )}

@@ -517,22 +517,16 @@ export default async function BreedingPlannerPage({
   });
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-8">
+    <main className="breeding-page mx-auto max-w-7xl px-6 py-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.25em] text-purple-300/80">
+          <p className="theme-label text-sm uppercase tracking-[0.25em]">
             Breeding
           </p>
-          <h1
-            className={`mt-2 text-3xl font-semibold ${
-              experience === "worksheet"
-                ? "bg-gradient-to-r from-fuchsia-100 via-white to-sky-100 bg-clip-text text-transparent"
-                : "text-white"
-            }`}
-          >
+          <h1 className="theme-heading mt-2 text-3xl font-semibold">
             {experience === "worksheet" ? "Plan A Litter" : "Breed Dog"}
           </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
+          <p className="theme-copy mt-3 max-w-3xl text-sm leading-7">
             {experience === "worksheet"
               ? "Build a thoughtful pairing step by step. Start with a breed, compare eligible dams and sires, then review health, pedigree COI, visible trait outlook, timing, and cost before confirming the litter plan."
               : "Choose an eligible mate for this dog, review the breeding cost, and confirm the pairing."}
@@ -551,16 +545,16 @@ export default async function BreedingPlannerPage({
 
           <Link
             href="/kennel"
-            className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+            className="theme-secondary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"
           >
             Back to My Kennel
           </Link>
 
-          <div className="rounded-2xl border border-purple-300/15 bg-white/5 px-5 py-4">
-            <div className="text-xs uppercase tracking-wide text-purple-200">
+          <div className="theme-card rounded-2xl px-5 py-4">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Kennel Balance
             </div>
-            <div className="mt-1 text-xl font-semibold text-white">
+            <div className="theme-heading mt-1 text-xl font-semibold">
               ${kennel.balance.toLocaleString()}
             </div>
           </div>
@@ -586,7 +580,7 @@ export default async function BreedingPlannerPage({
       <div className="mt-8">
         <Link
           href="/kennel"
-          className="text-sm font-medium text-purple-200 transition hover:text-white"
+          className="theme-label text-sm font-medium transition hover:opacity-80"
         >
           ← Back to Kennel
         </Link>

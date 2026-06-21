@@ -211,14 +211,14 @@ export function ShowEntryPlanner({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] border-separate border-spacing-y-2 text-sm">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+            <tr className="theme-label text-left text-xs uppercase tracking-[0.16em]">
               <th className="px-3 py-2">Dog</th>
               <th className="px-3 py-2">Sex</th>
               <th className="px-3 py-2">Age</th>
               {days.map((day) => (
                 <th key={day.showDayId} className="w-28 px-3 py-2 text-center">
                   <div>Day {day.dayIndex}</div>
-                  <div className="mt-1 normal-case tracking-normal text-purple-100/60">
+                  <div className="theme-copy mt-1 normal-case tracking-normal">
                     {day.label}
                   </div>
                 </th>
@@ -230,10 +230,10 @@ export function ShowEntryPlanner({
             {dogs.map((dog) => (
               <tr
                 key={dog.dogId}
-                className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                className="theme-card"
               >
                 <td className="rounded-l-2xl px-3 py-3">
-                  <div className="flex items-center gap-1.5 font-semibold text-white">
+                  <div className="theme-heading flex items-center gap-1.5 font-semibold">
                     <span>{dog.displayName}</span>
                     <DogStatusBadges
                       healthStatus={dog.healthBadgeStatus}
@@ -242,10 +242,10 @@ export function ShowEntryPlanner({
                       isListedAtStud={dog.isListedAtStud}
                     />
                   </div>
-                  <div className="text-xs text-purple-100/55">{dog.regNumber}</div>
+                  <div className="theme-copy text-xs">{dog.regNumber}</div>
                 </td>
-                <td className="px-3 py-3 text-purple-100/75">{dog.sex}</td>
-                <td className="px-3 py-3 text-purple-100/75">{dog.ageLabel}</td>
+                <td className="theme-copy px-3 py-3">{dog.sex}</td>
+                <td className="theme-copy px-3 py-3">{dog.ageLabel}</td>
                 {days.map((day) => {
                   const key = selectionKey(dog.dogId, day.showDayId);
                   const isEligible = dog.eligibleShowDayIds.includes(day.showDayId);
@@ -289,7 +289,7 @@ export function ShowEntryPlanner({
                       type="button"
                       onClick={() => setDogSelection(dog, false)}
                       disabled={isSubmitting}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-purple-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                      className="theme-secondary-button rounded-xl px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       Clear
                     </button>
@@ -301,37 +301,37 @@ export function ShowEntryPlanner({
         </table>
       </div>
 
-      <div className="mt-5 grid gap-3 border-t border-white/10 pt-5 md:grid-cols-[1fr_auto] md:items-end">
-        <div className="grid gap-2 text-sm text-purple-100/75 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-5 grid gap-3 border-t border-[color:var(--dog-border)] pt-5 md:grid-cols-[1fr_auto] md:items-end">
+        <div className="theme-copy grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
           <div>
-            <div className="text-xs uppercase tracking-[0.14em] text-purple-200/60">
+            <div className="theme-label text-xs uppercase tracking-[0.14em]">
               Entries
             </div>
-            <div className="mt-1 font-semibold text-white">
+            <div className="theme-heading mt-1 font-semibold">
               {quote.totalEntries} x {formatMoney(ENTRY_FEE_PER_SHOW)}
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-[0.14em] text-purple-200/60">
+            <div className="theme-label text-xs uppercase tracking-[0.14em]">
               Entry Fees
             </div>
-            <div className="mt-1 font-semibold text-white">
+            <div className="theme-heading mt-1 font-semibold">
               {formatMoney(quote.entryFees)}
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-[0.14em] text-purple-200/60">
+            <div className="theme-label text-xs uppercase tracking-[0.14em]">
               {getDistanceTierLabel(quote.travel.tier)} Travel
             </div>
-            <div className="mt-1 font-semibold text-white">
+            <div className="theme-heading mt-1 font-semibold">
               {formatMoney(quote.travel.totalCost)}
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-[0.14em] text-purple-200/60">
+            <div className="theme-label text-xs uppercase tracking-[0.14em]">
               {quote.handlerFeeType === "TRAVELING" ? "Travel Handler" : "Handler"}
             </div>
-            <div className="mt-1 font-semibold text-white">
+            <div className="theme-heading mt-1 font-semibold">
               {quote.handlerDogs > 0
                 ? `${quote.handlerDogs} x ${formatMoney(
                     quote.handlerFee / quote.handlerDogs
@@ -340,12 +340,12 @@ export function ShowEntryPlanner({
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-[0.14em] text-purple-200/60">
+            <div className="theme-label text-xs uppercase tracking-[0.14em]">
               After Entry
             </div>
             <div
               className={`mt-1 font-semibold ${
-                quote.canAfford ? "text-white" : "text-red-100"
+                quote.canAfford ? "theme-heading" : "text-red-100"
               }`}
             >
               {formatMoney(quote.ledgerBalanceAfterEntry)}
@@ -356,7 +356,7 @@ export function ShowEntryPlanner({
         <button
           type="submit"
           disabled={isSubmitting || selectedPairs.length === 0 || !quote.canAfford}
-          className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-purple-100/45"
+          className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-[color:var(--dog-card)] disabled:text-[color:var(--dog-copy)]"
         >
           {isSubmitting
             ? "Submitting..."
