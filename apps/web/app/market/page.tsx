@@ -229,25 +229,25 @@ export default function MarketPage() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="market-page min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
-        <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur">
+        <section className="theme-panel mb-8 rounded-[28px] px-6 py-6 backdrop-blur">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="mb-3 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+              <div className="theme-neutral-badge mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em]">
                 The Market
               </div>
 
-              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              <h1 className="theme-heading text-3xl font-bold tracking-tight sm:text-4xl">
                 Browse dogs available for purchase
               </h1>
 
-              <p className="mt-3 text-sm leading-7 text-purple-100/75 sm:text-base">
+              <p className="theme-copy mt-3 text-sm leading-7 sm:text-base">
                 This is the central marketplace for dogs in ShowRing Game.
                 Browse foundation dogs and player-listed dogs offered for sale.
               </p>
 
-              <p className="mt-3 text-sm leading-7 text-purple-100/75 sm:text-base">
+              <p className="theme-copy mt-3 text-sm leading-7 sm:text-base">
                 To begin, choose a breed. You can type a breed name or select one from the dropdown below.
               </p>
             </div>
@@ -269,17 +269,17 @@ export default function MarketPage() {
           </div>
         </section>
 
-        <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur">
-          <h2 className="mb-4 text-lg font-semibold text-white">
+        <section className="theme-panel mb-8 rounded-[28px] px-6 py-6 backdrop-blur">
+          <h2 className="theme-heading mb-4 text-lg font-semibold">
             Find a Breed
           </h2>
 
           {loadingBreeds ? (
-            <p className="text-sm text-purple-100/60">Loading breeds...</p>
+            <p className="theme-copy text-sm">Loading breeds...</p>
           ) : (
             <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_auto_auto] lg:items-end">
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-purple-100/60">
+                <label className="theme-label mb-1 block text-xs uppercase tracking-wide">
                   Group
                 </label>
                 <select
@@ -288,7 +288,7 @@ export default function MarketPage() {
                     setGroupFilter(e.target.value);
                     setSelectedBreedCode2("");
                   }}
-                  className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+                  className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none"
                 >
                   <option value="">All Groups</option>
                   {groupOptions.map((group) => (
@@ -300,7 +300,7 @@ export default function MarketPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-purple-100/60">
+                <label className="theme-label mb-1 block text-xs uppercase tracking-wide">
                   Search Breed Name
                 </label>
                 <input
@@ -308,18 +308,18 @@ export default function MarketPage() {
                   value={breedSearch}
                   onChange={(e) => setBreedSearch(e.target.value)}
                   placeholder="Type breed name..."
-                  className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-purple-100/40"
+                  className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-purple-100/60">
+                <label className="theme-label mb-1 block text-xs uppercase tracking-wide">
                   Breed
                 </label>
                 <select
                   value={selectedBreedCode2}
                   onChange={(e) => setSelectedBreedCode2(e.target.value)}
-                  className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+                  className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none"
                 >
                   <option value="">Select a breed</option>
                   <BreedSelectOptions options={filteredBreeds} />
@@ -335,7 +335,7 @@ export default function MarketPage() {
 
               <button
                 onClick={handleClear}
-                className="rounded-xl border border-purple-300/25 bg-white/5 px-4 py-2.5 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                className="theme-secondary-button rounded-xl px-4 py-2.5 text-sm font-semibold"
               >
                 Clear
               </button>
@@ -356,15 +356,15 @@ export default function MarketPage() {
         ) : null}
 
         {!selectedBreedCode2 && !hasSearched ? (
-          <section className="rounded-[28px] border border-white/10 bg-white/5 px-6 py-10 text-center text-sm text-purple-100/60 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+          <section className="theme-panel theme-copy rounded-[28px] px-6 py-10 text-center text-sm">
             Select a breed above to view available dogs.
           </section>
         ) : loadingDogs ? (
-          <section className="rounded-[28px] border border-white/10 bg-white/5 p-8 text-sm text-purple-100/75 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+          <section className="theme-panel theme-copy rounded-[28px] p-8 text-sm">
             Loading dogs for {selectedBreedCode2}...
           </section>
         ) : dogs.length === 0 ? (
-          <section className="rounded-[28px] border border-white/10 bg-white/5 p-8 text-sm text-purple-100/75 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+          <section className="theme-panel theme-copy rounded-[28px] p-8 text-sm">
             Click Browse Dogs.
           </section>
         ) : (
@@ -372,28 +372,28 @@ export default function MarketPage() {
             {dogs.map((dog) => (
               <article
                 key={dog.dogId}
-                className="overflow-hidden rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] shadow-[0_22px_60px_rgba(0,0,0,0.35)]"
+                className="theme-panel overflow-hidden rounded-[28px]"
               >
-                <div className="border-b border-white/10 bg-[linear-gradient(90deg,rgba(124,58,237,0.22),rgba(255,255,255,0.02))] px-6 py-5">
+                <div className="border-b border-[color:var(--dog-border)] bg-[color:var(--dog-card)] px-6 py-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="text-sm font-medium text-purple-200">
+                      <div className="theme-label text-sm font-medium">
                         {dog.breedName}{" "}
-                        <span className="text-purple-100/60">({dog.breedCode2})</span>
+                        <span className="theme-copy">({dog.breedCode2})</span>
                       </div>
-                      <h2 className="mt-2 text-2xl font-bold text-white">
+                      <h2 className="theme-heading mt-2 text-2xl font-bold">
                         {dog.displayName}
                       </h2>
-                      <div className="mt-2 text-sm text-purple-100/70">
+                      <div className="theme-copy mt-2 text-sm">
                         {dog.regNumber}
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-2 text-right">
-                      <div className="text-xs uppercase tracking-wide text-purple-200">
+                    <div className="theme-card rounded-2xl px-4 py-2 text-right">
+                      <div className="theme-label text-xs uppercase tracking-wide">
                         Price
                       </div>
-                      <div className="mt-1 text-xl font-bold text-white">
+                      <div className="theme-heading mt-1 text-xl font-bold">
                         {formatMoney(dog.price)}
                       </div>
                     </div>
@@ -402,28 +402,28 @@ export default function MarketPage() {
 
                 <div className="px-6 py-5">
                   <div className="mb-5 grid grid-cols-2 gap-3 text-sm">
-                    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                      <div className="text-xs uppercase tracking-wide text-purple-200">
+                    <div className="theme-card rounded-2xl px-4 py-3">
+                      <div className="theme-label text-xs uppercase tracking-wide">
                         Sex
                       </div>
-                      <div className="mt-1 font-medium text-white">{dog.sex}</div>
+                      <div className="theme-heading mt-1 font-medium">{dog.sex}</div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                      <div className="text-xs uppercase tracking-wide text-purple-200">
+                    <div className="theme-card rounded-2xl px-4 py-3">
+                      <div className="theme-label text-xs uppercase tracking-wide">
                         Age
                       </div>
-                      <div className="mt-1 font-medium text-white">
+                      <div className="theme-heading mt-1 font-medium">
                         {formatAge(dog.ageHours)}
                       </div>
                     </div>
                   </div>
 
-                  <div className="mb-5 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm">
-                    <div className="text-xs uppercase tracking-wide text-purple-200">
+                  <div className="theme-card mb-5 rounded-2xl px-4 py-3 text-sm">
+                    <div className="theme-label text-xs uppercase tracking-wide">
                       Seller
                     </div>
-                    <div className="mt-1 font-medium text-white">
+                    <div className="theme-heading mt-1 font-medium">
                       {dog.sellerType === "SYSTEM"
                         ? "Foundation Market"
                         : dog.sellerKennelName ?? "Player Kennel"}
@@ -431,7 +431,7 @@ export default function MarketPage() {
                   </div>
 
                   <div>
-                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-purple-200">
+                    <h3 className="theme-label mb-3 text-sm font-semibold uppercase tracking-wide">
                       Visible Ring Categories
                     </h3>
 
@@ -464,7 +464,7 @@ export default function MarketPage() {
                     <button
                       onClick={() => handleBuy(dog)}
                       disabled={buyingDogId === dog.dogId || dog.isOwnedByCurrentKennel}
-                      className="flex-1 rounded-2xl border border-purple-300/25 bg-white/5 px-3 py-3 text-xs font-semibold text-purple-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="theme-secondary-button flex-1 rounded-2xl px-3 py-3 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {dog.isOwnedByCurrentKennel
                         ? "Your Listing"
