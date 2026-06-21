@@ -230,49 +230,81 @@ export type DogProfileBreedingProductionDto = {
   producerMerit: DogProfileProducerMeritDto;
 };
 
+export type DogProfilePedigreeHealthResultDto = {
+  testCode: string;
+  displayName: string;
+  resultLabel: string;
+  severityKey: "green" | "yellow" | "red";
+};
+
+export type DogProfilePedigreeHealthCountsDto = {
+  green: number;
+  yellow: number;
+  red: number;
+};
+
 export type DogProfilePedigreeDogDto = {
   dogId: string;
   displayName: string;
-  regNumber: string;
-  sex: "M" | "F";
+  relationship: string;
+  profileUrl: string;
+  healthStatusMarkers: {
+    badgeStatus: "green" | "yellow" | "red" | null;
+    hasFullClearance: boolean;
+  };
+  colorLabel: "Color: Pending";
+  detailedHealthResults: DogProfilePedigreeHealthResultDto[];
+  healthSeverityCounts: DogProfilePedigreeHealthCountsDto | null;
 };
 
 export type DogProfilePedigreeDto = {
-  coiPercent: number | null;
+  coiValue: number | null;
+  coiLabel: string;
   generationDepth: number | null;
-  sire: DogProfilePedigreeDogDto | null;
-  dam: DogProfilePedigreeDogDto | null;
+  colorLabel: "Color: Pending";
+  healthTestsSummary: string;
   ancestors: DogProfilePedigreeDogDto[];
 };
 
 export type DogProfileEntryDto = {
   entryId: string;
-  entryStatus: string;
   showId: string;
+  showUrl: string;
   showName: string;
-  showDayIndex: number;
+  showDateLabel: string;
+  showDayNumber: number;
   scheduledEpoch: number;
+  district: string;
   breedName: string;
   judgeCode: string | null;
   judgeName: string | null;
-  canPull: boolean;
+  judgeProfileUrl: string | null;
+  entryStatusLabel: string;
+  canPullEntry: boolean;
+  pullEntryActionUrl: string | null;
 };
 
 export type DogProfileEntriesDto = {
-  isOwnerOnly: true;
-  upcoming: DogProfileEntryDto[];
+  currentEntriesCount: number;
+  nextEntries: DogProfileEntryDto[];
+  allEntries: DogProfileEntryDto[];
 };
 
 export type DogProfilePlannerTagDto = {
-  tagType: string;
-  goalKey: string;
+  tagTypeLabel: string;
+  goalLabel: string;
   note: string | null;
   updatedAt: string;
 };
 
 export type DogProfilePrivatePlanningDto = {
   notes: string | null;
-  plannerTags: DogProfilePlannerTagDto[];
+  programPlannerTags: DogProfilePlannerTagDto[];
+  breedingProgramGoal: string | null;
+  privatePlannerNote: string | null;
+  isWatchlisted: boolean;
+  isKeeper: boolean;
+  canEditNotes: boolean;
 } | null;
 
 export type DogProfileActionsDto = {
@@ -304,7 +336,7 @@ export type DogProfileDto = {
   groomingDetails: DogProfileGroomingDetailsDto | null;
   breedingAndProduction: DogProfileBreedingProductionDto;
   pedigree: DogProfilePedigreeDto;
-  entries: DogProfileEntriesDto;
+  entries: DogProfileEntriesDto | null;
   privatePlanning: DogProfilePrivatePlanningDto;
   actions: DogProfileActionsDto;
   viewerContext: DogProfileViewerContextDto;
@@ -529,41 +561,63 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       },
     },
     pedigree: {
-      coiPercent: input.pedigree.coiPercent,
+      coiValue: input.pedigree.coiValue,
+      coiLabel: input.pedigree.coiLabel,
       generationDepth: input.pedigree.generationDepth,
-      sire: mapPedigreeDog(input.pedigree.sire),
-      dam: mapPedigreeDog(input.pedigree.dam),
+      colorLabel: input.pedigree.colorLabel,
+      healthTestsSummary: input.pedigree.healthTestsSummary,
       ancestors: input.pedigree.ancestors.map((dog) => ({
         dogId: dog.dogId,
         displayName: dog.displayName,
-        regNumber: dog.regNumber,
-        sex: dog.sex,
+        relationship: dog.relationship,
+        profileUrl: dog.profileUrl,
+        healthStatusMarkers: {
+          badgeStatus: dog.healthStatusMarkers.badgeStatus,
+          hasFullClearance: dog.healthStatusMarkers.hasFullClearance,
+        },
+        colorLabel: dog.colorLabel,
+        detailedHealthResults: dog.detailedHealthResults.map((result) => ({
+          testCode: result.testCode,
+          displayName: result.displayName,
+          resultLabel: result.resultLabel,
+          severityKey: result.severityKey,
+        })),
+        healthSeverityCounts: dog.healthSeverityCounts
+          ? {
+              green: dog.healthSeverityCounts.green,
+              yellow: dog.healthSeverityCounts.yellow,
+              red: dog.healthSeverityCounts.red,
+            }
+          : null,
       })),
     },
-    entries: {
-      isOwnerOnly: true,
-      upcoming: input.entries.upcoming.map((entry) => ({
-        entryId: entry.entryId,
-        entryStatus: entry.entryStatus,
-        showId: entry.showId,
-        showName: entry.showName,
-        showDayIndex: entry.showDayIndex,
-        scheduledEpoch: entry.scheduledEpoch,
-        breedName: entry.breedName,
-        judgeCode: entry.judgeCode,
-        judgeName: entry.judgeName,
-        canPull: entry.canPull,
-      })),
-    },
+    entries: input.entries
+      ? {
+          currentEntriesCount: input.entries.currentEntriesCount,
+          nextEntries: input.entries.nextEntries.map((entry) =>
+            mapDogProfileEntry(entry)
+          ),
+          allEntries: input.entries.allEntries.map((entry) =>
+            mapDogProfileEntry(entry)
+          ),
+        }
+      : null,
     privatePlanning: input.privatePlanning
       ? {
           notes: input.privatePlanning.notes,
-          plannerTags: input.privatePlanning.plannerTags.map((tag) => ({
-            tagType: tag.tagType,
-            goalKey: tag.goalKey,
-            note: tag.note,
-            updatedAt: tag.updatedAt,
-          })),
+          programPlannerTags: input.privatePlanning.programPlannerTags.map(
+            (tag) => ({
+              tagTypeLabel: tag.tagTypeLabel,
+              goalLabel: tag.goalLabel,
+              note: tag.note,
+              updatedAt: tag.updatedAt,
+            })
+          ),
+          breedingProgramGoal: input.privatePlanning.breedingProgramGoal,
+          privatePlannerNote: input.privatePlanning.privatePlannerNote,
+          isWatchlisted: input.privatePlanning.isWatchlisted,
+          isKeeper: input.privatePlanning.isKeeper,
+          canEditNotes: input.privatePlanning.canEditNotes,
         }
       : null,
     actions: {
@@ -622,15 +676,22 @@ function mapHealthSummary(
   };
 }
 
-function mapPedigreeDog(
-  dog: DogProfilePedigreeDogDto | null
-): DogProfilePedigreeDogDto | null {
-  return dog
-    ? {
-        dogId: dog.dogId,
-        displayName: dog.displayName,
-        regNumber: dog.regNumber,
-        sex: dog.sex,
-      }
-    : null;
+function mapDogProfileEntry(entry: DogProfileEntryDto): DogProfileEntryDto {
+  return {
+    entryId: entry.entryId,
+    showId: entry.showId,
+    showUrl: entry.showUrl,
+    showName: entry.showName,
+    showDateLabel: entry.showDateLabel,
+    showDayNumber: entry.showDayNumber,
+    scheduledEpoch: entry.scheduledEpoch,
+    district: entry.district,
+    breedName: entry.breedName,
+    judgeCode: entry.judgeCode,
+    judgeName: entry.judgeName,
+    judgeProfileUrl: entry.judgeProfileUrl,
+    entryStatusLabel: entry.entryStatusLabel,
+    canPullEntry: entry.canPullEntry,
+    pullEntryActionUrl: entry.pullEntryActionUrl,
+  };
 }

@@ -249,6 +249,48 @@ function formatOffspringTitleSummary(dog: {
   return titleParts.length > 0 ? [...new Set(titleParts)].join(" / ") : null;
 }
 
+function formatEntryStatusLabel(status: string): string {
+  switch (status) {
+    case "ENTERED":
+      return "Entered";
+    case "ABSENT":
+      return "Absent";
+    case "WITHDRAWN":
+      return "Withdrawn";
+    case "INELIGIBLE":
+      return "Ineligible";
+    case "JUDGED":
+      return "Judged";
+    default:
+      return "Status unavailable";
+  }
+}
+
+function formatPlannerTagLabel(tagType: string): string {
+  switch (tagType) {
+    case "KEEP":
+      return "Keep";
+    case "WATCH":
+      return "Watch";
+    case "SELL_CANDIDATE":
+      return "Sell candidate";
+    case "REHOME_CANDIDATE":
+      return "Re-home candidate";
+    case "NO_ACTION":
+      return "No action";
+    default:
+      return "Planner tag";
+  }
+}
+
+function formatGoalLabel(goalKey: string): string {
+  return goalKey
+    .split(/[-_]/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function getRecentPointWins(value: unknown): DogProfilePointWinDto[] {
   if (
     typeof value !== "object" ||
@@ -357,25 +399,133 @@ export async function getDogShowRecord(args: {
   return listPublishedDogShowResults({ dogId: dog.id });
 }
 
-function mapPedigreeDog(
-  dog: {
-    id: string;
-    callName: string | null;
-    registeredName: string | null;
-    regNumber: string;
-    visibleTitlePrefix: string | null;
-    visibleTitleSuffix: string | null;
-    sex: "M" | "F";
-  } | null
-): DogProfilePedigreeDogDto | null {
-  if (!dog) return null;
-
-  return {
-    dogId: dog.id,
-    displayName: formatDogDisplayName(dog),
-    regNumber: dog.regNumber,
-    sex: dog.sex,
+async function loadFourGenerationPedigree(args: {
+  sireId: string | null;
+  damId: string | null;
+}): Promise<DogProfilePedigreeDogDto[]> {
+  type PendingAncestor = {
+    dogId: string;
+    relationshipParts: string[];
   };
+
+  let pending: PendingAncestor[] = [
+    ...(args.sireId
+      ? [{ dogId: args.sireId, relationshipParts: ["Sire"] }]
+      : []),
+    ...(args.damId
+      ? [{ dogId: args.damId, relationshipParts: ["Dam"] }]
+      : []),
+  ];
+  const ancestors: DogProfilePedigreeDogDto[] = [];
+
+  for (let generation = 1; generation <= 4 && pending.length > 0; generation += 1) {
+    const rows = await db.dog.findMany({
+      where: {
+        id: { in: [...new Set(pending.map((item) => item.dogId))] },
+        isPlayerVisible: true,
+      },
+      select: {
+        id: true,
+        callName: true,
+        registeredName: true,
+        regNumber: true,
+        visibleTitlePrefix: true,
+        visibleTitleSuffix: true,
+        sireId: true,
+        damId: true,
+        healthTests: {
+          where: {
+            isPublic: true,
+            testTypeCode: { in: [...PHENOTYPE_HEALTH_TEST_CODES] },
+          },
+          orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+          select: { testTypeCode: true, resultCode: true },
+        },
+      },
+    });
+    const rowsById = new Map(rows.map((row) => [row.id, row]));
+    const next: PendingAncestor[] = [];
+
+    for (const item of pending) {
+      const dog = rowsById.get(item.dogId);
+      if (!dog) continue;
+
+      const latestHealthTests = PHENOTYPE_HEALTH_TEST_CODES.flatMap(
+        (testCode) => {
+          const result = dog.healthTests.find(
+            (test) => test.testTypeCode === testCode
+          );
+          return result ? [result] : [];
+        }
+      );
+      const detailedHealthResults =
+        generation <= 2
+          ? latestHealthTests.map((test) => ({
+              testCode: test.testTypeCode,
+              displayName:
+                PHENOTYPE_HEALTH_TESTS[
+                  test.testTypeCode as PhenotypeHealthTestCode
+                ].label,
+              resultLabel: getPhenotypeHealthResultLabel(
+                test.testTypeCode as PhenotypeHealthTestCode,
+                test.resultCode
+              ),
+              severityKey: getPhenotypeHealthSeverity(
+                test.testTypeCode,
+                test.resultCode
+              ),
+            }))
+          : [];
+      const healthSeverityCounts =
+        generation >= 3
+          ? latestHealthTests.reduce(
+              (counts, test) => {
+                const severity = getPhenotypeHealthSeverity(
+                  test.testTypeCode,
+                  test.resultCode
+                );
+                counts[severity] += 1;
+                return counts;
+              },
+              { green: 0, yellow: 0, red: 0 }
+            )
+          : null;
+
+      ancestors.push({
+        dogId: dog.id,
+        displayName: formatDogDisplayName(dog),
+        relationship: item.relationshipParts.join("'s "),
+        profileUrl: `/dogs/${dog.id}`,
+        healthStatusMarkers: {
+          badgeStatus: getPhenotypeHealthBadgeStatus(latestHealthTests),
+          hasFullClearance:
+            hasAllGreenPhenotypeHealthTests(latestHealthTests),
+        },
+        colorLabel: "Color: Pending",
+        detailedHealthResults,
+        healthSeverityCounts,
+      });
+
+      if (generation < 4) {
+        if (dog.sireId) {
+          next.push({
+            dogId: dog.sireId,
+            relationshipParts: [...item.relationshipParts, "Sire"],
+          });
+        }
+        if (dog.damId) {
+          next.push({
+            dogId: dog.damId,
+            relationshipParts: [...item.relationshipParts, "Dam"],
+          });
+        }
+      }
+    }
+
+    pending = next;
+  }
+
+  return ancestors;
 }
 
 function buildVisibleCategories(scores: {
@@ -424,6 +574,8 @@ export async function getDogProfile(args: {
       isFoundation: true,
       isPlayerVisible: true,
       ownerKennelId: true,
+      sireId: true,
+      damId: true,
       coiPercent: true,
       coiGenerationDepth: true,
       visibleTitlePrefix: true,
@@ -450,28 +602,6 @@ export async function getDogProfile(args: {
       },
       breederKennel: {
         select: { id: true, name: true, slug: true },
-      },
-      sire: {
-        select: {
-          id: true,
-          callName: true,
-          registeredName: true,
-          regNumber: true,
-          visibleTitlePrefix: true,
-          visibleTitleSuffix: true,
-          sex: true,
-        },
-      },
-      dam: {
-        select: {
-          id: true,
-          callName: true,
-          registeredName: true,
-          regNumber: true,
-          visibleTitlePrefix: true,
-          visibleTitleSuffix: true,
-          sex: true,
-        },
       },
       titleProgress: {
         select: {
@@ -662,7 +792,7 @@ export async function getDogProfile(args: {
                     select: { judgeCode: true, name: true },
                   },
                   cluster: {
-                    select: { id: true, name: true },
+                    select: { id: true, name: true, district: true },
                   },
                 },
               },
@@ -677,6 +807,7 @@ export async function getDogProfile(args: {
     groomingSummary,
     groomingStatuses,
     recentShowResults,
+    pedigreeAncestors,
   ] = await Promise.all([
     getStoredProducerMeritForDog({ dogId: dog.id }),
     isOwnedByCurrentKennel
@@ -695,6 +826,10 @@ export async function getDogProfile(args: {
     listPublishedDogShowResults({
       dogId: dog.id,
       take: RECENT_SHOW_RESULT_LIMIT,
+    }),
+    loadFourGenerationPedigree({
+      sireId: dog.sireId,
+      damId: dog.damId,
     }),
   ]);
   const groomingStatus = groomingStatuses?.get(dog.id) ?? null;
@@ -899,6 +1034,43 @@ export async function getDogProfile(args: {
   const producerProgressLabel = highestMeritReached
     ? "Highest producer merit reached"
     : `${producerRecord.championOffspringCount} of ${producerRecord.nextMeritThreshold} champion offspring toward ${producerRecord.nextMeritLabel}`;
+  const allEntries =
+    ownerData?.showEntries.map((entry) => {
+      const showId = entry.showDay.cluster.id;
+      const canPullEntry = entry.entryStatus === "ENTERED";
+
+      return {
+        entryId: entry.id,
+        showId,
+        showUrl: `/shows/${showId}`,
+        showName: entry.showDay.cluster.name,
+        showDateLabel: formatGameDateLabel(entry.showDay.scheduledEpoch),
+        showDayNumber: entry.showDay.dayIndex,
+        scheduledEpoch: entry.showDay.scheduledEpoch,
+        district: getShowDistrictRegionName(
+          entry.showDay.cluster.district
+        ),
+        breedName: entry.breed.name,
+        judgeCode: entry.showDay.judge?.judgeCode ?? null,
+        judgeName: entry.showDay.judge?.name ?? null,
+        judgeProfileUrl: entry.showDay.judge
+          ? `/judges/${entry.showDay.judge.judgeCode}`
+          : null,
+        entryStatusLabel: formatEntryStatusLabel(entry.entryStatus),
+        canPullEntry,
+        pullEntryActionUrl: canPullEntry
+          ? `/api/show-entries/${entry.id}/pull`
+          : null,
+      };
+    }) ?? [];
+  const programPlannerTags =
+    ownerData?.plannerTags.map((tag) => ({
+      tagTypeLabel: formatPlannerTagLabel(tag.tagType),
+      goalLabel: formatGoalLabel(tag.goalKey),
+      note: tag.note,
+      updatedAt: tag.updatedAt.toISOString(),
+    })) ?? [];
+  const primaryPlannerTag = ownerData?.plannerTags[0] ?? null;
 
   return mapDogProfile({
     header: {
@@ -1048,38 +1220,38 @@ export async function getDogProfile(args: {
       },
     },
     pedigree: {
-      coiPercent: dog.coiPercent,
+      coiValue: dog.coiPercent,
+      coiLabel:
+        dog.coiPercent === null
+          ? "COI: Pending"
+          : `COI: ${dog.coiPercent.toFixed(2)}%`,
       generationDepth: dog.coiGenerationDepth,
-      sire: mapPedigreeDog(dog.sire),
-      dam: mapPedigreeDog(dog.dam),
-      ancestors: [],
+      colorLabel: "Color: Pending",
+      healthTestsSummary: `Health tests: ${healthSummary.completedCount}/${healthSummary.totalCount}`,
+      ancestors: pedigreeAncestors,
     },
-    entries: {
-      isOwnerOnly: true,
-      upcoming:
-        ownerData?.showEntries.map((entry) => ({
-          entryId: entry.id,
-          entryStatus: entry.entryStatus,
-          showId: entry.showDay.cluster.id,
-          showName: entry.showDay.cluster.name,
-          showDayIndex: entry.showDay.dayIndex,
-          scheduledEpoch: entry.showDay.scheduledEpoch,
-          breedName: entry.breed.name,
-          judgeCode: entry.showDay.judge?.judgeCode ?? null,
-          judgeName: entry.showDay.judge?.name ?? null,
-          canPull: entry.entryStatus === "ENTERED",
-        })) ?? [],
-    },
+    entries: isOwnedByCurrentKennel
+      ? {
+          currentEntriesCount: allEntries.length,
+          nextEntries: allEntries.slice(0, 3),
+          allEntries,
+        }
+      : null,
     privatePlanning: isOwnedByCurrentKennel
       ? {
           notes: ownerData?.privateKennelNotes[0]?.notes ?? null,
-          plannerTags:
-            ownerData?.plannerTags.map((tag) => ({
-              tagType: tag.tagType,
-              goalKey: tag.goalKey,
-              note: tag.note,
-              updatedAt: tag.updatedAt.toISOString(),
-            })) ?? [],
+          programPlannerTags,
+          breedingProgramGoal: primaryPlannerTag
+            ? formatGoalLabel(primaryPlannerTag.goalKey)
+            : null,
+          privatePlannerNote: primaryPlannerTag?.note ?? null,
+          isWatchlisted: Boolean(
+            ownerData?.plannerTags.some((tag) => tag.tagType === "WATCH")
+          ),
+          isKeeper: Boolean(
+            ownerData?.plannerTags.some((tag) => tag.tagType === "KEEP")
+          ),
+          canEditNotes: true,
         }
       : null,
     actions: {
