@@ -17,12 +17,12 @@ export default function CommunityAuthor({
     <div className="flex flex-wrap items-center gap-3">
       <Link
         href={`/kennels/${kennel.slug}`}
-        className="font-semibold text-white underline-offset-4 hover:underline"
+        className="theme-heading font-semibold underline-offset-4 hover:underline"
       >
         {kennel.name}
       </Link>
       {kennel.displayName ? (
-        <span className="text-sm text-purple-100/65">· {kennel.displayName}</span>
+        <span className="theme-copy text-sm">· {kennel.displayName}</span>
       ) : null}
       <BulletinBadges badges={badges} />
     </div>
