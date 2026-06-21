@@ -51,11 +51,7 @@ export default function LoginPage() {
           ? requestedPath
           : null;
 
-      router.push(
-        data.requiresEmailVerification
-          ? "/verify-email"
-          : safeRequestedPath ?? data.nextPath ?? "/kennel"
-      );
+      router.push(safeRequestedPath ?? data.nextPath ?? "/kennel");
       router.refresh();
 
     } catch (err) {

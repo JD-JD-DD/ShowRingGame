@@ -8,8 +8,7 @@ const ANONYMOUS_ROUTES = new Set([
   "/login",
   "/signup",
   "/forgot-password",
-  "/reset-password",
-  "/verify-email"
+  "/reset-password"
 ]);
 
 /**

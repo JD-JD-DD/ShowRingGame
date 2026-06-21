@@ -11,16 +11,10 @@ Configure these environment variables in Vercel to send reset links:
 APP_BASE_URL=https://show-ring-game.vercel.app
 RESEND_API_KEY=...
 PASSWORD_RESET_FROM_EMAIL=ShowRing Game <passwords@example.com>
-EMAIL_VERIFICATION_FROM_EMAIL=ShowRing Game <accounts@example.com>
 ```
 
 The sending address must be permitted by the configured Resend account. The
 browser receives the same response whether or not an account exists.
-
-`EMAIL_VERIFICATION_FROM_EMAIL` is optional. When it is omitted, verification
-messages use `PASSWORD_RESET_FROM_EMAIL`. New accounts receive a single-use,
-24-hour verification link. Existing accounts can request a verification link
-from the account verification page.
 
 ## Support Link
 

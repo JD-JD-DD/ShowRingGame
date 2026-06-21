@@ -2,12 +2,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { createSession } from "@/lib/session";
 import { hashPassword, normalizeEmail } from "@/lib/auth";
-import { getAppBaseUrl } from "@/lib/appBaseUrl";
-import {
-  buildEmailVerificationUrl,
-  createEmailVerificationToken
-} from "@/lib/emailVerification";
-import { sendEmailVerificationEmail } from "@/lib/emailVerificationEmail";
 
 export async function POST(request: Request) {
   try {
@@ -58,36 +52,9 @@ export async function POST(request: Request) {
 
     await createSession(user.id);
 
-    let verificationEmailSent = false;
-    try {
-      const verification = await createEmailVerificationToken({
-        userId: user.id,
-        bypassCooldown: true
-      });
-
-      if (verification) {
-        verificationEmailSent = await sendEmailVerificationEmail({
-          to: verification.email,
-          verificationUrl: buildEmailVerificationUrl(
-            getAppBaseUrl(request),
-            verification.token
-          )
-        });
-      }
-
-      if (!verificationEmailSent) {
-        console.warn("New account created, but verification email delivery is not configured.");
-      }
-    } catch (error) {
-      // Account creation must not be rolled back by a temporary mail-provider
-      // failure. The player can resend from the account verification page.
-      console.error("Unable to send signup verification email.", error);
-    }
-
     return NextResponse.json({
       ok: true,
       user,
-      verificationEmailSent,
       nextPath: "/onboarding",
     });
   } catch (error) {

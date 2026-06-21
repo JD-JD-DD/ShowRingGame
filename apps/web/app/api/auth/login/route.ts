@@ -2,14 +2,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { createSession } from "@/lib/session";
 import { normalizeEmail, verifyPassword } from "@/lib/auth";
-import { getAppBaseUrl } from "@/lib/appBaseUrl";
-import {
-  buildEmailVerificationUrl,
-  createEmailVerificationToken
-} from "@/lib/emailVerification";
-import { sendEmailVerificationEmail } from "@/lib/emailVerificationEmail";
-
-const LOGIN_VERIFICATION_EMAIL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 export async function POST(request: Request) {
   try {
@@ -55,37 +47,6 @@ export async function POST(request: Request) {
     `;
     await createSession(user.id);
 
-    const requiresEmailVerification = !user.emailVerifiedAt;
-
-    if (requiresEmailVerification) {
-      try {
-        const verification = await createEmailVerificationToken({
-          userId: user.id,
-          cooldownMs: LOGIN_VERIFICATION_EMAIL_COOLDOWN_MS
-        });
-
-        if (verification) {
-          const delivered = await sendEmailVerificationEmail({
-            to: verification.email,
-            verificationUrl: buildEmailVerificationUrl(
-              getAppBaseUrl(request),
-              verification.token
-            )
-          });
-
-          if (!delivered) {
-            console.warn(
-              "Unverified account logged in, but verification email delivery is not configured."
-            );
-          }
-        }
-      } catch (error) {
-        // A mail-provider failure must not prevent the user from logging in and
-        // reaching the page where they can request another verification email.
-        console.error("Unable to send login verification email.", error);
-      }
-    }
-
     return NextResponse.json({
       ok: true,
       user: {
@@ -94,12 +55,7 @@ export async function POST(request: Request) {
         displayName: user.displayName,
       },
       kennel: user.kennel,
-      requiresEmailVerification,
-      nextPath: requiresEmailVerification
-        ? "/verify-email"
-        : user.kennel
-          ? "/kennel"
-          : "/onboarding",
+      nextPath: user.kennel ? "/kennel" : "/onboarding",
     });
   } catch (error) {
     console.error("POST /api/auth/login failed:", error);
