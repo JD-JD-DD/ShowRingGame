@@ -122,18 +122,18 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
     : [];
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="rankings-page min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+        <header className="theme-panel mb-8 rounded-[28px] px-6 py-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.25em] text-fuchsia-200/80">
+              <p className="theme-label text-sm uppercase tracking-[0.25em]">
                 Kennel Prestige
               </p>
-              <h1 className="mt-2 text-4xl font-bold tracking-tight text-white">
+              <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
                 Kennel Top Ten
               </h1>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
+              <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
                 Compare kennels by overall prestige and by breed-specific
                 prestige earned through champions, show wins, Top Ten standing,
                 and health-tested excellence.
@@ -143,7 +143,7 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/kennel"
-                className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 My Kennel
               </Link>

@@ -473,29 +473,29 @@ export default function ProgramPlannerClient() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <main className="planner-page mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.25em] text-purple-300/80">
+          <p className="theme-label text-sm uppercase tracking-[0.25em]">
             Premium Planning Tool
           </p>
-          <h1 className="mt-2 bg-gradient-to-r from-fuchsia-100 via-white to-sky-100 bg-clip-text text-3xl font-semibold text-transparent sm:text-4xl">
+          <h1 className="theme-heading mt-2 text-3xl font-semibold sm:text-4xl">
             Program Planner
           </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
+          <p className="theme-copy mt-3 max-w-3xl text-sm leading-7">
             Review a breed across your kennel, find patterns, and save
             keep/watch/sell/re-home notes without building a spreadsheet.
           </p>
         </div>
         <Link
           href="/kennel"
-          className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+          className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
         >
           Back to My Kennel
         </Link>
       </div>
 
-      <div className="mb-6 rounded-[28px] border border-fuchsia-300/20 bg-[linear-gradient(135deg,rgba(88,28,135,0.45),rgba(30,64,175,0.28))] p-5 text-sm leading-6 text-purple-50/80 shadow-[0_20px_70px_rgba(0,0,0,0.35)]">
+      <div className="theme-panel theme-copy mb-6 rounded-[28px] p-5 text-sm leading-6">
         Program Planner uses visible dog information and your selected goal to
         organize your review. It does not choose dogs for you.
         {kennelName ? (

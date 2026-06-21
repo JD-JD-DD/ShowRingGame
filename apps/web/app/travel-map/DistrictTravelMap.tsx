@@ -52,7 +52,7 @@ export default function DistrictTravelMap({
 
   return (
     <>
-      <section className="relative overflow-hidden rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.35)] sm:p-6">
+      <section className="theme-panel relative overflow-hidden rounded-[28px] p-5 sm:p-6">
         <div className="pointer-events-none absolute inset-0 hidden p-10 lg:block">
           <svg
             aria-hidden="true"
@@ -114,9 +114,9 @@ export default function DistrictTravelMap({
         </div>
       </section>
 
-      <section className="mt-8 rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-        <h2 className="text-2xl font-semibold text-white">Travel Expense</h2>
-        <p className="mt-2 text-sm leading-6 text-purple-100/70">
+      <section className="theme-panel mt-8 rounded-[28px] p-6">
+        <h2 className="theme-heading text-2xl font-semibold">Travel Expense</h2>
+        <p className="theme-copy mt-2 text-sm leading-6">
           Estimate the base kennel travel cost used when entering shows. Dog
           transportation is added during entry planning.
         </p>
@@ -126,13 +126,13 @@ export default function DistrictTravelMap({
           className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end"
         >
           <label className="grid flex-1 gap-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-purple-200/80">
+            <span className="theme-label text-xs font-semibold uppercase tracking-[0.16em]">
               Travel expense from
             </span>
             <select
               value={fromDistrict}
               onChange={(event) => setFromDistrict(Number(event.target.value))}
-              className="rounded-xl border border-purple-300/20 bg-[#15091f] px-4 py-3 text-sm text-white"
+              className="theme-control rounded-xl px-4 py-3 text-sm"
             >
               {SHOW_DISTRICT_REGIONS.map((region) => (
                 <option key={region.district} value={region.district}>
@@ -143,13 +143,13 @@ export default function DistrictTravelMap({
           </label>
 
           <label className="grid flex-1 gap-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-purple-200/80">
+            <span className="theme-label text-xs font-semibold uppercase tracking-[0.16em]">
               To
             </span>
             <select
               value={toDistrict}
               onChange={(event) => setToDistrict(Number(event.target.value))}
-              className="rounded-xl border border-purple-300/20 bg-[#15091f] px-4 py-3 text-sm text-white"
+              className="theme-control rounded-xl px-4 py-3 text-sm"
             >
               {SHOW_DISTRICT_REGIONS.map((region) => (
                 <option key={region.district} value={region.district}>
@@ -168,9 +168,9 @@ export default function DistrictTravelMap({
         </form>
 
         {estimate && estimatedTier !== null && estimatedCost !== null ? (
-          <div className="mt-5 rounded-2xl border border-purple-300/20 bg-black/20 px-4 py-4 text-sm text-purple-100/80">
+          <div className="theme-card theme-copy mt-5 rounded-2xl px-4 py-4 text-sm">
             District {estimate.fromDistrict} to District {estimate.toDistrict}:{" "}
-            <span className="font-semibold text-white">
+            <span className="theme-heading font-semibold">
               {getDistanceTierLabel(estimatedTier)}
             </span>{" "}
             travel, with a base kennel expense of{" "}

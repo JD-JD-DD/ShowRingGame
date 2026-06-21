@@ -325,17 +325,17 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
     selectedAllTimeBreedCode;
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-8 text-white">
-      <header className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+    <main className="rankings-page mx-auto max-w-7xl px-6 py-8">
+      <header className="theme-panel mb-8 rounded-[28px] px-6 py-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-purple-300/80">
+            <p className="theme-label text-sm uppercase tracking-[0.25em]">
               Prestige Rankings
             </p>
-            <h1 className="mt-2 text-4xl font-bold tracking-tight">
+            <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
               Top Ten
             </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
+            <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
               Yearly dogs-beaten standings for all-breed wins and breed
               competition. Deceased dogs stay ranked until another dog passes
               them or the game year rolls over.
@@ -355,7 +355,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
             </a>
             <Link
               href="/shows"
-              className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               Show Calendar
             </Link>

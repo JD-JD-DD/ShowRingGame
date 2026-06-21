@@ -61,9 +61,9 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="login-page min-h-screen px-6 py-8">
       <div className="mx-auto flex max-w-7xl flex-col">
-        <header className="mb-8 flex flex-col gap-6 rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur md:flex-row md:items-center md:justify-between">
+        <header className="theme-panel mb-8 flex flex-col gap-6 rounded-[28px] px-6 py-5 backdrop-blur md:flex-row md:items-center md:justify-between">
           <Link href="/" className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
             <Image
               src="/logo.png"
@@ -77,7 +77,7 @@ export default function LoginPage() {
           <nav className="flex flex-wrap items-center gap-3 text-sm">
             <Link
               href="/signup"
-              className="rounded-full border border-purple-300/25 bg-white/5 px-5 py-2.5 font-semibold text-purple-100 transition hover:bg-white/10"
+              className="theme-secondary-button rounded-full px-5 py-2.5 font-semibold"
             >
               Create Account
             </Link>
@@ -90,18 +90,18 @@ export default function LoginPage() {
           </nav>
         </header>
 
-        <section className="rounded-[32px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(50,26,71,0.94),rgba(24,12,35,0.96))] p-7 shadow-[0_24px_70px_rgba(0,0,0,0.38)] sm:p-8">
+        <section className="theme-panel rounded-[32px] p-7 sm:p-8">
           <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
-              <div className="mb-4 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+              <div className="theme-neutral-badge mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em]">
                 Player Login
               </div>
 
-              <h1 className="max-w-3xl text-4xl font-bold text-white sm:text-5xl lg:text-6xl">
+              <h1 className="theme-heading max-w-3xl text-4xl font-bold sm:text-5xl lg:text-6xl">
                 Welcome back to the ring.
               </h1>
 
-              <p className="mt-5 max-w-2xl text-base leading-7 text-purple-100/78 sm:text-lg sm:leading-8">
+              <p className="theme-copy mt-5 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8">
                 Sign in to manage your kennel, plan breedings, enter shows, and
                 keep an eye on the dogs carrying your name forward.
               </p>
@@ -110,7 +110,7 @@ export default function LoginPage() {
                 {loginHighlights.map((item) => (
                   <div
                     key={item}
-                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm leading-6 text-purple-100/78"
+                    className="theme-card theme-copy rounded-2xl px-4 py-3 text-sm leading-6"
                   >
                     {item}
                   </div>
@@ -118,10 +118,10 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-white/10 bg-black/20 p-5 sm:p-6">
-              <h2 className="text-2xl font-semibold text-white">Log in</h2>
-              <div className="mt-4 rounded-2xl border border-purple-300/30 bg-purple-500/12 px-4 py-4 shadow-[0_12px_28px_rgba(126,34,206,0.18)]">
-                <p className="text-sm font-semibold text-white">
+            <div className="theme-card rounded-[24px] p-5 sm:p-6">
+              <h2 className="theme-heading text-2xl font-semibold">Log in</h2>
+              <div className="theme-card mt-4 rounded-2xl px-4 py-4">
+                <p className="theme-heading text-sm font-semibold">
                   New to ShowRing Game?
                 </p>
                 <Link
@@ -134,7 +134,7 @@ export default function LoginPage() {
 
               <form onSubmit={handleSubmit} className="mt-6 grid gap-4">
                 <label className="grid gap-2">
-                  <span className="text-sm font-semibold text-purple-100">
+                  <span className="theme-label text-sm font-semibold">
                     Email
                   </span>
                   <input
@@ -142,17 +142,17 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="rounded-2xl border border-purple-300/20 bg-[#15091f] px-4 py-3 text-white outline-none transition placeholder:text-purple-100/35 focus:border-purple-300/55 focus:bg-[#1b0d27]"
+                    className="theme-control rounded-2xl px-4 py-3 outline-none transition focus:border-purple-300/55"
                     autoComplete="email"
                   />
                 </label>
 
                 <label className="grid gap-2">
-                  <span className="flex items-center justify-between gap-3 text-sm font-semibold text-purple-100">
+                  <span className="theme-label flex items-center justify-between gap-3 text-sm font-semibold">
                     <span>Password</span>
                     <Link
                       href="/forgot-password"
-                      className="text-xs text-purple-200 underline decoration-purple-300/60 underline-offset-4 transition hover:text-white"
+                      className="theme-label text-xs underline decoration-purple-300/60 underline-offset-4 transition hover:opacity-80"
                     >
                       Forgot password?
                     </Link>
@@ -162,13 +162,13 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="rounded-2xl border border-purple-300/20 bg-[#15091f] px-4 py-3 text-white outline-none transition placeholder:text-purple-100/35 focus:border-purple-300/55 focus:bg-[#1b0d27]"
+                    className="theme-control rounded-2xl px-4 py-3 outline-none transition focus:border-purple-300/55"
                     autoComplete="current-password"
                   />
                 </label>
 
                 {error ? (
-                  <div className="rounded-2xl border border-red-300/30 bg-red-950/35 px-4 py-3 text-sm font-semibold text-red-100">
+                  <div className="rounded-2xl border border-red-300/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-100">
                     {error}
                   </div>
                 ) : null}
@@ -182,7 +182,7 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              <div className="mt-5 rounded-2xl border border-purple-300/15 bg-white/5 px-4 py-3 text-sm leading-6 text-purple-100/72">
+              <div className="theme-card theme-copy mt-5 rounded-2xl px-4 py-3 text-sm leading-6">
                 No dog-show background required. The game gives you visible
                 category summaries and room to learn as your kennel grows.
               </div>
