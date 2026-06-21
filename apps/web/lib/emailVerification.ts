@@ -18,10 +18,12 @@ export function buildEmailVerificationUrl(baseUrl: string, token: string): strin
 
 export async function createEmailVerificationToken({
   userId,
-  bypassCooldown = false
+  bypassCooldown = false,
+  cooldownMs = REQUEST_COOLDOWN_MS
 }: {
   userId: string;
   bypassCooldown?: boolean;
+  cooldownMs?: number;
 }): Promise<{ email: string; token: string; expiresAt: Date } | null> {
   const user = await db.user.findUnique({
     where: { id: userId },
@@ -37,7 +39,7 @@ export async function createEmailVerificationToken({
         userId,
         usedAt: null,
         expiresAt: { gt: now },
-        createdAt: { gte: new Date(now.getTime() - REQUEST_COOLDOWN_MS) }
+        createdAt: { gte: new Date(now.getTime() - cooldownMs) }
       },
       select: { id: true }
     });
