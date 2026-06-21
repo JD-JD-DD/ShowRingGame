@@ -3,51 +3,23 @@ import { getCurrentEpoch } from "@/lib/gameClock";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { getKennelPrestigeSummary } from "@/server/services/kennelPrestige.service";
 import { Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 
-export const BULLETIN_CATEGORIES = [
-  {
-    id: "general",
-    slug: "general",
-    name: "General",
-    description: "General kennel chat and game discussion.",
-    sortOrder: 10,
-  },
-  {
-    id: "show-judges-discussion",
-    slug: "show-judges-discussion",
-    name: "Show/Judges Discussion",
-    description: "Discuss shows, judging trends, and ring observations.",
-    sortOrder: 20,
-  },
-  {
-    id: "brags-wins-new-titles",
-    slug: "brags-wins-new-titles",
-    name: "Brags & Wins/New Titles",
-    description: "Share wins, title progress, and proud kennel moments.",
-    sortOrder: 30,
-  },
-  {
-    id: "litter-announcements",
-    slug: "litter-announcements",
-    name: "Litter Announcements",
-    description: "Announce new litters and puppy availability.",
-    sortOrder: 40,
-  },
-  {
-    id: "stud-ads",
-    slug: "stud-ads",
-    name: "Stud Ads",
-    description: "Advertise dogs that are actively listed at stud.",
-    sortOrder: 50,
-  },
-  {
-    id: "questions-bugs-help",
-    slug: "questions-bugs-help",
-    name: "Questions/Bugs/Help",
-    description: "Ask questions, report bugs, and help other players.",
-    sortOrder: 60,
-  },
-] as const;
+const VISIBLE_THREAD_WHERE: Prisma.BulletinThreadWhereInput = {
+  status: { in: ["OPEN", "LOCKED"] },
+};
+
+export type CommunityActor = {
+  userId: string;
+  isAdmin: boolean;
+  kennel: {
+    id: string;
+    name: string;
+    slug: string;
+    displayName: string | null;
+    ownedDogCount: number;
+  } | null;
+};
 
 type ThreadListRecord = {
   id: string;
@@ -60,11 +32,16 @@ type ThreadListRecord = {
   category: {
     slug: string;
     name: string;
+    topicCreationPolicy: string;
+    replyPolicy: string;
   };
   kennel: {
     id: string;
     name: string;
     slug: string;
+    user: {
+      displayName: string | null;
+    } | null;
   };
   posts: Array<{
     id: string;
@@ -94,11 +71,14 @@ export type BulletinThreadListItem = {
   category: {
     slug: string;
     name: string;
+    topicCreationPolicy: string;
+    replyPolicy: string;
   };
   kennel: {
     id: string;
     name: string;
     slug: string;
+    displayName: string | null;
   };
   badges: KennelPrestigeBadges;
 };
@@ -109,6 +89,9 @@ export type BulletinCategoryDto = {
   name: string;
   description: string | null;
   sortOrder: number;
+  isActive: boolean;
+  topicCreationPolicy: string;
+  replyPolicy: string;
   threadCount: number;
   latestThread: BulletinThreadListItem | null;
 };
@@ -117,11 +100,14 @@ export type BulletinPostDto = {
   id: string;
   body: string;
   sourceType: string;
+  moderationStatus: string;
+  moderationReason: string | null;
   createdAtEpoch: number;
   kennel: {
     id: string;
     name: string;
     slug: string;
+    displayName: string | null;
   };
   badges: KennelPrestigeBadges;
 };
@@ -141,6 +127,21 @@ function sanitizeText(value: string, maxLength: number): string {
 
 function sanitizeBody(value: string, maxLength: number): string {
   return value.trim().slice(0, maxLength);
+}
+
+function sanitizeSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+function policyAllows(policy: string, isAdmin: boolean): boolean {
+  if (policy === "DISABLED") return false;
+  if (policy === "ADMINS") return isAdmin;
+  return true;
 }
 
 function previewBody(value: string): string {
@@ -192,7 +193,12 @@ function mapThreadListItem(
     replyCount: Math.max(0, thread._count.posts - 1),
     preview: firstPost ? previewBody(firstPost.body) : "",
     category: thread.category,
-    kennel: thread.kennel,
+    kennel: {
+      id: thread.kennel.id,
+      name: thread.kennel.name,
+      slug: thread.kennel.slug,
+      displayName: thread.kennel.user?.displayName ?? null,
+    },
     badges:
       badgesByKennelId.get(thread.kennel.id) ??
       {
@@ -212,54 +218,55 @@ async function mapThreadRecords(
   return threads.map((thread) => mapThreadListItem(thread, badgesByKennelId));
 }
 
-export async function ensureBulletinCategories() {
-  await Promise.all(
-    BULLETIN_CATEGORIES.map((category) =>
-      db.bulletinCategory.upsert({
-        where: { slug: category.slug },
-        update: {
-          name: category.name,
-          description: category.description,
-          sortOrder: category.sortOrder,
-          isActive: true,
+export async function getCommunityActor(userId: string): Promise<CommunityActor> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      isAdmin: true,
+      displayName: true,
+      kennel: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          _count: { select: { ownedDogs: true } },
         },
-        create: {
-          id: category.id,
-          slug: category.slug,
-          name: category.name,
-          description: category.description,
-          sortOrder: category.sortOrder,
-          isActive: true,
-        },
-      })
-    )
-  );
+      },
+    },
+  });
+
+  if (!user) throw new Error("Account not found.");
+
+  return {
+    userId: user.id,
+    isAdmin: user.isAdmin,
+    kennel: user.kennel
+      ? {
+          id: user.kennel.id,
+          name: user.kennel.name,
+          slug: user.kennel.slug,
+          displayName: user.displayName,
+          ownedDogCount: user.kennel._count.ownedDogs,
+        }
+      : null,
+  };
 }
 
 export async function getPostingKennelForUser(userId: string): Promise<{
   id: string;
   name: string;
   slug: string;
+  isAdmin: boolean;
 }> {
-  const kennel = await db.kennel.findUnique({
-    where: { userId },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      _count: {
-        select: {
-          ownedDogs: true,
-        },
-      },
-    },
-  });
+  const actor = await getCommunityActor(userId);
+  const kennel = actor.kennel;
 
   if (!kennel) {
     throw new Error("You need a kennel before posting.");
   }
 
-  if (kennel._count.ownedDogs < 1) {
+  if (!actor.isAdmin && kennel.ownedDogCount < 1) {
     throw new Error("You need to own at least one dog before posting.");
   }
 
@@ -267,33 +274,30 @@ export async function getPostingKennelForUser(userId: string): Promise<{
     id: kennel.id,
     name: kennel.name,
     slug: kennel.slug,
+    isAdmin: actor.isAdmin,
   };
 }
 
-export async function listBulletinCategories(): Promise<BulletinCategoryDto[]> {
-  await ensureBulletinCategories();
-
+export async function listBulletinCategories(args: {
+  includeInactive?: boolean;
+  includeModerated?: boolean;
+} = {}): Promise<BulletinCategoryDto[]> {
+  const threadWhere: Prisma.BulletinThreadWhereInput = args.includeModerated
+    ? {}
+    : VISIBLE_THREAD_WHERE;
   const categories = await db.bulletinCategory.findMany({
-    where: { isActive: true },
+    where: args.includeInactive ? {} : { isActive: true },
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     include: {
       _count: {
         select: {
           threads: {
-            where: {
-              status: {
-                not: "HIDDEN",
-              },
-            },
+            where: threadWhere,
           },
         },
       },
       threads: {
-        where: {
-          status: {
-            not: "HIDDEN",
-          },
-        },
+        where: threadWhere,
         orderBy: [{ pinned: "desc" }, { lastActivityEpoch: "desc" }],
         take: 1,
         select: threadListSelect,
@@ -311,6 +315,9 @@ export async function listBulletinCategories(): Promise<BulletinCategoryDto[]> {
     name: category.name,
     description: category.description,
     sortOrder: category.sortOrder,
+    isActive: category.isActive,
+    topicCreationPolicy: category.topicCreationPolicy,
+    replyPolicy: category.replyPolicy,
     threadCount: category._count.threads,
     latestThread: category.threads[0]
       ? latestById.get(category.threads[0].id) ?? null
@@ -330,6 +337,8 @@ const threadListSelect = Prisma.validator<Prisma.BulletinThreadSelect>()({
     select: {
       slug: true,
       name: true,
+      topicCreationPolicy: true,
+      replyPolicy: true,
     },
   },
   kennel: {
@@ -337,11 +346,14 @@ const threadListSelect = Prisma.validator<Prisma.BulletinThreadSelect>()({
       id: true,
       name: true,
       slug: true,
+      user: {
+        select: { displayName: true },
+      },
     },
   },
   posts: {
-    where: { hidden: false },
-    orderBy: [{ createdAtEpoch: "asc" }],
+    where: { hidden: false, moderationStatus: "VISIBLE" },
+    orderBy: [{ createdAtEpoch: "asc" }, { createdAt: "asc" }],
     take: 1,
     select: {
       id: true,
@@ -352,7 +364,7 @@ const threadListSelect = Prisma.validator<Prisma.BulletinThreadSelect>()({
   _count: {
     select: {
       posts: {
-        where: { hidden: false },
+        where: { hidden: false, moderationStatus: "VISIBLE" },
       },
     },
   },
@@ -361,22 +373,24 @@ const threadListSelect = Prisma.validator<Prisma.BulletinThreadSelect>()({
 export async function listBulletinThreads(args: {
   categorySlug?: string;
   take?: number;
+  includeModerated?: boolean;
+  includeInactive?: boolean;
 } = {}): Promise<BulletinThreadListItem[]> {
-  await ensureBulletinCategories();
-
   const threads = await db.bulletinThread.findMany({
     where: {
-      status: {
-        not: "HIDDEN",
-      },
-      ...(args.categorySlug
-        ? {
+      ...(args.includeModerated
+        ? {}
+        : VISIBLE_THREAD_WHERE),
+      ...(args.includeInactive
+        ? args.categorySlug
+          ? { category: { slug: args.categorySlug } }
+          : {}
+        : {
             category: {
-              slug: args.categorySlug,
               isActive: true,
+              ...(args.categorySlug ? { slug: args.categorySlug } : {}),
             },
-          }
-        : {}),
+          }),
     },
     orderBy: [{ pinned: "desc" }, { lastActivityEpoch: "desc" }],
     take: args.take,
@@ -386,13 +400,14 @@ export async function listBulletinThreads(args: {
   return mapThreadRecords(threads);
 }
 
-export async function getBulletinCategory(slug: string) {
-  await ensureBulletinCategories();
-
+export async function getBulletinCategory(
+  slug: string,
+  options: { includeInactive?: boolean } = {}
+) {
   return db.bulletinCategory.findFirst({
     where: {
       slug,
-      isActive: true,
+      ...(options.includeInactive ? {} : { isActive: true }),
     },
     select: {
       id: true,
@@ -400,19 +415,23 @@ export async function getBulletinCategory(slug: string) {
       name: true,
       description: true,
       sortOrder: true,
+      isActive: true,
+      topicCreationPolicy: true,
+      replyPolicy: true,
     },
   });
 }
 
 export async function getBulletinThread(
-  threadId: string
+  threadId: string,
+  options: { includeModerated?: boolean } = {}
 ): Promise<BulletinThreadDetailDto | null> {
   const thread = await db.bulletinThread.findFirst({
     where: {
       id: threadId,
-      status: {
-        not: "HIDDEN",
-      },
+      ...(options.includeModerated
+        ? {}
+        : { ...VISIBLE_THREAD_WHERE, category: { isActive: true } }),
     },
     select: {
       ...threadListSelect,
@@ -422,18 +441,25 @@ export async function getBulletinThread(
       linkedResultId: true,
       linkedListingId: true,
       posts: {
-        where: { hidden: false },
-        orderBy: [{ createdAtEpoch: "asc" }],
+        where: options.includeModerated
+          ? {}
+          : { hidden: false, moderationStatus: "VISIBLE" },
+        orderBy: [{ createdAtEpoch: "asc" }, { createdAt: "asc" }],
         select: {
           id: true,
           body: true,
           sourceType: true,
+          moderationStatus: true,
+          moderationReason: true,
           createdAtEpoch: true,
           kennel: {
             select: {
               id: true,
               name: true,
               slug: true,
+              user: {
+                select: { displayName: true },
+              },
             },
           },
         },
@@ -462,8 +488,15 @@ export async function getBulletinThread(
       id: post.id,
       body: post.body,
       sourceType: post.sourceType,
+      moderationStatus: post.moderationStatus,
+      moderationReason: post.moderationReason,
       createdAtEpoch: post.createdAtEpoch,
-      kennel: post.kennel,
+      kennel: {
+        id: post.kennel.id,
+        name: post.kennel.name,
+        slug: post.kennel.slug,
+        displayName: post.kennel.user?.displayName ?? null,
+      },
       badges:
         badgesByKennelId.get(post.kennel.id) ??
         {
@@ -476,6 +509,7 @@ export async function getBulletinThread(
 
 export async function createBulletinThread(args: {
   kennelId: string;
+  isAdmin?: boolean;
   categorySlug: string;
   title: string;
   body: string;
@@ -487,8 +521,6 @@ export async function createBulletinThread(args: {
   linkedResultId?: string | null;
   linkedListingId?: string | null;
 }): Promise<string> {
-  await ensureBulletinCategories();
-
   const title = sanitizeText(args.title, 90);
   const body = sanitizeBody(args.body, 5000);
 
@@ -505,11 +537,18 @@ export async function createBulletinThread(args: {
       slug: args.categorySlug,
       isActive: true,
     },
-    select: { id: true },
+    select: { id: true, topicCreationPolicy: true },
   });
 
   if (!category) {
-    throw new Error("Bulletin category not found.");
+    throw new Error("Community category not found.");
+  }
+
+  if (
+    args.sourceType !== "SYSTEM" &&
+    !policyAllows(category.topicCreationPolicy, args.isAdmin ?? false)
+  ) {
+    throw new Error("You cannot start topics in this category.");
   }
 
   const currentEpoch = args.currentEpoch ?? getCurrentEpoch();
@@ -564,6 +603,7 @@ export async function createSystemBulletinThread(args: {
     body: args.body,
     currentEpoch: args.currentEpoch,
     sourceType: "SYSTEM",
+    isAdmin: true,
     linkedDogId: args.linkedDogId,
     linkedShowId: args.linkedShowId,
     linkedLitterId: args.linkedLitterId,
@@ -574,10 +614,11 @@ export async function createSystemBulletinThread(args: {
 
 export async function createBulletinReply(args: {
   kennelId: string;
+  isAdmin?: boolean;
   threadId: string;
   body: string;
   currentEpoch?: number;
-}): Promise<void> {
+}): Promise<string> {
   const body = sanitizeBody(args.body, 5000);
 
   if (body.length < 2) {
@@ -587,15 +628,16 @@ export async function createBulletinReply(args: {
   const thread = await db.bulletinThread.findFirst({
     where: {
       id: args.threadId,
-      status: {
-        not: "HIDDEN",
-      },
+      status: { in: ["OPEN", "LOCKED"] },
     },
     select: {
       id: true,
       status: true,
       title: true,
       kennelId: true,
+      category: {
+        select: { slug: true, replyPolicy: true, isActive: true },
+      },
     },
   });
 
@@ -603,8 +645,16 @@ export async function createBulletinReply(args: {
     throw new Error("Thread not found.");
   }
 
-  if (thread.status === "LOCKED") {
+  if (!thread.category.isActive && !args.isAdmin) {
+    throw new Error("This community category is not active.");
+  }
+
+  if (thread.status === "LOCKED" && !args.isAdmin) {
     throw new Error("This thread is locked.");
+  }
+
+  if (!policyAllows(thread.category.replyPolicy, args.isAdmin ?? false)) {
+    throw new Error("Replies are not allowed in this category.");
   }
 
   const currentEpoch = args.currentEpoch ?? getCurrentEpoch();
@@ -644,4 +694,151 @@ export async function createBulletinReply(args: {
       });
     }
   });
+
+  return thread.category.slug;
+}
+
+export async function saveBulletinCategory(args: {
+  actor: CommunityActor;
+  id?: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  topicCreationPolicy: "MEMBERS" | "ADMINS" | "DISABLED";
+  replyPolicy: "MEMBERS" | "ADMINS" | "DISABLED";
+}): Promise<string> {
+  if (!args.actor.isAdmin) throw new Error("Administrator access required.");
+
+  const name = sanitizeText(args.name, 60);
+  const slug = sanitizeSlug(args.slug);
+  const description = args.description?.trim().slice(0, 240) || null;
+
+  if (name.length < 2) throw new Error("Category name is too short.");
+  if (slug.length < 2) throw new Error("Category slug is invalid.");
+
+  if (args.id) {
+    const category = await db.bulletinCategory.update({
+      where: { id: args.id },
+      data: {
+        name,
+        slug,
+        description,
+        sortOrder: args.sortOrder,
+        isActive: args.isActive,
+        topicCreationPolicy: args.topicCreationPolicy,
+        replyPolicy: args.replyPolicy,
+      },
+      select: { slug: true },
+    });
+    return category.slug;
+  }
+
+  const category = await db.bulletinCategory.create({
+    data: {
+      id: randomUUID(),
+      name,
+      slug,
+      description,
+      sortOrder: args.sortOrder,
+      isActive: args.isActive,
+      topicCreationPolicy: args.topicCreationPolicy,
+      replyPolicy: args.replyPolicy,
+    },
+    select: { slug: true },
+  });
+  return category.slug;
+}
+
+export type BulletinTopicModerationAction =
+  | "PIN"
+  | "UNPIN"
+  | "LOCK"
+  | "UNLOCK"
+  | "HIDE"
+  | "RESTORE"
+  | "DELETE";
+
+export async function moderateBulletinTopic(args: {
+  actor: CommunityActor;
+  threadId: string;
+  action: BulletinTopicModerationAction;
+  reason?: string | null;
+}): Promise<string> {
+  if (!args.actor.isAdmin) throw new Error("Administrator access required.");
+
+  const thread = await db.bulletinThread.findUnique({
+    where: { id: args.threadId },
+    select: { category: { select: { slug: true } } },
+  });
+  if (!thread) throw new Error("Topic not found.");
+
+  const stateByAction = {
+    LOCK: "LOCKED",
+    UNLOCK: "OPEN",
+    HIDE: "HIDDEN",
+    RESTORE: "OPEN",
+    DELETE: "DELETED",
+  } as const;
+  const status = args.action in stateByAction
+    ? stateByAction[args.action as keyof typeof stateByAction]
+    : undefined;
+  const pinned = args.action === "PIN" ? true : args.action === "UNPIN" ? false : undefined;
+
+  await db.bulletinThread.update({
+    where: { id: args.threadId },
+    data: {
+      ...(status ? { status } : {}),
+      ...(pinned === undefined ? {} : { pinned }),
+      moderatedByUserId: args.actor.userId,
+      moderatedAt: new Date(),
+      moderationReason: args.reason?.trim().slice(0, 240) || null,
+    },
+  });
+
+  return thread.category.slug;
+}
+
+export type BulletinPostModerationAction = "HIDE" | "RESTORE" | "DELETE";
+
+export async function moderateBulletinPost(args: {
+  actor: CommunityActor;
+  postId: string;
+  action: BulletinPostModerationAction;
+  reason?: string | null;
+}): Promise<{ threadId: string; categorySlug: string }> {
+  if (!args.actor.isAdmin) throw new Error("Administrator access required.");
+
+  const post = await db.bulletinPost.findUnique({
+    where: { id: args.postId },
+    select: {
+      threadId: true,
+      thread: { select: { category: { select: { slug: true } } } },
+    },
+  });
+  if (!post) throw new Error("Post not found.");
+
+  const moderationStatus =
+    args.action === "RESTORE"
+      ? "VISIBLE"
+      : args.action === "HIDE"
+        ? "HIDDEN"
+        : "DELETED";
+
+  await db.bulletinPost.update({
+    where: { id: args.postId },
+    data: {
+      moderationStatus,
+      hidden: moderationStatus !== "VISIBLE",
+      moderatedByUserId: args.actor.userId,
+      moderatedAt: new Date(),
+      moderationReason: args.reason?.trim().slice(0, 240) || null,
+    },
+  });
+
+  return {
+    threadId: post.threadId,
+    categorySlug: post.thread.category.slug,
+  };
 }

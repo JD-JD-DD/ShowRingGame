@@ -164,10 +164,10 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
 
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/bulletin"
+                href="/community"
                 className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
               >
-                Bulletin Board
+                Community
               </Link>
               <Link
                 href="/kennel"

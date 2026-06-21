@@ -127,10 +127,10 @@ export default async function KennelPage() {
             Market
           </Link>
           <Link
-            href="/bulletin"
+            href="/community"
             className="rounded-md border border-amber-300/40 px-5 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-950/40"
           >
-            Bulletin Board
+            Community
           </Link>
           <Link
             href="/ledger"

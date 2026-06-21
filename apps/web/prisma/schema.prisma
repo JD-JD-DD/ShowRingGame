@@ -115,6 +115,19 @@ enum BulletinThreadStatus {
   OPEN
   LOCKED
   HIDDEN
+  DELETED
+}
+
+enum BulletinPostingPolicy {
+  MEMBERS
+  ADMINS
+  DISABLED
+}
+
+enum BulletinPostStatus {
+  VISIBLE
+  HIDDEN
+  DELETED
 }
 
 enum LedgerTransactionType {
@@ -192,6 +205,7 @@ enum ProducerMeritLevel {
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
+  isAdmin      Boolean  @default(false)
   passwordHash String
   displayName  String?
   lastLoginAt  DateTime?
@@ -1021,13 +1035,16 @@ model InfectiousDiseaseTestRecord {
 }
 
 model BulletinCategory {
-  id          String   @id
-  slug        String   @unique
-  name        String
-  description String?
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id                  String                  @id
+  slug                String                  @unique
+  name                String
+  description         String?
+  sortOrder           Int                     @default(0)
+  isActive            Boolean                 @default(true)
+  topicCreationPolicy BulletinPostingPolicy   @default(MEMBERS)
+  replyPolicy         BulletinPostingPolicy   @default(MEMBERS)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
 
   threads BulletinThread[]
 
@@ -1050,6 +1067,9 @@ model BulletinThread {
   linkedLitterId    String?
   linkedResultId    String?
   linkedListingId   String?
+  moderatedByUserId String?
+  moderatedAt       DateTime?
+  moderationReason  String?
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
 
@@ -1066,6 +1086,7 @@ model BulletinThread {
   @@index([linkedDogId])
   @@index([linkedShowId])
   @@index([linkedLitterId])
+  @@index([moderatedByUserId])
 }
 
 model BulletinPost {
@@ -1075,6 +1096,10 @@ model BulletinPost {
   body           String
   sourceType     BulletinThreadSource @default(PLAYER)
   hidden         Boolean              @default(false)
+  moderationStatus BulletinPostStatus @default(VISIBLE)
+  moderatedByUserId String?
+  moderatedAt       DateTime?
+  moderationReason  String?
   createdAtEpoch Int
   editedAtEpoch  Int?
   createdAt      DateTime             @default(now())
@@ -1087,6 +1112,8 @@ model BulletinPost {
   @@index([kennelId])
   @@index([sourceType])
   @@index([hidden])
+  @@index([moderationStatus])
+  @@index([moderatedByUserId])
   @@index([createdAtEpoch])
 }
 

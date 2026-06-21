@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "backfill:phenotype-health": "tsx scripts/backfill-phenotype-health.ts",
-    "password-reset-link": "tsx scripts/create-password-reset-link.ts"
+    "password-reset-link": "tsx scripts/create-password-reset-link.ts",
+    "admin:set": "tsx scripts/set-admin.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.0",

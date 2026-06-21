@@ -7,8 +7,13 @@ import {
   getPostingKennelForUser,
 } from "@/server/services/bulletin.service";
 
-function redirectToThread(request: Request, threadId: string, error?: string) {
-  const url = new URL(`/bulletin/thread/${threadId}`, request.url);
+function redirectToThread(
+  request: Request,
+  categorySlug: string,
+  threadId: string,
+  error?: string
+) {
+  const url = new URL(`/community/${categorySlug}/${threadId}`, request.url);
 
   if (error) {
     url.searchParams.set("error", error);
@@ -24,6 +29,7 @@ export async function POST(
   const { threadId } = await params;
   const formData = await request.formData();
   const body = String(formData.get("body") ?? "").trim();
+  const requestedCategorySlug = String(formData.get("categorySlug") ?? "general").trim();
 
   try {
     const userId = await getSessionUserId();
@@ -34,18 +40,20 @@ export async function POST(
 
     const kennel = await getPostingKennelForUser(userId);
 
-    await createBulletinReply({
+    const categorySlug = await createBulletinReply({
       kennelId: kennel.id,
+      isAdmin: kennel.isAdmin,
       threadId,
       body,
       currentEpoch: getCurrentEpoch(),
     });
 
-    return redirectToThread(request, threadId);
+    return redirectToThread(request, categorySlug, threadId);
   } catch (error) {
     console.error("POST /api/bulletin/threads/[threadId]/posts failed:", error);
     return redirectToThread(
       request,
+      requestedCategorySlug,
       threadId,
       error instanceof Error ? error.message : "Unable to create reply."
     );

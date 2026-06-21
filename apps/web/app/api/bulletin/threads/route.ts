@@ -8,7 +8,7 @@ import {
 } from "@/server/services/bulletin.service";
 
 function redirectWithError(request: Request, categorySlug: string, error: string) {
-  const url = new URL(`/bulletin/${categorySlug}`, request.url);
+  const url = new URL(`/community/${categorySlug}`, request.url);
   url.searchParams.set("error", error);
   return NextResponse.redirect(url);
 }
@@ -34,12 +34,15 @@ export async function POST(request: Request) {
     const threadId = await createBulletinThread({
       kennelId: kennel.id,
       categorySlug,
+      isAdmin: kennel.isAdmin,
       title,
       body,
       currentEpoch: getCurrentEpoch(),
     });
 
-    return NextResponse.redirect(new URL(`/bulletin/thread/${threadId}`, request.url));
+    return NextResponse.redirect(
+      new URL(`/community/${categorySlug}/${threadId}`, request.url)
+    );
   } catch (error) {
     console.error("POST /api/bulletin/threads failed:", error);
     return redirectWithError(
