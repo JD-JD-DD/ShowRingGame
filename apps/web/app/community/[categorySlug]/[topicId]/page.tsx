@@ -62,7 +62,8 @@ export default async function CommunityTopicPage({
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
   const actor = await getCommunityActor(userId);
-  if (!actor.kennel) redirect("/onboarding");
+  const actorKennel = actor.kennel;
+  if (!actorKennel) redirect("/onboarding");
 
   const { categorySlug, topicId } = await params;
   const { error } = await searchParams;
@@ -70,12 +71,20 @@ export default async function CommunityTopicPage({
   if (!topic) notFound();
   if (topic.category.slug !== categorySlug) redirect(`/community/${topic.category.slug}/${topic.id}`);
 
-  const hasPostingKennel = actor.isAdmin || actor.kennel.ownedDogCount > 0;
+  const hasPostingKennel = actor.isAdmin || actorKennel.ownedDogCount > 0;
   const topicAllowsReplies = topic.status === "OPEN" || (topic.status === "LOCKED" && actor.isAdmin);
   const canReply =
     hasPostingKennel &&
     topicAllowsReplies &&
     policyAllows(topic.category.replyPolicy, actor.isAdmin);
+  const isTopicOwner =
+    topic.sourceType === "PLAYER" && topic.kennel.id === actorKennel.id;
+  const originalPost = topic.posts[0];
+  const canEditOwnTopic =
+    isTopicOwner &&
+    topic.status === "OPEN" &&
+    originalPost?.sourceType === "PLAYER" &&
+    originalPost.moderationStatus === "VISIBLE";
 
   return (
     <main className="community-page min-h-screen px-6 py-8">
@@ -113,6 +122,41 @@ export default async function CommunityTopicPage({
           </section>
         ) : null}
 
+        {isTopicOwner ? (
+          <details className="theme-card mb-6 rounded-2xl p-4">
+            <summary className="theme-heading cursor-pointer text-sm font-semibold">
+              Edit or delete your topic
+            </summary>
+            {canEditOwnTopic ? (
+              <form action={`/api/community/topics/${topic.id}`} method="post" className="mt-4 grid gap-3">
+                <input type="hidden" name="action" value="EDIT" />
+                <label className="theme-label grid gap-1 text-xs font-semibold uppercase tracking-wide">
+                  Topic title
+                  <input name="title" defaultValue={topic.title} required maxLength={90} className="theme-control rounded-xl px-3 py-2 text-sm normal-case tracking-normal" />
+                </label>
+                <label className="theme-label grid gap-1 text-xs font-semibold uppercase tracking-wide">
+                  Original post
+                  <textarea name="body" defaultValue={originalPost?.body ?? ""} required maxLength={5000} rows={6} className="theme-control rounded-xl px-3 py-2 text-sm font-normal normal-case leading-6 tracking-normal" />
+                </label>
+                <div>
+                  <button className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500">
+                    Save topic changes
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <p className="theme-copy mt-3 text-sm">
+                This topic can no longer be edited, but you may still delete it.
+              </p>
+            )}
+            <form action={`/api/community/topics/${topic.id}`} method="post" className="mt-4 border-t border-[color:var(--dog-border)] pt-4">
+              <button name="action" value="DELETE" className="rounded-xl border border-red-300/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 hover:bg-red-500/20">
+                Delete topic
+              </button>
+            </form>
+          </details>
+        ) : null}
+
         <section className="grid gap-4">
           {topic.posts.map((post, index) => (
             <article key={post.id} className={`rounded-[24px] p-5 ${post.moderationStatus === "VISIBLE" ? "theme-card" : "border border-amber-300/25 bg-amber-500/10"}`}>
@@ -128,6 +172,33 @@ export default async function CommunityTopicPage({
                   <button name="action" value={post.moderationStatus === "VISIBLE" ? "HIDE" : "RESTORE"} className="rounded-xl border border-amber-300/25 px-3 py-2 text-sm font-semibold text-amber-100">{post.moderationStatus === "VISIBLE" ? "Hide post" : "Restore post"}</button>
                   <button name="action" value="DELETE" className="rounded-xl border border-red-300/25 px-3 py-2 text-sm font-semibold text-red-100">Delete post</button>
                 </form>
+              ) : null}
+              {index > 0 && post.sourceType === "PLAYER" && post.kennel.id === actorKennel.id ? (
+                <details className="mt-4 border-t border-[color:var(--dog-border)] pt-4">
+                  <summary className="theme-heading cursor-pointer text-sm font-semibold">
+                    Edit or delete your reply
+                  </summary>
+                  {topic.status === "OPEN" && post.moderationStatus === "VISIBLE" ? (
+                    <form action={`/api/community/posts/${post.id}`} method="post" className="mt-3 grid gap-3">
+                      <input type="hidden" name="action" value="EDIT" />
+                      <textarea name="body" defaultValue={post.body} required maxLength={5000} rows={5} className="theme-control rounded-xl px-3 py-2 text-sm leading-6" />
+                      <div>
+                        <button className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500">
+                          Save reply changes
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <p className="theme-copy mt-3 text-sm">
+                      This reply can no longer be edited.
+                    </p>
+                  )}
+                  <form action={`/api/community/posts/${post.id}`} method="post" className="mt-3">
+                    <button name="action" value="DELETE" className="rounded-xl border border-red-300/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 hover:bg-red-500/20">
+                      Delete reply
+                    </button>
+                  </form>
+                </details>
               ) : null}
             </article>
           ))}

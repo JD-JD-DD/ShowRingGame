@@ -9,7 +9,6 @@ export default function CommunityAuthor({
   kennel: {
     name: string;
     slug: string;
-    displayName: string | null;
   };
   badges: KennelPrestigeBadges;
 }) {
@@ -21,9 +20,7 @@ export default function CommunityAuthor({
       >
         {kennel.name}
       </Link>
-      {kennel.displayName ? (
-        <span className="theme-copy text-sm">· {kennel.displayName}</span>
-      ) : null}
+      <span className="theme-copy text-sm" aria-hidden="true">·</span>
       <BulletinBadges badges={badges} />
     </div>
   );

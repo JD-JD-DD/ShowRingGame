@@ -698,6 +698,172 @@ export async function createBulletinReply(args: {
   return thread.category.slug;
 }
 
+function requireCommunityKennel(actor: CommunityActor): NonNullable<CommunityActor["kennel"]> {
+  if (!actor.kennel) throw new Error("A player kennel is required.");
+  return actor.kennel;
+}
+
+export async function editOwnBulletinTopic(args: {
+  actor: CommunityActor;
+  threadId: string;
+  title: string;
+  body: string;
+}): Promise<string> {
+  const kennel = requireCommunityKennel(args.actor);
+  const title = sanitizeText(args.title, 90);
+  const body = sanitizeBody(args.body, 5000);
+
+  if (title.length < 4) throw new Error("Topic title must be at least 4 characters.");
+  if (body.length < 2) throw new Error("Post body cannot be empty.");
+
+  const thread = await db.bulletinThread.findUnique({
+    where: { id: args.threadId },
+    select: {
+      kennelId: true,
+      sourceType: true,
+      status: true,
+      category: { select: { slug: true } },
+      posts: {
+        orderBy: [{ createdAtEpoch: "asc" }, { createdAt: "asc" }],
+        take: 1,
+        select: { id: true, kennelId: true, sourceType: true, moderationStatus: true },
+      },
+    },
+  });
+
+  if (!thread) throw new Error("Topic not found.");
+  if (thread.kennelId !== kennel.id) throw new Error("You can only edit your own topics.");
+  if (thread.sourceType !== "PLAYER") throw new Error("System topics cannot be edited.");
+  if (thread.status !== "OPEN") throw new Error("Only open topics can be edited.");
+
+  const originalPost = thread.posts[0];
+  if (
+    !originalPost ||
+    originalPost.kennelId !== kennel.id ||
+    originalPost.sourceType !== "PLAYER" ||
+    originalPost.moderationStatus !== "VISIBLE"
+  ) {
+    throw new Error("The original post cannot be edited.");
+  }
+
+  await db.$transaction([
+    db.bulletinThread.update({
+      where: { id: args.threadId },
+      data: { title },
+    }),
+    db.bulletinPost.update({
+      where: { id: originalPost.id },
+      data: { body },
+    }),
+  ]);
+
+  return thread.category.slug;
+}
+
+export async function deleteOwnBulletinTopic(args: {
+  actor: CommunityActor;
+  threadId: string;
+}): Promise<string> {
+  const kennel = requireCommunityKennel(args.actor);
+  const thread = await db.bulletinThread.findUnique({
+    where: { id: args.threadId },
+    select: {
+      kennelId: true,
+      sourceType: true,
+      status: true,
+      category: { select: { slug: true } },
+    },
+  });
+
+  if (!thread) throw new Error("Topic not found.");
+  if (thread.kennelId !== kennel.id) throw new Error("You can only delete your own topics.");
+  if (thread.sourceType !== "PLAYER") throw new Error("System topics cannot be deleted.");
+  if (thread.status === "DELETED") throw new Error("This topic is already deleted.");
+
+  await db.bulletinThread.update({
+    where: { id: args.threadId },
+    data: {
+      status: "DELETED",
+      pinned: false,
+      moderatedByUserId: args.actor.userId,
+      moderatedAt: new Date(),
+      moderationReason: "Deleted by author",
+    },
+  });
+
+  return thread.category.slug;
+}
+
+async function getOwnedReplyTarget(actor: CommunityActor, postId: string) {
+  const kennel = requireCommunityKennel(actor);
+  const post = await db.bulletinPost.findUnique({
+    where: { id: postId },
+    select: {
+      kennelId: true,
+      sourceType: true,
+      moderationStatus: true,
+      threadId: true,
+      thread: {
+        select: {
+          status: true,
+          category: { select: { slug: true } },
+          posts: {
+            orderBy: [{ createdAtEpoch: "asc" }, { createdAt: "asc" }],
+            take: 1,
+            select: { id: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!post) throw new Error("Reply not found.");
+  if (post.kennelId !== kennel.id) throw new Error("You can only change your own replies.");
+  if (post.sourceType !== "PLAYER") throw new Error("System replies cannot be changed.");
+  if (post.thread.posts[0]?.id === postId) {
+    throw new Error("Use the topic controls to change the original post.");
+  }
+
+  return post;
+}
+
+export async function editOwnBulletinReply(args: {
+  actor: CommunityActor;
+  postId: string;
+  body: string;
+}): Promise<{ threadId: string; categorySlug: string }> {
+  const body = sanitizeBody(args.body, 5000);
+  if (body.length < 2) throw new Error("Reply cannot be empty.");
+
+  const post = await getOwnedReplyTarget(args.actor, args.postId);
+  if (post.thread.status !== "OPEN") throw new Error("Replies in this topic cannot be edited.");
+  if (post.moderationStatus !== "VISIBLE") throw new Error("Moderated replies cannot be edited.");
+
+  await db.bulletinPost.update({ where: { id: args.postId }, data: { body } });
+  return { threadId: post.threadId, categorySlug: post.thread.category.slug };
+}
+
+export async function deleteOwnBulletinReply(args: {
+  actor: CommunityActor;
+  postId: string;
+}): Promise<{ threadId: string; categorySlug: string }> {
+  const post = await getOwnedReplyTarget(args.actor, args.postId);
+  if (post.moderationStatus === "DELETED") throw new Error("This reply is already deleted.");
+
+  await db.bulletinPost.update({
+    where: { id: args.postId },
+    data: {
+      moderationStatus: "DELETED",
+      hidden: true,
+      moderatedByUserId: args.actor.userId,
+      moderatedAt: new Date(),
+      moderationReason: "Deleted by author",
+    },
+  });
+
+  return { threadId: post.threadId, categorySlug: post.thread.category.slug };
+}
+
 export async function saveBulletinCategory(args: {
   actor: CommunityActor;
   id?: string;
