@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next";
 import GlobalUtcClock from "@/components/GlobalUtcClock";
 import NotificationInboxLink from "@/components/NotificationInboxLink";
 import ReturnToTopButton from "@/components/ReturnToTopButton";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,8 +34,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="light" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("showring-theme");if(t==="dark")document.documentElement.dataset.theme="dark"}catch(e){}`,
+          }}
+        />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <ThemeToggle />
         <GlobalUtcClock />
         <Suspense fallback={null}>
           <NotificationInboxLink />
