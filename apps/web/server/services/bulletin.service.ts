@@ -102,6 +102,7 @@ export type BulletinPostDto = {
   sourceType: string;
   moderationStatus: string;
   moderationReason: string | null;
+  createdAt: Date;
   createdAtEpoch: number;
   kennel: {
     id: string;
@@ -451,6 +452,7 @@ export async function getBulletinThread(
           sourceType: true,
           moderationStatus: true,
           moderationReason: true,
+          createdAt: true,
           createdAtEpoch: true,
           kennel: {
             select: {
@@ -490,6 +492,7 @@ export async function getBulletinThread(
       sourceType: post.sourceType,
       moderationStatus: post.moderationStatus,
       moderationReason: post.moderationReason,
+      createdAt: post.createdAt,
       createdAtEpoch: post.createdAtEpoch,
       kennel: {
         id: post.kennel.id,

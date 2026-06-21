@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import CommunityAuthor from "@/components/community/CommunityAuthor";
-import { epochToDate } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import {
   getBulletinThread,
@@ -12,8 +11,8 @@ import {
 const LINK_PATTERN = /((?:https?:\/\/|www\.)[^\s<]+)/gi;
 const TRAILING_PUNCTUATION_PATTERN = /[.,!?;:)\]]+$/;
 
-function formatEpoch(epoch: number): string {
-  return epochToDate(epoch).toLocaleString("en-US", {
+function formatPostTime(createdAt: Date): string {
+  return createdAt.toLocaleString("en-US", {
     month: "numeric",
     day: "numeric",
     year: "numeric",
@@ -167,7 +166,7 @@ export default async function CommunityTopicPage({
             <article key={post.id} className={`rounded-[24px] p-5 ${post.moderationStatus === "VISIBLE" ? "theme-card" : "border border-amber-300/25 bg-amber-500/10"}`}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <CommunityAuthor kennel={post.kennel} badges={post.badges} />
-                <div className="theme-label text-xs">{index === 0 ? "Original post" : `Reply ${index}`} · {formatEpoch(post.createdAtEpoch)}</div>
+                <div className="theme-label text-xs">{index === 0 ? "Original post" : `Reply ${index}`} · {formatPostTime(post.createdAt)}</div>
               </div>
               {post.moderationStatus !== "VISIBLE" ? <p className="mb-3 text-xs font-semibold uppercase text-amber-200">{post.moderationStatus}{post.moderationReason ? ` · ${post.moderationReason}` : ""}</p> : null}
               <div className="theme-copy whitespace-pre-wrap text-sm leading-7">{renderLinkedText(post.body)}</div>
