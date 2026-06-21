@@ -187,7 +187,7 @@ html:not([data-theme="dark"]) .showring-title-sweep {
 
 /* Semantic Dog-page surfaces replace the page's former mix of opaque gradients,
    pale translucent panels, and black inset cards. */
-:is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page) {
+:is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page, .ledger-page) {
   color: var(--foreground);
 }
 
@@ -265,32 +265,32 @@ html:not([data-theme="dark"]) .showring-title-sweep {
 
 /* Keep older nested Dog-page fragments on the same semantic surfaces while
    they are shared with listing and pedigree subcomponents. */
-:is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page) :is([class~="bg-black/15"], [class~="bg-black/20"], [class~="bg-black/25"], [class~="bg-black/30"], [class~="bg-white/5"], [class~="bg-purple-800/40"]) {
+:is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page, .ledger-page) :is([class~="bg-black/15"], [class~="bg-black/20"], [class~="bg-black/25"], [class~="bg-black/30"], [class~="bg-white/5"], [class~="bg-purple-800/40"]) {
   border-color: var(--dog-border);
   background: var(--dog-card);
 }
 
-:is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page) :is([class~="border-white/10"], [class~="border-purple-300/15"], [class~="border-purple-300/20"], [class~="border-purple-300/25"], [class~="border-purple-900"]) {
+:is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page, .ledger-page) :is([class~="border-white/10"], [class~="border-purple-300/15"], [class~="border-purple-300/20"], [class~="border-purple-300/25"], [class~="border-purple-900"]) {
   border-color: var(--dog-border);
 }
 
-html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page) :is([class~="text-emerald-100"], [class~="text-emerald-200"]) {
+html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page, .ledger-page) :is([class~="text-emerald-100"], [class~="text-emerald-200"]) {
   color: #047857;
 }
 
-html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page) :is([class~="text-amber-100"], [class~="text-amber-200"], [class~="text-amber-100/70"], [class~="text-amber-100/75"], [class~="text-amber-100/80"]) {
+html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page, .ledger-page) :is([class~="text-amber-100"], [class~="text-amber-200"], [class~="text-amber-100/70"], [class~="text-amber-100/75"], [class~="text-amber-100/80"]) {
   color: #92400e;
 }
 
-html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page) :is([class~="text-red-100"], [class~="text-red-200"], [class~="text-rose-100"]) {
+html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page, .ledger-page) :is([class~="text-red-100"], [class~="text-red-200"], [class~="text-rose-100"], [class~="text-rose-200"]) {
   color: #b91c1c;
 }
 
-html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page) :is([class~="text-sky-100"], [class~="text-sky-200"], [class~="text-cyan-100"]) {
+html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page, .ledger-page) :is([class~="text-sky-100"], [class~="text-sky-200"], [class~="text-cyan-100"]) {
   color: #0369a1;
 }
 
-html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page) :is([class~="text-fuchsia-100"], [class~="text-fuchsia-200"], [class~="text-fuchsia-100/70"], [class~="text-fuchsia-100/75"], [class~="text-fuchsia-100/80"], [class~="text-fuchsia-100/85"]) {
+html:not([data-theme="dark"]) :is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page, .ledger-page) :is([class~="text-fuchsia-100"], [class~="text-fuchsia-200"], [class~="text-fuchsia-100/70"], [class~="text-fuchsia-100/75"], [class~="text-fuchsia-100/80"], [class~="text-fuchsia-100/85"]) {
   color: #a21caf;
 }
 

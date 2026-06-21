@@ -88,17 +88,17 @@ export default async function LedgerPage() {
   });
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-8 text-white">
-      <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+    <main className="ledger-page mx-auto max-w-7xl px-6 py-8">
+      <section className="theme-panel mb-8 rounded-[28px] px-6 py-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.22em] text-purple-300/80">
+            <p className="theme-label text-sm uppercase tracking-[0.22em]">
               Kennel Ledger
             </p>
-            <h1 className="mt-2 text-4xl font-bold tracking-tight text-white">
+            <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
               {kennel.name}
             </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
+            <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
               Review recent kennel income, purchases, fees, and balance changes.
             </p>
           </div>
@@ -106,7 +106,7 @@ export default async function LedgerPage() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/kennel"
-              className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               My Kennel
             </Link>
@@ -119,21 +119,21 @@ export default async function LedgerPage() {
           </div>
         </div>
 
-        <div className="mt-5 inline-flex rounded-2xl border border-purple-300/20 bg-black/20 px-4 py-2 text-sm text-purple-100/80">
+        <div className="theme-card theme-heading mt-5 inline-flex rounded-2xl px-4 py-2 text-sm font-semibold">
           Current balance: {formatMoney(kennel.balance)}
         </div>
       </section>
 
       {transactions.length === 0 ? (
-        <section className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 text-sm text-purple-100/75">
+        <section className="theme-panel theme-copy rounded-[28px] p-6 text-sm">
           No transactions have been recorded yet.
         </section>
       ) : (
-        <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+        <section className="theme-panel rounded-[28px] p-5">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[980px] border-separate border-spacing-y-2 text-sm">
               <thead>
-                <tr className="text-left text-xs uppercase tracking-[0.16em] text-purple-200/75">
+                <tr className="theme-label text-left text-xs uppercase tracking-[0.16em]">
                   <th className="px-3 py-2">When</th>
                   <th className="px-3 py-2">Type</th>
                   <th className="px-3 py-2">Dog</th>
@@ -147,19 +147,19 @@ export default async function LedgerPage() {
                 {transactions.map((transaction) => (
                   <tr
                     key={transaction.id}
-                    className="border border-white/10 bg-white/5 shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
+                    className="theme-card"
                   >
-                    <td className="rounded-l-2xl px-3 py-3 text-purple-100/75">
+                    <td className="theme-copy rounded-l-2xl px-3 py-3">
                       {formatLedgerTime(transaction.occurredAtEpoch)}
                     </td>
-                    <td className="px-3 py-3 font-semibold text-white">
+                    <td className="theme-heading px-3 py-3 font-semibold">
                       {formatTransactionType(transaction.transactionType)}
                     </td>
-                    <td className="px-3 py-3 text-purple-100/80">
+                    <td className="theme-copy px-3 py-3">
                       {transaction.dog ? (
                         <Link
                           href={`/dogs/${transaction.dog.id}`}
-                          className="font-medium text-purple-100 underline-offset-4 hover:underline"
+                          className="theme-heading font-medium underline-offset-4 hover:underline"
                         >
                           {formatDogDisplayName(transaction.dog)}
                         </Link>
@@ -167,7 +167,7 @@ export default async function LedgerPage() {
                         "-"
                       )}
                     </td>
-                    <td className="px-3 py-3 text-purple-100/80">
+                    <td className="theme-copy px-3 py-3">
                       {transaction.showCluster?.name ??
                         transaction.counterpartyKennel?.name ??
                         "-"}
@@ -181,12 +181,12 @@ export default async function LedgerPage() {
                     >
                       {formatMoney(transaction.amount)}
                     </td>
-                    <td className="px-3 py-3 text-right text-purple-100/80">
+                    <td className="theme-copy px-3 py-3 text-right">
                       {transaction.balanceAfter == null
                         ? "-"
                         : formatMoney(transaction.balanceAfter)}
                     </td>
-                    <td className="rounded-r-2xl px-3 py-3 text-purple-100/70">
+                    <td className="theme-copy rounded-r-2xl px-3 py-3">
                       {transaction.memo ?? "-"}
                     </td>
                   </tr>
