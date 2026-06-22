@@ -315,7 +315,7 @@ export default async function ShowDetailPage({
         ) : null}
 
         {kennel && weekendPlanStatus && !weekendPlanStatus.primaryClusterId ? (
-          <div className="theme-copy mt-5 rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm">
+          <div className="theme-copy mt-5 rounded-2xl border border-[var(--dog-border)] bg-purple-500/10 px-4 py-3 text-sm">
             Submitting entries here will make this your primary show for the
             weekend.
           </div>

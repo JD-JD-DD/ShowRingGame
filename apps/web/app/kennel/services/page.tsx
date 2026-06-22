@@ -33,10 +33,10 @@ function ServiceCard({
   action: string;
 }) {
   return (
-    <article className="rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+    <article className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
       <div>
         <h2 className="text-2xl font-semibold text-white">{title}</h2>
-        <p className="mt-3 min-h-[4.5rem] text-sm leading-7 text-purple-100/75">
+        <p className="mt-3 min-h-[4.5rem] text-sm leading-7 text-[var(--dog-copy)]">
           {description}
         </p>
       </div>
@@ -45,7 +45,7 @@ function ServiceCard({
         {metadata.map((item) => (
           <div
             key={item}
-            className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold text-purple-100"
+            className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm font-semibold text-[var(--dog-heading)]"
           >
             {item}
           </div>
@@ -70,14 +70,14 @@ function ComingSoonCard({
   description: string;
 }) {
   return (
-    <article className="rounded-[28px] border border-white/10 bg-black/20 p-5 opacity-75">
+    <article className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 opacity-75">
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-xl font-semibold text-white">{title}</h2>
-        <span className="rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-purple-100/70">
+        <span className="rounded-full border border-[var(--dog-border)] bg-purple-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--dog-copy)]">
           Coming later
         </span>
       </div>
-      <p className="mt-3 text-sm leading-7 text-purple-100/65">
+      <p className="mt-3 text-sm leading-7 text-[var(--dog-copy)]">
         {description}
       </p>
     </article>

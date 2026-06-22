@@ -171,7 +171,7 @@ export default async function CommunityTopicPage({
               {post.moderationStatus !== "VISIBLE" ? <p className="mb-3 text-xs font-semibold uppercase text-amber-200">{post.moderationStatus}{post.moderationReason ? ` · ${post.moderationReason}` : ""}</p> : null}
               <div className="theme-copy whitespace-pre-wrap text-sm leading-7">{renderLinkedText(post.body)}</div>
               {actor.isAdmin && index > 0 ? (
-                <form action={`/api/community/admin/posts/${post.id}`} method="post" className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
+                <form action={`/api/community/admin/posts/${post.id}`} method="post" className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--dog-border)] pt-4">
                   <input name="reason" maxLength={240} placeholder="Optional reason" className="theme-control min-w-[200px] flex-1 rounded-xl px-3 py-2 text-sm" />
                   <button name="action" value={post.moderationStatus === "VISIBLE" ? "HIDE" : "RESTORE"} className="rounded-xl border border-amber-300/25 px-3 py-2 text-sm font-semibold text-amber-100">{post.moderationStatus === "VISIBLE" ? "Hide post" : "Restore post"}</button>
                   <button name="action" value="DELETE" className="rounded-xl border border-red-300/25 px-3 py-2 text-sm font-semibold text-red-100">Delete post</button>

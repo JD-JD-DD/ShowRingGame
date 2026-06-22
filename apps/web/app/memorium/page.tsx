@@ -101,7 +101,7 @@ export default async function MemoriumPage() {
               {kennel.name}
             </p>
             <h1 className="mt-2 text-3xl font-semibold">In Memoriam</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-purple-100/70">
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--dog-copy)]">
               Dogs who have passed stay here for pedigree, show record, and
               kennel history.
             </p>
@@ -109,19 +109,19 @@ export default async function MemoriumPage() {
 
           <Link
             href="/kennel"
-            className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+            className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-center text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
           >
             Back to My Kennel
           </Link>
         </div>
 
         {dogs.length === 0 ? (
-          <section className="rounded-[28px] border border-white/10 bg-white/5 p-8 text-sm text-purple-100/70 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+          <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-8 text-sm text-[var(--dog-copy)] shadow-[var(--dog-shadow)]">
             No dogs are listed in In Memoriam.
           </section>
         ) : (
-          <section className="overflow-hidden rounded-[28px] border border-rose-200/15 bg-[linear-gradient(180deg,rgba(45,25,48,0.96),rgba(18,10,24,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.3)]">
-            <div className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem_8rem] gap-4 border-b border-white/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-rose-100/80">
+          <section className="overflow-hidden rounded-[28px] border border-rose-200/15 bg-[var(--dog-panel)] shadow-[var(--dog-shadow)]">
+            <div className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem_8rem] gap-4 border-b border-[var(--dog-border)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-rose-100/80">
               <div>Name</div>
               <div className="text-right">Died</div>
               <div className="text-right">Progeny</div>
@@ -141,7 +141,7 @@ export default async function MemoriumPage() {
                 return (
                   <div
                     key={dog.id}
-                    className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem_8rem] gap-4 px-5 py-2.5 text-sm transition hover:bg-white/5"
+                    className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem_8rem] gap-4 px-5 py-2.5 text-sm transition hover:bg-[var(--dog-card)]"
                   >
                     <Link
                       href={`/dogs/${dog.id}`}
@@ -149,7 +149,7 @@ export default async function MemoriumPage() {
                     >
                       {name}
                     </Link>
-                    <div className="self-center text-right font-semibold text-purple-100">
+                    <div className="self-center text-right font-semibold text-[var(--dog-heading)]">
                       {formatDate(deathEpoch)}
                     </div>
                     <div className="self-center text-right font-semibold text-white">
@@ -165,7 +165,7 @@ export default async function MemoriumPage() {
                     >
                       <button
                         type="submit"
-                        className="rounded-lg border border-rose-200/20 bg-black/20 px-2.5 py-1 text-xs font-semibold text-rose-100/80 transition hover:bg-rose-500/15 hover:text-rose-50"
+                        className="rounded-lg border border-rose-200/20 bg-[var(--dog-card)] px-2.5 py-1 text-xs font-semibold text-rose-100/80 transition hover:bg-rose-500/15 hover:text-rose-50"
                       >
                         Remove
                       </button>

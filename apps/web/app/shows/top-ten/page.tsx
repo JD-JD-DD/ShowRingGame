@@ -369,9 +369,9 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
         </div>
       </header>
 
-      <section className="mb-6 flex flex-wrap gap-3 rounded-[24px] border border-white/10 bg-white/5 p-4">
+      <section className="mb-6 flex flex-wrap gap-3 rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
             Year
           </span>
           {yearOptions.map((year) => (
@@ -384,8 +384,8 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
               })}
               className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                 year === selectedYear
-                  ? "border-purple-300/40 bg-purple-600 text-white"
-                  : "border-purple-300/20 bg-black/20 text-purple-100 hover:bg-white/10"
+                  ? "border-[var(--dog-border)] bg-purple-600 text-white"
+                  : "border-[var(--dog-border)] bg-[var(--dog-card)] text-[var(--dog-heading)] hover:bg-[var(--dog-card)]"
               }`}
             >
               Year {year}
@@ -404,12 +404,12 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
         />
 
         <div className="grid gap-4">
-          <section className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+          <section className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
               Breed
             </div>
             {breedOptions.length === 0 ? (
-              <p className="text-sm text-purple-100/70">
+              <p className="text-sm text-[var(--dog-copy)]">
                 No breed standings have been recorded for Year {selectedYear}.
               </p>
             ) : (
@@ -425,7 +425,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                 <div>
                   <label
                     htmlFor="breed"
-                    className="mb-1 block text-xs uppercase tracking-wide text-purple-100/60"
+                    className="mb-1 block text-xs uppercase tracking-wide text-[var(--dog-copy)]"
                   >
                     Breed
                   </label>
@@ -433,7 +433,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                     id="breed"
                     name="breed"
                     defaultValue={selectedBreedCode ?? ""}
-                    className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+                    className="w-full rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm text-white outline-none"
                   >
                     <option value="">Choose a breed...</option>
                     <BreedSelectOptions options={currentYearBreedSelectOptions} />
@@ -453,7 +453,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                       year: selectedYear,
                       allTimeBreed: selectedAllTimeBreedCode,
                     })}
-                    className="rounded-xl border border-purple-300/25 bg-white/5 px-5 py-2.5 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                    className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-2.5 text-center text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
                   >
                     Clear
                   </Link>
@@ -484,12 +484,12 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
         />
 
         <div className="grid gap-4">
-          <section className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+          <section className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
               All-Time Breed
             </div>
             {allTimeBreedOptions.length === 0 ? (
-              <p className="text-sm text-purple-100/70">
+              <p className="text-sm text-[var(--dog-copy)]">
                 No all-time breed standings have been recorded yet.
               </p>
             ) : (
@@ -501,7 +501,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                 <div>
                   <label
                     htmlFor="allTimeBreed"
-                    className="mb-1 block text-xs uppercase tracking-wide text-purple-100/60"
+                    className="mb-1 block text-xs uppercase tracking-wide text-[var(--dog-copy)]"
                   >
                     Breed
                   </label>
@@ -509,7 +509,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                     id="allTimeBreed"
                     name="allTimeBreed"
                     defaultValue={selectedAllTimeBreedCode ?? ""}
-                    className="w-full rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-sm text-white outline-none"
+                    className="w-full rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm text-white outline-none"
                   >
                     <option value="">Choose a breed...</option>
                     <BreedSelectOptions options={allTimeBreedSelectOptions} />
@@ -529,7 +529,7 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
                       year: selectedYear,
                       breed: selectedBreedCode,
                     })}
-                    className="rounded-xl border border-purple-300/25 bg-white/5 px-5 py-2.5 text-center text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                    className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-2.5 text-center text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
                   >
                     Clear
                   </Link>
@@ -595,21 +595,21 @@ function RankingPanel<
   getMetric: (row: T) => number;
 }) {
   return (
-    <section className="overflow-hidden rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-      <div className="border-b border-white/10 px-5 py-4">
+    <section className="overflow-hidden rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] shadow-[var(--dog-shadow)]">
+      <div className="border-b border-[var(--dog-border)] px-5 py-4">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 className="text-2xl font-semibold text-white">{title}</h2>
-            <p className="mt-1 text-sm text-purple-100/60">{subtitle}</p>
+            <p className="mt-1 text-sm text-[var(--dog-copy)]">{subtitle}</p>
           </div>
-          <div className="rounded-full border border-purple-300/20 bg-black/20 px-3 py-1 text-xs font-semibold text-purple-100">
+          <div className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-xs font-semibold text-[var(--dog-heading)]">
             {metricLabel}
           </div>
         </div>
       </div>
 
       {rows.length === 0 ? (
-        <div className="px-5 py-6 text-sm text-purple-100/70">
+        <div className="px-5 py-6 text-sm text-[var(--dog-copy)]">
           No standings have been recorded yet.
         </div>
       ) : (
@@ -622,7 +622,7 @@ function RankingPanel<
                 key={row.dogId}
                 className="grid grid-cols-[3rem_minmax(0,1fr)_6rem] gap-4 px-5 py-3 text-sm"
               >
-                <div className="self-center text-2xl font-semibold text-purple-100">
+                <div className="self-center text-2xl font-semibold text-[var(--dog-heading)]">
                   {row.rank}
                 </div>
                 <div className="min-w-0">
@@ -634,12 +634,12 @@ function RankingPanel<
                       {formatDogDisplayName(row.dog)}
                     </Link>
                     {status ? (
-                      <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-wide text-purple-100/70">
+                      <span className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-2 py-0.5 text-[0.68rem] font-semibold uppercase tracking-wide text-[var(--dog-copy)]">
                         {status}
                       </span>
                     ) : null}
                   </div>
-                  <div className="mt-1 text-xs text-purple-100/58">
+                  <div className="mt-1 text-xs text-[var(--dog-copy)]">
                     {row.dog.breed.name} ({row.dog.breed.code2})
                     {row.dog.ownerKennel ? (
                       <>
@@ -654,7 +654,7 @@ function RankingPanel<
                       </>
                     ) : null}
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-2 text-[0.68rem] font-semibold uppercase tracking-wide text-purple-100/70">
+                  <div className="mt-2 flex flex-wrap gap-2 text-[0.68rem] font-semibold uppercase tracking-wide text-[var(--dog-copy)]">
                     {row.breedWinCount > 0 ? (
                       <span>BOB {row.breedWinCount}</span>
                     ) : null}

@@ -54,7 +54,7 @@ export default async function LittersPage() {
             <h1 className="mt-2 text-4xl font-semibold tracking-tight">
               Litters
             </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--dog-copy)]">
               Follow active pregnancies and review every litter whelped by your
               kennel.
             </p>
@@ -63,7 +63,7 @@ export default async function LittersPage() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/kennel"
-              className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
             >
               My Kennel
             </Link>
@@ -71,14 +71,14 @@ export default async function LittersPage() {
         </div>
 
         <section className="mb-8 grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="text-xs uppercase tracking-wide text-purple-200">
+          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
+            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
               Total Litters
             </div>
             <div className="mt-2 text-3xl font-semibold">{litters.length}</div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="text-xs uppercase tracking-wide text-purple-200">
+          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
+            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
               Puppies Whelped
             </div>
             <div className="mt-2 text-3xl font-semibold">
@@ -99,7 +99,7 @@ export default async function LittersPage() {
           <section className="mb-8">
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="text-2xl font-semibold">In Progress</h2>
-              <span className="text-sm text-purple-100/65">
+              <span className="text-sm text-[var(--dog-copy)]">
                 {activeBreedings.length} active
               </span>
             </div>
@@ -108,7 +108,7 @@ export default async function LittersPage() {
               {activeBreedings.map((attempt) => (
                 <article
                   key={attempt.id}
-                  className="rounded-2xl border border-white/10 bg-[linear-gradient(135deg,rgba(13,148,136,0.18),rgba(255,255,255,0.05))] p-5 shadow-[0_18px_45px_rgba(0,0,0,0.28)]"
+                  className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-panel)] p-5 shadow-[var(--dog-shadow)]"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -118,26 +118,26 @@ export default async function LittersPage() {
                       <h3 className="mt-2 text-lg font-semibold">
                         {attempt.damName} x {attempt.sireName}
                       </h3>
-                      <p className="mt-1 text-sm text-purple-100/70">
+                      <p className="mt-1 text-sm text-[var(--dog-copy)]">
                         Breed code {attempt.breedCode2}
                       </p>
                     </div>
-                    <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-medium text-purple-100">
+                    <div className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-xs font-medium text-[var(--dog-heading)]">
                       Attempt
                     </div>
                   </div>
 
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-                      <div className="text-xs uppercase tracking-wide text-purple-200">
+                    <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
+                      <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
                         Pregnancy Check
                       </div>
                       <div className="mt-1 text-sm font-semibold">
                         {formatGameDays(attempt.hoursUntilPregCheck)}
                       </div>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-                      <div className="text-xs uppercase tracking-wide text-purple-200">
+                    <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
+                      <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
                         Due
                       </div>
                       <div className="mt-1 text-sm font-semibold">
@@ -154,15 +154,15 @@ export default async function LittersPage() {
         <section>
           <div className="mb-4 flex items-center justify-between gap-4">
             <h2 className="text-2xl font-semibold">Whelped Litters</h2>
-            <span className="text-sm text-purple-100/65">
+            <span className="text-sm text-[var(--dog-copy)]">
               Epoch {currentEpoch}
             </span>
           </div>
 
           {litters.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
+            <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-8 text-center">
               <h3 className="text-xl font-semibold">No litters yet</h3>
-              <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-purple-100/70">
+              <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[var(--dog-copy)]">
                 Once a pregnant dam reaches her due date, the litter engine will
                 create puppies and they will appear here.
               </p>
@@ -179,7 +179,7 @@ export default async function LittersPage() {
                 <Link
                   key={litter.litterId}
                   href={`/litters/${litter.litterId}`}
-                  className="group rounded-2xl border border-white/10 bg-white/5 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.25)] transition hover:border-emerald-200/35 hover:bg-white/10"
+                  className="group rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)] transition hover:border-emerald-200/35 hover:bg-[var(--dog-card)]"
                 >
                   <article className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
                     <div>
@@ -187,7 +187,7 @@ export default async function LittersPage() {
                         <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">
                           {litter.breedName} ({litter.breedCode2})
                         </span>
-                        <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs text-purple-100">
+                        <span className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-xs text-[var(--dog-heading)]">
                           Serial {litter.serial7}
                         </span>
                       </div>
@@ -195,12 +195,12 @@ export default async function LittersPage() {
                       <h3 className="mt-4 text-2xl font-semibold text-white">
                         {litter.dam.displayName} x {litter.sire.displayName}
                       </h3>
-                      <p className="mt-2 text-sm text-purple-100/70">
+                      <p className="mt-2 text-sm text-[var(--dog-copy)]">
                         Whelped {formatGameDays(litter.ageHours)} ago by{" "}
                         {litter.bredByKennelName ?? "Unknown kennel"}
                       </p>
 
-                      <div className="mt-4 flex flex-wrap gap-3 text-sm text-purple-100/80">
+                      <div className="mt-4 flex flex-wrap gap-3 text-sm text-[var(--dog-copy)]">
                         <span>Born: {litter.pupCount}</span>
                         <span>Survived: {litter.survivedCount}</span>
                         <span>{litter.maleCount} dogs</span>
@@ -217,15 +217,15 @@ export default async function LittersPage() {
                       {litter.puppiesPreview.map((puppy) => (
                         <div
                           key={puppy.dogId}
-                          className="rounded-xl border border-white/10 bg-black/20 p-3"
+                          className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3"
                         >
-                          <div className="text-xs text-purple-200">
+                          <div className="text-xs text-[var(--dog-label)]">
                             Puppy {puppy.litterOrder ?? "-"} {puppy.sex}
                           </div>
                           <div className="mt-1 truncate text-sm font-semibold text-white">
                             {puppy.displayName}
                           </div>
-                          <div className="mt-1 truncate text-xs text-purple-100/60">
+                          <div className="mt-1 truncate text-xs text-[var(--dog-copy)]">
                             {puppy.regNumber}
                           </div>
                         </div>

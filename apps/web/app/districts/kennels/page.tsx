@@ -54,16 +54,16 @@ export default async function AllKennelsPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8 text-white">
-      <header className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+      <header className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-6 shadow-[var(--dog-shadow)]">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-purple-300/80">
+            <p className="text-sm uppercase tracking-[0.25em] text-[var(--dog-label)]">
               Show Districts
             </p>
             <h1 className="mt-2 text-4xl font-bold tracking-tight text-white">
               All Kennels
             </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--dog-copy)]">
               Browse all player kennels across ShowRing.
             </p>
           </div>
@@ -83,7 +83,7 @@ export default async function AllKennelsPage() {
             </Link>
             <Link
               href="/kennel"
-              className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
             >
               My Kennel
             </Link>
@@ -91,20 +91,20 @@ export default async function AllKennelsPage() {
         </div>
       </header>
 
-      <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-5 shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
+      <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-5 shadow-[var(--dog-shadow)]">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-2xl font-semibold text-white">
               Player Kennels
             </h2>
-            <p className="mt-2 text-sm text-purple-100/70">
+            <p className="mt-2 text-sm text-[var(--dog-copy)]">
               {kennels.length} kennel{kennels.length === 1 ? "" : "s"} listed.
             </p>
           </div>
         </div>
 
         {kennels.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-5 text-sm text-purple-100/65">
+          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-5 text-sm text-[var(--dog-copy)]">
             No player kennels have been created yet.
           </div>
         ) : (
@@ -114,13 +114,13 @@ export default async function AllKennelsPage() {
                 <Link
                   key={kennel.id}
                   href={`/kennels/${kennel.slug}`}
-                  className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm transition hover:border-fuchsia-300/35 hover:bg-white/10"
+                  className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-sm transition hover:border-fuchsia-300/35 hover:bg-[var(--dog-card)]"
                 >
                   <span className="font-semibold text-white">
                     {kennel.name}
                   </span>
-                  <span className="text-purple-100/60"> &middot; </span>
-                  <span className="text-purple-100/75">
+                  <span className="text-[var(--dog-copy)]"> &middot; </span>
+                  <span className="text-[var(--dog-copy)]">
                     {formatLastActive(kennel.lastActiveAt)}
                   </span>
                 </Link>

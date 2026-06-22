@@ -61,14 +61,14 @@ export default async function NoticesPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
-      <section className="rounded-2xl border border-purple-300/20 bg-purple-950/40 p-8 shadow-[0_20px_80px_rgba(0,0,0,0.25)]">
+      <section className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-8 shadow-[var(--dog-shadow)]">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-purple-200">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--dog-label)]">
               Kennel Inbox
             </p>
             <h1 className="mt-2 text-4xl font-semibold">Notifications</h1>
-            <p className="mt-3 text-purple-100/75">
+            <p className="mt-3 text-[var(--dog-copy)]">
               Recent notices for {kennel.name}.
             </p>
           </div>
@@ -83,7 +83,7 @@ export default async function NoticesPage() {
               <form action="/api/notices/mark-all-read" method="post">
                 <button
                   type="submit"
-                  className="rounded-xl border border-purple-300/30 px-6 py-3 text-sm font-semibold text-purple-100 hover:bg-purple-950/50"
+                  className="theme-secondary-button rounded-xl px-6 py-3 text-sm font-semibold"
                 >
                   Mark All Read
                 </button>
@@ -93,9 +93,9 @@ export default async function NoticesPage() {
         </div>
       </section>
 
-      <section className="mt-8 rounded-2xl border border-purple-300/20 bg-black/25 p-5">
+      <section className="mt-8 rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
         {notices.length === 0 ? (
-          <div className="rounded-xl border border-purple-300/20 bg-purple-950/30 p-8 text-purple-100/75">
+          <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-8 text-[var(--dog-copy)]">
             No notifications yet.
           </div>
         ) : (
@@ -110,12 +110,12 @@ export default async function NoticesPage() {
                   className={`rounded-xl border p-5 ${
                     isUnread
                       ? "border-fuchsia-400/50 bg-fuchsia-950/25"
-                      : "border-purple-300/15 bg-purple-950/25"
+                      : "border-[var(--dog-border)] bg-[var(--dog-card)]"
                   }`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200/75">
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
                         <span>{formatNoticeType(notice.type)}</span>
                         {isUnread ? (
                           <span className="rounded-full bg-fuchsia-700 px-2 py-0.5 text-[10px] tracking-normal text-white">
@@ -127,9 +127,9 @@ export default async function NoticesPage() {
                         {notice.title}
                       </h2>
                       {notice.body ? (
-                        <p className="mt-2 text-purple-100/75">{notice.body}</p>
+                        <p className="mt-2 text-[var(--dog-copy)]">{notice.body}</p>
                       ) : null}
-                      <p className="mt-3 text-sm text-purple-200/60">
+                      <p className="mt-3 text-sm text-[var(--dog-label)]">
                         {formatNoticeDate(notice.createdAtEpoch)}
                       </p>
                     </div>
@@ -138,7 +138,7 @@ export default async function NoticesPage() {
                       {href ? (
                         <Link
                           href={href}
-                          className="rounded-lg border border-purple-300/30 px-4 py-2 text-sm font-semibold text-purple-100 hover:bg-purple-950/50"
+                          className="theme-secondary-button rounded-lg px-4 py-2 text-sm font-semibold"
                         >
                           Open
                         </Link>
@@ -162,7 +162,7 @@ export default async function NoticesPage() {
                       >
                         <button
                           type="submit"
-                          className="rounded-lg border border-purple-300/20 px-4 py-2 text-sm font-semibold text-purple-200/80 hover:bg-purple-950/50"
+                          className="theme-secondary-button rounded-lg px-4 py-2 text-sm font-semibold"
                         >
                           Dismiss
                         </button>

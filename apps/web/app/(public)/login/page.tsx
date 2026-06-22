@@ -142,7 +142,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="theme-control rounded-2xl px-4 py-3 outline-none transition focus:border-purple-300/55"
+                    className="theme-control rounded-2xl px-4 py-3 outline-none transition focus:border-[var(--dog-border)]"
                     autoComplete="email"
                   />
                 </label>
@@ -162,7 +162,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="theme-control rounded-2xl px-4 py-3 outline-none transition focus:border-purple-300/55"
+                    className="theme-control rounded-2xl px-4 py-3 outline-none transition focus:border-[var(--dog-border)]"
                     autoComplete="current-password"
                   />
                 </label>

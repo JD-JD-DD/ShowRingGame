@@ -76,12 +76,12 @@ function statusTone(status: ShowDisplayStatus): string {
     case "OPEN":
       return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
     case "SCHEDULED":
-      return "border-purple-300/20 bg-black/20 text-purple-100/70";
+      return "border-[var(--dog-border)] bg-[var(--dog-card)] text-[var(--dog-copy)]";
     case "AWAITING JUDGING":
     case "JUDGING":
       return "border-amber-300/25 bg-amber-500/10 text-amber-100";
     case "CLOSED":
-      return "border-purple-300/20 bg-black/20 text-purple-100/65";
+      return "border-[var(--dog-border)] bg-[var(--dog-card)] text-[var(--dog-copy)]";
     case "CANCELLED":
       return "border-red-300/25 bg-red-500/10 text-red-100";
   }
@@ -276,13 +276,13 @@ export default async function HistoricalShowResultsPage({
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8 text-white">
-      <section className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+      <section className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-6 shadow-[var(--dog-shadow)]">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-white">
               Historical Show Results
             </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75">
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--dog-copy)]">
               Review completed generated show years without loading older
               seasons into the active show planning calendar.
             </p>
@@ -291,7 +291,7 @@ export default async function HistoricalShowResultsPage({
           <div className="flex flex-wrap gap-3">
             <Link
               href="/shows"
-              className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
             >
               All Shows
             </Link>
@@ -319,7 +319,7 @@ export default async function HistoricalShowResultsPage({
                 className={
                   year === selectedYear
                     ? "rounded-full border border-fuchsia-300/35 bg-fuchsia-500/15 px-4 py-2 text-sm font-semibold text-fuchsia-100"
-                    : "rounded-full border border-purple-300/20 bg-black/20 px-4 py-2 text-sm font-semibold text-purple-100/70 transition hover:bg-white/10 hover:text-white"
+                    : "rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-2 text-sm font-semibold text-[var(--dog-copy)] transition hover:bg-[var(--dog-card)] hover:text-white"
                 }
               >
                 Year {year}
@@ -330,7 +330,7 @@ export default async function HistoricalShowResultsPage({
       </section>
 
       {selectedYear ? (
-        <section className="mb-6 border-y border-amber-300/20 bg-[linear-gradient(90deg,rgba(120,53,15,0.48),rgba(24,24,27,0.84),rgba(8,47,73,0.42))] py-6">
+        <section className="mb-6 border-y border-amber-300/20 bg-[var(--dog-panel)] py-6">
           <div className="mx-auto max-w-7xl px-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -347,7 +347,7 @@ export default async function HistoricalShowResultsPage({
             </div>
 
             {invitationalClusters.length === 0 ? (
-              <div className="mt-5 rounded-2xl border border-amber-300/20 bg-black/25 px-5 py-4 text-sm text-amber-100/75">
+              <div className="mt-5 rounded-2xl border border-amber-300/20 bg-[var(--dog-card)] px-5 py-4 text-sm text-amber-100/75">
                 No invitational record was found for Year {selectedYear}.
               </div>
             ) : (
@@ -378,7 +378,7 @@ export default async function HistoricalShowResultsPage({
                     <Link
                       key={cluster.id}
                       href={`/shows/${cluster.id}/results`}
-                      className="block rounded-2xl border border-amber-200/25 bg-black/25 p-5 transition hover:border-amber-200/45 hover:bg-black/35"
+                      className="block rounded-2xl border border-amber-200/25 bg-[var(--dog-card)] p-5 transition hover:border-amber-200/45 hover:bg-[var(--dog-card)]"
                     >
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div>
@@ -414,7 +414,7 @@ export default async function HistoricalShowResultsPage({
                           >
                             {playerStatus}
                           </span>
-                          <span className="rounded-full border border-amber-300/20 bg-black/25 px-2 py-0.5 text-[11px] font-semibold text-amber-100/80">
+                          <span className="rounded-full border border-amber-300/20 bg-[var(--dog-card)] px-2 py-0.5 text-[11px] font-semibold text-amber-100/80">
                             {entryCount} invitation
                             {entryCount === 1 ? "" : "s"}
                           </span>
@@ -433,18 +433,18 @@ export default async function HistoricalShowResultsPage({
         </section>
       ) : null}
 
-      <section className="rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+      <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
         {selectedYear ? (
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="text-xs uppercase tracking-[0.18em] text-purple-200/70">
+              <div className="text-xs uppercase tracking-[0.18em] text-[var(--dog-label)]">
                 Year {selectedYear}
               </div>
               <h2 className="mt-1 text-2xl font-semibold text-white">
                 Generated Show Records
               </h2>
             </div>
-            <div className="text-sm text-purple-100/65">
+            <div className="text-sm text-[var(--dog-copy)]">
               {regularClusters.length} show cluster
               {regularClusters.length === 1 ? "" : "s"}
             </div>
@@ -452,11 +452,11 @@ export default async function HistoricalShowResultsPage({
         ) : null}
 
         {historicalYears.length === 0 ? (
-          <div className="rounded-2xl border border-purple-300/20 bg-black/20 px-5 py-4 text-sm text-purple-100/70">
+          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-4 text-sm text-[var(--dog-copy)]">
             No historical show records are available yet.
           </div>
         ) : regularClusters.length === 0 ? (
-          <div className="rounded-2xl border border-purple-300/20 bg-black/20 px-5 py-4 text-sm text-purple-100/70">
+          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-4 text-sm text-[var(--dog-copy)]">
             No generated show records were found for Year {selectedYear}.
           </div>
         ) : (
@@ -483,11 +483,11 @@ export default async function HistoricalShowResultsPage({
                 <Link
                   key={cluster.id}
                   href={`/shows/${cluster.id}/results`}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-sky-300/30 hover:bg-white/10"
+                  className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4 transition hover:border-sky-300/30 hover:bg-[var(--dog-card)]"
                 >
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-purple-200/70">
+                      <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-[var(--dog-label)]">
                         <span>Week {getClusterWeekInYear(cluster)}</span>
                         <span>{getShowDistrictRegionName(cluster.district)}</span>
                         <span>{formatShowDate(cluster.startEpoch)}</span>
@@ -503,13 +503,13 @@ export default async function HistoricalShowResultsPage({
                       >
                         {playerStatus}
                       </span>
-                      <span className="rounded-full border border-purple-300/20 bg-black/20 px-2 py-0.5 text-[11px] font-semibold text-purple-100/70">
+                      <span className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-2 py-0.5 text-[11px] font-semibold text-[var(--dog-copy)]">
                         {entryCount} entr{entryCount === 1 ? "y" : "ies"}
                       </span>
                       <span className="rounded-full border border-sky-300/25 bg-sky-500/10 px-2 py-0.5 text-[11px] font-semibold text-sky-100">
                         {resultCount} result{resultCount === 1 ? "" : "s"}
                       </span>
-                      <span className="rounded-full border border-purple-300/20 bg-black/20 px-2 py-0.5 text-[11px] font-semibold text-purple-100/70">
+                      <span className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-2 py-0.5 text-[11px] font-semibold text-[var(--dog-copy)]">
                         {cluster.showDays.length} day
                         {cluster.showDays.length === 1 ? "" : "s"}
                       </span>

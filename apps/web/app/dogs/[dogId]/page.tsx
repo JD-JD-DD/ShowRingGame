@@ -62,7 +62,7 @@ function badgeClass(tone: string): string {
     case "blue":
       return "border-sky-300/25 bg-sky-500/10 text-sky-100";
     default:
-      return "border-purple-300/25 bg-purple-500/10 text-purple-100";
+      return "border-[var(--dog-border)] bg-purple-500/10 text-[var(--dog-heading)]";
   }
 }
 
@@ -131,10 +131,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         <section className="dog-panel mb-8 rounded-[28px] px-6 py-6 backdrop-blur">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-4xl">
-              <div className="mb-3 inline-flex rounded-full border border-purple-300/20 bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200">
+              <div className="mb-3 inline-flex rounded-full border border-[var(--dog-border)] bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
                 Show Profile
               </div>
-              <div className="text-sm font-medium text-purple-200">
+              <div className="text-sm font-medium text-[var(--dog-label)]">
                 {header.breedName}
               </div>
               <h1 className="dog-heading mt-2 text-4xl font-bold tracking-tight sm:text-5xl">

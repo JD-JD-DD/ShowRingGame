@@ -240,7 +240,7 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen px-6 py-8 text-white">
       <div className="mx-auto flex max-w-7xl flex-col">
-        <header className="mb-8 flex flex-col gap-6 rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur md:flex-row md:items-center md:justify-between">
+        <header className="mb-8 flex flex-col gap-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-5 shadow-[var(--dog-shadow)] backdrop-blur md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
               <Image
@@ -272,7 +272,7 @@ export default async function HomePage() {
         </header>
 
         <section className="mb-8 grid gap-6 xl:grid-cols-[1.35fr_0.65fr] xl:items-stretch">
-          <section className="rounded-[24px] border border-white/10 bg-white/5 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.24)]">
+          <section className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
             <div className="mb-4">
               <h2 className="text-2xl font-semibold text-white">
                 Around ShowRing
@@ -283,16 +283,16 @@ export default async function HomePage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-              <article className="rounded-[22px] border border-white/10 bg-black/20 p-5">
+              <article className="rounded-[22px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
                 <h3 className="text-lg font-semibold text-white">
                   Recent Champions
                 </h3>
-                <p className="mt-1 text-sm text-purple-100/65">
+                <p className="mt-1 text-sm text-[var(--dog-copy)]">
                   Newly finished champions across the game.
                 </p>
 
                 {recentChampions.length === 0 ? (
-                  <p className="mt-4 text-sm text-purple-100/72">
+                  <p className="mt-4 text-sm text-[var(--dog-copy)]">
                     No new champions have finished recently.
                   </p>
                 ) : (
@@ -300,7 +300,7 @@ export default async function HomePage() {
                     {recentChampions.map((item) => (
                       <div
                         key={item.id}
-                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+                        className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3"
                       >
                         <Link
                           href={`/dogs/${item.dog.id}`}
@@ -308,7 +308,7 @@ export default async function HomePage() {
                         >
                           {formatDogDisplayName(item.dog)}
                         </Link>
-                        <div className="mt-1 text-xs text-purple-100/65">
+                        <div className="mt-1 text-xs text-[var(--dog-copy)]">
                           {item.dog.breed.name}
                           {item.ownerKennel ? (
                             <>
@@ -323,7 +323,7 @@ export default async function HomePage() {
                             </>
                           ) : null}
                         </div>
-                        <div className="mt-1 text-xs text-purple-100/55">
+                        <div className="mt-1 text-xs text-[var(--dog-copy)]">
                           {item.finishingCluster ? (
                             <>
                               Finished at{" "}
@@ -344,16 +344,16 @@ export default async function HomePage() {
                 )}
               </article>
 
-              <article className="rounded-[22px] border border-white/10 bg-black/20 p-5">
+              <article className="rounded-[22px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
                 <h3 className="text-lg font-semibold text-white">
                   Recent Litters
                 </h3>
-                <p className="mt-1 text-sm text-purple-100/65">
+                <p className="mt-1 text-sm text-[var(--dog-copy)]">
                   The latest litters born around ShowRing.
                 </p>
 
                 {recentLitters.length === 0 ? (
-                  <p className="mt-4 text-sm text-purple-100/72">
+                  <p className="mt-4 text-sm text-[var(--dog-copy)]">
                     No litters have been born recently.
                   </p>
                 ) : (
@@ -361,16 +361,16 @@ export default async function HomePage() {
                     {recentLitters.map((litter) => (
                       <div
                         key={litter.id}
-                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+                        className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3"
                       >
                         <div className="text-sm font-semibold text-white">
                           {litter.breed.name} litter
                         </div>
-                        <div className="mt-1 text-xs text-purple-100/65">
+                        <div className="mt-1 text-xs text-[var(--dog-copy)]">
                           {formatDogDisplayName(litter.sire)} x{" "}
                           {formatDogDisplayName(litter.dam)}
                         </div>
-                        <div className="mt-1 text-xs text-purple-100/55">
+                        <div className="mt-1 text-xs text-[var(--dog-copy)]">
                           {litter.pupCount} puppies · {formatGameTimeLabel(litter.bornEpoch)}
                           {litter.bredByKennel ? (
                             <>
@@ -393,18 +393,18 @@ export default async function HomePage() {
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-white/10 bg-black/20 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.26)]">
+          <section className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
             <div>
               <h2 className="text-xl font-semibold text-white">
                 Welcome These New Kennels
               </h2>
-              <p className="mt-1 text-sm text-purple-100/70">
+              <p className="mt-1 text-sm text-[var(--dog-copy)]">
                 Joined in the last 48 hours
               </p>
             </div>
 
             {newKennels.length === 0 ? (
-              <div className="mt-4 text-sm text-purple-100/72">
+              <div className="mt-4 text-sm text-[var(--dog-copy)]">
                 No new kennels have joined recently.
               </div>
             ) : (
@@ -412,7 +412,7 @@ export default async function HomePage() {
                 {newKennels.map((kennel) => (
                   <div
                     key={kennel.id}
-                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                    className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3"
                   >
                     <Link
                       href={`/kennels/${kennel.slug}`}
@@ -420,7 +420,7 @@ export default async function HomePage() {
                     >
                       {kennel.name}
                     </Link>
-                    <div className="mt-1 text-xs text-purple-100/65">
+                    <div className="mt-1 text-xs text-[var(--dog-copy)]">
                       Joined {formatJoinedAt(kennel.createdAt)}
                     </div>
                   </div>
@@ -435,7 +435,7 @@ export default async function HomePage() {
             <h2 className="text-2xl font-semibold text-white">
               Jump Back In
             </h2>
-            <p className="mt-1 text-sm text-purple-100/72">
+            <p className="mt-1 text-sm text-[var(--dog-copy)]">
               Quick routes for getting back to the practical parts of the game.
             </p>
           </div>
@@ -444,16 +444,16 @@ export default async function HomePage() {
             {primaryActions.map((item) => (
               <article
                 key={item.title}
-                className={`rounded-[24px] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.3)] ${
+                className={`rounded-[24px] p-5 shadow-[var(--dog-shadow)] ${
                   item.featured
                     ? "border border-sky-300/30 bg-sky-500/10"
-                    : "border border-purple-300/15 bg-white/5"
+                    : "border border-[var(--dog-border)] bg-[var(--dog-card)]"
                 }`}
               >
                 <h3 className="text-lg font-semibold text-white">
                   {item.title}
                 </h3>
-                <p className="mt-3 min-h-[5.25rem] text-sm leading-7 text-purple-100/72">
+                <p className="mt-3 min-h-[5.25rem] text-sm leading-7 text-[var(--dog-copy)]">
                   {item.body}
                 </p>
                 <Link
@@ -471,12 +471,12 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mb-8 rounded-[24px] border border-white/10 bg-black/20 p-5">
+        <section className="mb-8 rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-semibold text-white">Mini FAQ</h2>
             <Link
               href="/faq"
-              className="rounded-xl border border-purple-300/25 bg-white/5 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+              className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-2 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
             >
               Full FAQ
             </Link>
@@ -486,12 +486,12 @@ export default async function HomePage() {
             {miniFaq.map((item) => (
               <div
                 key={item.question}
-                className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4"
               >
                 <h3 className="text-sm font-semibold text-white">
                   {item.question}
                 </h3>
-                <p className="mt-2 text-sm leading-6 text-purple-100/72">
+                <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
                   {item.answer}
                 </p>
               </div>

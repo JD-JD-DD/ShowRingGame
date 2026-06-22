@@ -34,7 +34,7 @@ function statusTone(status: string): string {
     case "CANCELLED":
       return "border-red-300/25 bg-red-500/10 text-red-100";
     default:
-      return "border-purple-300/20 bg-white/5 text-purple-100";
+      return "border-[var(--dog-border)] bg-[var(--dog-card)] text-[var(--dog-heading)]";
   }
 }
 
@@ -188,14 +188,14 @@ export default async function ShowResultsIndexPage({
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8 text-white">
-      <section className="rounded-[28px] border border-white/10 bg-white/5 px-6 py-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
-        <p className="text-sm uppercase tracking-[0.22em] text-purple-300/80">
+      <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-8 text-center shadow-[var(--dog-shadow)]">
+        <p className="text-sm uppercase tracking-[0.22em] text-[var(--dog-label)]">
           Show Results
         </p>
         <h1 className="mt-3 text-4xl font-bold tracking-tight text-white">
           {cluster.name}
         </h1>
-        <p className="mt-4 text-2xl font-semibold text-purple-100">
+        <p className="mt-4 text-2xl font-semibold text-[var(--dog-heading)]">
           {formatShowCalendarLabel(cluster.startEpoch)}
         </p>
 
@@ -205,16 +205,16 @@ export default async function ShowResultsIndexPage({
           >
             {cluster.status}
           </div>
-          <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
+          <div className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-[var(--dog-copy)]">
             {getShowDistrictRegionName(cluster.district)}
           </div>
           {canShowEntryCount ? (
-            <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
+            <div className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-[var(--dog-copy)]">
               Entries: {entryCount}
             </div>
           ) : null}
           {resultCount > 0 ? (
-            <div className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-purple-100/75">
+            <div className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-[var(--dog-copy)]">
               Results: {resultCount}
             </div>
           ) : null}
@@ -244,13 +244,13 @@ export default async function ShowResultsIndexPage({
           ) : null}
           <Link
             href={`/shows/${cluster.id}`}
-            className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+            className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
           >
             Show Detail
           </Link>
           <Link
             href="/shows"
-            className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+            className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
           >
             All Shows
           </Link>
@@ -264,7 +264,7 @@ export default async function ShowResultsIndexPage({
       </section>
 
       {cluster.showDays.some((day) => day.showAwards.length > 0) ? (
-        <section className="mt-6 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+        <section className="mt-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
           <h2 className="text-xl font-semibold text-white">
             Group & Best In Show
           </h2>
@@ -293,9 +293,9 @@ export default async function ShowResultsIndexPage({
                 return (
                   <div
                     key={day.id}
-                    className="rounded-2xl border border-white/10 bg-black/20 p-5"
+                    className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5"
                   >
-                    <h3 className="text-lg font-semibold text-purple-100">
+                    <h3 className="text-lg font-semibold text-[var(--dog-heading)]">
                       {formatShowCalendarLabel(day.scheduledEpoch)}
                     </h3>
 
@@ -314,7 +314,7 @@ export default async function ShowResultsIndexPage({
                               <div className="font-semibold text-white">
                                 {award.awardCode} - {formatDogDisplayName(award.dog)}
                               </div>
-                              <div className="mt-1 text-xs text-purple-100/65">
+                              <div className="mt-1 text-xs text-[var(--dog-copy)]">
                                 {award.breed.name} ({award.breed.code2}) -{" "}
                                 {showEntryKennelName(award.showEntry)}
                               </div>
@@ -333,9 +333,9 @@ export default async function ShowResultsIndexPage({
                           .map(([groupName, awards]) => (
                             <div
                               key={`${day.id}-${groupName}`}
-                              className="rounded-xl border border-white/10 bg-white/5 p-4"
+                              className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4"
                             >
-                              <h4 className="text-sm font-semibold text-purple-100">
+                              <h4 className="text-sm font-semibold text-[var(--dog-heading)]">
                                 {groupName}
                               </h4>
                               <div className="mt-3 grid gap-2">
@@ -345,13 +345,13 @@ export default async function ShowResultsIndexPage({
                                     <Link
                                       key={award.id}
                                       href={`/dogs/${award.dog.id}`}
-                                      className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm transition hover:border-purple-300/35 hover:bg-white/10"
+                                      className="rounded-lg border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm transition hover:border-[var(--dog-border)] hover:bg-[var(--dog-card)]"
                                     >
                                       <div className="font-semibold text-white">
                                         {award.awardCode} -{" "}
                                         {formatDogDisplayName(award.dog)}
                                       </div>
-                                      <div className="mt-1 text-xs text-purple-100/60">
+                                      <div className="mt-1 text-xs text-[var(--dog-copy)]">
                                         {award.breed.name} -{" "}
                                         {showEntryKennelName(award.showEntry)}
                                       </div>
@@ -369,18 +369,18 @@ export default async function ShowResultsIndexPage({
         </section>
       ) : null}
 
-      <section className="mt-6 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] p-6 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+      <section className="mt-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
         <h2 className="text-xl font-semibold text-white">Breeds & Classes</h2>
 
         {groupedBreeds.size === 0 ? (
-          <p className="mt-4 text-sm text-purple-100/70">
+          <p className="mt-4 text-sm text-[var(--dog-copy)]">
             No breed results are available for this show yet.
           </p>
         ) : (
           <div className="mt-5 space-y-7">
             {[...groupedBreeds.entries()].map(([groupName, breeds]) => (
               <div key={groupName}>
-                <h3 className="text-lg font-semibold text-purple-100">
+                <h3 className="text-lg font-semibold text-[var(--dog-heading)]">
                   {groupName}
                 </h3>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -388,11 +388,11 @@ export default async function ShowResultsIndexPage({
                     <Link
                       key={breed.code2}
                       href={`/shows/${cluster.id}/results/${breed.code2}`}
-                      className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-sky-100 transition hover:border-sky-300/40 hover:bg-sky-500/10"
+                      className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-sm font-semibold text-sky-100 transition hover:border-sky-300/40 hover:bg-sky-500/10"
                     >
                       <span>{breed.name}</span>
                       {breed.resultCount > 0 ? (
-                        <span className="ml-2 text-xs font-normal text-purple-100/55">
+                        <span className="ml-2 text-xs font-normal text-[var(--dog-copy)]">
                           {breed.resultCount} result
                           {breed.resultCount === 1 ? "" : "s"}
                         </span>

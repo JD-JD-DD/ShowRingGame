@@ -216,16 +216,16 @@ export default function FAQPage() {
   return (
     <main className="min-h-screen px-6 py-8 text-white">
       <div className="mx-auto max-w-6xl">
-        <header className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur">
+        <header className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-6 shadow-[var(--dog-shadow)] backdrop-blur">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.22em] text-purple-300/80">
+              <p className="text-sm uppercase tracking-[0.22em] text-[var(--dog-label)]">
                 Player Guide
               </p>
               <h1 className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
                 Frequently Asked Questions
               </h1>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-purple-100/75 sm:text-base">
+              <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--dog-copy)] sm:text-base">
                 A beginner-friendly guide to kennels, dog traits, breeding,
                 shows, time, and the economy in ShowRing.
               </p>
@@ -234,7 +234,7 @@ export default function FAQPage() {
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/"
-                className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
               >
                 Home
               </Link>
@@ -248,7 +248,7 @@ export default function FAQPage() {
           </div>
         </header>
 
-        <section className="mb-8 rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(124,58,237,0.16),rgba(255,255,255,0.04))] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+        <section className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
           <h2 className="text-xl font-semibold text-white">
             Quick Beginner Tips
           </h2>
@@ -256,7 +256,7 @@ export default function FAQPage() {
             {beginnerTips.map((tip) => (
               <div
                 key={tip}
-                className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm leading-6 text-purple-100/78"
+                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-sm leading-6 text-[var(--dog-copy)]"
               >
                 {tip}
               </div>
@@ -275,7 +275,7 @@ export default function FAQPage() {
                     ? "kennel-prestige"
                     : undefined
               }
-              className="rounded-[28px] border border-purple-300/15 bg-white/5 p-6 shadow-[0_20px_60px_rgba(0,0,0,0.3)]"
+              className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 shadow-[var(--dog-shadow)]"
             >
               <h2 className="text-2xl font-semibold text-white">
                 {section.title}
@@ -284,12 +284,12 @@ export default function FAQPage() {
                 {section.items.map((item) => (
                   <article
                     key={item.question}
-                    className="rounded-2xl border border-white/10 bg-black/20 p-4"
+                    className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4"
                   >
                     <h3 className="text-base font-semibold text-white">
                       {item.question}
                     </h3>
-                    <p className="mt-2 text-sm leading-7 text-purple-100/74">
+                    <p className="mt-2 text-sm leading-7 text-[var(--dog-copy)]">
                       {item.answer}
                     </p>
                   </article>
@@ -299,7 +299,7 @@ export default function FAQPage() {
           ))}
         </div>
 
-        <section className="mt-8 rounded-[28px] border border-purple-300/15 bg-white/5 p-6 text-sm leading-7 text-purple-100/76 shadow-[0_20px_60px_rgba(0,0,0,0.3)]">
+        <section className="mt-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 text-sm leading-7 text-[var(--dog-copy)] shadow-[var(--dog-shadow)]">
           <h2 className="text-xl font-semibold text-white">Final Advice</h2>
           <p className="mt-3">
             No dog is perfect. No bloodline stays dominant forever. The best

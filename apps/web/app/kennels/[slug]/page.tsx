@@ -149,14 +149,14 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
   return (
     <main className="min-h-screen px-6 py-8 text-white">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-8 rounded-[28px] border border-white/10 bg-white/5 px-6 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+        <header className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-6 shadow-[var(--dog-shadow)]">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.25em] text-purple-300/80">
+              <p className="text-sm uppercase tracking-[0.25em] text-[var(--dog-label)]">
                 Public Kennel
               </p>
               <h1 className="mt-2 text-4xl font-semibold">{kennel.name}</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
+              <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--dog-copy)]">
                 {kennel.publicSlogan?.trim() ||
                   "Browse this kennel's active dogs, stud listings, and dogs for sale."}
               </p>
@@ -165,13 +165,13 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/community"
-                className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
               >
                 Community
               </Link>
               <Link
                 href="/kennel"
-                className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
               >
                 My Kennel
               </Link>
@@ -192,22 +192,22 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
         </header>
 
         <section className="mb-8 grid gap-4 md:grid-cols-5">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="text-xs uppercase tracking-wide text-purple-200">
+          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
+            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
               Active Dogs
             </div>
             <div className="mt-2 text-3xl font-semibold">{dogs.length}</div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="text-xs uppercase tracking-wide text-purple-200">
+          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
+            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
               At Stud
             </div>
             <div className="mt-2 text-3xl font-semibold">
               {studListings.length}
             </div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="text-xs uppercase tracking-wide text-purple-200">
+          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
+            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
               For Sale
             </div>
             <div className="mt-2 text-3xl font-semibold">
@@ -227,9 +227,9 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
           </div>
           <div
             style={homeRegion ? getDistrictPanelStyle(homeRegion) : undefined}
-            className="rounded-2xl border border-white/10 bg-white/5 p-5"
+            className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5"
           >
-            <div className="text-xs uppercase tracking-wide text-purple-200">
+            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
               Region
             </div>
             <div className="mt-2 text-3xl font-semibold">
@@ -251,8 +251,8 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
           />
         </section>
 
-        <section className="overflow-hidden rounded-[28px] border border-purple-300/15 bg-[linear-gradient(180deg,rgba(42,22,58,0.96),rgba(20,10,30,0.98))] shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-          <div className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_5rem_8rem] gap-4 border-b border-white/10 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-purple-200/85">
+        <section className="overflow-hidden rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] shadow-[var(--dog-shadow)]">
+          <div className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_5rem_8rem] gap-4 border-b border-[var(--dog-border)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
             <div>Dog</div>
             <div>Breed</div>
             <div>Sex</div>
@@ -261,7 +261,7 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
           </div>
 
           {dogs.length === 0 ? (
-            <div className="px-5 py-5 text-sm text-purple-100/70">
+            <div className="px-5 py-5 text-sm text-[var(--dog-copy)]">
               No active dogs are visible for this kennel.
             </div>
           ) : (
@@ -279,19 +279,19 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
                   <Link
                     key={dog.id}
                     href={`/dogs/${dog.id}`}
-                    className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_5rem_8rem] gap-4 px-5 py-2.5 text-sm transition hover:bg-white/5"
+                    className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_5rem_8rem] gap-4 px-5 py-2.5 text-sm transition hover:bg-[var(--dog-card)]"
                   >
                     <div className="min-w-0 truncate font-semibold text-white">
                       {formatDogDisplayName(dog)}
                     </div>
-                    <div className="truncate text-purple-100/75">
+                    <div className="truncate text-[var(--dog-copy)]">
                       {dog.breed.name} ({dog.breedCode2})
                     </div>
-                    <div className="text-purple-100/75">{dog.sex}</div>
-                    <div className="text-purple-100/75">
+                    <div className="text-[var(--dog-copy)]">{dog.sex}</div>
+                    <div className="text-[var(--dog-copy)]">
                       {formatAge(Math.max(0, currentEpoch - dog.birthEpoch))}
                     </div>
-                    <div className="text-right text-purple-100/75">
+                    <div className="text-right text-[var(--dog-copy)]">
                       {status || "-"}
                     </div>
                   </Link>
@@ -332,29 +332,29 @@ function ListingPanel({
   }>;
 }) {
   return (
-    <div className="rounded-[24px] border border-white/10 bg-white/5 p-5 shadow-[0_14px_34px_rgba(0,0,0,0.24)]">
+    <div className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
       <h2 className="text-xl font-semibold text-white">{title}</h2>
       {listings.length === 0 ? (
-        <p className="mt-4 text-sm text-purple-100/70">None right now.</p>
+        <p className="mt-4 text-sm text-[var(--dog-copy)]">None right now.</p>
       ) : (
         <div className="mt-4 grid gap-3">
           {listings.map((listing) => (
             <Link
               key={listing.id}
               href={`/dogs/${listing.dog.id}`}
-              className="grid grid-cols-[minmax(0,1fr)_6rem] gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm transition hover:bg-white/5"
+              className="grid grid-cols-[minmax(0,1fr)_6rem] gap-3 rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-sm transition hover:bg-[var(--dog-card)]"
             >
               <div className="min-w-0">
                 <div className="truncate font-semibold text-white">
                   {formatDogDisplayName(listing.dog)}
                 </div>
-                <div className="mt-1 text-xs text-purple-100/55">
+                <div className="mt-1 text-xs text-[var(--dog-copy)]">
                   {listing.dog.breed.name} ({listing.dog.breedCode2}) -{" "}
                   {listing.dog.sex} -{" "}
                   {formatAge(Math.max(0, currentEpoch - listing.dog.birthEpoch))}
                 </div>
               </div>
-              <div className="self-center text-right font-semibold text-purple-100">
+              <div className="self-center text-right font-semibold text-[var(--dog-heading)]">
                 {formatMoney(listing.askingPrice)}
               </div>
             </Link>

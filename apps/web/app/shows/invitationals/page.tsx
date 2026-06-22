@@ -26,12 +26,12 @@ function statusTone(status: ShowDisplayStatus): string {
     case "OPEN":
       return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
     case "SCHEDULED":
-      return "border-purple-300/20 bg-black/20 text-purple-100/70";
+      return "border-[var(--dog-border)] bg-[var(--dog-card)] text-[var(--dog-copy)]";
     case "AWAITING JUDGING":
     case "JUDGING":
       return "border-amber-300/25 bg-amber-500/10 text-amber-100";
     case "CLOSED":
-      return "border-purple-300/20 bg-black/20 text-purple-100/65";
+      return "border-[var(--dog-border)] bg-[var(--dog-card)] text-[var(--dog-copy)]";
     case "CANCELLED":
       return "border-red-300/25 bg-red-500/10 text-red-100";
   }
@@ -159,7 +159,7 @@ export default async function InvitationalsPage() {
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8 text-white">
-      <section className="border-y border-amber-300/20 bg-[linear-gradient(90deg,rgba(120,53,15,0.48),rgba(24,24,27,0.84),rgba(8,47,73,0.42))] px-6 py-8 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+      <section className="border-y border-amber-300/20 bg-[var(--dog-panel)] px-6 py-8 shadow-[var(--dog-shadow)]">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.22em] text-amber-100/75">
@@ -177,7 +177,7 @@ export default async function InvitationalsPage() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/shows"
-              className="rounded-2xl border border-amber-300/25 bg-black/20 px-5 py-3 text-sm font-semibold text-amber-100 transition hover:bg-black/35"
+              className="rounded-2xl border border-amber-300/25 bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-amber-100 transition hover:bg-[var(--dog-card)]"
             >
               All Shows
             </Link>
@@ -199,7 +199,7 @@ export default async function InvitationalsPage() {
 
       <section className="mt-6 grid gap-4">
         {invitationals.length === 0 ? (
-          <div className="rounded-2xl border border-amber-300/20 bg-black/20 px-5 py-4 text-sm text-amber-100/75">
+          <div className="rounded-2xl border border-amber-300/20 bg-[var(--dog-card)] px-5 py-4 text-sm text-amber-100/75">
             No invitational records are available yet.
           </div>
         ) : (
@@ -229,7 +229,7 @@ export default async function InvitationalsPage() {
               <Link
                 key={cluster.id}
                 href={`/shows/${cluster.id}/results`}
-                className="block rounded-2xl border border-amber-200/20 bg-[linear-gradient(135deg,rgba(24,24,27,0.9),rgba(69,26,3,0.62))] p-5 transition hover:border-amber-200/45"
+                className="block rounded-2xl border border-amber-200/20 bg-[var(--dog-panel)] p-5 transition hover:border-amber-200/45"
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div>
@@ -263,7 +263,7 @@ export default async function InvitationalsPage() {
                     >
                       {playerStatus}
                     </span>
-                    <span className="rounded-full border border-amber-300/20 bg-black/25 px-2 py-0.5 text-[11px] font-semibold text-amber-100/80">
+                    <span className="rounded-full border border-amber-300/20 bg-[var(--dog-card)] px-2 py-0.5 text-[11px] font-semibold text-amber-100/80">
                       {entryCount} invitation
                       {entryCount === 1 ? "" : "s"}
                     </span>

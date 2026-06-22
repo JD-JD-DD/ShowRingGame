@@ -89,11 +89,11 @@ function entryActivityButtonTone(level: EntryActivityLevel): string {
     case "NONE":
       return "theme-secondary-button";
     case "LOW":
-      return "border-purple-300/35 bg-purple-500/15 text-purple-100 hover:bg-purple-500/25";
+      return "border-[var(--dog-border)] bg-purple-500/15 text-[var(--dog-heading)] hover:bg-purple-500/25";
     case "MODERATE":
-      return "border-purple-200/50 bg-purple-500/35 text-purple-50 hover:bg-purple-500/45";
+      return "border-purple-200/50 bg-purple-500/35 text-[var(--dog-heading)] hover:bg-purple-500/45";
     case "HEAVY":
-      return "border-fuchsia-200/70 bg-purple-600 text-white shadow-[0_0_18px_rgba(168,85,247,0.26)] hover:bg-purple-500";
+      return "border-fuchsia-200/70 bg-purple-600 text-white shadow-[var(--dog-shadow)] hover:bg-purple-500";
   }
 }
 
@@ -377,7 +377,7 @@ export default async function ShowsPage({
         </div>
 
         {selectedDogIdsQuery ? (
-          <div className="mt-3 rounded-2xl border border-purple-300/20 bg-purple-500/10 px-4 py-3 text-sm text-purple-100/80">
+          <div className="mt-3 rounded-2xl border border-[var(--dog-border)] bg-purple-500/10 px-4 py-3 text-sm text-[var(--dog-copy)]">
             Carrying selected kennel dogs into show entry planning.
           </div>
         ) : null}
@@ -417,7 +417,7 @@ export default async function ShowsPage({
                 id={isCurrentWeekAnchor ? "current-week" : undefined}
                 className={
                   isCurrentWeek
-                    ? "scroll-mt-6 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[0_0_0_1px_rgba(240,171,252,0.08)]"
+                    ? "scroll-mt-6 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[var(--dog-shadow)]"
                     : "theme-card scroll-mt-6 rounded-2xl p-4"
                 }
               >
@@ -494,7 +494,7 @@ export default async function ShowsPage({
 
                               {/*}
                               **no need for the date twice
-                              <span className="ml-2 text-purple-100/60">
+                              <span className="ml-2 text-[var(--dog-copy)]">
                                 {formatShowDate(cluster.startEpoch)}
                               </span>
                               */}
@@ -558,7 +558,7 @@ export default async function ShowsPage({
             }
             className={
               currentCalendarPosition.weekInYear === 52
-                ? "scroll-mt-6 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[0_0_0_1px_rgba(240,171,252,0.08)]"
+                ? "scroll-mt-6 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[var(--dog-shadow)]"
                 : "scroll-mt-6 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4"
             }
           >

@@ -38,7 +38,7 @@ export default async function StewardingServicesPage({
 
       <ServiceMessages message={message} error={error} />
 
-      <section className="rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]">
+      <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
         <div className="mb-5">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100/80">
@@ -57,7 +57,7 @@ export default async function StewardingServicesPage({
         </div>
 
         {opportunities.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-6 text-sm text-purple-100/70">
+          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 text-sm text-[var(--dog-copy)]">
             No stewarding assignments are available right now.
           </div>
         ) : (
@@ -65,14 +65,14 @@ export default async function StewardingServicesPage({
             {opportunities.map((opportunity) => (
               <article
                 key={opportunity.showClusterId}
-                className="rounded-2xl border border-white/10 bg-black/20 p-5"
+                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold text-white">
                       {opportunity.name}
                     </h3>
-                    <p className="mt-1 text-sm text-purple-100/65">
+                    <p className="mt-1 text-sm text-[var(--dog-copy)]">
                       {opportunity.districtName} District
                     </p>
                   </div>
@@ -81,25 +81,25 @@ export default async function StewardingServicesPage({
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 text-sm text-purple-100/75 sm:grid-cols-4">
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                <div className="mt-4 grid gap-3 text-sm text-[var(--dog-copy)] sm:grid-cols-4">
+                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
+                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
                       Dates
                     </div>
                     <div className="mt-1 font-semibold text-white">
                       {formatDate(opportunity.startEpoch)}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
+                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
                       Days
                     </div>
                     <div className="mt-1 font-semibold text-white">
                       {opportunity.dayCount}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
+                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
                       Status
                     </div>
                     <div className="mt-1 font-semibold text-white">
@@ -110,8 +110,8 @@ export default async function StewardingServicesPage({
                           : "Full"}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <div className="text-xs uppercase tracking-wide text-purple-200/70">
+                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
+                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
                       Spaces
                     </div>
                     <div className="mt-1 font-semibold text-white">
@@ -120,14 +120,14 @@ export default async function StewardingServicesPage({
                   </div>
                 </div>
 
-                <p className="mt-4 text-xs leading-5 text-purple-100/65">
+                <p className="mt-4 text-xs leading-5 text-[var(--dog-copy)]">
                   Stewarding pays {formatMoney(opportunity.payoutAmount)}, but
                   you cannot owner-handle dogs in this exact show/cluster. Each
                   kennel may hold one stewarding assignment per show weekend.
                 </p>
 
                 {opportunity.blockedReason ? (
-                  <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-purple-100/70">
+                  <div className="mt-4 rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm text-[var(--dog-copy)]">
                     {opportunity.blockedReason}
                   </div>
                 ) : null}
