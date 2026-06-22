@@ -125,6 +125,13 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const dogPageReturnTo = `/dogs/${header.dogId}${
     areaId ? `?areaId=${encodeURIComponent(areaId)}` : ""
   }`;
+  const headerDisplayName = [
+    header.visibleTitlePrefix,
+    header.registeredName ?? header.callName ?? header.displayName,
+    header.visibleTitleSuffix,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <main className="dog-page min-h-screen px-6 py-8">
@@ -140,7 +147,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <h1 className="dog-heading text-4xl font-bold tracking-tight sm:text-5xl">
-                  {header.registeredName ?? header.callName ?? header.displayName}
+                  {headerDisplayName}
                 </h1>
                 {profile.snapshot.healthTestingSummary.badgeStatus ? (
                   <HealthClearBadge
@@ -160,14 +167,24 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               ) : null}
 
               <div className="mt-5 flex flex-wrap gap-2">
-                {header.badges.map((badge) => (
-                  <span
-                    key={badge.code}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${badgeClass(badge.tone)}`}
-                  >
-                    {badge.label}
-                  </span>
-                ))}
+                {header.badges.map((badge) =>
+                  badge.href ? (
+                    <Link
+                      key={badge.code}
+                      href={badge.href}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition hover:brightness-110 ${badgeClass(badge.tone)}`}
+                    >
+                      {badge.label}
+                    </Link>
+                  ) : (
+                    <span
+                      key={badge.code}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${badgeClass(badge.tone)}`}
+                    >
+                      {badge.label}
+                    </span>
+                  )
+                )}
               </div>
 
               {statusMessage(saleMessage)}

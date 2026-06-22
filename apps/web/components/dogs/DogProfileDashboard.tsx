@@ -46,11 +46,15 @@ export default function DogProfileDashboard(props: Props) {
   const healthControls = profile.healthTesting.ownerControls;
   const saleListing = profile.breedingAndProduction.activeSaleListing;
   const studListing = profile.breedingAndProduction.activeStudListing;
+  const breederName =
+    header.originLabel === "Foundation Dog"
+      ? "Foundation"
+      : snapshot.breeder?.name ?? "Breeder unknown";
   const snapshotFacts = [
     `Sex: ${header.sexLabel}`,
     `Age: ${header.ageLabel}`,
     header.lifecycleLabel,
-    snapshot.breeder?.name ?? "Breeder unknown",
+    breederName,
     ...(snapshot.marketLabel !== "Not for sale" ? [snapshot.marketLabel] : []),
     `Show: ${snapshot.showEligibilityLabel}`,
     `Breeding: ${snapshot.breedingEligibilityLabel}`,
@@ -72,10 +76,9 @@ export default function DogProfileDashboard(props: Props) {
           <SummaryValue label="Sex" value={header.sexLabel} />
           <SummaryValue label="Age" value={header.ageLabel} />
           <LinkedSummaryValue label="Owner kennel" value={snapshot.owner?.name ?? "Unowned"} href={snapshot.owner ? `/kennels/${snapshot.owner.slug}` : null} />
-          <LinkedSummaryValue label="Breeder kennel" value={snapshot.breeder?.name ?? "Unknown"} href={snapshot.breeder ? `/kennels/${snapshot.breeder.slug}` : null} />
+          <LinkedSummaryValue label="Breeder kennel" value={breederName} href={snapshot.breeder ? `/kennels/${snapshot.breeder.slug}` : null} />
           <LinkedSummaryValue label="Sire" value={snapshot.sire?.displayName ?? "Unknown"} href={snapshot.sire?.profileUrl ?? null} />
           <LinkedSummaryValue label="Dam" value={snapshot.dam?.displayName ?? "Unknown"} href={snapshot.dam?.profileUrl ?? null} />
-          <SummaryValue label="Origin" value={snapshot.originLabel} />
           <SummaryValue label="Lifecycle" value={header.lifecycleLabel} />
           <SummaryValue label="Market" value={snapshot.marketLabel} />
         </div>

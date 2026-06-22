@@ -2,6 +2,7 @@ export type DogProfileBadgeDto = {
   code: string;
   label: string;
   tone: "neutral" | "purple" | "green" | "yellow" | "red" | "blue";
+  href?: string;
 };
 
 export type DogProfileKennelDisplayDto = {
@@ -377,6 +378,7 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
         code: badge.code,
         label: badge.label,
         tone: badge.tone,
+        href: badge.href,
       })),
     },
     snapshot: {

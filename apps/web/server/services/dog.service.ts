@@ -46,6 +46,7 @@ import { DogLifecycleState, DogMarketState, DogOriginType, Sex } from "@prisma/c
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
 const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
 const RECENT_SHOW_RESULT_LIMIT = 6;
+const INVITATIONAL_PLACEMENT_CODES = ["BIS", "RBIS", "G1", "G2", "G3", "G4"];
 
 function mapSex(sex: "M" | "F"): Sex {
   return sex === "M" ? Sex.M : Sex.F;
@@ -638,6 +639,23 @@ export async function getDogProfile(args: {
           testedAtEpoch: true,
         },
       },
+      showAwards: {
+        where: {
+          awardCode: { in: INVITATIONAL_PLACEMENT_CODES },
+          showDay: {
+            cluster: { id: { startsWith: "invitational-year-" } },
+          },
+        },
+        orderBy: [{ publishedAtEpoch: "desc" }],
+        select: {
+          awardCode: true,
+          showDay: {
+            select: {
+              cluster: { select: { id: true, year: true } },
+            },
+          },
+        },
+      },
       breedingAttemptsAsDam: {
         orderBy: [{ createdEpoch: "desc" }],
         select: {
@@ -927,14 +945,22 @@ export async function getDogProfile(args: {
   if (hasFullClearance) {
     badges.push({ code: "health-clear", label: "Health Clear", tone: "green" });
   }
-  if (dog.isFoundation) {
-    badges.push({ code: "foundation", label: "Foundation", tone: "purple" });
-  }
   if (activeSaleListing) {
     badges.push({ code: "for-sale", label: "Listed for Sale", tone: "green" });
   }
   if (activeStudListing) {
     badges.push({ code: "at-stud", label: "At Stud", tone: "blue" });
+  }
+  if (dog.breedingAttemptsAsDam.some((attempt) => attempt.status === "PREGNANT")) {
+    badges.push({ code: "pregnant", label: "Bred", tone: "yellow" });
+  }
+  for (const award of dog.showAwards) {
+    badges.push({
+      code: `invitational-${award.showDay.cluster.id}-${award.awardCode}`,
+      label: `Year ${award.showDay.cluster.year} Invitational ${award.awardCode}`,
+      tone: "yellow",
+      href: `/shows/${award.showDay.cluster.id}/results`,
+    });
   }
 
   const canOfferForSale =
