@@ -5,7 +5,6 @@ import type { DogProfileDto } from "@/server/mappers/dog.mapper";
 import CollapsibleDogSection from "./CollapsibleDogSection";
 import DogPedigreeGrid from "./DogPedigreeGrid";
 import DogPrivateNotesEditor from "./DogPrivateNotesEditor";
-import DogShowRecordTable from "./DogShowRecordTable";
 import HealthTestingPanel from "./HealthTestingPanel";
 import TraitLine from "../ui/TraitLine";
 
@@ -63,11 +62,9 @@ export default function DogProfileDashboard(props: Props) {
       <CollapsibleDogSection
         title="Snapshot"
         description="Identity and current state at a glance."
-        className={`${PANEL_CLASS} order-1 lg:order-1`}
-        closedClassName="lg:col-span-2"
-        openClassName="lg:col-span-6"
+        className={`${PANEL_CLASS} order-1 lg:col-span-2 lg:order-1`}
         collapsedContent={<CompactFacts facts={snapshotFacts} />}
-        contentClassName="mt-5"
+        contentClassName="mt-4"
         titleClassName="text-xl"
       >
         <div className="grid gap-3 sm:grid-cols-2">
@@ -85,7 +82,7 @@ export default function DogProfileDashboard(props: Props) {
         </div>
         <div className="mt-5">
           <h3 className="dog-heading font-semibold">Current action eligibility</h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-2 grid grid-cols-2 gap-2">
             <SummaryValue label="Can show" value={snapshot.showEligibilityLabel} />
             <SummaryValue label="Can breed" value={snapshot.breedingEligibilityLabel} />
             {viewerContext.canManage && profile.groomingDetails ? (
@@ -111,9 +108,7 @@ export default function DogProfileDashboard(props: Props) {
         title="Championship Summary"
         description={profile.titlesAndShowCareer.summaryLabel}
         badge={<Link href={profile.titlesAndShowCareer.fullShowRecordUrl} className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-semibold">Full record</Link>}
-        className={`${PANEL_CLASS} order-3 lg:order-2`}
-        closedClassName="lg:col-span-2"
-        openClassName="lg:col-span-6"
+        className={`${PANEL_CLASS} order-3 lg:col-span-2 lg:order-2`}
         collapsedContent={
           <div className="flex flex-wrap gap-2">
             <span className="dog-neutral-badge rounded-full px-2.5 py-1 text-xs font-semibold">{profile.titlesAndShowCareer.currentTitleCode ?? "None"}</span>
@@ -121,10 +116,10 @@ export default function DogProfileDashboard(props: Props) {
             {header.visibleTitleSuffix ? <span className="dog-neutral-badge rounded-full px-2.5 py-1 text-xs">Suffix: {header.visibleTitleSuffix}</span> : null}
           </div>
         }
-        contentClassName="mt-5 space-y-5"
+        contentClassName="mt-4 space-y-4"
         titleClassName="text-xl"
       >
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2">
           <SummaryValue label="CH points" value={`${profile.titlesAndShowCareer.pointsEarned}/${profile.titlesAndShowCareer.pointsRequired}`} />
           <SummaryValue label="Majors" value={`${profile.titlesAndShowCareer.majorsEarned}/${profile.titlesAndShowCareer.majorsRequired}`} />
           <SummaryValue label="Title prefix" value={header.visibleTitlePrefix ?? "None"} />
@@ -135,16 +130,36 @@ export default function DogProfileDashboard(props: Props) {
             <h3 className="dog-heading text-lg font-semibold">Recent show record</h3>
             <Link href={profile.titlesAndShowCareer.fullShowRecordUrl} className="dog-secondary-button rounded-xl px-4 py-2 text-sm font-semibold">View full record</Link>
           </div>
-          <DogShowRecordTable results={profile.titlesAndShowCareer.recentShowResults} emptyMessage="No completed show results yet." />
+          {profile.titlesAndShowCareer.recentShowResults.length > 0 ? (
+            <div className="grid gap-2">
+              {profile.titlesAndShowCareer.recentShowResults.slice(0, 3).map((result) => (
+                <div key={result.resultId} className="dog-card rounded-xl px-3 py-2 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link href={result.showUrl} className="dog-heading min-w-0 truncate font-semibold hover:underline">
+                      {result.showName}
+                    </Link>
+                    <span className="dog-heading shrink-0 font-semibold">
+                      {result.pointsAwarded} pt{result.pointsAwarded === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <div className="dog-copy mt-1 flex flex-wrap gap-x-2">
+                    <span>{result.showDateLabel}</span>
+                    <span>{result.awardCodes.join(", ") || "No placement"}</span>
+                    <Link href={result.judgeProfileUrl} className="hover:underline">{result.judgeName}</Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="dog-card dog-copy rounded-xl px-3 py-3 text-sm">No completed show results yet.</div>
+          )}
         </div>
       </CollapsibleDogSection>
 
       <CollapsibleDogSection
         title="Health / Grooming Summary"
         description={`${profile.healthTesting.summaryLabel} · ${snapshot.groomingLabel ?? "Grooming unavailable"}`}
-        className={`${PANEL_CLASS} order-4 lg:order-3`}
-        closedClassName="lg:col-span-2"
-        openClassName="lg:col-span-6"
+        className={`${PANEL_CLASS} order-4 lg:col-span-2 lg:order-3`}
         collapsedContent={
           <CompactFacts facts={[
             profile.healthTesting.summaryLabel,
@@ -153,14 +168,14 @@ export default function DogProfileDashboard(props: Props) {
             snapshot.groomingLabel ?? "Grooming unavailable",
           ]} />
         }
-        contentClassName="mt-5 space-y-5"
+        contentClassName="mt-4 space-y-4"
         titleClassName="text-xl"
       >
         {statusMessage(props.healthMessage)}
         {statusMessage(props.healthError, true)}
         <HealthTestingPanel dogId={header.dogId} areaId={areaId} kennelBalance={healthControls?.kennelBalance ?? 0} canOrderHealthTests={Boolean(healthControls?.checkoutNeeded)} rows={profile.healthTesting.tests.map((test) => ({ testTypeCode: test.testCode, label: test.displayName, fee: test.cost, isAvailable: test.isCurrentlyAvailable, availabilityLabel: test.minimumAgeLabel, result: test.isComplete ? { label: test.resultLabel ?? "Complete", testedLabel: test.testedDateLabel ?? "Test date unavailable", severity: test.severityKey ?? "yellow" } : null }))} />
         {viewerContext.canManage && profile.groomingDetails ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2">
             <SummaryValue label="Grooming state" value={profile.groomingDetails.groomingStatus} />
             <SummaryValue label="Actions remaining" value={`${profile.groomingDetails.weeklyActionsRemaining}/${profile.groomingDetails.weeklyActionLimit}`} />
             <SummaryValue label="Coat condition" value={profile.groomingDetails.currentCoatCondition.toFixed(2)} />
@@ -200,9 +215,9 @@ function CompactFacts({ facts }: { facts: string[] }) {
 }
 
 function SummaryValue({ label, value, detail }: { label: string; value: string; detail?: string }) {
-  return <div className={CARD_CLASS}><div className="dog-label text-xs uppercase tracking-wide">{label}</div><div className="dog-heading mt-1 font-semibold">{value}</div>{detail ? <div className="dog-copy mt-1 text-xs">{detail}</div> : null}</div>;
+  return <div className="dog-card rounded-xl px-3 py-2"><div className="dog-label text-[10px] uppercase tracking-wide">{label}</div><div className="dog-heading mt-0.5 text-sm font-semibold">{value}</div>{detail ? <div className="dog-copy mt-0.5 text-[11px]">{detail}</div> : null}</div>;
 }
 
 function LinkedSummaryValue({ label, value, href }: { label: string; value: string; href: string | null }) {
-  return <div className={CARD_CLASS}><div className="dog-label text-xs uppercase tracking-wide">{label}</div>{href ? <Link href={href} className="dog-heading mt-1 block font-semibold hover:underline">{value}</Link> : <div className="dog-heading mt-1 font-semibold">{value}</div>}</div>;
+  return <div className="dog-card rounded-xl px-3 py-2"><div className="dog-label text-[10px] uppercase tracking-wide">{label}</div>{href ? <Link href={href} className="dog-heading mt-0.5 block truncate text-sm font-semibold hover:underline">{value}</Link> : <div className="dog-heading mt-0.5 truncate text-sm font-semibold">{value}</div>}</div>;
 }
