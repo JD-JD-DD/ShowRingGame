@@ -106,7 +106,12 @@ export default async function CommunityTopicPage({
               <a href="#reply-composer" className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500">
                 Jump to Reply
               </a>
-              <Link href={`/community/${topic.category.slug}`} className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold">Back to category</Link>
+              <Link href="/community" className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold">
+                Main Forum
+              </Link>
+              <Link href="/kennel" className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold">
+                My Kennel
+              </Link>
             </div>
           </div>
         </header>
