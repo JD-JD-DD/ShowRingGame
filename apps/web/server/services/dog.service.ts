@@ -920,9 +920,6 @@ export async function getDogProfile(args: {
   if (hasFullClearance) {
     badges.push({ code: "health-clear", label: "Health Clear", tone: "green" });
   }
-  if (dog.isFoundation) {
-    badges.push({ code: "foundation", label: "Foundation Dog", tone: "purple" });
-  }
   if (activeSaleListing) {
     badges.push({ code: "for-sale", label: "Listed for Sale", tone: "green" });
   }
@@ -1138,7 +1135,7 @@ export async function getDogProfile(args: {
         dog.titleProgress?.winsByTypeJson
       ),
       recentShowResults,
-      fullShowRecordUrl: `/api/dogs/${dog.id}/show-record`,
+      fullShowRecordUrl: `/dogs/${dog.id}/show-record`,
     },
     healthTesting: {
       completedCount: healthSummary.completedCount,
