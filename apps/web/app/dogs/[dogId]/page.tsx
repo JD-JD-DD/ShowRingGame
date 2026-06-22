@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import CancelGroomingListingForm from "@/components/dogs/CancelGroomingListingForm";
 import DogProfileDashboard from "@/components/dogs/DogProfileDashboard";
+import HealthClearBadge from "@/components/dogs/HealthClearBadge";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import ManageDogStudListingForm from "@/components/dogs/ManageDogStudListingForm";
 import OfferDogAtStudForm from "@/components/dogs/OfferDogAtStudForm";
@@ -137,10 +138,18 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               <div className="text-sm font-medium text-[var(--dog-label)]">
                 {header.breedName}
               </div>
-              <h1 className="dog-heading mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
-                {header.displayName}
-              </h1>
-              <div className="dog-copy mt-3 text-sm">{header.regNumber}</div>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <h1 className="dog-heading text-4xl font-bold tracking-tight sm:text-5xl">
+                  {header.registeredName ?? header.callName ?? header.displayName}
+                </h1>
+                {profile.snapshot.healthTestingSummary.badgeStatus ? (
+                  <HealthClearBadge
+                    status={profile.snapshot.healthTestingSummary.badgeStatus}
+                    fullClearance={profile.snapshot.healthTestingSummary.hasFullClearance}
+                    size="lg"
+                  />
+                ) : null}
+              </div>
 
               {actions.canName ? (
                 <RegisterDogNameForm
@@ -151,18 +160,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               ) : null}
 
               <div className="mt-5 flex flex-wrap gap-2">
-                <span className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
-                  Sex: {header.sexLabel}
-                </span>
-                <span className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
-                  Age: {header.ageLabel}
-                </span>
-                <span className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
-                  Status: {header.lifecycleLabel}
-                </span>
-                <span className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
-                  {header.originLabel}
-                </span>
                 {header.badges.map((badge) => (
                   <span
                     key={badge.code}

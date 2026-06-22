@@ -4,13 +4,17 @@ import type { DogProfileShowResultDto } from "@/server/mappers/dog.mapper";
 
 type DogShowRecordTableProps = {
   results: DogProfileShowResultDto[];
+  emptyMessage?: string;
 };
 
-export default function DogShowRecordTable({ results }: DogShowRecordTableProps) {
+export default function DogShowRecordTable({
+  results,
+  emptyMessage = "No published show results yet.",
+}: DogShowRecordTableProps) {
   if (results.length === 0) {
     return (
       <div className="dog-card dog-copy rounded-2xl p-4 text-sm">
-        No published show results yet.
+        {emptyMessage}
       </div>
     );
   }

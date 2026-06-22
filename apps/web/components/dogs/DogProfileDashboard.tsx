@@ -32,54 +32,146 @@ function statusMessage(message: string | null, isError = false) {
   );
 }
 
+function healthStatusLabel(profile: DogProfileDto): string {
+  const summary = profile.snapshot.healthTestingSummary;
+  if (summary.completedCount === 0) return "Not tested";
+  if (summary.badgeStatus === "red") return "Has failing result";
+  if (summary.badgeStatus === "yellow") return "Review results";
+  if (summary.hasFullClearance) return "Full health clearance";
+  return "Incomplete";
+}
+
 export default function DogProfileDashboard(props: Props) {
   const { profile, areaId } = props;
   const { header, snapshot, viewerContext } = profile;
   const healthControls = profile.healthTesting.ownerControls;
   const saleListing = profile.breedingAndProduction.activeSaleListing;
   const studListing = profile.breedingAndProduction.activeStudListing;
+  const snapshotFacts = [
+    `Sex: ${header.sexLabel}`,
+    `Age: ${header.ageLabel}`,
+    header.lifecycleLabel,
+    snapshot.owner?.name ?? "Unowned",
+    snapshot.breeder?.name ?? "Breeder unknown",
+    ...(snapshot.marketLabel !== "Not for sale" ? [snapshot.marketLabel] : []),
+    `Show: ${snapshot.showEligibilityLabel}`,
+    `Breeding: ${snapshot.breedingEligibilityLabel}`,
+  ];
 
   return (
-    <section className="grid gap-6 lg:grid-cols-6">
-      <CollapsibleDogSection title="Snapshot" description="Identity and current state at a glance." className={`${PANEL_CLASS} order-1 lg:col-span-2 lg:order-1`} contentClassName="mt-4 grid gap-3 sm:grid-cols-2" titleClassName="text-xl">
-        {[
-          ["Owner", snapshot.owner?.name ?? "Unowned"],
-          ["Breeder", snapshot.breeder?.name ?? "Unknown"],
-          ["Origin", snapshot.originLabel],
-          ["Market", snapshot.marketLabel],
-          ["Show", snapshot.showEligibilityLabel],
-          ["Breeding", snapshot.breedingEligibilityLabel],
-        ].map(([label, value]) => (
-          <div key={label} className={CARD_CLASS}>
-            <div className="dog-label text-xs uppercase tracking-wide">{label}</div>
-            <div className="dog-heading mt-1 text-sm font-medium">{value}</div>
+    <section className="grid items-start gap-6 lg:grid-cols-6">
+      <CollapsibleDogSection
+        title="Snapshot"
+        description="Identity and current state at a glance."
+        className={`${PANEL_CLASS} order-1 lg:order-1`}
+        closedClassName="lg:col-span-2"
+        openClassName="lg:col-span-6"
+        collapsedContent={<CompactFacts facts={snapshotFacts} />}
+        contentClassName="mt-5"
+        titleClassName="text-xl"
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <SummaryValue label="Registration number" value={header.regNumber} />
+          <SummaryValue label="Breed" value={header.breedName} />
+          <SummaryValue label="Sex" value={header.sexLabel} />
+          <SummaryValue label="Age" value={header.ageLabel} />
+          <LinkedSummaryValue label="Owner kennel" value={snapshot.owner?.name ?? "Unowned"} href={snapshot.owner ? `/kennels/${snapshot.owner.slug}` : null} />
+          <LinkedSummaryValue label="Breeder kennel" value={snapshot.breeder?.name ?? "Unknown"} href={snapshot.breeder ? `/kennels/${snapshot.breeder.slug}` : null} />
+          <LinkedSummaryValue label="Sire" value={snapshot.sire?.displayName ?? "Unknown"} href={snapshot.sire?.profileUrl ?? null} />
+          <LinkedSummaryValue label="Dam" value={snapshot.dam?.displayName ?? "Unknown"} href={snapshot.dam?.profileUrl ?? null} />
+          <SummaryValue label="Origin" value={snapshot.originLabel} />
+          <SummaryValue label="Lifecycle" value={header.lifecycleLabel} />
+          <SummaryValue label="Market" value={snapshot.marketLabel} />
+        </div>
+        <div className="mt-5">
+          <h3 className="dog-heading font-semibold">Current action eligibility</h3>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <SummaryValue label="Can show" value={snapshot.showEligibilityLabel} />
+            <SummaryValue label="Can breed" value={snapshot.breedingEligibilityLabel} />
+            {viewerContext.canManage && profile.groomingDetails ? (
+              <SummaryValue label="Can groom" value={profile.groomingDetails.canGroom ? "Available now" : "Not currently available"} />
+            ) : null}
           </div>
-        ))}
+        </div>
       </CollapsibleDogSection>
 
-      <CollapsibleDogSection title="Quality & Presentation" description="Public directional ring categories on a 0–20 scale with 10 as ideal." className={`${PANEL_CLASS} order-2 lg:col-span-6 lg:order-4`} contentClassName="mt-6 grid gap-x-8 gap-y-5 lg:grid-cols-2" defaultOpen>
+      <CollapsibleDogSection
+        title="Quality & Presentation"
+        description="Public directional ring categories on a 0–20 scale with 10 as ideal."
+        className={`${PANEL_CLASS} order-2 lg:col-span-6 lg:order-4`}
+        contentClassName="mt-6 grid gap-x-8 gap-y-5 lg:grid-cols-2"
+        defaultOpen
+      >
         {profile.qualityAndPresentation.visibleCategories.map((category) => (
           <TraitLine key={category.key} label={category.label} value={category.numericScore} min={category.min} max={category.max} ideal={category.ideal} leftLabel={category.leftLabel} rightLabel={category.rightLabel} />
         ))}
       </CollapsibleDogSection>
 
-      <CollapsibleDogSection title="Championship Summary" description={profile.titlesAndShowCareer.summaryLabel} badge={profile.titlesAndShowCareer.currentTitleCode ? <span className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-semibold">{profile.titlesAndShowCareer.currentTitleCode}</span> : undefined} className={`${PANEL_CLASS} order-3 lg:col-span-2 lg:order-2`} contentClassName="mt-4" titleClassName="text-xl">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <SummaryValue label="Points" value={`${profile.titlesAndShowCareer.pointsEarned}/${profile.titlesAndShowCareer.pointsRequired}`} />
+      <CollapsibleDogSection
+        title="Championship Summary"
+        description={profile.titlesAndShowCareer.summaryLabel}
+        badge={<Link href={profile.titlesAndShowCareer.fullShowRecordUrl} className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-semibold">Full record</Link>}
+        className={`${PANEL_CLASS} order-3 lg:order-2`}
+        closedClassName="lg:col-span-2"
+        openClassName="lg:col-span-6"
+        collapsedContent={
+          <div className="flex flex-wrap gap-2">
+            <span className="dog-neutral-badge rounded-full px-2.5 py-1 text-xs font-semibold">{profile.titlesAndShowCareer.currentTitleCode ?? "None"}</span>
+            {header.visibleTitlePrefix ? <span className="dog-neutral-badge rounded-full px-2.5 py-1 text-xs">Prefix: {header.visibleTitlePrefix}</span> : null}
+            {header.visibleTitleSuffix ? <span className="dog-neutral-badge rounded-full px-2.5 py-1 text-xs">Suffix: {header.visibleTitleSuffix}</span> : null}
+          </div>
+        }
+        contentClassName="mt-5 space-y-5"
+        titleClassName="text-xl"
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <SummaryValue label="CH points" value={`${profile.titlesAndShowCareer.pointsEarned}/${profile.titlesAndShowCareer.pointsRequired}`} />
           <SummaryValue label="Majors" value={`${profile.titlesAndShowCareer.majorsEarned}/${profile.titlesAndShowCareer.majorsRequired}`} />
+          <SummaryValue label="Title prefix" value={header.visibleTitlePrefix ?? "None"} />
+          <SummaryValue label="Title suffix" value={header.visibleTitleSuffix ?? "None"} />
         </div>
-        {profile.titlesAndShowCareer.recentPointWins.length > 0 ? <div className="mt-4 flex flex-wrap gap-2">{profile.titlesAndShowCareer.recentPointWins.map((win) => <span key={`${win.showDayId}-${win.awardCode}`} className="dog-neutral-badge rounded-full px-2.5 py-1 text-xs font-semibold">{win.awardCode} · {win.pointsAwarded} pt{win.pointsAwarded === 1 ? "" : "s"}{win.isMajor ? " major" : ""}</span>)}</div> : null}
+        <div>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="dog-heading text-lg font-semibold">Recent show record</h3>
+            <Link href={profile.titlesAndShowCareer.fullShowRecordUrl} className="dog-secondary-button rounded-xl px-4 py-2 text-sm font-semibold">View full record</Link>
+          </div>
+          <DogShowRecordTable results={profile.titlesAndShowCareer.recentShowResults} emptyMessage="No completed show results yet." />
+        </div>
       </CollapsibleDogSection>
 
-      <CollapsibleDogSection title="Health / Grooming Summary" description={`${profile.healthTesting.summaryLabel} · ${snapshot.groomingLabel ?? "Grooming unavailable"}`} badge={<span className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-semibold">{snapshot.coatConditionDisplay ?? "Coat unavailable"}</span>} className={`${PANEL_CLASS} order-4 lg:col-span-2 lg:order-3`} contentClassName="mt-4 space-y-4" titleClassName="text-xl">
+      <CollapsibleDogSection
+        title="Health / Grooming Summary"
+        description={`${profile.healthTesting.summaryLabel} · ${snapshot.groomingLabel ?? "Grooming unavailable"}`}
+        className={`${PANEL_CLASS} order-4 lg:order-3`}
+        closedClassName="lg:col-span-2"
+        openClassName="lg:col-span-6"
+        collapsedContent={
+          <CompactFacts facts={[
+            profile.healthTesting.summaryLabel,
+            healthStatusLabel(profile),
+            snapshot.coatConditionDisplay ? `Coat: ${snapshot.coatConditionDisplay}` : "Coat unavailable",
+            snapshot.groomingLabel ?? "Grooming unavailable",
+          ]} />
+        }
+        contentClassName="mt-5 space-y-5"
+        titleClassName="text-xl"
+      >
         {statusMessage(props.healthMessage)}
         {statusMessage(props.healthError, true)}
         <HealthTestingPanel dogId={header.dogId} areaId={areaId} kennelBalance={healthControls?.kennelBalance ?? 0} canOrderHealthTests={Boolean(healthControls?.checkoutNeeded)} rows={profile.healthTesting.tests.map((test) => ({ testTypeCode: test.testCode, label: test.displayName, fee: test.cost, isAvailable: test.isCurrentlyAvailable, availabilityLabel: test.minimumAgeLabel, result: test.isComplete ? { label: test.resultLabel ?? "Complete", testedLabel: test.testedDateLabel ?? "Test date unavailable", severity: test.severityKey ?? "yellow" } : null }))} />
-        {profile.groomingDetails ? <div className="grid gap-3 sm:grid-cols-2"><SummaryValue label="Grooming actions" value={`${profile.groomingDetails.weeklyActionsRemaining}/${profile.groomingDetails.weeklyActionLimit} remaining`} /><SummaryValue label="Net coat effect" value={`${profile.groomingDetails.netGroomingEffect >= 0 ? "+" : ""}${profile.groomingDetails.netGroomingEffect.toFixed(2)}`} /></div> : null}
+        {viewerContext.canManage && profile.groomingDetails ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryValue label="Grooming state" value={profile.groomingDetails.groomingStatus} />
+            <SummaryValue label="Actions remaining" value={`${profile.groomingDetails.weeklyActionsRemaining}/${profile.groomingDetails.weeklyActionLimit}`} />
+            <SummaryValue label="Coat condition" value={profile.groomingDetails.currentCoatCondition.toFixed(2)} />
+            <SummaryValue label="Net coat effect" value={`${profile.groomingDetails.netGroomingEffect >= 0 ? "+" : ""}${profile.groomingDetails.netGroomingEffect.toFixed(2)}`} />
+          </div>
+        ) : null}
       </CollapsibleDogSection>
 
-      <CollapsibleDogSection title="Show Career" description="The six most recent published results." badge={<Link href={`/dogs/${header.dogId}/show-record`} className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-semibold">Full record</Link>} className={`${PANEL_CLASS} order-5 lg:col-span-3 lg:order-5`} contentClassName="mt-5">
-        <DogShowRecordTable results={profile.titlesAndShowCareer.recentShowResults} />
+      <CollapsibleDogSection title="Pedigree Preview" description="Four-generation ancestry and public health markers." badge={<Link href={`/dogs/${header.dogId}/pedigree`} className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-semibold">Full pedigree</Link>} className={`${PANEL_CLASS} order-5 lg:col-span-3 lg:order-5`} contentClassName="mt-4 space-y-4" titleClassName="text-xl">
+        <div className="flex flex-wrap gap-2">{[profile.pedigree.coiLabel, profile.pedigree.colorLabel, profile.pedigree.healthTestsSummary].map((label) => <span key={label} className="dog-neutral-badge rounded-full px-2.5 py-1 text-xs">{label}</span>)}</div>
+        <DogPedigreeGrid ancestors={profile.pedigree.ancestors} compact />
       </CollapsibleDogSection>
 
       <CollapsibleDogSection title="Breeding & Production" description={`${profile.breedingAndProduction.productionRoleLabel} · ${profile.breedingAndProduction.breedingEligibilityLabel}`} className={`${PANEL_CLASS} order-6 lg:col-span-3 lg:order-6`} contentClassName="mt-4 space-y-5">
@@ -99,15 +191,18 @@ export default function DogProfileDashboard(props: Props) {
         {profile.privatePlanning.programPlannerTags.map((tag) => <div key={`${tag.tagTypeLabel}-${tag.updatedAt}`} className={`${CARD_CLASS} dog-copy text-sm`}><div className="flex justify-between gap-2"><span className="dog-heading font-semibold">{tag.tagTypeLabel}</span><span className="dog-label text-xs">{tag.goalLabel}</span></div><div className="mt-2 whitespace-pre-wrap">{tag.note ?? "No planner note saved."}</div></div>)}
         {profile.privatePlanning.canEditNotes ? <DogPrivateNotesEditor action={`/api/dogs/${header.dogId}/notes`} areaId={areaId} initialNotes={profile.privatePlanning.notes ?? ""} notesError={props.notesError} notesMessage={props.notesMessage} /> : null}
       </CollapsibleDogSection> : null}
-
-      <CollapsibleDogSection title="Pedigree Preview" description="Four-generation ancestry and public health markers." badge={<Link href={`/dogs/${header.dogId}/pedigree`} className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-semibold">Full pedigree</Link>} className={`${PANEL_CLASS} order-9 lg:col-span-2 lg:order-9`} contentClassName="mt-4 space-y-4" titleClassName="text-xl">
-        <div className="flex flex-wrap gap-2">{[profile.pedigree.coiLabel, profile.pedigree.colorLabel, profile.pedigree.healthTestsSummary].map((label) => <span key={label} className="dog-neutral-badge rounded-full px-2.5 py-1 text-xs">{label}</span>)}</div>
-        <DogPedigreeGrid ancestors={profile.pedigree.ancestors} compact />
-      </CollapsibleDogSection>
     </section>
   );
 }
 
+function CompactFacts({ facts }: { facts: string[] }) {
+  return <div className="flex flex-wrap gap-2">{facts.map((fact) => <span key={fact} className="dog-neutral-badge rounded-full px-2.5 py-1 text-xs font-medium">{fact}</span>)}</div>;
+}
+
 function SummaryValue({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return <div className={CARD_CLASS}><div className="dog-label text-xs uppercase tracking-wide">{label}</div><div className="dog-heading mt-1 font-semibold">{value}</div>{detail ? <div className="dog-copy mt-1 text-xs">{detail}</div> : null}</div>;
+}
+
+function LinkedSummaryValue({ label, value, href }: { label: string; value: string; href: string | null }) {
+  return <div className={CARD_CLASS}><div className="dog-label text-xs uppercase tracking-wide">{label}</div>{href ? <Link href={href} className="dog-heading mt-1 block font-semibold hover:underline">{value}</Link> : <div className="dog-heading mt-1 font-semibold">{value}</div>}</div>;
 }

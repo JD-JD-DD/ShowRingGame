@@ -10,6 +10,12 @@ export type DogProfileKennelDisplayDto = {
   slug: string;
 };
 
+export type DogProfileDogLinkDto = {
+  dogId: string;
+  displayName: string;
+  profileUrl: string;
+};
+
 export type DogProfileHeaderDto = {
   dogId: string;
   displayName: string;
@@ -38,6 +44,8 @@ export type DogProfileHealthSummaryDto = {
 export type DogProfileSnapshotDto = {
   owner: DogProfileKennelDisplayDto | null;
   breeder: DogProfileKennelDisplayDto | null;
+  sire: DogProfileDogLinkDto | null;
+  dam: DogProfileDogLinkDto | null;
   originLabel: string;
   marketLabel: string;
   showEligibilityLabel: string;
@@ -384,6 +392,20 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
             kennelId: input.snapshot.breeder.kennelId,
             name: input.snapshot.breeder.name,
             slug: input.snapshot.breeder.slug,
+          }
+        : null,
+      sire: input.snapshot.sire
+        ? {
+            dogId: input.snapshot.sire.dogId,
+            displayName: input.snapshot.sire.displayName,
+            profileUrl: input.snapshot.sire.profileUrl,
+          }
+        : null,
+      dam: input.snapshot.dam
+        ? {
+            dogId: input.snapshot.dam.dogId,
+            displayName: input.snapshot.dam.displayName,
+            profileUrl: input.snapshot.dam.profileUrl,
           }
         : null,
       originLabel: input.snapshot.originLabel,

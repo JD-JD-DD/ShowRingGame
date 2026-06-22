@@ -6,8 +6,11 @@ type CollapsibleDogSectionProps = {
   title: string;
   description?: string;
   badge?: React.ReactNode;
+  collapsedContent?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  openClassName?: string;
+  closedClassName?: string;
   contentClassName?: string;
   titleClassName?: string;
   defaultOpen?: boolean;
@@ -17,8 +20,11 @@ export default function CollapsibleDogSection({
   title,
   description,
   badge,
+  collapsedContent,
   children,
   className = "",
+  openClassName = "",
+  closedClassName = "",
   contentClassName = "",
   titleClassName = "text-2xl",
   defaultOpen = false,
@@ -26,7 +32,7 @@ export default function CollapsibleDogSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <section className={className}>
+    <section className={`${className} ${isOpen ? openClassName : closedClassName}`}>
       <div className="flex items-start gap-3">
         <button
           type="button"
@@ -61,7 +67,11 @@ export default function CollapsibleDogSection({
         </button>
       </div>
 
-      {isOpen ? <div className={contentClassName}>{children}</div> : null}
+      {isOpen ? (
+        <div className={contentClassName}>{children}</div>
+      ) : collapsedContent ? (
+        <div className="mt-4">{collapsedContent}</div>
+      ) : null}
     </section>
   );
 }

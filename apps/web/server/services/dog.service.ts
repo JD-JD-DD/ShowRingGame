@@ -201,12 +201,6 @@ function formatEligibilityLabel(isEligible: boolean): string {
   return isEligible ? "Eligible" : "Not eligible";
 }
 
-function formatHealthStatusLabel(
-  status: "green" | "yellow" | "red"
-): string {
-  return `Health ${status.charAt(0).toUpperCase()}${status.slice(1)}`;
-}
-
 function formatTestedDateLabel(testedAtEpoch: number | null): string | null {
   if (testedAtEpoch === null) return null;
 
@@ -604,6 +598,26 @@ export async function getDogProfile(args: {
       breederKennel: {
         select: { id: true, name: true, slug: true },
       },
+      sire: {
+        select: {
+          id: true,
+          callName: true,
+          registeredName: true,
+          regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
+        },
+      },
+      dam: {
+        select: {
+          id: true,
+          callName: true,
+          registeredName: true,
+          regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
+        },
+      },
       titleProgress: {
         select: {
           currentTitleCode: true,
@@ -910,15 +924,11 @@ export async function getDogProfile(args: {
   };
   const badges: DogProfileBadgeDto[] = [];
 
-  if (healthBadgeStatus) {
-    badges.push({
-      code: `health-${healthBadgeStatus}`,
-      label: formatHealthStatusLabel(healthBadgeStatus),
-      tone: healthBadgeStatus,
-    });
-  }
   if (hasFullClearance) {
     badges.push({ code: "health-clear", label: "Health Clear", tone: "green" });
+  }
+  if (dog.isFoundation) {
+    badges.push({ code: "foundation", label: "Foundation", tone: "purple" });
   }
   if (activeSaleListing) {
     badges.push({ code: "for-sale", label: "Listed for Sale", tone: "green" });
@@ -1102,6 +1112,20 @@ export async function getDogProfile(args: {
             slug: dog.breederKennel.slug,
           }
         : null,
+      sire: dog.sire
+        ? {
+            dogId: dog.sire.id,
+            displayName: formatDogDisplayName(dog.sire),
+            profileUrl: `/dogs/${dog.sire.id}`,
+          }
+        : null,
+      dam: dog.dam
+        ? {
+            dogId: dog.dam.id,
+            displayName: formatDogDisplayName(dog.dam),
+            profileUrl: `/dogs/${dog.dam.id}`,
+          }
+        : null,
       originLabel,
       marketLabel: formatMarketLabel({
         marketState: dog.marketState,
@@ -1130,7 +1154,7 @@ export async function getDogProfile(args: {
       majorRequirementMet: majorsRemaining === 0,
       summaryLabel: isChampionFinished
         ? `Champion, finished with ${pointsEarned} points and ${majorsEarned} majors`
-        : `Championship progress: ${pointsEarned} of ${CHAMPIONSHIP_POINTS_REQUIRED} points and ${majorsEarned} of ${CHAMPIONSHIP_MAJORS_REQUIRED} majors`,
+        : `Not yet champion — ${pointsEarned} points, ${majorsEarned} majors`,
       recentPointWins: getRecentPointWins(
         dog.titleProgress?.winsByTypeJson
       ),
