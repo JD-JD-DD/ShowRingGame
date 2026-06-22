@@ -176,7 +176,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               {statusMessage(groomingError, true)}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:w-[360px] lg:grid-cols-1">
+            <div className="grid gap-3 sm:grid-cols-2 lg:w-[540px] lg:grid-cols-2">
               <Link
                 href="/kennel"
                 className="dog-secondary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"

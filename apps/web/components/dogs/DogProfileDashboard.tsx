@@ -50,7 +50,6 @@ export default function DogProfileDashboard(props: Props) {
     `Sex: ${header.sexLabel}`,
     `Age: ${header.ageLabel}`,
     header.lifecycleLabel,
-    snapshot.owner?.name ?? "Unowned",
     snapshot.breeder?.name ?? "Breeder unknown",
     ...(snapshot.marketLabel !== "Not for sale" ? [snapshot.marketLabel] : []),
     `Show: ${snapshot.showEligibilityLabel}`,
