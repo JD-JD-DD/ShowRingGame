@@ -209,20 +209,31 @@ function formatTestedDateLabel(testedAtEpoch: number | null): string | null {
   return `Tested ${epochToDate(testedAtEpoch).toISOString().slice(0, 10)}`;
 }
 
-function getHipDysplasiaImpactStatement(args: {
+function getHealthImpactStatement(args: {
   testCode: PhenotypeHealthTestCode;
   severityKey: "green" | "yellow" | "red";
 }): string | null {
-  if (args.testCode !== "HIP_DYSPLASIA") {
+  if (
+    args.testCode !== "HIP_DYSPLASIA" &&
+    args.testCode !== "ELBOW_DYSPLASIA"
+  ) {
     return null;
   }
 
-  if (args.severityKey === "yellow") {
+  if (args.testCode === "HIP_DYSPLASIA" && args.severityKey === "yellow") {
     return "Hip result is mildly affecting rear movement and structure.";
   }
 
-  if (args.severityKey === "red") {
+  if (args.testCode === "HIP_DYSPLASIA" && args.severityKey === "red") {
     return "Red hips are limiting rear movement and affecting this dog’s Movement and Structure & Balance.";
+  }
+
+  if (args.testCode === "ELBOW_DYSPLASIA" && args.severityKey === "yellow") {
+    return "Elbow result is mildly affecting front assembly and movement.";
+  }
+
+  if (args.testCode === "ELBOW_DYSPLASIA" && args.severityKey === "red") {
+    return "Red elbows are limiting front assembly and affecting this dog’s Movement and Structure & Balance.";
   }
 
   return null;
@@ -661,7 +672,7 @@ export async function getDogProfile(args: {
       },
       healthConditionTruths: {
         where: {
-          conditionCode: "HIP_DYSPLASIA",
+          conditionCode: { in: ["HIP_DYSPLASIA", "ELBOW_DYSPLASIA"] },
         },
         select: {
           conditionCode: true,
@@ -937,7 +948,7 @@ export async function getDogProfile(args: {
         : null,
       severityKey,
       healthImpactStatement: severityKey
-        ? getHipDysplasiaImpactStatement({
+        ? getHealthImpactStatement({
             testCode,
             severityKey,
           })

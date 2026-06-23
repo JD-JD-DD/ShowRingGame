@@ -114,6 +114,18 @@ function hipPresentation(geneticLiability: number): Dog["presentation"] {
   };
 }
 
+function elbowPresentation(geneticLiability: number): Dog["presentation"] {
+  return {
+    phenotypeHealthTruths: [
+      {
+        conditionCode: "ELBOW_DYSPLASIA",
+        geneticLiability,
+        environmentModifier: 0,
+      },
+    ],
+  };
+}
+
 function scoredDog(args: {
   dogTraits: DogTraits;
   presentation?: Dog["presentation"];
@@ -243,6 +255,32 @@ const highHindquartersRedHips = scoredDog({
   dogTraits: highHindquartersTraits,
   presentation: hipPresentation(0.9),
 });
+const lowForequartersTraits: DogTraits = {
+  ...idealTraits,
+  forequarters: 7.5,
+};
+const highForequartersTraits: DogTraits = {
+  ...idealTraits,
+  forequarters: 12.5,
+};
+const lowForequartersBaseline = scoredDog({
+  dogTraits: lowForequartersTraits,
+});
+const lowForequartersYellowElbows = scoredDog({
+  dogTraits: lowForequartersTraits,
+  presentation: elbowPresentation(0.5),
+});
+const lowForequartersRedElbows = scoredDog({
+  dogTraits: lowForequartersTraits,
+  presentation: elbowPresentation(0.9),
+});
+const highForequartersBaseline = scoredDog({
+  dogTraits: highForequartersTraits,
+});
+const highForequartersRedElbows = scoredDog({
+  dogTraits: highForequartersTraits,
+  presentation: elbowPresentation(0.9),
+});
 
 assert.ok(
   sixMonthsMovement.presentedValue > eighteenMonthsMovement.presentedValue,
@@ -322,6 +360,32 @@ assert.equal(
   lowHindquartersTraits.hindquarters,
   7.5,
   "Judging should not mutate stored traitHindquarters."
+);
+assertClose(lowForequartersYellowElbows.characteristics.MOVEMENT, 8.83);
+assertClose(lowForequartersYellowElbows.characteristics.STRUCTURE_BALANCE, 9.13);
+assertClose(lowForequartersRedElbows.characteristics.MOVEMENT, 8.17);
+assertClose(lowForequartersRedElbows.characteristics.STRUCTURE_BALANCE, 8.63);
+assertClose(highForequartersRedElbows.characteristics.MOVEMENT, 11.83);
+assertClose(highForequartersRedElbows.characteristics.STRUCTURE_BALANCE, 11.38);
+assert.notEqual(
+  lowForequartersYellowElbows.weightedCategoryScores.MOVEMENT,
+  lowForequartersBaseline.weightedCategoryScores.MOVEMENT,
+  "Yellow elbows should change judging movement through expressed forequarters."
+);
+assert.notEqual(
+  lowForequartersRedElbows.weightedCategoryScores.STRUCTURE_BALANCE,
+  lowForequartersBaseline.weightedCategoryScores.STRUCTURE_BALANCE,
+  "Red elbows should change judging structure through expressed forequarters."
+);
+assert.notEqual(
+  highForequartersRedElbows.weightedCategoryScores.MOVEMENT,
+  highForequartersBaseline.weightedCategoryScores.MOVEMENT,
+  "Red elbows above ideal should change judging movement through expressed forequarters."
+);
+assert.equal(
+  lowForequartersTraits.forequarters,
+  7.5,
+  "Judging should not mutate stored traitForequarters."
 );
 assert.equal(
   deriveShowCharacteristicsFromTraits(traits).CONDITIONING_HANDLING,

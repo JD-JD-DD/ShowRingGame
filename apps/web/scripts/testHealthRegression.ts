@@ -37,6 +37,9 @@ function assertDoesNotIncludeAny(
 }
 
 const healthConstants = source("packages/rules/constants/health.constants.ts");
+const healthExpression = source(
+  "packages/rules/engines/healthExpression.engine.ts"
+);
 const healthService = source("apps/web/server/services/healthTest.service.ts");
 const dogService = source("apps/web/server/services/dog.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
@@ -160,8 +163,8 @@ assertIncludes(
 );
 assertIncludes(
   dogService,
-  'conditionCode: "HIP_DYSPLASIA"',
-  "dog profile service selects hidden hip truth for visible category expression"
+  'conditionCode: { in: ["HIP_DYSPLASIA", "ELBOW_DYSPLASIA"] }',
+  "dog profile service selects hidden hip and elbow truths for visible category expression"
 );
 assertIncludes(
   dogService,
@@ -180,13 +183,18 @@ assertIncludes(
 );
 assertIncludes(
   dogService,
-  "function getHipDysplasiaImpactStatement",
-  "dog profile service has a scoped hip impact statement helper"
+  "function getHealthImpactStatement",
+  "dog profile service has a scoped orthopedic health impact statement helper"
 );
 assertIncludes(
   dogService,
-  'args.testCode !== "HIP_DYSPLASIA"',
-  "health impact statements are scoped to hip dysplasia"
+  'args.testCode === "HIP_DYSPLASIA"',
+  "health impact statements include scoped hip dysplasia copy"
+);
+assertIncludes(
+  dogService,
+  'args.testCode === "ELBOW_DYSPLASIA"',
+  "health impact statements include scoped elbow dysplasia copy"
 );
 assertIncludes(
   dogService,
@@ -200,8 +208,28 @@ assertIncludes(
 );
 assertIncludes(
   dogService,
+  "Elbow result is mildly affecting front assembly and movement.",
+  "yellow elbow dysplasia result has the expected player-facing impact statement"
+);
+assertIncludes(
+  dogService,
+  "Red elbows are limiting front assembly and affecting this dog’s Movement and Structure & Balance.",
+  "red elbow dysplasia result has the expected player-facing impact statement"
+);
+assertIncludes(
+  dogService,
   "healthImpactStatement: severityKey",
   "dog profile health impact statement requires a completed public result severity"
+);
+assertIncludes(
+  healthExpression,
+  '"ELBOW_DYSPLASIA"',
+  "health expression supports elbow dysplasia through the shared expressed-trait helper"
+);
+assertIncludes(
+  healthExpression,
+  "expressedTraits.forequarters = pushFartherFromIdeal(",
+  "elbow dysplasia modifies copied expressed forequarters"
 );
 assertBefore(
   dogService,

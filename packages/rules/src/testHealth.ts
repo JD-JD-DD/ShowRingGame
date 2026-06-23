@@ -30,10 +30,10 @@ function truth(
   };
 }
 
-function testTraits(hindquarters: number): DogTraits {
+function testTraits(hindquarters: number, forequarters = 9): DogTraits {
   return {
     head: 8,
-    forequarters: 9,
+    forequarters,
     hindquarters,
     gait: 11,
     coat: 12,
@@ -258,16 +258,59 @@ for (const trait of Object.keys(redHipTraits) as Array<keyof DogTraits>) {
   );
 }
 
-const redElbowTraits = testTraits(12.5);
+const yellowElbowTraits = testTraits(10, 7.5);
+const greenElbowExpressed = deriveHealthAdjustedExpressedTraits({
+  storedTraits: yellowElbowTraits,
+  phenotypeHealthTruths: [truth("ELBOW_DYSPLASIA", 0.1)],
+});
+assertEqual(
+  greenElbowExpressed.forequarters,
+  7.5,
+  "green elbows do not alter forequarters"
+);
+
+const yellowElbowExpressed = deriveHealthAdjustedExpressedTraits({
+  storedTraits: yellowElbowTraits,
+  phenotypeHealthTruths: [truth("ELBOW_DYSPLASIA", 0.5)],
+});
+assertEqual(
+  yellowElbowExpressed.forequarters,
+  6.5,
+  "yellow elbows push forequarters 1 point farther from ideal"
+);
+
+const lowRedElbowTraits = testTraits(10, 7.5);
+const lowRedElbowExpressed = deriveHealthAdjustedExpressedTraits({
+  storedTraits: lowRedElbowTraits,
+  phenotypeHealthTruths: [truth("ELBOW_DYSPLASIA", 0.9)],
+});
+assertEqual(
+  lowRedElbowExpressed.forequarters,
+  4.5,
+  "red elbows below ideal push forequarters lower"
+);
+
+const redElbowTraits = testTraits(10, 12.5);
 const redElbowExpressed = deriveHealthAdjustedExpressedTraits({
   storedTraits: redElbowTraits,
   phenotypeHealthTruths: [truth("ELBOW_DYSPLASIA", 0.9)],
 });
+assertEqual(
+  redElbowExpressed.forequarters,
+  15.5,
+  "red elbows above ideal push forequarters higher"
+);
+assertEqual(
+  redElbowTraits.forequarters,
+  12.5,
+  "stored input forequarters are not mutated"
+);
 for (const trait of Object.keys(redElbowTraits) as Array<keyof DogTraits>) {
+  if (trait === "forequarters") continue;
   assertEqual(
     redElbowExpressed[trait],
     redElbowTraits[trait],
-    `elbow dysplasia has no expressed-trait effect yet: ${trait}`
+    `non-forequarter trait unchanged for elbow dysplasia: ${trait}`
   );
 }
 

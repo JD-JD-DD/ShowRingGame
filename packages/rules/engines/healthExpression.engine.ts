@@ -104,11 +104,14 @@ function getHealthResultSeverity(
   );
 }
 
-function getHipDysplasiaPenalty(results: readonly HealthExpressionResult[]) {
-  const hipResult = results.find(
-    (result) => result.testTypeCode === "HIP_DYSPLASIA"
+function getHealthExpressionPenalty(
+  results: readonly HealthExpressionResult[],
+  testTypeCode: string
+) {
+  const result = results.find(
+    (candidate) => candidate.testTypeCode === testTypeCode
   );
-  const severity = hipResult ? getHealthResultSeverity(hipResult) : null;
+  const severity = result ? getHealthResultSeverity(result) : null;
 
   return severity ? HEALTH_EXPRESSION_PENALTY_BY_SEVERITY[severity] : 0;
 }
@@ -117,13 +120,23 @@ export function deriveHealthAdjustedExpressedTraits(
   input: HealthExpressionInput
 ): DogTraits {
   const expressedTraits: DogTraits = { ...input.storedTraits };
-  const hipPenalty = getHipDysplasiaPenalty(
-    getHealthResultsForExpression(input)
+  const healthResults = getHealthResultsForExpression(input);
+  const hipPenalty = getHealthExpressionPenalty(
+    healthResults,
+    "HIP_DYSPLASIA"
+  );
+  const elbowPenalty = getHealthExpressionPenalty(
+    healthResults,
+    "ELBOW_DYSPLASIA"
   );
 
   expressedTraits.hindquarters = pushFartherFromIdeal(
     expressedTraits.hindquarters,
     hipPenalty
+  );
+  expressedTraits.forequarters = pushFartherFromIdeal(
+    expressedTraits.forequarters,
+    elbowPenalty
   );
 
   return expressedTraits;
