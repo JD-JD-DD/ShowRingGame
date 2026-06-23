@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { createPendingEmergencyForAccidentIllnessDeath } from "@/server/services/emergencyVetCare.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import {
   ACCIDENT_ILLNESS_LIFETIME_DEATH_RATE,
@@ -457,6 +458,20 @@ async function resolveDogDeathsWithClient(args: {
 
   for (const { dog, projected } of dueDeaths) {
     const { deathEpoch, cause } = projected;
+
+    if (cause === "ACCIDENT_ILLNESS") {
+      await createPendingEmergencyForAccidentIllnessDeath({
+        client,
+        dogId: dog.id,
+        kennelIdAtEvent: dog.ownerKennelId,
+        createdAtEpoch: args.currentEpoch,
+        costRollBps: Math.floor(
+          seeded01(`${dog.id}:accident-illness:emergency-cost`) * 10_000
+        ),
+        outcomeSeed: `${dog.id}:accident-illness:${deathEpoch}`,
+      });
+      continue;
+    }
 
     const changed = await markDogDeceased({
       client,

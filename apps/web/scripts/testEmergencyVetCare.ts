@@ -1,4 +1,6 @@
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { type DogEmergencyCareEvent, type Prisma } from "@prisma/client";
 import {
   calculateEmergencyVetCareDeadlineEpoch,
@@ -13,6 +15,30 @@ import {
   assertDogHasNoPendingEmergencyCare,
   type EmergencyVetCareClient,
 } from "../server/services/emergencyVetCare.service";
+
+const root = process.cwd();
+
+function source(path: string): string {
+  return readFileSync(join(root, path), "utf8");
+}
+
+function assertIncludes(haystack: string, needle: string, label: string): void {
+  assert.ok(haystack.includes(needle), label);
+}
+
+function assertBefore(
+  haystack: string,
+  first: string,
+  second: string,
+  label: string
+): void {
+  const firstIndex = haystack.indexOf(first);
+  const secondIndex = haystack.indexOf(second);
+
+  assert.ok(firstIndex >= 0, `${label}: missing first marker`);
+  assert.ok(secondIndex >= 0, `${label}: missing second marker`);
+  assert.ok(firstIndex < secondIndex, label);
+}
 
 function createFakeEmergencyVetCareClient(
   events: DogEmergencyCareEvent[]
@@ -133,6 +159,45 @@ assert.equal(
   calculateEmergencyVetCareDeadlineEpoch(1_000),
   1_000 + EMERGENCY_VET_CARE_RESPONSE_WINDOW_HOURS,
   "response deadline is 48 hours after creation"
+);
+
+const lifecycleService = source("apps/web/server/services/lifecycle.service.ts");
+
+assertIncludes(
+  lifecycleService,
+  "createPendingEmergencyForAccidentIllnessDeath",
+  "lifecycle service imports the emergency creation helper"
+);
+assertIncludes(
+  lifecycleService,
+  'if (cause === "ACCIDENT_ILLNESS")',
+  "lifecycle service has a scoped accident/illness emergency branch"
+);
+assertBefore(
+  lifecycleService,
+  'if (cause === "ACCIDENT_ILLNESS")',
+  "const changed = await markDogDeceased({",
+  "accident/illness emergency branch runs before death finalization"
+);
+assertIncludes(
+  lifecycleService,
+  "continue;",
+  "accident/illness branch skips immediate death finalization"
+);
+assertIncludes(
+  lifecycleService,
+  'cause: "AGE"',
+  "age death projection remains present"
+);
+assertIncludes(
+  lifecycleService,
+  'cause: "NEONATAL_PUPPY"',
+  "neonatal puppy death projection remains present"
+);
+assertIncludes(
+  lifecycleService,
+  '"WHELPING_DAM"',
+  "whelping dam death cause remains present"
 );
 
 async function main(): Promise<void> {
