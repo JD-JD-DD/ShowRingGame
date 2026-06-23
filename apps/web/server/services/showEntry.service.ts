@@ -10,6 +10,7 @@ import {
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
 import { assertCanCreateOwnerHandledEntriesForCluster } from "@/server/services/kennelService.service";
 import {
   getShowBlockEntryAvailability,
@@ -604,6 +605,8 @@ async function createShowEntryWithTx(args: {
   if (!dog.ownerKennelId) {
     throw new Error("Dog is not owned by a kennel.");
   }
+
+  await assertDogHasNoPendingEmergencyCare(dog.id, tx);
 
   const duplicateEntry = await tx.showEntry.findUnique({
     where: {
@@ -1461,6 +1464,8 @@ export async function createShowEntriesForCluster(args: {
       if (existingEntryKeys.has(`${dog.id}:${showDay.id}`)) {
         throw new Error(`${dog.regNumber} is already entered on day ${showDay.dayIndex}.`);
       }
+
+      await assertDogHasNoPendingEmergencyCare(dog.id, tx);
 
       const reason = getShowDayEntryEligibilityReason({
         dog,

@@ -182,6 +182,11 @@ const declineRoute = source(
 const expirationJobRoute = source(
   "apps/web/app/api/jobs/process-emergency-vet-care/route.ts"
 );
+const showEntryService = source("apps/web/server/services/showEntry.service.ts");
+const breedingService = source("apps/web/server/services/breeding.service.ts");
+const marketService = source("apps/web/server/services/market.service.ts");
+const groomingService = source("apps/web/server/services/grooming.service.ts");
+const rehomeService = source("apps/web/server/services/rehome.service.ts");
 
 assertIncludes(
   lifecycleService,
@@ -323,6 +328,46 @@ assertIncludes(
   expirationJobRoute,
   "processExpiredEmergencyCareEvents",
   "expiration job calls backend expiration processing"
+);
+assertIncludes(
+  showEntryService,
+  "assertDogHasNoPendingEmergencyCare(dog.id, tx)",
+  "show entry creation blocks pending emergency care"
+);
+assertIncludes(
+  breedingService,
+  "assertDogHasNoPendingEmergencyCare(dam.id, tx)",
+  "breeding blocks pending emergency care for dams"
+);
+assertIncludes(
+  breedingService,
+  "assertDogHasNoPendingEmergencyCare(sire.id, tx)",
+  "breeding and stud use block pending emergency care for sires"
+);
+assertIncludes(
+  marketService,
+  "assertDogHasNoPendingEmergencyCare(dog.id, tx)",
+  "sale and stud listing creation block pending emergency care"
+);
+assertIncludes(
+  marketService,
+  "assertDogHasNoPendingEmergencyCare(listing.dog.id, tx)",
+  "sale transfer blocks pending emergency care"
+);
+assertIncludes(
+  groomingService,
+  "assertDogHasNoPendingEmergencyCare(dog.id, tx)",
+  "self-groom and grooming-listing creation block pending emergency care"
+);
+assertIncludes(
+  groomingService,
+  "assertDogHasNoPendingEmergencyCare(listing.dog.id, tx)",
+  "outside grooming job acceptance blocks pending emergency care"
+);
+assertIncludes(
+  rehomeService,
+  "assertDogHasNoPendingEmergencyCare(dogId, tx)",
+  "rehome transfer blocks pending emergency care"
 );
 
 async function main(): Promise<void> {

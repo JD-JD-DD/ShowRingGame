@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import {
   deriveThyroidGroomingModifiers,
@@ -649,6 +650,8 @@ export async function selfGroomDog(args: {
       throw new Error("Only living dogs can be groomed.");
     }
 
+    await assertDogHasNoPendingEmergencyCare(dog.id, tx);
+
     if (
       !isShowAgeEligibleForGrooming({
         birthEpoch: dog.birthEpoch,
@@ -778,6 +781,8 @@ export async function listDogForOutsideGrooming(args: {
     if (dog.lifecycleState !== "ALIVE") {
       throw new Error("Only living dogs can be offered for grooming.");
     }
+
+    await assertDogHasNoPendingEmergencyCare(dog.id, tx);
 
     if (
       !isShowAgeEligibleForGrooming({
@@ -1060,6 +1065,8 @@ export async function acceptGroomingJob(args: {
     if (!listing.dog.isPlayerVisible || listing.dog.lifecycleState !== "ALIVE") {
       throw new Error("This dog is no longer eligible for grooming.");
     }
+
+    await assertDogHasNoPendingEmergencyCare(listing.dog.id, tx);
 
     if (
       !isShowAgeEligibleForGrooming({

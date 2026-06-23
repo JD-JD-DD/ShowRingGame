@@ -6,6 +6,7 @@ import {
   hasCompletedRequiredPhenotypeHealthTests,
 } from "@/lib/dogHealth";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
+import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
 import {
   markDogDeceased,
   resolveDogDeaths,
@@ -1021,6 +1022,9 @@ export async function createBreedingAttemptForKennel(args: {
     let studSellerKennelId: string | null = null;
     let studSellerBalanceAfter: number | null = null;
     let requiresBrucellosisNegativeDam = false;
+
+    await assertDogHasNoPendingEmergencyCare(dam.id, tx);
+    await assertDogHasNoPendingEmergencyCare(sire.id, tx);
 
     if (usesPublicStud) {
       const studListing = await tx.dogListing.findFirst({

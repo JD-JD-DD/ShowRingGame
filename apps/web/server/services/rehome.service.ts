@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -86,6 +87,10 @@ export async function rehomeOwnedDogs(args: {
   );
 
   return db.$transaction(async (tx) => {
+    for (const dogId of dogIds) {
+      await assertDogHasNoPendingEmergencyCare(dogId, tx);
+    }
+
     const cancelledListings = await tx.dogListing.updateMany({
       where: {
         dogId: { in: dogIds },
