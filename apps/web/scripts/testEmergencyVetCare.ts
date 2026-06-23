@@ -187,6 +187,14 @@ const breedingService = source("apps/web/server/services/breeding.service.ts");
 const marketService = source("apps/web/server/services/market.service.ts");
 const groomingService = source("apps/web/server/services/grooming.service.ts");
 const rehomeService = source("apps/web/server/services/rehome.service.ts");
+const dogService = source("apps/web/server/services/dog.service.ts");
+const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
+const dogProfileDashboard = source(
+  "apps/web/components/dogs/DogProfileDashboard.tsx"
+);
+const emergencyVetCarePanel = source(
+  "apps/web/components/dogs/EmergencyVetCarePanel.tsx"
+);
 
 assertIncludes(
   lifecycleService,
@@ -368,6 +376,91 @@ assertIncludes(
   rehomeService,
   "assertDogHasNoPendingEmergencyCare(dogId, tx)",
   "rehome transfer blocks pending emergency care"
+);
+assertIncludes(
+  dogService,
+  "emergencyCareEvents",
+  "dog profile service selects pending emergency care data"
+);
+assertIncludes(
+  dogService,
+  'where: { status: "PENDING" }',
+  "dog profile service limits emergency care data to pending events"
+);
+assertIncludes(
+  dogService,
+  "pendingEmergencyCare.survivalChanceBps",
+  "dog profile service exposes survival chance for display"
+);
+assertDoesNotInclude(
+  dogMapper,
+  "outcomeSeed",
+  "dog profile mapper does not expose emergency outcome seed"
+);
+assertDoesNotInclude(
+  dogMapper,
+  "outcomeRollBps",
+  "dog profile mapper does not expose emergency outcome roll"
+);
+assertIncludes(
+  dogMapper,
+  "DogProfileEmergencyCareDto",
+  "dog profile mapper has a scoped emergency care DTO"
+);
+assertIncludes(
+  dogProfileDashboard,
+  "EmergencyVetCarePanel",
+  "dog dashboard renders the emergency vet-care panel"
+);
+assertIncludes(
+  emergencyVetCarePanel,
+  "Emergency Vet Care Required",
+  "emergency panel uses the approved panel title"
+);
+assertIncludes(
+  emergencyVetCarePanel,
+  "/emergency-care/treat",
+  "emergency panel calls the treatment route"
+);
+assertIncludes(
+  emergencyVetCarePanel,
+  "/emergency-care/decline",
+  "emergency panel calls the decline route"
+);
+assertIncludes(
+  emergencyVetCarePanel,
+  "Declining care will result in",
+  "emergency panel has an in-page decline confirmation"
+);
+assertIncludes(
+  emergencyVetCarePanel,
+  "router.refresh()",
+  "emergency panel refreshes the dog page after resolution"
+);
+assertDoesNotInclude(
+  emergencyVetCarePanel,
+  "window.confirm",
+  "emergency panel does not use browser confirmation"
+);
+assertDoesNotInclude(
+  emergencyVetCarePanel,
+  "outcomeSeed",
+  "emergency panel does not expose outcome seed"
+);
+assertDoesNotInclude(
+  emergencyVetCarePanel,
+  "outcomeRollBps",
+  "emergency panel does not expose outcome roll"
+);
+assertIncludes(
+  lifecycleService,
+  "Emergency vet care required",
+  "lifecycle conversion creates an emergency notice"
+);
+assertIncludes(
+  lifecycleService,
+  "emergencyCareEventId",
+  "emergency notices are deduped by event id metadata"
 );
 
 async function main(): Promise<void> {

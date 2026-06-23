@@ -460,16 +460,50 @@ async function resolveDogDeathsWithClient(args: {
     const { deathEpoch, cause } = projected;
 
     if (cause === "ACCIDENT_ILLNESS") {
-      await createPendingEmergencyForAccidentIllnessDeath({
-        client,
-        dogId: dog.id,
-        kennelIdAtEvent: dog.ownerKennelId,
-        createdAtEpoch: args.currentEpoch,
-        costRollBps: Math.floor(
-          seeded01(`${dog.id}:accident-illness:emergency-cost`) * 10_000
-        ),
-        outcomeSeed: `${dog.id}:accident-illness:${deathEpoch}`,
-      });
+      const emergencyCareEvent =
+        await createPendingEmergencyForAccidentIllnessDeath({
+          client,
+          dogId: dog.id,
+          kennelIdAtEvent: dog.ownerKennelId,
+          createdAtEpoch: args.currentEpoch,
+          costRollBps: Math.floor(
+            seeded01(`${dog.id}:accident-illness:emergency-cost`) * 10_000
+          ),
+          outcomeSeed: `${dog.id}:accident-illness:${deathEpoch}`,
+        });
+
+      if (dog.ownerKennelId) {
+        const existingNotice = await client.kennelNotice.findFirst({
+          where: {
+            kennelId: dog.ownerKennelId,
+            type: "KENNEL_SERVICE",
+            linkedDogId: dog.id,
+            metadataJson: {
+              path: ["emergencyCareEventId"],
+              equals: emergencyCareEvent.id,
+            },
+          },
+          select: { id: true },
+        });
+
+        if (!existingNotice) {
+          await createKennelNotice({
+            client,
+            kennelId: dog.ownerKennelId,
+            type: "KENNEL_SERVICE",
+            title: "Emergency vet care required",
+            body: `${formatDogDisplayName(dog)} has a serious medical emergency and needs a care decision.`,
+            currentEpoch: args.currentEpoch,
+            linkedDogId: dog.id,
+            metadataJson: {
+              noticeKind: "EMERGENCY_VET_CARE",
+              emergencyCareEventId: emergencyCareEvent.id,
+              cause,
+            },
+          });
+        }
+      }
+
       continue;
     }
 

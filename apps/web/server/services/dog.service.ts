@@ -271,6 +271,17 @@ function formatGameDateLabel(epoch: number): string {
   return epochToDate(epoch).toISOString().slice(0, 10);
 }
 
+function formatMoneyLabel(amount: number): string {
+  return `$${amount.toLocaleString("en-US")}`;
+}
+
+function formatBasisPointsPercentLabel(basisPoints: number): string {
+  const percent = basisPoints / 100;
+  return Number.isInteger(percent)
+    ? `${percent}%`
+    : `${percent.toFixed(1).replace(/\.0$/, "")}%`;
+}
+
 function formatBreedingAttemptStatus(status: string): string {
   switch (status) {
     case "INITIATED":
@@ -718,6 +729,19 @@ export async function getDogProfile(args: {
           environmentModifier: true,
         },
       },
+      emergencyCareEvents: {
+        where: { status: "PENDING" },
+        orderBy: [{ createdAtEpoch: "asc" }, { createdAt: "asc" }],
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          createdAtEpoch: true,
+          responseDeadlineEpoch: true,
+          treatmentCost: true,
+          survivalChanceBps: true,
+        },
+      },
       showAwards: {
         where: {
           awardCode: { in: INVITATIONAL_PLACEMENT_CODES },
@@ -840,6 +864,9 @@ export async function getDogProfile(args: {
   const isAlive = dog.lifecycleState === DogLifecycleState.ALIVE;
   const isOwnedByCurrentKennel =
     viewerKennelId !== null && dog.ownerKennelId === viewerKennelId;
+  const pendingEmergencyCare = isOwnedByCurrentKennel
+    ? dog.emergencyCareEvents[0] ?? null
+    : null;
   const activeSaleListing =
     dog.listings.find(
       (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
@@ -1051,6 +1078,13 @@ export async function getDogProfile(args: {
 
   if (hasFullClearance) {
     badges.push({ code: "health-clear", label: "Health Clear", tone: "green" });
+  }
+  if (pendingEmergencyCare) {
+    badges.push({
+      code: "emergency-care",
+      label: "Emergency Care",
+      tone: "red",
+    });
   }
   if (activeSaleListing) {
     badges.push({ code: "for-sale", label: "Listed for Sale", tone: "green" });
@@ -1408,6 +1442,25 @@ export async function getDogProfile(args: {
             ownerData?.plannerTags.some((tag) => tag.tagType === "KEEP")
           ),
           canEditNotes: true,
+        }
+      : null,
+    emergencyCare: pendingEmergencyCare
+      ? {
+          eventId: pendingEmergencyCare.id,
+          status: "PENDING",
+          createdAtEpoch: pendingEmergencyCare.createdAtEpoch,
+          responseDeadlineEpoch: pendingEmergencyCare.responseDeadlineEpoch,
+          deadlineLabel: formatGameDateLabel(
+            pendingEmergencyCare.responseDeadlineEpoch
+          ),
+          treatmentCost: pendingEmergencyCare.treatmentCost,
+          treatmentCostLabel: formatMoneyLabel(
+            pendingEmergencyCare.treatmentCost
+          ),
+          survivalChanceBps: pendingEmergencyCare.survivalChanceBps,
+          survivalChanceLabel: formatBasisPointsPercentLabel(
+            pendingEmergencyCare.survivalChanceBps
+          ),
         }
       : null,
     actions: {

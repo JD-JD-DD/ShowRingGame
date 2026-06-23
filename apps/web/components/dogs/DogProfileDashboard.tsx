@@ -4,6 +4,7 @@ import type { DogProfileDto } from "@/server/mappers/dog.mapper";
 
 import CollapsibleDogSection from "./CollapsibleDogSection";
 import DogPedigreeGrid from "./DogPedigreeGrid";
+import EmergencyVetCarePanel from "./EmergencyVetCarePanel";
 import DogPrivateNotesEditor from "./DogPrivateNotesEditor";
 import HealthTestingPanel from "./HealthTestingPanel";
 import TraitLine from "../ui/TraitLine";
@@ -62,6 +63,15 @@ export default function DogProfileDashboard(props: Props) {
 
   return (
     <section className="grid items-start gap-6 lg:grid-cols-6">
+      {viewerContext.canManage && profile.emergencyCare ? (
+        <EmergencyVetCarePanel
+          dogId={header.dogId}
+          dogName={header.displayName}
+          emergency={profile.emergencyCare}
+          className={`${PANEL_CLASS} order-0 lg:col-span-6`}
+        />
+      ) : null}
+
       <CollapsibleDogSection
         title="Snapshot"
         description="Identity and current state at a glance."

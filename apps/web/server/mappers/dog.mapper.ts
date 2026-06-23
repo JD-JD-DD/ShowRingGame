@@ -42,6 +42,18 @@ export type DogProfileHealthSummaryDto = {
   hasFullClearance: boolean;
 };
 
+export type DogProfileEmergencyCareDto = {
+  eventId: string;
+  status: "PENDING";
+  createdAtEpoch: number;
+  responseDeadlineEpoch: number;
+  deadlineLabel: string;
+  treatmentCost: number;
+  treatmentCostLabel: string;
+  survivalChanceBps: number;
+  survivalChanceLabel: string;
+};
+
 export type DogProfileSnapshotDto = {
   owner: DogProfileKennelDisplayDto | null;
   breeder: DogProfileKennelDisplayDto | null;
@@ -353,6 +365,7 @@ export type DogProfileDto = {
   pedigree: DogProfilePedigreeDto;
   entries: DogProfileEntriesDto | null;
   privatePlanning: DogProfilePrivatePlanningDto;
+  emergencyCare: DogProfileEmergencyCareDto | null;
   actions: DogProfileActionsDto;
   viewerContext: DogProfileViewerContextDto;
 };
@@ -651,6 +664,19 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
           isWatchlisted: input.privatePlanning.isWatchlisted,
           isKeeper: input.privatePlanning.isKeeper,
           canEditNotes: input.privatePlanning.canEditNotes,
+        }
+      : null,
+    emergencyCare: input.emergencyCare
+      ? {
+          eventId: input.emergencyCare.eventId,
+          status: input.emergencyCare.status,
+          createdAtEpoch: input.emergencyCare.createdAtEpoch,
+          responseDeadlineEpoch: input.emergencyCare.responseDeadlineEpoch,
+          deadlineLabel: input.emergencyCare.deadlineLabel,
+          treatmentCost: input.emergencyCare.treatmentCost,
+          treatmentCostLabel: input.emergencyCare.treatmentCostLabel,
+          survivalChanceBps: input.emergencyCare.survivalChanceBps,
+          survivalChanceLabel: input.emergencyCare.survivalChanceLabel,
         }
       : null,
     actions: {
