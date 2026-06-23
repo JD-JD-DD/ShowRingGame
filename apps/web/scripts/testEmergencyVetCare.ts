@@ -40,6 +40,14 @@ function assertBefore(
   assert.ok(firstIndex < secondIndex, label);
 }
 
+function assertDoesNotInclude(
+  haystack: string,
+  needle: string,
+  label: string
+): void {
+  assert.equal(haystack.includes(needle), false, label);
+}
+
 function createFakeEmergencyVetCareClient(
   events: DogEmergencyCareEvent[]
 ): EmergencyVetCareClient {
@@ -162,6 +170,18 @@ assert.equal(
 );
 
 const lifecycleService = source("apps/web/server/services/lifecycle.service.ts");
+const emergencyVetCareService = source(
+  "apps/web/server/services/emergencyVetCare.service.ts"
+);
+const treatRoute = source(
+  "apps/web/app/api/dogs/[dogId]/emergency-care/treat/route.ts"
+);
+const declineRoute = source(
+  "apps/web/app/api/dogs/[dogId]/emergency-care/decline/route.ts"
+);
+const expirationJobRoute = source(
+  "apps/web/app/api/jobs/process-emergency-vet-care/route.ts"
+);
 
 assertIncludes(
   lifecycleService,
@@ -198,6 +218,111 @@ assertIncludes(
   lifecycleService,
   '"WHELPING_DAM"',
   "whelping dam death cause remains present"
+);
+assertIncludes(
+  emergencyVetCareService,
+  "export async function authorizeEmergencyTreatment",
+  "emergency service exposes treatment authorization"
+);
+assertIncludes(
+  emergencyVetCareService,
+  "export async function declineEmergencyCare",
+  "emergency service exposes decline handling"
+);
+assertIncludes(
+  emergencyVetCareService,
+  "export async function processExpiredEmergencyCareEvents",
+  "emergency service exposes expiration processing"
+);
+assertIncludes(
+  emergencyVetCareService,
+  'transactionType: "EMERGENCY_VET_CARE"',
+  "treatment creates an emergency vet-care ledger transaction"
+);
+assertIncludes(
+  emergencyVetCareService,
+  'status: "PENDING"',
+  "resolution paths guard pending emergency status"
+);
+assertIncludes(
+  emergencyVetCareService,
+  'treatmentOutcome === "SURVIVED" ? "TREATED_SURVIVED" : "TREATED_DIED"',
+  "treatment can resolve to survived status"
+);
+assertIncludes(
+  emergencyVetCareService,
+  'treatmentOutcome === "SURVIVED" ? "TREATED_SURVIVED" : "TREATED_DIED"',
+  "treatment can resolve to died status"
+);
+assertIncludes(
+  emergencyVetCareService,
+  'status: "DECLINED_DIED"',
+  "decline resolves to declined died status"
+);
+assertIncludes(
+  emergencyVetCareService,
+  'status: "EXPIRED_DIED"',
+  "expiration resolves to expired died status"
+);
+assertIncludes(
+  emergencyVetCareService,
+  "Insufficient funds for emergency vet care.",
+  "treatment rejects insufficient funds"
+);
+assertIncludes(
+  emergencyVetCareService,
+  "Emergency care deadline has passed.",
+  "treatment rejects expired pending emergencies"
+);
+assertIncludes(
+  emergencyVetCareService,
+  "markEmergencyDogDeceased",
+  "death outcomes use existing lifecycle death finalization"
+);
+assertIncludes(
+  emergencyVetCareService,
+  'cause: "ACCIDENT_ILLNESS"',
+  "emergency deaths currently use the existing accident/illness death cause"
+);
+assertDoesNotInclude(
+  emergencyVetCareService,
+  "SURVIVED_SHOW_INELIGIBLE_3_MONTHS",
+  "phase 1 treatment does not roll temporary show restriction outcomes"
+);
+assertDoesNotInclude(
+  emergencyVetCareService,
+  "SURVIVED_TRAIT_MODIFIER",
+  "phase 1 treatment does not roll trait modifier outcomes"
+);
+assertIncludes(
+  treatRoute,
+  "authorizeEmergencyTreatment",
+  "treatment route calls backend treatment authorization"
+);
+assertIncludes(
+  treatRoute,
+  "getSessionUserId",
+  "treatment route requires an authenticated user"
+);
+assertIncludes(
+  declineRoute,
+  "declineEmergencyCare",
+  "decline route calls backend decline handling"
+);
+assertIncludes(
+  declineRoute,
+  "getSessionUserId",
+  "decline route requires an authenticated user"
+);
+assertIncludes(
+  expirationJobRoute,
+  "SHOWRING_JOBS_SECRET",
+  "expiration job uses the existing job secret convention"
+);
+assertIncludes(
+  expirationJobRoute,
+  "processExpiredEmergencyCareEvents",
+  "expiration job calls backend expiration processing"
 );
 
 async function main(): Promise<void> {
