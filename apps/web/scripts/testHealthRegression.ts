@@ -41,6 +41,7 @@ const healthExpression = source(
   "packages/rules/engines/healthExpression.engine.ts"
 );
 const presentationEngine = source("packages/rules/engines/presentation.engine.ts");
+const prismaSchema = source("apps/web/prisma/schema.prisma");
 const healthService = source("apps/web/server/services/healthTest.service.ts");
 const dogService = source("apps/web/server/services/dog.service.ts");
 const groomingService = source("apps/web/server/services/grooming.service.ts");
@@ -292,6 +293,51 @@ assertIncludes(
   groomingService,
   'conditionCode: "THYROID"',
   "grooming service reads hidden thyroid truth server-side"
+);
+assertIncludes(
+  groomingService,
+  "latestCompletedGroomingWeek = currentGroomingWeek - 1",
+  "grooming decay only targets completed grooming weeks"
+);
+assertIncludes(
+  groomingService,
+  "latestCompletedGroomingWeek < 0",
+  "grooming decay skips when there are no completed weeks"
+);
+assertIncludes(
+  groomingService,
+  "Math.min(Math.max(args.limit ?? 100, 1), 500)",
+  "grooming decay keeps the service batch limit bounded"
+);
+assertIncludes(
+  groomingService,
+  "let groomingWeek = firstEligibleGroomingWeek",
+  "grooming decay scans missed weeks from first eligible week"
+);
+assertIncludes(
+  groomingService,
+  "groomingWeek <= latestCompletedGroomingWeek",
+  "grooming decay catches up through the latest completed week"
+);
+assertIncludes(
+  groomingService,
+  "groomedWeeks.has(groomingWeek) || decayedWeeks.has(groomingWeek)",
+  "grooming decay skips already-groomed and already-decayed weeks"
+);
+assertIncludes(
+  groomingService,
+  "getMissedGroomingDecayKey(",
+  "grooming decay uses a stable dog/week idempotency key"
+);
+assertIncludes(
+  prismaSchema,
+  "decayKey            String?               @unique",
+  "grooming decay uniqueness is enforced by schema"
+);
+assertIncludes(
+  groomingService,
+  "netGroomingImpact <= 0",
+  "grooming decay skips dogs without positive net grooming impact"
 );
 assertDoesNotIncludeAny(
   presentationEngine,

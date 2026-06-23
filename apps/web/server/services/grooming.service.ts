@@ -1472,10 +1472,10 @@ export async function applyMissedGroomingDecayForDueDogs(args: {
   limit?: number;
 }): Promise<GroomingDecayMaintenanceResultDto> {
   const currentGroomingWeek = getGroomingWeekIndex(args.currentEpoch);
-  const completedGroomingWeek = currentGroomingWeek - 1;
-  const limit = args.limit ?? 100;
+  const latestCompletedGroomingWeek = currentGroomingWeek - 1;
+  const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
 
-  if (completedGroomingWeek < 0) {
+  if (latestCompletedGroomingWeek < 0) {
     return {
       currentGroomingWeek,
       completedGroomingWeek: null,
@@ -1486,12 +1486,10 @@ export async function applyMissedGroomingDecayForDueDogs(args: {
     };
   }
 
-  const completedWeekStart = getGroomingWeekStartEpochByIndex(
-    completedGroomingWeek
+  const latestCompletedWeekEnd = getGroomingWeekEndEpochByIndex(
+    latestCompletedGroomingWeek
   );
-  const completedWeekEnd = getGroomingWeekEndEpochByIndex(
-    completedGroomingWeek
-  );
+  const dogScanLimit = Math.min(limit * 5, 1000);
   const dogs = await db.dog.findMany({
     where: {
       ownerKennelId: {
@@ -1501,36 +1499,104 @@ export async function applyMissedGroomingDecayForDueDogs(args: {
       visibilityState: "VISIBLE",
       isPlayerVisible: true,
       birthEpoch: {
-        lte: completedWeekEnd - MIN_SHOW_AGE_HOURS,
-      },
-      groomingServiceActions: {
-        none: {
-          occurredAtEpoch: {
-            gte: completedWeekStart,
-            lt: completedWeekEnd,
-          },
-        },
+        lte: latestCompletedWeekEnd - MIN_SHOW_AGE_HOURS,
       },
       conditionEvents: {
-        none: {
-          eventType: "MISSED_GROOMING_DECAY",
-          groomingWeek: completedGroomingWeek,
+        some: {
+          eventType: "GROOMING_GAIN",
         },
       },
     },
     orderBy: [{ birthEpoch: "asc" }, { regNumber: "asc" }],
-    take: limit,
+    take: dogScanLimit,
     select: {
       id: true,
+      birthEpoch: true,
+      groomingServiceActions: {
+        where: {
+          occurredAtEpoch: {
+            lt: latestCompletedWeekEnd,
+          },
+        },
+        select: {
+          occurredAtEpoch: true,
+        },
+      },
+      conditionEvents: {
+        where: {
+          eventType: {
+            in: ["GROOMING_GAIN", "MISSED_GROOMING_DECAY"],
+          },
+        },
+        select: {
+          eventType: true,
+          amount: true,
+          groomingWeek: true,
+        },
+      },
     },
   });
-  const results: MissedGroomingDecayResultDto[] = [];
+  const candidates: Array<{ dogId: string; groomingWeek: number }> = [];
 
   for (const dog of dogs) {
+    const totalGroomingGain = dog.conditionEvents
+      .filter((event) => event.eventType === "GROOMING_GAIN")
+      .reduce((total, event) => total + event.amount, 0);
+    const totalGroomingDecay = Math.abs(
+      dog.conditionEvents
+        .filter((event) => event.eventType === "MISSED_GROOMING_DECAY")
+        .reduce((total, event) => total + event.amount, 0)
+    );
+    const netGroomingImpact = Math.max(0, totalGroomingGain - totalGroomingDecay);
+
+    if (netGroomingImpact <= 0) {
+      continue;
+    }
+
+    const groomedWeeks = new Set(
+      dog.groomingServiceActions.map((action) =>
+        getGroomingWeekIndex(action.occurredAtEpoch)
+      )
+    );
+    const decayedWeeks = new Set(
+      dog.conditionEvents
+        .filter((event) => event.eventType === "MISSED_GROOMING_DECAY")
+        .map((event) => event.groomingWeek)
+    );
+    const firstEligibleGroomingWeek = Math.max(
+      0,
+      Math.ceil(
+        (dog.birthEpoch + MIN_SHOW_AGE_HOURS) / GROOMING_WEEK_HOURS - 1
+      )
+    );
+
+    for (
+      let groomingWeek = firstEligibleGroomingWeek;
+      groomingWeek <= latestCompletedGroomingWeek;
+      groomingWeek += 1
+    ) {
+      if (groomedWeeks.has(groomingWeek) || decayedWeeks.has(groomingWeek)) {
+        continue;
+      }
+
+      candidates.push({ dogId: dog.id, groomingWeek });
+
+      if (candidates.length >= limit) {
+        break;
+      }
+    }
+
+    if (candidates.length >= limit) {
+      break;
+    }
+  }
+  const results: MissedGroomingDecayResultDto[] = [];
+
+  for (const candidate of candidates) {
     results.push(
       await applyMissedGroomingDecayForCompletedWeek({
-        dogId: dog.id,
-        completedGroomingWeek,
+        dogId: candidate.dogId,
+        completedGroomingWeek: candidate.groomingWeek,
         currentEpoch: args.currentEpoch,
       })
     );
@@ -1540,7 +1606,7 @@ export async function applyMissedGroomingDecayForDueDogs(args: {
 
   return {
     currentGroomingWeek,
-    completedGroomingWeek,
+    completedGroomingWeek: latestCompletedGroomingWeek,
     checked: results.length,
     applied,
     skipped: results.length - applied,
