@@ -149,6 +149,7 @@ enum LedgerTransactionType {
   REFUND
   GROOMING_INCOME
   STEWARDING_INCOME
+  EMERGENCY_VET_CARE
 }
 
 enum KennelNoticeType {
@@ -192,6 +193,28 @@ enum GroomingServiceActionType {
 enum DogConditionEventType {
   GROOMING_GAIN
   MISSED_GROOMING_DECAY
+}
+
+enum DogEmergencyCareType {
+  ACCIDENT_ILLNESS
+}
+
+enum DogEmergencyCareStatus {
+  PENDING
+  TREATED_SURVIVED
+  TREATED_DIED
+  DECLINED_DIED
+  EXPIRED_DIED
+  CANCELED
+}
+
+enum DogEmergencyTreatmentOutcome {
+  SURVIVED
+  SURVIVED_SHOW_INELIGIBLE_3_MONTHS
+  SURVIVED_SHOW_INELIGIBLE_6_MONTHS_BREED_INELIGIBLE_6_MONTHS
+  SURVIVED_LIFETIME_BREED_INELIGIBLE
+  SURVIVED_TRAIT_MODIFIER
+  DIED_DESPITE_TREATMENT
 }
 
 enum ProducerMeritLevel {
@@ -268,6 +291,7 @@ model Kennel {
     groomingActionsPerformed GroomingServiceAction[] @relation("GroomingActionGroomerKennel")
     conditionEventsActed    DogConditionEvent[] @relation("DogConditionEventActorKennel")
     conditionEventsOwned    DogConditionEvent[] @relation("DogConditionEventOwnerKennel")
+    emergencyCareEvents     DogEmergencyCareEvent[]
     serviceProfile          KennelServiceProfile?
     plannerTags             DogPlannerTag[]
 
@@ -386,6 +410,7 @@ model Dog {
     groomingListings GroomingListing[]
     groomingServiceActions GroomingServiceAction[]
     conditionEvents DogConditionEvent[]
+    emergencyCareEvents DogEmergencyCareEvent[]
     plannerTags DogPlannerTag[]
 
   @@index([breedCode2])
@@ -834,6 +859,7 @@ model LedgerTransaction {
   showCluster        ShowCluster? @relation(fields: [showClusterId], references: [id])
   showEntry          ShowEntry?   @relation(fields: [showEntryId], references: [id])
   counterpartyKennel Kennel?      @relation("CounterpartyKennelLedger", fields: [counterpartyKennelId], references: [id])
+  emergencyCareEvent DogEmergencyCareEvent?
 
   @@index([kennelId])
   @@index([dogId])
@@ -943,6 +969,41 @@ model DogConditionEvent {
   @@index([ownerKennelIdAtEvent])
   @@index([eventType])
   @@index([groomingWeek])
+}
+
+model DogEmergencyCareEvent {
+  id                         String                        @id @default(cuid())
+  dogId                      String
+  kennelIdAtEvent            String?
+  emergencyType              DogEmergencyCareType
+  status                     DogEmergencyCareStatus        @default(PENDING)
+  createdAtEpoch             Int
+  responseDeadlineEpoch      Int
+  treatmentCost              Int
+  survivalChanceBps          Int
+  paidAtEpoch                Int?
+  resolvedAtEpoch            Int?
+  treatmentOutcome           DogEmergencyTreatmentOutcome?
+  ledgerTransactionId        String?                       @unique
+  showIneligibleUntilEpoch   Int?
+  breedIneligibleUntilEpoch  Int?
+  lifetimeBreedIneligible    Boolean                       @default(false)
+  traitModifierJson          Json?
+  outcomeSeed                String?
+  outcomeRollBps             Int?
+  canceledAtEpoch            Int?
+  canceledReason             String?
+  createdAt                  DateTime                      @default(now())
+  updatedAt                  DateTime                      @updatedAt
+
+  dog                        Dog                @relation(fields: [dogId], references: [id])
+  kennelAtEvent              Kennel?            @relation(fields: [kennelIdAtEvent], references: [id])
+  ledgerTransaction          LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id])
+
+  @@index([dogId])
+  @@index([kennelIdAtEvent])
+  @@index([status])
+  @@index([responseDeadlineEpoch])
 }
 
 model KennelServiceProfile {
