@@ -121,6 +121,7 @@ export type DogProfileHealthTestDto = {
   displayName: string;
   resultLabel: string | null;
   severityKey: "green" | "yellow" | "red" | null;
+  healthImpactStatement: string | null;
   testedDateLabel: string | null;
   isComplete: boolean;
   minimumAgeLabel: string;
@@ -466,6 +467,7 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
         displayName: test.displayName,
         resultLabel: test.resultLabel,
         severityKey: test.severityKey,
+        healthImpactStatement: test.healthImpactStatement,
         testedDateLabel: test.testedDateLabel,
         isComplete: test.isComplete,
         minimumAgeLabel: test.minimumAgeLabel,

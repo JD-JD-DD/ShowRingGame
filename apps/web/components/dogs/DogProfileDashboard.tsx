@@ -175,7 +175,7 @@ export default function DogProfileDashboard(props: Props) {
       >
         {statusMessage(props.healthMessage)}
         {statusMessage(props.healthError, true)}
-        <HealthTestingPanel dogId={header.dogId} areaId={areaId} kennelBalance={healthControls?.kennelBalance ?? 0} canOrderHealthTests={Boolean(healthControls?.checkoutNeeded)} rows={profile.healthTesting.tests.map((test) => ({ testTypeCode: test.testCode, label: test.displayName, fee: test.cost, isAvailable: test.isCurrentlyAvailable, availabilityLabel: test.minimumAgeLabel, result: test.isComplete ? { label: test.resultLabel ?? "Complete", testedLabel: test.testedDateLabel ?? "Test date unavailable", severity: test.severityKey ?? "yellow" } : null }))} />
+        <HealthTestingPanel dogId={header.dogId} areaId={areaId} kennelBalance={healthControls?.kennelBalance ?? 0} canOrderHealthTests={Boolean(healthControls?.checkoutNeeded)} rows={profile.healthTesting.tests.map((test) => ({ testTypeCode: test.testCode, label: test.displayName, fee: test.cost, isAvailable: test.isCurrentlyAvailable, availabilityLabel: test.minimumAgeLabel, result: test.isComplete ? { label: test.resultLabel ?? "Complete", testedLabel: test.testedDateLabel ?? "Test date unavailable", severity: test.severityKey ?? "yellow", impactStatement: test.healthImpactStatement } : null }))} />
         {viewerContext.canManage && profile.groomingDetails ? (
           <div className="grid grid-cols-2 gap-2">
             <SummaryValue label="Grooming state" value={profile.groomingDetails.groomingStatus} />

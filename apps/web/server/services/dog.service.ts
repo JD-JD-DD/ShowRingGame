@@ -209,6 +209,25 @@ function formatTestedDateLabel(testedAtEpoch: number | null): string | null {
   return `Tested ${epochToDate(testedAtEpoch).toISOString().slice(0, 10)}`;
 }
 
+function getHipDysplasiaImpactStatement(args: {
+  testCode: PhenotypeHealthTestCode;
+  severityKey: "green" | "yellow" | "red";
+}): string | null {
+  if (args.testCode !== "HIP_DYSPLASIA") {
+    return null;
+  }
+
+  if (args.severityKey === "yellow") {
+    return "Hip result is mildly affecting rear movement and structure.";
+  }
+
+  if (args.severityKey === "red") {
+    return "Red hips are limiting rear movement and affecting this dog’s Movement and Structure & Balance.";
+  }
+
+  return null;
+}
+
 function formatGameDateLabel(epoch: number): string {
   return epochToDate(epoch).toISOString().slice(0, 10);
 }
@@ -903,6 +922,9 @@ export async function getDogProfile(args: {
     const result = latestHealthTests.find(
       (test) => test.testTypeCode === testCode
     );
+    const severityKey = result
+      ? getPhenotypeHealthSeverity(testCode, result.resultCode)
+      : null;
 
     return {
       testCode,
@@ -913,8 +935,12 @@ export async function getDogProfile(args: {
             result.resultCode
           )
         : null,
-      severityKey: result
-        ? getPhenotypeHealthSeverity(testCode, result.resultCode)
+      severityKey,
+      healthImpactStatement: severityKey
+        ? getHipDysplasiaImpactStatement({
+            testCode,
+            severityKey,
+          })
         : null,
       testedDateLabel: result
         ? formatTestedDateLabel(result.testedAtEpoch)

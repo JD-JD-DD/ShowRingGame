@@ -12,6 +12,7 @@ type HealthTestPanelRow = {
     label: string;
     testedLabel: string;
     severity: "green" | "yellow" | "red";
+    impactStatement: string | null;
   } | null;
 };
 
@@ -112,6 +113,11 @@ export default function HealthTestingPanel({
                       ? "Available now"
                       : row.availabilityLabel}
                 </span>
+                {row.result?.impactStatement ? (
+                  <span className="dog-copy mt-1 block text-[11px] leading-snug">
+                    {row.result.impactStatement}
+                  </span>
+                ) : null}
               </span>
               <span className="dog-heading shrink-0 text-xs font-semibold">
                 {formatMoney(row.fee)}

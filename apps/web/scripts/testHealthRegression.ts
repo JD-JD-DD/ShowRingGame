@@ -39,6 +39,12 @@ function assertDoesNotIncludeAny(
 const healthService = source("apps/web/server/services/healthTest.service.ts");
 const dogService = source("apps/web/server/services/dog.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
+const dogProfileDashboard = source(
+  "apps/web/components/dogs/DogProfileDashboard.tsx"
+);
+const healthTestingPanel = source(
+  "apps/web/components/dogs/HealthTestingPanel.tsx"
+);
 const foundationDogService = source(
   "apps/web/server/services/foundationDog.service.ts"
 );
@@ -135,11 +141,51 @@ assertIncludes(
   "phenotypeHealthResults: dog.healthTests",
   "dog profile visible category expression can fall back to revealed health results"
 );
+assertIncludes(
+  dogService,
+  "function getHipDysplasiaImpactStatement",
+  "dog profile service has a scoped hip impact statement helper"
+);
+assertIncludes(
+  dogService,
+  'args.testCode !== "HIP_DYSPLASIA"',
+  "health impact statements are scoped to hip dysplasia"
+);
+assertIncludes(
+  dogService,
+  "Hip result is mildly affecting rear movement and structure.",
+  "yellow hip dysplasia result has the expected player-facing impact statement"
+);
+assertIncludes(
+  dogService,
+  "Red hips are limiting rear movement and affecting this dog’s Movement and Structure & Balance.",
+  "red hip dysplasia result has the expected player-facing impact statement"
+);
+assertIncludes(
+  dogService,
+  "healthImpactStatement: severityKey",
+  "dog profile health impact statement requires a completed public result severity"
+);
 assertBefore(
   dogService,
   "const expressedTraits = deriveHealthAdjustedExpressedTraits({",
   "...deriveVisibleCategoriesFromTraits(expressedTraits)",
   "dog profile derives visible categories from expressed traits"
+);
+assertIncludes(
+  dogMapper,
+  "healthImpactStatement: test.healthImpactStatement",
+  "public dog profile DTO carries the already-filtered health impact statement"
+);
+assertIncludes(
+  dogProfileDashboard,
+  "impactStatement: test.healthImpactStatement",
+  "dog profile dashboard passes health impact statements into completed health rows"
+);
+assertIncludes(
+  healthTestingPanel,
+  "row.result?.impactStatement",
+  "health testing panel renders impact statements only inside completed result rows"
 );
 
 assertIncludes(
