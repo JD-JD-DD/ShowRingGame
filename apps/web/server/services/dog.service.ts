@@ -216,7 +216,8 @@ function getHealthImpactStatement(args: {
   if (
     args.testCode !== "HIP_DYSPLASIA" &&
     args.testCode !== "ELBOW_DYSPLASIA" &&
-    args.testCode !== "THYROID"
+    args.testCode !== "THYROID" &&
+    args.testCode !== "CARDIAC"
   ) {
     return null;
   }
@@ -243,6 +244,14 @@ function getHealthImpactStatement(args: {
 
   if (args.testCode === "THYROID" && args.severityKey === "red") {
     return "Red thyroid is severely limiting coat condition improvement. Grooming has reduced effect on this dog.";
+  }
+
+  if (args.testCode === "CARDIAC" && args.severityKey === "yellow") {
+    return "Cardiac result may modestly affect this dog’s expected longevity.";
+  }
+
+  if (args.testCode === "CARDIAC" && args.severityKey === "red") {
+    return "Red cardiac result may significantly shorten this dog’s expected lifespan.";
   }
 
   return null;

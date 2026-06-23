@@ -45,6 +45,7 @@ const prismaSchema = source("apps/web/prisma/schema.prisma");
 const healthService = source("apps/web/server/services/healthTest.service.ts");
 const dogService = source("apps/web/server/services/dog.service.ts");
 const groomingService = source("apps/web/server/services/grooming.service.ts");
+const lifecycleService = source("apps/web/server/services/lifecycle.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
 const dogProfileDashboard = source(
   "apps/web/components/dogs/DogProfileDashboard.tsx"
@@ -206,6 +207,11 @@ assertIncludes(
 );
 assertIncludes(
   dogService,
+  'args.testCode === "CARDIAC"',
+  "health impact statements include scoped cardiac copy"
+);
+assertIncludes(
+  dogService,
   "Hip result is mildly affecting rear movement and structure.",
   "yellow hip dysplasia result has the expected player-facing impact statement"
 );
@@ -233,6 +239,16 @@ assertIncludes(
   dogService,
   "Red thyroid is severely limiting coat condition improvement. Grooming has reduced effect on this dog.",
   "red thyroid result has the expected player-facing impact statement"
+);
+assertIncludes(
+  dogService,
+  "Cardiac result may modestly affect this dog’s expected longevity.",
+  "yellow cardiac result has the expected player-facing impact statement"
+);
+assertIncludes(
+  dogService,
+  "Red cardiac result may significantly shorten this dog’s expected lifespan.",
+  "red cardiac result has the expected player-facing impact statement"
 );
 assertIncludes(
   dogService,
@@ -268,6 +284,21 @@ assertIncludes(
   healthExpression,
   "coatConditionCap: 9",
   "red thyroid caps coat condition"
+);
+assertIncludes(
+  healthExpression,
+  "deriveCardiacLongevityModifiers",
+  "health expression provides cardiac longevity modifiers"
+);
+assertIncludes(
+  healthExpression,
+  "ageRelatedDeathRiskMultiplier: 1.5",
+  "red cardiac has the strongest age-related risk multiplier"
+);
+assertIncludes(
+  healthExpression,
+  "ageDeathMultiplier: 0.85",
+  "red cardiac shortens projected age longevity without instant death"
 );
 assertIncludes(
   groomingService,
@@ -343,6 +374,31 @@ assertDoesNotIncludeAny(
   presentationEngine,
   ["HEALTH_THYROID", "THYROID_HEALTH_MULTIPLIERS"],
   "thyroid should not remain as a direct presentation modifier"
+);
+assertIncludes(
+  lifecycleService,
+  "deriveCardiacLongevityModifiers",
+  "lifecycle service uses cardiac longevity modifiers"
+);
+assertIncludes(
+  lifecycleService,
+  'conditionCode: "CARDIAC"',
+  "lifecycle service reads hidden cardiac truth server-side"
+);
+assertIncludes(
+  lifecycleService,
+  'testTypeCode: "CARDIAC"',
+  "lifecycle service can fall back to revealed cardiac records"
+);
+assertIncludes(
+  lifecycleService,
+  "getBaseProjectedDogDeathEpoch(dog)",
+  "accident and illness projection keeps the base age-death window"
+);
+assertIncludes(
+  lifecycleService,
+  "cardiacModifiers.ageDeathMultiplier",
+  "cardiac modifies only the age-death projection"
 );
 assertBefore(
   dogService,

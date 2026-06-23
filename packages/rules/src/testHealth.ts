@@ -1,4 +1,5 @@
 import {
+  deriveCardiacLongevityModifiers,
   deriveHealthAdjustedExpressedTraits,
   deriveThyroidGroomingModifiers,
   generateFoundationPhenotypeHealthTruths,
@@ -382,5 +383,45 @@ assertEqual(
   redThyroidTraits.coat,
   "thyroid does not mutate or express traitCoat"
 );
+
+const greenCardiacModifiers = deriveCardiacLongevityModifiers({
+  phenotypeHealthTruths: [truth("CARDIAC", 0.1)],
+});
+const yellowCardiacModifiers = deriveCardiacLongevityModifiers({
+  phenotypeHealthTruths: [truth("CARDIAC", 0.7)],
+});
+const redCardiacModifiers = deriveCardiacLongevityModifiers({
+  phenotypeHealthTruths: [truth("CARDIAC", 0.9)],
+});
+assertEqual(
+  greenCardiacModifiers.ageDeathMultiplier,
+  1,
+  "green cardiac preserves current longevity"
+);
+assertEqual(
+  redCardiacModifiers.ageRelatedDeathRiskMultiplier >
+    yellowCardiacModifiers.ageRelatedDeathRiskMultiplier,
+  true,
+  "red cardiac risk is greater than yellow cardiac risk"
+);
+assertEqual(
+  yellowCardiacModifiers.ageRelatedDeathRiskMultiplier >
+    greenCardiacModifiers.ageRelatedDeathRiskMultiplier,
+  true,
+  "yellow cardiac risk is greater than green cardiac risk"
+);
+
+const redCardiacTraits = testTraits(10);
+const redCardiacExpressed = deriveHealthAdjustedExpressedTraits({
+  storedTraits: redCardiacTraits,
+  phenotypeHealthTruths: [truth("CARDIAC", 0.9)],
+});
+for (const trait of Object.keys(redCardiacTraits) as Array<keyof DogTraits>) {
+  assertEqual(
+    redCardiacExpressed[trait],
+    redCardiacTraits[trait],
+    `cardiac does not alter expressed traits: ${trait}`
+  );
+}
 
 console.log("Health checks passed.");

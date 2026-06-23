@@ -126,6 +126,18 @@ function elbowPresentation(geneticLiability: number): Dog["presentation"] {
   };
 }
 
+function cardiacPresentation(geneticLiability: number): Dog["presentation"] {
+  return {
+    phenotypeHealthTruths: [
+      {
+        conditionCode: "CARDIAC",
+        geneticLiability,
+        environmentModifier: 0,
+      },
+    ],
+  };
+}
+
 function scoredDog(args: {
   dogTraits: DogTraits;
   presentation?: Dog["presentation"];
@@ -281,6 +293,13 @@ const highForequartersRedElbows = scoredDog({
   dogTraits: highForequartersTraits,
   presentation: elbowPresentation(0.9),
 });
+const redCardiacJudging = scoredDog({
+  dogTraits: idealTraits,
+  presentation: cardiacPresentation(0.9),
+});
+const redCardiacBaselineJudging = scoredDog({
+  dogTraits: idealTraits,
+});
 
 assert.ok(
   sixMonthsMovement.presentedValue > eighteenMonthsMovement.presentedValue,
@@ -391,6 +410,16 @@ assert.equal(
   lowForequartersTraits.forequarters,
   7.5,
   "Judging should not mutate stored traitForequarters."
+);
+assert.deepEqual(
+  redCardiacJudging.characteristics,
+  redCardiacBaselineJudging.characteristics,
+  "Cardiac should not alter judging category values directly."
+);
+assert.deepEqual(
+  redCardiacJudging.weightedCategoryScores,
+  redCardiacBaselineJudging.weightedCategoryScores,
+  "Cardiac should not alter judging scores directly."
 );
 assert.equal(
   deriveShowCharacteristicsFromTraits(traits).CONDITIONING_HANDLING,

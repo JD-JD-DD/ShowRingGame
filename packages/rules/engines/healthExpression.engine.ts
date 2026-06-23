@@ -38,6 +38,11 @@ export type ThyroidGroomingModifiers = {
   coatConditionCap: number;
 };
 
+export type CardiacLongevityModifiers = {
+  ageDeathMultiplier: number;
+  ageRelatedDeathRiskMultiplier: number;
+};
+
 const HEALTH_EXPRESSION_PENALTY_BY_SEVERITY: Record<
   PhenotypeHealthSeverity,
   number
@@ -65,6 +70,24 @@ const THYROID_GROOMING_MODIFIERS_BY_SEVERITY: Record<
     groomingGainMultiplier: 0.15,
     missedGroomingDecayMultiplier: 1.75,
     coatConditionCap: 9,
+  },
+};
+
+const CARDIAC_LONGEVITY_MODIFIERS_BY_SEVERITY: Record<
+  PhenotypeHealthSeverity,
+  CardiacLongevityModifiers
+> = {
+  green: {
+    ageDeathMultiplier: 1,
+    ageRelatedDeathRiskMultiplier: 1,
+  },
+  yellow: {
+    ageDeathMultiplier: 0.95,
+    ageRelatedDeathRiskMultiplier: 1.15,
+  },
+  red: {
+    ageDeathMultiplier: 0.85,
+    ageRelatedDeathRiskMultiplier: 1.5,
   },
 };
 
@@ -165,6 +188,19 @@ export function deriveThyroidGroomingModifiers(
   return severity
     ? THYROID_GROOMING_MODIFIERS_BY_SEVERITY[severity]
     : THYROID_GROOMING_MODIFIERS_BY_SEVERITY.green;
+}
+
+export function deriveCardiacLongevityModifiers(
+  input: HealthExpressionSourceInput
+): CardiacLongevityModifiers {
+  const severity = getHealthExpressionSeverity(
+    getHealthResultsForExpression(input),
+    "CARDIAC"
+  );
+
+  return severity
+    ? CARDIAC_LONGEVITY_MODIFIERS_BY_SEVERITY[severity]
+    : CARDIAC_LONGEVITY_MODIFIERS_BY_SEVERITY.green;
 }
 
 export function deriveHealthAdjustedExpressedTraits(

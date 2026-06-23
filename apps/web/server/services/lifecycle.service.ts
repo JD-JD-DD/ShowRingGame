@@ -3,6 +3,8 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import {
   ACCIDENT_ILLNESS_LIFETIME_DEATH_RATE,
+  AGE_DEATH_START_HOURS,
+  deriveCardiacLongevityModifiers,
   NEONATAL_PUPPY_DEATH_RATE,
   NEONATAL_PUPPY_DEATH_WINDOW_HOURS,
   PUPPY_SALE_MIN_AGE_HOURS,
@@ -31,6 +33,15 @@ type DeathCandidate = {
   lifecycleState: string;
   originType: string;
   litterId: string | null;
+  healthConditionTruths?: Array<{
+    conditionCode: string;
+    geneticLiability: number;
+    environmentModifier: number;
+  }>;
+  healthTests?: Array<{
+    testTypeCode: string;
+    resultCode: string;
+  }>;
 };
 
 export type ResolvedDogDeath = {
@@ -57,7 +68,7 @@ function seeded01(seed: string): number {
   return (hash >>> 0) / 0x100000000;
 }
 
-export function getProjectedDogDeathEpoch(dog: {
+function getBaseProjectedDogDeathEpoch(dog: {
   id: string;
   birthEpoch: number;
   deathEpoch?: number | null;
@@ -69,6 +80,39 @@ export function getProjectedDogDeathEpoch(dog: {
       random01: () => seeded01(`${dog.id}:death-age`),
     })
   );
+}
+
+export function getProjectedDogDeathEpoch(dog: {
+  id: string;
+  birthEpoch: number;
+  deathEpoch?: number | null;
+  healthConditionTruths?: Array<{
+    conditionCode: string;
+    geneticLiability: number;
+    environmentModifier: number;
+  }>;
+  healthTests?: Array<{
+    testTypeCode: string;
+    resultCode: string;
+  }>;
+}): number {
+  if (dog.deathEpoch != null) {
+    return dog.deathEpoch;
+  }
+
+  const baseDeathEpoch = getBaseProjectedDogDeathEpoch(dog);
+  const cardiacModifiers = deriveCardiacLongevityModifiers({
+    phenotypeHealthTruths: dog.healthConditionTruths,
+    phenotypeHealthResults: dog.healthTests,
+  });
+  const adjustedAgeHours = Math.max(
+    AGE_DEATH_START_HOURS,
+    Math.floor(
+      (baseDeathEpoch - dog.birthEpoch) * cardiacModifiers.ageDeathMultiplier
+    )
+  );
+
+  return dog.birthEpoch + adjustedAgeHours;
 }
 
 function getProjectedAccidentIllnessDeathEpoch(dog: {
@@ -83,7 +127,7 @@ function getProjectedAccidentIllnessDeathEpoch(dog: {
     return null;
   }
 
-  const ageDeathEpoch = getProjectedDogDeathEpoch(dog);
+  const ageDeathEpoch = getBaseProjectedDogDeathEpoch(dog);
   const activeLifespanHours = Math.max(1, ageDeathEpoch - dog.birthEpoch);
   const deathOffset = Math.max(
     1,
@@ -368,6 +412,27 @@ async function resolveDogDeathsWithClient(args: {
       lifecycleState: true,
       originType: true,
       litterId: true,
+      healthConditionTruths: {
+        where: {
+          conditionCode: "CARDIAC",
+        },
+        select: {
+          conditionCode: true,
+          geneticLiability: true,
+          environmentModifier: true,
+        },
+      },
+      healthTests: {
+        where: {
+          isPublic: true,
+          testTypeCode: "CARDIAC",
+        },
+        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+        select: {
+          testTypeCode: true,
+          resultCode: true,
+        },
+      },
     },
   });
 
