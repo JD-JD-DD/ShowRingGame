@@ -1,0 +1,124 @@
+import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const root = process.cwd();
+
+function source(path: string): string {
+  return readFileSync(join(root, path), "utf8");
+}
+
+function assertIncludes(haystack: string, needle: string, label: string): void {
+  assert.ok(haystack.includes(needle), label);
+}
+
+function assertBefore(
+  haystack: string,
+  first: string,
+  second: string,
+  label: string
+): void {
+  const firstIndex = haystack.indexOf(first);
+  const secondIndex = haystack.indexOf(second);
+
+  assert.ok(firstIndex >= 0, `${label}: missing first marker`);
+  assert.ok(secondIndex >= 0, `${label}: missing second marker`);
+  assert.ok(firstIndex < secondIndex, label);
+}
+
+function assertDoesNotIncludeAny(
+  haystack: string,
+  needles: string[],
+  label: string
+): void {
+  const found = needles.filter((needle) => haystack.includes(needle));
+
+  assert.deepEqual(found, [], label);
+}
+
+const healthService = source("apps/web/server/services/healthTest.service.ts");
+const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
+const foundationDogService = source(
+  "apps/web/server/services/foundationDog.service.ts"
+);
+const breedingService = source("apps/web/server/services/breeding.service.ts");
+
+const rawTraitFields = [
+  "traitHead",
+  "traitForequarters",
+  "traitHindquarters",
+  "traitGait",
+  "traitCoat",
+  "traitSize",
+  "traitTemperament",
+  "traitShowShine",
+  "traitFeet",
+  "traitTopline",
+];
+
+assertIncludes(
+  healthService,
+  "type HealthClient = Pick<",
+  "health test service uses a constrained health client"
+);
+assertIncludes(
+  healthService,
+  '"dogHealthConditionTruth"',
+  "hidden health truths are part of health test persistence"
+);
+assertIncludes(
+  healthService,
+  '"healthTestRecord"',
+  "revealed health records are part of health test persistence"
+);
+assertIncludes(
+  healthService,
+  "await ensurePhenotypeHealthTruthsForDogs(tx, [dog.id]);",
+  "health testing creates missing hidden truths for legacy dogs before reveal"
+);
+assertBefore(
+  healthService,
+  "await ensurePhenotypeHealthTruthsForDogs(tx, [dog.id]);",
+  "revealPhenotypeHealthTestResult({",
+  "health testing reveals from stored/ensured truth instead of revealing first"
+);
+assertBefore(
+  healthService,
+  "revealPhenotypeHealthTestResult({",
+  "await tx.healthTestRecord.create({",
+  "health testing stores public records after revealing from truth"
+);
+assertIncludes(
+  healthService,
+  "await client.dogHealthConditionTruth.createMany({",
+  "missing hidden truth rows are created through DogHealthConditionTruth"
+);
+assertIncludes(
+  healthService,
+  "skipDuplicates: true",
+  "hidden truth creation is idempotent for existing truths"
+);
+assertDoesNotIncludeAny(
+  healthService,
+  rawTraitFields,
+  "health testing service should not read or write stored genetic trait fields"
+);
+
+assertDoesNotIncludeAny(
+  dogMapper,
+  rawTraitFields,
+  "public dog profile DTO mapper should not expose raw hidden trait fields"
+);
+
+assertIncludes(
+  foundationDogService,
+  "await ensurePhenotypeHealthTruthsForDogs(tx, [createdDog.id]);",
+  "foundation dogs receive hidden health truths at creation"
+);
+assertIncludes(
+  breedingService,
+  "await ensurePhenotypeHealthTruthsForDogs(",
+  "puppies receive hidden health truths after whelping"
+);
+
+console.log("Web health regression checks passed.");

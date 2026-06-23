@@ -2,7 +2,9 @@ import {
   generateFoundationPhenotypeHealthTruths,
   getPhenotypeHealthResultLabel,
   inheritPhenotypeHealthTruths,
+  isPhenotypeHealthTestCode,
   PHENOTYPE_HEALTH_TEST_CODES,
+  PHENOTYPE_HEALTH_TESTS,
   revealPhenotypeHealthTestResult,
   type PhenotypeHealthTruth,
 } from "../src/index";
@@ -24,6 +26,27 @@ function truth(
     environmentModifier,
   };
 }
+
+assertEqual(
+  JSON.stringify(PHENOTYPE_HEALTH_TEST_CODES),
+  JSON.stringify(["HIP_DYSPLASIA", "CARDIAC", "CAER_EYE", "THYROID"]),
+  "supported phenotype health test list"
+);
+assertEqual(
+  isPhenotypeHealthTestCode("ELBOW_DYSPLASIA"),
+  false,
+  "elbow dysplasia is not currently supported"
+);
+assertEqual(
+  isPhenotypeHealthTestCode("ELBOWS"),
+  false,
+  "elbows are not currently supported"
+);
+assertEqual(
+  Object.prototype.hasOwnProperty.call(PHENOTYPE_HEALTH_TESTS, "ELBOW_DYSPLASIA"),
+  false,
+  "elbow dysplasia has no health test definition"
+);
 
 const foundationTruths = generateFoundationPhenotypeHealthTruths(() => 0.5);
 assertEqual(
@@ -79,6 +102,19 @@ assertEqual(
   revealPhenotypeHealthTestResult(truth("HIP_DYSPLASIA", 0.1)).resultCode,
   "EXCELLENT",
   "excellent hip result"
+);
+const severeHipTruth = truth("HIP_DYSPLASIA", 0.9);
+const severeHipReveal = revealPhenotypeHealthTestResult(severeHipTruth);
+assertEqual(severeHipReveal.resultCode, "SEVERE", "severe hip result");
+assertEqual(
+  severeHipTruth.geneticLiability,
+  0.9,
+  "revealing a health result does not mutate hidden truth liability"
+);
+assertEqual(
+  severeHipTruth.environmentModifier,
+  0,
+  "revealing a health result does not mutate hidden truth environment"
 );
 assertEqual(
   revealPhenotypeHealthTestResult(truth("HIP_DYSPLASIA", 0.7)).resultCode,
