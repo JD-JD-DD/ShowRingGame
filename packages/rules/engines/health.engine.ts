@@ -46,6 +46,15 @@ const PHENOTYPE_HEALTH_CONDITION_SETTINGS: Record<
     polygenicRiskMin: 0.15,
     polygenicRiskMax: 0.32,
   },
+  ELBOW_DYSPLASIA: {
+    foundationLiabilityScale: 0.9,
+    environmentMin: -0.08,
+    environmentMax: 0.15,
+    inheritedVariation: 0.2,
+    polygenicRiskEventRate: 0.06,
+    polygenicRiskMin: 0.15,
+    polygenicRiskMax: 0.32,
+  },
   CARDIAC: {
     foundationLiabilityScale: 0.9,
     environmentMin: -0.08,
@@ -198,6 +207,13 @@ export function revealPhenotypeHealthTestResult(
       else if (liabilityScore <= 0.82) [resultCode, resultLabel] = ["MODERATE", "Moderate"];
       else [resultCode, resultLabel] = ["SEVERE", "Severe"];
       break;
+    case "ELBOW_DYSPLASIA":
+      if (liabilityScore <= 0.45) [resultCode, resultLabel] = ["NORMAL", "Normal"];
+      else if (liabilityScore <= 0.55) [resultCode, resultLabel] = ["BORDERLINE", "Borderline"];
+      else if (liabilityScore <= 0.68) [resultCode, resultLabel] = ["GRADE_1", "Grade 1"];
+      else if (liabilityScore <= 0.82) [resultCode, resultLabel] = ["GRADE_2", "Grade 2"];
+      else [resultCode, resultLabel] = ["GRADE_3", "Grade 3"];
+      break;
     case "CARDIAC":
       if (liabilityScore <= 0.58) [resultCode, resultLabel] = ["NORMAL", "Normal"];
       else if (liabilityScore <= 0.74) [resultCode, resultLabel] = ["EQUIVOCAL", "Equivocal"];
@@ -251,6 +267,13 @@ function resultCodeToLiabilityScore(
       MILD: 0.62,
       MODERATE: 0.76,
       SEVERE: 0.9,
+    },
+    ELBOW_DYSPLASIA: {
+      NORMAL: 0.4,
+      BORDERLINE: 0.5,
+      GRADE_1: 0.62,
+      GRADE_2: 0.76,
+      GRADE_3: 0.9,
     },
     CARDIAC: {
       NORMAL: 0.5,

@@ -36,6 +36,7 @@ function assertDoesNotIncludeAny(
   assert.deepEqual(found, [], label);
 }
 
+const healthConstants = source("packages/rules/constants/health.constants.ts");
 const healthService = source("apps/web/server/services/healthTest.service.ts");
 const dogService = source("apps/web/server/services/dog.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
@@ -49,6 +50,7 @@ const foundationDogService = source(
   "apps/web/server/services/foundationDog.service.ts"
 );
 const breedingService = source("apps/web/server/services/breeding.service.ts");
+const healthBackfill = source("apps/web/scripts/backfill-phenotype-health.ts");
 
 const rawTraitFields = [
   "traitHead",
@@ -63,6 +65,31 @@ const rawTraitFields = [
   "traitTopline",
 ];
 
+assertIncludes(
+  healthConstants,
+  '"ELBOW_DYSPLASIA"',
+  "elbow dysplasia is in the supported phenotype health test list"
+);
+assertIncludes(
+  healthConstants,
+  "ELBOW_DYSPLASIA: {",
+  "elbow dysplasia has a health test definition"
+);
+assertIncludes(
+  healthConstants,
+  'label: "Elbow Dysplasia"',
+  "elbow dysplasia has display label support"
+);
+assertIncludes(
+  healthConstants,
+  'minimumAgeLabel: "Available at 24 months"',
+  "elbow dysplasia uses orthopedic adult age copy"
+);
+assertIncludes(
+  healthConstants,
+  "GRADE_3: \"red\"",
+  "elbow dysplasia has red result severity support"
+);
 assertIncludes(
   healthService,
   "type HealthClient = Pick<",
@@ -105,6 +132,11 @@ assertIncludes(
   "skipDuplicates: true",
   "hidden truth creation is idempotent for existing truths"
 );
+assertIncludes(
+  healthService,
+  "dogAgeHours < PHENOTYPE_HEALTH_TESTS[testTypeCode].minimumAgeHours",
+  "health testing age eligibility is driven by the shared test catalog"
+);
 assertDoesNotIncludeAny(
   healthService,
   rawTraitFields,
@@ -140,6 +172,11 @@ assertIncludes(
   dogService,
   "phenotypeHealthResults: dog.healthTests",
   "dog profile visible category expression can fall back to revealed health results"
+);
+assertIncludes(
+  dogService,
+  "PHENOTYPE_HEALTH_TEST_CODES.map((testCode)",
+  "dog profile health testing UI rows are driven by the supported test list"
 );
 assertIncludes(
   dogService,
@@ -197,6 +234,21 @@ assertIncludes(
   breedingService,
   "await ensurePhenotypeHealthTruthsForDogs(",
   "puppies receive hidden health truths after whelping"
+);
+assertIncludes(
+  healthBackfill,
+  "PHENOTYPE_HEALTH_TEST_CODES.length",
+  "health backfill expects one hidden truth per supported phenotype health test"
+);
+assertIncludes(
+  healthBackfill,
+  "generateFoundationPhenotypeHealthTruths(random01)",
+  "health backfill uses the shared foundation truth generation path"
+);
+assertIncludes(
+  healthBackfill,
+  "inheritPhenotypeHealthTruths({",
+  "health backfill uses the shared inheritance path for bred dogs"
 );
 
 console.log("Web health regression checks passed.");

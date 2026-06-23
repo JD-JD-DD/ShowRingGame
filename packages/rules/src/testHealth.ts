@@ -47,13 +47,19 @@ function testTraits(hindquarters: number): DogTraits {
 
 assertEqual(
   JSON.stringify(PHENOTYPE_HEALTH_TEST_CODES),
-  JSON.stringify(["HIP_DYSPLASIA", "CARDIAC", "CAER_EYE", "THYROID"]),
+  JSON.stringify([
+    "HIP_DYSPLASIA",
+    "ELBOW_DYSPLASIA",
+    "CARDIAC",
+    "CAER_EYE",
+    "THYROID",
+  ]),
   "supported phenotype health test list"
 );
 assertEqual(
   isPhenotypeHealthTestCode("ELBOW_DYSPLASIA"),
-  false,
-  "elbow dysplasia is not currently supported"
+  true,
+  "elbow dysplasia is supported"
 );
 assertEqual(
   isPhenotypeHealthTestCode("ELBOWS"),
@@ -62,8 +68,18 @@ assertEqual(
 );
 assertEqual(
   Object.prototype.hasOwnProperty.call(PHENOTYPE_HEALTH_TESTS, "ELBOW_DYSPLASIA"),
-  false,
-  "elbow dysplasia has no health test definition"
+  true,
+  "elbow dysplasia has a health test definition"
+);
+assertEqual(
+  PHENOTYPE_HEALTH_TESTS.ELBOW_DYSPLASIA.minimumAgeHours,
+  PHENOTYPE_HEALTH_TESTS.HIP_DYSPLASIA.minimumAgeHours,
+  "elbow dysplasia uses adult orthopedic age eligibility"
+);
+assertEqual(
+  PHENOTYPE_HEALTH_TESTS.ELBOW_DYSPLASIA.fee,
+  PHENOTYPE_HEALTH_TESTS.HIP_DYSPLASIA.fee,
+  "elbow dysplasia uses orthopedic test fee"
 );
 
 const foundationTruths = generateFoundationPhenotypeHealthTruths(() => 0.5);
@@ -82,6 +98,11 @@ assertEqual(
   0.035,
   "foundation environmental modifier"
 );
+assertEqual(
+  foundationTruths.some((item) => item.conditionCode === "ELBOW_DYSPLASIA"),
+  true,
+  "foundation truths include elbow dysplasia"
+);
 
 const healthyParentTruths = PHENOTYPE_HEALTH_TEST_CODES.map((conditionCode) =>
   truth(conditionCode, 0.3)
@@ -96,6 +117,11 @@ assertEqual(
   inheritedTruths[0].geneticLiability,
   0.35625,
   "inherited COI pressure"
+);
+assertEqual(
+  inheritedTruths.some((item) => item.conditionCode === "ELBOW_DYSPLASIA"),
+  true,
+  "inherited truths include elbow dysplasia"
 );
 
 let resurfacingNoiseIndex = 0;
@@ -140,6 +166,21 @@ assertEqual(
   "moderate hip result"
 );
 assertEqual(
+  revealPhenotypeHealthTestResult(truth("ELBOW_DYSPLASIA", 0.1)).resultCode,
+  "NORMAL",
+  "normal elbow result"
+);
+assertEqual(
+  revealPhenotypeHealthTestResult(truth("ELBOW_DYSPLASIA", 0.5)).resultCode,
+  "BORDERLINE",
+  "borderline elbow result"
+);
+assertEqual(
+  revealPhenotypeHealthTestResult(truth("ELBOW_DYSPLASIA", 0.9)).resultCode,
+  "GRADE_3",
+  "grade 3 elbow result"
+);
+assertEqual(
   revealPhenotypeHealthTestResult(truth("CARDIAC", 0.9)).resultCode,
   "ABNORMAL",
   "abnormal cardiac result"
@@ -158,6 +199,11 @@ assertEqual(
   getPhenotypeHealthResultLabel("CAER_EYE", "NOT_CLEARED"),
   "Not Cleared",
   "eye result display label"
+);
+assertEqual(
+  getPhenotypeHealthResultLabel("ELBOW_DYSPLASIA", "GRADE_2"),
+  "Grade 2",
+  "elbow result display label"
 );
 
 assertEqual(pushFartherFromIdeal(7.5, 3), 4.5, "push under ideal");
@@ -209,6 +255,19 @@ for (const trait of Object.keys(redHipTraits) as Array<keyof DogTraits>) {
     redHipExpressed[trait],
     redHipTraits[trait],
     `non-hindquarter trait unchanged: ${trait}`
+  );
+}
+
+const redElbowTraits = testTraits(12.5);
+const redElbowExpressed = deriveHealthAdjustedExpressedTraits({
+  storedTraits: redElbowTraits,
+  phenotypeHealthTruths: [truth("ELBOW_DYSPLASIA", 0.9)],
+});
+for (const trait of Object.keys(redElbowTraits) as Array<keyof DogTraits>) {
+  assertEqual(
+    redElbowExpressed[trait],
+    redElbowTraits[trait],
+    `elbow dysplasia has no expressed-trait effect yet: ${trait}`
   );
 }
 

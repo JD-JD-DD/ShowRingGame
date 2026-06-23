@@ -1,5 +1,6 @@
 export const PHENOTYPE_HEALTH_TEST_CODES = [
   "HIP_DYSPLASIA",
+  "ELBOW_DYSPLASIA",
   "CARDIAC",
   "CAER_EYE",
   "THYROID",
@@ -40,6 +41,19 @@ export const PHENOTYPE_HEALTH_TESTS: Record<
       MILD: "red",
       MODERATE: "red",
       SEVERE: "red",
+    },
+  },
+  ELBOW_DYSPLASIA: {
+    label: "Elbow Dysplasia",
+    fee: 350,
+    minimumAgeHours: 730,
+    minimumAgeLabel: "Available at 24 months",
+    resultSeverityByCode: {
+      NORMAL: "green",
+      BORDERLINE: "yellow",
+      GRADE_1: "red",
+      GRADE_2: "red",
+      GRADE_3: "red",
     },
   },
   CARDIAC: {
