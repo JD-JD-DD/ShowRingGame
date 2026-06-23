@@ -9,10 +9,6 @@ import {
   TRAIT_MAX,
   TRAIT_MIN,
 } from "../constants/genetics.constants";
-import {
-  isPhenotypeHealthTestCode,
-  revealPhenotypeHealthTestResult,
-} from "./health.engine";
 import type { Dog, DogPresentationInfluences } from "./dog.engine";
 import type { ShowCharacteristics } from "./judging.engine";
 
@@ -21,7 +17,6 @@ export type PresentationModifierSource =
   | "PAST_PRIME"
   | "LATE_PREGNANCY"
   | "POST_WHELP"
-  | "HEALTH_THYROID"
   | "CONDITIONING"
   | "GROOMING"
   | "HANDLING";
@@ -84,36 +79,6 @@ const POST_WHELP_MAX_MULTIPLIER: Record<JudgingCategory, number> = {
   COAT_PRESENTATION: 1.6,
   TEMPERAMENT_RING_BEHAVIOR: 1.05,
   CONDITIONING_HANDLING: 1.55,
-};
-
-const THYROID_HEALTH_MULTIPLIERS: Record<
-  string,
-  Partial<Record<JudgingCategory, number>>
-> = {
-  EQUIVOCAL: {
-    CONDITIONING_HANDLING: 1.06,
-  },
-  AUTOIMMUNE_THYROIDITIS: {
-    MOVEMENT: 1.12,
-    TEMPERAMENT_RING_BEHAVIOR: 1.08,
-    CONDITIONING_HANDLING: 1.35,
-  },
-  REDUCED_THYROID_FUNCTION: {
-    MOVEMENT: 1.2,
-    TEMPERAMENT_RING_BEHAVIOR: 1.1,
-    CONDITIONING_HANDLING: 1.55,
-  },
-};
-
-type PresentationHealthResult = {
-  testTypeCode: string;
-  resultCode: string;
-};
-
-type PresentationHealthTruth = {
-  conditionCode: string;
-  geneticLiability: number;
-  environmentModifier: number;
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -236,94 +201,6 @@ function getOptionalCategoryModifier(args: {
   };
 }
 
-function revealPresentationHealthTruths(
-  healthTruths?: PresentationHealthTruth[]
-): PresentationHealthResult[] {
-  const results: PresentationHealthResult[] = [];
-
-  for (const truth of healthTruths ?? []) {
-    if (!isPhenotypeHealthTestCode(truth.conditionCode)) {
-      continue;
-    }
-
-    const result = revealPhenotypeHealthTestResult({
-      conditionCode: truth.conditionCode,
-      geneticLiability: truth.geneticLiability,
-      environmentModifier: truth.environmentModifier,
-    });
-
-    results.push({
-      testTypeCode: result.testTypeCode,
-      resultCode: result.resultCode,
-    });
-  }
-
-  return results;
-}
-
-function getHealthResultsFromInfluences(
-  influences: DogPresentationInfluences
-): PresentationHealthResult[] {
-  const truthResults = revealPresentationHealthTruths(
-    influences.phenotypeHealthTruths
-  );
-  const truthCodes = new Set(truthResults.map((result) => result.testTypeCode));
-  const fallbackRevealedResults = (influences.phenotypeHealthResults ?? []).filter(
-    (result) => !truthCodes.has(result.testTypeCode)
-  );
-
-  return [...truthResults, ...fallbackRevealedResults];
-}
-
-function getHealthModifier(args: {
-  category: JudgingCategory;
-  source: PresentationModifierSource;
-  testTypeCode: string;
-  resultCode: string;
-  healthResults?: PresentationHealthResult[];
-  multipliersByResult: Record<string, Partial<Record<JudgingCategory, number>>>;
-}): PresentationModifierDetail | null {
-  const result = args.healthResults?.find(
-    (candidate) =>
-      candidate.testTypeCode === args.testTypeCode &&
-      candidate.resultCode === args.resultCode
-  );
-
-  if (!result) {
-    return null;
-  }
-
-  return getOptionalCategoryModifier({
-    source: args.source,
-    category: args.category,
-    multiplierByCategory: args.multipliersByResult[args.resultCode],
-  });
-}
-
-function getHealthModifiers(args: {
-  category: JudgingCategory;
-  healthResults?: PresentationHealthResult[];
-}): PresentationModifierDetail[] {
-  const modifiers: Array<PresentationModifierDetail | null> = [];
-
-  for (const resultCode of Object.keys(THYROID_HEALTH_MULTIPLIERS)) {
-    modifiers.push(
-      getHealthModifier({
-        category: args.category,
-        source: "HEALTH_THYROID",
-        testTypeCode: "THYROID",
-        resultCode,
-        healthResults: args.healthResults,
-        multipliersByResult: THYROID_HEALTH_MULTIPLIERS,
-      })
-    );
-  }
-
-  return modifiers.filter(
-    (modifier): modifier is PresentationModifierDetail => modifier !== null
-  );
-}
-
 export function getPresentationModifiersForCategory(args: {
   category: JudgingCategory;
   dog: Dog;
@@ -349,10 +226,6 @@ export function getPresentationModifiersForCategory(args: {
       category: args.category,
       showEpoch: args.showEpoch,
       lastWhelpedEpoch: influences.lastWhelpedEpoch,
-    }),
-    ...getHealthModifiers({
-      category: args.category,
-      healthResults: getHealthResultsFromInfluences(influences),
     }),
     getOptionalCategoryModifier({
       source: "CONDITIONING",

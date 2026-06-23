@@ -40,8 +40,10 @@ const healthConstants = source("packages/rules/constants/health.constants.ts");
 const healthExpression = source(
   "packages/rules/engines/healthExpression.engine.ts"
 );
+const presentationEngine = source("packages/rules/engines/presentation.engine.ts");
 const healthService = source("apps/web/server/services/healthTest.service.ts");
 const dogService = source("apps/web/server/services/dog.service.ts");
+const groomingService = source("apps/web/server/services/grooming.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
 const dogProfileDashboard = source(
   "apps/web/components/dogs/DogProfileDashboard.tsx"
@@ -198,6 +200,11 @@ assertIncludes(
 );
 assertIncludes(
   dogService,
+  'args.testCode === "THYROID"',
+  "health impact statements include scoped thyroid copy"
+);
+assertIncludes(
+  dogService,
   "Hip result is mildly affecting rear movement and structure.",
   "yellow hip dysplasia result has the expected player-facing impact statement"
 );
@@ -218,6 +225,16 @@ assertIncludes(
 );
 assertIncludes(
   dogService,
+  "Thyroid result is reducing coat improvement from grooming.",
+  "yellow thyroid result has the expected player-facing impact statement"
+);
+assertIncludes(
+  dogService,
+  "Red thyroid is severely limiting coat condition improvement. Grooming has reduced effect on this dog.",
+  "red thyroid result has the expected player-facing impact statement"
+);
+assertIncludes(
+  dogService,
   "healthImpactStatement: severityKey",
   "dog profile health impact statement requires a completed public result severity"
 );
@@ -230,6 +247,56 @@ assertIncludes(
   healthExpression,
   "expressedTraits.forequarters = pushFartherFromIdeal(",
   "elbow dysplasia modifies copied expressed forequarters"
+);
+assertIncludes(
+  healthExpression,
+  "deriveThyroidGroomingModifiers",
+  "health expression provides thyroid grooming modifiers"
+);
+assertIncludes(
+  healthExpression,
+  "groomingGainMultiplier: 0.6",
+  "yellow thyroid reduces grooming gain"
+);
+assertIncludes(
+  healthExpression,
+  "missedGroomingDecayMultiplier: 1.75",
+  "red thyroid increases missed grooming decay"
+);
+assertIncludes(
+  healthExpression,
+  "coatConditionCap: 9",
+  "red thyroid caps coat condition"
+);
+assertIncludes(
+  groomingService,
+  "deriveThyroidGroomingModifiers",
+  "grooming service uses thyroid grooming modifiers"
+);
+assertIncludes(
+  groomingService,
+  "BASE_COAT_CONDITION_GAIN * thyroidModifiers.groomingGainMultiplier",
+  "thyroid modifies grooming gain"
+);
+assertIncludes(
+  groomingService,
+  "MISSED_GROOMING_DECAY * thyroidModifiers.missedGroomingDecayMultiplier",
+  "thyroid modifies missed grooming decay"
+);
+assertIncludes(
+  groomingService,
+  "thyroidModifiers.coatConditionCap",
+  "thyroid enforces coat condition cap after grooming"
+);
+assertIncludes(
+  groomingService,
+  'conditionCode: "THYROID"',
+  "grooming service reads hidden thyroid truth server-side"
+);
+assertDoesNotIncludeAny(
+  presentationEngine,
+  ["HEALTH_THYROID", "THYROID_HEALTH_MULTIPLIERS"],
+  "thyroid should not remain as a direct presentation modifier"
 );
 assertBefore(
   dogService,

@@ -332,8 +332,13 @@ assert.deepEqual(
   "Hip dysplasia should not apply a separate direct presentation modifier."
 );
 assert.ok(
-  autoimmuneThyroidMovement.presentedValue > twoYearsMovement.presentedValue,
-  "Autoimmune thyroiditis should have a mild movement presentation effect."
+  autoimmuneThyroidMovement.presentedValue === adultMovement.presentedValue,
+  "Thyroid should not apply a direct movement presentation effect."
+);
+assert.deepEqual(
+  autoimmuneThyroidMovement.modifiers.map((modifier) => modifier.source),
+  [],
+  "Thyroid should not apply a separate direct presentation modifier."
 );
 assertClose(lowHindquartersYellowHips.characteristics.MOVEMENT, 8.83);
 assertClose(lowHindquartersYellowHips.characteristics.STRUCTURE_BALANCE, 9.13);

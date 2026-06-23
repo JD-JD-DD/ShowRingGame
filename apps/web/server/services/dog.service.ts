@@ -215,7 +215,8 @@ function getHealthImpactStatement(args: {
 }): string | null {
   if (
     args.testCode !== "HIP_DYSPLASIA" &&
-    args.testCode !== "ELBOW_DYSPLASIA"
+    args.testCode !== "ELBOW_DYSPLASIA" &&
+    args.testCode !== "THYROID"
   ) {
     return null;
   }
@@ -234,6 +235,14 @@ function getHealthImpactStatement(args: {
 
   if (args.testCode === "ELBOW_DYSPLASIA" && args.severityKey === "red") {
     return "Red elbows are limiting front assembly and affecting this dog’s Movement and Structure & Balance.";
+  }
+
+  if (args.testCode === "THYROID" && args.severityKey === "yellow") {
+    return "Thyroid result is reducing coat improvement from grooming.";
+  }
+
+  if (args.testCode === "THYROID" && args.severityKey === "red") {
+    return "Red thyroid is severely limiting coat condition improvement. Grooming has reduced effect on this dog.";
   }
 
   return null;

@@ -1,5 +1,6 @@
 import {
   deriveHealthAdjustedExpressedTraits,
+  deriveThyroidGroomingModifiers,
   generateFoundationPhenotypeHealthTruths,
   getPhenotypeHealthResultLabel,
   inheritPhenotypeHealthTruths,
@@ -313,5 +314,73 @@ for (const trait of Object.keys(redElbowTraits) as Array<keyof DogTraits>) {
     `non-forequarter trait unchanged for elbow dysplasia: ${trait}`
   );
 }
+
+const greenThyroidModifiers = deriveThyroidGroomingModifiers({
+  phenotypeHealthTruths: [truth("THYROID", 0.1)],
+});
+assertEqual(
+  greenThyroidModifiers.groomingGainMultiplier,
+  1,
+  "green thyroid keeps current grooming gain"
+);
+assertEqual(
+  greenThyroidModifiers.missedGroomingDecayMultiplier,
+  1,
+  "green thyroid keeps current grooming decay"
+);
+assertEqual(
+  greenThyroidModifiers.coatConditionCap,
+  20,
+  "green thyroid keeps full coat condition cap"
+);
+
+const yellowThyroidModifiers = deriveThyroidGroomingModifiers({
+  phenotypeHealthTruths: [truth("THYROID", 0.65)],
+});
+assertEqual(
+  yellowThyroidModifiers.groomingGainMultiplier,
+  0.6,
+  "yellow thyroid reduces grooming gain"
+);
+assertEqual(
+  yellowThyroidModifiers.missedGroomingDecayMultiplier,
+  1.25,
+  "yellow thyroid increases missed grooming decay"
+);
+assertEqual(
+  yellowThyroidModifiers.coatConditionCap,
+  15,
+  "yellow thyroid caps coat condition"
+);
+
+const redThyroidModifiers = deriveThyroidGroomingModifiers({
+  phenotypeHealthTruths: [truth("THYROID", 0.9)],
+});
+assertEqual(
+  redThyroidModifiers.groomingGainMultiplier,
+  0.15,
+  "red thyroid greatly reduces grooming gain"
+);
+assertEqual(
+  redThyroidModifiers.missedGroomingDecayMultiplier,
+  1.75,
+  "red thyroid increases missed grooming decay more"
+);
+assertEqual(
+  redThyroidModifiers.coatConditionCap,
+  9,
+  "red thyroid caps coat condition"
+);
+
+const redThyroidTraits = testTraits(10);
+const redThyroidExpressed = deriveHealthAdjustedExpressedTraits({
+  storedTraits: redThyroidTraits,
+  phenotypeHealthTruths: [truth("THYROID", 0.9)],
+});
+assertEqual(
+  redThyroidExpressed.coat,
+  redThyroidTraits.coat,
+  "thyroid does not mutate or express traitCoat"
+);
 
 console.log("Health checks passed.");

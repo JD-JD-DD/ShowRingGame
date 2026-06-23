@@ -30,6 +30,14 @@ type HealthExpressionInput = {
   phenotypeHealthResults?: HealthExpressionResult[];
 };
 
+type HealthExpressionSourceInput = Omit<HealthExpressionInput, "storedTraits">;
+
+export type ThyroidGroomingModifiers = {
+  groomingGainMultiplier: number;
+  missedGroomingDecayMultiplier: number;
+  coatConditionCap: number;
+};
+
 const HEALTH_EXPRESSION_PENALTY_BY_SEVERITY: Record<
   PhenotypeHealthSeverity,
   number
@@ -37,6 +45,27 @@ const HEALTH_EXPRESSION_PENALTY_BY_SEVERITY: Record<
   green: 0,
   yellow: 1,
   red: 3,
+};
+
+const THYROID_GROOMING_MODIFIERS_BY_SEVERITY: Record<
+  PhenotypeHealthSeverity,
+  ThyroidGroomingModifiers
+> = {
+  green: {
+    groomingGainMultiplier: 1,
+    missedGroomingDecayMultiplier: 1,
+    coatConditionCap: TRAIT_MAX,
+  },
+  yellow: {
+    groomingGainMultiplier: 0.6,
+    missedGroomingDecayMultiplier: 1.25,
+    coatConditionCap: 15,
+  },
+  red: {
+    groomingGainMultiplier: 0.15,
+    missedGroomingDecayMultiplier: 1.75,
+    coatConditionCap: 9,
+  },
 };
 
 function clampTrait(value: number): number {
@@ -78,9 +107,7 @@ function revealHealthTruths(
   });
 }
 
-function getHealthResultsForExpression(
-  input: Omit<HealthExpressionInput, "storedTraits">
-): HealthExpressionResult[] {
+function getHealthResultsForExpression(input: HealthExpressionSourceInput): HealthExpressionResult[] {
   const truthResults = revealHealthTruths(input.phenotypeHealthTruths);
   const truthCodes = new Set(truthResults.map((result) => result.testTypeCode));
   const fallbackResults = (input.phenotypeHealthResults ?? []).filter(
@@ -114,6 +141,30 @@ function getHealthExpressionPenalty(
   const severity = result ? getHealthResultSeverity(result) : null;
 
   return severity ? HEALTH_EXPRESSION_PENALTY_BY_SEVERITY[severity] : 0;
+}
+
+function getHealthExpressionSeverity(
+  results: readonly HealthExpressionResult[],
+  testTypeCode: string
+): PhenotypeHealthSeverity | null {
+  const result = results.find(
+    (candidate) => candidate.testTypeCode === testTypeCode
+  );
+
+  return result ? getHealthResultSeverity(result) : null;
+}
+
+export function deriveThyroidGroomingModifiers(
+  input: HealthExpressionSourceInput
+): ThyroidGroomingModifiers {
+  const severity = getHealthExpressionSeverity(
+    getHealthResultsForExpression(input),
+    "THYROID"
+  );
+
+  return severity
+    ? THYROID_GROOMING_MODIFIERS_BY_SEVERITY[severity]
+    : THYROID_GROOMING_MODIFIERS_BY_SEVERITY.green;
 }
 
 export function deriveHealthAdjustedExpressedTraits(

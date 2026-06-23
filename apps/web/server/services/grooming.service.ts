@@ -3,7 +3,10 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import { MIN_SHOW_AGE_HOURS } from "@showring/rules";
+import {
+  deriveThyroidGroomingModifiers,
+  MIN_SHOW_AGE_HOURS,
+} from "@showring/rules";
 
 type DbClient = typeof db | Prisma.TransactionClient;
 
@@ -145,19 +148,55 @@ function getMissedGroomingDecayKey(dogId: string, groomingWeek: number): string 
   return `missed-grooming:${dogId}:${groomingWeek}`;
 }
 
-function applyCoatGain(currentCoatCondition: number): {
+type ThyroidHealthSource = {
+  healthConditionTruths?: Array<{
+    conditionCode: string;
+    geneticLiability: number;
+    environmentModifier: number;
+  }>;
+  healthTests?: Array<{
+    testTypeCode: string;
+    resultCode: string;
+  }>;
+};
+
+function applyCoatGain(
+  currentCoatCondition: number,
+  thyroidHealth: ThyroidHealthSource = {}
+): {
   nextCoatCondition: number;
   actualGain: number;
 } {
+  const thyroidModifiers = deriveThyroidGroomingModifiers({
+    phenotypeHealthTruths: thyroidHealth.healthConditionTruths,
+    phenotypeHealthResults: thyroidHealth.healthTests,
+  });
   const nextCoatCondition = Math.min(
     MAX_COAT_CONDITION,
-    currentCoatCondition + BASE_COAT_CONDITION_GAIN
+    thyroidModifiers.coatConditionCap,
+    currentCoatCondition +
+      BASE_COAT_CONDITION_GAIN * thyroidModifiers.groomingGainMultiplier
   );
 
   return {
     nextCoatCondition,
     actualGain: Math.max(0, nextCoatCondition - currentCoatCondition),
   };
+}
+
+function getMissedGroomingDecayAmount(args: {
+  netGroomingImpact: number;
+  thyroidHealth?: ThyroidHealthSource;
+}): number {
+  const thyroidModifiers = deriveThyroidGroomingModifiers({
+    phenotypeHealthTruths: args.thyroidHealth?.healthConditionTruths,
+    phenotypeHealthResults: args.thyroidHealth?.healthTests,
+  });
+
+  return Math.min(
+    MISSED_GROOMING_DECAY * thyroidModifiers.missedGroomingDecayMultiplier,
+    args.netGroomingImpact
+  );
 }
 
 function applyCoatDecay(
@@ -578,6 +617,27 @@ export async function selfGroomDog(args: {
         birthEpoch: true,
         coatCondition: true,
         isPlayerVisible: true,
+        healthConditionTruths: {
+          where: {
+            conditionCode: "THYROID",
+          },
+          select: {
+            conditionCode: true,
+            geneticLiability: true,
+            environmentModifier: true,
+          },
+        },
+        healthTests: {
+          where: {
+            isPublic: true,
+            testTypeCode: "THYROID",
+          },
+          orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+          select: {
+            testTypeCode: true,
+            resultCode: true,
+          },
+        },
       },
     });
 
@@ -626,7 +686,10 @@ export async function selfGroomDog(args: {
       );
     }
 
-    const { nextCoatCondition, actualGain } = applyCoatGain(dog.coatCondition);
+    const { nextCoatCondition, actualGain } = applyCoatGain(
+      dog.coatCondition,
+      dog
+    );
     const updatedDog = await tx.dog.update({
       where: {
         id: dog.id,
@@ -960,6 +1023,27 @@ export async function acceptGroomingJob(args: {
             birthEpoch: true,
             coatCondition: true,
             isPlayerVisible: true,
+            healthConditionTruths: {
+              where: {
+                conditionCode: "THYROID",
+              },
+              select: {
+                conditionCode: true,
+                geneticLiability: true,
+                environmentModifier: true,
+              },
+            },
+            healthTests: {
+              where: {
+                isPublic: true,
+                testTypeCode: "THYROID",
+              },
+              orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+              select: {
+                testTypeCode: true,
+                resultCode: true,
+              },
+            },
           },
         },
       },
@@ -1014,7 +1098,8 @@ export async function acceptGroomingJob(args: {
     }
 
     const { nextCoatCondition, actualGain } = applyCoatGain(
-      listing.dog.coatCondition
+      listing.dog.coatCondition,
+      listing.dog
     );
     const [updatedDog, updatedKennel, groomerKennel] = await Promise.all([
       tx.dog.update({
@@ -1197,6 +1282,27 @@ export async function applyMissedGroomingDecayForCompletedWeek(args: {
           isPlayerVisible: true,
           birthEpoch: true,
           coatCondition: true,
+          healthConditionTruths: {
+            where: {
+              conditionCode: "THYROID",
+            },
+            select: {
+              conditionCode: true,
+              geneticLiability: true,
+              environmentModifier: true,
+            },
+          },
+          healthTests: {
+            where: {
+              isPublic: true,
+              testTypeCode: "THYROID",
+            },
+            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+            select: {
+              testTypeCode: true,
+              resultCode: true,
+            },
+          },
         },
       });
 
@@ -1292,10 +1398,10 @@ export async function applyMissedGroomingDecayForCompletedWeek(args: {
         };
       }
 
-      const requestedDecayAmount = Math.min(
-        MISSED_GROOMING_DECAY,
-        netGroomingImpact
-      );
+      const requestedDecayAmount = getMissedGroomingDecayAmount({
+        netGroomingImpact,
+        thyroidHealth: dog,
+      });
       const { nextCoatCondition, actualDecay } = applyCoatDecay(
         dog.coatCondition,
         requestedDecayAmount
