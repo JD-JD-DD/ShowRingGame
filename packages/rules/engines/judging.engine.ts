@@ -11,6 +11,7 @@ import {
   type JudgingCategory,
 } from "../constants/judging.constants";
 import { deriveConditioningHandlingScore } from "./conditioning.engine";
+import { deriveHealthAdjustedExpressedTraits } from "./healthExpression.engine";
 import { applyPresentationModifiersToCharacteristics } from "./presentation.engine";
 import { scoreValueAgainstIdeal } from "./idealScoring.engine";
 
@@ -146,7 +147,14 @@ export function scoreDogByJudgeWeights(args: {
   const { dog, judge } = args;
   const random01 = args.random01 ?? Math.random;
 
-  const baseCharacteristics = deriveShowCharacteristicsFromTraits(dog.traits);
+  const expressedTraits = deriveHealthAdjustedExpressedTraits({
+    storedTraits: dog.traits,
+    phenotypeHealthTruths: dog.presentation?.phenotypeHealthTruths,
+    phenotypeHealthResults: dog.presentation?.phenotypeHealthResults,
+  });
+  const baseCharacteristics = deriveShowCharacteristicsFromTraits(
+    expressedTraits
+  );
   baseCharacteristics.CONDITIONING_HANDLING = deriveConditioningHandlingScore(
     dog.presentation
   );

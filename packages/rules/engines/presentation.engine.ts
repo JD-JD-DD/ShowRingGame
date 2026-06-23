@@ -21,7 +21,6 @@ export type PresentationModifierSource =
   | "PAST_PRIME"
   | "LATE_PREGNANCY"
   | "POST_WHELP"
-  | "HEALTH_HIP_DYSPLASIA"
   | "HEALTH_THYROID"
   | "CONDITIONING"
   | "GROOMING"
@@ -85,32 +84,6 @@ const POST_WHELP_MAX_MULTIPLIER: Record<JudgingCategory, number> = {
   COAT_PRESENTATION: 1.6,
   TEMPERAMENT_RING_BEHAVIOR: 1.05,
   CONDITIONING_HANDLING: 1.55,
-};
-
-const HIP_DYSPLASIA_HEALTH_MULTIPLIERS: Record<
-  string,
-  Partial<Record<JudgingCategory, number>>
-> = {
-  BORDERLINE: {
-    MOVEMENT: 1.08,
-    STRUCTURE_BALANCE: 1.04,
-    CONDITIONING_HANDLING: 1.04,
-  },
-  MILD: {
-    MOVEMENT: 1.15,
-    STRUCTURE_BALANCE: 1.08,
-    CONDITIONING_HANDLING: 1.08,
-  },
-  MODERATE: {
-    MOVEMENT: 1.3,
-    STRUCTURE_BALANCE: 1.14,
-    CONDITIONING_HANDLING: 1.18,
-  },
-  SEVERE: {
-    MOVEMENT: 1.65,
-    STRUCTURE_BALANCE: 1.25,
-    CONDITIONING_HANDLING: 1.35,
-  },
 };
 
 const THYROID_HEALTH_MULTIPLIERS: Record<
@@ -332,19 +305,6 @@ function getHealthModifiers(args: {
   healthResults?: PresentationHealthResult[];
 }): PresentationModifierDetail[] {
   const modifiers: Array<PresentationModifierDetail | null> = [];
-
-  for (const resultCode of Object.keys(HIP_DYSPLASIA_HEALTH_MULTIPLIERS)) {
-    modifiers.push(
-      getHealthModifier({
-        category: args.category,
-        source: "HEALTH_HIP_DYSPLASIA",
-        testTypeCode: "HIP_DYSPLASIA",
-        resultCode,
-        healthResults: args.healthResults,
-        multipliersByResult: HIP_DYSPLASIA_HEALTH_MULTIPLIERS,
-      })
-    );
-  }
 
   for (const resultCode of Object.keys(THYROID_HEALTH_MULTIPLIERS)) {
     modifiers.push(

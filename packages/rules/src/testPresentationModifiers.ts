@@ -2,8 +2,10 @@ import { strict as assert } from "node:assert";
 import {
   applyPresentationModifiersToCharacteristics,
   deriveShowCharacteristicsFromTraits,
+  scoreDogByJudgeWeights,
   type Dog,
   type DogTraits,
+  type Judge,
   type JudgingCategory,
 } from "@showring/rules";
 import { SHOW_YEAR_HOURS } from "../constants/time.constants";
@@ -34,6 +36,33 @@ const underIdealTraits: DogTraits = {
   show_shine: 8,
   feet: 8,
   topline: 8,
+};
+
+const idealTraits: DogTraits = {
+  head: 10,
+  forequarters: 10,
+  hindquarters: 10,
+  gait: 10,
+  coat: 10,
+  size: 10,
+  temperament: 10,
+  show_shine: 10,
+  feet: 10,
+  topline: 10,
+};
+
+const balancedJudge: Judge = {
+  judgeId: "judge-test",
+  name: "Balanced Judge",
+  style: "BALANCED",
+  categoryWeights: {
+    TYPE_EXPRESSION: 1,
+    STRUCTURE_BALANCE: 1,
+    MOVEMENT: 1,
+    COAT_PRESENTATION: 1,
+    TEMPERAMENT_RING_BEHAVIOR: 1,
+    CONDITIONING_HANDLING: 1,
+  },
 };
 
 function makeDog(ageHours: number, dogTraits = traits): Dog {
@@ -73,6 +102,33 @@ function presentedValue(args: {
   return presented.details[args.category];
 }
 
+function hipPresentation(geneticLiability: number): Dog["presentation"] {
+  return {
+    phenotypeHealthTruths: [
+      {
+        conditionCode: "HIP_DYSPLASIA",
+        geneticLiability,
+        environmentModifier: 0,
+      },
+    ],
+  };
+}
+
+function scoredDog(args: {
+  dogTraits: DogTraits;
+  presentation?: Dog["presentation"];
+}) {
+  return scoreDogByJudgeWeights({
+    dog: {
+      ...makeDog(3 * SHOW_YEAR_HOURS, args.dogTraits),
+      presentation: args.presentation,
+    },
+    judge: balancedJudge,
+    showEpoch: SHOW_EPOCH,
+    random01: () => 0.5,
+  });
+}
+
 function assertClose(actual: number, expected: number) {
   assert.ok(
     Math.abs(actual - expected) < 0.001,
@@ -90,6 +146,10 @@ const eighteenMonthsMovement = presentedValue({
 });
 const twoYearsMovement = presentedValue({
   ageHours: 2 * SHOW_YEAR_HOURS,
+  category: "MOVEMENT",
+});
+const adultMovement = presentedValue({
+  ageHours: 3 * SHOW_YEAR_HOURS,
   category: "MOVEMENT",
 });
 const fourYearsMovement = presentedValue({
@@ -144,19 +204,6 @@ const severeHipMovement = presentedValue({
     ],
   },
 });
-const moderateHipMovement = presentedValue({
-  ageHours: 3 * SHOW_YEAR_HOURS,
-  category: "MOVEMENT",
-  presentation: {
-    phenotypeHealthTruths: [
-      {
-        conditionCode: "HIP_DYSPLASIA",
-        geneticLiability: 0.76,
-        environmentModifier: 0,
-      },
-    ],
-  },
-});
 const autoimmuneThyroidMovement = presentedValue({
   ageHours: 3 * SHOW_YEAR_HOURS,
   category: "MOVEMENT",
@@ -169,6 +216,32 @@ const autoimmuneThyroidMovement = presentedValue({
       },
     ],
   },
+});
+const lowHindquartersTraits: DogTraits = {
+  ...idealTraits,
+  hindquarters: 7.5,
+};
+const highHindquartersTraits: DogTraits = {
+  ...idealTraits,
+  hindquarters: 12.5,
+};
+const lowHindquartersBaseline = scoredDog({
+  dogTraits: lowHindquartersTraits,
+});
+const lowHindquartersYellowHips = scoredDog({
+  dogTraits: lowHindquartersTraits,
+  presentation: hipPresentation(0.5),
+});
+const lowHindquartersRedHips = scoredDog({
+  dogTraits: lowHindquartersTraits,
+  presentation: hipPresentation(0.9),
+});
+const highHindquartersBaseline = scoredDog({
+  dogTraits: highHindquartersTraits,
+});
+const highHindquartersRedHips = scoredDog({
+  dogTraits: highHindquartersTraits,
+  presentation: hipPresentation(0.9),
 });
 
 assert.ok(
@@ -214,13 +287,41 @@ assert.ok(
   postWhelpCoat.presentedValue > twoYearsMovement.presentedValue,
   "Post-whelp coat presentation should still be affected during the 3-month window."
 );
-assert.ok(
-  severeHipMovement.presentedValue > moderateHipMovement.presentedValue,
-  "Severe hip dysplasia should affect movement more than moderate hip dysplasia."
+assertClose(severeHipMovement.presentedValue, adultMovement.presentedValue);
+assert.deepEqual(
+  severeHipMovement.modifiers.map((modifier) => modifier.source),
+  [],
+  "Hip dysplasia should not apply a separate direct presentation modifier."
 );
 assert.ok(
   autoimmuneThyroidMovement.presentedValue > twoYearsMovement.presentedValue,
   "Autoimmune thyroiditis should have a mild movement presentation effect."
+);
+assertClose(lowHindquartersYellowHips.characteristics.MOVEMENT, 8.83);
+assertClose(lowHindquartersYellowHips.characteristics.STRUCTURE_BALANCE, 9.13);
+assertClose(lowHindquartersRedHips.characteristics.MOVEMENT, 8.17);
+assertClose(lowHindquartersRedHips.characteristics.STRUCTURE_BALANCE, 8.63);
+assertClose(highHindquartersRedHips.characteristics.MOVEMENT, 11.83);
+assertClose(highHindquartersRedHips.characteristics.STRUCTURE_BALANCE, 11.38);
+assert.notEqual(
+  lowHindquartersYellowHips.weightedCategoryScores.MOVEMENT,
+  lowHindquartersBaseline.weightedCategoryScores.MOVEMENT,
+  "Yellow hips should change judging movement through expressed hindquarters."
+);
+assert.notEqual(
+  lowHindquartersRedHips.weightedCategoryScores.STRUCTURE_BALANCE,
+  lowHindquartersBaseline.weightedCategoryScores.STRUCTURE_BALANCE,
+  "Red hips should change judging structure through expressed hindquarters."
+);
+assert.notEqual(
+  highHindquartersRedHips.weightedCategoryScores.MOVEMENT,
+  highHindquartersBaseline.weightedCategoryScores.MOVEMENT,
+  "Red hips above ideal should change judging movement through expressed hindquarters."
+);
+assert.equal(
+  lowHindquartersTraits.hindquarters,
+  7.5,
+  "Judging should not mutate stored traitHindquarters."
 );
 assert.equal(
   deriveShowCharacteristicsFromTraits(traits).CONDITIONING_HANDLING,
@@ -315,14 +416,7 @@ console.table([
     multiplier: postWhelpCoat.multiplier,
   },
   {
-    stage: "Moderate hip dysplasia",
-    category: "Movement",
-    trueValue: moderateHipMovement.baseValue,
-    presented: moderateHipMovement.presentedValue,
-    multiplier: moderateHipMovement.multiplier,
-  },
-  {
-    stage: "Severe hip dysplasia",
+    stage: "Severe hip dysplasia direct modifier",
     category: "Movement",
     trueValue: severeHipMovement.baseValue,
     presented: severeHipMovement.presentedValue,
