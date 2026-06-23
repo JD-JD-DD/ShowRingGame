@@ -217,7 +217,8 @@ function getHealthImpactStatement(args: {
     args.testCode !== "HIP_DYSPLASIA" &&
     args.testCode !== "ELBOW_DYSPLASIA" &&
     args.testCode !== "THYROID" &&
-    args.testCode !== "CARDIAC"
+    args.testCode !== "CARDIAC" &&
+    args.testCode !== "CAER_EYE"
   ) {
     return null;
   }
@@ -252,6 +253,14 @@ function getHealthImpactStatement(args: {
 
   if (args.testCode === "CARDIAC" && args.severityKey === "red") {
     return "Red cardiac result may significantly shorten this dog’s expected lifespan.";
+  }
+
+  if (args.testCode === "CAER_EYE" && args.severityKey === "yellow") {
+    return "CAER result is mildly affecting this dog’s ring confidence.";
+  }
+
+  if (args.testCode === "CAER_EYE" && args.severityKey === "red") {
+    return "Red CAER result is affecting this dog’s visual comfort, expression, and ring confidence.";
   }
 
   return null;
@@ -690,7 +699,9 @@ export async function getDogProfile(args: {
       },
       healthConditionTruths: {
         where: {
-          conditionCode: { in: ["HIP_DYSPLASIA", "ELBOW_DYSPLASIA"] },
+          conditionCode: {
+            in: ["HIP_DYSPLASIA", "ELBOW_DYSPLASIA", "CAER_EYE"],
+          },
         },
         select: {
           conditionCode: true,

@@ -167,8 +167,8 @@ assertIncludes(
 );
 assertIncludes(
   dogService,
-  'conditionCode: { in: ["HIP_DYSPLASIA", "ELBOW_DYSPLASIA"] }',
-  "dog profile service selects hidden hip and elbow truths for visible category expression"
+  'in: ["HIP_DYSPLASIA", "ELBOW_DYSPLASIA", "CAER_EYE"]',
+  "dog profile service selects hidden hip, elbow, and CAER truths for visible category expression"
 );
 assertIncludes(
   dogService,
@@ -212,6 +212,11 @@ assertIncludes(
 );
 assertIncludes(
   dogService,
+  'args.testCode === "CAER_EYE"',
+  "health impact statements include scoped CAER copy"
+);
+assertIncludes(
+  dogService,
   "Hip result is mildly affecting rear movement and structure.",
   "yellow hip dysplasia result has the expected player-facing impact statement"
 );
@@ -252,6 +257,16 @@ assertIncludes(
 );
 assertIncludes(
   dogService,
+  "CAER result is mildly affecting this dog’s ring confidence.",
+  "yellow CAER result has the expected player-facing impact statement"
+);
+assertIncludes(
+  dogService,
+  "Red CAER result is affecting this dog’s visual comfort, expression, and ring confidence.",
+  "red CAER result has the expected player-facing impact statement"
+);
+assertIncludes(
+  dogService,
   "healthImpactStatement: severityKey",
   "dog profile health impact statement requires a completed public result severity"
 );
@@ -264,6 +279,21 @@ assertIncludes(
   healthExpression,
   "expressedTraits.forequarters = pushFartherFromIdeal(",
   "elbow dysplasia modifies copied expressed forequarters"
+);
+assertIncludes(
+  healthExpression,
+  '"CAER_EYE"',
+  "health expression supports CAER through the shared expressed-trait helper"
+);
+assertIncludes(
+  healthExpression,
+  "expressedTraits.temperament = pushFartherFromIdeal(",
+  "CAER modifies copied expressed temperament"
+);
+assertDoesNotIncludeAny(
+  healthExpression,
+  ["expressedTraits.show_shine = pushFartherFromIdeal("],
+  "CAER does not modify show shine because it also feeds Coat & Presentation"
 );
 assertIncludes(
   healthExpression,
@@ -372,8 +402,8 @@ assertIncludes(
 );
 assertDoesNotIncludeAny(
   presentationEngine,
-  ["HEALTH_THYROID", "THYROID_HEALTH_MULTIPLIERS"],
-  "thyroid should not remain as a direct presentation modifier"
+  ["HEALTH_THYROID", "THYROID_HEALTH_MULTIPLIERS", "CAER_EYE"],
+  "thyroid and CAER should not remain as direct presentation modifiers"
 );
 assertIncludes(
   lifecycleService,
@@ -405,6 +435,11 @@ assertBefore(
   "const expressedTraits = deriveHealthAdjustedExpressedTraits({",
   "...deriveVisibleCategoriesFromTraits(expressedTraits)",
   "dog profile derives visible categories from expressed traits"
+);
+assertIncludes(
+  dogService,
+  'in: ["HIP_DYSPLASIA", "ELBOW_DYSPLASIA", "CAER_EYE"]',
+  "dog profile service selects hidden CAER truth for visible category expression"
 );
 assertIncludes(
   dogMapper,

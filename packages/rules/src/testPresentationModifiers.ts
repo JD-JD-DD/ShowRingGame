@@ -138,6 +138,18 @@ function cardiacPresentation(geneticLiability: number): Dog["presentation"] {
   };
 }
 
+function caerPresentation(geneticLiability: number): Dog["presentation"] {
+  return {
+    phenotypeHealthTruths: [
+      {
+        conditionCode: "CAER_EYE",
+        geneticLiability,
+        environmentModifier: 0,
+      },
+    ],
+  };
+}
+
 function scoredDog(args: {
   dogTraits: DogTraits;
   presentation?: Dog["presentation"];
@@ -300,6 +312,18 @@ const redCardiacJudging = scoredDog({
 const redCardiacBaselineJudging = scoredDog({
   dogTraits: idealTraits,
 });
+const caerTraits: DogTraits = {
+  ...idealTraits,
+  show_shine: 7.5,
+  temperament: 7.5,
+};
+const redCaerJudging = scoredDog({
+  dogTraits: caerTraits,
+  presentation: caerPresentation(0.9),
+});
+const redCaerBaselineJudging = scoredDog({
+  dogTraits: caerTraits,
+});
 
 assert.ok(
   sixMonthsMovement.presentedValue > eighteenMonthsMovement.presentedValue,
@@ -420,6 +444,41 @@ assert.deepEqual(
   redCardiacJudging.weightedCategoryScores,
   redCardiacBaselineJudging.weightedCategoryScores,
   "Cardiac should not alter judging scores directly."
+);
+assert.equal(
+  redCaerJudging.characteristics.TYPE_EXPRESSION,
+  redCaerBaselineJudging.characteristics.TYPE_EXPRESSION,
+  "CAER should not alter Type & Expression until a non-coat expression channel exists."
+);
+assert.notEqual(
+  redCaerJudging.characteristics.TEMPERAMENT_RING_BEHAVIOR,
+  redCaerBaselineJudging.characteristics.TEMPERAMENT_RING_BEHAVIOR,
+  "CAER should affect Temperament & Ring Behavior through expressed traits."
+);
+assert.equal(
+  redCaerJudging.characteristics.MOVEMENT,
+  redCaerBaselineJudging.characteristics.MOVEMENT,
+  "CAER should not alter Movement."
+);
+assert.equal(
+  redCaerJudging.characteristics.STRUCTURE_BALANCE,
+  redCaerBaselineJudging.characteristics.STRUCTURE_BALANCE,
+  "CAER should not alter Structure & Balance."
+);
+assert.equal(
+  redCaerJudging.characteristics.COAT_PRESENTATION,
+  redCaerBaselineJudging.characteristics.COAT_PRESENTATION,
+  "CAER should not alter Coat & Presentation."
+);
+assert.equal(
+  caerTraits.show_shine,
+  7.5,
+  "Judging should not mutate stored traitShowShine."
+);
+assert.equal(
+  caerTraits.temperament,
+  7.5,
+  "Judging should not mutate stored traitTemperament."
 );
 assert.equal(
   deriveShowCharacteristicsFromTraits(traits).CONDITIONING_HANDLING,

@@ -216,6 +216,10 @@ export function deriveHealthAdjustedExpressedTraits(
     healthResults,
     "ELBOW_DYSPLASIA"
   );
+  const caerPenalty = getHealthExpressionPenalty(
+    healthResults,
+    "CAER_EYE"
+  );
 
   expressedTraits.hindquarters = pushFartherFromIdeal(
     expressedTraits.hindquarters,
@@ -224,6 +228,10 @@ export function deriveHealthAdjustedExpressedTraits(
   expressedTraits.forequarters = pushFartherFromIdeal(
     expressedTraits.forequarters,
     elbowPenalty
+  );
+  expressedTraits.temperament = pushFartherFromIdeal(
+    expressedTraits.temperament,
+    caerPenalty
   );
 
   return expressedTraits;

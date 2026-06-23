@@ -316,6 +316,64 @@ for (const trait of Object.keys(redElbowTraits) as Array<keyof DogTraits>) {
   );
 }
 
+const yellowCaerTraits = {
+  ...testTraits(10),
+  show_shine: 7.5,
+  temperament: 12.5,
+};
+const yellowCaerExpressed = deriveHealthAdjustedExpressedTraits({
+  storedTraits: yellowCaerTraits,
+  phenotypeHealthTruths: [truth("CAER_EYE", 0.7)],
+});
+assertEqual(
+  yellowCaerExpressed.show_shine,
+  7.5,
+  "yellow CAER does not change expressed show shine"
+);
+assertEqual(
+  yellowCaerExpressed.temperament,
+  13.5,
+  "yellow CAER pushes temperament 1 point farther from ideal"
+);
+
+const redCaerTraits = {
+  ...testTraits(10),
+  show_shine: 7.5,
+  temperament: 12.5,
+};
+const redCaerExpressed = deriveHealthAdjustedExpressedTraits({
+  storedTraits: redCaerTraits,
+  phenotypeHealthTruths: [truth("CAER_EYE", 0.9)],
+});
+assertEqual(
+  redCaerExpressed.show_shine,
+  7.5,
+  "red CAER does not change expressed show shine"
+);
+assertEqual(
+  redCaerExpressed.temperament,
+  15.5,
+  "red CAER pushes temperament 3 points farther from ideal"
+);
+assertEqual(
+  redCaerTraits.show_shine,
+  7.5,
+  "stored input show shine is not mutated"
+);
+assertEqual(
+  redCaerTraits.temperament,
+  12.5,
+  "stored input temperament is not mutated"
+);
+for (const trait of Object.keys(redCaerTraits) as Array<keyof DogTraits>) {
+  if (trait === "temperament") continue;
+  assertEqual(
+    redCaerExpressed[trait],
+    redCaerTraits[trait],
+    `non-CAER expressed trait unchanged: ${trait}`
+  );
+}
+
 const greenThyroidModifiers = deriveThyroidGroomingModifiers({
   phenotypeHealthTruths: [truth("THYROID", 0.1)],
 });
