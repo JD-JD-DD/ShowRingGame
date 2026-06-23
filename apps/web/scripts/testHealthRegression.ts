@@ -37,6 +37,7 @@ function assertDoesNotIncludeAny(
 }
 
 const healthService = source("apps/web/server/services/healthTest.service.ts");
+const dogService = source("apps/web/server/services/dog.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
 const foundationDogService = source(
   "apps/web/server/services/foundationDog.service.ts"
@@ -108,6 +109,37 @@ assertDoesNotIncludeAny(
   dogMapper,
   rawTraitFields,
   "public dog profile DTO mapper should not expose raw hidden trait fields"
+);
+assertDoesNotIncludeAny(
+  dogMapper,
+  ["healthConditionTruths", "geneticLiability", "environmentModifier"],
+  "public dog profile DTO mapper should not expose hidden health truth values"
+);
+assertIncludes(
+  dogService,
+  "deriveHealthAdjustedExpressedTraits",
+  "dog profile service uses health-adjusted expressed traits for visible categories"
+);
+assertIncludes(
+  dogService,
+  'conditionCode: "HIP_DYSPLASIA"',
+  "dog profile service selects hidden hip truth for visible category expression"
+);
+assertIncludes(
+  dogService,
+  "phenotypeHealthTruths: dog.healthConditionTruths",
+  "dog profile visible category expression uses hidden health truth when available"
+);
+assertIncludes(
+  dogService,
+  "phenotypeHealthResults: dog.healthTests",
+  "dog profile visible category expression can fall back to revealed health results"
+);
+assertBefore(
+  dogService,
+  "const expressedTraits = deriveHealthAdjustedExpressedTraits({",
+  "...deriveVisibleCategoriesFromTraits(expressedTraits)",
+  "dog profile derives visible categories from expressed traits"
 );
 
 assertIncludes(

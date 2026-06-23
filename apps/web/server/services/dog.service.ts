@@ -35,6 +35,7 @@ import {
   PHENOTYPE_HEALTH_TESTS,
   PUPPY_SALE_MIN_AGE_HOURS,
   deriveConditioningHandlingScore,
+  deriveHealthAdjustedExpressedTraits,
   deriveVisibleCategoriesFromTraits,
   getPuppyRehomePayoutForAgeHours,
   getPhenotypeHealthResultLabel,
@@ -639,6 +640,16 @@ export async function getDogProfile(args: {
           testedAtEpoch: true,
         },
       },
+      healthConditionTruths: {
+        where: {
+          conditionCode: "HIP_DYSPLASIA",
+        },
+        select: {
+          conditionCode: true,
+          geneticLiability: true,
+          environmentModifier: true,
+        },
+      },
       showAwards: {
         where: {
           awardCode: { in: INVITATIONAL_PLACEMENT_CODES },
@@ -920,19 +931,25 @@ export async function getDogProfile(args: {
   const kennelBalance = ownerData?.ownerKennel?.balance ?? 0;
   const checkoutNeeded =
     isOwnedByCurrentKennel && availableHealthTests.length > 0;
+  const storedTraits = {
+    head: dog.traitHead,
+    forequarters: dog.traitForequarters,
+    hindquarters: dog.traitHindquarters,
+    gait: dog.traitGait,
+    coat: dog.traitCoat,
+    size: dog.traitSize,
+    temperament: dog.traitTemperament,
+    show_shine: dog.traitShowShine,
+    feet: dog.traitFeet,
+    topline: dog.traitTopline,
+  };
+  const expressedTraits = deriveHealthAdjustedExpressedTraits({
+    storedTraits,
+    phenotypeHealthTruths: dog.healthConditionTruths,
+    phenotypeHealthResults: dog.healthTests,
+  });
   const visibleScores = {
-    ...deriveVisibleCategoriesFromTraits({
-      head: dog.traitHead,
-      forequarters: dog.traitForequarters,
-      hindquarters: dog.traitHindquarters,
-      gait: dog.traitGait,
-      coat: dog.traitCoat,
-      size: dog.traitSize,
-      temperament: dog.traitTemperament,
-      show_shine: dog.traitShowShine,
-      feet: dog.traitFeet,
-      topline: dog.traitTopline,
-    }),
+    ...deriveVisibleCategoriesFromTraits(expressedTraits),
     conditioningHandling: deriveConditioningHandlingScore({
       coatCondition: dog.coatCondition,
       muscleTone: dog.muscleTone,
