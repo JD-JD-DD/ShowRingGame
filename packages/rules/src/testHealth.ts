@@ -1,11 +1,14 @@
 import {
+  deriveHealthAdjustedExpressedTraits,
   generateFoundationPhenotypeHealthTruths,
   getPhenotypeHealthResultLabel,
   inheritPhenotypeHealthTruths,
   isPhenotypeHealthTestCode,
   PHENOTYPE_HEALTH_TEST_CODES,
   PHENOTYPE_HEALTH_TESTS,
+  pushFartherFromIdeal,
   revealPhenotypeHealthTestResult,
+  type DogTraits,
   type PhenotypeHealthTruth,
 } from "../src/index";
 
@@ -24,6 +27,21 @@ function truth(
     conditionCode,
     geneticLiability,
     environmentModifier,
+  };
+}
+
+function testTraits(hindquarters: number): DogTraits {
+  return {
+    head: 8,
+    forequarters: 9,
+    hindquarters,
+    gait: 11,
+    coat: 12,
+    size: 13,
+    temperament: 14,
+    show_shine: 15,
+    feet: 16,
+    topline: 17,
   };
 }
 
@@ -141,5 +159,57 @@ assertEqual(
   "Not Cleared",
   "eye result display label"
 );
+
+assertEqual(pushFartherFromIdeal(7.5, 3), 4.5, "push under ideal");
+assertEqual(pushFartherFromIdeal(12.5, 3), 15.5, "push over ideal");
+assertEqual(pushFartherFromIdeal(10, 3), 10, "do not push ideal");
+assertEqual(pushFartherFromIdeal(1, 3), 0, "push clamps at minimum");
+assertEqual(pushFartherFromIdeal(19, 3), 20, "push clamps at maximum");
+
+const greenHipTraits = testTraits(7.5);
+const greenHipExpressed = deriveHealthAdjustedExpressedTraits({
+  storedTraits: greenHipTraits,
+  phenotypeHealthTruths: [truth("HIP_DYSPLASIA", 0.1)],
+});
+assertEqual(
+  greenHipExpressed.hindquarters,
+  7.5,
+  "green hips do not alter hindquarters"
+);
+
+const yellowHipTraits = testTraits(7.5);
+const yellowHipExpressed = deriveHealthAdjustedExpressedTraits({
+  storedTraits: yellowHipTraits,
+  phenotypeHealthTruths: [truth("HIP_DYSPLASIA", 0.5)],
+});
+assertEqual(
+  yellowHipExpressed.hindquarters,
+  6.5,
+  "yellow hips push hindquarters 1 point farther from ideal"
+);
+
+const redHipTraits = testTraits(12.5);
+const redHipExpressed = deriveHealthAdjustedExpressedTraits({
+  storedTraits: redHipTraits,
+  phenotypeHealthTruths: [truth("HIP_DYSPLASIA", 0.9)],
+});
+assertEqual(
+  redHipExpressed.hindquarters,
+  15.5,
+  "red hips push hindquarters 3 points farther from ideal"
+);
+assertEqual(
+  redHipTraits.hindquarters,
+  12.5,
+  "stored input hindquarters are not mutated"
+);
+for (const trait of Object.keys(redHipTraits) as Array<keyof DogTraits>) {
+  if (trait === "hindquarters") continue;
+  assertEqual(
+    redHipExpressed[trait],
+    redHipTraits[trait],
+    `non-hindquarter trait unchanged: ${trait}`
+  );
+}
 
 console.log("Health checks passed.");
