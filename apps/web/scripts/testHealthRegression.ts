@@ -53,10 +53,16 @@ const dogProfileDashboard = source(
 const healthTestingPanel = source(
   "apps/web/components/dogs/HealthTestingPanel.tsx"
 );
+const healthClearBadge = source("apps/web/components/dogs/HealthClearBadge.tsx");
+const offerDogAtStudForm = source(
+  "apps/web/components/dogs/OfferDogAtStudForm.tsx"
+);
+const faqPage = source("apps/web/app/faq/page.tsx");
 const foundationDogService = source(
   "apps/web/server/services/foundationDog.service.ts"
 );
 const breedingService = source("apps/web/server/services/breeding.service.ts");
+const dogHealth = source("apps/web/lib/dogHealth.ts");
 const healthBackfill = source("apps/web/scripts/backfill-phenotype-health.ts");
 
 const rawTraitFields = [
@@ -76,6 +82,21 @@ assertIncludes(
   healthConstants,
   '"ELBOW_DYSPLASIA"',
   "elbow dysplasia is in the supported phenotype health test list"
+);
+assertIncludes(
+  healthConstants,
+  "ALL_BREED_REQUIRED_HEALTH_TEST_CODES",
+  "rules layer has a separate all-breed required health test list"
+);
+assertIncludes(
+  healthConstants,
+  "BREED_SPECIFIC_REQUIRED_HEALTH_TEST_CODES",
+  "rules layer has a placeholder for future breed-specific required health tests"
+);
+assertIncludes(
+  healthConstants,
+  "getRequiredHealthTestsForBreed",
+  "rules layer exposes required health tests by breed"
 );
 assertIncludes(
   healthConstants,
@@ -184,6 +205,21 @@ assertIncludes(
   dogService,
   "PHENOTYPE_HEALTH_TEST_CODES.map((testCode)",
   "dog profile health testing UI rows are driven by the supported test list"
+);
+assertIncludes(
+  dogService,
+  "getRequiredHealthTestsForBreed(dog.breedCode2)",
+  "dog profile aggregate health summary uses required health tests"
+);
+assertIncludes(
+  dogHealth,
+  "hasAllGreenRequiredPhenotypeHealthTests",
+  "web health helpers separate required-test clearance from supported-test catalog"
+);
+assertIncludes(
+  dogHealth,
+  "hasCompletedRequiredPhenotypeHealthTests",
+  "web health helpers expose required-test completion checks"
 );
 assertIncludes(
   dogService,
@@ -466,6 +502,21 @@ assertIncludes(
   breedingService,
   "await ensurePhenotypeHealthTruthsForDogs(",
   "puppies receive hidden health truths after whelping"
+);
+assertIncludes(
+  breedingService,
+  "hasCompletedRequiredPhenotypeHealthTests(dam.healthTests, dam.breedCode2)",
+  "server-side stud eligibility uses required-test completion and includes elbows"
+);
+assertIncludes(
+  breedingService,
+  "hasAllGreenRequiredPhenotypeHealthTests(dam.healthTests, dam.breedCode2)",
+  "server-side stud green requirement uses required-test clearance"
+);
+assertDoesNotIncludeAny(
+  `${healthClearBadge}\n${offerDogAtStudForm}\n${breedingService}\n${faqPage}`,
+  ["all " + "four", "All " + "four", "all " + "five", "All " + "five"],
+  "player-facing health requirement copy should avoid hardcoded test counts"
 );
 assertIncludes(
   healthBackfill,

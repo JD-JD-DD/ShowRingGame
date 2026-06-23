@@ -2,7 +2,8 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import {
   getPhenotypeHealthSeverity,
-  hasAllGreenPhenotypeHealthTests,
+  hasAllGreenRequiredPhenotypeHealthTests,
+  hasCompletedRequiredPhenotypeHealthTests,
 } from "@/lib/dogHealth";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import {
@@ -24,6 +25,7 @@ import {
   COI_CALCULATION_MAX_GENERATIONS,
   DAM_MAX_BREED_AGE_HOURS,
   deriveVisibleCategoriesFromTraits,
+  getRequiredHealthTestsForBreed,
   MIN_BREED_AGE_HOURS,
   rollBreedingTiming,
   rollLitterSize,
@@ -271,23 +273,23 @@ function formatCurrency(amount: number) {
   return `$${amount.toLocaleString()}`;
 }
 
-function hasCompletedAllPhenotypeHealthTests(
-  tests: DogForBreeding["healthTests"]
+function hasOnlyGreenOrYellowRequiredPhenotypeHealthTests(
+  tests: DogForBreeding["healthTests"],
+  breedCode?: string | null
 ): boolean {
-  const completedCodes = new Set(tests.map((test) => test.testTypeCode));
-  return ["HIP_DYSPLASIA", "CARDIAC", "CAER_EYE", "THYROID"].every((code) =>
-    completedCodes.has(code)
+  const requiredCodes = new Set<string>(
+    getRequiredHealthTestsForBreed(breedCode)
   );
-}
 
-function hasOnlyGreenOrYellowPhenotypeHealthTests(
-  tests: DogForBreeding["healthTests"]
-): boolean {
   return (
-    hasCompletedAllPhenotypeHealthTests(tests) &&
-    tests.every(
-      (test) => getPhenotypeHealthSeverity(test.testTypeCode, test.resultCode) !== "red"
-    )
+    hasCompletedRequiredPhenotypeHealthTests(tests, breedCode) &&
+    tests
+      .filter((test) => requiredCodes.has(test.testTypeCode))
+      .every(
+        (test) =>
+          getPhenotypeHealthSeverity(test.testTypeCode, test.resultCode) !==
+          "red"
+      )
   );
 }
 
@@ -311,21 +313,26 @@ function assertDamMeetsStudListingRequirements(args: {
 
   if (
     listing.requiresDamHealthTestsCompleted &&
-    !hasCompletedAllPhenotypeHealthTests(dam.healthTests)
+    !hasCompletedRequiredPhenotypeHealthTests(dam.healthTests, dam.breedCode2)
   ) {
-    throw new Error("This stud requires bitches to have all four health tests completed.");
+    throw new Error(
+      "This stud requires bitches to have all required health tests completed."
+    );
   }
 
   if (
     listing.requiresDamHealthAllGreen &&
-    !hasAllGreenPhenotypeHealthTests(dam.healthTests)
+    !hasAllGreenRequiredPhenotypeHealthTests(dam.healthTests, dam.breedCode2)
   ) {
     throw new Error("This stud requires bitches to have all-green health test results.");
   }
 
   if (
     listing.requiresDamHealthGreenOrYellow &&
-    !hasOnlyGreenOrYellowPhenotypeHealthTests(dam.healthTests)
+    !hasOnlyGreenOrYellowRequiredPhenotypeHealthTests(
+      dam.healthTests,
+      dam.breedCode2
+    )
   ) {
     throw new Error("This stud requires bitches to have no red health test results.");
   }

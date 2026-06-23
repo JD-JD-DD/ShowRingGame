@@ -70,7 +70,7 @@ export default function OfferDogAtStudForm({
               name="requiresDamHealthTestsCompleted"
               className="mt-1"
             />
-            <span>All four phenotype health tests completed.</span>
+            <span>All required health tests completed.</span>
           </label>
           <label className="flex items-start gap-2">
             <input

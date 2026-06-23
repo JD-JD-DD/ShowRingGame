@@ -41,7 +41,7 @@ export default function HealthClearBadge({
 }: HealthClearBadgeProps) {
   const label =
     status === "green" && fullClearance
-      ? "All four phenotype health tests completed with green results"
+      ? "All required health tests completed with green results"
       : STATUS_LABELS[status];
 
   return (

@@ -549,8 +549,14 @@ export async function GET() {
           ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
           lifecycleState: dog.lifecycleState,
           marketState: dog.marketState,
-          hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(healthTests),
-          healthBadgeStatus: getPhenotypeHealthBadgeStatus(healthTests),
+          hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(
+            healthTests,
+            dog.breedCode2
+          ),
+          healthBadgeStatus: getPhenotypeHealthBadgeStatus(
+            healthTests,
+            dog.breedCode2
+          ),
           isListedForSale: activeListingTypes.has(PLAYER_SALE_LISTING_TYPE),
           isListedAtStud: activeListingTypes.has(PLAYER_STUD_LISTING_TYPE),
           groomingStatus: groomingStatuses.get(dog.id) ?? {

@@ -920,9 +920,13 @@ export async function listEligibleDogsByShowBlock(args: {
           conditioningSnapshot: getConditioningSnapshot(dog),
           fatigueSnapshot: dog.fatiguePoints,
           hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(
-            dog.healthTests
+            dog.healthTests,
+            dog.breedCode2
           ),
-          healthBadgeStatus: getPhenotypeHealthBadgeStatus(dog.healthTests),
+          healthBadgeStatus: getPhenotypeHealthBadgeStatus(
+            dog.healthTests,
+            dog.breedCode2
+          ),
           isListedForSale: dog.listings.some(
             (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
           ),
@@ -983,8 +987,14 @@ export async function listEligibleDogsForShowBlock(args: {
       ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
       conditioningSnapshot: getConditioningSnapshot(dog),
       fatigueSnapshot: dog.fatiguePoints,
-      hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(dog.healthTests),
-      healthBadgeStatus: getPhenotypeHealthBadgeStatus(dog.healthTests),
+      hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(
+        dog.healthTests,
+        dog.breedCode2
+      ),
+      healthBadgeStatus: getPhenotypeHealthBadgeStatus(
+        dog.healthTests,
+        dog.breedCode2
+      ),
       isListedForSale: dog.listings.some(
         (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
       ),
@@ -1232,9 +1242,13 @@ export async function getShowEntryPlanner(args: {
           conditioningSnapshot: getConditioningSnapshot(dog),
           fatigueSnapshot: dog.fatiguePoints,
           hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(
-            dog.healthTests
+            dog.healthTests,
+            dog.breedCode2
           ),
-          healthBadgeStatus: getPhenotypeHealthBadgeStatus(dog.healthTests),
+          healthBadgeStatus: getPhenotypeHealthBadgeStatus(
+            dog.healthTests,
+            dog.breedCode2
+          ),
           isListedForSale: dog.listings.some(
             (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
           ),

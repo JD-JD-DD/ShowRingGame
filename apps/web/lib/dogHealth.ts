@@ -1,5 +1,5 @@
 import {
-  PHENOTYPE_HEALTH_TEST_CODES,
+  getRequiredHealthTestsForBreed,
   PHENOTYPE_HEALTH_TESTS,
   type PhenotypeHealthTestCode,
 } from "@showring/rules";
@@ -29,10 +29,24 @@ export function getPhenotypeHealthSeverity(
   return definition?.resultSeverityByCode[resultCode] ?? "red";
 }
 
-export function hasAllGreenPhenotypeHealthTests(
-  testsNewestFirst: PublicPhenotypeHealthTest[]
+export function hasCompletedRequiredPhenotypeHealthTests(
+  testsNewestFirst: PublicPhenotypeHealthTest[],
+  breedCode?: string | null
 ): boolean {
-  return PHENOTYPE_HEALTH_TEST_CODES.every((testTypeCode) => {
+  const requiredTestCodes = getRequiredHealthTestsForBreed(breedCode);
+
+  return requiredTestCodes.every((testTypeCode) =>
+    testsNewestFirst.some((test) => test.testTypeCode === testTypeCode)
+  );
+}
+
+export function hasAllGreenRequiredPhenotypeHealthTests(
+  testsNewestFirst: PublicPhenotypeHealthTest[],
+  breedCode?: string | null
+): boolean {
+  const requiredTestCodes = getRequiredHealthTestsForBreed(breedCode);
+
+  return requiredTestCodes.every((testTypeCode) => {
     const latestResult = testsNewestFirst.find(
       (test) => test.testTypeCode === testTypeCode
     );
@@ -44,10 +58,19 @@ export function hasAllGreenPhenotypeHealthTests(
   });
 }
 
-export function getPhenotypeHealthBadgeStatus(
-  testsNewestFirst: PublicPhenotypeHealthTest[]
+export function hasAllGreenPhenotypeHealthTests(
+  testsNewestFirst: PublicPhenotypeHealthTest[],
+  breedCode?: string | null
+): boolean {
+  return hasAllGreenRequiredPhenotypeHealthTests(testsNewestFirst, breedCode);
+}
+
+export function getRequiredPhenotypeHealthBadgeStatus(
+  testsNewestFirst: PublicPhenotypeHealthTest[],
+  breedCode?: string | null
 ): PhenotypeHealthBadgeStatus | null {
-  const latestResults = PHENOTYPE_HEALTH_TEST_CODES.flatMap((testTypeCode) => {
+  const requiredTestCodes = getRequiredHealthTestsForBreed(breedCode);
+  const latestResults = requiredTestCodes.flatMap((testTypeCode) => {
     const latestResult = testsNewestFirst.find(
       (test) => test.testTypeCode === testTypeCode
     );
@@ -74,8 +97,16 @@ export function getPhenotypeHealthBadgeStatus(
   return latestResults.length > 0 ? "green" : null;
 }
 
+export function getPhenotypeHealthBadgeStatus(
+  testsNewestFirst: PublicPhenotypeHealthTest[],
+  breedCode?: string | null
+): PhenotypeHealthBadgeStatus | null {
+  return getRequiredPhenotypeHealthBadgeStatus(testsNewestFirst, breedCode);
+}
+
 export function hasFullPhenotypeHealthClearance(
-  testsNewestFirst: PublicPhenotypeHealthTest[]
+  testsNewestFirst: PublicPhenotypeHealthTest[],
+  breedCode?: string | null
 ): boolean {
-  return hasAllGreenPhenotypeHealthTests(testsNewestFirst);
+  return hasAllGreenRequiredPhenotypeHealthTests(testsNewestFirst, breedCode);
 }

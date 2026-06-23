@@ -37,6 +37,7 @@ import {
   deriveConditioningHandlingScore,
   deriveHealthAdjustedExpressedTraits,
   deriveVisibleCategoriesFromTraits,
+  getRequiredHealthTestsForBreed,
   getPuppyRehomePayoutForAgeHours,
   getPhenotypeHealthResultLabel,
   getShowDistrictRegionName,
@@ -483,6 +484,7 @@ async function loadFourGenerationPedigree(args: {
         callName: true,
         registeredName: true,
         regNumber: true,
+        breedCode2: true,
         visibleTitlePrefix: true,
         visibleTitleSuffix: true,
         sireId: true,
@@ -551,9 +553,15 @@ async function loadFourGenerationPedigree(args: {
         relationship: item.relationshipParts.join("'s "),
         profileUrl: `/dogs/${dog.id}`,
         healthStatusMarkers: {
-          badgeStatus: getPhenotypeHealthBadgeStatus(latestHealthTests),
+          badgeStatus: getPhenotypeHealthBadgeStatus(
+            latestHealthTests,
+            dog.breedCode2
+          ),
           hasFullClearance:
-            hasAllGreenPhenotypeHealthTests(latestHealthTests),
+            hasAllGreenPhenotypeHealthTests(
+              latestHealthTests,
+              dog.breedCode2
+            ),
         },
         colorLabel: "Color: Pending",
         detailedHealthResults,
@@ -623,6 +631,7 @@ export async function getDogProfile(args: {
       regNumber: true,
       sex: true,
       birthEpoch: true,
+      breedCode2: true,
       lifecycleState: true,
       marketState: true,
       isFoundation: true,
@@ -944,16 +953,31 @@ export async function getDogProfile(args: {
       return latest ? [latest] : [];
     }
   );
-  const healthBadgeStatus = getPhenotypeHealthBadgeStatus(latestHealthTests);
-  const hasFullClearance = hasAllGreenPhenotypeHealthTests(latestHealthTests);
+  const requiredHealthTestCodes = getRequiredHealthTestsForBreed(dog.breedCode2);
+  const latestRequiredHealthTests = requiredHealthTestCodes.flatMap(
+    (testTypeCode) => {
+      const latest = latestHealthTests.find(
+        (test) => test.testTypeCode === testTypeCode
+      );
+      return latest ? [latest] : [];
+    }
+  );
+  const healthBadgeStatus = getPhenotypeHealthBadgeStatus(
+    latestHealthTests,
+    dog.breedCode2
+  );
+  const hasFullClearance = hasAllGreenPhenotypeHealthTests(
+    latestHealthTests,
+    dog.breedCode2
+  );
   const originLabel = formatOriginLabel({
     isFoundation: dog.isFoundation,
     breederKennelName: dog.breederKennel?.name ?? null,
   });
   const healthSummary = {
-    completedCount: latestHealthTests.length,
-    totalCount: PHENOTYPE_HEALTH_TEST_CODES.length,
-    label: `${latestHealthTests.length}/${PHENOTYPE_HEALTH_TEST_CODES.length} tested`,
+    completedCount: latestRequiredHealthTests.length,
+    totalCount: requiredHealthTestCodes.length,
+    label: `${latestRequiredHealthTests.length}/${requiredHealthTestCodes.length} required tested`,
     badgeStatus: healthBadgeStatus,
     hasFullClearance,
   };

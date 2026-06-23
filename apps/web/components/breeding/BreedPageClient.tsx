@@ -9,7 +9,8 @@ import TraitLine from "@/components/ui/TraitLine";
 import {
   getPhenotypeHealthBadgeStatus,
   getPhenotypeHealthSeverity,
-  hasAllGreenPhenotypeHealthTests,
+  hasAllGreenRequiredPhenotypeHealthTests,
+  hasCompletedRequiredPhenotypeHealthTests,
   type PhenotypeHealthSeverity,
 } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -26,6 +27,7 @@ import {
   PREG_CHECK_HOURS,
   WHELPING_COOLDOWN_HOURS,
   getPhenotypeHealthResultLabel,
+  getRequiredHealthTestsForBreed,
   type PedigreeDog,
   type PhenotypeHealthTestCode,
 } from "@showring/rules";
@@ -218,22 +220,26 @@ function latestHealthTests(dog: DogCardDto) {
 }
 
 function hasCompletedAllPhenotypeHealthTests(dog: DogCardDto) {
-  const completedCodes = new Set(
-    dog.healthTests.map((test) => test.testTypeCode)
-  );
-
-  return PHENOTYPE_HEALTH_TEST_CODES.every((testTypeCode) =>
-    completedCodes.has(testTypeCode)
+  return hasCompletedRequiredPhenotypeHealthTests(
+    dog.healthTests,
+    dog.breedCode2
   );
 }
 
 function hasOnlyGreenOrYellowPhenotypeHealthTests(dog: DogCardDto) {
+  const requiredCodes = new Set<string>(
+    getRequiredHealthTestsForBreed(dog.breedCode2)
+  );
+
   return (
     hasCompletedAllPhenotypeHealthTests(dog) &&
-    dog.healthTests.every(
-      (test) =>
-        getPhenotypeHealthSeverity(test.testTypeCode, test.resultCode) !== "red"
-    )
+    dog.healthTests
+      .filter((test) => requiredCodes.has(test.testTypeCode))
+      .every(
+        (test) =>
+          getPhenotypeHealthSeverity(test.testTypeCode, test.resultCode) !==
+          "red"
+      )
   );
 }
 
@@ -248,7 +254,7 @@ function studRequirementLabels(stud: DogCardDto) {
     labels.push("negative brucellosis test");
   }
   if (stud.requiresDamHealthTestsCompleted) {
-    labels.push("all health tests completed");
+    labels.push("all required health tests completed");
   }
   if (stud.requiresDamHealthAllGreen) {
     labels.push("all-green health results");
@@ -276,7 +282,7 @@ function damMeetsStudRequirements(dam: DogCardDto | null, stud: DogCardDto) {
   }
   if (
     stud.requiresDamHealthAllGreen &&
-    !hasAllGreenPhenotypeHealthTests(dam.healthTests)
+    !hasAllGreenRequiredPhenotypeHealthTests(dam.healthTests, dam.breedCode2)
   ) {
     return false;
   }
@@ -539,7 +545,12 @@ function sireRecommendationScore(
   pedigree: PedigreeDog[]
 ) {
   const coi = pairingCoi(sire, dam, pedigree)?.coiPercent ?? 0;
-  const healthBonus = hasAllGreenPhenotypeHealthTests(sire.healthTests) ? 35 : 0;
+  const healthBonus = hasAllGreenRequiredPhenotypeHealthTests(
+    sire.healthTests,
+    sire.breedCode2
+  )
+    ? 35
+    : 0;
   const coiScore = Math.max(0, 30 - coi * 2);
   const complementBonus = complementCount(dam, sire) * 4;
   const feePenalty = (sire.studFeeAmount ?? 0) / 500;
@@ -552,8 +563,14 @@ function DogName({ dog }: { dog: DogCardDto }) {
     <div className="flex items-center gap-1.5">
       <span>{dogDisplayName(dog)}</span>
       <DogStatusBadges
-        healthStatus={getPhenotypeHealthBadgeStatus(dog.healthTests)}
-        fullHealthClearance={hasAllGreenPhenotypeHealthTests(dog.healthTests)}
+        healthStatus={getPhenotypeHealthBadgeStatus(
+          dog.healthTests,
+          dog.breedCode2
+        )}
+        fullHealthClearance={hasAllGreenRequiredPhenotypeHealthTests(
+          dog.healthTests,
+          dog.breedCode2
+        )}
         isListedForSale={dog.isListedForSale}
         isListedAtStud={dog.isListedAtStud || Boolean(dog.studListingId)}
       />
@@ -1260,8 +1277,8 @@ function PairingAnalysis({
   const totalCost = BREEDING_FEE + (sire.studFeeAmount ?? 0) + diseaseTestCost;
   const damTestRequired = requiresDamBrucellosisTest(dam, sire);
   const bothHealthClear =
-    hasAllGreenPhenotypeHealthTests(dam.healthTests) &&
-    hasAllGreenPhenotypeHealthTests(sire.healthTests);
+    hasAllGreenRequiredPhenotypeHealthTests(dam.healthTests, dam.breedCode2) &&
+    hasAllGreenRequiredPhenotypeHealthTests(sire.healthTests, sire.breedCode2);
   const sharedAncestors = sharedAncestorCount(sire, dam, pedigree);
   const healthConcerns = [...healthWarnings(dam), ...healthWarnings(sire)];
   const hasRedHealthConcern = healthConcerns.some(
@@ -1284,7 +1301,7 @@ function PairingAnalysis({
     },
     {
       label: bothHealthClear
-        ? "Both parents have all-green phenotype tests"
+        ? "Both parents have all-green required phenotype tests"
         : "Review health results before confirming",
       tone: bothHealthClear ? "text-emerald-200" : "text-amber-200",
     },
@@ -1450,7 +1467,7 @@ function PairingAnalysis({
         </div>
       ) : (
         <div className="mt-6 rounded-2xl border border-emerald-300/35 bg-emerald-500/10 p-4 text-sm font-semibold text-emerald-100">
-          Both parents have complete all-green phenotype health tests.
+          Both parents have complete all-green required phenotype health tests.
         </div>
       )}
 
@@ -1722,8 +1739,18 @@ export default function BreedPageClient({
       }
       if (sireSort === "HEALTH") {
         return (
-          Number(hasAllGreenPhenotypeHealthTests(b.healthTests)) -
-          Number(hasAllGreenPhenotypeHealthTests(a.healthTests))
+          Number(
+            hasAllGreenRequiredPhenotypeHealthTests(
+              b.healthTests,
+              b.breedCode2
+            )
+          ) -
+          Number(
+            hasAllGreenRequiredPhenotypeHealthTests(
+              a.healthTests,
+              a.breedCode2
+            )
+          )
         );
       }
       if (sireSort === "FEE") {

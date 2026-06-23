@@ -325,6 +325,7 @@ async function buildKennelPrestigeSummaries(
           ],
         },
         select: {
+          breedCode2: true,
           breederKennelId: true,
           litterId: true,
           healthTests: {
@@ -455,7 +456,7 @@ async function buildKennelPrestigeSummaries(
       litterIds.add(dog.litterId);
     }
 
-    if (hasAllGreenPhenotypeHealthTests(dog.healthTests)) {
+    if (hasAllGreenPhenotypeHealthTests(dog.healthTests, dog.breedCode2)) {
       accumulator.metrics.allGreenChampionsBred += 1;
     }
   }

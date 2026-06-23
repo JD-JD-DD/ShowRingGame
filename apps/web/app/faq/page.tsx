@@ -192,7 +192,7 @@ const faqSections = [
       {
         question: "How are Care prestige points calculated?",
         answer:
-          "Care prestige currently awards 30 points for each kennel-bred champion with all four phenotype health tests completed in the green range.",
+          "Care prestige currently awards 30 points for each kennel-bred champion with all required phenotype health tests completed in the green range.",
       },
       {
         question: "What are the kennel prestige ranks?",

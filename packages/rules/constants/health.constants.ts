@@ -6,13 +6,41 @@ export const PHENOTYPE_HEALTH_TEST_CODES = [
   "THYROID",
 ] as const;
 
+export type PhenotypeHealthTestCode =
+  (typeof PHENOTYPE_HEALTH_TEST_CODES)[number];
+
+export const ALL_BREED_REQUIRED_HEALTH_TEST_CODES = [
+  "HIP_DYSPLASIA",
+  "ELBOW_DYSPLASIA",
+  "CARDIAC",
+  "CAER_EYE",
+  "THYROID",
+] as const satisfies readonly PhenotypeHealthTestCode[];
+
+export const BREED_SPECIFIC_REQUIRED_HEALTH_TEST_CODES: Partial<
+  Record<string, readonly PhenotypeHealthTestCode[]>
+> = {};
+
+export function getRequiredHealthTestsForBreed(
+  breedCode?: string | null
+): readonly PhenotypeHealthTestCode[] {
+  const breedSpecificTests = breedCode
+    ? BREED_SPECIFIC_REQUIRED_HEALTH_TEST_CODES[breedCode]
+    : undefined;
+
+  if (!breedSpecificTests?.length) {
+    return ALL_BREED_REQUIRED_HEALTH_TEST_CODES;
+  }
+
+  return Array.from(
+    new Set([...ALL_BREED_REQUIRED_HEALTH_TEST_CODES, ...breedSpecificTests])
+  );
+}
+
 export const BRUCELLOSIS_DISEASE_CODE = "BRUCELLOSIS";
 export const BRUCELLOSIS_TEST_FEE = 75;
 export const BRUCELLOSIS_TEST_VALID_HOURS = 30;
 export const BRUCELLOSIS_FOUNDATION_INFECTION_RATE = 0.004;
-
-export type PhenotypeHealthTestCode =
-  (typeof PHENOTYPE_HEALTH_TEST_CODES)[number];
 
 export type PhenotypeHealthSeverity = "green" | "yellow" | "red";
 

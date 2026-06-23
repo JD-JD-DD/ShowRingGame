@@ -324,7 +324,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                   ? "Negative brucellosis test"
                   : null,
                 listing.requiresDamHealthTestsCompleted
-                  ? "All health tests completed"
+                  ? "All required health tests completed"
                   : null,
                 listing.requiresDamHealthAllGreen
                   ? "All-green health results"

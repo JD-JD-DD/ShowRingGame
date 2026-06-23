@@ -6,8 +6,11 @@ import {
   getPhenotypeHealthResultLabel,
   inheritPhenotypeHealthTruths,
   isPhenotypeHealthTestCode,
+  ALL_BREED_REQUIRED_HEALTH_TEST_CODES,
+  BREED_SPECIFIC_REQUIRED_HEALTH_TEST_CODES,
   PHENOTYPE_HEALTH_TEST_CODES,
   PHENOTYPE_HEALTH_TESTS,
+  getRequiredHealthTestsForBreed,
   pushFartherFromIdeal,
   revealPhenotypeHealthTestResult,
   type DogTraits,
@@ -57,6 +60,27 @@ assertEqual(
     "THYROID",
   ]),
   "supported phenotype health test list"
+);
+assertEqual(
+  JSON.stringify(ALL_BREED_REQUIRED_HEALTH_TEST_CODES),
+  JSON.stringify([
+    "HIP_DYSPLASIA",
+    "ELBOW_DYSPLASIA",
+    "CARDIAC",
+    "CAER_EYE",
+    "THYROID",
+  ]),
+  "all-breed required phenotype health test list"
+);
+assertEqual(
+  Object.keys(BREED_SPECIFIC_REQUIRED_HEALTH_TEST_CODES).length,
+  0,
+  "breed-specific required health tests are not configured yet"
+);
+assertEqual(
+  JSON.stringify(getRequiredHealthTestsForBreed("LAB")),
+  JSON.stringify(ALL_BREED_REQUIRED_HEALTH_TEST_CODES),
+  "required phenotype health tests default to all-breed requirements"
 );
 assertEqual(
   isPhenotypeHealthTestCode("ELBOW_DYSPLASIA"),
