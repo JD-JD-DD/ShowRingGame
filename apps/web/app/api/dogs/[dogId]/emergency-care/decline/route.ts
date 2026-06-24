@@ -1,7 +1,10 @@
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { fail, ok } from "@/lib/http";
 import { getSessionUserId } from "@/lib/session";
-import { declineEmergencyCare } from "@/server/services/emergencyVetCare.service";
+import {
+  declineEmergencyCare,
+  toEmergencyCareActionResponsePayload,
+} from "@/server/services/emergencyVetCare.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
 
 export async function POST(
@@ -29,10 +32,7 @@ export async function POST(
       currentEpoch: getCurrentEpoch(),
     });
 
-    return ok({
-      emergencyCareEvent: result.event,
-      dogDied: result.dogDied,
-    });
+    return ok(toEmergencyCareActionResponsePayload(result));
   } catch (error) {
     console.error(
       "POST /api/dogs/[dogId]/emergency-care/decline failed:",

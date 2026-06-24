@@ -11,6 +11,7 @@ import {
   selectEmergencyVetCareCostTier,
   selectEmergencyVetCareCostTierFromRollBps,
   selectTreatmentSurvivalOutcomeFromRollBps,
+  toEmergencyCareActionResponsePayload,
   toPendingEmergencyCarePayload,
   assertDogHasNoPendingEmergencyCare,
   type EmergencyVetCareClient,
@@ -314,6 +315,26 @@ assertIncludes(
 );
 assertIncludes(
   treatRoute,
+  "toEmergencyCareActionResponsePayload(result)",
+  "treatment route returns a safe emergency care response payload"
+);
+assertDoesNotInclude(
+  treatRoute,
+  "emergencyCareEvent: result.event",
+  "treatment route does not return the raw Prisma emergency event"
+);
+assertDoesNotInclude(
+  treatRoute,
+  "outcomeSeed",
+  "treatment route source does not expose outcome seed"
+);
+assertDoesNotInclude(
+  treatRoute,
+  "outcomeRollBps",
+  "treatment route source does not expose outcome roll"
+);
+assertIncludes(
+  treatRoute,
   "getSessionUserId",
   "treatment route requires an authenticated user"
 );
@@ -321,6 +342,26 @@ assertIncludes(
   declineRoute,
   "declineEmergencyCare",
   "decline route calls backend decline handling"
+);
+assertIncludes(
+  declineRoute,
+  "toEmergencyCareActionResponsePayload(result)",
+  "decline route returns a safe emergency care response payload"
+);
+assertDoesNotInclude(
+  declineRoute,
+  "emergencyCareEvent: result.event",
+  "decline route does not return the raw Prisma emergency event"
+);
+assertDoesNotInclude(
+  declineRoute,
+  "outcomeSeed",
+  "decline route source does not expose outcome seed"
+);
+assertDoesNotInclude(
+  declineRoute,
+  "outcomeRollBps",
+  "decline route source does not expose outcome roll"
 );
 assertIncludes(
   declineRoute,
@@ -526,6 +567,57 @@ async function main(): Promise<void> {
     () => assertDogHasNoPendingEmergencyCare("dog-1", fakeClient),
     /pending emergency vet-care event/,
     "action-lock helper rejects dogs with pending emergency care"
+  );
+
+  const safeActionPayload = toEmergencyCareActionResponsePayload({
+    event: {
+      ...firstEmergency,
+      status: "TREATED_DIED",
+      paidAtEpoch: 1_002,
+      resolvedAtEpoch: 1_002,
+      treatmentOutcome: "DIED_DESPITE_TREATMENT",
+      ledgerTransactionId: "ledger-secret",
+      outcomeSeed: "seed-secret",
+      outcomeRollBps: 9_500,
+    },
+    dogDied: true,
+  });
+  const serializedSafeActionPayload = JSON.stringify(safeActionPayload);
+
+  assert.equal(
+    safeActionPayload.emergencyCareEvent.status,
+    "TREATED_DIED",
+    "safe action payload includes resolved status"
+  );
+  assert.equal(
+    safeActionPayload.emergencyCareEvent.treatmentOutcome,
+    "DIED_DESPITE_TREATMENT",
+    "safe action payload includes treatment outcome"
+  );
+  assert.equal(
+    safeActionPayload.dogAlive,
+    false,
+    "safe action payload includes dog alive status"
+  );
+  assertDoesNotInclude(
+    serializedSafeActionPayload,
+    "seed-secret",
+    "safe action payload omits outcome seed values"
+  );
+  assertDoesNotInclude(
+    serializedSafeActionPayload,
+    "outcomeSeed",
+    "safe action payload omits outcome seed keys"
+  );
+  assertDoesNotInclude(
+    serializedSafeActionPayload,
+    "outcomeRollBps",
+    "safe action payload omits outcome roll keys"
+  );
+  assertDoesNotInclude(
+    serializedSafeActionPayload,
+    "ledger-secret",
+    "safe action payload omits ledger transaction ids"
   );
 }
 

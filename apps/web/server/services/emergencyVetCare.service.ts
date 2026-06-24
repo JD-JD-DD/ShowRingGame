@@ -46,6 +46,23 @@ export type EmergencyCareResolutionResult = {
   dogDied: boolean;
 };
 
+export type EmergencyCareActionResponsePayload = {
+  emergencyCareEvent: {
+    id: string;
+    dogId: string;
+    status: DogEmergencyCareStatus;
+    treatmentOutcome: DogEmergencyTreatmentOutcome | null;
+    treatmentCost: number;
+    survivalChanceBps: number;
+    responseDeadlineEpoch: number;
+    paidAtEpoch: number | null;
+    resolvedAtEpoch: number | null;
+  };
+  dogDied: boolean;
+  dogAlive: boolean;
+  message: string;
+};
+
 export type ExpiredEmergencyCareProcessingResult = {
   processedCount: number;
   expiredCount: number;
@@ -217,6 +234,44 @@ export function toPendingEmergencyCarePayload(
     treatmentCost: event.treatmentCost,
     survivalChanceBps: event.survivalChanceBps,
   };
+}
+
+export function toEmergencyCareActionResponsePayload(
+  result: EmergencyCareResolutionResult
+): EmergencyCareActionResponsePayload {
+  const { event } = result;
+
+  return {
+    emergencyCareEvent: {
+      id: event.id,
+      dogId: event.dogId,
+      status: event.status,
+      treatmentOutcome: event.treatmentOutcome,
+      treatmentCost: event.treatmentCost,
+      survivalChanceBps: event.survivalChanceBps,
+      responseDeadlineEpoch: event.responseDeadlineEpoch,
+      paidAtEpoch: event.paidAtEpoch,
+      resolvedAtEpoch: event.resolvedAtEpoch,
+    },
+    dogDied: result.dogDied,
+    dogAlive: !result.dogDied,
+    message: getEmergencyCareActionMessage(event.status),
+  };
+}
+
+function getEmergencyCareActionMessage(status: DogEmergencyCareStatus): string {
+  switch (status) {
+    case "TREATED_SURVIVED":
+      return "Emergency treatment was authorized and the dog survived.";
+    case "TREATED_DIED":
+      return "Emergency treatment was authorized, but the dog did not survive.";
+    case "DECLINED_DIED":
+      return "Emergency care was declined and the dog has died.";
+    case "EXPIRED_DIED":
+      return "Emergency care expired and the dog has died.";
+    default:
+      return "Emergency care action completed.";
+  }
 }
 
 export async function getPendingEmergencyForDog(
