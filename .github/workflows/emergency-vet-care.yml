@@ -29,6 +29,7 @@ jobs:
           fi
 
           curl --fail-with-body --show-error --silent \
+            --request POST \
             --header "Authorization: Bearer ${SHOWRING_JOBS_SECRET}" \
             "${SHOWRING_JOBS_BASE_URL%/}/api/jobs/process-emergency-vet-care"
           echo
