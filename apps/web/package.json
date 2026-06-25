@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:game-time-format": "tsx scripts/testGameTimeFormat.ts",
+    "test:dog-action-windows": "tsx scripts/testDogActionWindows.ts",
     "backfill:phenotype-health": "tsx scripts/backfill-phenotype-health.ts",
     "password-reset-link": "tsx scripts/create-password-reset-link.ts",
     "admin:set": "tsx scripts/set-admin.ts"

@@ -26,9 +26,11 @@ export type DogProfileHeaderDto = {
   visibleTitleSuffix: string | null;
   breedName: string;
   regNumber: string;
+  sex: "M" | "F";
   sexLabel: string;
   ageHours: number;
   ageLabel: string;
+  lifecycleState: string;
   lifecycleLabel: string;
   originLabel: string;
   badges: DogProfileBadgeDto[];
@@ -61,6 +63,8 @@ export type DogProfileSnapshotDto = {
   dam: DogProfileDogLinkDto | null;
   originLabel: string;
   marketLabel: string;
+  canShow: boolean;
+  canBreed: boolean;
   showEligibilityLabel: string;
   breedingEligibilityLabel: string;
   groomingLabel: string | null;
@@ -178,9 +182,17 @@ export type DogProfileGroomingDetailsDto = {
   totalHistoricalGain: number;
   totalHistoricalDecay: number;
   canGroom: boolean;
+  groomedThisWeek: boolean;
+  nextGroomingResetEpoch: number | null;
   canOfferOutsideGrooming: boolean;
   canCancelOutsideGrooming: boolean;
 };
+
+export type DogProfileActiveBreedingAttemptDto = {
+  breedingStatus: string;
+  pregCheckEpoch: number | null;
+  dueEpoch: number | null;
+} | null;
 
 export type DogProfileStudListingDto = {
   isAtStud: true;
@@ -361,6 +373,7 @@ export type DogProfileDto = {
   titlesAndShowCareer: DogProfileShowCareerDto;
   healthTesting: DogProfileHealthTestingDto;
   groomingDetails: DogProfileGroomingDetailsDto | null;
+  activeBreedingAttempt: DogProfileActiveBreedingAttemptDto;
   breedingAndProduction: DogProfileBreedingProductionDto;
   pedigree: DogProfilePedigreeDto;
   entries: DogProfileEntriesDto | null;
@@ -383,9 +396,11 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       visibleTitleSuffix: input.header.visibleTitleSuffix,
       breedName: input.header.breedName,
       regNumber: input.header.regNumber,
+      sex: input.header.sex,
       sexLabel: input.header.sexLabel,
       ageHours: input.header.ageHours,
       ageLabel: input.header.ageLabel,
+      lifecycleState: input.header.lifecycleState,
       lifecycleLabel: input.header.lifecycleLabel,
       originLabel: input.header.originLabel,
       badges: input.header.badges.map((badge) => ({
@@ -426,6 +441,8 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
         : null,
       originLabel: input.snapshot.originLabel,
       marketLabel: input.snapshot.marketLabel,
+      canShow: input.snapshot.canShow,
+      canBreed: input.snapshot.canBreed,
       showEligibilityLabel: input.snapshot.showEligibilityLabel,
       breedingEligibilityLabel: input.snapshot.breedingEligibilityLabel,
       groomingLabel: input.snapshot.groomingLabel,
@@ -526,10 +543,20 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
           totalHistoricalGain: input.groomingDetails.totalHistoricalGain,
           totalHistoricalDecay: input.groomingDetails.totalHistoricalDecay,
           canGroom: input.groomingDetails.canGroom,
+          groomedThisWeek: input.groomingDetails.groomedThisWeek,
+          nextGroomingResetEpoch:
+            input.groomingDetails.nextGroomingResetEpoch,
           canOfferOutsideGrooming:
             input.groomingDetails.canOfferOutsideGrooming,
           canCancelOutsideGrooming:
             input.groomingDetails.canCancelOutsideGrooming,
+        }
+      : null,
+    activeBreedingAttempt: input.activeBreedingAttempt
+      ? {
+          breedingStatus: input.activeBreedingAttempt.breedingStatus,
+          pregCheckEpoch: input.activeBreedingAttempt.pregCheckEpoch,
+          dueEpoch: input.activeBreedingAttempt.dueEpoch,
         }
       : null,
     breedingAndProduction: {

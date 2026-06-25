@@ -766,6 +766,8 @@ export async function getDogProfile(args: {
           createdEpoch: true,
           whelpedEpoch: true,
           status: true,
+          pregCheckEpoch: true,
+          dueEpoch: true,
           sire: {
             select: {
               id: true,
@@ -886,6 +888,10 @@ export async function getDogProfile(args: {
         !dog.breedingAttemptsAsDam.some((attempt) =>
           ["INITIATED", "PREGNANT"].includes(attempt.status)
         )));
+  const activeBreedingAttempt =
+    dog.breedingAttemptsAsDam.find((attempt) =>
+      ["INITIATED", "PREGNANT"].includes(attempt.status)
+    ) ?? null;
 
   const ownerData = isOwnedByCurrentKennel
     ? await db.dog.findUnique({
@@ -1257,9 +1263,11 @@ export async function getDogProfile(args: {
       visibleTitleSuffix: dog.visibleTitleSuffix,
       breedName: dog.breed.name,
       regNumber: dog.regNumber,
+      sex: dog.sex,
       sexLabel: formatSexLabel(dog.sex),
       ageHours,
       ageLabel: formatAgeLabel(ageHours),
+      lifecycleState: dog.lifecycleState,
       lifecycleLabel: formatLifecycleLabel(dog.lifecycleState),
       originLabel,
       badges,
@@ -1299,6 +1307,8 @@ export async function getDogProfile(args: {
         isListedForSale: Boolean(activeSaleListing),
         isListedAtStud: Boolean(activeStudListing),
       }),
+      canShow: showEligible,
+      canBreed: breedingEligible,
       showEligibilityLabel: formatEligibilityLabel(showEligible),
       breedingEligibilityLabel: formatEligibilityLabel(breedingEligible),
       groomingLabel: groomingStatus?.groomingStatusLabel ?? null,
@@ -1372,10 +1382,19 @@ export async function getDogProfile(args: {
             totalHistoricalGain: groomingStatus.totalGroomingGain,
             totalHistoricalDecay: groomingStatus.totalGroomingDecay,
             canGroom,
+            groomedThisWeek: groomingStatus.groomedThisWeek,
+            nextGroomingResetEpoch: groomingSummary.nextGroomingResetEpoch,
             canOfferOutsideGrooming,
             canCancelOutsideGrooming,
           }
         : null,
+    activeBreedingAttempt: activeBreedingAttempt
+      ? {
+          breedingStatus: activeBreedingAttempt.status,
+          pregCheckEpoch: activeBreedingAttempt.pregCheckEpoch,
+          dueEpoch: activeBreedingAttempt.dueEpoch,
+        }
+      : null,
     breedingAndProduction: {
       breedingEligibilityLabel: formatEligibilityLabel(breedingEligible),
       productionRoleLabel: dog.sex === Sex.M ? "Stud/Sire" : "Dam/Brood",
