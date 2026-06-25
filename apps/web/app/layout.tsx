@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import GlobalUtcClock from "@/components/GlobalUtcClock";
+import EmergencyCareLink from "@/components/EmergencyCareLink";
 import NotificationInboxLink from "@/components/NotificationInboxLink";
 import ReturnToTopButton from "@/components/ReturnToTopButton";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -47,6 +48,7 @@ export default function RootLayout({
         <GlobalUtcClock />
         <Suspense fallback={null}>
           <NotificationInboxLink />
+          <EmergencyCareLink />
         </Suspense>
         {children}
         <ReturnToTopButton />

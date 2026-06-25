@@ -79,6 +79,12 @@ const dogForEntryArgs = Prisma.validator<Prisma.DogDefaultArgs>()({
         listingType: true,
       },
     },
+    emergencyCareEvents: {
+      where: { status: "PENDING" },
+      orderBy: { createdAtEpoch: "asc" },
+      select: { id: true },
+      take: 1,
+    },
     breedingAttemptsAsDam: {
       where: {
         OR: [
@@ -124,6 +130,15 @@ type ShowBlockForEntry = Prisma.ShowJudgingBlockGetPayload<
   typeof showBlockForEntryArgs
 >;
 type DogForEntry = Prisma.DogGetPayload<typeof dogForEntryArgs>;
+type ShowEntryDogIdentity = Pick<
+  DogForEntry,
+  | "id"
+  | "registeredName"
+  | "callName"
+  | "regNumber"
+  | "visibleTitlePrefix"
+  | "visibleTitleSuffix"
+>;
 
 type WeekendCluster = {
   id: string;
@@ -190,6 +205,9 @@ export type ShowEntryBreedOptionDto = {
 export type ShowEntryPlannerDogDto = EligibleShowDogDto & {
   eligibleShowDayIds: string[];
   alreadyEnteredShowDayIds: string[];
+  hasPendingEmergencyCare: boolean;
+  pendingEmergencyDogUrl: string | null;
+  pendingEmergencyBlockReason: string | null;
 };
 
 export type ShowEntryPlannerDto = {
@@ -228,8 +246,14 @@ export type BulkShowEntryResultDto = {
   quote: BulkShowEntryQuoteDto;
 };
 
-function getDogDisplayName(dog: DogForEntry): string {
+function getDogDisplayName(dog: ShowEntryDogIdentity): string {
   return formatDogDisplayName(dog);
+}
+
+function getPendingEmergencyShowEntryMessage(
+  dog: ShowEntryDogIdentity
+): string {
+  return `${getDogDisplayName(dog)} has a pending emergency vet visit and cannot be entered until it is resolved.`;
 }
 
 function getConditioningSnapshot(dog: DogForEntry): number {
@@ -1078,6 +1102,11 @@ export async function listShowEntryBreedOptions(args: {
           listingType: true,
         },
       },
+      emergencyCareEvents: {
+        where: { status: "PENDING" },
+        select: { id: true },
+        take: 1,
+      },
     },
   });
   const weekendConflictDogIds = await getDogIdsWithSameWeekendEntries({
@@ -1093,17 +1122,20 @@ export async function listShowEntryBreedOptions(args: {
       continue;
     }
 
-    const hasEligibleDay = cluster.showDays.some((showDay) => {
-      const reason = getShowDayEntryEligibilityReason({
-        dog,
-        cluster,
-        showDay,
-        breedCode2: dog.breedCode2,
-        currentEpoch,
-      });
+    const hasPendingEmergencyCare = dog.emergencyCareEvents.length > 0;
+    const hasEligibleDay =
+      hasPendingEmergencyCare ||
+      cluster.showDays.some((showDay) => {
+        const reason = getShowDayEntryEligibilityReason({
+          dog,
+          cluster,
+          showDay,
+          breedCode2: dog.breedCode2,
+          currentEpoch,
+        });
 
-      return reason == null;
-    });
+        return reason == null;
+      });
 
     if (!hasEligibleDay) {
       continue;
@@ -1218,9 +1250,14 @@ export async function getShowEntryPlanner(args: {
         const alreadyEnteredShowDayIds = [
           ...(enteredDayIdsByDogId.get(dog.id) ?? new Set<string>()),
         ];
+        const hasPendingEmergencyCare = dog.emergencyCareEvents.length > 0;
         const eligibleShowDayIds = cluster.showDays
           .filter((showDay) => {
             if (alreadyEnteredShowDayIds.includes(showDay.id)) {
+              return false;
+            }
+
+            if (hasPendingEmergencyCare) {
               return false;
             }
 
@@ -1260,12 +1297,20 @@ export async function getShowEntryPlanner(args: {
           ),
           eligibleShowDayIds,
           alreadyEnteredShowDayIds,
+          hasPendingEmergencyCare,
+          pendingEmergencyDogUrl: hasPendingEmergencyCare
+            ? `/dogs/${dog.id}`
+            : null,
+          pendingEmergencyBlockReason: hasPendingEmergencyCare
+            ? getPendingEmergencyShowEntryMessage(dog)
+            : null,
         };
       })
       .filter(
         (dog) =>
           dog.eligibleShowDayIds.length > 0 ||
-          dog.alreadyEnteredShowDayIds.length > 0
+          dog.alreadyEnteredShowDayIds.length > 0 ||
+          dog.hasPendingEmergencyCare
       ),
   };
 }
@@ -1338,6 +1383,34 @@ export async function createShowEntriesForCluster(args: {
     throw new Error("Select at least one dog and show day.");
   }
 
+  const dogIds = [...new Set(selections.map((selection) => selection.dogId))];
+  const pendingEmergencyDogs = await db.dog.findMany({
+    where: {
+      id: { in: dogIds },
+      ownerKennelId: kennelId,
+      emergencyCareEvents: {
+        some: { status: "PENDING" },
+      },
+    },
+    select: {
+      id: true,
+      registeredName: true,
+      callName: true,
+      regNumber: true,
+      visibleTitlePrefix: true,
+      visibleTitleSuffix: true,
+    },
+    orderBy: [{ registeredName: "asc" }, { regNumber: "asc" }],
+  });
+
+  if (pendingEmergencyDogs.length > 0) {
+    throw new Error(
+      pendingEmergencyDogs
+        .map((dog) => getPendingEmergencyShowEntryMessage(dog))
+        .join(" ")
+    );
+  }
+
   return db.$transaction(async (tx) => {
     const cluster = await tx.showCluster.findUnique({
       where: { id: showId },
@@ -1401,7 +1474,6 @@ export async function createShowEntriesForCluster(args: {
         : "PRIMARY";
 
     const dayById = new Map(cluster.showDays.map((day) => [day.id, day]));
-    const dogIds = [...new Set(selections.map((selection) => selection.dogId))];
     const dogs = await tx.dog.findMany({
       where: { id: { in: dogIds } },
       ...dogForEntryArgs,
@@ -1449,6 +1521,18 @@ export async function createShowEntriesForCluster(args: {
       );
     }
 
+    const pendingEmergencyDogIds = new Set(
+      (
+        await tx.dogEmergencyCareEvent.findMany({
+          where: {
+            status: "PENDING",
+            dogId: { in: dogIds },
+          },
+          select: { dogId: true },
+        })
+      ).map((event) => event.dogId)
+    );
+
     for (const selection of selections) {
       const dog = dogById.get(selection.dogId);
       const showDay = dayById.get(selection.showDayId);
@@ -1465,7 +1549,9 @@ export async function createShowEntriesForCluster(args: {
         throw new Error(`${dog.regNumber} is already entered on day ${showDay.dayIndex}.`);
       }
 
-      await assertDogHasNoPendingEmergencyCare(dog.id, tx);
+      if (pendingEmergencyDogIds.has(dog.id)) {
+        throw new Error(getPendingEmergencyShowEntryMessage(dog));
+      }
 
       const reason = getShowDayEntryEligibilityReason({
         dog,

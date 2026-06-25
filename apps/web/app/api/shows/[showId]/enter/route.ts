@@ -8,6 +8,25 @@ import {
   type BulkShowEntrySelection,
 } from "@/server/services/showEntry.service";
 
+const GENERIC_ENTRY_ERROR =
+  "We could not submit those entries. Please try again, or enter fewer dogs. If this continues, contact support.";
+
+function getSafeEntryErrorMessage(error: unknown): string {
+  if (!(error instanceof Error) || !error.message.trim()) {
+    return GENERIC_ENTRY_ERROR;
+  }
+
+  if (
+    /Transaction API error|Transaction not found|Prisma|database|P\d{4}/i.test(
+      error.message
+    )
+  ) {
+    return GENERIC_ENTRY_ERROR;
+  }
+
+  return error.message;
+}
+
 function redirectWithEntryError(
   request: Request,
   showId: string,
@@ -101,7 +120,7 @@ export async function POST(
     return redirectWithEntryError(
       request,
       showId,
-      error instanceof Error ? error.message : "Failed to enter dog.",
+      getSafeEntryErrorMessage(error),
       selectedBreedCode2
     );
   }

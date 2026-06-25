@@ -184,6 +184,8 @@ const expirationJobRoute = source(
   "apps/web/app/api/jobs/process-emergency-vet-care/route.ts"
 );
 const showEntryService = source("apps/web/server/services/showEntry.service.ts");
+const showEntryPlanner = source("apps/web/app/shows/[showId]/ShowEntryPlanner.tsx");
+const showEntryRoute = source("apps/web/app/api/shows/[showId]/enter/route.ts");
 const breedingService = source("apps/web/server/services/breeding.service.ts");
 const marketService = source("apps/web/server/services/market.service.ts");
 const groomingService = source("apps/web/server/services/grooming.service.ts");
@@ -196,6 +198,8 @@ const dogProfileDashboard = source(
 const emergencyVetCarePanel = source(
   "apps/web/components/dogs/EmergencyVetCarePanel.tsx"
 );
+const emergencyCareLink = source("apps/web/components/EmergencyCareLink.tsx");
+const appLayout = source("apps/web/app/layout.tsx");
 
 assertIncludes(
   lifecycleService,
@@ -382,6 +386,77 @@ assertIncludes(
   showEntryService,
   "assertDogHasNoPendingEmergencyCare(dog.id, tx)",
   "show entry creation blocks pending emergency care"
+);
+assertIncludes(
+  showEntryService,
+  "hasPendingEmergencyCare: boolean",
+  "show entry planner DTO exposes pending emergency status"
+);
+assertIncludes(
+  showEntryService,
+  "pendingEmergencyBlockReason: string | null",
+  "show entry planner DTO exposes a safe emergency block reason"
+);
+assertIncludes(
+  showEntryService,
+  "getPendingEmergencyShowEntryMessage",
+  "show entry service centralizes player-facing emergency entry messaging"
+);
+assertBefore(
+  showEntryService,
+  "const pendingEmergencyDogs = await db.dog.findMany",
+  "const cluster = await tx.showCluster.findUnique",
+  "bulk show entry prevalidates pending emergency dogs before the write transaction"
+);
+assertIncludes(
+  showEntryService,
+  "dogEmergencyCareEvent.findMany",
+  "bulk show entry uses a single final emergency safety query in the transaction"
+);
+assertIncludes(
+  showEntryPlanner,
+  "Emergency vet care must be resolved before this dog can be entered.",
+  "show entry UI explains emergency-blocked dogs"
+);
+assertIncludes(
+  showEntryPlanner,
+  "Emergency",
+  "show entry UI displays an emergency marker"
+);
+assertIncludes(
+  showEntryPlanner,
+  "dog.hasPendingEmergencyCare",
+  "show entry UI disables emergency-blocked selections"
+);
+assertIncludes(
+  showEntryRoute,
+  "getSafeEntryErrorMessage",
+  "show entry route sanitizes unexpected errors"
+);
+assertIncludes(
+  showEntryRoute,
+  "We could not submit those entries. Please try again, or enter fewer dogs. If this continues, contact support.",
+  "show entry route has the approved friendly fallback"
+);
+assertDoesNotInclude(
+  showEntryRoute,
+  'error instanceof Error ? error.message : "Failed to enter dog."',
+  "show entry route does not redirect raw exception text"
+);
+assertIncludes(
+  emergencyCareLink,
+  'status: "PENDING"',
+  "global emergency link only appears for pending emergency care"
+);
+assertIncludes(
+  emergencyCareLink,
+  "TODO: Link multiple pending emergencies to a dedicated emergency list page.",
+  "global emergency link documents the multiple-emergency follow-up"
+);
+assertIncludes(
+  appLayout,
+  "<EmergencyCareLink />",
+  "root layout renders the global emergency link"
 );
 assertIncludes(
   breedingService,

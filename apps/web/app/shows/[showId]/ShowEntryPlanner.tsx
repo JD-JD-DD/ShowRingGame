@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useRef, useState, type FormEvent } from "react";
 
 import {
@@ -29,6 +30,9 @@ type PlannerDog = {
   healthBadgeStatus: "green" | "yellow" | "red" | null;
   isListedForSale: boolean;
   isListedAtStud: boolean;
+  hasPendingEmergencyCare: boolean;
+  pendingEmergencyDogUrl: string | null;
+  pendingEmergencyBlockReason: string | null;
 };
 
 type PlannerProps = {
@@ -170,6 +174,10 @@ export function ShowEntryPlanner({
   ]);
 
   function setDogSelection(dog: PlannerDog, isSelected: boolean) {
+    if (dog.hasPendingEmergencyCare) {
+      return;
+    }
+
     setSelected((current) => {
       const next = { ...current };
 
@@ -241,8 +249,21 @@ export function ShowEntryPlanner({
                       isListedForSale={dog.isListedForSale}
                       isListedAtStud={dog.isListedAtStud}
                     />
+                    {dog.hasPendingEmergencyCare ? (
+                      <Link
+                        href={dog.pendingEmergencyDogUrl ?? `/dogs/${dog.dogId}`}
+                        className="inline-flex shrink-0 rounded-full border border-red-300/40 bg-red-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-red-100 transition hover:border-red-200/60 hover:bg-red-500/25"
+                      >
+                        Emergency
+                      </Link>
+                    ) : null}
                   </div>
                   <div className="theme-copy text-xs">{dog.regNumber}</div>
+                  {dog.hasPendingEmergencyCare ? (
+                    <div className="mt-1 max-w-xs text-xs font-medium text-red-100">
+                      Emergency vet care must be resolved before this dog can be entered.
+                    </div>
+                  ) : null}
                 </td>
                 <td className="theme-copy px-3 py-3">{dog.sex}</td>
                 <td className="theme-copy px-3 py-3">{dog.ageLabel}</td>
@@ -261,7 +282,11 @@ export function ShowEntryPlanner({
                         <input
                           type="checkbox"
                           checked={Boolean(selected[key])}
-                          disabled={isSubmitting || !isEligible}
+                          disabled={
+                            isSubmitting ||
+                            !isEligible ||
+                            dog.hasPendingEmergencyCare
+                          }
                           onChange={(event) =>
                             setSelected((current) => ({
                               ...current,
@@ -269,7 +294,12 @@ export function ShowEntryPlanner({
                             }))
                           }
                           className="h-5 w-5 accent-purple-500 disabled:opacity-30"
-                          aria-label={`Enter ${dog.displayName} on day ${day.dayIndex}`}
+                          aria-label={
+                            dog.hasPendingEmergencyCare
+                              ? dog.pendingEmergencyBlockReason ??
+                                `Emergency vet care must be resolved before ${dog.displayName} can be entered.`
+                              : `Enter ${dog.displayName} on day ${day.dayIndex}`
+                          }
                         />
                       )}
                     </td>
@@ -280,7 +310,7 @@ export function ShowEntryPlanner({
                     <button
                       type="button"
                       onClick={() => setDogSelection(dog, true)}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || dog.hasPendingEmergencyCare}
                       className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-45"
                     >
                       All
