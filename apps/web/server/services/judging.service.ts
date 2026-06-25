@@ -3,6 +3,7 @@ import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
 import { recalculateDogTitleProgressForDogs } from "@/server/services/titleProgress.service";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
+import { processGrandChampionCreditsForShowDay } from "@/server/services/grandChampion.service";
 import {
   canEnterShows,
   getChampionshipPointsForCompetition,
@@ -881,6 +882,12 @@ export async function judgeShowBlock(args: {
         dogIds: awardsToCreate
           .filter((award) => (award.pointsAwarded ?? 0) > 0)
           .map((award) => award.dogId),
+      });
+
+      await processGrandChampionCreditsForShowDay({
+        tx,
+        showDayId: block.showDayId,
+        currentEpoch,
       });
     }
 
