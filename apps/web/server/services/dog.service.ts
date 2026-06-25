@@ -291,9 +291,24 @@ function isGrandChampionTitleCode(titleCode: string | null): boolean {
 
 function getNextGrandChampionMilestoneLabel(args: {
   grandPoints: number;
+  grandMajorRequirementMet: boolean;
+  grandDefeatRequirementMet: boolean;
   isGrandChampionFinished: boolean;
 }): string | null {
   if (!args.isGrandChampionFinished) {
+    if (args.grandPoints >= GRAND_CHAMPIONSHIP_POINTS_REQUIRED) {
+      const missingRequirements = [
+        args.grandMajorRequirementMet ? null : "GCH majors",
+        args.grandDefeatRequirementMet ? null : "defeated Champion credits",
+      ].filter((requirement): requirement is string => Boolean(requirement));
+
+      if (missingRequirements.length > 0) {
+        return `Needs ${missingRequirements.join(" and ")}`;
+      }
+
+      return "Base GCH requirements pending";
+    }
+
     return `GCH at ${GRAND_CHAMPIONSHIP_POINTS_REQUIRED}`;
   }
 
@@ -1218,6 +1233,8 @@ export async function getDogProfile(args: {
     : "In progress";
   const nextGrandMilestoneLabel = getNextGrandChampionMilestoneLabel({
     grandPoints: grandPointsEarned,
+    grandMajorRequirementMet,
+    grandDefeatRequirementMet,
     isGrandChampionFinished,
   });
   const grandStatusLabel = isGrandChampionFinished

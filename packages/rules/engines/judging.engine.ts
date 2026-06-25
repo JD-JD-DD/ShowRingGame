@@ -460,7 +460,6 @@ function buildBreedAwards(args: {
     );
   }
 
-  // TODO: Select Dog/Bitch will become GCH-point-eligible awards when GCH is implemented.
   if (selectDog) {
     awards.push(
       makeAward({
@@ -473,7 +472,6 @@ function buildBreedAwards(args: {
     );
   }
 
-  // TODO: Select Dog/Bitch will become GCH-point-eligible awards when GCH is implemented.
   if (selectBitch) {
     awards.push(
       makeAward({

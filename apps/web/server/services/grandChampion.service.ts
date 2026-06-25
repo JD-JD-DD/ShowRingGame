@@ -152,12 +152,9 @@ export function buildGrandChampionCreditCandidates(args: {
       }
 
       if (award.awardCode === "BOB") {
-        const allSexCount = championResults.length;
-        const sameSexCount = championResultsBySex[awardedResult.dog.sex].length;
-        const allSexPoints = getGrandChampionPointsForCount(allSexCount);
-        const sameSexPoints = getGrandChampionPointsForCount(sameSexCount);
-        const usesSameSexComparison = sameSexPoints > allSexPoints;
-        const countedDogs = usesSameSexComparison ? sameSexCount : allSexCount;
+        // ShowRing Game uses one universal GCH point schedule, so BOB counts
+        // all eligible Champion specials in the breed competition.
+        const countedDogs = championResults.length;
         const candidate = makeCandidate({
           award,
           awardCode: award.awardCode,

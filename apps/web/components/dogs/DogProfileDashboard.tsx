@@ -48,6 +48,12 @@ function healthStatusLabel(profile: DogProfileDto): string {
   return "Incomplete";
 }
 
+function grandMilestoneDetail(label: string | null): string {
+  if (!label) return "Highest milestone reached";
+  if (label.startsWith("Needs ") || label.startsWith("Base ")) return label;
+  return `Next: ${label}`;
+}
+
 function actionWindowToneClass(tone: DogActionWindowTone): string {
   switch (tone) {
     case "ready":
@@ -189,7 +195,7 @@ export default function DogProfileDashboard(props: Props) {
               <SummaryValue label="GCH points" value={profile.titlesAndShowCareer.grandPointsLabel} detail={profile.titlesAndShowCareer.grandRequirementMet ? "Base point requirement met" : undefined} />
               <SummaryValue label="GCH majors" value={`${profile.titlesAndShowCareer.grandMajorsEarned}/${profile.titlesAndShowCareer.grandMajorsRequired}`} detail={profile.titlesAndShowCareer.grandMajorRequirementMet ? "Major requirement met" : undefined} />
               <SummaryValue label="Defeated champions" value={`${profile.titlesAndShowCareer.grandChampionDefeatShowCount}/${profile.titlesAndShowCareer.grandChampionDefeatShowRequired} shows`} detail={profile.titlesAndShowCareer.grandDefeatRequirementMet ? "Defeat requirement met" : undefined} />
-              <SummaryValue label="GCH level" value={profile.titlesAndShowCareer.currentGrandTitleLabel} detail={profile.titlesAndShowCareer.nextGrandMilestoneLabel ? `Next: ${profile.titlesAndShowCareer.nextGrandMilestoneLabel}` : "Highest milestone reached"} />
+              <SummaryValue label="GCH level" value={profile.titlesAndShowCareer.currentGrandTitleLabel} detail={grandMilestoneDetail(profile.titlesAndShowCareer.nextGrandMilestoneLabel)} />
             </div>
           </div>
         ) : null}

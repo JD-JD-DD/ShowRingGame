@@ -78,6 +78,8 @@ assert.deepEqual(
 }
 
 {
+  // BOB uses all eligible Champion specials in the breed competition under
+  // ShowRing Game's simplified universal GCH point schedule.
   const [credit] = candidates({
     results: [
       result("champ-bob", "M"),
