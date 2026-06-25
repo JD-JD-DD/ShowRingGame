@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 
 type KennelCreateTx = {
@@ -17,10 +18,6 @@ function makeSlug(input: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
-}
-
-function getCurrentEpoch(): number {
-  return Math.floor(Date.now() / (1000 * 60 * 60));
 }
 
 async function chooseHomeDistrict(): Promise<number> {
