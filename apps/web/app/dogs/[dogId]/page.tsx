@@ -347,6 +347,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         <DogProfileDashboard
           profile={profile}
           areaId={areaId}
+          currentEpoch={currentEpoch}
           healthMessage={healthMessage}
           healthError={healthError}
           notesMessage={notesMessage}

@@ -1,5 +1,10 @@
 import Link from "next/link";
 
+import {
+  buildDogActionWindows,
+  type DogActionWindowCard as DogActionWindowCardDto,
+  type DogActionWindowTone,
+} from "@/lib/dogActionWindows";
 import type { DogProfileDto } from "@/server/mappers/dog.mapper";
 
 import CollapsibleDogSection from "./CollapsibleDogSection";
@@ -15,6 +20,7 @@ const CARD_CLASS = "dog-card rounded-2xl px-4 py-3";
 type Props = {
   profile: DogProfileDto;
   areaId: string | null;
+  currentEpoch: number;
   healthMessage: string | null;
   healthError: string | null;
   notesMessage: string | null;
@@ -41,6 +47,22 @@ function healthStatusLabel(profile: DogProfileDto): string {
   return "Incomplete";
 }
 
+function actionWindowToneClass(tone: DogActionWindowTone): string {
+  switch (tone) {
+    case "ready":
+      return "border-emerald-300/25 bg-emerald-500/10";
+    case "complete":
+      return "border-sky-300/25 bg-sky-500/10";
+    case "closed":
+    case "unavailable":
+      return "border-white/10 bg-white/[0.03] opacity-75";
+    case "pending":
+      return "border-purple-300/20 bg-purple-500/10";
+    default:
+      return "border-[var(--dog-border)] bg-purple-500/5";
+  }
+}
+
 export default function DogProfileDashboard(props: Props) {
   const { profile, areaId } = props;
   const { header, snapshot, viewerContext } = profile;
@@ -59,6 +81,27 @@ export default function DogProfileDashboard(props: Props) {
     ...(snapshot.marketLabel !== "Not for sale" ? [snapshot.marketLabel] : []),
     `Show: ${snapshot.showEligibilityLabel}`,
     `Breeding: ${snapshot.breedingEligibilityLabel}`,
+  ];
+  const actionWindows = buildDogActionWindows({
+    ageHours: header.ageHours,
+    sex: header.sex,
+    lifecycleState: header.lifecycleState,
+    currentEpoch: props.currentEpoch,
+    canShow: snapshot.canShow,
+    canBreed: snapshot.canBreed,
+    canGroom: profile.groomingDetails?.canGroom ?? false,
+    groomedThisWeek: profile.groomingDetails?.groomedThisWeek ?? false,
+    nextGroomingResetEpoch:
+      profile.groomingDetails?.nextGroomingResetEpoch ?? null,
+    breedingStatus: profile.activeBreedingAttempt?.breedingStatus ?? null,
+    pregCheckEpoch: profile.activeBreedingAttempt?.pregCheckEpoch ?? null,
+    dueEpoch: profile.activeBreedingAttempt?.dueEpoch ?? null,
+  });
+  const actionWindowCards = [
+    actionWindows.showWindow,
+    actionWindows.breedingWindow,
+    actionWindows.groomingWindow,
+    actionWindows.nextMilestone,
   ];
 
   return (
@@ -93,13 +136,11 @@ export default function DogProfileDashboard(props: Props) {
           <SummaryValue label="Market" value={snapshot.marketLabel} />
         </div>
         <div className="mt-5">
-          <h3 className="dog-heading font-semibold">Current action eligibility</h3>
+          <h3 className="dog-heading font-semibold">Current Action Windows</h3>
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <SummaryValue label="Can show" value={snapshot.showEligibilityLabel} />
-            <SummaryValue label="Can breed" value={snapshot.breedingEligibilityLabel} />
-            {viewerContext.canManage && profile.groomingDetails ? (
-              <SummaryValue label="Can groom" value={profile.groomingDetails.canGroom ? "Available now" : "Not currently available"} />
-            ) : null}
+            {actionWindowCards.map((card) => (
+              <ActionWindowCard key={card.label} card={card} />
+            ))}
           </div>
         </div>
       </CollapsibleDogSection>
@@ -228,6 +269,19 @@ function CompactFacts({ facts }: { facts: string[] }) {
 
 function SummaryValue({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return <div className="dog-card rounded-xl px-3 py-2"><div className="dog-label text-[10px] uppercase tracking-wide">{label}</div><div className="dog-heading mt-0.5 text-sm font-semibold">{value}</div>{detail ? <div className="dog-copy mt-0.5 text-[11px]">{detail}</div> : null}</div>;
+}
+
+function ActionWindowCard({ card }: { card: DogActionWindowCardDto }) {
+  return (
+    <div className={`rounded-xl border px-3 py-2 ${actionWindowToneClass(card.tone)}`}>
+      <div className="dog-label text-[10px] uppercase tracking-wide">
+        {card.label}
+      </div>
+      <div className="dog-heading mt-0.5 text-sm font-semibold leading-snug">
+        {card.value}
+      </div>
+    </div>
+  );
 }
 
 function LinkedSummaryValue({ label, value, href }: { label: string; value: string; href: string | null }) {
