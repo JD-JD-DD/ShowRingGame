@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ShowCountdownText } from "@/components/shows/ShowCountdownText";
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { buildShowCountdowns } from "@/lib/showCountdowns";
@@ -521,7 +522,12 @@ export default async function ShowsPage({
                           </div>
                         </div>
                         <div className="shrink-0 text-right text-xs font-semibold text-emerald-100">
-                          {display.countdowns.entryClose.shortValue}
+                          <ShowCountdownText
+                            targetEpoch={display.countdowns.entryClose.targetEpoch}
+                            initialCurrentEpoch={currentEpoch}
+                            fallbackLabel="Now"
+                            prefix="closes in "
+                          />
                         </div>
                       </div>
                     </Link>
@@ -555,7 +561,12 @@ export default async function ShowsPage({
                           </div>
                         </div>
                         <div className="shrink-0 text-right text-xs font-semibold text-amber-100">
-                          {display.countdowns.judging.shortValue}
+                          <ShowCountdownText
+                            targetEpoch={display.countdowns.judging.targetEpoch}
+                            initialCurrentEpoch={currentEpoch}
+                            fallbackLabel="Now"
+                            prefix="judges in "
+                          />
                         </div>
                       </div>
                     </Link>
