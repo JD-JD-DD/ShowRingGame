@@ -182,7 +182,7 @@ const faqSections = [
       {
         question: "How are Show prestige points calculated?",
         answer:
-          "A kennel earns 90 points for each champion finished owner-handled and 65 points for each champion finished with a handler. Major awards also add prestige: BIS is worth 90, RBIS is worth 60, G1 is worth 35, and G2 through G4 are worth 12 each.",
+          "A kennel earns 90 points for each champion finished owner-handled and 65 points for each champion finished with a handler. Grand Champion achievements also add Show prestige: a completed GCH is worth 45 points when finished owner-handled or 30 points with a handler, and additional GCH milestone titles add smaller one-time bonuses. GCH points and Select placements are not counted individually. Major awards also add prestige: BIS is worth 90, RBIS is worth 60, G1 is worth 35, and G2 through G4 are worth 12 each.",
       },
       {
         question: "How are Legacy prestige points calculated?",

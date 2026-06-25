@@ -8,8 +8,30 @@ const CHAMPION_TITLE_CODE = "CH";
 const CHAMPION_OF_RECORD_TITLE_CODES = [
   ...CONFORMATION_CHAMPION_OF_RECORD_TITLE_CODES,
 ];
+const GRAND_CHAMPION_TITLE_CODES = CHAMPION_OF_RECORD_TITLE_CODES.filter(
+  (titleCode) => titleCode !== CHAMPION_TITLE_CODE
+);
+const GRAND_CHAMPION_TITLE_CODE_SET = new Set<string>(
+  GRAND_CHAMPION_TITLE_CODES
+);
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
 const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
+const GRAND_CHAMPIONSHIP_POINTS_REQUIRED = 25;
+const GRAND_CHAMPIONSHIP_MAJORS_REQUIRED = 3;
+const GRAND_CHAMPIONSHIP_DEFEAT_SHOWS_REQUIRED = 3;
+const GRAND_CHAMPION_OWNER_HANDLED_PRESTIGE = 45;
+const GRAND_CHAMPION_HANDLER_PRESTIGE = 30;
+const GRAND_CHAMPION_UNKNOWN_HANDLING_PRESTIGE = 30;
+const GRAND_CHAMPION_MILESTONE_PRESTIGE = [
+  { titleCode: "GCHB", pointsRequired: 100, prestige: 20 },
+  { titleCode: "GCHS", pointsRequired: 200, prestige: 30 },
+  { titleCode: "GCHG", pointsRequired: 400, prestige: 40 },
+  { titleCode: "GCHP", pointsRequired: 800, prestige: 50 },
+  { titleCode: "GCHP2", pointsRequired: 1600, prestige: 25 },
+  { titleCode: "GCHP3", pointsRequired: 2400, prestige: 25 },
+  { titleCode: "GCHP4", pointsRequired: 3200, prestige: 25 },
+  { titleCode: "GCHP5", pointsRequired: 4000, prestige: 25 },
+] as const;
 
 const GROUP_AWARD_CODES = ["G1", "G2", "G3", "G4"] as const;
 const BIS_AWARD_CODES = ["BIS", "RBIS"] as const;
@@ -52,6 +74,11 @@ type KennelPrestigeAccumulator = {
     championProducingLitters: number;
     championsFinishedOwnerHandled: number;
     championsFinishedWithHandler: number;
+    grandChampionsCompletedOwnerHandled: number;
+    grandChampionsCompletedWithHandler: number;
+    grandChampionsCompletedHandlingUnknown: number;
+    grandChampionMilestoneTitles: number;
+    grandChampionMilestonePrestige: number;
     allGreenChampionsBred: number;
     currentBreedTopTenOwned: number;
     currentBreedTopTenBred: number;
@@ -204,6 +231,58 @@ function findFinishingAwards(pointAwards: PointAwardRow[]) {
   return finishingAwards;
 }
 
+function isGrandChampionTitleCode(titleCode: string | null | undefined): boolean {
+  return GRAND_CHAMPION_TITLE_CODE_SET.has(
+    titleCode?.trim().toUpperCase() ?? ""
+  );
+}
+
+export function isGrandChampionPrestigeComplete(progress: {
+  currentTitleCode: string | null;
+  grandPoints: number;
+  grandMajorCount: number;
+  grandChampionDefeatShowCount: number;
+}): boolean {
+  return (
+    isGrandChampionTitleCode(progress.currentTitleCode) &&
+    progress.grandPoints >= GRAND_CHAMPIONSHIP_POINTS_REQUIRED &&
+    progress.grandMajorCount >= GRAND_CHAMPIONSHIP_MAJORS_REQUIRED &&
+    progress.grandChampionDefeatShowCount >=
+      GRAND_CHAMPIONSHIP_DEFEAT_SHOWS_REQUIRED
+  );
+}
+
+export function getGrandChampionCompletionPrestigeForHandling(
+  handlerUsed: boolean | null | undefined
+): number {
+  if (handlerUsed === false) {
+    return GRAND_CHAMPION_OWNER_HANDLED_PRESTIGE;
+  }
+
+  if (handlerUsed === true) {
+    return GRAND_CHAMPION_HANDLER_PRESTIGE;
+  }
+
+  return GRAND_CHAMPION_UNKNOWN_HANDLING_PRESTIGE;
+}
+
+export function getGrandChampionMilestonePrestige(grandPoints: number): {
+  milestoneCount: number;
+  prestige: number;
+} {
+  const achievedMilestones = GRAND_CHAMPION_MILESTONE_PRESTIGE.filter(
+    (milestone) => grandPoints >= milestone.pointsRequired
+  );
+
+  return {
+    milestoneCount: achievedMilestones.length,
+    prestige: achievedMilestones.reduce(
+      (total, milestone) => total + milestone.prestige,
+      0
+    ),
+  };
+}
+
 function createEmptyAccumulator(): KennelPrestigeAccumulator {
   return {
     categories: {
@@ -217,6 +296,11 @@ function createEmptyAccumulator(): KennelPrestigeAccumulator {
       championProducingLitters: 0,
       championsFinishedOwnerHandled: 0,
       championsFinishedWithHandler: 0,
+      grandChampionsCompletedOwnerHandled: 0,
+      grandChampionsCompletedWithHandler: 0,
+      grandChampionsCompletedHandlingUnknown: 0,
+      grandChampionMilestoneTitles: 0,
+      grandChampionMilestonePrestige: 0,
       allGreenChampionsBred: 0,
       currentBreedTopTenOwned: 0,
       currentBreedTopTenBred: 0,
@@ -242,6 +326,13 @@ function finalizeSummary(
   accumulator.categories.show =
     accumulator.metrics.championsFinishedOwnerHandled * 90 +
     accumulator.metrics.championsFinishedWithHandler * 65 +
+    accumulator.metrics.grandChampionsCompletedOwnerHandled *
+      GRAND_CHAMPION_OWNER_HANDLED_PRESTIGE +
+    accumulator.metrics.grandChampionsCompletedWithHandler *
+      GRAND_CHAMPION_HANDLER_PRESTIGE +
+    accumulator.metrics.grandChampionsCompletedHandlingUnknown *
+      GRAND_CHAMPION_UNKNOWN_HANDLING_PRESTIGE +
+    accumulator.metrics.grandChampionMilestonePrestige +
     accumulator.metrics.bestInShowWins * 90 +
     accumulator.metrics.reserveBestInShowWins * 60 +
     accumulator.metrics.groupOneWins * 35 +
@@ -309,7 +400,13 @@ async function buildKennelPrestigeSummaries(
     return { currentYear, kennelMetaById, summariesByKennelId };
   }
 
-  const [championDogs, pointAwards, majorAwards, currentYearStats] =
+  const [
+    championDogs,
+    pointAwards,
+    majorAwards,
+    currentYearStats,
+    grandChampionDogs,
+  ] =
     await Promise.all([
       db.dog.findMany({
         where: {
@@ -440,7 +537,64 @@ async function buildKennelPrestigeSummaries(
           },
         },
       }),
+      db.dog.findMany({
+        where: {
+          ...(breedCode2 ? { breedCode2 } : {}),
+          ownerKennelId: {
+            in: playerKennelIds,
+          },
+          titleProgress: {
+            is: {
+              currentTitleCode: { in: GRAND_CHAMPION_TITLE_CODES },
+            },
+          },
+        },
+        select: {
+          id: true,
+          ownerKennelId: true,
+          titleProgress: {
+            select: {
+              currentTitleCode: true,
+              grandPoints: true,
+              grandMajorCount: true,
+              grandChampionDefeatShowCount: true,
+              grandCompletedAtShowDayId: true,
+            },
+          },
+        },
+      }),
     ]);
+  const grandChampionCompletionShowDayIds = [
+    ...new Set(
+      grandChampionDogs
+        .map((dog) => dog.titleProgress?.grandCompletedAtShowDayId)
+        .filter((showDayId): showDayId is string => Boolean(showDayId))
+    ),
+  ];
+  const grandChampionCompletionEntries =
+    grandChampionCompletionShowDayIds.length > 0
+      ? await db.showEntry.findMany({
+          where: {
+            dogId: {
+              in: grandChampionDogs.map((dog) => dog.id),
+            },
+            showDayId: {
+              in: grandChampionCompletionShowDayIds,
+            },
+          },
+          select: {
+            dogId: true,
+            showDayId: true,
+            handlerUsed: true,
+          },
+        })
+      : [];
+  const grandChampionCompletionEntryByDogAndShowDay = new Map(
+    grandChampionCompletionEntries.map((entry) => [
+      `${entry.dogId}:${entry.showDayId}`,
+      entry,
+    ])
+  );
 
   for (const dog of championDogs) {
     if (!dog.breederKennelId) {
@@ -485,6 +639,41 @@ async function buildKennelPrestigeSummaries(
     } else {
       accumulator.metrics.championsFinishedOwnerHandled += 1;
     }
+  }
+
+  for (const dog of grandChampionDogs) {
+    if (!dog.ownerKennelId || !dog.titleProgress) {
+      continue;
+    }
+
+    const accumulator = summariesByKennelId.get(dog.ownerKennelId);
+
+    if (!accumulator || !isGrandChampionPrestigeComplete(dog.titleProgress)) {
+      continue;
+    }
+
+    const completionShowDayId = dog.titleProgress.grandCompletedAtShowDayId;
+    const completionEntry = completionShowDayId
+      ? grandChampionCompletionEntryByDogAndShowDay.get(
+          `${dog.id}:${completionShowDayId}`
+        )
+      : null;
+
+    if (!completionEntry) {
+      accumulator.metrics.grandChampionsCompletedHandlingUnknown += 1;
+    } else if (completionEntry.handlerUsed) {
+      accumulator.metrics.grandChampionsCompletedWithHandler += 1;
+    } else {
+      accumulator.metrics.grandChampionsCompletedOwnerHandled += 1;
+    }
+
+    const milestonePrestige = getGrandChampionMilestonePrestige(
+      dog.titleProgress.grandPoints
+    );
+    accumulator.metrics.grandChampionMilestoneTitles +=
+      milestonePrestige.milestoneCount;
+    accumulator.metrics.grandChampionMilestonePrestige +=
+      milestonePrestige.prestige;
   }
 
   for (const award of majorAwards) {

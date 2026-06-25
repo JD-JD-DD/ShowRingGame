@@ -30,6 +30,10 @@ export default async function KennelPrestigePage() {
     prestige.metrics.currentBreedTopTenBred +
     prestige.metrics.currentAllBreedTopTenOwned +
     prestige.metrics.currentAllBreedTopTenBred;
+  const grandChampionTotal =
+    prestige.metrics.grandChampionsCompletedOwnerHandled +
+    prestige.metrics.grandChampionsCompletedWithHandler +
+    prestige.metrics.grandChampionsCompletedHandlingUnknown;
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8">
@@ -53,8 +57,8 @@ export default async function KennelPrestigePage() {
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--dog-copy)]">
               Prestige rewards {kennel.name}&apos;s long-term show identity:
-              champions bred, champions finished, major show wins, Top Ten
-              standing, and health-tested excellence.
+              champions bred, champions finished, Grand Champion achievements,
+              major show wins, Top Ten standing, and health-tested excellence.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
@@ -113,7 +117,7 @@ export default async function KennelPrestigePage() {
           ))}
         </div>
 
-        <div className="mt-5 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
             <div className="text-xs uppercase tracking-[0.16em] text-[var(--dog-copy)]">
               Champions Bred
@@ -138,6 +142,19 @@ export default async function KennelPrestigePage() {
             <div className="mt-1 text-[var(--dog-copy)]">
               {prestige.metrics.championsFinishedOwnerHandled} owner-handled,{" "}
               {prestige.metrics.championsFinishedWithHandler} with handler
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
+            <div className="text-xs uppercase tracking-[0.16em] text-[var(--dog-copy)]">
+              Grand Champions
+            </div>
+            <div className="mt-1 text-2xl font-bold">
+              {grandChampionTotal}
+            </div>
+            <div className="mt-1 text-[var(--dog-copy)]">
+              {prestige.metrics.grandChampionMilestoneTitles} milestone
+              credits
             </div>
           </div>
 
