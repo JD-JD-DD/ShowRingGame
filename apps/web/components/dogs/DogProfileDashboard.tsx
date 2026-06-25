@@ -159,7 +159,7 @@ export default function DogProfileDashboard(props: Props) {
       </CollapsibleDogSection>
 
       <CollapsibleDogSection
-        title="Championship Summary"
+        title="Title Progression"
         description={profile.titlesAndShowCareer.summaryLabel}
         badge={<Link href={profile.titlesAndShowCareer.fullShowRecordUrl} className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-semibold">Full record</Link>}
         className={`${PANEL_CLASS} order-3 lg:col-span-2 lg:order-2`}
@@ -173,12 +173,26 @@ export default function DogProfileDashboard(props: Props) {
         contentClassName="mt-4 space-y-4"
         titleClassName="text-xl"
       >
-        <div className="grid grid-cols-2 gap-2">
-          <SummaryValue label="CH points" value={`${profile.titlesAndShowCareer.pointsEarned}/${profile.titlesAndShowCareer.pointsRequired}`} />
-          <SummaryValue label="Majors" value={`${profile.titlesAndShowCareer.majorsEarned}/${profile.titlesAndShowCareer.majorsRequired}`} />
-          <SummaryValue label="Title prefix" value={header.visibleTitlePrefix ?? "None"} />
-          <SummaryValue label="Title suffix" value={header.visibleTitleSuffix ?? "None"} />
+        <div>
+          <h3 className="dog-heading mb-3 text-lg font-semibold">Champion progress</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <SummaryValue label="CH points" value={`${profile.titlesAndShowCareer.pointsEarned}/${profile.titlesAndShowCareer.pointsRequired}`} />
+            <SummaryValue label="CH majors" value={`${profile.titlesAndShowCareer.majorsEarned}/${profile.titlesAndShowCareer.majorsRequired}`} />
+            <SummaryValue label="Champion status" value={profile.titlesAndShowCareer.isChampionFinished ? "Complete" : "In progress"} />
+            <SummaryValue label="Current title" value={profile.titlesAndShowCareer.currentTitleCode ?? "None"} />
+          </div>
         </div>
+        {profile.titlesAndShowCareer.isChampionFinished ? (
+          <div>
+            <h3 className="dog-heading mb-3 text-lg font-semibold">Grand Champion progress</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <SummaryValue label="GCH points" value={profile.titlesAndShowCareer.grandPointsLabel} detail={profile.titlesAndShowCareer.grandRequirementMet ? "Base point requirement met" : undefined} />
+              <SummaryValue label="GCH majors" value={`${profile.titlesAndShowCareer.grandMajorsEarned}/${profile.titlesAndShowCareer.grandMajorsRequired}`} detail={profile.titlesAndShowCareer.grandMajorRequirementMet ? "Major requirement met" : undefined} />
+              <SummaryValue label="Defeated champions" value={`${profile.titlesAndShowCareer.grandChampionDefeatShowCount}/${profile.titlesAndShowCareer.grandChampionDefeatShowRequired} shows`} detail={profile.titlesAndShowCareer.grandDefeatRequirementMet ? "Defeat requirement met" : undefined} />
+              <SummaryValue label="GCH level" value={profile.titlesAndShowCareer.currentGrandTitleLabel} detail={profile.titlesAndShowCareer.nextGrandMilestoneLabel ? `Next: ${profile.titlesAndShowCareer.nextGrandMilestoneLabel}` : "Highest milestone reached"} />
+            </div>
+          </div>
+        ) : null}
         <div>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h3 className="dog-heading text-lg font-semibold">Recent show record</h3>

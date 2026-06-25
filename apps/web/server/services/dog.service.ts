@@ -48,6 +48,19 @@ import { DogLifecycleState, DogMarketState, DogOriginType, Sex } from "@prisma/c
 
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
 const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
+const GRAND_CHAMPIONSHIP_POINTS_REQUIRED = 25;
+const GRAND_CHAMPIONSHIP_MAJORS_REQUIRED = 3;
+const GRAND_CHAMPIONSHIP_DEFEAT_SHOWS_REQUIRED = 3;
+const GRAND_CHAMPIONSHIP_MILESTONES = [
+  { titleCode: "GCHB", pointsRequired: 100 },
+  { titleCode: "GCHS", pointsRequired: 200 },
+  { titleCode: "GCHG", pointsRequired: 400 },
+  { titleCode: "GCHP", pointsRequired: 800 },
+  { titleCode: "GCHP2", pointsRequired: 1600 },
+  { titleCode: "GCHP3", pointsRequired: 2400 },
+  { titleCode: "GCHP4", pointsRequired: 3200 },
+  { titleCode: "GCHP5", pointsRequired: 4000 },
+] as const;
 const RECENT_SHOW_RESULT_LIMIT = 6;
 const INVITATIONAL_PLACEMENT_CODES = ["BIS", "RBIS", "G1", "G2", "G3", "G4"];
 
@@ -270,6 +283,29 @@ function getHealthImpactStatement(args: {
 
 function formatGameDateLabel(epoch: number): string {
   return epochToDate(epoch).toISOString().slice(0, 10);
+}
+
+function isGrandChampionTitleCode(titleCode: string | null): boolean {
+  return titleCode?.startsWith("GCH") ?? false;
+}
+
+function getNextGrandChampionMilestoneLabel(args: {
+  grandPoints: number;
+  isGrandChampionFinished: boolean;
+}): string | null {
+  if (!args.isGrandChampionFinished) {
+    return `GCH at ${GRAND_CHAMPIONSHIP_POINTS_REQUIRED}`;
+  }
+
+  const nextMilestone = GRAND_CHAMPIONSHIP_MILESTONES.find(
+    (milestone) => args.grandPoints < milestone.pointsRequired
+  );
+
+  if (!nextMilestone) {
+    return null;
+  }
+
+  return `${nextMilestone.titleCode} at ${nextMilestone.pointsRequired.toLocaleString("en-US")}`;
 }
 
 function formatMoneyLabel(amount: number): string {
@@ -703,6 +739,11 @@ export async function getDogProfile(args: {
           currentTitleCode: true,
           championshipPoints: true,
           majorCount: true,
+          grandPoints: true,
+          grandMajorCount: true,
+          grandChampionDefeatShowCount: true,
+          grandCompletedAtShowDayId: true,
+          grandCompletedAtEpoch: true,
           winsByTypeJson: true,
         },
       },
@@ -1157,6 +1198,31 @@ export async function getDogProfile(args: {
   const majorsEarned = dog.titleProgress?.majorCount ?? 0;
   const currentTitleCode = dog.titleProgress?.currentTitleCode ?? null;
   const isChampionFinished = isChampionOfRecordTitleCode(currentTitleCode);
+  const grandPointsEarned = dog.titleProgress?.grandPoints ?? 0;
+  const grandMajorsEarned = dog.titleProgress?.grandMajorCount ?? 0;
+  const grandChampionDefeatShowCount =
+    dog.titleProgress?.grandChampionDefeatShowCount ?? 0;
+  const isGrandChampionFinished = isGrandChampionTitleCode(currentTitleCode);
+  const grandRequirementMet =
+    grandPointsEarned >= GRAND_CHAMPIONSHIP_POINTS_REQUIRED;
+  const grandMajorRequirementMet =
+    grandMajorsEarned >= GRAND_CHAMPIONSHIP_MAJORS_REQUIRED;
+  const grandDefeatRequirementMet =
+    grandChampionDefeatShowCount >=
+    GRAND_CHAMPIONSHIP_DEFEAT_SHOWS_REQUIRED;
+  const grandPointsLabel = isGrandChampionFinished
+    ? grandPointsEarned.toLocaleString("en-US")
+    : `${grandPointsEarned}/${GRAND_CHAMPIONSHIP_POINTS_REQUIRED}`;
+  const currentGrandTitleLabel = isGrandChampionFinished
+    ? currentTitleCode ?? "GCH"
+    : "In progress";
+  const nextGrandMilestoneLabel = getNextGrandChampionMilestoneLabel({
+    grandPoints: grandPointsEarned,
+    isGrandChampionFinished,
+  });
+  const grandStatusLabel = isGrandChampionFinished
+    ? `${currentTitleCode ?? "GCH"} earned with ${grandPointsEarned.toLocaleString("en-US")} GCH points`
+    : `GCH in progress: ${grandPointsEarned} points, ${grandMajorsEarned} majors, ${grandChampionDefeatShowCount} defeated-Champion shows`;
   const pointsRemaining = Math.max(
     0,
     CHAMPIONSHIP_POINTS_REQUIRED - pointsEarned
@@ -1330,6 +1396,25 @@ export async function getDogProfile(args: {
       majorsRemaining,
       pointRequirementMet: pointsRemaining === 0,
       majorRequirementMet: majorsRemaining === 0,
+      grandPointsEarned,
+      grandPointsRequired: GRAND_CHAMPIONSHIP_POINTS_REQUIRED,
+      grandMajorsEarned,
+      grandMajorsRequired: GRAND_CHAMPIONSHIP_MAJORS_REQUIRED,
+      grandChampionDefeatShowCount,
+      grandChampionDefeatShowRequired:
+        GRAND_CHAMPIONSHIP_DEFEAT_SHOWS_REQUIRED,
+      grandRequirementMet,
+      grandMajorRequirementMet,
+      grandDefeatRequirementMet,
+      isGrandChampionFinished,
+      grandCompletedAtShowDayId:
+        dog.titleProgress?.grandCompletedAtShowDayId ?? null,
+      grandCompletedAtEpoch:
+        dog.titleProgress?.grandCompletedAtEpoch ?? null,
+      grandStatusLabel,
+      grandPointsLabel,
+      currentGrandTitleLabel,
+      nextGrandMilestoneLabel,
       summaryLabel: isChampionFinished
         ? `Champion, finished with ${pointsEarned} points and ${majorsEarned} majors`
         : `Not yet champion — ${pointsEarned} points, ${majorsEarned} majors`,

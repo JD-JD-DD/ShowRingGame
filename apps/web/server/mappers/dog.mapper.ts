@@ -126,6 +126,22 @@ export type DogProfileShowCareerDto = {
   majorsRemaining: number;
   pointRequirementMet: boolean;
   majorRequirementMet: boolean;
+  grandPointsEarned: number;
+  grandPointsRequired: number;
+  grandMajorsEarned: number;
+  grandMajorsRequired: number;
+  grandChampionDefeatShowCount: number;
+  grandChampionDefeatShowRequired: number;
+  grandRequirementMet: boolean;
+  grandMajorRequirementMet: boolean;
+  grandDefeatRequirementMet: boolean;
+  isGrandChampionFinished: boolean;
+  grandCompletedAtShowDayId: string | null;
+  grandCompletedAtEpoch: number | null;
+  grandStatusLabel: string;
+  grandPointsLabel: string;
+  currentGrandTitleLabel: string;
+  nextGrandMilestoneLabel: string | null;
   summaryLabel: string;
   recentPointWins: DogProfilePointWinDto[];
   recentShowResults: DogProfileShowResultDto[];
@@ -476,6 +492,31 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       majorsRemaining: input.titlesAndShowCareer.majorsRemaining,
       pointRequirementMet: input.titlesAndShowCareer.pointRequirementMet,
       majorRequirementMet: input.titlesAndShowCareer.majorRequirementMet,
+      grandPointsEarned: input.titlesAndShowCareer.grandPointsEarned,
+      grandPointsRequired: input.titlesAndShowCareer.grandPointsRequired,
+      grandMajorsEarned: input.titlesAndShowCareer.grandMajorsEarned,
+      grandMajorsRequired: input.titlesAndShowCareer.grandMajorsRequired,
+      grandChampionDefeatShowCount:
+        input.titlesAndShowCareer.grandChampionDefeatShowCount,
+      grandChampionDefeatShowRequired:
+        input.titlesAndShowCareer.grandChampionDefeatShowRequired,
+      grandRequirementMet: input.titlesAndShowCareer.grandRequirementMet,
+      grandMajorRequirementMet:
+        input.titlesAndShowCareer.grandMajorRequirementMet,
+      grandDefeatRequirementMet:
+        input.titlesAndShowCareer.grandDefeatRequirementMet,
+      isGrandChampionFinished:
+        input.titlesAndShowCareer.isGrandChampionFinished,
+      grandCompletedAtShowDayId:
+        input.titlesAndShowCareer.grandCompletedAtShowDayId,
+      grandCompletedAtEpoch:
+        input.titlesAndShowCareer.grandCompletedAtEpoch,
+      grandStatusLabel: input.titlesAndShowCareer.grandStatusLabel,
+      grandPointsLabel: input.titlesAndShowCareer.grandPointsLabel,
+      currentGrandTitleLabel:
+        input.titlesAndShowCareer.currentGrandTitleLabel,
+      nextGrandMilestoneLabel:
+        input.titlesAndShowCareer.nextGrandMilestoneLabel,
       summaryLabel: input.titlesAndShowCareer.summaryLabel,
       recentPointWins: input.titlesAndShowCareer.recentPointWins.map((win) => ({
         showDayId: win.showDayId,
