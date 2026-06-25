@@ -394,6 +394,7 @@ model Dog {
   showEntries        ShowEntry[]
   showResults        ShowResult[]
   showAwards         ShowAward[]
+  grandChampionCredits DogGrandChampionCredit[]
   showPrestigeCredits DogShowPrestigeCredit[]
   yearlyPrestigeStats DogYearlyPrestigeStat[]
   ledgerTransactions LedgerTransaction[]
@@ -631,6 +632,8 @@ model ShowDay {
   showEntries ShowEntry[]
   showResults ShowResult[]
   showAwards  ShowAward[]
+  grandChampionCredits DogGrandChampionCredit[]
+  grandCompletedTitleProgresses DogTitleProgress[] @relation("DogGrandCompletedAtShowDay")
   prestigeCredits DogShowPrestigeCredit[]
   judgingBlocks ShowJudgingBlock[]
 
@@ -775,6 +778,7 @@ model ShowAward {
   dog        Dog         @relation(fields: [dogId], references: [id])
   breed      Breed       @relation(fields: [breedCode2], references: [code2])
   judge      Judge       @relation(fields: [judgeId], references: [id])
+  grandChampionCredit DogGrandChampionCredit?
 
   @@index([showResultId])
   @@index([showEntryId])
@@ -785,6 +789,34 @@ model ShowAward {
   @@index([judgeId])
   @@index([awardCode])
   @@index([pointsAwarded])
+}
+
+model DogGrandChampionCredit {
+  id                       String   @id @default(cuid())
+  dogId                    String
+  showDayId                String
+  showAwardId              String?  @unique
+  awardCode                String
+  pointsAwarded            Int      @default(0)
+  isMajor                  Boolean  @default(false)
+  defeatedChampionCount    Int      @default(0)
+  countsAsChampionDefeat   Boolean  @default(false)
+  createdAtEpoch           Int
+  createdAt                DateTime @default(now())
+
+  dog       Dog        @relation(fields: [dogId], references: [id])
+  showDay   ShowDay    @relation(fields: [showDayId], references: [id])
+  showAward ShowAward? @relation(fields: [showAwardId], references: [id], onDelete: SetNull)
+
+  @@unique([dogId, showDayId, awardCode])
+  @@index([dogId])
+  @@index([showDayId])
+  @@index([awardCode])
+  @@index([pointsAwarded])
+  @@index([isMajor])
+  @@index([countsAsChampionDefeat])
+  @@index([dogId, countsAsChampionDefeat, showDayId])
+  @@index([createdAtEpoch])
 }
 
 model DogShowPrestigeCredit {
@@ -1210,15 +1242,22 @@ model KennelNotice {
 }
 
 model DogTitleProgress {
-  dogId              String   @id
-  championshipPoints Int      @default(0)
-  majorCount         Int      @default(0)
-  grandPoints        Int      @default(0)
-  winsByTypeJson     Json?
-  currentTitleCode   String?
-  updatedAt          DateTime @updatedAt
+  dogId                         String   @id
+  championshipPoints            Int      @default(0)
+  majorCount                    Int      @default(0)
+  grandPoints                   Int      @default(0)
+  grandMajorCount               Int      @default(0)
+  grandChampionDefeatShowCount  Int      @default(0)
+  grandCompletedAtShowDayId     String?
+  grandCompletedAtEpoch         Int?
+  winsByTypeJson                Json?
+  currentTitleCode              String?
+  updatedAt                     DateTime @updatedAt
 
-  dog Dog @relation(fields: [dogId], references: [id])
+  dog                         Dog      @relation(fields: [dogId], references: [id])
+  grandCompletedAtShowDay     ShowDay? @relation("DogGrandCompletedAtShowDay", fields: [grandCompletedAtShowDayId], references: [id], onDelete: SetNull)
+
+  @@index([grandCompletedAtShowDayId])
 }
 
 model HealthTestRecord {
