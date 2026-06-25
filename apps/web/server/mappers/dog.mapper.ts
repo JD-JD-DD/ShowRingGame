@@ -17,6 +17,12 @@ export type DogProfileDogLinkDto = {
   profileUrl: string;
 };
 
+export type DogProfileAreaNavigationDto = {
+  areaId: string;
+  previousDog: DogProfileDogLinkDto | null;
+  nextDog: DogProfileDogLinkDto | null;
+} | null;
+
 export type DogProfileHeaderDto = {
   dogId: string;
   displayName: string;
@@ -400,6 +406,7 @@ export type DogProfileViewerContextDto = {
 
 export type DogProfileDto = {
   header: DogProfileHeaderDto;
+  areaNavigation: DogProfileAreaNavigationDto;
   snapshot: DogProfileSnapshotDto;
   qualityAndPresentation: DogProfileQualityPresentationDto;
   titlesAndShowCareer: DogProfileShowCareerDto;
@@ -442,6 +449,25 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
         href: badge.href,
       })),
     },
+    areaNavigation: input.areaNavigation
+      ? {
+          areaId: input.areaNavigation.areaId,
+          previousDog: input.areaNavigation.previousDog
+            ? {
+                dogId: input.areaNavigation.previousDog.dogId,
+                displayName: input.areaNavigation.previousDog.displayName,
+                profileUrl: input.areaNavigation.previousDog.profileUrl,
+              }
+            : null,
+          nextDog: input.areaNavigation.nextDog
+            ? {
+                dogId: input.areaNavigation.nextDog.dogId,
+                displayName: input.areaNavigation.nextDog.displayName,
+                profileUrl: input.areaNavigation.nextDog.profileUrl,
+              }
+            : null,
+        }
+      : null,
     snapshot: {
       owner: input.snapshot.owner
         ? {
