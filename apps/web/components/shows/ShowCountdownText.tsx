@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { formatShortCountdownHours } from "@/lib/gameTimeFormat";
+import { epochToDate } from "@/lib/gameClock";
+import { formatRealCountdownMs } from "@/lib/gameTimeFormat";
 
 const UPDATE_INTERVAL_MS = 60 * 1000;
-const HOUR_MS = 60 * 60 * 1000;
 
 export type ShowCountdownTextProps = {
   targetEpoch: number | null;
@@ -22,16 +22,21 @@ export function ShowCountdownText({
   prefix = "",
   suffix = "",
 }: ShowCountdownTextProps) {
-  const [elapsedMs, setElapsedMs] = useState(0);
+  const [msRemaining, setMsRemaining] = useState<number | null>(null);
 
   useEffect(() => {
     if (targetEpoch === null) {
       return;
     }
 
-    const mountedAtMs = Date.now();
+    const targetMs = epochToDate(targetEpoch).getTime();
+    const updateRemaining = () => {
+      setMsRemaining(targetMs - Date.now());
+    };
+
+    updateRemaining();
     const intervalId = window.setInterval(() => {
-      setElapsedMs(Date.now() - mountedAtMs);
+      updateRemaining();
     }, UPDATE_INTERVAL_MS);
 
     return () => window.clearInterval(intervalId);
@@ -42,15 +47,23 @@ export function ShowCountdownText({
       return fallbackLabel;
     }
 
-    const displayedCurrentEpoch = initialCurrentEpoch + elapsedMs / HOUR_MS;
-    const remainingHours = targetEpoch - displayedCurrentEpoch;
-
-    if (remainingHours <= 0) {
-      return fallbackLabel;
+    if (msRemaining === null) {
+      return targetEpoch <= initialCurrentEpoch ? "Now" : fallbackLabel;
     }
 
-    return `${prefix}${formatShortCountdownHours(remainingHours)}${suffix}`;
-  }, [elapsedMs, fallbackLabel, initialCurrentEpoch, prefix, suffix, targetEpoch]);
+    if (msRemaining <= 0) {
+      return "Now";
+    }
+
+    return `${prefix}${formatRealCountdownMs(msRemaining)}${suffix}`;
+  }, [
+    fallbackLabel,
+    initialCurrentEpoch,
+    msRemaining,
+    prefix,
+    suffix,
+    targetEpoch,
+  ]);
 
   return <>{label}</>;
 }

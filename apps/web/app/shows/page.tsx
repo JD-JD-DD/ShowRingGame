@@ -525,7 +525,7 @@ export default async function ShowsPage({
                           <ShowCountdownText
                             targetEpoch={display.countdowns.entryClose.targetEpoch}
                             initialCurrentEpoch={currentEpoch}
-                            fallbackLabel="Now"
+                            fallbackLabel={display.countdowns.entryClose.shortValue}
                             prefix="closes in "
                           />
                         </div>
@@ -564,7 +564,7 @@ export default async function ShowsPage({
                           <ShowCountdownText
                             targetEpoch={display.countdowns.judging.targetEpoch}
                             initialCurrentEpoch={currentEpoch}
-                            fallbackLabel="Now"
+                            fallbackLabel={display.countdowns.judging.shortValue}
                             prefix="judges in "
                           />
                         </div>
