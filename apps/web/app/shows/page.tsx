@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
+import { buildShowCountdowns } from "@/lib/showCountdowns";
 import { getSessionUserId } from "@/lib/session";
 import {
   getShowClusterDisplayStatus,
@@ -286,6 +287,93 @@ export default async function ShowsPage({
     totalMs,
   });
   const enteredClusterIds = new Set(enteredClusters.map((cluster) => cluster.id));
+  const clusterDisplayById = new Map(
+    clusters.map((cluster) => {
+      const resultCount = clusterResultCount(cluster);
+      const entryCount = clusterEntryCount(cluster);
+      const hasJudgingActivity =
+        resultCount > 0 ||
+        cluster.showDays.some(
+          (day) =>
+            day.status === "JUDGING" || day.status === "RESULTS_PUBLISHED"
+        );
+      const playerStatus = getShowClusterDisplayStatus({
+        cluster,
+        hasJudgingActivity,
+        currentEpoch,
+        entryCount,
+        resultCount,
+      });
+      const countdowns = buildShowCountdowns({
+        currentEpoch,
+        clusterId: cluster.id,
+        clusterStatus: cluster.status,
+        displayStatus: playerStatus,
+        entryOpenEpoch: cluster.entryOpenEpoch,
+        entryCloseEpoch: cluster.entryCloseEpoch,
+        startEpoch: cluster.startEpoch,
+        resultCount,
+        hasJudgingActivity,
+        showDays: cluster.showDays.map((day) => ({
+          scheduledEpoch: day.scheduledEpoch,
+          status: day.status,
+          publishedAtEpoch: day.publishedAtEpoch,
+          resultCount: day._count.showResults,
+        })),
+      });
+      const entryActivity = getEntryActivity(entryCount);
+      const canEnterShow = playerStatus === "OPEN";
+      const clusterHref = canEnterShow
+        ? `/shows/${cluster.id}${showDetailQuery}`
+        : `/shows/${cluster.id}/results`;
+
+      return [
+        cluster.id,
+        {
+          resultCount,
+          entryCount,
+          hasJudgingActivity,
+          playerStatus,
+          countdowns,
+          entryActivity,
+          canEnterShow,
+          clusterHref,
+        },
+      ] as const;
+    })
+  );
+  const regularClusterDisplays = clusters
+    .filter((cluster) => !cluster.id.startsWith("invitational-year-"))
+    .flatMap((cluster) => {
+      const display = clusterDisplayById.get(cluster.id);
+
+      return display ? [{ cluster, display }] : [];
+    });
+  const allClusterDisplays = clusters.flatMap((cluster) => {
+    const display = clusterDisplayById.get(cluster.id);
+
+    return display ? [{ cluster, display }] : [];
+  });
+  const nextEntryClosing =
+    regularClusterDisplays
+      .filter(
+        ({ cluster, display }) =>
+          display.playerStatus === "OPEN" && cluster.entryCloseEpoch > currentEpoch
+      )
+      .sort((a, b) => a.cluster.entryCloseEpoch - b.cluster.entryCloseEpoch)[0] ??
+    null;
+  const nextJudging =
+    allClusterDisplays
+      .filter(
+        ({ display }) =>
+          display.countdowns.judging.targetEpoch !== null &&
+          display.countdowns.judging.targetEpoch > currentEpoch
+      )
+      .sort(
+        (a, b) =>
+          (a.display.countdowns.judging.targetEpoch ?? 0) -
+          (b.display.countdowns.judging.targetEpoch ?? 0)
+      )[0] ?? null;
   const clustersByTemplate = new Map<string, typeof clusters>();
   const invitationalClusters = clusters.filter((cluster) =>
     cluster.id.startsWith("invitational-year-")
@@ -399,6 +487,65 @@ export default async function ShowsPage({
         </div>
       </section>
 
+      <section className="theme-panel mb-8 rounded-[28px] p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="theme-label text-xs uppercase tracking-[0.18em]">
+              Show Clock
+            </p>
+            <h2 className="theme-heading mt-1 text-xl font-semibold">
+              Upcoming Windows
+            </h2>
+          </div>
+
+          <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 lg:max-w-3xl">
+            <div className="theme-card rounded-2xl px-4 py-3">
+              <div className="theme-label text-[11px] uppercase tracking-[0.16em]">
+                Next Entry Closing
+              </div>
+              {nextEntryClosing ? (
+                <Link
+                  href={nextEntryClosing.display.clusterHref}
+                  className="mt-1 block min-w-0 transition hover:text-sky-100"
+                >
+                  <div className="theme-heading truncate text-sm font-semibold">
+                    {nextEntryClosing.cluster.name}
+                  </div>
+                  <div className="theme-copy mt-1 text-xs">
+                    {nextEntryClosing.display.countdowns.entryClose.value}
+                  </div>
+                </Link>
+              ) : (
+                <div className="theme-copy mt-1 text-sm">No open entries.</div>
+              )}
+            </div>
+
+            <div className="theme-card rounded-2xl px-4 py-3">
+              <div className="theme-label text-[11px] uppercase tracking-[0.16em]">
+                Next Judging
+              </div>
+              {nextJudging ? (
+                <Link
+                  href={nextJudging.display.clusterHref}
+                  className="mt-1 block min-w-0 transition hover:text-sky-100"
+                >
+                  <div className="theme-heading truncate text-sm font-semibold">
+                    {nextJudging.cluster.name}
+                  </div>
+                  <div className="theme-copy mt-1 text-xs">
+                    {nextJudging.display.countdowns.judging.value}
+                  </div>
+                </Link>
+              ) : (
+                <div className="theme-copy mt-1 text-sm">
+                  No upcoming judging.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="theme-panel rounded-[28px] p-6">
         <div className="grid gap-3">
           {templates.map((template, templateIndex) => {
@@ -452,32 +599,23 @@ export default async function ShowsPage({
                       </span>
                     ) : (
                       templateClusters.map((cluster) => {
-                        const resultCount = clusterResultCount(cluster);
-                        const entryCount = clusterEntryCount(cluster);
-                        const hasJudgingActivity =
-                          resultCount > 0 ||
-                          cluster.showDays.some(
-                            (day) =>
-                              day.status === "JUDGING" ||
-                              day.status === "RESULTS_PUBLISHED"
-                          );
-                        const playerStatus = getShowClusterDisplayStatus({
-                          cluster,
-                          hasJudgingActivity,
-                          currentEpoch,
-                          entryCount,
+                        const clusterDisplay = clusterDisplayById.get(
+                          cluster.id
+                        );
+
+                        if (!clusterDisplay) {
+                          return null;
+                        }
+
+                        const {
                           resultCount,
-                        });
-                        const entryActivity = getEntryActivity(entryCount);
-                        const judgingOpens =
-                          !hasJudgingActivity && cluster.startEpoch > currentEpoch
-                            ? cluster.startEpoch
-                            : null;
-                        const canEnterShow = playerStatus === "OPEN";
-                        const clusterHref =
-                          playerStatus === "OPEN"
-                            ? `/shows/${cluster.id}${showDetailQuery}`
-                            : `/shows/${cluster.id}/results`;
+                          hasJudgingActivity,
+                          playerStatus,
+                          countdowns,
+                          entryActivity,
+                          canEnterShow,
+                          clusterHref,
+                        } = clusterDisplay;
 
                         return (
                           <div
@@ -504,6 +642,11 @@ export default async function ShowsPage({
                               >
                                 {playerStatus}
                               </span>
+                              {countdowns.rowMetaLabel ? (
+                                <span className="ml-2 text-[11px] text-[var(--dog-copy)]">
+                                  {countdowns.rowMetaLabel}
+                                </span>
+                              ) : null}
                               {enteredClusterIds.has(cluster.id) ? (
                                 <span className="ml-2 rounded-full border border-emerald-300/35 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">
                                   REPRESENTED
@@ -519,16 +662,10 @@ export default async function ShowsPage({
                                   {resultCount} result
                                   {resultCount === 1 ? "" : "s"}
                                 </span>
-                              ) : hasJudgingActivity ? (
+                              ) : hasJudgingActivity &&
+                                !countdowns.rowMetaLabel ? (
                                 <span className="ml-2 text-sky-100">
                                   Judging underway
-                                </span>
-                              ) : null}
-                              {judgingOpens ? (
-                                <span
-                                  className={`ml-2 rounded-full border px-2 py-0.5 text-[11px] ${derivedStatusTone("JUDGING_OPENS")}`}
-                                >
-                                  Judging {formatShowDate(judgingOpens)}
                                 </span>
                               ) : null}
                             </Link>
@@ -590,22 +727,18 @@ export default async function ShowsPage({
                   </span>
                 ) : (
                   invitationalClusters.map((cluster) => {
-                    const resultCount = clusterResultCount(cluster);
-                    const entryCount = clusterEntryCount(cluster);
-                    const hasJudgingActivity =
-                      resultCount > 0 ||
-                      cluster.showDays.some(
-                        (day) =>
-                          day.status === "JUDGING" ||
-                          day.status === "RESULTS_PUBLISHED"
-                      );
-                    const playerStatus = getShowClusterDisplayStatus({
-                      cluster,
-                      hasJudgingActivity,
-                      currentEpoch,
-                      entryCount,
+                    const clusterDisplay = clusterDisplayById.get(cluster.id);
+
+                    if (!clusterDisplay) {
+                      return null;
+                    }
+
+                    const {
                       resultCount,
-                    });
+                      entryCount,
+                      playerStatus,
+                      countdowns,
+                    } = clusterDisplay;
 
                     return (
                       <Link
@@ -624,6 +757,11 @@ export default async function ShowsPage({
                         >
                           {playerStatus}
                         </span>
+                        {countdowns.rowMetaLabel ? (
+                          <span className="ml-2 text-[11px] text-amber-100/70">
+                            {countdowns.rowMetaLabel}
+                          </span>
+                        ) : null}
                         {enteredClusterIds.has(cluster.id) ? (
                           <span className="ml-2 rounded-full border border-emerald-300/35 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">
                             REPRESENTED

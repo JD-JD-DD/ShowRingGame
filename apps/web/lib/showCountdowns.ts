@@ -138,7 +138,7 @@ function buildEntryCloseCard(
     case "JUDGED":
       return {
         label: "Entry Window",
-        value: hasPublishedResults(input) ? "Results published." : "Judged.",
+        value: hasPublishedResults(input) ? "Results available." : "Judged.",
         tone: "published",
         targetEpoch: null,
       };
@@ -174,14 +174,14 @@ function buildJudgingCard(input: BuildShowCountdownsInput): ShowCountdownCard {
     case "JUDGED":
       return {
         label: "Judging",
-        value: hasPublishedResults(input) ? "Results published." : "Judged.",
+        value: hasPublishedResults(input) ? "Results available." : "Judged.",
         tone: "published",
         targetEpoch: null,
       };
     case "JUDGING":
       return {
         label: "Judging",
-        value: "Judging underway.",
+        value: "Judging now.",
         tone: "judging",
         targetEpoch: null,
       };
@@ -230,18 +230,22 @@ function buildRowMetaLabel(input: BuildShowCountdownsInput): string | null {
           ? compactUntil("Judges", judgingEpoch, input.currentEpoch)
           : null;
 
-      return judgingLabel ? `${entryLabel} - ${judgingLabel}` : entryLabel;
+      return judgingLabel ? `${entryLabel} · ${judgingLabel}` : entryLabel;
     }
     case "CLOSED":
       return judgingEpoch !== null
-        ? compactUntil("Judges", judgingEpoch, input.currentEpoch)
+        ? `Entries closed · ${compactUntil(
+            "Judges",
+            judgingEpoch,
+            input.currentEpoch
+          )}`
         : "Entries closed";
     case "AWAITING JUDGING":
       return "Awaiting judging";
     case "JUDGING":
-      return input.hasJudgingActivity ? "Judging underway" : "Judging";
+      return input.hasJudgingActivity ? "Judging now" : "Judging";
     case "JUDGED":
-      return hasPublishedResults(input) ? "Results published" : "Judged";
+      return hasPublishedResults(input) ? "Results available" : "Judged";
     case "CANCELLED":
       return "Cancelled";
   }

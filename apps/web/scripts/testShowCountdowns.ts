@@ -70,7 +70,7 @@ assert.equal(
 );
 assert.equal(
   open.rowMetaLabel,
-  "Entries close in 2d - Judges in 5d",
+  "Entries close in 2d · Judges in 5d",
   "open row meta includes entry close and judging countdowns"
 );
 
@@ -95,8 +95,8 @@ assert.equal(
 );
 assert.equal(
   closed.rowMetaLabel,
-  "Judges in 5d",
-  "closed row meta focuses on judging when it is still upcoming"
+  "Entries closed · Judges in 5d",
+  "closed row meta includes closed entries and upcoming judging"
 );
 
 const awaitingJudging = buildShowCountdowns(
@@ -154,12 +154,12 @@ assert.equal(
 );
 assert.equal(
   judging.judging.value,
-  "Judging underway.",
+  "Judging now.",
   "judging shows use underway wording"
 );
 assert.equal(
   judging.rowMetaLabel,
-  "Judging underway",
+  "Judging now",
   "judging row meta is compact"
 );
 
@@ -184,17 +184,17 @@ const judged = buildShowCountdowns(
 
 assert.equal(
   judged.entryClose.value,
-  "Results published.",
+  "Results available.",
   "judged shows do not show entry countdowns"
 );
 assert.equal(
   judged.judging.value,
-  "Results published.",
+  "Results available.",
   "judged shows use published judging copy"
 );
 assert.equal(
   judged.rowMetaLabel,
-  "Results published",
+  "Results available",
   "judged row meta is compact"
 );
 
