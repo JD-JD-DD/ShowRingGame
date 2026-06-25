@@ -161,7 +161,7 @@ function ResultSection({
 
   return (
     <section className="mt-6">
-      <h3 className="text-lg font-semibold text-sky-100">{title}</h3>
+      <h3 className="theme-heading text-lg font-semibold">{title}</h3>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full min-w-[760px] border-separate border-spacing-y-2 text-sm">
           <thead>
@@ -191,7 +191,7 @@ function ResultSection({
                         >
                           <span>{formatShowAwardLabel(award.awardCode)}</span>
                           {award.pointsAwarded > 0 ? (
-                            <span className="font-bold text-white">
+                            <span className="theme-heading font-bold">
                               {formatPoints(award.pointsAwarded)}
                             </span>
                           ) : null}
@@ -202,7 +202,7 @@ function ResultSection({
                   <td className="px-3 py-3">
                     <Link
                       href={`/dogs/${result.dog.id}`}
-                      className="font-semibold text-white underline-offset-4 hover:underline"
+                      className="theme-heading font-semibold underline-offset-4 hover:underline"
                     >
                       {formatDogDisplayName(result.dog)}
                     </Link>
@@ -245,7 +245,7 @@ function AllEntriesTable({ entries }: { entries: EntryRow[] }) {
 
   return (
     <section className="mt-6">
-      <h3 className="text-lg font-semibold text-sky-100">All Entered Dogs</h3>
+      <h3 className="theme-heading text-lg font-semibold">All Entered Dogs</h3>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full min-w-[860px] border-separate border-spacing-y-2 text-sm">
           <thead>
@@ -268,7 +268,7 @@ function AllEntriesTable({ entries }: { entries: EntryRow[] }) {
                   key={`all-entries-${entry.id}`}
                   className="border border-[var(--dog-border)] bg-[var(--dog-card)] shadow-[var(--dog-shadow)]"
                 >
-                  <td className="rounded-l-2xl px-3 py-3 font-semibold text-white">
+                  <td className="theme-heading rounded-l-2xl px-3 py-3 font-semibold">
                     {entry.showResult?.finalRank ?? "-"}
                   </td>
                   <td className="px-3 py-3">
@@ -281,7 +281,7 @@ function AllEntriesTable({ entries }: { entries: EntryRow[] }) {
                           >
                             <span>{formatShowAwardLabel(award.awardCode)}</span>
                             {award.pointsAwarded > 0 ? (
-                              <span className="font-bold text-white">
+                              <span className="theme-heading font-bold">
                                 {formatPoints(award.pointsAwarded)}
                               </span>
                             ) : null}
@@ -295,7 +295,7 @@ function AllEntriesTable({ entries }: { entries: EntryRow[] }) {
                   <td className="px-3 py-3">
                     <Link
                       href={`/dogs/${entry.dog.id}`}
-                      className="font-semibold text-white underline-offset-4 hover:underline"
+                      className="theme-heading font-semibold underline-offset-4 hover:underline"
                     >
                       {formatDogDisplayName(entry.dog)}
                     </Link>
@@ -454,18 +454,18 @@ export default async function BreedResultsPage({
   );
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-8 text-white">
+    <main className="results-page mx-auto max-w-7xl px-6 py-8">
       <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-8 text-center shadow-[var(--dog-shadow)]">
         <p className="text-sm uppercase tracking-[0.22em] text-[var(--dog-label)]">
           Breed Results
         </p>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight text-white">
+        <h1 className="theme-heading mt-3 text-4xl font-bold tracking-tight">
           {cluster.name}
         </h1>
         <p className="mt-4 text-2xl font-semibold text-[var(--dog-heading)]">
           {formatShowCalendarLabel(cluster.startEpoch)}
         </p>
-        <h2 className="mt-8 text-2xl font-bold uppercase tracking-[0.08em] text-white">
+        <h2 className="theme-heading mt-8 text-2xl font-bold uppercase tracking-[0.08em]">
           {firstBlock.breed.name}
         </h2>
         <p className="mt-2 text-lg font-semibold text-[var(--dog-heading)]">
@@ -522,14 +522,14 @@ export default async function BreedResultsPage({
                 <p className="text-xs uppercase tracking-[0.18em] text-[var(--dog-label)]">
                   Show Day
                 </p>
-                <h3 className="mt-2 text-2xl font-bold text-white">
+                <h3 className="theme-heading mt-2 text-2xl font-bold">
                   {formatShowCalendarLabel(day.scheduledEpoch)}
                 </h3>
                 <p className="mt-2 text-sm font-semibold text-[var(--dog-heading)]">
                   Judge:{" "}
                   <Link
                     href={`/judges/${day.judgingBlocks[0].judge.judgeCode}`}
-                    className="text-white underline-offset-4 hover:underline"
+                    className="theme-heading underline-offset-4 hover:underline"
                   >
                     {day.judgingBlocks[0].judge.name}
                   </Link>

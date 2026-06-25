@@ -231,6 +231,19 @@ html:not([data-theme="dark"]) .showring-title-sweep {
   color: var(--dog-label);
 }
 
+:is(.dog-accent-link, .theme-accent-link) {
+  color: var(--purple-main);
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+}
+
+html[data-theme="dark"] :is(.dog-accent-link, .theme-accent-link) {
+  color: var(--purple-soft);
+}
+
+:is(.dog-accent-link, .theme-accent-link):hover {
+  text-decoration-line: underline;
+}
+
 :is(.dog-neutral-badge, .theme-neutral-badge) {
   border: 1px solid var(--dog-border);
   background: var(--dog-card);
@@ -460,6 +473,10 @@ html:not([data-theme="dark"]) .rankings-page :is([class~="bg-purple-600"], [clas
   color: #fde68a;
   font-size: 0.78rem;
   filter: drop-shadow(0 0 7px rgba(253, 230, 138, 0.82));
+}
+
+.premium-planner-link [class~="text-white"] {
+  color: #fff;
 }
 
 @media (prefers-reduced-motion: reduce) {

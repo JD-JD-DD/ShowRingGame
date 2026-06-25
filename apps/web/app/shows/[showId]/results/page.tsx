@@ -187,12 +187,12 @@ export default async function ShowResultsIndexPage({
     );
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8 text-white">
+    <main className="results-page mx-auto max-w-6xl px-6 py-8">
       <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-8 text-center shadow-[var(--dog-shadow)]">
         <p className="text-sm uppercase tracking-[0.22em] text-[var(--dog-label)]">
           Show Results
         </p>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight text-white">
+        <h1 className="theme-heading mt-3 text-4xl font-bold tracking-tight">
           {cluster.name}
         </h1>
         <p className="mt-4 text-2xl font-semibold text-[var(--dog-heading)]">
@@ -265,7 +265,7 @@ export default async function ShowResultsIndexPage({
 
       {cluster.showDays.some((day) => day.showAwards.length > 0) ? (
         <section className="mt-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
-          <h2 className="text-xl font-semibold text-white">
+          <h2 className="theme-heading text-xl font-semibold">
             Group & Best In Show
           </h2>
 
@@ -301,7 +301,7 @@ export default async function ShowResultsIndexPage({
 
                     {bestInShowAwards.length > 0 ? (
                       <div className="mt-4">
-                        <h4 className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-100">
+                        <h4 className="theme-accent-link text-sm font-semibold uppercase tracking-[0.16em]">
                           Best In Show
                         </h4>
                         <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -311,7 +311,7 @@ export default async function ShowResultsIndexPage({
                               href={`/dogs/${award.dog.id}`}
                               className="rounded-xl border border-sky-300/20 bg-sky-500/10 px-4 py-3 text-sm transition hover:border-sky-300/40"
                             >
-                              <div className="font-semibold text-white">
+                              <div className="theme-heading font-semibold">
                                 {award.awardCode} - {formatDogDisplayName(award.dog)}
                               </div>
                               <div className="mt-1 text-xs text-[var(--dog-copy)]">
@@ -347,7 +347,7 @@ export default async function ShowResultsIndexPage({
                                       href={`/dogs/${award.dog.id}`}
                                       className="rounded-lg border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm transition hover:border-[var(--dog-border)] hover:bg-[var(--dog-card)]"
                                     >
-                                      <div className="font-semibold text-white">
+                                      <div className="theme-heading font-semibold">
                                         {award.awardCode} -{" "}
                                         {formatDogDisplayName(award.dog)}
                                       </div>
@@ -370,7 +370,7 @@ export default async function ShowResultsIndexPage({
       ) : null}
 
       <section className="mt-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
-        <h2 className="text-xl font-semibold text-white">Breeds & Classes</h2>
+        <h2 className="theme-heading text-xl font-semibold">Breeds & Classes</h2>
 
         {groupedBreeds.size === 0 ? (
           <p className="mt-4 text-sm text-[var(--dog-copy)]">
@@ -388,7 +388,7 @@ export default async function ShowResultsIndexPage({
                     <Link
                       key={breed.code2}
                       href={`/shows/${cluster.id}/results/${breed.code2}`}
-                      className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-sm font-semibold text-sky-100 transition hover:border-sky-300/40 hover:bg-sky-500/10"
+                      className="theme-accent-link rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-sm font-semibold transition hover:border-sky-300/40 hover:bg-sky-500/10"
                     >
                       <span>{breed.name}</span>
                       {breed.resultCount > 0 ? (
