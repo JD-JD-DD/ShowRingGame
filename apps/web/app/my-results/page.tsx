@@ -53,7 +53,7 @@ function formatResult(entry: MyShowResultEntry): string {
   return formatShowAwardLabels(awards.map((award) => award.awardCode));
 }
 
-function formatPointsAwarded(entry: MyShowResultEntry): string | null {
+function formatChampionshipPointsAwarded(entry: MyShowResultEntry): string | null {
   const pointsAwarded = entry.showResult?.pointsAwarded ?? 0;
 
   if (pointsAwarded <= 0) {
@@ -195,12 +195,13 @@ export default async function MyShowResultsPage() {
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Breed</th>
                   <th className="px-3 py-2">Result</th>
-                  <th className="px-3 py-2">Points</th>
+                  <th className="px-3 py-2">CH Points</th>
                 </tr>
               </thead>
               <tbody>
                 {entries.map((entry) => {
-                  const pointsAwarded = formatPointsAwarded(entry);
+                  const championshipPointsAwarded =
+                    formatChampionshipPointsAwarded(entry);
 
                   return (
                     <tr
@@ -244,7 +245,7 @@ export default async function MyShowResultsPage() {
                         {formatResult(entry)}
                       </td>
                       <td className="theme-heading rounded-r-2xl px-3 py-3 font-semibold">
-                        {pointsAwarded ?? (
+                        {championshipPointsAwarded ?? (
                           <span className="theme-copy opacity-50">-</span>
                         )}
                       </td>
