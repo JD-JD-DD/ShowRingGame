@@ -1,7 +1,10 @@
 import { db } from "@/lib/db";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
-import { recalculateDogTitleProgressForDogs } from "@/server/services/titleProgress.service";
+import {
+  promoteGrandChampionTitlesForDogs,
+  recalculateDogTitleProgressForDogs,
+} from "@/server/services/titleProgress.service";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import { processGrandChampionCreditsForShowDay } from "@/server/services/grandChampion.service";
 import {
@@ -884,8 +887,15 @@ export async function judgeShowBlock(args: {
           .map((award) => award.dogId),
       });
 
-      await processGrandChampionCreditsForShowDay({
+      const grandChampionCredits = await processGrandChampionCreditsForShowDay({
         tx,
+        showDayId: block.showDayId,
+        currentEpoch,
+      });
+
+      await promoteGrandChampionTitlesForDogs({
+        tx,
+        dogIds: grandChampionCredits.dogIds,
         showDayId: block.showDayId,
         currentEpoch,
       });
