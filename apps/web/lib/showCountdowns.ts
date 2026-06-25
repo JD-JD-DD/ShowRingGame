@@ -13,6 +13,7 @@ export type ShowCountdownTone =
 export type ShowCountdownCard = {
   label: string;
   value: string;
+  shortValue: string;
   tone: ShowCountdownTone;
   targetEpoch: number | null;
 };
@@ -114,6 +115,7 @@ function buildEntryCloseCard(
           input.entryOpenEpoch,
           input.currentEpoch
         ),
+        shortValue: compactUntil("opens", input.entryOpenEpoch, input.currentEpoch),
         tone: "pending",
         targetEpoch: input.entryOpenEpoch,
       };
@@ -125,6 +127,11 @@ function buildEntryCloseCard(
           input.entryCloseEpoch,
           input.currentEpoch
         ),
+        shortValue: compactUntil(
+          "closes",
+          input.entryCloseEpoch,
+          input.currentEpoch
+        ),
         tone: "ready",
         targetEpoch: input.entryCloseEpoch,
       };
@@ -132,6 +139,7 @@ function buildEntryCloseCard(
       return {
         label: "Entry Window",
         value: "Show cancelled.",
+        shortValue: "cancelled",
         tone: "cancelled",
         targetEpoch: null,
       };
@@ -139,6 +147,7 @@ function buildEntryCloseCard(
       return {
         label: "Entry Window",
         value: hasPublishedResults(input) ? "Results available." : "Judged.",
+        shortValue: hasPublishedResults(input) ? "results available" : "judged",
         tone: "published",
         targetEpoch: null,
       };
@@ -146,6 +155,7 @@ function buildEntryCloseCard(
       return {
         label: "Entry Window",
         value: "Entries locked.",
+        shortValue: "entries locked",
         tone: "judging",
         targetEpoch: null,
       };
@@ -154,6 +164,7 @@ function buildEntryCloseCard(
       return {
         label: "Entry Window",
         value: "Entries closed.",
+        shortValue: "entries closed",
         tone: "closed",
         targetEpoch: null,
       };
@@ -168,6 +179,7 @@ function buildJudgingCard(input: BuildShowCountdownsInput): ShowCountdownCard {
       return {
         label: "Judging",
         value: "Show cancelled.",
+        shortValue: "cancelled",
         tone: "cancelled",
         targetEpoch: null,
       };
@@ -175,6 +187,7 @@ function buildJudgingCard(input: BuildShowCountdownsInput): ShowCountdownCard {
       return {
         label: "Judging",
         value: hasPublishedResults(input) ? "Results available." : "Judged.",
+        shortValue: hasPublishedResults(input) ? "results available" : "judged",
         tone: "published",
         targetEpoch: null,
       };
@@ -182,6 +195,7 @@ function buildJudgingCard(input: BuildShowCountdownsInput): ShowCountdownCard {
       return {
         label: "Judging",
         value: "Judging now.",
+        shortValue: "judging now",
         tone: "judging",
         targetEpoch: null,
       };
@@ -189,6 +203,7 @@ function buildJudgingCard(input: BuildShowCountdownsInput): ShowCountdownCard {
       return {
         label: "Judging",
         value: "Awaiting judging.",
+        shortValue: "awaiting judging",
         tone: "pending",
         targetEpoch: null,
       };
@@ -199,6 +214,7 @@ function buildJudgingCard(input: BuildShowCountdownsInput): ShowCountdownCard {
         return {
           label: "Judging",
           value: formatUntil("Judging starts", judgingEpoch, input.currentEpoch),
+          shortValue: compactUntil("judges", judgingEpoch, input.currentEpoch),
           tone: "pending",
           targetEpoch: judgingEpoch,
         };
@@ -207,6 +223,7 @@ function buildJudgingCard(input: BuildShowCountdownsInput): ShowCountdownCard {
       return {
         label: "Judging",
         value: "Judging pending.",
+        shortValue: "judging pending",
         tone: "neutral",
         targetEpoch: null,
       };

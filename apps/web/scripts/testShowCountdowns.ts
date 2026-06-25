@@ -40,6 +40,11 @@ assert.equal(
   "scheduled shows count down to entry opening"
 );
 assert.equal(
+  scheduled.entryClose.shortValue,
+  "opens in 10h",
+  "scheduled entry short copy is suitable for Show Clock lists"
+);
+assert.equal(
   scheduled.entryClose.targetEpoch,
   currentEpoch + 10,
   "scheduled entry card targets entry open"
@@ -64,9 +69,19 @@ assert.equal(
   "open shows count down to entry closing"
 );
 assert.equal(
+  open.entryClose.shortValue,
+  "closes in 2d",
+  "open entry short copy is suitable for Show Clock lists"
+);
+assert.equal(
   open.judging.value,
   "Judging starts in 5d.",
   "open shows can also expose judging countdown"
+);
+assert.equal(
+  open.judging.shortValue,
+  "judges in 5d",
+  "open judging short copy is suitable for Show Clock lists"
 );
 assert.equal(
   open.rowMetaLabel,

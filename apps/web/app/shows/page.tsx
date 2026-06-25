@@ -354,26 +354,25 @@ export default async function ShowsPage({
 
     return display ? [{ cluster, display }] : [];
   });
-  const nextEntryClosing =
-    regularClusterDisplays
-      .filter(
-        ({ cluster, display }) =>
-          display.playerStatus === "OPEN" && cluster.entryCloseEpoch > currentEpoch
-      )
-      .sort((a, b) => a.cluster.entryCloseEpoch - b.cluster.entryCloseEpoch)[0] ??
-    null;
-  const nextJudging =
-    allClusterDisplays
-      .filter(
-        ({ display }) =>
-          display.countdowns.judging.targetEpoch !== null &&
-          display.countdowns.judging.targetEpoch > currentEpoch
-      )
-      .sort(
-        (a, b) =>
-          (a.display.countdowns.judging.targetEpoch ?? 0) -
-          (b.display.countdowns.judging.targetEpoch ?? 0)
-      )[0] ?? null;
+  const upcomingEntryClosings = regularClusterDisplays
+    .filter(
+      ({ cluster, display }) =>
+        display.playerStatus === "OPEN" && cluster.entryCloseEpoch > currentEpoch
+    )
+    .sort((a, b) => a.cluster.entryCloseEpoch - b.cluster.entryCloseEpoch)
+    .slice(0, 3);
+  const upcomingJudging = allClusterDisplays
+    .filter(
+      ({ display }) =>
+        display.countdowns.judging.targetEpoch !== null &&
+        display.countdowns.judging.targetEpoch > currentEpoch
+    )
+    .sort(
+      (a, b) =>
+        (a.display.countdowns.judging.targetEpoch ?? 0) -
+        (b.display.countdowns.judging.targetEpoch ?? 0)
+    )
+    .slice(0, 3);
   const clustersByTemplate = new Map<string, typeof clusters>();
   const invitationalClusters = clusters.filter((cluster) =>
     cluster.id.startsWith("invitational-year-")
@@ -501,20 +500,33 @@ export default async function ShowsPage({
           <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2 lg:max-w-3xl">
             <div className="theme-card rounded-2xl px-4 py-3">
               <div className="theme-label text-[11px] uppercase tracking-[0.16em]">
-                Next Entry Closing
+                Upcoming Entry Closings
               </div>
-              {nextEntryClosing ? (
-                <Link
-                  href={nextEntryClosing.display.clusterHref}
-                  className="mt-1 block min-w-0 transition hover:text-sky-100"
-                >
-                  <div className="theme-heading truncate text-sm font-semibold">
-                    {nextEntryClosing.cluster.name}
-                  </div>
-                  <div className="theme-copy mt-1 text-xs">
-                    {nextEntryClosing.display.countdowns.entryClose.value}
-                  </div>
-                </Link>
+              {upcomingEntryClosings.length > 0 ? (
+                <div className="mt-2 grid gap-2">
+                  {upcomingEntryClosings.map(({ cluster, display }) => (
+                    <Link
+                      key={cluster.id}
+                      href={display.clusterHref}
+                      className="block min-w-0 rounded-xl border border-[var(--dog-border)] bg-purple-500/10 px-3 py-2 transition hover:bg-purple-500/15 hover:text-sky-100"
+                    >
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="theme-heading truncate text-sm font-semibold">
+                            {cluster.name}
+                          </div>
+                          <div className="theme-copy mt-0.5 truncate text-[11px]">
+                            Year {cluster.year} ·{" "}
+                            {getShowDistrictRegionName(cluster.district)}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right text-xs font-semibold text-emerald-100">
+                          {display.countdowns.entryClose.shortValue}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               ) : (
                 <div className="theme-copy mt-1 text-sm">No open entries.</div>
               )}
@@ -522,20 +534,33 @@ export default async function ShowsPage({
 
             <div className="theme-card rounded-2xl px-4 py-3">
               <div className="theme-label text-[11px] uppercase tracking-[0.16em]">
-                Next Judging
+                Upcoming Judging
               </div>
-              {nextJudging ? (
-                <Link
-                  href={nextJudging.display.clusterHref}
-                  className="mt-1 block min-w-0 transition hover:text-sky-100"
-                >
-                  <div className="theme-heading truncate text-sm font-semibold">
-                    {nextJudging.cluster.name}
-                  </div>
-                  <div className="theme-copy mt-1 text-xs">
-                    {nextJudging.display.countdowns.judging.value}
-                  </div>
-                </Link>
+              {upcomingJudging.length > 0 ? (
+                <div className="mt-2 grid gap-2">
+                  {upcomingJudging.map(({ cluster, display }) => (
+                    <Link
+                      key={cluster.id}
+                      href={display.clusterHref}
+                      className="block min-w-0 rounded-xl border border-[var(--dog-border)] bg-purple-500/10 px-3 py-2 transition hover:bg-purple-500/15 hover:text-sky-100"
+                    >
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="theme-heading truncate text-sm font-semibold">
+                            {cluster.name}
+                          </div>
+                          <div className="theme-copy mt-0.5 truncate text-[11px]">
+                            Year {cluster.year} ·{" "}
+                            {getShowDistrictRegionName(cluster.district)}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right text-xs font-semibold text-amber-100">
+                          {display.countdowns.judging.shortValue}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               ) : (
                 <div className="theme-copy mt-1 text-sm">
                   No upcoming judging.
