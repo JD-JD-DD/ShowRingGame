@@ -161,6 +161,21 @@ export type DogProfileHealthTestDto = {
   cost: number;
 };
 
+export type DogProfileBreedingSafetyScreeningDto = {
+  screeningCode: "BRUCELLOSIS";
+  label: string;
+  helperText: string;
+  isRepeatable: boolean;
+  currentStatusLabel: string;
+  lastResultLabel: string;
+  testedAtEpoch: number | null;
+  testedAtLabel: string | null;
+  validUntilEpoch: number | null;
+  validUntilLabel: string | null;
+  isCurrentNegative: boolean;
+  isPositiveOrInfected: boolean;
+};
+
 export type DogProfileAvailableHealthTestDto = {
   testCode: string;
   displayName: string;
@@ -184,6 +199,7 @@ export type DogProfileHealthTestingDto = {
   totalCount: number;
   summaryLabel: string;
   tests: DogProfileHealthTestDto[];
+  breedingSafetyScreening: DogProfileBreedingSafetyScreeningDto[];
   ownerControls: DogProfileHealthOwnerControlsDto | null;
 };
 
@@ -545,6 +561,21 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
         isCurrentlyAvailable: test.isCurrentlyAvailable,
         cost: test.cost,
       })),
+      breedingSafetyScreening:
+        input.healthTesting.breedingSafetyScreening.map((screening) => ({
+          screeningCode: screening.screeningCode,
+          label: screening.label,
+          helperText: screening.helperText,
+          isRepeatable: screening.isRepeatable,
+          currentStatusLabel: screening.currentStatusLabel,
+          lastResultLabel: screening.lastResultLabel,
+          testedAtEpoch: screening.testedAtEpoch,
+          testedAtLabel: screening.testedAtLabel,
+          validUntilEpoch: screening.validUntilEpoch,
+          validUntilLabel: screening.validUntilLabel,
+          isCurrentNegative: screening.isCurrentNegative,
+          isPositiveOrInfected: screening.isPositiveOrInfected,
+        })),
       ownerControls: input.healthTesting.ownerControls
         ? {
             canRunAnyTests: input.healthTesting.ownerControls.canRunAnyTests,

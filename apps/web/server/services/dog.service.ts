@@ -32,6 +32,7 @@ import {
   MAX_SHOW_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
   MIN_SHOW_AGE_HOURS,
+  BRUCELLOSIS_DISEASE_CODE,
   PHENOTYPE_HEALTH_TEST_CODES,
   PHENOTYPE_HEALTH_TESTS,
   PUPPY_SALE_MIN_AGE_HOURS,
@@ -63,6 +64,8 @@ const GRAND_CHAMPIONSHIP_MILESTONES = [
 ] as const;
 const RECENT_SHOW_RESULT_LIMIT = 6;
 const INVITATIONAL_PLACEMENT_CODES = ["BIS", "RBIS", "G1", "G2", "G3", "G4"];
+const BRUCELLOSIS_SCREENING_HELPER_TEXT =
+  "Brucellosis screening is a repeatable breeding safety test. It reflects current breeding readiness, not permanent genetic health.";
 
 function mapSex(sex: "M" | "F"): Sex {
   return sex === "M" ? Sex.M : Sex.F;
@@ -222,6 +225,90 @@ function formatTestedDateLabel(testedAtEpoch: number | null): string | null {
   if (testedAtEpoch === null) return null;
 
   return `Tested ${epochToDate(testedAtEpoch).toISOString().slice(0, 10)}`;
+}
+
+function formatBrucellosisResultLabel(resultCode: string | null): string {
+  switch (resultCode) {
+    case "NEGATIVE":
+      return "Negative";
+    case "POSITIVE":
+      return "Positive";
+    case null:
+      return "No result";
+    default:
+      return resultCode;
+  }
+}
+
+function buildBrucellosisBreedingSafetyScreening(args: {
+  currentEpoch: number;
+  infectiousDiseaseStatuses: Array<{
+    diseaseCode: string;
+    status: string;
+  }>;
+  infectiousDiseaseTests: Array<{
+    diseaseCode: string;
+    resultCode: string;
+    testedAtEpoch: number;
+    validUntilEpoch: number | null;
+  }>;
+}) {
+  const isInfected = args.infectiousDiseaseStatuses.some(
+    (status) =>
+      status.diseaseCode === BRUCELLOSIS_DISEASE_CODE &&
+      status.status === "INFECTED"
+  );
+  const brucellosisTests = args.infectiousDiseaseTests.filter(
+    (test) => test.diseaseCode === BRUCELLOSIS_DISEASE_CODE
+  );
+  const latestTest = brucellosisTests[0] ?? null;
+  const currentNegativeTest = isInfected
+    ? null
+    : brucellosisTests.find(
+        (test) =>
+          test.resultCode === "NEGATIVE" &&
+          test.validUntilEpoch !== null &&
+          test.validUntilEpoch >= args.currentEpoch
+      ) ?? null;
+  const isPositiveOrInfected =
+    isInfected || latestTest?.resultCode === "POSITIVE";
+  const latestValidUntilEpoch = latestTest?.validUntilEpoch ?? null;
+  const currentNegativeValidUntilEpoch =
+    currentNegativeTest?.validUntilEpoch ?? null;
+  const validUntilLabel =
+    latestValidUntilEpoch === null
+      ? null
+      : `${latestValidUntilEpoch >= args.currentEpoch ? "Valid through" : "Expired"} ${formatGameDateLabel(latestValidUntilEpoch)}`;
+  const currentStatusLabel = isPositiveOrInfected
+    ? "Positive - not cleared for breeding"
+    : currentNegativeValidUntilEpoch !== null
+      ? `Current negative through ${formatGameDateLabel(
+          currentNegativeValidUntilEpoch
+        )}`
+      : latestTest
+        ? "No current negative screen"
+        : "Not screened";
+
+  return [
+    {
+      screeningCode: BRUCELLOSIS_DISEASE_CODE as "BRUCELLOSIS",
+      label: "Brucellosis Screening",
+      helperText: BRUCELLOSIS_SCREENING_HELPER_TEXT,
+      isRepeatable: true,
+      currentStatusLabel,
+      lastResultLabel: formatBrucellosisResultLabel(
+        latestTest?.resultCode ?? null
+      ),
+      testedAtEpoch: latestTest?.testedAtEpoch ?? null,
+      testedAtLabel: latestTest
+        ? formatTestedDateLabel(latestTest.testedAtEpoch)
+        : null,
+      validUntilEpoch: latestValidUntilEpoch,
+      validUntilLabel,
+      isCurrentNegative: Boolean(currentNegativeTest),
+      isPositiveOrInfected,
+    },
+  ];
 }
 
 function getHealthImpactStatement(args: {
@@ -774,6 +861,27 @@ export async function getDogProfile(args: {
           testedAtEpoch: true,
         },
       },
+      infectiousDiseaseStatuses: {
+        where: {
+          diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+        },
+        select: {
+          diseaseCode: true,
+          status: true,
+        },
+      },
+      infectiousDiseaseTests: {
+        where: {
+          diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+        },
+        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+        select: {
+          diseaseCode: true,
+          resultCode: true,
+          testedAtEpoch: true,
+          validUntilEpoch: true,
+        },
+      },
       healthConditionTruths: {
         where: {
           conditionCode: {
@@ -1104,6 +1212,11 @@ export async function getDogProfile(args: {
       isCurrentlyAvailable: ageHours >= definition.minimumAgeHours,
       cost: definition.fee,
     };
+  });
+  const breedingSafetyScreening = buildBrucellosisBreedingSafetyScreening({
+    currentEpoch,
+    infectiousDiseaseStatuses: dog.infectiousDiseaseStatuses,
+    infectiousDiseaseTests: dog.infectiousDiseaseTests,
   });
   const availableHealthTests = healthTests.filter(
     (test) => isAlive && !test.isComplete && test.isCurrentlyAvailable
@@ -1446,6 +1559,7 @@ export async function getDogProfile(args: {
       totalCount: healthSummary.totalCount,
       summaryLabel: healthSummary.label,
       tests: healthTests,
+      breedingSafetyScreening,
       ownerControls: isOwnedByCurrentKennel
         ? {
             canRunAnyTests:
