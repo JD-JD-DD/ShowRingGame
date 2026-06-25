@@ -70,6 +70,39 @@ function actionWindowToneClass(tone: DogActionWindowTone): string {
   }
 }
 
+type BreedingSafetyScreening =
+  DogProfileDto["healthTesting"]["breedingSafetyScreening"][number];
+
+function breedingSafetyStatusText(screening: BreedingSafetyScreening): string {
+  if (screening.isPositiveOrInfected) {
+    return screening.currentStatusLabel;
+  }
+
+  if (screening.isCurrentNegative) {
+    return "Current negative";
+  }
+
+  if (screening.testedAtEpoch === null) {
+    return "No brucellosis screening on record.";
+  }
+
+  return "No current negative result";
+}
+
+function breedingSafetyStatusClass(
+  screening: BreedingSafetyScreening
+): string {
+  if (screening.isPositiveOrInfected) {
+    return "border-red-300/30 bg-red-500/10 text-red-700 dark:text-red-200";
+  }
+
+  if (screening.isCurrentNegative) {
+    return "border-emerald-300/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200";
+  }
+
+  return "border-amber-300/30 bg-amber-500/10 text-amber-700 dark:text-amber-200";
+}
+
 export default function DogProfileDashboard(props: Props) {
   const { profile, areaId } = props;
   const { header, snapshot, viewerContext } = profile;
@@ -248,6 +281,49 @@ export default function DogProfileDashboard(props: Props) {
         {statusMessage(props.healthMessage)}
         {statusMessage(props.healthError, true)}
         <HealthTestingPanel dogId={header.dogId} areaId={areaId} kennelBalance={healthControls?.kennelBalance ?? 0} canOrderHealthTests={Boolean(healthControls?.checkoutNeeded)} rows={profile.healthTesting.tests.map((test) => ({ testTypeCode: test.testCode, label: test.displayName, fee: test.cost, isAvailable: test.isCurrentlyAvailable, availabilityLabel: test.minimumAgeLabel, result: test.isComplete ? { label: test.resultLabel ?? "Complete", testedLabel: test.testedDateLabel ?? "Test date unavailable", severity: test.severityKey ?? "yellow", impactStatement: test.healthImpactStatement } : null }))} />
+        {profile.healthTesting.breedingSafetyScreening.length > 0 ? (
+          <div className="rounded-2xl border border-sky-300/25 bg-sky-500/10 p-4">
+            <div className="dog-heading text-sm font-semibold">
+              Breeding Safety Screening
+            </div>
+            <div className="mt-3 grid gap-3">
+              {profile.healthTesting.breedingSafetyScreening.map((screening) => (
+                <div key={screening.screeningCode} className="rounded-xl border border-sky-300/20 bg-black/5 p-3 dark:bg-black/20">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <div className="dog-heading text-sm font-semibold">
+                        {screening.label}
+                      </div>
+                      <div className="dog-copy mt-1 text-xs leading-5">
+                        {screening.helperText}
+                      </div>
+                    </div>
+                    <span className="dog-neutral-badge rounded-full px-2.5 py-1 text-[11px] font-semibold">
+                      Repeatable
+                    </span>
+                  </div>
+                  <div className={`mt-3 rounded-lg border px-3 py-2 text-xs font-semibold ${breedingSafetyStatusClass(screening)}`}>
+                    {breedingSafetyStatusText(screening)}
+                  </div>
+                  <div className="dog-copy mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    {screening.isCurrentNegative && screening.validUntilLabel ? (
+                      <span>{screening.validUntilLabel}</span>
+                    ) : null}
+                    {!screening.isCurrentNegative && screening.testedAtLabel ? (
+                      <span>Last result: {screening.lastResultLabel}</span>
+                    ) : null}
+                    {!screening.isCurrentNegative && screening.testedAtLabel ? (
+                      <span>{screening.testedAtLabel}</span>
+                    ) : null}
+                    {!screening.isCurrentNegative && screening.validUntilLabel ? (
+                      <span>{screening.validUntilLabel}</span>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {viewerContext.canManage && profile.groomingDetails ? (
           <div className="grid grid-cols-2 gap-2">
             <SummaryValue label="Grooming state" value={profile.groomingDetails.groomingStatus} />
