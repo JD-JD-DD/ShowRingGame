@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
+import { CONFORMATION_CHAMPION_OF_RECORD_TITLE_CODES } from "@/lib/dogTitles";
 
 type TransactionClient = Prisma.TransactionClient;
 type DbClient = typeof db | TransactionClient;
@@ -67,6 +68,9 @@ const PRODUCER_MERIT_TIERS: ProducerMeritTier[] = [
 const PRODUCER_MERIT_SUFFIXES = new Set(
   PRODUCER_MERIT_TIERS.flatMap((tier) => [tier.maleSuffix, tier.femaleSuffix])
 );
+const CHAMPION_OF_RECORD_TITLE_CODES = [
+  ...CONFORMATION_CHAMPION_OF_RECORD_TITLE_CODES,
+];
 
 function thresholdForSex(tier: ProducerMeritTier, sex: DogSex): number {
   return sex === "M" ? tier.maleThreshold : tier.femaleThreshold;
@@ -130,7 +134,7 @@ export async function countChampionOffspringForDog(args: {
       OR: [{ sireId: args.dogId }, { damId: args.dogId }],
       titleProgress: {
         is: {
-          currentTitleCode: "CH",
+          currentTitleCode: { in: CHAMPION_OF_RECORD_TITLE_CODES },
         },
       },
     },

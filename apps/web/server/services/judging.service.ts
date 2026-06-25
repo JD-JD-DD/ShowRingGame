@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
 import { recalculateDogTitleProgressForDogs } from "@/server/services/titleProgress.service";
+import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import {
   canEnterShows,
   getChampionshipPointsForCompetition,
@@ -218,10 +219,7 @@ function toEngineDog(entry: EntryForJudging): EngineDog {
 }
 
 function isChampionEntry(entry: EntryForJudging): boolean {
-  return (
-    entry.dog.visibleTitlePrefix === "CH" ||
-    entry.dog.titleProgress?.currentTitleCode === "CH"
-  );
+  return isChampionOfRecordDog(entry.dog);
 }
 
 function awardsChampionshipPoints(clusterId: string): boolean {

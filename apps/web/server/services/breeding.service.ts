@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import {
   getPhenotypeHealthSeverity,
   hasAllGreenRequiredPhenotypeHealthTests,
@@ -298,7 +299,7 @@ function isFinishedChampion(dog: {
   visibleTitlePrefix?: string | null;
   visibleTitleSuffix?: string | null;
 }): boolean {
-  return dog.visibleTitlePrefix === "CH" || dog.visibleTitleSuffix === "CH";
+  return isChampionOfRecordDog(dog);
 }
 
 function assertDamMeetsStudListingRequirements(args: {

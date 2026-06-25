@@ -5,6 +5,7 @@ import {
   hasAllGreenPhenotypeHealthTests,
 } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { isChampionOfRecordTitleCode } from "@/lib/dogTitles";
 import {
   mapDogProfile,
   type DogProfileBadgeDto,
@@ -1155,7 +1156,7 @@ export async function getDogProfile(args: {
   const pointsEarned = dog.titleProgress?.championshipPoints ?? 0;
   const majorsEarned = dog.titleProgress?.majorCount ?? 0;
   const currentTitleCode = dog.titleProgress?.currentTitleCode ?? null;
-  const isChampionFinished = currentTitleCode === "CH";
+  const isChampionFinished = isChampionOfRecordTitleCode(currentTitleCode);
   const pointsRemaining = Math.max(
     0,
     CHAMPIONSHIP_POINTS_REQUIRED - pointsEarned

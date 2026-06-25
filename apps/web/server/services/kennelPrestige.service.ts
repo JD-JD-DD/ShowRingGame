@@ -1,9 +1,13 @@
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { hasAllGreenPhenotypeHealthTests } from "@/lib/dogHealth";
+import { CONFORMATION_CHAMPION_OF_RECORD_TITLE_CODES } from "@/lib/dogTitles";
 import { SHOW_YEAR_HOURS } from "@showring/rules";
 
 const CHAMPION_TITLE_CODE = "CH";
+const CHAMPION_OF_RECORD_TITLE_CODES = [
+  ...CONFORMATION_CHAMPION_OF_RECORD_TITLE_CODES,
+];
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
 const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
 
@@ -314,11 +318,11 @@ async function buildKennelPrestigeSummaries(
             in: playerKennelIds,
           },
           OR: [
-            { visibleTitlePrefix: CHAMPION_TITLE_CODE },
+            { visibleTitlePrefix: { in: CHAMPION_OF_RECORD_TITLE_CODES } },
             {
               titleProgress: {
                 is: {
-                  currentTitleCode: CHAMPION_TITLE_CODE,
+                  currentTitleCode: { in: CHAMPION_OF_RECORD_TITLE_CODES },
                 },
               },
             },
@@ -353,11 +357,11 @@ async function buildKennelPrestigeSummaries(
           },
           dog: {
             OR: [
-              { visibleTitlePrefix: CHAMPION_TITLE_CODE },
+              { visibleTitlePrefix: { in: CHAMPION_OF_RECORD_TITLE_CODES } },
               {
                 titleProgress: {
                   is: {
-                    currentTitleCode: CHAMPION_TITLE_CODE,
+                    currentTitleCode: { in: CHAMPION_OF_RECORD_TITLE_CODES },
                   },
                 },
               },

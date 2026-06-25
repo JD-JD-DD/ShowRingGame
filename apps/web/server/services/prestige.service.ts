@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
 
+import { isChampionOfRecordDog } from "@/lib/dogTitles";
+
 type ShowEntryForPrestige = {
   id: string;
   dogId: string;
@@ -41,10 +43,7 @@ function normalizeGroupName(groupName: string | null): string {
 }
 
 function isChampionEntry(entry: ShowEntryForPrestige): boolean {
-  return (
-    entry.dog.visibleTitlePrefix === "CH" ||
-    entry.dog.titleProgress?.currentTitleCode === "CH"
-  );
+  return isChampionOfRecordDog(entry.dog);
 }
 
 function getAccumulator(

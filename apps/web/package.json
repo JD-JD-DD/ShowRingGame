@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:game-time-format": "tsx scripts/testGameTimeFormat.ts",
     "test:dog-action-windows": "tsx scripts/testDogActionWindows.ts",
+    "test:dog-titles": "tsx scripts/testDogTitles.ts",
     "test:show-countdowns": "tsx scripts/testShowCountdowns.ts",
     "backfill:phenotype-health": "tsx scripts/backfill-phenotype-health.ts",
     "password-reset-link": "tsx scripts/create-password-reset-link.ts",

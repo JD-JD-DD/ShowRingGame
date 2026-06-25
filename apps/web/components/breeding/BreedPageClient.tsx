@@ -14,6 +14,7 @@ import {
   type PhenotypeHealthSeverity,
 } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import { epochToDate } from "@/lib/gameClock";
 import {
   BREEDING_FEE,
@@ -244,7 +245,7 @@ function hasOnlyGreenOrYellowPhenotypeHealthTests(dog: DogCardDto) {
 }
 
 function isFinishedChampion(dog: DogCardDto) {
-  return dog.visibleTitlePrefix === "CH" || dog.visibleTitleSuffix === "CH";
+  return isChampionOfRecordDog(dog);
 }
 
 function studRequirementLabels(stud: DogCardDto) {

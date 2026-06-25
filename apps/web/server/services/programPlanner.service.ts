@@ -12,6 +12,7 @@ import {
 } from "@showring/rules";
 
 import { getPhenotypeHealthSeverity } from "@/lib/dogHealth";
+import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import { db } from "@/lib/db";
 import {
   compareBreedGroupNames,
@@ -1090,9 +1091,7 @@ export async function getProgramPlannerData(args: {
     const dogAgeClass = ageClass(ageHours);
     const visibleCategories = toVisibleCategories(dog);
     const health = healthSummary(ageHours, dog.healthTests);
-    const isChampion =
-      dog.visibleTitlePrefix?.includes("CH") ||
-      dog.titleProgress?.currentTitleCode === "CH";
+    const isChampion = isChampionOfRecordDog(dog);
     const pointCount =
       dog.titleProgress?.championshipPoints ??
       dog.showResults.reduce((sum, result) => sum + result.pointsAwarded, 0);
