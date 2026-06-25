@@ -13,6 +13,7 @@
     "test:coi": "tsx src/testCoi.ts",
     "test:health": "tsx src/testHealth.ts",
     "test:presentation": "tsx src/testPresentationModifiers.ts",
+    "test:select-awards": "tsx src/testSelectAwards.ts",
     "test:show-calendar": "tsx src/testShowCalendar.ts"
   },
 

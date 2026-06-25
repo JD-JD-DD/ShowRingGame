@@ -5,6 +5,7 @@ import {
   type DogActionWindowCard as DogActionWindowCardDto,
   type DogActionWindowTone,
 } from "@/lib/dogActionWindows";
+import { formatShowAwardLabels } from "@/lib/showAwards";
 import type { DogProfileDto } from "@/server/mappers/dog.mapper";
 
 import CollapsibleDogSection from "./CollapsibleDogSection";
@@ -197,7 +198,7 @@ export default function DogProfileDashboard(props: Props) {
                   </div>
                   <div className="dog-copy mt-1 flex flex-wrap gap-x-2">
                     <span>{result.showDateLabel}</span>
-                    <span>{result.awardCodes.join(", ") || "No placement"}</span>
+                    <span>{formatShowAwardLabels(result.awardCodes) || "No placement"}</span>
                     <Link href={result.judgeProfileUrl} className="hover:underline">{result.judgeName}</Link>
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
+import { formatShowAwardLabel } from "@/lib/showAwards";
 import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
 
 const AWARD_SORT_ORDER: Record<string, number> = {
@@ -18,7 +19,9 @@ const AWARD_SORT_ORDER: Record<string, number> = {
   BOW: 7,
   BOB: 8,
   BOS: 9,
-  AOM: 10,
+  SELECT_DOG: 10,
+  SELECT_BITCH: 11,
+  AOM: 12,
 };
 
 function formatPublishedDate(epoch: number): string {
@@ -186,7 +189,7 @@ function ResultSection({
                           key={`${result.id}-${award.awardCode}-${award.awardGroup}`}
                           className="inline-flex items-center justify-center gap-2 rounded-full border border-sky-300/25 bg-sky-500/10 px-3 py-1 font-semibold text-sky-100"
                         >
-                          <span>{award.awardCode}</span>
+                          <span>{formatShowAwardLabel(award.awardCode)}</span>
                           {award.pointsAwarded > 0 ? (
                             <span className="font-bold text-white">
                               {formatPoints(award.pointsAwarded)}
@@ -276,7 +279,7 @@ function AllEntriesTable({ entries }: { entries: EntryRow[] }) {
                             key={`${entry.id}-${award.awardCode}-${award.awardGroup}-${award.rank ?? "none"}`}
                             className="inline-flex items-center justify-center gap-2 rounded-full border border-sky-300/25 bg-sky-500/10 px-3 py-1 font-semibold text-sky-100"
                           >
-                            <span>{award.awardCode}</span>
+                            <span>{formatShowAwardLabel(award.awardCode)}</span>
                             {award.pointsAwarded > 0 ? (
                               <span className="font-bold text-white">
                                 {formatPoints(award.pointsAwarded)}

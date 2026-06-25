@@ -54,6 +54,8 @@ export type ShowAwardCode =
   | "BOW"
   | "BOB"
   | "BOS"
+  | "SELECT_DOG"
+  | "SELECT_BITCH"
   | "AOM"
   | "G1"
   | "G2"
@@ -385,6 +387,29 @@ function buildBreedAwards(args: {
       result.dogId !== bestOfBreed?.dogId &&
       entrySexForResult(args.entries, result) !== bestOfBreedSex
   );
+  const breedWinnerDogIds = new Set(
+    [bestOfBreed?.dogId, bestOfOpposite?.dogId].filter(
+      (dogId): dogId is string => Boolean(dogId)
+    )
+  );
+  const specialEntriesById = new Map(
+    args.entries
+      .filter((entry) => entry.isChampion)
+      .map((entry) => [entry.showEntryId, entry])
+  );
+  const remainingSpecials = args.breedResults.filter(
+    (result) =>
+      !breedWinnerDogIds.has(result.dogId) &&
+      specialEntriesById.has(result.showEntryId)
+  );
+  const selectDog = remainingSpecials.find((result) => {
+    const entry = specialEntriesById.get(result.showEntryId);
+    return entry?.dog.sex === "M";
+  });
+  const selectBitch = remainingSpecials.find((result) => {
+    const entry = specialEntriesById.get(result.showEntryId);
+    return entry?.dog.sex === "F";
+  });
   const awards: JudgedShowAward[] = [];
   const maleWinnerPoints = getChampionshipPointsForCompetition(
     args.maleClassResults.length
@@ -431,6 +456,32 @@ function buildBreedAwards(args: {
         awardGroup: "BREED",
         sex: bestOfOpposite.dogId === args.maleClassResults[0]?.dogId ? "M" : "F",
         rank: 2,
+      })
+    );
+  }
+
+  // TODO: Select Dog/Bitch will become GCH-point-eligible awards when GCH is implemented.
+  if (selectDog) {
+    awards.push(
+      makeAward({
+        result: selectDog,
+        awardCode: "SELECT_DOG",
+        awardGroup: "BREED",
+        sex: "M",
+        rank: 3,
+      })
+    );
+  }
+
+  // TODO: Select Dog/Bitch will become GCH-point-eligible awards when GCH is implemented.
+  if (selectBitch) {
+    awards.push(
+      makeAward({
+        result: selectBitch,
+        awardCode: "SELECT_BITCH",
+        awardGroup: "BREED",
+        sex: "F",
+        rank: 4,
       })
     );
   }

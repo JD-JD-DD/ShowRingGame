@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import { formatShowAwardLabels } from "@/lib/showAwards";
 import { getShowDistrictRegionName } from "@showring/rules";
 
 function formatShowDate(epoch: number): string {
@@ -49,7 +50,7 @@ function formatResult(entry: MyShowResultEntry): string {
     return "DNP";
   }
 
-  return awards.map((award) => award.awardCode).join(", ");
+  return formatShowAwardLabels(awards.map((award) => award.awardCode));
 }
 
 function formatPointsAwarded(entry: MyShowResultEntry): string | null {
