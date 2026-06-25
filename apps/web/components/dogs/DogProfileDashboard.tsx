@@ -7,6 +7,7 @@ import {
 } from "@/lib/dogActionWindows";
 import { formatShowAwardLabels } from "@/lib/showAwards";
 import type { DogProfileDto } from "@/server/mappers/dog.mapper";
+import { BRUCELLOSIS_TEST_FEE } from "@showring/rules";
 
 import CollapsibleDogSection from "./CollapsibleDogSection";
 import DogPedigreeGrid from "./DogPedigreeGrid";
@@ -101,6 +102,10 @@ function breedingSafetyStatusClass(
   }
 
   return "border-amber-300/30 bg-amber-500/10 text-amber-700 dark:text-amber-200";
+}
+
+function formatBreedingSafetyCost(amount: number): string {
+  return `$${amount.toLocaleString()}`;
 }
 
 export default function DogProfileDashboard(props: Props) {
@@ -319,6 +324,28 @@ export default function DogProfileDashboard(props: Props) {
                       <span>{screening.validUntilLabel}</span>
                     ) : null}
                   </div>
+                  {viewerContext.canManage ? (
+                    <form
+                      action={`/api/dogs/${header.dogId}/brucellosis-screening`}
+                      method="post"
+                      className="mt-3"
+                    >
+                      {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
+                      <button
+                        type="submit"
+                        className="w-full rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-sky-500"
+                      >
+                        <span>
+                          {screening.isCurrentNegative
+                            ? "Repeat Screening"
+                            : "Run Brucellosis Screening"}
+                        </span>
+                        <span className="ml-2 text-sky-100/85">
+                          {formatBreedingSafetyCost(BRUCELLOSIS_TEST_FEE)}
+                        </span>
+                      </button>
+                    </form>
+                  ) : null}
                 </div>
               ))}
             </div>

@@ -50,6 +50,9 @@ const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
 const dogProfileDashboard = source(
   "apps/web/components/dogs/DogProfileDashboard.tsx"
 );
+const brucellosisScreeningRoute = source(
+  "apps/web/app/api/dogs/[dogId]/brucellosis-screening/route.ts"
+);
 const healthTestingPanel = source(
   "apps/web/components/dogs/HealthTestingPanel.tsx"
 );
@@ -77,11 +80,34 @@ const rawTraitFields = [
   "traitFeet",
   "traitTopline",
 ];
+const phenotypeHealthTestCodeBlock =
+  healthConstants.match(
+    /PHENOTYPE_HEALTH_TEST_CODES = \[[\s\S]*?\] as const/
+  )?.[0] ?? "";
+const allBreedRequiredHealthTestCodeBlock =
+  healthConstants.match(
+    /ALL_BREED_REQUIRED_HEALTH_TEST_CODES = \[[\s\S]*?\] as const/
+  )?.[0] ?? "";
 
 assertIncludes(
   healthConstants,
   '"ELBOW_DYSPLASIA"',
   "elbow dysplasia is in the supported phenotype health test list"
+);
+assertIncludes(
+  healthConstants,
+  'BRUCELLOSIS_TEST_FEE = 75',
+  "brucellosis screening fee remains the shared $75 constant"
+);
+assertDoesNotIncludeAny(
+  phenotypeHealthTestCodeBlock,
+  ["BRUCELLOSIS"],
+  "brucellosis is not part of the core phenotype health test catalog"
+);
+assertDoesNotIncludeAny(
+  allBreedRequiredHealthTestCodeBlock,
+  ["BRUCELLOSIS"],
+  "brucellosis is not part of all-breed required health tests"
 );
 assertIncludes(
   healthConstants,
@@ -486,6 +512,36 @@ assertIncludes(
   dogProfileDashboard,
   "impactStatement: test.healthImpactStatement",
   "dog profile dashboard passes health impact statements into completed health rows"
+);
+assertIncludes(
+  brucellosisScreeningRoute,
+  "runBrucellosisTest",
+  "standalone dog brucellosis route reuses the infectious disease test service"
+);
+assertDoesNotIncludeAny(
+  brucellosisScreeningRoute,
+  ["healthTestRecord", "HealthTestRecord"],
+  "standalone dog brucellosis route does not create core health test records"
+);
+assertIncludes(
+  dogProfileDashboard,
+  "Run Brucellosis Screening",
+  "dog profile breeding safety card can run brucellosis screening"
+);
+assertIncludes(
+  dogProfileDashboard,
+  "Repeat Screening",
+  "dog profile breeding safety card can repeat current brucellosis screening"
+);
+assertIncludes(
+  dogProfileDashboard,
+  "BRUCELLOSIS_TEST_FEE",
+  "dog profile breeding safety card shows the shared brucellosis screening cost"
+);
+assertIncludes(
+  dogProfileDashboard,
+  "formatBreedingSafetyCost",
+  "dog profile breeding safety card formats the $75 brucellosis screening cost"
 );
 assertIncludes(
   healthTestingPanel,
