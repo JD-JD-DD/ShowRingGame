@@ -251,7 +251,8 @@ export default function DogProfileDashboard(props: Props) {
                       {result.showName}
                     </Link>
                     <span className="dog-heading shrink-0 font-semibold">
-                      {result.pointsAwarded} pt{result.pointsAwarded === 1 ? "" : "s"}
+                      {result.titlePointsDisplay.value}{" "}
+                      {result.titlePointsDisplay.label}
                     </span>
                   </div>
                   <div className="dog-copy mt-1 flex flex-wrap gap-x-2">

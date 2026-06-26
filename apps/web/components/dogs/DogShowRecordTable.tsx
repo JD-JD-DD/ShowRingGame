@@ -57,8 +57,13 @@ export default function DogShowRecordTable({
               </td>
               <td className="px-3 py-3">{formatShowAwardLabels(result.awardCodes) || "None"}</td>
               <td className="dog-heading rounded-r-2xl px-3 py-3 text-right font-semibold">
-                {result.pointsAwarded}
-                {result.isMajor ? <div className="text-xs text-amber-600 dark:text-amber-200">Major</div> : null}
+                {result.titlePointsDisplay.value}{" "}
+                {result.titlePointsDisplay.label}
+                {result.titlePointsDisplay.isMajor ? (
+                  <div className="text-xs text-amber-600 dark:text-amber-200">
+                    Major
+                  </div>
+                ) : null}
               </td>
             </tr>
           ))}

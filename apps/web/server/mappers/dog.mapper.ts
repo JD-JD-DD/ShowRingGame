@@ -119,6 +119,12 @@ export type DogProfileShowResultDto = {
   awardCodes: string[];
   pointsAwarded: number;
   isMajor: boolean;
+  titlePointsDisplay: {
+    value: number;
+    track: "CH" | "GCH" | null;
+    label: "CH pts" | "GCH pts" | "pts";
+    isMajor: boolean;
+  };
 };
 
 export type DogProfileShowCareerDto = {
@@ -849,6 +855,12 @@ export function mapDogProfileShowResult(
     awardCodes: result.awardCodes.map((awardCode) => awardCode),
     pointsAwarded: result.pointsAwarded,
     isMajor: result.isMajor,
+    titlePointsDisplay: {
+      value: result.titlePointsDisplay.value,
+      track: result.titlePointsDisplay.track,
+      label: result.titlePointsDisplay.label,
+      isMajor: result.titlePointsDisplay.isMajor,
+    },
   };
 }
 
