@@ -6,6 +6,7 @@ import {
 } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { isChampionOfRecordTitleCode } from "@/lib/dogTitles";
+import { buildTitlePointsDisplay } from "@/lib/titlePoints";
 import {
   mapDogProfile,
   type DogProfileAreaNavigationDto,
@@ -571,35 +572,13 @@ async function listPublishedDogShowResults(args: {
   return results.map((result) => {
     const showId = result.showDay.cluster.id;
     const breedCode2 = result.breed.code2;
-    const grandChampionPointsAwarded = result.showAwards.reduce(
-      (total, award) =>
-        total + (award.grandChampionCredit?.pointsAwarded ?? 0),
-      0
-    );
-    const isGrandChampionMajor = result.showAwards.some(
-      (award) => award.grandChampionCredit?.isMajor
-    );
-    const titlePointsDisplay =
-      grandChampionPointsAwarded > 0
-        ? {
-            value: grandChampionPointsAwarded,
-            track: "GCH" as const,
-            label: "GCH pts" as const,
-            isMajor: isGrandChampionMajor,
-          }
-        : result.pointsAwarded > 0
-          ? {
-              value: result.pointsAwarded,
-              track: "CH" as const,
-              label: "CH pts" as const,
-              isMajor: result.isMajor,
-            }
-          : {
-              value: 0,
-              track: null,
-              label: "pts" as const,
-              isMajor: false,
-            };
+    const titlePointsDisplay = buildTitlePointsDisplay({
+      championshipPointsAwarded: result.pointsAwarded,
+      isChampionshipMajor: result.isMajor,
+      grandChampionCredits: result.showAwards.flatMap((award) =>
+        award.grandChampionCredit ? [award.grandChampionCredit] : []
+      ),
+    });
 
     return {
       resultId: result.id,

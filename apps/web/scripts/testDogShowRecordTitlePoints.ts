@@ -28,16 +28,43 @@ const dogProfileDashboard = source(
 const dogShowRecordTable = source(
   "apps/web/components/dogs/DogShowRecordTable.tsx"
 );
+const myResultsPage = source("apps/web/app/my-results/page.tsx");
+const titlePoints = source("apps/web/lib/titlePoints.ts");
 
+assertIncludes(
+  titlePoints,
+  "export function buildTitlePointsDisplay",
+  "shared helper builds title-aware points display objects"
+);
+assertIncludes(
+  titlePoints,
+  'track: "CH" | "GCH" | null;',
+  "title-aware points display distinguishes CH, GCH, and zero-point rows"
+);
+assertIncludes(
+  titlePoints,
+  'label: "GCH pts"',
+  "GCH credit rows display a GCH points label"
+);
+assertIncludes(
+  titlePoints,
+  'label: "CH pts"',
+  "CH point rows display a CH points label"
+);
+assertIncludes(
+  titlePoints,
+  'label: "pts"',
+  "zero-title-point rows keep a neutral points label"
+);
+assertIncludes(
+  titlePoints,
+  'display.isMajor ? " major" : ""',
+  "shared formatter includes major text when the displayed title track is major"
+);
 assertIncludes(
   dogMapper,
   "titlePointsDisplay",
   "dog show result DTO exposes a title-aware points display"
-);
-assertIncludes(
-  dogMapper,
-  'track: "CH" | "GCH" | null;',
-  "title-aware points display distinguishes CH, GCH, and zero-point rows"
 );
 assertIncludes(
   dogService,
@@ -46,23 +73,8 @@ assertIncludes(
 );
 assertIncludes(
   dogService,
-  "grandChampionPointsAwarded",
-  "dog show record service sums stored GCH points per result"
-);
-assertIncludes(
-  dogService,
-  'label: "GCH pts"',
-  "GCH credit rows display a GCH points label"
-);
-assertIncludes(
-  dogService,
-  'label: "CH pts"',
-  "CH point rows display a CH points label"
-);
-assertIncludes(
-  dogService,
-  'label: "pts"',
-  "zero-title-point rows keep a neutral points label"
+  "buildTitlePointsDisplay",
+  "dog show record service uses the shared title-aware points helper"
 );
 assertIncludes(
   dogProfileDashboard,
@@ -98,6 +110,36 @@ assertDoesNotInclude(
   dogShowRecordTable,
   "{result.pointsAwarded}",
   "full show record no longer renders raw CH-only points"
+);
+assertIncludes(
+  myResultsPage,
+  "Title Points",
+  "my results labels the column as title points"
+);
+assertIncludes(
+  myResultsPage,
+  "grandChampionCredit",
+  "my results reads per-award GCH credits"
+);
+assertIncludes(
+  myResultsPage,
+  "buildTitlePointsDisplay",
+  "my results uses the shared title-aware points helper"
+);
+assertIncludes(
+  myResultsPage,
+  "formatTitlePointsDisplay",
+  "my results uses the shared title-aware points formatter"
+);
+assertIncludes(
+  myResultsPage,
+  "&mdash;",
+  "my results displays a dash for rows without title points"
+);
+assertDoesNotInclude(
+  myResultsPage,
+  "CH Points",
+  "my results no longer has a CH-only points column"
 );
 
 console.log("Dog show record title-point display checks passed.");

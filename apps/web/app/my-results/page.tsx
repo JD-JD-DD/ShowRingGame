@@ -6,6 +6,11 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { formatShowAwardLabels } from "@/lib/showAwards";
+import {
+  buildTitlePointsDisplay,
+  formatTitlePointsDisplay,
+  type TitlePointsDisplay,
+} from "@/lib/titlePoints";
 import { getShowDistrictRegionName } from "@showring/rules";
 
 function formatShowDate(epoch: number): string {
@@ -17,10 +22,6 @@ function formatShowDate(epoch: number): string {
   });
 }
 
-function formatAwardPoints(points: number): string {
-  return `${points} pt${points === 1 ? "" : "s"}`;
-}
-
 type MyShowResultEntry = {
   entryStatus: string;
   showResult: {
@@ -30,6 +31,10 @@ type MyShowResultEntry = {
       awardCode: string;
       pointsAwarded: number;
       isMajor: boolean;
+      grandChampionCredit: {
+        pointsAwarded: number;
+        isMajor: boolean;
+      } | null;
     }>;
   } | null;
 };
@@ -53,16 +58,22 @@ function formatResult(entry: MyShowResultEntry): string {
   return formatShowAwardLabels(awards.map((award) => award.awardCode));
 }
 
-function formatChampionshipPointsAwarded(entry: MyShowResultEntry): string | null {
-  const pointsAwarded = entry.showResult?.pointsAwarded ?? 0;
-
-  if (pointsAwarded <= 0) {
-    return null;
+function getTitlePointsDisplay(entry: MyShowResultEntry): TitlePointsDisplay {
+  if (!entry.showResult) {
+    return buildTitlePointsDisplay({
+      championshipPointsAwarded: 0,
+      isChampionshipMajor: false,
+      grandChampionCredits: [],
+    });
   }
 
-  return `${formatAwardPoints(pointsAwarded)}${
-    entry.showResult?.isMajor ? " major" : ""
-  }`;
+  return buildTitlePointsDisplay({
+    championshipPointsAwarded: entry.showResult.pointsAwarded,
+    isChampionshipMajor: entry.showResult.isMajor,
+    grandChampionCredits: entry.showResult.showAwards.flatMap((award) =>
+      award.grandChampionCredit ? [award.grandChampionCredit] : []
+    ),
+  });
 }
 
 export default async function MyShowResultsPage() {
@@ -143,6 +154,12 @@ export default async function MyShowResultsPage() {
               awardCode: true,
               pointsAwarded: true,
               isMajor: true,
+              grandChampionCredit: {
+                select: {
+                  pointsAwarded: true,
+                  isMajor: true,
+                },
+              },
             },
           },
         },
@@ -195,13 +212,14 @@ export default async function MyShowResultsPage() {
                   <th className="px-3 py-2">Date</th>
                   <th className="px-3 py-2">Breed</th>
                   <th className="px-3 py-2">Result</th>
-                  <th className="px-3 py-2">CH Points</th>
+                  <th className="px-3 py-2">Title Points</th>
                 </tr>
               </thead>
               <tbody>
                 {entries.map((entry) => {
-                  const championshipPointsAwarded =
-                    formatChampionshipPointsAwarded(entry);
+                  const titlePointsAwarded = formatTitlePointsDisplay(
+                    getTitlePointsDisplay(entry)
+                  );
 
                   return (
                     <tr
@@ -245,8 +263,8 @@ export default async function MyShowResultsPage() {
                         {formatResult(entry)}
                       </td>
                       <td className="theme-heading rounded-r-2xl px-3 py-3 font-semibold">
-                        {championshipPointsAwarded ?? (
-                          <span className="theme-copy opacity-50">-</span>
+                        {titlePointsAwarded ?? (
+                          <span className="theme-copy opacity-50">&mdash;</span>
                         )}
                       </td>
                     </tr>

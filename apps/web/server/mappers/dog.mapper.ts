@@ -1,3 +1,5 @@
+import type { TitlePointsDisplay } from "@/lib/titlePoints";
+
 export type DogProfileBadgeDto = {
   code: string;
   label: string;
@@ -119,12 +121,7 @@ export type DogProfileShowResultDto = {
   awardCodes: string[];
   pointsAwarded: number;
   isMajor: boolean;
-  titlePointsDisplay: {
-    value: number;
-    track: "CH" | "GCH" | null;
-    label: "CH pts" | "GCH pts" | "pts";
-    isMajor: boolean;
-  };
+  titlePointsDisplay: TitlePointsDisplay;
 };
 
 export type DogProfileShowCareerDto = {
