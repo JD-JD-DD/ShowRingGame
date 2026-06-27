@@ -14,7 +14,7 @@ import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-const DEFAULT_BLOCK_BATCH_SIZE = 4;
+const DEFAULT_BLOCK_BATCH_SIZE = 2;
 const MAX_BLOCK_BATCH_SIZE = 12;
 const DEFAULT_FINALIZE_BATCH_SIZE = 4;
 const MAX_FINALIZE_BATCH_SIZE = 12;
@@ -33,6 +33,51 @@ function parseBatchSize(
   }
 
   return Math.min(parsed, maxValue);
+}
+
+function getBatchSizeParam(
+  request: Request,
+  paramName: string,
+  envValue: string | undefined,
+  defaultValue: number,
+  maxValue: number
+): number {
+  const requestedValue = new URL(request.url, "http://localhost").searchParams.get(
+    paramName
+  );
+
+  return parseBatchSize(
+    requestedValue ?? envValue,
+    defaultValue,
+    maxValue
+  );
+}
+
+function getJobErrorDetails(error: unknown): {
+  message: string;
+  name?: string;
+  code?: string;
+  meta?: unknown;
+} {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+      meta: error.meta,
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      name: error.name,
+    };
+  }
+
+  return {
+    message: "Unknown publish show results job error.",
+  };
 }
 
 function isPrismaConnectivityError(error: unknown): boolean {
@@ -122,13 +167,17 @@ export async function GET(request: Request) {
   }
 
   const currentEpoch = getCurrentEpoch();
-  const blockBatchSize = parseBatchSize(
+  const blockBatchSize = getBatchSizeParam(
+    request,
+    "blockBatchSize",
     process.env.SHOW_RESULTS_JOB_BLOCK_BATCH_SIZE ??
       process.env.SHOW_RESULTS_JOB_BATCH_SIZE,
     DEFAULT_BLOCK_BATCH_SIZE,
     MAX_BLOCK_BATCH_SIZE
   );
-  const finalizeBatchSize = parseBatchSize(
+  const finalizeBatchSize = getBatchSizeParam(
+    request,
+    "finalizeBatchSize",
     process.env.SHOW_RESULTS_JOB_FINALIZE_BATCH_SIZE,
     DEFAULT_FINALIZE_BATCH_SIZE,
     MAX_FINALIZE_BATCH_SIZE
@@ -211,6 +260,8 @@ export async function GET(request: Request) {
         result,
       });
     } catch (error) {
+      const errorDetails = getJobErrorDetails(error);
+
       console.error("GET /api/jobs/publish-show-results failed for block", {
         judgingBlockId: block.id,
         showDayId: block.showDayId,
@@ -223,10 +274,10 @@ export async function GET(request: Request) {
         clusterId: block.showDay.clusterId,
         dayIndex: block.showDay.dayIndex,
         breedCode2: block.breedCode2,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to judge show block.",
+        error: errorDetails.message,
+        errorName: errorDetails.name,
+        errorCode: errorDetails.code,
+        errorMeta: errorDetails.meta,
       });
     }
   }
@@ -315,6 +366,8 @@ export async function GET(request: Request) {
         result,
       });
     } catch (error) {
+      const errorDetails = getJobErrorDetails(error);
+
       console.error("GET /api/jobs/publish-show-results failed to finalize day", {
         showDayId: showDay.id,
         error,
@@ -324,10 +377,10 @@ export async function GET(request: Request) {
         showDayId: showDay.id,
         clusterId: showDay.clusterId,
         dayIndex: showDay.dayIndex,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to finalize show day results.",
+        error: errorDetails.message,
+        errorName: errorDetails.name,
+        errorCode: errorDetails.code,
+        errorMeta: errorDetails.meta,
       });
     }
   }
