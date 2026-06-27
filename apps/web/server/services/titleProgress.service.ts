@@ -54,6 +54,14 @@ type PointAward = {
   };
 };
 
+type TitleNoticeDog = {
+  registeredName: string | null;
+  callName: string | null;
+  regNumber: string;
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
+};
+
 export function isGrandChampionTitleCode(titleCode: string | null): boolean {
   const normalizedTitleCode = titleCode?.trim().toUpperCase();
 
@@ -108,6 +116,28 @@ export function getHighestConformationTitle(
   }
 
   return null;
+}
+
+export function getGrandChampionNoticeText(args: {
+  dog: TitleNoticeDog;
+  titleCode: string;
+}): { title: string; body: string } {
+  const dogName = formatDogDisplayName({
+    ...args.dog,
+    visibleTitlePrefix: args.titleCode,
+  });
+
+  if (args.titleCode === "GCH") {
+    return {
+      title: "New Grand Champion",
+      body: `${dogName} has earned their Grand Champion title.`,
+    };
+  }
+
+  return {
+    title: `New ${args.titleCode} title`,
+    body: `${dogName} has advanced to ${args.titleCode}.`,
+  };
 }
 
 export function getGrandChampionCompletionFields(args: {
@@ -335,7 +365,12 @@ export async function promoteGrandChampionTitleForDog(args: {
       where: { id: args.dogId },
       select: {
         id: true,
+        ownerKennelId: true,
+        registeredName: true,
+        callName: true,
+        regNumber: true,
         visibleTitlePrefix: true,
+        visibleTitleSuffix: true,
       },
     }),
     args.tx.dogTitleProgress.findUnique({
@@ -377,9 +412,12 @@ export async function promoteGrandChampionTitleForDog(args: {
     showDayId: args.showDayId,
     currentEpoch: args.currentEpoch,
   });
+  const previousTitleCode = progress.currentTitleCode;
+  const advancedGrandChampionTitle =
+    previousTitleCode !== nextTitleCode && isGrandChampionTitleCode(nextTitleCode);
 
   if (
-    progress.currentTitleCode !== nextTitleCode ||
+    previousTitleCode !== nextTitleCode ||
     dog.visibleTitlePrefix !== nextTitleCode ||
     Object.keys(completionFields).length > 0
   ) {
@@ -397,6 +435,28 @@ export async function promoteGrandChampionTitleForDog(args: {
         visibleTitlePrefix: nextTitleCode,
       },
     });
+
+    if (dog.ownerKennelId && advancedGrandChampionTitle) {
+      const noticeText = getGrandChampionNoticeText({
+        dog,
+        titleCode: nextTitleCode,
+      });
+
+      await createKennelNotice({
+        client: args.tx,
+        kennelId: dog.ownerKennelId,
+        type: "NEW_GRAND_CHAMPION",
+        title: noticeText.title,
+        body: noticeText.body,
+        currentEpoch: args.currentEpoch,
+        linkedDogId: dog.id,
+        metadataJson: {
+          titleCode: nextTitleCode,
+          previousTitleCode,
+          showDayId: args.showDayId,
+        },
+      });
+    }
   }
 
   return {

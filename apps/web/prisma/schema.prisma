@@ -155,6 +155,7 @@ enum LedgerTransactionType {
 enum KennelNoticeType {
   BULLETIN_REPLY
   NEW_CHAMPION
+  NEW_GRAND_CHAMPION
   DOG_DEATH
   LITTER_BORN
   DID_NOT_TAKE

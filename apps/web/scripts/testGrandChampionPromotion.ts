@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 import {
   getGrandChampionCompletionFields,
   getGrandChampionMilestoneTitle,
+  getGrandChampionNoticeText,
   getHighestConformationTitle,
   isGrandChampionComplete,
 } from "../server/services/titleProgress.service";
@@ -50,6 +51,40 @@ assert.equal(
 );
 assert.equal(getGrandChampionMilestoneTitle(99), "GCH");
 assert.equal(getGrandChampionMilestoneTitle(100), "GCHB");
+
+assert.deepEqual(
+  getGrandChampionNoticeText({
+    dog: {
+      registeredName: "Example Dog",
+      callName: "Example",
+      regNumber: "SRG-1",
+      visibleTitlePrefix: "CH",
+      visibleTitleSuffix: null,
+    },
+    titleCode: "GCH",
+  }),
+  {
+    title: "New Grand Champion",
+    body: "GCH Example Dog has earned their Grand Champion title.",
+  }
+);
+
+assert.deepEqual(
+  getGrandChampionNoticeText({
+    dog: {
+      registeredName: "Example Dog",
+      callName: "Example",
+      regNumber: "SRG-1",
+      visibleTitlePrefix: "GCH",
+      visibleTitleSuffix: null,
+    },
+    titleCode: "GCHB",
+  }),
+  {
+    title: "New GCHB title",
+    body: "GCHB Example Dog has advanced to GCHB.",
+  }
+);
 
 assert.deepEqual(
   getGrandChampionCompletionFields({
