@@ -3,7 +3,6 @@
 import { FormEvent, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 const loginHighlights = [
   "Check your kennel, litters, show entries, and notices.",
@@ -12,8 +11,6 @@ const loginHighlights = [
 ];
 
 export default function LoginPage() {
-  const router = useRouter();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,8 +48,7 @@ export default function LoginPage() {
           ? requestedPath
           : null;
 
-      router.push(safeRequestedPath ?? data.nextPath ?? "/kennel");
-      router.refresh();
+      window.location.assign(safeRequestedPath ?? data.nextPath ?? "/kennel");
 
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error.");
