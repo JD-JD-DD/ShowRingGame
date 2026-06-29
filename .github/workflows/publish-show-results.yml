@@ -4,6 +4,19 @@ on:
   schedule:
     - cron: "7 * * * *"
   workflow_dispatch:
+    inputs:
+      runs:
+        description: "Endpoint passes to run for this dispatch."
+        required: false
+      block_batch_size:
+        description: "Maximum due breed blocks to load per endpoint pass."
+        required: false
+      finalize_batch_size:
+        description: "Maximum show days to finalize per endpoint pass."
+        required: false
+      sleep_seconds:
+        description: "Seconds to sleep between endpoint passes."
+        required: false
 
 concurrency:
   group: publish-show-results
@@ -12,14 +25,16 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Call publish job
         env:
           SHOWRING_JOBS_BASE_URL: ${{ secrets.SHOWRING_JOBS_BASE_URL }}
           SHOWRING_JOBS_SECRET: ${{ secrets.SHOWRING_JOBS_SECRET }}
-          SHOWRING_JOBS_RUNS: ${{ vars.SHOWRING_JOBS_RUNS || '5' }}
-          SHOWRING_JOBS_BLOCK_BATCH_SIZE: ${{ vars.SHOWRING_JOBS_BLOCK_BATCH_SIZE || '2' }}
-          SHOWRING_JOBS_FINALIZE_BATCH_SIZE: ${{ vars.SHOWRING_JOBS_FINALIZE_BATCH_SIZE || '4' }}
+          SHOWRING_JOBS_RUNS: ${{ inputs.runs || vars.SHOWRING_JOBS_RUNS || '5' }}
+          SHOWRING_JOBS_BLOCK_BATCH_SIZE: ${{ inputs.block_batch_size || vars.SHOWRING_JOBS_BLOCK_BATCH_SIZE || '4' }}
+          SHOWRING_JOBS_FINALIZE_BATCH_SIZE: ${{ inputs.finalize_batch_size || vars.SHOWRING_JOBS_FINALIZE_BATCH_SIZE || '4' }}
+          SHOWRING_JOBS_SLEEP_SECONDS: ${{ inputs.sleep_seconds || vars.SHOWRING_JOBS_SLEEP_SECONDS || '2' }}
         run: |
           if [ -z "$SHOWRING_JOBS_BASE_URL" ]; then
             echo "SHOWRING_JOBS_BASE_URL is not set"
@@ -46,6 +61,11 @@ jobs:
             exit 1
           fi
 
+          if ! echo "$SHOWRING_JOBS_SLEEP_SECONDS" | grep -Eq '^[0-9]+$'; then
+            echo "SHOWRING_JOBS_SLEEP_SECONDS must be a non-negative integer"
+            exit 1
+          fi
+
           # Keep throughput configurable while infrastructure is constrained.
           # Default to five endpoint passes per scheduled run; raise or lower
           # SHOWRING_JOBS_RUNS from GitHub variables as capacity changes.
@@ -55,6 +75,7 @@ jobs:
 
           for run in $(seq 1 "${SHOWRING_JOBS_RUNS}"); do
             echo "Publish show results pass ${run}/${SHOWRING_JOBS_RUNS}"
+            echo "Config: blockBatchSize=${SHOWRING_JOBS_BLOCK_BATCH_SIZE} finalizeBatchSize=${SHOWRING_JOBS_FINALIZE_BATCH_SIZE} sleepSeconds=${SHOWRING_JOBS_SLEEP_SECONDS}"
             response_file="$(mktemp)"
             set +e
             http_code="$(curl --show-error --silent \
@@ -80,6 +101,6 @@ jobs:
             fi
 
             if [ "$run" -lt "$SHOWRING_JOBS_RUNS" ]; then
-              sleep 2
+              sleep "$SHOWRING_JOBS_SLEEP_SECONDS"
             fi
           done

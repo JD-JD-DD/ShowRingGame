@@ -21,6 +21,10 @@ const MAX_FINALIZE_BATCH_SIZE = 12;
 const DB_PREFLIGHT_ATTEMPTS = 4;
 const DB_PREFLIGHT_DELAY_MS = 2000;
 
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
 function parseBatchSize(
   value: string | undefined,
   defaultValue: number,
@@ -126,6 +130,7 @@ async function ensureDatabaseReachable(): Promise<void> {
 
 export async function GET(request: Request) {
   const jobStartedAtMs = Date.now();
+  const jobStartedAtIso = new Date(jobStartedAtMs).toISOString();
   const phaseDurationsMs: Record<string, number> = {};
   const runPhase = async <T>(
     phaseName: string,
@@ -167,6 +172,7 @@ export async function GET(request: Request) {
   }
 
   const currentEpoch = getCurrentEpoch();
+  const currentTimeIso = new Date().toISOString();
   const blockBatchSize = getBatchSizeParam(
     request,
     "blockBatchSize",
@@ -186,22 +192,28 @@ export async function GET(request: Request) {
     "ensureDueAnnualInvitationalShows",
     () => ensureDueAnnualInvitationalShows({ currentEpoch })
   );
+  const readyBlockWhere = Prisma.validator<Prisma.ShowJudgingBlockWhereInput>()({
+    startEpoch: { lte: currentEpoch },
+    status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
+    showEntries: {
+      some: {},
+    },
+    showDay: {
+      scheduledEpoch: { lte: currentEpoch },
+      status: { not: "CANCELLED" },
+      cluster: {
+        status: { not: "CANCELLED" },
+      },
+    },
+  });
+  const dueBlockBacklogCount = await runPhase("countReadyBlocks", () =>
+    db.showJudgingBlock.count({
+      where: readyBlockWhere,
+    })
+  );
   const readyBlocks = await runPhase("findReadyBlocks", () =>
     db.showJudgingBlock.findMany({
-      where: {
-        startEpoch: { lte: currentEpoch },
-        status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
-        showEntries: {
-          some: {},
-        },
-        showDay: {
-          scheduledEpoch: { lte: currentEpoch },
-          status: { not: "CANCELLED" },
-          cluster: {
-            status: { not: "CANCELLED" },
-          },
-        },
-      },
+      where: readyBlockWhere,
       orderBy: [
         { showDay: { scheduledEpoch: "asc" } },
         { showDay: { dayIndex: "asc" } },
@@ -227,10 +239,27 @@ export async function GET(request: Request) {
   const selectedBlocks = earliestReadyShowDayId
     ? readyBlocks.filter((block) => block.showDayId === earliestReadyShowDayId)
     : [];
+  const selectedShowDayIds = uniqueStrings(
+    selectedBlocks.map((block) => block.showDayId)
+  );
+  const selectedJudgingBlockIds = selectedBlocks.map((block) => block.id);
   const processedBlocks = [];
   const finalized = [];
   const errors = [];
   const touchedShowDayIds = new Set<string>();
+
+  console.info("publish-show-results start", {
+    currentEpoch,
+    currentTimeIso,
+    jobStartedAtIso,
+    blockBatchSize,
+    finalizeBatchSize,
+    dueBlockBacklogCount,
+    dueBlocksLoaded: readyBlocks.length,
+    selectedShowDayIds,
+    selectedJudgingBlockIds,
+  });
+
   const emptyClosed = await runPhase("closeReadyEmptyShowDays", () =>
     closeReadyEmptyShowDays({
       currentEpoch,
@@ -242,6 +271,8 @@ export async function GET(request: Request) {
   // update championship titles before any later-day breed blocks are judged,
   // so a newly finished champion moves from the classes into specials.
   for (const block of selectedBlocks) {
+    const blockStartedAtMs = Date.now();
+
     try {
       const result = await runPhase("judgeSelectedBlocks", () =>
         judgeShowBlock({
@@ -249,6 +280,7 @@ export async function GET(request: Request) {
           currentEpoch,
         })
       );
+      const durationMs = Date.now() - blockStartedAtMs;
 
       touchedShowDayIds.add(block.showDayId);
       processedBlocks.push({
@@ -257,14 +289,28 @@ export async function GET(request: Request) {
         clusterId: block.showDay.clusterId,
         dayIndex: block.showDay.dayIndex,
         breedCode2: block.breedCode2,
+        durationMs,
         result,
+      });
+
+      console.info("publish-show-results judged block", {
+        judgingBlockId: block.id,
+        showDayId: block.showDayId,
+        breedCode2: block.breedCode2,
+        durationMs,
+        alreadyPublished: result.alreadyPublished,
+        eligibleEntryCount: result.eligibleEntryCount,
+        ineligibleEntryCount: result.ineligibleEntryCount,
+        resultCount: result.results.length,
       });
     } catch (error) {
       const errorDetails = getJobErrorDetails(error);
+      const durationMs = Date.now() - blockStartedAtMs;
 
       console.error("GET /api/jobs/publish-show-results failed for block", {
         judgingBlockId: block.id,
         showDayId: block.showDayId,
+        durationMs,
         error,
       });
 
@@ -278,66 +324,73 @@ export async function GET(request: Request) {
         errorName: errorDetails.name,
         errorCode: errorDetails.code,
         errorMeta: errorDetails.meta,
+        durationMs,
       });
     }
   }
 
-  const readyToFinalize = await runPhase("findReadyFinalizers", () =>
-    db.showDay.findMany({
-      where: {
-        scheduledEpoch: { lte: currentEpoch },
-        status: { not: "CANCELLED" },
+  const readyFinalizerWhere = Prisma.validator<Prisma.ShowDayWhereInput>()({
+    scheduledEpoch: { lte: currentEpoch },
+    status: { not: "CANCELLED" },
+    showEntries: {
+      some: {},
+    },
+    cluster: {
+      status: { not: "CANCELLED" },
+    },
+    judgingBlocks: {
+      none: {
+        status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
         showEntries: {
           some: {},
         },
-        cluster: {
-          status: { not: "CANCELLED" },
-        },
-        judgingBlocks: {
-          none: {
-            status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
-            showEntries: {
-              some: {},
+      },
+    },
+    OR: [
+      { status: { not: "RESULTS_PUBLISHED" } },
+      {
+        AND: [
+          { status: "RESULTS_PUBLISHED" },
+          {
+            showAwards: {
+              some: {
+                awardGroup: "BREED",
+                awardCode: "BOB",
+              },
             },
           },
-        },
-        OR: [
-          { status: { not: "RESULTS_PUBLISHED" } },
           {
-            AND: [
-              { status: "RESULTS_PUBLISHED" },
-              {
-                showAwards: {
-                  some: {
-                    awardGroup: "BREED",
-                    awardCode: "BOB",
-                  },
-                },
+            showAwards: {
+              none: {
+                awardGroup: "GROUP",
               },
-              {
-                showAwards: {
-                  none: {
-                    awardGroup: "GROUP",
-                  },
-                },
-              },
-            ],
-          },
-          {
-            AND: [
-              { status: "RESULTS_PUBLISHED" },
-              {
-                showAwards: {
-                  some: {},
-                },
-              },
-              {
-                prestigeCalculatedAtEpoch: null,
-              },
-            ],
+            },
           },
         ],
       },
+      {
+        AND: [
+          { status: "RESULTS_PUBLISHED" },
+          {
+            showAwards: {
+              some: {},
+            },
+          },
+          {
+            prestigeCalculatedAtEpoch: null,
+          },
+        ],
+      },
+    ],
+  });
+  const readyFinalizerBacklogCount = await runPhase("countReadyFinalizers", () =>
+    db.showDay.count({
+      where: readyFinalizerWhere,
+    })
+  );
+  const readyToFinalize = await runPhase("findReadyFinalizers", () =>
+    db.showDay.findMany({
+      where: readyFinalizerWhere,
       orderBy: [{ scheduledEpoch: "asc" }, { dayIndex: "asc" }],
       select: {
         id: true,
@@ -348,8 +401,14 @@ export async function GET(request: Request) {
     })
   );
 
+  console.info("publish-show-results selected finalizers", {
+    readyFinalizerBacklogCount,
+    selectedFinalizerShowDayIds: readyToFinalize.map((showDay) => showDay.id),
+  });
+
   for (const showDay of readyToFinalize) {
     touchedShowDayIds.add(showDay.id);
+    const finalizerStartedAtMs = Date.now();
 
     try {
       const result = await runPhase("finalizeReadyShowDays", () =>
@@ -358,18 +417,30 @@ export async function GET(request: Request) {
           currentEpoch,
         })
       );
+      const durationMs = Date.now() - finalizerStartedAtMs;
 
       finalized.push({
         showDayId: showDay.id,
         clusterId: showDay.clusterId,
         dayIndex: showDay.dayIndex,
+        durationMs,
         result,
+      });
+
+      console.info("publish-show-results finalized day", {
+        showDayId: showDay.id,
+        durationMs,
+        readyToFinalize: result.readyToFinalize,
+        groupAwardsCreated: result.groupAwardsCreated,
+        bestInShowAwardsCreated: result.bestInShowAwardsCreated,
       });
     } catch (error) {
       const errorDetails = getJobErrorDetails(error);
+      const durationMs = Date.now() - finalizerStartedAtMs;
 
       console.error("GET /api/jobs/publish-show-results failed to finalize day", {
         showDayId: showDay.id,
+        durationMs,
         error,
       });
 
@@ -381,6 +452,7 @@ export async function GET(request: Request) {
         errorName: errorDetails.name,
         errorCode: errorDetails.code,
         errorMeta: errorDetails.meta,
+        durationMs,
       });
     }
   }
@@ -399,12 +471,40 @@ export async function GET(request: Request) {
       ensureAnnualInvitationalShow({ currentEpoch })
     ));
   const jobDurationMs = Date.now() - jobStartedAtMs;
+  const blockFailureCount = errors.filter((error) => "judgingBlockId" in error)
+    .length;
+  const finalizationFailureCount = errors.filter(
+    (error) => !("judgingBlockId" in error)
+  ).length;
+  const blocksSkipped =
+    selectedBlocks.length - processedBlocks.length - blockFailureCount;
+  const finalizationPublishedCount = finalized.filter(
+    (showDay) => showDay.result.readyToFinalize
+  ).length;
   const summary = {
+    currentEpoch,
+    currentTimeIso,
+    jobStartedAtIso,
     candidatesFound: readyBlocks.length,
+    dueBlockBacklogCount,
+    dueBlocksAvailable: dueBlockBacklogCount,
+    dueBlocksLoaded: readyBlocks.length,
+    selectedShowDayIds,
+    selectedJudgingBlockIds,
     selectedForJudging: selectedBlocks.length,
+    blocksAttempted: selectedBlocks.length,
+    blocksSucceeded: processedBlocks.length,
+    blocksFailed: blockFailureCount,
+    blocksSkipped,
     judged: processedBlocks.length,
     cancelledNoEntries: emptyClosed.closedShowDayIds.length,
+    readyFinalizerBacklogCount,
+    selectedFinalizerShowDayIds: readyToFinalize.map((showDay) => showDay.id),
     selectedFinalizers: readyToFinalize.length,
+    finalizationAttempts: readyToFinalize.length,
+    finalizationSucceeded: finalized.length,
+    finalizationPublished: finalizationPublishedCount,
+    finalizationFailed: finalizationFailureCount,
     finalized: finalized.length,
     skippedFuture: 0,
     skippedFutureReason:
@@ -416,8 +516,12 @@ export async function GET(request: Request) {
   };
   const payload = {
     currentEpoch,
+    currentTimeIso,
+    jobStartedAtIso,
     blockBatchSize,
     finalizeBatchSize,
+    dueBlockBacklogCount,
+    readyFinalizerBacklogCount,
     selectedBlocks: selectedBlocks.length,
     selectedFinalizers: readyToFinalize.length,
     summary,
@@ -434,6 +538,7 @@ export async function GET(request: Request) {
   };
 
   console.info("publish-show-results summary", summary);
+  console.info("publish-show-results payload", payload);
 
   // The workflow calls this endpoint with curl --fail. Preserve the detailed
   // payload, but return a failing status so a repeated judging error is visible.
