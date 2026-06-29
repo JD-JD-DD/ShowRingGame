@@ -433,6 +433,7 @@ export async function GET(request: Request) {
         readyToFinalize: result.readyToFinalize,
         groupAwardsCreated: result.groupAwardsCreated,
         bestInShowAwardsCreated: result.bestInShowAwardsCreated,
+        grandChampionProcessing: result.grandChampionProcessing,
       });
     } catch (error) {
       const errorDetails = getJobErrorDetails(error);
@@ -481,6 +482,23 @@ export async function GET(request: Request) {
   const finalizationPublishedCount = finalized.filter(
     (showDay) => showDay.result.readyToFinalize
   ).length;
+  const grandChampionProcessing = finalized.map(
+    (showDay) => showDay.result.grandChampionProcessing
+  );
+  const grandChampionExecutedCount = grandChampionProcessing.filter(
+    (result) => result.status === "EXECUTED"
+  ).length;
+  const grandChampionSkippedCount = grandChampionProcessing.filter(
+    (result) => result.status === "SKIPPED"
+  ).length;
+  const grandChampionCreditsProcessed = grandChampionProcessing.reduce(
+    (total, result) => total + result.creditsProcessed,
+    0
+  );
+  const grandChampionDogsRecalculated = grandChampionProcessing.reduce(
+    (total, result) => total + result.dogsRecalculated,
+    0
+  );
   const summary = {
     currentEpoch,
     currentTimeIso,
@@ -506,6 +524,11 @@ export async function GET(request: Request) {
     finalizationPublished: finalizationPublishedCount,
     finalizationFailed: finalizationFailureCount,
     finalized: finalized.length,
+    grandChampionExecuted: grandChampionExecutedCount,
+    grandChampionSkipped: grandChampionSkippedCount,
+    grandChampionCreditsProcessed,
+    grandChampionDogsRecalculated,
+    grandChampionProcessing,
     skippedFuture: 0,
     skippedFutureReason:
       "Future shows are not loaded by the publish job; due queries require epoch <= currentEpoch.",

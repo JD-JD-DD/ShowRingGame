@@ -584,9 +584,8 @@ async function maybeCompleteCluster(
 async function maybePublishShowDay(args: {
   tx: Prisma.TransactionClient;
   showDayId: string;
-  currentEpoch: number;
 }): Promise<void> {
-  const { tx, showDayId, currentEpoch } = args;
+  const { tx, showDayId } = args;
 
   const showDay = await tx.showDay.findUnique({
     where: { id: showDayId },
@@ -610,15 +609,13 @@ async function maybePublishShowDay(args: {
   });
 
   if (totalBlocks > 0 && remainingBlocks === 0) {
-    await tx.showDay.update({
-      where: { id: showDayId },
-      data: {
-        status: "RESULTS_PUBLISHED",
-        publishedAtEpoch: currentEpoch,
-      },
-    });
+    if (showDay.status !== "JUDGING") {
+      await tx.showDay.update({
+        where: { id: showDayId },
+        data: { status: "JUDGING" },
+      });
+    }
 
-    await maybeCompleteCluster(tx, showDay.clusterId);
     return;
   }
 
@@ -886,19 +883,6 @@ export async function judgeShowBlock(args: {
           .filter((award) => (award.pointsAwarded ?? 0) > 0)
           .map((award) => award.dogId),
       });
-
-      const grandChampionCredits = await processGrandChampionCreditsForShowDay({
-        tx,
-        showDayId: block.showDayId,
-        currentEpoch,
-      });
-
-      await promoteGrandChampionTitlesForDogs({
-        tx,
-        dogIds: grandChampionCredits.dogIds,
-        showDayId: block.showDayId,
-        currentEpoch,
-      });
     }
 
     if (judgedEntryIds.length > 0) {
@@ -919,7 +903,6 @@ export async function judgeShowBlock(args: {
     await maybePublishShowDay({
       tx,
       showDayId: block.showDayId,
-      currentEpoch,
     });
 
     return {
@@ -1106,6 +1089,85 @@ const FINALS_TRANSACTION_TIMEOUT_MS = 30_000;
 // Finalization also refreshes yearly prestige standings. Historical recovery
 // can be more expensive than a newly completed show day.
 const SHOW_DAY_FINALIZATION_TIMEOUT_MS = 30_000;
+
+type GrandChampionProcessingResult = {
+  status: "EXECUTED" | "SKIPPED";
+  showDayId: string;
+  durationMs: number;
+  creditsProcessed: number;
+  dogsRecalculated: number;
+  promotionsApplied: number;
+  skippedReason: string | null;
+};
+
+function skippedGrandChampionProcessing(args: {
+  showDayId: string;
+  skippedReason: string;
+  durationMs?: number;
+}): GrandChampionProcessingResult {
+  return {
+    status: "SKIPPED",
+    showDayId: args.showDayId,
+    durationMs: args.durationMs ?? 0,
+    creditsProcessed: 0,
+    dogsRecalculated: 0,
+    promotionsApplied: 0,
+    skippedReason: args.skippedReason,
+  };
+}
+
+async function processGrandChampionCreditsForFinalizedShowDay(args: {
+  showDayId: string;
+  currentEpoch: number;
+}): Promise<GrandChampionProcessingResult> {
+  const startedAtMs = Date.now();
+
+  return db.$transaction(async (tx) => {
+    const remainingEntryBlocks = await tx.showJudgingBlock.count({
+      where: {
+        showDayId: args.showDayId,
+        status: {
+          notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
+        },
+        showEntries: {
+          some: {},
+        },
+      },
+    });
+
+    if (remainingEntryBlocks > 0) {
+      return skippedGrandChampionProcessing({
+        showDayId: args.showDayId,
+        skippedReason: "show day not fully judged yet",
+        durationMs: Date.now() - startedAtMs,
+      });
+    }
+
+    const grandChampionCredits = await processGrandChampionCreditsForShowDay({
+      tx,
+      showDayId: args.showDayId,
+      currentEpoch: args.currentEpoch,
+    });
+    const promotions = await promoteGrandChampionTitlesForDogs({
+      tx,
+      dogIds: grandChampionCredits.dogIds,
+      showDayId: args.showDayId,
+      currentEpoch: args.currentEpoch,
+    });
+
+    return {
+      status: "EXECUTED",
+      showDayId: args.showDayId,
+      durationMs: Date.now() - startedAtMs,
+      creditsProcessed: grandChampionCredits.creditsProcessed,
+      dogsRecalculated: grandChampionCredits.dogIds.length,
+      promotionsApplied: promotions.length,
+      skippedReason: null,
+    };
+  }, {
+    timeout: FINALS_TRANSACTION_TIMEOUT_MS,
+  });
+}
 
 async function createGroupAwardsForShowDay(args: {
   showDayId: string;
@@ -1584,6 +1646,7 @@ export async function finalizeReadyShowDayResults(args: {
   readyToFinalize: boolean;
   groupAwardsCreated: number;
   bestInShowAwardsCreated: number;
+  grandChampionProcessing: GrandChampionProcessingResult;
 }> {
   const showDay = await db.showDay.findUnique({
     where: { id: args.showDayId },
@@ -1607,6 +1670,10 @@ export async function finalizeReadyShowDayResults(args: {
       readyToFinalize: false,
       groupAwardsCreated: 0,
       bestInShowAwardsCreated: 0,
+      grandChampionProcessing: skippedGrandChampionProcessing({
+        showDayId: args.showDayId,
+        skippedReason: "show day is cancelled, cluster is cancelled, or show day is future",
+      }),
     };
   }
 
@@ -1636,6 +1703,10 @@ export async function finalizeReadyShowDayResults(args: {
       readyToFinalize: false,
       groupAwardsCreated: 0,
       bestInShowAwardsCreated: 0,
+      grandChampionProcessing: skippedGrandChampionProcessing({
+        showDayId: args.showDayId,
+        skippedReason: "show day not fully judged yet",
+      }),
     };
   }
 
@@ -1652,6 +1723,11 @@ export async function finalizeReadyShowDayResults(args: {
     judge: engineJudge,
     currentEpoch: args.currentEpoch,
   });
+  const grandChampionProcessing =
+    await processGrandChampionCreditsForFinalizedShowDay({
+      showDayId: args.showDayId,
+      currentEpoch: args.currentEpoch,
+    });
 
   await db.$transaction(async (tx) => {
     await tx.showDay.update({
@@ -1677,6 +1753,7 @@ export async function finalizeReadyShowDayResults(args: {
     readyToFinalize: true,
     groupAwardsCreated,
     bestInShowAwardsCreated,
+    grandChampionProcessing,
   };
 }
 
