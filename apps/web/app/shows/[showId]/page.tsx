@@ -51,6 +51,8 @@ function statusTone(status: string): string {
     case "OPEN":
     case "ENTRY_OPEN":
       return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+    case "PAUSED":
+      return "border-amber-300/25 bg-amber-500/10 text-amber-100";
     case "CLOSED":
       return "theme-neutral-badge opacity-75";
     case "SCHEDULED":
@@ -273,6 +275,12 @@ export default async function ShowDetailPage({
         {entryError ? (
           <div className="mt-5 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
             {entryError}
+          </div>
+        ) : null}
+
+        {clusterAvailability.entryStatus === "PAUSED" ? (
+          <div className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            {clusterAvailability.message}
           </div>
         ) : null}
 

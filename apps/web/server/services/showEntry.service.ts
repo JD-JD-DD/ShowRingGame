@@ -17,6 +17,9 @@ import {
   getShowDayEntryAvailability,
 } from "@/server/services/showAvailability.service";
 import {
+  assertYear13RegularShowEntryNotPaused,
+} from "@/server/services/showScheduleMigration.service";
+import {
   DAM_SHOW_POST_WHELP_COOLDOWN_HOURS,
   ENTRY_FEE_PER_SHOW,
   SHOW_WEEK_HOURS,
@@ -462,6 +465,8 @@ export async function getShowWeekendEntryPlanStatus(args: {
 function getShowDayEntryEligibilityReason(args: {
   dog: DogForEntry;
   cluster: {
+    id?: string | null;
+    year?: number | null;
     entryOpenEpoch: number;
     entryCloseEpoch: number;
     status: string;
@@ -1431,6 +1436,8 @@ export async function createShowEntriesForCluster(args: {
     if (!cluster) {
       throw new Error("Show cluster not found.");
     }
+
+    assertYear13RegularShowEntryNotPaused(cluster);
 
     const kennel = await tx.kennel.findUnique({
       where: { id: kennelId },

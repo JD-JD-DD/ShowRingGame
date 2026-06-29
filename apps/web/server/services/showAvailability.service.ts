@@ -1,6 +1,12 @@
+import {
+  isYear13RegularShowPaused,
+  YEAR_13_REGULAR_SHOW_PAUSE_MESSAGE,
+} from "@/server/services/showScheduleMigration.service";
+
 export type ShowEntryStatus =
   | "NOT_OPEN"
   | "OPEN"
+  | "PAUSED"
   | "CLOSED"
   | "JUDGING"
   | "RESULTS_PUBLISHED"
@@ -17,6 +23,7 @@ export type ShowEntryAvailability = {
 export type ShowDisplayStatus =
   | "SCHEDULED"
   | "OPEN"
+  | "PAUSED"
   | "CLOSED"
   | "AWAITING JUDGING"
   | "JUDGING"
@@ -24,6 +31,8 @@ export type ShowDisplayStatus =
   | "CANCELLED";
 
 type ClusterLike = {
+  id?: string | null;
+  year?: number | null;
   status: string;
   entryOpenEpoch: number;
   entryCloseEpoch: number;
@@ -54,6 +63,8 @@ function statusMessage(status: ShowEntryStatus): string {
       return "Entries are not open for this show.";
     case "OPEN":
       return "Entries are open for this show.";
+    case "PAUSED":
+      return YEAR_13_REGULAR_SHOW_PAUSE_MESSAGE;
     case "CLOSED":
       return "Entries have closed for this show.";
     case "JUDGING":
@@ -98,6 +109,10 @@ export function getShowEntryAvailability(args: {
 
   if (hasJudgingActivity) {
     return availability({ entryStatus: "JUDGING", cluster });
+  }
+
+  if (isYear13RegularShowPaused(cluster)) {
+    return availability({ entryStatus: "PAUSED", cluster });
   }
 
   if (currentEpoch < cluster.entryOpenEpoch) {
@@ -224,6 +239,10 @@ export function getShowClusterDisplayStatus(args: {
     return "JUDGING";
   }
 
+  if (isYear13RegularShowPaused(cluster)) {
+    return "PAUSED";
+  }
+
   if (currentEpoch < cluster.entryOpenEpoch) {
     return "SCHEDULED";
   }
@@ -270,6 +289,10 @@ export function getShowDayDisplayStatus(args: {
 
   if (cluster.status === "CANCELLED") {
     return "CANCELLED";
+  }
+
+  if (isYear13RegularShowPaused(cluster)) {
+    return "PAUSED";
   }
 
   if (currentEpoch < cluster.entryOpenEpoch) {

@@ -25,6 +25,8 @@ function statusTone(status: ShowDisplayStatus): string {
       return "border-sky-300/25 bg-sky-500/10 text-sky-100";
     case "OPEN":
       return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+    case "PAUSED":
+      return "border-amber-300/25 bg-amber-500/10 text-amber-100";
     case "SCHEDULED":
       return "border-[var(--dog-border)] bg-[var(--dog-card)] text-[var(--dog-copy)]";
     case "AWAITING JUDGING":

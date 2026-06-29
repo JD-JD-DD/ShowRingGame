@@ -119,6 +119,14 @@ function buildEntryCloseCard(
         tone: "pending",
         targetEpoch: input.entryOpenEpoch,
       };
+    case "PAUSED":
+      return {
+        label: "Entry Window",
+        value: "Entries paused.",
+        shortValue: "entries paused",
+        tone: "closed",
+        targetEpoch: null,
+      };
     case "OPEN":
       return {
         label: "Entry Window",
@@ -208,6 +216,7 @@ function buildJudgingCard(input: BuildShowCountdownsInput): ShowCountdownCard {
         targetEpoch: null,
       };
     case "SCHEDULED":
+    case "PAUSED":
     case "OPEN":
     case "CLOSED":
       if (judgingEpoch !== null) {
@@ -236,6 +245,8 @@ function buildRowMetaLabel(input: BuildShowCountdownsInput): string | null {
   switch (input.displayStatus) {
     case "SCHEDULED":
       return compactUntil("Entries open", input.entryOpenEpoch, input.currentEpoch);
+    case "PAUSED":
+      return "Entries paused";
     case "OPEN": {
       const entryLabel = compactUntil(
         "Entries close",
