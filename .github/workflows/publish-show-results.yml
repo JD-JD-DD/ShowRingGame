@@ -31,9 +31,9 @@ jobs:
         env:
           SHOWRING_JOBS_BASE_URL: ${{ secrets.SHOWRING_JOBS_BASE_URL }}
           SHOWRING_JOBS_SECRET: ${{ secrets.SHOWRING_JOBS_SECRET }}
-          SHOWRING_JOBS_RUNS: ${{ inputs.runs || vars.SHOWRING_JOBS_RUNS || '5' }}
+          SHOWRING_JOBS_RUNS: ${{ inputs.runs || vars.SHOWRING_JOBS_RUNS || '7' }}
           SHOWRING_JOBS_BLOCK_BATCH_SIZE: ${{ inputs.block_batch_size || vars.SHOWRING_JOBS_BLOCK_BATCH_SIZE || '4' }}
-          SHOWRING_JOBS_FINALIZE_BATCH_SIZE: ${{ inputs.finalize_batch_size || vars.SHOWRING_JOBS_FINALIZE_BATCH_SIZE || '4' }}
+          SHOWRING_JOBS_FINALIZE_BATCH_SIZE: ${{ inputs.finalize_batch_size || vars.SHOWRING_JOBS_FINALIZE_BATCH_SIZE || '8' }}
           SHOWRING_JOBS_SLEEP_SECONDS: ${{ inputs.sleep_seconds || vars.SHOWRING_JOBS_SLEEP_SECONDS || '2' }}
         run: |
           if [ -z "$SHOWRING_JOBS_BASE_URL" ]; then
@@ -66,11 +66,10 @@ jobs:
             exit 1
           fi
 
-          # Keep throughput configurable while infrastructure is constrained.
-          # Default to five endpoint passes per scheduled run; raise or lower
-          # SHOWRING_JOBS_RUNS from GitHub variables as capacity changes.
-          # GCH processing adds title-credit work to each judged breed block, so
-          # keep the per-request block batch small enough for serverless limits.
+          # Scheduled fallback capacity is 7 passes * 4 breed blocks = 28
+          # breed blocks/hour, just above the estimated 27 blocks/hour needed
+          # for normal show volume. Manual dispatch inputs remain available for
+          # larger catch-up backlogs without changing scheduled behavior.
           job_url="${SHOWRING_JOBS_BASE_URL%/}/api/jobs/publish-show-results?blockBatchSize=${SHOWRING_JOBS_BLOCK_BATCH_SIZE}&finalizeBatchSize=${SHOWRING_JOBS_FINALIZE_BATCH_SIZE}"
 
           for run in $(seq 1 "${SHOWRING_JOBS_RUNS}"); do
