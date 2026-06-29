@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
 import {
-  promoteGrandChampionTitlesForDogs,
+  promoteGrandChampionTitleForDog,
   recalculateDogTitleProgressForDogs,
 } from "@/server/services/titleProgress.service";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
@@ -19,6 +19,8 @@ import {
   type Judge as EngineJudge,
 } from "@showring/rules";
 import { Prisma, ShowDayStatus, ShowJudgingBlockStatus } from "@prisma/client";
+
+type DbClient = typeof db | Prisma.TransactionClient;
 
 // Breed blocks persist results one dog at a time and then recalculate title
 // progress. Larger entries need more than Prisma's five-second default.
@@ -296,7 +298,7 @@ async function getClassDogIdsForShowDay(args: {
 }
 
 async function updateShowResultsAndTitleProgressForAwards(args: {
-  tx: Prisma.TransactionClient;
+  client: DbClient;
   awards: Array<{
     showResultId?: string | null;
     dogId: string;
@@ -327,7 +329,7 @@ async function updateShowResultsAndTitleProgressForAwards(args: {
   }
 
   for (const [showResultId, pointsAwarded] of maxPointsByResultId.entries()) {
-    await args.tx.showResult.updateMany({
+    await args.client.showResult.updateMany({
       where: {
         id: showResultId,
         pointsAwarded: {
@@ -342,7 +344,7 @@ async function updateShowResultsAndTitleProgressForAwards(args: {
   }
 
   await recalculateDogTitleProgressForDogs({
-    tx: args.tx,
+    tx: args.client,
     dogIds: pointAwards.map((award) => award.dogId),
   });
 }
@@ -1100,6 +1102,44 @@ type GrandChampionProcessingResult = {
   skippedReason: string | null;
 };
 
+export class ShowDayFinalizationPhaseError extends Error {
+  finalizationPhase: string;
+  phaseDurationMs: number;
+  cause: unknown;
+
+  constructor(args: {
+    phaseName: string;
+    durationMs: number;
+    cause: unknown;
+  }) {
+    const causeMessage =
+      args.cause instanceof Error ? args.cause.message : String(args.cause);
+
+    super(`Show day finalization failed during ${args.phaseName}: ${causeMessage}`);
+    this.name = "ShowDayFinalizationPhaseError";
+    this.finalizationPhase = args.phaseName;
+    this.phaseDurationMs = args.durationMs;
+    this.cause = args.cause;
+  }
+}
+
+async function runShowDayFinalizationPhase<T>(
+  phaseName: string,
+  action: () => Promise<T>
+): Promise<T> {
+  const startedAtMs = Date.now();
+
+  try {
+    return await action();
+  } catch (error) {
+    throw new ShowDayFinalizationPhaseError({
+      phaseName,
+      durationMs: Date.now() - startedAtMs,
+      cause: error,
+    });
+  }
+}
+
 function skippedGrandChampionProcessing(args: {
   showDayId: string;
   skippedReason: string;
@@ -1121,52 +1161,56 @@ async function processGrandChampionCreditsForFinalizedShowDay(args: {
   currentEpoch: number;
 }): Promise<GrandChampionProcessingResult> {
   const startedAtMs = Date.now();
-
-  return db.$transaction(async (tx) => {
-    const remainingEntryBlocks = await tx.showJudgingBlock.count({
-      where: {
-        showDayId: args.showDayId,
-        status: {
-          notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
-        },
-        showEntries: {
-          some: {},
-        },
+  const remainingEntryBlocks = await db.showJudgingBlock.count({
+    where: {
+      showDayId: args.showDayId,
+      status: {
+        notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
       },
-    });
-
-    if (remainingEntryBlocks > 0) {
-      return skippedGrandChampionProcessing({
-        showDayId: args.showDayId,
-        skippedReason: "show day not fully judged yet",
-        durationMs: Date.now() - startedAtMs,
-      });
-    }
-
-    const grandChampionCredits = await processGrandChampionCreditsForShowDay({
-      tx,
-      showDayId: args.showDayId,
-      currentEpoch: args.currentEpoch,
-    });
-    const promotions = await promoteGrandChampionTitlesForDogs({
-      tx,
-      dogIds: grandChampionCredits.dogIds,
-      showDayId: args.showDayId,
-      currentEpoch: args.currentEpoch,
-    });
-
-    return {
-      status: "EXECUTED",
-      showDayId: args.showDayId,
-      durationMs: Date.now() - startedAtMs,
-      creditsProcessed: grandChampionCredits.creditsProcessed,
-      dogsRecalculated: grandChampionCredits.dogIds.length,
-      promotionsApplied: promotions.length,
-      skippedReason: null,
-    };
-  }, {
-    timeout: FINALS_TRANSACTION_TIMEOUT_MS,
+      showEntries: {
+        some: {},
+      },
+    },
   });
+
+  if (remainingEntryBlocks > 0) {
+    return skippedGrandChampionProcessing({
+      showDayId: args.showDayId,
+      skippedReason: "show day not fully judged yet",
+      durationMs: Date.now() - startedAtMs,
+    });
+  }
+
+  const grandChampionCredits = await processGrandChampionCreditsForShowDay({
+    showDayId: args.showDayId,
+    currentEpoch: args.currentEpoch,
+  });
+  const promotions = [];
+
+  for (const dogId of [...new Set(grandChampionCredits.dogIds)]) {
+    const promotion = await db.$transaction((tx) =>
+      promoteGrandChampionTitleForDog({
+        tx,
+        dogId,
+        showDayId: args.showDayId,
+        currentEpoch: args.currentEpoch,
+      })
+    );
+
+    if (promotion) {
+      promotions.push(promotion);
+    }
+  }
+
+  return {
+    status: "EXECUTED",
+    showDayId: args.showDayId,
+    durationMs: Date.now() - startedAtMs,
+    creditsProcessed: grandChampionCredits.creditsProcessed,
+    dogsRecalculated: grandChampionCredits.dogIds.length,
+    promotionsApplied: promotions.length,
+    skippedReason: null,
+  };
 }
 
 async function createGroupAwardsForShowDay(args: {
@@ -1357,11 +1401,6 @@ async function createGroupAwardsForShowDay(args: {
       data: awardsToCreate,
     });
 
-    await updateShowResultsAndTitleProgressForAwards({
-      tx,
-      awards: awardsToCreate,
-    });
-
     return created.count;
   }, {
     timeout: FINALS_TRANSACTION_TIMEOUT_MS,
@@ -1544,15 +1583,41 @@ async function createBestInShowAwardsForShowDay(args: {
       data: awardsToCreate,
     });
 
-    await updateShowResultsAndTitleProgressForAwards({
-      tx,
-      awards: awardsToCreate,
-    });
-
     return created.count;
   }, {
     timeout: FINALS_TRANSACTION_TIMEOUT_MS,
   });
+}
+
+async function syncFinalsTitleProgressForShowDay(args: {
+  showDayId: string;
+}): Promise<{ dogsRecalculated: number; pointAwardCount: number }> {
+  const pointAwards = await db.showAward.findMany({
+    where: {
+      showDayId: args.showDayId,
+      awardGroup: {
+        in: ["GROUP", "BEST_IN_SHOW"],
+      },
+      pointsAwarded: {
+        gt: 0,
+      },
+    },
+    select: {
+      showResultId: true,
+      dogId: true,
+      pointsAwarded: true,
+    },
+  });
+
+  await updateShowResultsAndTitleProgressForAwards({
+    client: db,
+    awards: pointAwards,
+  });
+
+  return {
+    dogsRecalculated: new Set(pointAwards.map((award) => award.dogId)).size,
+    pointAwardCount: pointAwards.length,
+  };
 }
 
 export async function publishReadyShowDayResults(args: {
@@ -1646,6 +1711,10 @@ export async function finalizeReadyShowDayResults(args: {
   readyToFinalize: boolean;
   groupAwardsCreated: number;
   bestInShowAwardsCreated: number;
+  finalsTitleProgress: {
+    dogsRecalculated: number;
+    pointAwardCount: number;
+  };
   grandChampionProcessing: GrandChampionProcessingResult;
 }> {
   const showDay = await db.showDay.findUnique({
@@ -1670,6 +1739,10 @@ export async function finalizeReadyShowDayResults(args: {
       readyToFinalize: false,
       groupAwardsCreated: 0,
       bestInShowAwardsCreated: 0,
+      finalsTitleProgress: {
+        dogsRecalculated: 0,
+        pointAwardCount: 0,
+      },
       grandChampionProcessing: skippedGrandChampionProcessing({
         showDayId: args.showDayId,
         skippedReason: "show day is cancelled, cluster is cancelled, or show day is future",
@@ -1677,12 +1750,14 @@ export async function finalizeReadyShowDayResults(args: {
     };
   }
 
-  await db.$transaction((tx) =>
-    cancelReadyEmptyShowDay({
-      tx,
-      showDayId: args.showDayId,
-      currentEpoch: args.currentEpoch,
-    })
+  await runShowDayFinalizationPhase("closeEmptyShowDay", () =>
+    db.$transaction((tx) =>
+      cancelReadyEmptyShowDay({
+        tx,
+        showDayId: args.showDayId,
+        currentEpoch: args.currentEpoch,
+      })
+    )
   );
 
   const remainingEntryBlocks = await db.showJudgingBlock.count({
@@ -1703,6 +1778,10 @@ export async function finalizeReadyShowDayResults(args: {
       readyToFinalize: false,
       groupAwardsCreated: 0,
       bestInShowAwardsCreated: 0,
+      finalsTitleProgress: {
+        dogsRecalculated: 0,
+        pointAwardCount: 0,
+      },
       grandChampionProcessing: skippedGrandChampionProcessing({
         showDayId: args.showDayId,
         skippedReason: "show day not fully judged yet",
@@ -1711,48 +1790,107 @@ export async function finalizeReadyShowDayResults(args: {
   }
 
   const engineJudge = toEngineJudge(showDay.judge);
-  const groupAwardsCreated = await createGroupAwardsForShowDay({
-    showDayId: args.showDayId,
-    judgeId: showDay.judgeId,
-    judge: engineJudge,
-    currentEpoch: args.currentEpoch,
-  });
-  const bestInShowAwardsCreated = await createBestInShowAwardsForShowDay({
-    showDayId: args.showDayId,
-    judgeId: showDay.judgeId,
-    judge: engineJudge,
-    currentEpoch: args.currentEpoch,
-  });
+  const groupAwardsCreated = await runShowDayFinalizationPhase(
+    "groupAwards",
+    () =>
+      createGroupAwardsForShowDay({
+        showDayId: args.showDayId,
+        judgeId: showDay.judgeId,
+        judge: engineJudge,
+        currentEpoch: args.currentEpoch,
+      })
+  );
+  const bestInShowAwardsCreated = await runShowDayFinalizationPhase(
+    "bestInShowAwards",
+    () =>
+      createBestInShowAwardsForShowDay({
+        showDayId: args.showDayId,
+        judgeId: showDay.judgeId,
+        judge: engineJudge,
+        currentEpoch: args.currentEpoch,
+      })
+  );
+  const finalsTitleProgress = await runShowDayFinalizationPhase(
+    "finalsTitleProgress",
+    () => syncFinalsTitleProgressForShowDay({ showDayId: args.showDayId })
+  );
   const grandChampionProcessing =
-    await processGrandChampionCreditsForFinalizedShowDay({
+    await runShowDayFinalizationPhase("grandChampionProcessing", () =>
+      processGrandChampionCreditsForFinalizedShowDay({
+        showDayId: args.showDayId,
+        currentEpoch: args.currentEpoch,
+      })
+    );
+
+  if (grandChampionProcessing.status !== "EXECUTED") {
+    throw new ShowDayFinalizationPhaseError({
+      phaseName: "grandChampionProcessing",
+      durationMs: grandChampionProcessing.durationMs,
+      cause: new Error(
+        grandChampionProcessing.skippedReason ?? "Grand Champion processing skipped."
+      ),
+    });
+  }
+
+  await runShowDayFinalizationPhase("prestigeRefresh", () =>
+    refreshPrestigeStatsForShowDay({
+      tx: db,
       showDayId: args.showDayId,
       currentEpoch: args.currentEpoch,
-    });
+    })
+  );
 
-  await db.$transaction(async (tx) => {
-    await tx.showDay.update({
-      where: { id: args.showDayId },
-      data: {
-        status: "RESULTS_PUBLISHED",
-        publishedAtEpoch: args.currentEpoch,
-      },
-    });
+  await runShowDayFinalizationPhase("publishStatus", () =>
+    db.$transaction(async (tx) => {
+      const publishableShowDay = await tx.showDay.findUnique({
+        where: { id: args.showDayId },
+        select: {
+          clusterId: true,
+          status: true,
+          prestigeCalculatedAtEpoch: true,
+        },
+      });
+      const remainingBlocksBeforePublish = await tx.showJudgingBlock.count({
+        where: {
+          showDayId: args.showDayId,
+          status: {
+            notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
+          },
+          showEntries: {
+            some: {},
+          },
+        },
+      });
 
-    await maybeCompleteCluster(tx, showDay.clusterId);
-    await refreshPrestigeStatsForShowDay({
-      tx,
-      showDayId: args.showDayId,
-      currentEpoch: args.currentEpoch,
-    });
-  }, {
-    timeout: SHOW_DAY_FINALIZATION_TIMEOUT_MS,
-  });
+      if (
+        !publishableShowDay ||
+        publishableShowDay.status === "CANCELLED" ||
+        remainingBlocksBeforePublish > 0 ||
+        publishableShowDay.prestigeCalculatedAtEpoch == null
+      ) {
+        throw new Error("Show day did not pass final publish guards.");
+      }
+
+      await tx.showDay.update({
+        where: { id: args.showDayId },
+        data: {
+          status: "RESULTS_PUBLISHED",
+          publishedAtEpoch: args.currentEpoch,
+        },
+      });
+
+      await maybeCompleteCluster(tx, publishableShowDay.clusterId);
+    }, {
+      timeout: SHOW_DAY_FINALIZATION_TIMEOUT_MS,
+    })
+  );
 
   return {
     showDayId: args.showDayId,
     readyToFinalize: true,
     groupAwardsCreated,
     bestInShowAwardsCreated,
+    finalsTitleProgress,
     grandChampionProcessing,
   };
 }

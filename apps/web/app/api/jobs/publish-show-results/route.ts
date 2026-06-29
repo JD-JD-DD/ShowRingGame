@@ -9,6 +9,7 @@ import {
   closeReadyEmptyShowDays,
   finalizeReadyShowDayResults,
   judgeShowBlock,
+  ShowDayFinalizationPhaseError,
 } from "@/server/services/judging.service";
 import { Prisma } from "@prisma/client";
 
@@ -62,7 +63,28 @@ function getJobErrorDetails(error: unknown): {
   name?: string;
   code?: string;
   meta?: unknown;
+  finalizationPhase?: string;
+  phaseDurationMs?: number;
 } {
+  if (error instanceof ShowDayFinalizationPhaseError) {
+    const cause = error.cause;
+    const causeDetails =
+      cause instanceof Prisma.PrismaClientKnownRequestError
+        ? {
+            code: cause.code,
+            meta: cause.meta,
+          }
+        : {};
+
+    return {
+      message: error.message,
+      name: error.name,
+      finalizationPhase: error.finalizationPhase,
+      phaseDurationMs: error.phaseDurationMs,
+      ...causeDetails,
+    };
+  }
+
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     return {
       message: error.message,
@@ -311,6 +333,8 @@ export async function GET(request: Request) {
         judgingBlockId: block.id,
         showDayId: block.showDayId,
         durationMs,
+        finalizationPhase: errorDetails.finalizationPhase,
+        phaseDurationMs: errorDetails.phaseDurationMs,
         error,
       });
 
@@ -324,6 +348,8 @@ export async function GET(request: Request) {
         errorName: errorDetails.name,
         errorCode: errorDetails.code,
         errorMeta: errorDetails.meta,
+        finalizationPhase: errorDetails.finalizationPhase,
+        phaseDurationMs: errorDetails.phaseDurationMs,
         durationMs,
       });
     }
@@ -433,6 +459,7 @@ export async function GET(request: Request) {
         readyToFinalize: result.readyToFinalize,
         groupAwardsCreated: result.groupAwardsCreated,
         bestInShowAwardsCreated: result.bestInShowAwardsCreated,
+        finalsTitleProgress: result.finalsTitleProgress,
         grandChampionProcessing: result.grandChampionProcessing,
       });
     } catch (error) {
@@ -441,7 +468,11 @@ export async function GET(request: Request) {
 
       console.error("GET /api/jobs/publish-show-results failed to finalize day", {
         showDayId: showDay.id,
+        clusterId: showDay.clusterId,
+        dayIndex: showDay.dayIndex,
         durationMs,
+        finalizationPhase: errorDetails.finalizationPhase,
+        phaseDurationMs: errorDetails.phaseDurationMs,
         error,
       });
 
@@ -453,6 +484,8 @@ export async function GET(request: Request) {
         errorName: errorDetails.name,
         errorCode: errorDetails.code,
         errorMeta: errorDetails.meta,
+        finalizationPhase: errorDetails.finalizationPhase,
+        phaseDurationMs: errorDetails.phaseDurationMs,
         durationMs,
       });
     }
@@ -499,6 +532,17 @@ export async function GET(request: Request) {
     (total, result) => total + result.dogsRecalculated,
     0
   );
+  const finalsTitleProgress = finalized.map(
+    (showDay) => showDay.result.finalsTitleProgress
+  );
+  const finalsTitleDogsRecalculated = finalsTitleProgress.reduce(
+    (total, result) => total + result.dogsRecalculated,
+    0
+  );
+  const finalsTitlePointAwardCount = finalsTitleProgress.reduce(
+    (total, result) => total + result.pointAwardCount,
+    0
+  );
   const summary = {
     currentEpoch,
     currentTimeIso,
@@ -529,6 +573,9 @@ export async function GET(request: Request) {
     grandChampionCreditsProcessed,
     grandChampionDogsRecalculated,
     grandChampionProcessing,
+    finalsTitleDogsRecalculated,
+    finalsTitlePointAwardCount,
+    finalsTitleProgress,
     skippedFuture: 0,
     skippedFutureReason:
       "Future shows are not loaded by the publish job; due queries require epoch <= currentEpoch.",

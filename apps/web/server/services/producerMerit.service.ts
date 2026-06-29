@@ -126,7 +126,7 @@ export function deriveProducerMeritForDog(args: {
 }
 
 export async function countChampionOffspringForDog(args: {
-  tx: TransactionClient;
+  tx: DbClient;
   dogId: string;
 }): Promise<number> {
   return args.tx.dog.count({
@@ -142,7 +142,7 @@ export async function countChampionOffspringForDog(args: {
 }
 
 export async function recalculateProducerMeritForDog(args: {
-  tx: TransactionClient;
+  tx: DbClient;
   dogId: string;
 }): Promise<ProducerMeritSummary | null> {
   const dog = await args.tx.dog.findUnique({
@@ -182,7 +182,7 @@ export async function recalculateProducerMeritForDog(args: {
 }
 
 export async function recalculateProducerMeritForDogs(args: {
-  tx: TransactionClient;
+  tx: DbClient;
   dogIds: Array<string | null | undefined>;
 }) {
   const dogIds = [...new Set(args.dogIds.filter(Boolean))] as string[];

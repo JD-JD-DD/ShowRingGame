@@ -12,6 +12,7 @@ const GCH_AWARD_CODES = [
 
 type GrandChampionAwardCode = (typeof GCH_AWARD_CODES)[number];
 type TransactionClient = Prisma.TransactionClient;
+type DbClient = typeof db | TransactionClient;
 
 type GrandChampionDog = {
   id: string;
@@ -214,13 +215,13 @@ export function buildGrandChampionCreditCandidates(args: {
 }
 
 async function recalculateGrandChampionProgressForDogs(args: {
-  tx: TransactionClient;
+  client: DbClient;
   dogIds: string[];
 }) {
   const dogIds = [...new Set(args.dogIds)];
 
   for (const dogId of dogIds) {
-    const credits = await args.tx.dogGrandChampionCredit.findMany({
+    const credits = await args.client.dogGrandChampionCredit.findMany({
       where: { dogId },
       select: {
         showDayId: true,
@@ -240,7 +241,7 @@ async function recalculateGrandChampionProgressForDogs(args: {
         .map((credit) => credit.showDayId)
     ).size;
 
-    await args.tx.dogTitleProgress.upsert({
+    await args.client.dogTitleProgress.upsert({
       where: { dogId },
       update: {
         grandPoints,
@@ -258,12 +259,12 @@ async function recalculateGrandChampionProgressForDogs(args: {
 }
 
 async function processGrandChampionCreditsForShowDayWithClient(args: {
-  tx: TransactionClient;
+  client: DbClient;
   showDayId: string;
   currentEpoch: number;
 }): Promise<{ creditsProcessed: number; dogIds: string[] }> {
   const [results, awards] = await Promise.all([
-    args.tx.showResult.findMany({
+    args.client.showResult.findMany({
       where: { showDayId: args.showDayId },
       select: {
         dogId: true,
@@ -283,7 +284,7 @@ async function processGrandChampionCreditsForShowDayWithClient(args: {
         },
       },
     }),
-    args.tx.showAward.findMany({
+    args.client.showAward.findMany({
       where: {
         showDayId: args.showDayId,
         awardGroup: "BREED",
@@ -307,7 +308,7 @@ async function processGrandChampionCreditsForShowDayWithClient(args: {
   });
 
   for (const candidate of candidates) {
-    await args.tx.dogGrandChampionCredit.upsert({
+    await args.client.dogGrandChampionCredit.upsert({
       where: {
         dogId_showDayId_awardCode: {
           dogId: candidate.dogId,
@@ -328,7 +329,7 @@ async function processGrandChampionCreditsForShowDayWithClient(args: {
   }
 
   await recalculateGrandChampionProgressForDogs({
-    tx: args.tx,
+    client: args.client,
     dogIds: candidates.map((candidate) => candidate.dogId),
   });
 
@@ -345,17 +346,15 @@ export async function processGrandChampionCreditsForShowDay(args: {
 }): Promise<{ creditsProcessed: number; dogIds: string[] }> {
   if (args.tx) {
     return processGrandChampionCreditsForShowDayWithClient({
-      tx: args.tx,
+      client: args.tx,
       showDayId: args.showDayId,
       currentEpoch: args.currentEpoch,
     });
   }
 
-  return db.$transaction((tx) =>
-    processGrandChampionCreditsForShowDayWithClient({
-      tx,
-      showDayId: args.showDayId,
-      currentEpoch: args.currentEpoch,
-    })
-  );
+  return processGrandChampionCreditsForShowDayWithClient({
+    client: db,
+    showDayId: args.showDayId,
+    currentEpoch: args.currentEpoch,
+  });
 }

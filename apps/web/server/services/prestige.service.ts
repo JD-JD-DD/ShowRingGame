@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
 
+import { db } from "@/lib/db";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
+
+type TransactionClient = Prisma.TransactionClient;
+type DbClient = typeof db | TransactionClient;
 
 type ShowEntryForPrestige = {
   id: string;
@@ -86,7 +90,7 @@ function addDefeatedDogs(
 }
 
 async function syncYearlyPrestigeStats(args: {
-  tx: Prisma.TransactionClient;
+  tx: DbClient;
   dogIds: string[];
   gameYear: number;
   currentEpoch: number;
@@ -161,7 +165,7 @@ async function syncYearlyPrestigeStats(args: {
 }
 
 export async function refreshPrestigeStatsForShowDay(args: {
-  tx: Prisma.TransactionClient;
+  tx: DbClient;
   showDayId: string;
   currentEpoch: number;
 }) {

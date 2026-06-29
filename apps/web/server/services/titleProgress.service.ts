@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 
+import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { isChampionOfRecordTitleCode } from "@/lib/dogTitles";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
@@ -25,6 +26,7 @@ const GRAND_CHAMPION_MILESTONE_TITLES = [
 ] as const;
 
 type TransactionClient = Prisma.TransactionClient;
+type DbClient = typeof db | TransactionClient;
 
 export type ConformationTitleProgress = {
   championshipPoints: number;
@@ -219,7 +221,7 @@ function summarizeChampionshipAwards(awards: PointAward[]) {
 }
 
 export async function recalculateDogTitleProgress(args: {
-  tx: TransactionClient;
+  tx: DbClient;
   dogId: string;
 }) {
   const { tx, dogId } = args;
@@ -341,7 +343,7 @@ export async function recalculateDogTitleProgress(args: {
 }
 
 export async function recalculateDogTitleProgressForDogs(args: {
-  tx: TransactionClient;
+  tx: DbClient;
   dogIds: string[];
 }) {
   const uniqueDogIds = [...new Set(args.dogIds)];
@@ -355,7 +357,7 @@ export async function recalculateDogTitleProgressForDogs(args: {
 }
 
 export async function promoteGrandChampionTitleForDog(args: {
-  tx: TransactionClient;
+  tx: DbClient;
   dogId: string;
   showDayId: string;
   currentEpoch: number;
@@ -467,7 +469,7 @@ export async function promoteGrandChampionTitleForDog(args: {
 }
 
 export async function promoteGrandChampionTitlesForDogs(args: {
-  tx: TransactionClient;
+  tx: DbClient;
   dogIds: string[];
   showDayId: string;
   currentEpoch: number;
