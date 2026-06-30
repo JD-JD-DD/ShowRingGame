@@ -1,11 +1,13 @@
 import {
   FOUR_DAY_CLUSTER_DAY_OFFSETS,
-  SHOW_CLUSTER_4_DAY_RATIO,
+  SHOW_CLUSTERS_PER_DISTRICT_PER_YEAR,
   SHOW_CLUSTERS_PER_WEEK,
   SHOW_DISTRICT_COUNT,
   SHOW_ENTRY_OPEN_LEAD_HOURS,
   SHOW_ENTRY_CLOSE_OFFSET_HOURS,
+  SHOW_FOUR_DAY_CLUSTERS_PER_DISTRICT_PER_YEAR,
   SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
+  SHOW_REDUCED_CLUSTER_WEEK_INTERVAL,
   SHOW_REGULAR_WEEK_COUNT,
   SHOW_WEEK_HOURS,
   SHOW_YEAR_HOURS,
@@ -55,14 +57,6 @@ const DAY_NAME_BY_WEEK_OFFSET: Record<number, string> = {
   6: "Sunday",
   7: "Monday",
 };
-
-export const CIRCUIT_COLUMNS = [
-  [1, 6, 11],
-  [2, 7, 12],
-  [3, 8, 13],
-  [4, 9, 14],
-  [5, 10, 15],
-] as const;
 
 function assertNonNegativeInteger(value: number, label: string): void {
   if (!Number.isInteger(value) || value < 0) {
@@ -137,27 +131,29 @@ function getShowSlotIndexesForWeek(weekIndex: number): number[] {
     return [];
   }
 
-  return Array.from({ length: SHOW_CLUSTERS_PER_WEEK }, (_, slotIndex) => slotIndex);
+  const reducedWeek =
+    (weekIndex + 1) % SHOW_REDUCED_CLUSTER_WEEK_INTERVAL === 0;
+
+  return Array.from({ length: SHOW_CLUSTERS_PER_WEEK }, (_, slotIndex) => slotIndex)
+    .filter((slotIndex) => !reducedWeek || slotIndex < SHOW_CLUSTERS_PER_WEEK - 1);
 }
 
-function assertScheduledShowSlot(args: {
+function getAnnualClusterIndex(args: {
   weekIndex: number;
   slotIndex: number;
-}): void {
+}): number {
   const { weekIndex, slotIndex } = args;
   const slotIndexes = getShowSlotIndexesForWeek(weekIndex);
 
   if (!slotIndexes.includes(slotIndex)) {
     throw new Error("No regular district show is scheduled for that slot.");
   }
-}
 
-function getDistrictVisitIndex(weekIndex: number): number {
-  return Math.floor(weekIndex / CIRCUIT_COLUMNS.length);
-}
+  const reducedWeeksBefore = Math.floor(
+    weekIndex / SHOW_REDUCED_CLUSTER_WEEK_INTERVAL
+  );
 
-function getStandardDistrictVisitCount(): number {
-  return Math.floor(SHOW_REGULAR_WEEK_COUNT / CIRCUIT_COLUMNS.length);
+  return weekIndex * SHOW_CLUSTERS_PER_WEEK - reducedWeeksBefore + slotIndex;
 }
 
 function csvEscape(value: string | number): string {
@@ -178,15 +174,17 @@ export function getShowClusterTypeForSlot(args: {
 
   assertNonNegativeInteger(weekIndex, "weekIndex");
   assertNonNegativeInteger(slotIndex, "slotIndex");
-  assertScheduledShowSlot({ weekIndex, slotIndex });
 
-  const district = getShowClusterDistrict({ weekIndex, slotIndex });
-  const districtVisitIndex = getDistrictVisitIndex(weekIndex);
-  const standardDistrictVisitCount = getStandardDistrictVisitCount();
-  const fourDayInterval = Math.round(1 / SHOW_CLUSTER_4_DAY_RATIO);
+  const annualClusterIndex = getAnnualClusterIndex({ weekIndex, slotIndex });
+  const district = (annualClusterIndex % SHOW_DISTRICT_COUNT) + 1;
+  const districtVisitIndex = Math.floor(
+    annualClusterIndex / SHOW_DISTRICT_COUNT
+  );
+  const fourDayInterval =
+    SHOW_CLUSTERS_PER_DISTRICT_PER_YEAR /
+    SHOW_FOUR_DAY_CLUSTERS_PER_DISTRICT_PER_YEAR;
 
-  return districtVisitIndex < standardDistrictVisitCount &&
-    (district - 1 + districtVisitIndex) % fourDayInterval === 0
+  return (district - 1 + districtVisitIndex) % fourDayInterval === 0
     ? "FOUR_DAY"
     : "TWO_DAY";
 }
@@ -199,17 +197,8 @@ export function getShowClusterDistrict(args: {
 
   assertNonNegativeInteger(weekIndex, "weekIndex");
   assertNonNegativeInteger(slotIndex, "slotIndex");
-  assertScheduledShowSlot({ weekIndex, slotIndex });
 
-  const columnIndex = weekIndex % CIRCUIT_COLUMNS.length;
-  const activeDistricts = CIRCUIT_COLUMNS[columnIndex];
-  const district = activeDistricts[slotIndex];
-
-  if (!district || district > SHOW_DISTRICT_COUNT) {
-    throw new Error("No regular district show is scheduled for that slot.");
-  }
-
-  return district;
+  return (getAnnualClusterIndex({ weekIndex, slotIndex }) % SHOW_DISTRICT_COUNT) + 1;
 }
 
 export function generateAnnualShowClusterTemplates(): ShowClusterTemplate[] {
