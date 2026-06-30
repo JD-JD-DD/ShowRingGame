@@ -1,4 +1,5 @@
 import {
+  CIRCUIT_COLUMNS,
   generateAnnualShowClusterTemplates,
   generateShowClustersForWeek,
   SHOW_ENTRY_CLOSE_OFFSET_HOURS,
@@ -78,7 +79,30 @@ assertEqual(
   "two-day generated judging epoch offsets"
 );
 
-assertEqual(templates.length, 150, "annual regular district show count");
+const expectedWeeklyDistricts = [
+  [1, 6, 11],
+  [2, 7, 12],
+  [3, 8, 13],
+  [4, 9, 14],
+  [5, 10, 15],
+  [1, 6, 11],
+];
+
+for (const [index, expectedDistricts] of expectedWeeklyDistricts.entries()) {
+  const weekInYear = index + 1;
+  const districts = templates
+    .filter((template) => template.weekInYear === weekInYear)
+    .map((template) => template.district)
+    .join(",");
+
+  assertEqual(
+    districts,
+    expectedDistricts.join(","),
+    `week ${weekInYear} district circuit`
+  );
+}
+
+assertEqual(templates.length, 153, "annual regular district show count");
 assertEqual(
   templates.filter((template) => template.weekInYear === 52).length,
   0,
@@ -90,12 +114,39 @@ assertEqual(
   "generated week 52 regular district show count"
 );
 
+for (const weekInYear of [17, 34, 51]) {
+  assertEqual(
+    templates.filter((template) => template.weekInYear === weekInYear).length,
+    3,
+    `week ${weekInYear} regular district show count`
+  );
+}
+
+assertEqual(
+  templates
+    .filter((template) => template.weekInYear === 51)
+    .map((template) => template.district)
+    .join(","),
+  "1,6,11",
+  "week 51 district circuit"
+);
+
 for (let district = 1; district <= SHOW_DISTRICT_COUNT; district += 1) {
   const districtShows = templates.filter(
     (template) => template.district === district
   );
+  const expectedAnnualCount = CIRCUIT_COLUMNS[0].includes(
+    district as (typeof CIRCUIT_COLUMNS)[0][number]
+  )
+    ? 11
+    : 10;
+  const expectedTwoDayCount = expectedAnnualCount - 2;
 
-  assertEqual(districtShows.length, 10, `district ${district} annual show count`);
+  assertEqual(
+    districtShows.length,
+    expectedAnnualCount,
+    `district ${district} annual show count`
+  );
   assertEqual(
     districtShows.filter((template) => template.type === "FOUR_DAY").length,
     2,
@@ -103,16 +154,8 @@ for (let district = 1; district <= SHOW_DISTRICT_COUNT; district += 1) {
   );
   assertEqual(
     districtShows.filter((template) => template.type === "TWO_DAY").length,
-    8,
+    expectedTwoDayCount,
     `district ${district} two-day cluster count`
-  );
-}
-
-for (const weekInYear of [17, 34, 51]) {
-  assertEqual(
-    templates.filter((template) => template.weekInYear === weekInYear).length,
-    2,
-    `week ${weekInYear} regular district show count`
   );
 }
 
@@ -126,5 +169,20 @@ const twoDayOnlyWeeks = Array.from({ length: 51 }, (_, index) => index + 1)
 if (twoDayOnlyWeeks.length === 0) {
   throw new Error("expected at least one week with only two-day district shows");
 }
+
+const yearOneWeekOneDistricts = generateShowClustersForWeek(0)
+  .map((cluster) => cluster.district)
+  .join(",");
+const yearTwoWeekOneDistricts = generateShowClustersForWeek(365)
+  .map((cluster) => cluster.district)
+  .join(",");
+
+assertEqual(yearOneWeekOneDistricts, "1,6,11", "year 1 week 1 districts");
+assertEqual(yearTwoWeekOneDistricts, "1,6,11", "year 2 week 1 districts");
+assertEqual(
+  yearTwoWeekOneDistricts,
+  yearOneWeekOneDistricts,
+  "fixed district circuit repeats by show year"
+);
 
 console.log("Show calendar checks passed.");
