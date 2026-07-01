@@ -8,15 +8,19 @@ on:
       runs:
         description: "Endpoint passes to run for this dispatch."
         required: false
+        default: "7"
       block_batch_size:
         description: "Maximum due breed blocks to load per endpoint pass."
         required: false
+        default: "4"
       finalize_batch_size:
         description: "Maximum show days to finalize per endpoint pass."
         required: false
+        default: "8"
       sleep_seconds:
         description: "Seconds to sleep between endpoint passes."
         required: false
+        default: "5"
 
 concurrency:
   group: publish-show-results
@@ -34,7 +38,7 @@ jobs:
           SHOWRING_JOBS_RUNS: ${{ inputs.runs || vars.SHOWRING_JOBS_RUNS || '7' }}
           SHOWRING_JOBS_BLOCK_BATCH_SIZE: ${{ inputs.block_batch_size || vars.SHOWRING_JOBS_BLOCK_BATCH_SIZE || '4' }}
           SHOWRING_JOBS_FINALIZE_BATCH_SIZE: ${{ inputs.finalize_batch_size || vars.SHOWRING_JOBS_FINALIZE_BATCH_SIZE || '8' }}
-          SHOWRING_JOBS_SLEEP_SECONDS: ${{ inputs.sleep_seconds || vars.SHOWRING_JOBS_SLEEP_SECONDS || '2' }}
+          SHOWRING_JOBS_SLEEP_SECONDS: ${{ inputs.sleep_seconds || vars.SHOWRING_JOBS_SLEEP_SECONDS || '5' }}
         run: |
           if [ -z "$SHOWRING_JOBS_BASE_URL" ]; then
             echo "SHOWRING_JOBS_BASE_URL is not set"
