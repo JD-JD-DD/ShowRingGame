@@ -16,6 +16,7 @@ export type KennelNoticeLinkArgs = {
 export async function createKennelNotice(args: {
   client?: DbClient;
   kennelId: string | null | undefined;
+  sourceKey?: string | null;
   type: KennelNoticeType;
   title: string;
   body?: string | null;
@@ -27,10 +28,23 @@ export async function createKennelNotice(args: {
 
   const client = args.client ?? db;
 
+  if (args.sourceKey) {
+    const existingNotice = await client.kennelNotice.findUnique({
+      where: {
+        sourceKey: args.sourceKey,
+      },
+    });
+
+    if (existingNotice) {
+      return existingNotice;
+    }
+  }
+
   try {
     return await client.kennelNotice.create({
       data: {
         kennelId: args.kennelId,
+        sourceKey: args.sourceKey ?? null,
         type: args.type,
         title: args.title,
         body: args.body ?? null,
@@ -44,6 +58,20 @@ export async function createKennelNotice(args: {
       },
     });
   } catch (error) {
+    if (
+      args.sourceKey &&
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: unknown }).code === "P2002"
+    ) {
+      return client.kennelNotice.findUnique({
+        where: {
+          sourceKey: args.sourceKey,
+        },
+      });
+    }
+
     console.error("Unable to create kennel notice:", error);
     return null;
   }

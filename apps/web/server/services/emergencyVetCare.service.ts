@@ -135,6 +135,15 @@ function createTreatmentOutcomeRollBps(event: DogEmergencyCareEvent): number {
   );
 }
 
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "P2002"
+  );
+}
+
 function assertValidRollBps(rollBps: number): void {
   if (!Number.isInteger(rollBps) || rollBps < 0 || rollBps >= BASIS_POINTS) {
     throw new Error("Emergency vet-care roll must be an integer from 0 to 9999.");
@@ -207,6 +216,19 @@ export function calculateEmergencyVetCareDeadlineEpoch(
   createdAtEpoch: number
 ): number {
   return createdAtEpoch + EMERGENCY_VET_CARE_RESPONSE_WINDOW_HOURS;
+}
+
+export function getAccidentIllnessEmergencySourceKey(args: {
+  dogId: string;
+  projectedDeathEpoch: number;
+}): string {
+  return `ACCIDENT_ILLNESS:${args.dogId}:${args.projectedDeathEpoch}`;
+}
+
+export function getEmergencyVetCareNoticeSourceKey(
+  emergencyCareEventId: string
+): string {
+  return `EMERGENCY_VET_CARE:${emergencyCareEventId}`;
 }
 
 export function toPendingEmergencyCarePayload(
@@ -304,11 +326,29 @@ export async function createPendingEmergencyForAccidentIllnessDeath(args: {
   dogId: string;
   kennelIdAtEvent?: string | null;
   createdAtEpoch: number;
+  projectedDeathEpoch: number;
   costRollBps: number;
   outcomeSeed?: string | null;
   client?: EmergencyVetCareClient;
 }): Promise<DogEmergencyCareEvent> {
   const client = args.client ?? db;
+  const sourceKey = getAccidentIllnessEmergencySourceKey({
+    dogId: args.dogId,
+    projectedDeathEpoch: args.projectedDeathEpoch,
+  });
+  const existingSourceEvent = await client.dogEmergencyCareEvent.findFirst({
+    where: {
+      sourceKey,
+    },
+    orderBy: {
+      createdAtEpoch: "asc",
+    },
+  });
+
+  if (existingSourceEvent) {
+    return existingSourceEvent;
+  }
+
   const existingPendingEmergency = await getPendingEmergencyForDog(
     args.dogId,
     client
@@ -320,21 +360,43 @@ export async function createPendingEmergencyForAccidentIllnessDeath(args: {
 
   const costTier = selectEmergencyVetCareCostTierFromRollBps(args.costRollBps);
 
-  return client.dogEmergencyCareEvent.create({
-    data: {
-      dogId: args.dogId,
-      kennelIdAtEvent: args.kennelIdAtEvent ?? null,
-      emergencyType: "ACCIDENT_ILLNESS",
-      status: "PENDING",
-      createdAtEpoch: args.createdAtEpoch,
-      responseDeadlineEpoch: calculateEmergencyVetCareDeadlineEpoch(
-        args.createdAtEpoch
-      ),
-      treatmentCost: costTier.treatmentCost,
-      survivalChanceBps: costTier.survivalChanceBps,
-      outcomeSeed: args.outcomeSeed ?? null,
-    },
-  });
+  try {
+    return await client.dogEmergencyCareEvent.create({
+      data: {
+        dogId: args.dogId,
+        kennelIdAtEvent: args.kennelIdAtEvent ?? null,
+        sourceKey,
+        emergencyType: "ACCIDENT_ILLNESS",
+        status: "PENDING",
+        createdAtEpoch: args.createdAtEpoch,
+        responseDeadlineEpoch: calculateEmergencyVetCareDeadlineEpoch(
+          args.createdAtEpoch
+        ),
+        treatmentCost: costTier.treatmentCost,
+        survivalChanceBps: costTier.survivalChanceBps,
+        outcomeSeed: args.outcomeSeed ?? null,
+      },
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    const racedEvent = await client.dogEmergencyCareEvent.findFirst({
+      where: {
+        sourceKey,
+      },
+      orderBy: {
+        createdAtEpoch: "asc",
+      },
+    });
+
+    if (!racedEvent) {
+      throw error;
+    }
+
+    return racedEvent;
+  }
 }
 
 function ensureEventBelongsToKennel(args: {
@@ -396,6 +458,45 @@ const pendingEmergencyWithDogSelect = {
   },
 } satisfies Prisma.DogEmergencyCareEventInclude;
 
+function isTerminalEmergencyStatus(status: DogEmergencyCareStatus): boolean {
+  return status !== "PENDING";
+}
+
+async function markRelatedEmergencyNoticeHandled(args: {
+  tx: Prisma.TransactionClient;
+  kennelId: string;
+  dogId: string;
+  emergencyCareEventId: string;
+  currentEpoch: number;
+}): Promise<void> {
+  const noticeSourceKey = getEmergencyVetCareNoticeSourceKey(
+    args.emergencyCareEventId
+  );
+
+  await args.tx.kennelNotice.updateMany({
+    where: {
+      kennelId: args.kennelId,
+      type: "KENNEL_SERVICE",
+      linkedDogId: args.dogId,
+      OR: [
+        {
+          sourceKey: noticeSourceKey,
+        },
+        {
+          metadataJson: {
+            path: ["emergencyCareEventId"],
+            equals: args.emergencyCareEventId,
+          },
+        },
+      ],
+    },
+    data: {
+      readAtEpoch: args.currentEpoch,
+      dismissedAtEpoch: args.currentEpoch,
+    },
+  });
+}
+
 export async function authorizeEmergencyTreatment(args: {
   kennelId: string;
   dogId: string;
@@ -403,7 +504,7 @@ export async function authorizeEmergencyTreatment(args: {
   outcomeRollBps?: number;
 }): Promise<EmergencyCareResolutionResult> {
   return db.$transaction(async (tx) => {
-    const event = (await tx.dogEmergencyCareEvent.findFirst({
+    const pendingEvent = (await tx.dogEmergencyCareEvent.findFirst({
       where: {
         dogId: args.dogId,
         status: "PENDING",
@@ -413,12 +514,43 @@ export async function authorizeEmergencyTreatment(args: {
         createdAtEpoch: "asc",
       },
     })) as PendingEmergencyWithDog | null;
+    const event =
+      pendingEvent ??
+      ((await tx.dogEmergencyCareEvent.findFirst({
+        where: {
+          dogId: args.dogId,
+          status: {
+            not: "PENDING",
+          },
+        },
+        include: pendingEmergencyWithDogSelect,
+        orderBy: [{ resolvedAtEpoch: "desc" }, { createdAtEpoch: "desc" }],
+      })) as PendingEmergencyWithDog | null);
 
     if (!event) {
       throw new Error("No pending emergency care event found for this dog.");
     }
 
     ensureEventBelongsToKennel({ event, kennelId: args.kennelId });
+
+    if (isTerminalEmergencyStatus(event.status)) {
+      await markRelatedEmergencyNoticeHandled({
+        tx,
+        kennelId: args.kennelId,
+        dogId: event.dogId,
+        emergencyCareEventId: event.id,
+        currentEpoch: args.currentEpoch,
+      });
+
+      return {
+        event,
+        dogDied:
+          event.status === "TREATED_DIED" ||
+          event.status === "DECLINED_DIED" ||
+          event.status === "EXPIRED_DIED",
+      };
+    }
+
     ensureDogIsAlive(event.dog);
 
     if (args.currentEpoch >= event.responseDeadlineEpoch) {
@@ -451,6 +583,45 @@ export async function authorizeEmergencyTreatment(args: {
       treatmentOutcome === "SURVIVED" ? "TREATED_SURVIVED" : "TREATED_DIED";
     const balanceAfter = kennel.balance - event.treatmentCost;
 
+    const update = await tx.dogEmergencyCareEvent.updateMany({
+      where: {
+        id: event.id,
+        status: "PENDING",
+        responseDeadlineEpoch: {
+          gt: args.currentEpoch,
+        },
+      },
+      data: {
+        status,
+        paidAtEpoch: args.currentEpoch,
+        resolvedAtEpoch: args.currentEpoch,
+        treatmentOutcome,
+        outcomeRollBps,
+      },
+    });
+
+    if (update.count === 0) {
+      const resolvedEvent = await tx.dogEmergencyCareEvent.findUniqueOrThrow({
+        where: { id: event.id },
+      });
+
+      await markRelatedEmergencyNoticeHandled({
+        tx,
+        kennelId: args.kennelId,
+        dogId: event.dogId,
+        emergencyCareEventId: event.id,
+        currentEpoch: args.currentEpoch,
+      });
+
+      return {
+        event: resolvedEvent,
+        dogDied:
+          resolvedEvent.status === "TREATED_DIED" ||
+          resolvedEvent.status === "DECLINED_DIED" ||
+          resolvedEvent.status === "EXPIRED_DIED",
+      };
+    }
+
     await tx.kennel.update({
       where: { id: kennel.id },
       data: {
@@ -475,27 +646,14 @@ export async function authorizeEmergencyTreatment(args: {
       },
     });
 
-    const update = await tx.dogEmergencyCareEvent.updateMany({
+    await tx.dogEmergencyCareEvent.update({
       where: {
         id: event.id,
-        status: "PENDING",
-        responseDeadlineEpoch: {
-          gt: args.currentEpoch,
-        },
       },
       data: {
-        status,
-        paidAtEpoch: args.currentEpoch,
-        resolvedAtEpoch: args.currentEpoch,
-        treatmentOutcome,
-        outcomeRollBps,
         ledgerTransactionId: ledgerTransaction.id,
       },
     });
-
-    if (update.count === 0) {
-      throw new Error("Emergency care has already been resolved.");
-    }
 
     let dogDied = false;
     if (status === "TREATED_DIED") {
@@ -505,6 +663,14 @@ export async function authorizeEmergencyTreatment(args: {
         currentEpoch: args.currentEpoch,
       });
     }
+
+    await markRelatedEmergencyNoticeHandled({
+      tx,
+      kennelId: args.kennelId,
+      dogId: event.dogId,
+      emergencyCareEventId: event.id,
+      currentEpoch: args.currentEpoch,
+    });
 
     const resolvedEvent = await tx.dogEmergencyCareEvent.findUniqueOrThrow({
       where: { id: event.id },

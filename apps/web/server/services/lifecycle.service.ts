@@ -1,6 +1,9 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { createPendingEmergencyForAccidentIllnessDeath } from "@/server/services/emergencyVetCare.service";
+import {
+  createPendingEmergencyForAccidentIllnessDeath,
+  getEmergencyVetCareNoticeSourceKey,
+} from "@/server/services/emergencyVetCare.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import {
   ACCIDENT_ILLNESS_LIFETIME_DEATH_RATE,
@@ -32,6 +35,7 @@ type DeathCandidate = {
   birthEpoch: number;
   deathEpoch: number | null;
   lifecycleState: string;
+  marketState: string;
   originType: string;
   litterId: string | null;
   healthConditionTruths?: Array<{
@@ -411,6 +415,7 @@ async function resolveDogDeathsWithClient(args: {
       birthEpoch: true,
       deathEpoch: true,
       lifecycleState: true,
+      marketState: true,
       originType: true,
       litterId: true,
       healthConditionTruths: {
@@ -460,28 +465,43 @@ async function resolveDogDeathsWithClient(args: {
     const { deathEpoch, cause } = projected;
 
     if (cause === "ACCIDENT_ILLNESS") {
+      if (!dog.ownerKennelId || dog.marketState === "LISTED_NPC") {
+        continue;
+      }
+
       const emergencyCareEvent =
         await createPendingEmergencyForAccidentIllnessDeath({
           client,
           dogId: dog.id,
           kennelIdAtEvent: dog.ownerKennelId,
           createdAtEpoch: args.currentEpoch,
+          projectedDeathEpoch: deathEpoch,
           costRollBps: Math.floor(
             seeded01(`${dog.id}:accident-illness:emergency-cost`) * 10_000
           ),
           outcomeSeed: `${dog.id}:accident-illness:${deathEpoch}`,
         });
 
-      if (dog.ownerKennelId) {
+      if (emergencyCareEvent.status === "PENDING") {
+        const noticeSourceKey = getEmergencyVetCareNoticeSourceKey(
+          emergencyCareEvent.id
+        );
         const existingNotice = await client.kennelNotice.findFirst({
           where: {
             kennelId: dog.ownerKennelId,
             type: "KENNEL_SERVICE",
             linkedDogId: dog.id,
-            metadataJson: {
-              path: ["emergencyCareEventId"],
-              equals: emergencyCareEvent.id,
-            },
+            OR: [
+              {
+                sourceKey: noticeSourceKey,
+              },
+              {
+                metadataJson: {
+                  path: ["emergencyCareEventId"],
+                  equals: emergencyCareEvent.id,
+                },
+              },
+            ],
           },
           select: { id: true },
         });
@@ -490,6 +510,7 @@ async function resolveDogDeathsWithClient(args: {
           await createKennelNotice({
             client,
             kennelId: dog.ownerKennelId,
+            sourceKey: noticeSourceKey,
             type: "KENNEL_SERVICE",
             title: "Emergency vet care required",
             body: `${formatDogDisplayName(dog)} has a serious medical emergency and needs a care decision.`,

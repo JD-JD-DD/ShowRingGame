@@ -1008,6 +1008,7 @@ model DogEmergencyCareEvent {
   id                         String                        @id @default(cuid())
   dogId                      String
   kennelIdAtEvent            String?
+  sourceKey                  String?                       @unique
   emergencyType              DogEmergencyCareType
   status                     DogEmergencyCareStatus        @default(PENDING)
   createdAtEpoch             Int
@@ -1214,6 +1215,7 @@ model BulletinPost {
 model KennelNotice {
   id              String           @id @default(cuid())
   kennelId        String
+  sourceKey       String?          @unique
   type            KennelNoticeType
   title           String
   body            String?

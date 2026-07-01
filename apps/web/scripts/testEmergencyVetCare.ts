@@ -7,6 +7,8 @@ import {
   createPendingEmergencyForAccidentIllnessDeath,
   EMERGENCY_VET_CARE_COST_TIERS,
   EMERGENCY_VET_CARE_RESPONSE_WINDOW_HOURS,
+  getAccidentIllnessEmergencySourceKey,
+  getEmergencyVetCareNoticeSourceKey,
   getEmergencyVetCareCostTierWeightTotalBps,
   selectEmergencyVetCareCostTier,
   selectEmergencyVetCareCostTierFromRollBps,
@@ -17,7 +19,7 @@ import {
   type EmergencyVetCareClient,
 } from "../server/services/emergencyVetCare.service";
 
-const root = process.cwd();
+const root = join(__dirname, "../../..");
 
 function source(path: string): string {
   return readFileSync(join(root, path), "utf8");
@@ -58,11 +60,30 @@ function createFakeEmergencyVetCareClient(
         const where = args.where;
 
         return (
-          events.find(
-            (event) =>
-              event.dogId === where?.dogId &&
-              event.status === where?.status
-          ) ?? null
+          events.find((event) => {
+            if (where?.sourceKey && event.sourceKey !== where.sourceKey) {
+              return false;
+            }
+
+            if (where?.dogId && event.dogId !== where.dogId) {
+              return false;
+            }
+
+            if (typeof where?.status === "string") {
+              return event.status === where.status;
+            }
+
+            if (
+              typeof where?.status === "object" &&
+              where.status !== null &&
+              "not" in where.status &&
+              event.status === where.status.not
+            ) {
+              return false;
+            }
+
+            return true;
+          }) ?? null
         );
       },
       async create(args) {
@@ -73,6 +94,7 @@ function createFakeEmergencyVetCareClient(
           id: `emergency-${events.length + 1}`,
           dogId: data.dogId,
           kennelIdAtEvent: data.kennelIdAtEvent ?? null,
+          sourceKey: data.sourceKey ?? null,
           emergencyType: data.emergencyType,
           status: data.status ?? "PENDING",
           createdAtEpoch: data.createdAtEpoch,
@@ -188,6 +210,9 @@ const showEntryPlanner = source("apps/web/app/shows/[showId]/ShowEntryPlanner.ts
 const showEntryRoute = source("apps/web/app/api/shows/[showId]/enter/route.ts");
 const breedingService = source("apps/web/server/services/breeding.service.ts");
 const marketService = source("apps/web/server/services/market.service.ts");
+const foundationDogService = source(
+  "apps/web/server/services/foundationDog.service.ts"
+);
 const groomingService = source("apps/web/server/services/grooming.service.ts");
 const rehomeService = source("apps/web/server/services/rehome.service.ts");
 const dogService = source("apps/web/server/services/dog.service.ts");
@@ -578,14 +603,65 @@ assertIncludes(
   "emergencyCareEventId",
   "emergency notices are deduped by event id metadata"
 );
+assertIncludes(
+  emergencyVetCareService,
+  "getAccidentIllnessEmergencySourceKey",
+  "emergency service exposes deterministic accident/illness source keys"
+);
+assertIncludes(
+  emergencyVetCareService,
+  "sourceKey",
+  "emergency service writes durable source keys"
+);
+assertIncludes(
+  emergencyVetCareService,
+  "isUniqueConstraintError",
+  "emergency creation handles unique-key races by rereading"
+);
+assertBefore(
+  emergencyVetCareService,
+  "const update = await tx.dogEmergencyCareEvent.updateMany({",
+  "const ledgerTransaction = await tx.ledgerTransaction.create({",
+  "treatment claims the pending event before creating a ledger debit"
+);
+assertIncludes(
+  emergencyVetCareService,
+  "markRelatedEmergencyNoticeHandled",
+  "treatment marks related emergency notices handled"
+);
+assertIncludes(
+  lifecycleService,
+  'dog.marketState === "LISTED_NPC"',
+  "lifecycle skips accident/illness emergency creation for listed NPC dogs"
+);
+assertIncludes(
+  lifecycleService,
+  'emergencyCareEvent.status === "PENDING"',
+  "lifecycle only creates notices for pending emergency events"
+);
+assertIncludes(
+  lifecycleService,
+  "getEmergencyVetCareNoticeSourceKey",
+  "lifecycle uses durable source keys for emergency notices"
+);
+assertIncludes(
+  foundationDogService,
+  'canceledReason: "Canceled during foundation purchase; event originated while system-owned."',
+  "foundation purchase cancels stale system-owned pending emergencies"
+);
 
 async function main(): Promise<void> {
   const events: DogEmergencyCareEvent[] = [];
   const fakeClient = createFakeEmergencyVetCareClient(events);
+  const emergencySourceKey = getAccidentIllnessEmergencySourceKey({
+    dogId: "dog-1",
+    projectedDeathEpoch: 990,
+  });
   const firstEmergency = await createPendingEmergencyForAccidentIllnessDeath({
     dogId: "dog-1",
     kennelIdAtEvent: "kennel-1",
     createdAtEpoch: 1_000,
+    projectedDeathEpoch: 990,
     costRollBps: 0,
     outcomeSeed: "seed-1",
     client: fakeClient,
@@ -594,6 +670,7 @@ async function main(): Promise<void> {
     dogId: "dog-1",
     kennelIdAtEvent: "kennel-1",
     createdAtEpoch: 1_100,
+    projectedDeathEpoch: 990,
     costRollBps: 9_999,
     outcomeSeed: "seed-2",
     client: fakeClient,
@@ -605,6 +682,11 @@ async function main(): Promise<void> {
     "pending emergency creation reuses an existing pending event"
   );
   assert.equal(events.length, 1, "pending emergency creation is idempotent");
+  assert.equal(
+    firstEmergency.sourceKey,
+    emergencySourceKey,
+    "created emergency stores deterministic accident/illness source key"
+  );
   assert.equal(
     firstEmergency.emergencyType,
     "ACCIDENT_ILLNESS",
@@ -642,6 +724,34 @@ async function main(): Promise<void> {
     () => assertDogHasNoPendingEmergencyCare("dog-1", fakeClient),
     /pending emergency vet-care event/,
     "action-lock helper rejects dogs with pending emergency care"
+  );
+
+  firstEmergency.status = "TREATED_SURVIVED";
+  firstEmergency.resolvedAtEpoch = 1_002;
+  const resolvedReuse = await createPendingEmergencyForAccidentIllnessDeath({
+    dogId: "dog-1",
+    kennelIdAtEvent: "kennel-1",
+    createdAtEpoch: 1_200,
+    projectedDeathEpoch: 990,
+    costRollBps: 9_999,
+    outcomeSeed: "seed-3",
+    client: fakeClient,
+  });
+
+  assert.equal(
+    resolvedReuse.id,
+    firstEmergency.id,
+    "resolved accident/illness event is reused for the same source key"
+  );
+  assert.equal(
+    events.length,
+    1,
+    "resolved accident/illness event does not regenerate after treatment"
+  );
+  assert.equal(
+    getEmergencyVetCareNoticeSourceKey(firstEmergency.id),
+    "EMERGENCY_VET_CARE:emergency-1",
+    "emergency notice source key is stable by emergency event id"
   );
 
   const safeActionPayload = toEmergencyCareActionResponsePayload({

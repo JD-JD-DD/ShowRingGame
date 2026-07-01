@@ -956,6 +956,20 @@ export async function buyFoundationDog(args: {
       },
     });
 
+    await tx.dogEmergencyCareEvent.updateMany({
+      where: {
+        dogId: listing.dog.id,
+        kennelIdAtEvent: null,
+        status: "PENDING",
+      },
+      data: {
+        status: "CANCELED",
+        resolvedAtEpoch: currentEpoch,
+        canceledAtEpoch: currentEpoch,
+        canceledReason: "Canceled during foundation purchase; event originated while system-owned.",
+      },
+    });
+
     await tx.dogListing.update({
       where: { id: listing.id },
       data: {
