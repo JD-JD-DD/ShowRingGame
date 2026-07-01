@@ -39,6 +39,32 @@ const LEGACY_YEAR_13_REGULAR_CLUSTER_ID =
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
+type RefundSourceLedger = {
+  id: string;
+  kennelId: string;
+  transactionType: LedgerTransactionType;
+  amount: number;
+  occurredAtEpoch: number;
+  showClusterId: string;
+};
+
+export type Year13RepairKennelBalanceUpdate = {
+  kennelId: string;
+  balance: number;
+  refundAmount: number;
+};
+
+export type Year13RepairPreparedRefundWrites = {
+  ledgerRows: Prisma.LedgerTransactionCreateManyInput[];
+  balanceUpdates: Year13RepairKennelBalanceUpdate[];
+  refundedAmount: number;
+};
+
+export type Year13RepairReplacementCreateRows = {
+  clusterRows: Prisma.ShowClusterCreateManyInput[];
+  showDayRows: Prisma.ShowDayCreateManyInput[];
+};
+
 export type Year13RepairClusterInput = {
   id: string;
   name: string;
@@ -247,6 +273,58 @@ function addRefundByType(
   current.amount += transaction.amount;
   current.refundAmount += getRefundAmount(transaction);
   refundByType.set(transaction.transactionType, current);
+}
+
+export function prepareYear13RepairRefundWrites(args: {
+  debitLedgers: RefundSourceLedger[];
+  kennelBalances: Map<string, number>;
+  currentEpoch: number;
+}): Year13RepairPreparedRefundWrites {
+  const runningBalances = new Map(args.kennelBalances);
+  const refundAmountsByKennel = new Map<string, number>();
+  const ledgerRows: Prisma.LedgerTransactionCreateManyInput[] = [];
+  let refundedAmount = 0;
+
+  for (const refund of args.debitLedgers) {
+    const currentBalance = runningBalances.get(refund.kennelId);
+
+    if (currentBalance == null) {
+      throw new Error(`Kennel ${refund.kennelId} not found for refund.`);
+    }
+
+    const refundAmount = getRefundAmount(refund);
+    const nextBalance = currentBalance + refundAmount;
+    runningBalances.set(refund.kennelId, nextBalance);
+    refundAmountsByKennel.set(
+      refund.kennelId,
+      (refundAmountsByKennel.get(refund.kennelId) ?? 0) + refundAmount
+    );
+    refundedAmount += refundAmount;
+    ledgerRows.push({
+      kennelId: refund.kennelId,
+      transactionType: LedgerTransactionType.REFUND,
+      amount: refundAmount,
+      balanceAfter: nextBalance,
+      occurredAtEpoch: args.currentEpoch,
+      showClusterId: refund.showClusterId,
+      memo: `${REFUND_MEMO_PREFIX}: ${refund.transactionType} ${refund.showClusterId}.`,
+      metadataJson: {
+        sourceLedgerTransactionId: refund.id,
+        sourceTransactionType: refund.transactionType,
+        year: YEAR_13,
+      },
+    });
+  }
+
+  const balanceUpdates = [...refundAmountsByKennel.entries()]
+    .map(([kennelId, refundAmount]) => ({
+      kennelId,
+      balance: runningBalances.get(kennelId) ?? 0,
+      refundAmount,
+    }))
+    .sort((a, b) => a.kennelId.localeCompare(b.kennelId));
+
+  return { ledgerRows, balanceUpdates, refundedAmount };
 }
 
 function getKennelStat(
@@ -520,6 +598,12 @@ export function buildYear13RegularShowRepairPlan(args: {
     blockers.push("Service claims exist on targeted Year 13 clusters.");
   }
 
+  if ((args.existingCorrectedReplacementClusterIds?.size ?? 0) > 0) {
+    blockers.push(
+      "Corrected Year 13 replacement clusters already exist; refusing to run repair again."
+    );
+  }
+
   const refundByKennel = [...kennelStats.values()].sort(
     (a, b) =>
       b.entryCount - a.entryCount ||
@@ -702,22 +786,17 @@ function getYear13WeekStartEpoch(weekInYear: number): number {
   return (YEAR_13 - 1) * SHOW_YEAR_HOURS + (weekInYear - 1) * SHOW_WEEK_HOURS;
 }
 
-async function createCorrectedReplacementClusters(args: {
-  client: Prisma.TransactionClient;
+export function prepareCorrectedReplacementClusterCreateRows(args: {
   targetRows: AnnualShowScheduleRow[];
   existingCorrectedReplacementClusterIds: Set<string>;
-}): Promise<number> {
-  const judges = await args.client.judge.findMany({
-    where: { isActive: true },
-    orderBy: [{ judgeCode: "asc" }, { name: "asc" }],
-    select: { id: true },
-  });
-
-  if (judges.length === 0) {
+  judgeIds: string[];
+}): Year13RepairReplacementCreateRows {
+  if (args.judgeIds.length === 0) {
     throw new Error("Cannot create corrected Year 13 replacement shows without active judges.");
   }
 
-  let createdClusterCount = 0;
+  const clusterRows: Prisma.ShowClusterCreateManyInput[] = [];
+  const showDayRows: Prisma.ShowDayCreateManyInput[] = [];
 
   for (const row of args.targetRows) {
     if (!row.isRegularCircuit || row.weekInYear === 52) {
@@ -744,34 +823,66 @@ async function createCorrectedReplacementClusters(args: {
     const entryOpenEpoch = Math.max(0, startEpoch - row.entryOpenLeadHours);
     const entryCloseEpoch = Math.max(0, startEpoch - row.entryCloseOffsetHours);
 
-    await args.client.showCluster.create({
-      data: {
-        id: clusterId,
-        name: row.showName,
-        year: YEAR_13,
-        district: row.district,
-        startEpoch,
-        endEpoch,
-        entryOpenEpoch,
-        entryCloseEpoch,
-        status: ShowClusterStatus.SCHEDULED,
-        showDays: {
-          create: row.showDayOffsets.map((dayOffset, dayOffsetIndex) => ({
-            scheduledEpoch: weekStartEpoch + dayOffset,
-            dayIndex: dayOffsetIndex + 1,
-            judgeId:
-              judges[
-                (row.weekInYear + slotIndex + dayOffsetIndex) % judges.length
-              ].id,
-            status: ShowDayStatus.SCHEDULED,
-          })),
-        },
-      },
+    clusterRows.push({
+      id: clusterId,
+      name: row.showName,
+      year: YEAR_13,
+      district: row.district,
+      startEpoch,
+      endEpoch,
+      entryOpenEpoch,
+      entryCloseEpoch,
+      status: ShowClusterStatus.SCHEDULED,
     });
-    createdClusterCount += 1;
+
+    for (const [dayOffsetIndex, dayOffset] of row.showDayOffsets.entries()) {
+      showDayRows.push({
+        clusterId,
+        scheduledEpoch: weekStartEpoch + dayOffset,
+        dayIndex: dayOffsetIndex + 1,
+        judgeId:
+          args.judgeIds[
+            (row.weekInYear + slotIndex + dayOffsetIndex) % args.judgeIds.length
+          ],
+        status: ShowDayStatus.SCHEDULED,
+      });
+    }
   }
 
-  return createdClusterCount;
+  return { clusterRows, showDayRows };
+}
+
+async function createCorrectedReplacementClusters(args: {
+  client: Prisma.TransactionClient;
+  targetRows: AnnualShowScheduleRow[];
+  existingCorrectedReplacementClusterIds: Set<string>;
+}): Promise<number> {
+  const judges = await args.client.judge.findMany({
+    where: { isActive: true },
+    orderBy: [{ judgeCode: "asc" }, { name: "asc" }],
+    select: { id: true },
+  });
+  const { clusterRows, showDayRows } = prepareCorrectedReplacementClusterCreateRows({
+    targetRows: args.targetRows,
+    existingCorrectedReplacementClusterIds: args.existingCorrectedReplacementClusterIds,
+    judgeIds: judges.map((judge) => judge.id),
+  });
+
+  if (clusterRows.length === 0) {
+    return 0;
+  }
+
+  const createdClusters = await args.client.showCluster.createMany({
+    data: clusterRows,
+  });
+
+  if (showDayRows.length > 0) {
+    await args.client.showDay.createMany({
+      data: showDayRows,
+    });
+  }
+
+  return createdClusters.count;
 }
 
 export async function getYear13RegularShowRepairPlan(
@@ -887,7 +998,7 @@ export async function executeYear13RegularShowRepair(args: {
     const weekendPlanIds = clusters.flatMap((cluster) =>
       cluster.primaryWeekendPlans.map((plan) => plan.id)
     );
-    const debitLedgers = clusters.flatMap((cluster) =>
+    const debitLedgers: RefundSourceLedger[] = clusters.flatMap((cluster) =>
       cluster.ledgerTransactions
         .filter(
           (transaction) =>
@@ -898,55 +1009,37 @@ export async function executeYear13RegularShowRepair(args: {
           ...transaction,
           showClusterId: cluster.id,
         }))
+    ).sort(
+      (a, b) =>
+        a.kennelId.localeCompare(b.kennelId) ||
+        a.occurredAtEpoch - b.occurredAtEpoch ||
+        a.id.localeCompare(b.id)
     );
-    const refundsByKennel = new Map<string, typeof debitLedgers>();
-
-    for (const transaction of debitLedgers) {
-      const kennelRefunds = refundsByKennel.get(transaction.kennelId) ?? [];
-      kennelRefunds.push(transaction);
-      refundsByKennel.set(transaction.kennelId, kennelRefunds);
-    }
 
     const currentEpoch = getCurrentEpoch();
-    let refundedAmount = 0;
+    const kennelIds = [...new Set(debitLedgers.map((ledger) => ledger.kennelId))];
+    const kennels = await tx.kennel.findMany({
+      where: { id: { in: kennelIds } },
+      select: { id: true, balance: true },
+    });
+    const refundWrites = prepareYear13RepairRefundWrites({
+      debitLedgers,
+      kennelBalances: new Map(
+        kennels.map((kennel) => [kennel.id, kennel.balance])
+      ),
+      currentEpoch,
+    });
 
-    for (const [kennelId, refunds] of refundsByKennel.entries()) {
-      const kennel = await tx.kennel.findUnique({
-        where: { id: kennelId },
-        select: { balance: true },
+    if (refundWrites.ledgerRows.length > 0) {
+      await tx.ledgerTransaction.createMany({
+        data: refundWrites.ledgerRows,
       });
+    }
 
-      if (!kennel) {
-        throw new Error(`Kennel ${kennelId} not found for refund.`);
-      }
-
-      let runningBalance = kennel.balance;
-
-      for (const refund of refunds) {
-        const refundAmount = getRefundAmount(refund);
-        runningBalance += refundAmount;
-        refundedAmount += refundAmount;
-        await tx.ledgerTransaction.create({
-          data: {
-            kennelId,
-            transactionType: LedgerTransactionType.REFUND,
-            amount: refundAmount,
-            balanceAfter: runningBalance,
-            occurredAtEpoch: currentEpoch,
-            showClusterId: refund.showClusterId,
-            memo: `${REFUND_MEMO_PREFIX}: ${refund.transactionType} ${refund.showClusterId}.`,
-            metadataJson: {
-              sourceLedgerTransactionId: refund.id,
-              sourceTransactionType: refund.transactionType,
-              year: YEAR_13,
-            },
-          },
-        });
-      }
-
+    for (const update of refundWrites.balanceUpdates) {
       await tx.kennel.update({
-        where: { id: kennelId },
-        data: { balance: runningBalance },
+        where: { id: update.kennelId },
+        data: { balance: update.balance },
       });
     }
 
@@ -998,9 +1091,12 @@ export async function executeYear13RegularShowRepair(args: {
 
     return {
       plan,
-      refundedAmount,
+      refundedAmount: refundWrites.refundedAmount,
       archivedClusterCount,
       createdReplacementClusterCount,
     };
+  }, {
+    maxWait: 10_000,
+    timeout: 60_000,
   });
 }

@@ -5,6 +5,8 @@ import { LedgerTransactionType, ShowEntryStatus } from "@prisma/client";
 import {
   buildYear13RegularShowRepairPlan,
   getExecuteAuthorizationBlockers,
+  prepareCorrectedReplacementClusterCreateRows,
+  prepareYear13RepairRefundWrites,
   type Year13RepairClusterInput,
 } from "../server/services/year13RegularShowRepair.service";
 import {
@@ -184,6 +186,92 @@ assert.equal(plan.totals.weekendPlansToDelete, 1);
 assert.equal(plan.repairActions.entryAction.status, ShowEntryStatus.INELIGIBLE);
 assert.notEqual(plan.repairActions.entryAction.status, ShowEntryStatus.ENTERED);
 assert.notEqual(plan.repairActions.entryAction.status, ShowEntryStatus.JUDGED);
+assert.equal(plan.repairActions.weekendPlanAction.action, "DELETE");
+assert.equal(
+  plan.repairActions.clusterAction.recommendation,
+  "ARCHIVE_OLD_AND_CREATE_REPLACEMENTS_WITH_DISTINCT_IDS"
+);
+
+const preparedRefundWrites = prepareYear13RepairRefundWrites({
+  currentEpoch: 5000,
+  kennelBalances: new Map([
+    ["kennel-1", 1000],
+    ["kennel-2", 2000],
+  ]),
+  debitLedgers: [
+    {
+      id: "ledger-1",
+      kennelId: "kennel-1",
+      transactionType: LedgerTransactionType.SHOW_ENTRY_FEE,
+      amount: -100,
+      occurredAtEpoch: 1,
+      showClusterId: "generated-year-13-week-1-slot-1",
+    },
+    {
+      id: "ledger-2",
+      kennelId: "kennel-1",
+      transactionType: LedgerTransactionType.TRAVEL_COST,
+      amount: -25,
+      occurredAtEpoch: 2,
+      showClusterId: "generated-year-13-week-1-slot-1",
+    },
+    {
+      id: "ledger-3",
+      kennelId: "kennel-2",
+      transactionType: LedgerTransactionType.HANDLER_FEE,
+      amount: -50,
+      occurredAtEpoch: 3,
+      showClusterId: "generated-year-13-week-1-slot-2",
+    },
+  ],
+});
+
+assert.equal(preparedRefundWrites.ledgerRows.length, 3);
+assert.equal(preparedRefundWrites.refundedAmount, 175);
+assert.deepEqual(
+  preparedRefundWrites.balanceUpdates.map((update) => ({
+    kennelId: update.kennelId,
+    balance: update.balance,
+    refundAmount: update.refundAmount,
+  })),
+  [
+    { kennelId: "kennel-1", balance: 1125, refundAmount: 125 },
+    { kennelId: "kennel-2", balance: 2050, refundAmount: 50 },
+  ]
+);
+assert.equal(
+  preparedRefundWrites.ledgerRows.every(
+    (row) => row.transactionType === LedgerTransactionType.REFUND
+  ),
+  true
+);
+assert.equal(preparedRefundWrites.ledgerRows[0]?.amount, 100);
+assert.equal(preparedRefundWrites.ledgerRows[1]?.balanceAfter, 1125);
+
+const replacementRows = prepareCorrectedReplacementClusterCreateRows({
+  targetRows: [targetRow()],
+  existingCorrectedReplacementClusterIds: new Set(),
+  judgeIds: ["judge-1", "judge-2"],
+});
+
+assert.equal(replacementRows.clusterRows.length, 1);
+assert.equal(replacementRows.showDayRows.length, 4);
+assert.equal(
+  replacementRows.clusterRows[0]?.id,
+  "generated-year-13-fixed-week-1-slot-1"
+);
+assert.equal(replacementRows.showDayRows[0]?.clusterId, replacementRows.clusterRows[0]?.id);
+
+const skippedReplacementRows = prepareCorrectedReplacementClusterCreateRows({
+  targetRows: [targetRow()],
+  existingCorrectedReplacementClusterIds: new Set([
+    "generated-year-13-fixed-week-1-slot-1",
+  ]),
+  judgeIds: ["judge-1"],
+});
+
+assert.equal(skippedReplacementRows.clusterRows.length, 0);
+assert.equal(skippedReplacementRows.showDayRows.length, 0);
 
 assert.equal(
   getYear13CorrectedRegularShowClusterId({ weekInYear: 1, slotIndex: 1 }),
@@ -256,6 +344,48 @@ const unknownDebitPlan = buildYear13RegularShowRepairPlan({
 
 assert.equal(unknownDebitPlan.executeWouldBeAllowed, false);
 assert.match(unknownDebitPlan.blockers.join(" "), /Unsupported Year 13 ledger/);
+
+const existingRefundPlan = buildYear13RegularShowRepairPlan({
+  targetRows: [targetRow()],
+  reservedRows: [],
+  pauseActive: true,
+  clusters: [
+    cluster({
+      ledgerTransactions: [
+        {
+          id: "ledger-refund",
+          kennelId: "kennel-1",
+          transactionType: LedgerTransactionType.REFUND,
+          amount: 100,
+          occurredAtEpoch: 1,
+          memo: "Year 13 schedule correction refund",
+          showEntryId: null,
+          kennel,
+        },
+      ],
+    }),
+  ],
+});
+
+assert.equal(existingRefundPlan.executeWouldBeAllowed, false);
+assert.match(existingRefundPlan.blockers.join(" "), /Existing positive refund/);
+
+const existingReplacementPlan = buildYear13RegularShowRepairPlan({
+  targetRows: [targetRow()],
+  reservedRows: [],
+  pauseActive: true,
+  clusters: [cluster()],
+  existingCorrectedReplacementClusterIds: new Set([
+    "generated-year-13-fixed-week-1-slot-1",
+  ]),
+});
+
+assert.equal(existingReplacementPlan.totals.correctedReplacementClustersToCreate, 0);
+assert.equal(existingReplacementPlan.executeWouldBeAllowed, false);
+assert.match(
+  existingReplacementPlan.blockers.join(" "),
+  /Corrected Year 13 replacement clusters already exist/
+);
 
 assert.deepEqual(
   getExecuteAuthorizationBlockers({
