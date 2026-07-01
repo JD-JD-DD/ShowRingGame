@@ -27,6 +27,16 @@ assertEqual(
   "generated weekend prefix"
 );
 assertEqual(
+  getGeneratedShowWeekendKey("generated-year-13-fixed-week-1-slot-2"),
+  "year-13-week-1",
+  "corrected generated weekend key"
+);
+assertEqual(
+  getGeneratedShowWeekendPrefix("generated-year-13-fixed-week-1-slot-2"),
+  "generated-year-13-fixed-week-1-slot-",
+  "corrected generated weekend prefix"
+);
+assertEqual(
   getShowWeekendKey({
     clusterId: "generated-year-10-week-40-slot-2",
     startEpoch: 0,

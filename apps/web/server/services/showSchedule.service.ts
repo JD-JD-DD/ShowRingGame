@@ -1,7 +1,10 @@
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { seedJudgePanelFromCsv } from "@/server/services/judgePanel.service";
-import { isYear13RegularShowPaused } from "@/server/services/showScheduleMigration.service";
+import {
+  isYear13GeneratedRegularShowClusterId,
+  isYear13RegularShowPaused,
+} from "@/server/services/showScheduleMigration.service";
 import {
   CURRENT_BREED_RELEASE,
   SHOW_ENTRY_CLOSE_OFFSET_HOURS,
@@ -421,12 +424,7 @@ function parseGeneratedClusterId(clusterId: string): {
 }
 
 function isPausedGeneratedRegularClusterId(clusterId: string): boolean {
-  const parsed = parseGeneratedClusterId(clusterId);
-
-  return isYear13RegularShowPaused({
-    id: clusterId,
-    year: parsed?.year ?? null,
-  });
+  return isYear13GeneratedRegularShowClusterId(clusterId);
 }
 
 function hasProtectedGeneratedClusterState(

@@ -8,6 +8,13 @@ import {
   type Year13RepairClusterInput,
 } from "../server/services/year13RegularShowRepair.service";
 import {
+  getYear13CorrectedRegularShowClusterId,
+  isCorrectedYear13RegularShowClusterId,
+  isLegacyYear13RegularShowClusterId,
+  isYear13GeneratedRegularShowClusterId,
+  isYear13RegularShowPaused,
+} from "../server/services/showScheduleMigration.service";
+import {
   parseAnnualShowScheduleCsv,
   validateAnnualShowScheduleRows,
   type AnnualShowScheduleRow,
@@ -164,6 +171,12 @@ const plan = buildYear13RegularShowRepairPlan({
 
 assert.equal(plan.totals.ledgerDebitRowsToRefund, 1);
 assert.equal(plan.totals.totalPositiveRefundAmount, 100);
+assert.equal(plan.totals.oldContaminatedClustersToArchive, 1);
+assert.equal(plan.totals.correctedReplacementClustersToCreate, 1);
+assert.equal(
+  plan.correctedReplacementClustersToCreate[0]?.id,
+  "generated-year-13-fixed-week-1-slot-1"
+);
 assert.equal(plan.refundByType.SHOW_ENTRY_FEE.refundAmount, 100);
 assert.equal(plan.refundByKennel[0]?.entryCount, 1);
 assert.equal(plan.refundByKennel[0]?.refundAmount, 100);
@@ -171,6 +184,34 @@ assert.equal(plan.totals.weekendPlansToDelete, 1);
 assert.equal(plan.repairActions.entryAction.status, ShowEntryStatus.INELIGIBLE);
 assert.notEqual(plan.repairActions.entryAction.status, ShowEntryStatus.ENTERED);
 assert.notEqual(plan.repairActions.entryAction.status, ShowEntryStatus.JUDGED);
+
+assert.equal(
+  getYear13CorrectedRegularShowClusterId({ weekInYear: 1, slotIndex: 1 }),
+  "generated-year-13-fixed-week-1-slot-1"
+);
+assert.equal(
+  isLegacyYear13RegularShowClusterId("generated-year-13-week-1-slot-1"),
+  true
+);
+assert.equal(
+  isLegacyYear13RegularShowClusterId("generated-year-13-fixed-week-1-slot-1"),
+  false
+);
+assert.equal(
+  isCorrectedYear13RegularShowClusterId("generated-year-13-fixed-week-1-slot-1"),
+  true
+);
+assert.equal(
+  isYear13GeneratedRegularShowClusterId("generated-year-13-fixed-week-1-slot-1"),
+  true
+);
+assert.equal(
+  isYear13RegularShowPaused({
+    id: "generated-year-13-fixed-week-1-slot-1",
+    year: 13,
+  }),
+  true
+);
 
 const competitivePlan = buildYear13RegularShowRepairPlan({
   targetRows: [targetRow()],

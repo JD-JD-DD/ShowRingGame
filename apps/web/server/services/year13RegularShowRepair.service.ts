@@ -4,13 +4,21 @@ import path from "node:path";
 import {
   LedgerTransactionType,
   Prisma,
+  ShowClusterStatus,
+  ShowDayStatus,
   ShowEntryStatus,
+  ShowJudgingBlockStatus,
   type PrismaClient,
 } from "@prisma/client";
+import { SHOW_WEEK_HOURS, SHOW_YEAR_HOURS } from "@showring/rules";
 
 import { db } from "../../lib/db";
 import { getCurrentEpoch } from "../../lib/gameClock";
-import { isYear13RegularShowPaused } from "./showScheduleMigration.service";
+import {
+  getYear13CorrectedRegularShowClusterId,
+  isYear13RegularShowPaused,
+  isLegacyYear13RegularShowClusterId,
+} from "./showScheduleMigration.service";
 import {
   parseAnnualShowScheduleCsv,
   validateAnnualShowScheduleRows,
@@ -18,8 +26,6 @@ import {
 } from "../../../../packages/rules/src/showScheduleCsv";
 
 const YEAR_13 = 13;
-const GENERATED_YEAR_13_REGULAR_CLUSTER_ID =
-  /^generated-year-13-week-(\d+)-slot-(\d+)$/;
 const EXECUTE_CONFIRMATION = "YEAR_13_REPAIR_EXECUTE";
 const ENTRY_REPAIR_STATUS: ShowEntryStatus = ShowEntryStatus.INELIGIBLE;
 const REFUND_MEMO_PREFIX = "Year 13 schedule correction refund";
@@ -28,6 +34,8 @@ const ALLOWED_REFUND_SOURCE_TYPES = new Set<LedgerTransactionType>([
   LedgerTransactionType.TRAVEL_COST,
   LedgerTransactionType.HANDLER_FEE,
 ]);
+const LEGACY_YEAR_13_REGULAR_CLUSTER_ID =
+  /^generated-year-13-week-(\d+)-slot-(\d+)$/;
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
@@ -138,6 +146,8 @@ export type Year13RepairPlan = {
     affectedKennels: number;
     totalPositiveRefundAmount: number;
     competitiveHistoryClusters: number;
+    oldContaminatedClustersToArchive: number;
+    correctedReplacementClustersToCreate: number;
   };
   refundByType: Record<string, { count: number; amount: number; refundAmount: number }>;
   refundByKennel: Array<{
@@ -151,6 +161,15 @@ export type Year13RepairPlan = {
   }>;
   clusters: Year13RepairClusterRow[];
   missingCsvTargetClusters: Array<{
+    templateId: string;
+    weekInYear: number;
+    slotIndex: number | null;
+    district: number | null;
+    showName: string;
+    clusterType: string;
+  }>;
+  correctedReplacementClustersToCreate: Array<{
+    id: string;
     templateId: string;
     weekInYear: number;
     slotIndex: number | null;
@@ -188,7 +207,7 @@ function parseGeneratedYear13ClusterId(clusterId: string): {
   slotIndex: number;
   templateId: string;
 } | null {
-  const match = clusterId.match(GENERATED_YEAR_13_REGULAR_CLUSTER_ID);
+  const match = clusterId.match(LEGACY_YEAR_13_REGULAR_CLUSTER_ID);
 
   if (!match) {
     return null;
@@ -270,6 +289,7 @@ export function buildYear13RegularShowRepairPlan(args: {
   targetRows: AnnualShowScheduleRow[];
   reservedRows: AnnualShowScheduleRow[];
   clusters: Year13RepairClusterInput[];
+  existingCorrectedReplacementClusterIds?: Set<string>;
   pauseActive?: boolean;
 }): Year13RepairPlan {
   const blockers: string[] = [];
@@ -407,6 +427,16 @@ export function buildYear13RegularShowRepairPlan(args: {
     }
 
     for (const transaction of cluster.ledgerTransactions) {
+      if (
+        transaction.transactionType === LedgerTransactionType.REFUND &&
+        transaction.amount > 0
+      ) {
+        blockers.push(
+          `Existing positive refund ledger ${transaction.id} found on ${cluster.id}.`
+        );
+        continue;
+      }
+
       if (transaction.amount >= 0) {
         continue;
       }
@@ -465,6 +495,22 @@ export function buildYear13RegularShowRepairPlan(args: {
       showName: row.showName,
       clusterType: row.clusterType,
     }));
+  const correctedReplacementClustersToCreate = targetRegularRows
+    .map((row) => ({
+      id: getYear13CorrectedRegularShowClusterId({
+        weekInYear: row.weekInYear,
+        slotIndex: row.slotIndex ?? 0,
+      }),
+      templateId: row.templateId,
+      weekInYear: row.weekInYear,
+      slotIndex: row.slotIndex,
+      district: row.district,
+      showName: row.showName,
+      clusterType: row.clusterType,
+    }))
+    .filter(
+      (row) => !args.existingCorrectedReplacementClusterIds?.has(row.id)
+    );
 
   if (competitiveHistoryClusters > 0) {
     blockers.push("Competitive-history state exists on targeted Year 13 clusters.");
@@ -502,11 +548,15 @@ export function buildYear13RegularShowRepairPlan(args: {
       affectedKennels: refundByKennel.length,
       totalPositiveRefundAmount,
       competitiveHistoryClusters,
+      oldContaminatedClustersToArchive: args.clusters.length,
+      correctedReplacementClustersToCreate:
+        correctedReplacementClustersToCreate.length,
     },
     refundByType: Object.fromEntries([...refundByType.entries()].sort()),
     refundByKennel,
     clusters,
     missingCsvTargetClusters,
+    correctedReplacementClustersToCreate,
     blockers,
     executeWouldBeAllowed: blockers.length === 0,
     repairActions: {
@@ -564,7 +614,7 @@ async function getRepairClusters(
   return client.showCluster.findMany({
     where: {
       id: {
-        startsWith: `generated-year-${YEAR_13}-`,
+        startsWith: `generated-year-${YEAR_13}-week-`,
       },
     },
     orderBy: [{ startEpoch: "asc" }, { id: "asc" }],
@@ -631,16 +681,113 @@ async function getRepairClusters(
   });
 }
 
+async function getExistingCorrectedReplacementClusterIds(
+  client: DbClient
+): Promise<Set<string>> {
+  const clusters = await client.showCluster.findMany({
+    where: {
+      id: {
+        startsWith: `generated-year-${YEAR_13}-fixed-week-`,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  return new Set(clusters.map((cluster) => cluster.id));
+}
+
+function getYear13WeekStartEpoch(weekInYear: number): number {
+  return (YEAR_13 - 1) * SHOW_YEAR_HOURS + (weekInYear - 1) * SHOW_WEEK_HOURS;
+}
+
+async function createCorrectedReplacementClusters(args: {
+  client: Prisma.TransactionClient;
+  targetRows: AnnualShowScheduleRow[];
+  existingCorrectedReplacementClusterIds: Set<string>;
+}): Promise<number> {
+  const judges = await args.client.judge.findMany({
+    where: { isActive: true },
+    orderBy: [{ judgeCode: "asc" }, { name: "asc" }],
+    select: { id: true },
+  });
+
+  if (judges.length === 0) {
+    throw new Error("Cannot create corrected Year 13 replacement shows without active judges.");
+  }
+
+  let createdClusterCount = 0;
+
+  for (const row of args.targetRows) {
+    if (!row.isRegularCircuit || row.weekInYear === 52) {
+      continue;
+    }
+
+    if (row.slotIndex == null || row.district == null) {
+      throw new Error(`Invalid regular CSV row for ${row.templateId}.`);
+    }
+
+    const slotIndex = row.slotIndex;
+    const clusterId = getYear13CorrectedRegularShowClusterId({
+      weekInYear: row.weekInYear,
+      slotIndex,
+    });
+
+    if (args.existingCorrectedReplacementClusterIds.has(clusterId)) {
+      continue;
+    }
+
+    const weekStartEpoch = getYear13WeekStartEpoch(row.weekInYear);
+    const startEpoch = weekStartEpoch + (row.startDayOffset ?? 0);
+    const endEpoch = weekStartEpoch + (row.endDayOffset ?? 0);
+    const entryOpenEpoch = Math.max(0, startEpoch - row.entryOpenLeadHours);
+    const entryCloseEpoch = Math.max(0, startEpoch - row.entryCloseOffsetHours);
+
+    await args.client.showCluster.create({
+      data: {
+        id: clusterId,
+        name: row.showName,
+        year: YEAR_13,
+        district: row.district,
+        startEpoch,
+        endEpoch,
+        entryOpenEpoch,
+        entryCloseEpoch,
+        status: ShowClusterStatus.SCHEDULED,
+        showDays: {
+          create: row.showDayOffsets.map((dayOffset, dayOffsetIndex) => ({
+            scheduledEpoch: weekStartEpoch + dayOffset,
+            dayIndex: dayOffsetIndex + 1,
+            judgeId:
+              judges[
+                (row.weekInYear + slotIndex + dayOffsetIndex) % judges.length
+              ].id,
+            status: ShowDayStatus.SCHEDULED,
+          })),
+        },
+      },
+    });
+    createdClusterCount += 1;
+  }
+
+  return createdClusterCount;
+}
+
 export async function getYear13RegularShowRepairPlan(
   client: DbClient = db
 ): Promise<Year13RepairPlan> {
   const schedule = loadValidatedTargetSchedule();
-  const clusters = await getRepairClusters(client);
+  const [clusters, existingCorrectedReplacementClusterIds] = await Promise.all([
+    getRepairClusters(client),
+    getExistingCorrectedReplacementClusterIds(client),
+  ]);
 
   return buildYear13RegularShowRepairPlan({
     targetRows: schedule.regularRows,
     reservedRows: schedule.reservedRows,
     clusters,
+    existingCorrectedReplacementClusterIds,
     pauseActive: isYear13RegularShowPaused({
       id: "generated-year-13-week-1-slot-1",
       year: YEAR_13,
@@ -687,7 +834,12 @@ export async function executeYear13RegularShowRepair(args: {
   confirmation?: string;
   executeSecret?: string;
   jobSecret?: string;
-}): Promise<{ plan: Year13RepairPlan; refundedAmount: number }> {
+}): Promise<{
+  plan: Year13RepairPlan;
+  refundedAmount: number;
+  archivedClusterCount: number;
+  createdReplacementClusterCount: number;
+}> {
   const authBlockers = getExecuteAuthorizationBlockers({
     mode: "execute",
     confirmation: args.confirmation,
@@ -700,13 +852,31 @@ export async function executeYear13RegularShowRepair(args: {
   }
 
   return db.$transaction(async (tx) => {
-    const plan = await getYear13RegularShowRepairPlan(tx);
+    const schedule = loadValidatedTargetSchedule();
+    const existingCorrectedReplacementClusterIds =
+      await getExistingCorrectedReplacementClusterIds(tx);
+    const clusters = await getRepairClusters(tx);
+    const plan = buildYear13RegularShowRepairPlan({
+      targetRows: schedule.regularRows,
+      reservedRows: schedule.reservedRows,
+      clusters,
+      existingCorrectedReplacementClusterIds,
+      pauseActive: isYear13RegularShowPaused({
+        id: "generated-year-13-week-1-slot-1",
+        year: YEAR_13,
+      }),
+    });
 
     if (!plan.executeWouldBeAllowed) {
       throw new Error(`Execute blocked: ${plan.blockers.join(" ")}`);
     }
 
-    const clusters = await getRepairClusters(tx);
+    if (
+      clusters.some((cluster) => !isLegacyYear13RegularShowClusterId(cluster.id))
+    ) {
+      throw new Error("Execute target contains a non-legacy Year 13 cluster.");
+    }
+
     const entryIds = clusters.flatMap((cluster) =>
       cluster.showDays.flatMap((showDay) =>
         showDay.showEntries
@@ -793,6 +963,44 @@ export async function executeYear13RegularShowRepair(args: {
       });
     }
 
-    return { plan, refundedAmount };
+    const oldClusterIds = clusters.map((cluster) => cluster.id);
+    const oldShowDayIds = clusters.flatMap((cluster) =>
+      cluster.showDays.map((showDay) => showDay.id)
+    );
+
+    if (oldShowDayIds.length > 0) {
+      await tx.showJudgingBlock.updateMany({
+        where: { showDayId: { in: oldShowDayIds } },
+        data: { status: ShowJudgingBlockStatus.CANCELLED },
+      });
+      await tx.showDay.updateMany({
+        where: { id: { in: oldShowDayIds } },
+        data: { status: ShowDayStatus.CANCELLED },
+      });
+    }
+
+    let archivedClusterCount = 0;
+
+    if (oldClusterIds.length > 0) {
+      const update = await tx.showCluster.updateMany({
+        where: { id: { in: oldClusterIds } },
+        data: { status: ShowClusterStatus.CANCELLED },
+      });
+      archivedClusterCount = update.count;
+    }
+
+    const createdReplacementClusterCount =
+      await createCorrectedReplacementClusters({
+        client: tx,
+        targetRows: schedule.regularRows,
+        existingCorrectedReplacementClusterIds,
+      });
+
+    return {
+      plan,
+      refundedAmount,
+      archivedClusterCount,
+      createdReplacementClusterCount,
+    };
   });
 }

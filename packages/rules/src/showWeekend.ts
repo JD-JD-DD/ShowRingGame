@@ -2,6 +2,8 @@ import { SHOW_WEEK_HOURS, SHOW_YEAR_HOURS } from "../constants/time.constants";
 
 const GENERATED_CLUSTER_ID_PATTERN =
   /^generated-year-(\d+)-week-(\d+)-slot-\d+$/;
+const CORRECTED_GENERATED_CLUSTER_ID_PATTERN =
+  /^generated-year-(\d+)-fixed-week-(\d+)-slot-\d+$/;
 
 function assertNonNegativeInteger(value: number, label: string): void {
   if (!Number.isInteger(value) || value < 0) {
@@ -10,7 +12,9 @@ function assertNonNegativeInteger(value: number, label: string): void {
 }
 
 export function getGeneratedShowWeekendKey(clusterId: string): string | null {
-  const match = clusterId.match(GENERATED_CLUSTER_ID_PATTERN);
+  const match =
+    clusterId.match(GENERATED_CLUSTER_ID_PATTERN) ??
+    clusterId.match(CORRECTED_GENERATED_CLUSTER_ID_PATTERN);
 
   if (!match) {
     return null;
@@ -20,13 +24,19 @@ export function getGeneratedShowWeekendKey(clusterId: string): string | null {
 }
 
 export function getGeneratedShowWeekendPrefix(clusterId: string): string | null {
-  const match = clusterId.match(GENERATED_CLUSTER_ID_PATTERN);
+  const legacyMatch = clusterId.match(GENERATED_CLUSTER_ID_PATTERN);
 
-  if (!match) {
+  if (legacyMatch) {
+    return `generated-year-${legacyMatch[1]}-week-${legacyMatch[2]}-slot-`;
+  }
+
+  const correctedMatch = clusterId.match(CORRECTED_GENERATED_CLUSTER_ID_PATTERN);
+
+  if (!correctedMatch) {
     return null;
   }
 
-  return `generated-year-${match[1]}-week-${match[2]}-slot-`;
+  return `generated-year-${correctedMatch[1]}-fixed-week-${correctedMatch[2]}-slot-`;
 }
 
 export function getShowWeekendStartEpoch(epoch: number): number {

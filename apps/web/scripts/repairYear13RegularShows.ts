@@ -70,6 +70,8 @@ async function main() {
           mode,
           executed: true,
           refundedAmount: result.refundedAmount,
+          archivedClusterCount: result.archivedClusterCount,
+          createdReplacementClusterCount: result.createdReplacementClusterCount,
           plan: summarizePlan(result.plan),
         },
         null,

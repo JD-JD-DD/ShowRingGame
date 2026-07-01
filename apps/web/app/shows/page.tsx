@@ -102,7 +102,9 @@ function entryActivityButtonTone(level: EntryActivityLevel): string {
 }
 
 function getGeneratedTemplateId(clusterId: string): string | null {
-  const match = clusterId.match(/^generated-year-\d+-(week-\d+-slot-\d+)$/);
+  const match =
+    clusterId.match(/^generated-year-\d+-(week-\d+-slot-\d+)$/) ??
+    clusterId.match(/^generated-year-\d+-fixed-(week-\d+-slot-\d+)$/);
 
   return match?.[1] ?? null;
 }

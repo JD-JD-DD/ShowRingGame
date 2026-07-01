@@ -1,5 +1,8 @@
 const YEAR_13_REGULAR_SHOW_PAUSE_YEAR = 13;
-const GENERATED_REGULAR_SHOW_PREFIX = `generated-year-${YEAR_13_REGULAR_SHOW_PAUSE_YEAR}-`;
+const LEGACY_YEAR_13_REGULAR_SHOW_PATTERN =
+  /^generated-year-13-week-\d+-slot-\d+$/;
+const CORRECTED_YEAR_13_REGULAR_SHOW_PATTERN =
+  /^generated-year-13-fixed-week-\d+-slot-\d+$/;
 
 export const YEAR_13_REGULAR_SHOW_PAUSE_MESSAGE =
   "Year 13 regular show entries are temporarily paused while the district circuit schedule is being corrected.";
@@ -9,6 +12,34 @@ type ShowClusterPauseCandidate = {
   year?: number | null;
 };
 
+export function getYear13CorrectedRegularShowClusterId(args: {
+  weekInYear: number;
+  slotIndex: number;
+}): string {
+  return `generated-year-${YEAR_13_REGULAR_SHOW_PAUSE_YEAR}-fixed-week-${args.weekInYear}-slot-${args.slotIndex}`;
+}
+
+export function isLegacyYear13RegularShowClusterId(
+  clusterId: string | null | undefined
+): boolean {
+  return Boolean(clusterId?.match(LEGACY_YEAR_13_REGULAR_SHOW_PATTERN));
+}
+
+export function isCorrectedYear13RegularShowClusterId(
+  clusterId: string | null | undefined
+): boolean {
+  return Boolean(clusterId?.match(CORRECTED_YEAR_13_REGULAR_SHOW_PATTERN));
+}
+
+export function isYear13GeneratedRegularShowClusterId(
+  clusterId: string | null | undefined
+): boolean {
+  return (
+    isLegacyYear13RegularShowClusterId(clusterId) ||
+    isCorrectedYear13RegularShowClusterId(clusterId)
+  );
+}
+
 // TODO: Remove this temporary migration guard after Year 13 generated regular
 // show clusters are corrected to the fixed district circuit rotation.
 export function isYear13RegularShowPaused(
@@ -16,7 +47,7 @@ export function isYear13RegularShowPaused(
 ): boolean {
   return (
     cluster.year === YEAR_13_REGULAR_SHOW_PAUSE_YEAR &&
-    Boolean(cluster.id?.startsWith(GENERATED_REGULAR_SHOW_PREFIX))
+    isYear13GeneratedRegularShowClusterId(cluster.id)
   );
 }
 
