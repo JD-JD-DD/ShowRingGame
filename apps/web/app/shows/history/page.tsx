@@ -7,6 +7,7 @@ import {
   getShowClusterDisplayStatus,
   type ShowDisplayStatus,
 } from "@/server/services/showAvailability.service";
+import { isArchivedYear13LegacyRepairCluster } from "@/server/services/annualShowSchedule.service";
 import {
   getShowDistrictRegionName,
   SHOW_WEEK_HOURS,
@@ -273,7 +274,9 @@ export default async function HistoricalShowResultsPage({
     isInvitationalCluster(cluster.id)
   );
   const regularClusters = clusters.filter(
-    (cluster) => !isInvitationalCluster(cluster.id)
+    (cluster) =>
+      !isInvitationalCluster(cluster.id) &&
+      !isArchivedYear13LegacyRepairCluster(cluster)
   );
 
   return (

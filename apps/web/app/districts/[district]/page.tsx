@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getDistrictPanelStyle } from "@/lib/districtStyles";
+import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import { getAnnualShowCalendarTemplatesForYear } from "@/server/services/annualShowSchedule.service";
 import {
-  generateAnnualShowClusterTemplates,
+  SHOW_YEAR_HOURS,
   getShowDistrictRegion
 } from "@showring/rules";
 
@@ -18,6 +20,8 @@ export default async function DistrictPage({
 
   const district = Number((await params).district);
   if (!Number.isInteger(district)) notFound();
+  const currentEpoch = getCurrentEpoch();
+  const currentYear = Math.floor(currentEpoch / SHOW_YEAR_HOURS) + 1;
 
   let region;
   try {
@@ -28,7 +32,7 @@ export default async function DistrictPage({
 
   const [showSchedule, kennels] = await Promise.all([
     Promise.resolve(
-      generateAnnualShowClusterTemplates()
+      getAnnualShowCalendarTemplatesForYear(currentYear)
         .filter((template) => template.district === district)
         .map((template) => ({
           name: template.name,

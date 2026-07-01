@@ -1,5 +1,10 @@
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import {
+  generateShowClustersInHorizonForScheduleSources,
+  getRuntimeGeneratedShowClusterId,
+  type RuntimeGeneratedShowCluster,
+} from "@/server/services/annualShowSchedule.service";
 import { seedJudgePanelFromCsv } from "@/server/services/judgePanel.service";
 import {
   isYear13GeneratedRegularShowClusterId,
@@ -10,8 +15,6 @@ import {
   SHOW_ENTRY_CLOSE_OFFSET_HOURS,
   SHOW_ENTRY_OPEN_LEAD_HOURS,
   SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
-  type GeneratedShowCluster,
-  generateShowClustersInHorizon,
 } from "@showring/rules";
 import fs from "node:fs";
 import path from "node:path";
@@ -230,8 +233,8 @@ function getBlockStatus(args: {
   return "ENTRY_LOCKED" as const;
 }
 
-function getGeneratedClusterId(cluster: GeneratedShowCluster): string {
-  return `generated-year-${cluster.year}-${cluster.templateId}`;
+function getGeneratedClusterId(cluster: RuntimeGeneratedShowCluster): string {
+  return getRuntimeGeneratedShowClusterId(cluster);
 }
 
 function getSeedEntryOpenEpoch(startEpoch: number): number {
@@ -408,9 +411,9 @@ function parseGeneratedClusterId(clusterId: string): {
   weekInYear: number;
   slotIndex: number;
 } | null {
-  const match = clusterId.match(
-    /^generated-year-(\d+)-week-(\d+)-slot-(\d+)$/
-  );
+  const match =
+    clusterId.match(/^generated-year-(\d+)-week-(\d+)-slot-(\d+)$/) ??
+    clusterId.match(/^generated-year-(\d+)-fixed-week-(\d+)-slot-(\d+)$/);
 
   if (!match) {
     return null;
@@ -467,7 +470,7 @@ function getRingName(groupName: string): string {
 }
 
 function getGeneratedJudgeIndex(args: {
-  cluster: GeneratedShowCluster;
+  cluster: Pick<RuntimeGeneratedShowCluster, "weekIndex" | "slotIndex">;
   dayIndex: number;
   ringNumber: number;
   blockOrder: number;
@@ -566,7 +569,7 @@ function canRepairGeneratedClusterStructure(cluster: {
 
 async function repairGeneratedClusterStructure(args: {
   clusterId: string;
-  cluster: GeneratedShowCluster;
+  cluster: RuntimeGeneratedShowCluster;
   currentEpoch: number;
   showDayEpochs: number[];
   judges: ActiveJudgeForShows[];
@@ -693,7 +696,7 @@ async function ensureJudgingBlocksForShowDays(args: {
             cluster: {
               weekIndex,
               slotIndex,
-            } as GeneratedShowCluster,
+            },
             dayIndex: showDay.dayIndex,
             ringNumber,
             blockOrder,
@@ -771,7 +774,7 @@ export async function ensureGeneratedShowSchedule(args?: {
   const includeJudgingBlocks = args?.includeJudgingBlocks ?? true;
   const horizonHours =
     args?.horizonHours ?? SHOW_INSTANCE_GENERATION_HORIZON_HOURS;
-  const clusters = generateShowClustersInHorizon({
+  const clusters = generateShowClustersInHorizonForScheduleSources({
     currentEpoch,
     horizonHours,
   });

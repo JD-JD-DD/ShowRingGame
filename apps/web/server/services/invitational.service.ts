@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { getWeek51RegularClusterIdsForYear } from "@/server/services/annualShowSchedule.service";
 import { seedJudgePanelFromCsv } from "@/server/services/judgePanel.service";
 import type {
   BreedingAttemptStatus,
@@ -9,7 +10,6 @@ import type {
 import {
   canEnterShows,
   CURRENT_BREED_RELEASE,
-  generateAnnualShowClusterTemplates,
   SHOW_DAY_SAT,
   SHOW_WEEK_HOURS,
   SHOW_YEAR_HOURS,
@@ -106,9 +106,7 @@ function getInvitationalYearForEpoch(currentEpoch: number): number {
 }
 
 function getWeek51ClusterIds(year: number): string[] {
-  return generateAnnualShowClusterTemplates()
-    .filter((template) => template.weekInYear === INVITATIONAL_WEEK_IN_YEAR - 1)
-    .map((template) => `generated-year-${year}-${template.templateId}`);
+  return getWeek51RegularClusterIdsForYear(year);
 }
 
 export type EnsureAnnualInvitationalResult = {

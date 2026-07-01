@@ -6,12 +6,17 @@ import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { buildShowCountdowns } from "@/lib/showCountdowns";
 import { getSessionUserId } from "@/lib/session";
 import {
+  getAnnualShowCalendarTemplatesForYear,
+  getGeneratedRegularTemplateId,
+  isArchivedYear13LegacyRepairCluster,
+  type RuntimeShowClusterTemplate,
+} from "@/server/services/annualShowSchedule.service";
+import {
   getShowClusterDisplayStatus,
   type ShowDisplayStatus,
 } from "@/server/services/showAvailability.service";
 import { getClubStewardingClaimedClusterIds } from "@/server/services/kennelService.service";
 import {
-  generateAnnualShowClusterTemplates,
   getShowDistrictRegionName,
   SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
   SHOW_WEEK_HOURS,
@@ -99,14 +104,6 @@ function entryActivityButtonTone(level: EntryActivityLevel): string {
     case "HEAVY":
       return "border-fuchsia-200/70 bg-purple-600 text-white shadow-[var(--dog-shadow)] hover:bg-purple-500";
   }
-}
-
-function getGeneratedTemplateId(clusterId: string): string | null {
-  const match =
-    clusterId.match(/^generated-year-\d+-(week-\d+-slot-\d+)$/) ??
-    clusterId.match(/^generated-year-\d+-fixed-(week-\d+-slot-\d+)$/);
-
-  return match?.[1] ?? null;
 }
 
 function formatShowDayNames(dayNames: string[]): string {
@@ -198,7 +195,8 @@ export default async function ShowsPage({
     (currentCalendarPosition.year - 1) * SHOW_YEAR_HOURS;
   const calendarDisplayEndEpoch =
     currentEpoch + SHOW_INSTANCE_GENERATION_HORIZON_HOURS + SHOW_WEEK_HOURS;
-  const templates = generateAnnualShowClusterTemplates();
+  const templates: RuntimeShowClusterTemplate[] =
+    getAnnualShowCalendarTemplatesForYear(currentCalendarPosition.year);
 
   const userId = await getSessionUserId();
   const currentKennel = userId
@@ -208,38 +206,40 @@ export default async function ShowsPage({
       })
     : null;
 
-  const clusters = await runPhase("clusterQueryMs", () =>
-    db.showCluster.findMany({
-      where: {
-        startEpoch: {
-          lte: calendarDisplayEndEpoch,
+  const clusters = (
+    await runPhase("clusterQueryMs", () =>
+      db.showCluster.findMany({
+        where: {
+          startEpoch: {
+            lte: calendarDisplayEndEpoch,
+          },
+          endEpoch: {
+            gte: calendarDisplayStartEpoch,
+          },
         },
-        endEpoch: {
-          gte: calendarDisplayStartEpoch,
-        },
-      },
-      orderBy: [{ year: "desc" }, { startEpoch: "desc" }],
-      include: {
-        showDays: {
-          orderBy: [{ dayIndex: "asc" }],
-          include: {
-            _count: {
-              select: {
-                showEntries: {
-                  where: {
-                    entryStatus: {
-                      in: ["ENTERED", "JUDGED"],
+        orderBy: [{ year: "desc" }, { startEpoch: "desc" }],
+        include: {
+          showDays: {
+            orderBy: [{ dayIndex: "asc" }],
+            include: {
+              _count: {
+                select: {
+                  showEntries: {
+                    where: {
+                      entryStatus: {
+                        in: ["ENTERED", "JUDGED"],
+                      },
                     },
                   },
+                  showResults: true,
                 },
-                showResults: true,
               },
             },
           },
         },
-      },
-    })
-  );
+      })
+    )
+  ).filter((cluster) => !isArchivedYear13LegacyRepairCluster(cluster));
   const displayedClusterIds = clusters.map((cluster) => cluster.id);
   const [enteredClusters, stewardedClusterIds] = await runPhase(
     "badgeQueryMs",
@@ -388,7 +388,7 @@ export default async function ShowsPage({
   );
 
   for (const cluster of clusters) {
-    const templateId = getGeneratedTemplateId(cluster.id);
+    const templateId = getGeneratedRegularTemplateId(cluster.id);
 
     if (!templateId) {
       continue;
