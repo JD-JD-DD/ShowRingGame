@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { seedJudgePanelFromCsv } from "@/server/services/judgePanel.service";
+import { isYear13RegularShowPaused } from "@/server/services/showScheduleMigration.service";
 import {
   CURRENT_BREED_RELEASE,
   SHOW_ENTRY_CLOSE_OFFSET_HOURS,
@@ -18,6 +19,24 @@ const GENERATED_SHOW_ENTRY_COUNT_HINT = 2;
 const TERMINAL_CLUSTER_STATUSES = new Set(["COMPLETE", "CANCELLED"]);
 const TERMINAL_DAY_STATUSES = new Set(["RESULTS_PUBLISHED", "CANCELLED"]);
 const TERMINAL_BLOCK_STATUSES = new Set(["RESULTS_PUBLISHED", "CANCELLED"]);
+
+type ProtectedGeneratedClusterState = {
+  _count: {
+    ledgerTransactions: number;
+    primaryWeekendPlans: number;
+    serviceClaims: number;
+  };
+  showDays: Array<{
+    _count: {
+      showEntries: number;
+      showResults: number;
+      showAwards: number;
+      grandChampionCredits: number;
+      grandCompletedTitleProgresses: number;
+      prestigeCredits: number;
+    };
+  }>;
+};
 
 type ShowBlockCsvRow = {
   showName: string;
@@ -322,6 +341,10 @@ export async function repairFutureShowEntryWindows(args?: {
 }
 
 async function deleteEmptyGeneratedCluster(clusterId: string): Promise<boolean> {
+  if (isPausedGeneratedRegularClusterId(clusterId)) {
+    return false;
+  }
+
   const cluster = await db.showCluster.findUnique({
     where: { id: clusterId },
     select: {
@@ -334,6 +357,8 @@ async function deleteEmptyGeneratedCluster(clusterId: string): Promise<boolean> 
               showEntries: true,
               showResults: true,
               showAwards: true,
+              grandChampionCredits: true,
+              grandCompletedTitleProgresses: true,
               prestigeCredits: true,
             },
           },
@@ -343,6 +368,7 @@ async function deleteEmptyGeneratedCluster(clusterId: string): Promise<boolean> 
         select: {
           ledgerTransactions: true,
           primaryWeekendPlans: true,
+          serviceClaims: true,
         },
       },
     },
@@ -351,15 +377,7 @@ async function deleteEmptyGeneratedCluster(clusterId: string): Promise<boolean> 
   if (
     !cluster ||
     TERMINAL_CLUSTER_STATUSES.has(cluster.status) ||
-    cluster._count.ledgerTransactions > 0 ||
-    cluster._count.primaryWeekendPlans > 0 ||
-    cluster.showDays.some(
-      (showDay) =>
-        showDay._count.showEntries > 0 ||
-        showDay._count.showResults > 0 ||
-        showDay._count.showAwards > 0 ||
-        showDay._count.prestigeCredits > 0
-    )
+    hasProtectedGeneratedClusterState(cluster)
   ) {
     return false;
   }
@@ -400,6 +418,34 @@ function parseGeneratedClusterId(clusterId: string): {
     weekInYear: Number(match[2]),
     slotIndex: Number(match[3]) - 1,
   };
+}
+
+function isPausedGeneratedRegularClusterId(clusterId: string): boolean {
+  const parsed = parseGeneratedClusterId(clusterId);
+
+  return isYear13RegularShowPaused({
+    id: clusterId,
+    year: parsed?.year ?? null,
+  });
+}
+
+function hasProtectedGeneratedClusterState(
+  cluster: ProtectedGeneratedClusterState
+): boolean {
+  return (
+    cluster._count.ledgerTransactions > 0 ||
+    cluster._count.primaryWeekendPlans > 0 ||
+    cluster._count.serviceClaims > 0 ||
+    cluster.showDays.some(
+      (showDay) =>
+        showDay._count.showEntries > 0 ||
+        showDay._count.showResults > 0 ||
+        showDay._count.showAwards > 0 ||
+        showDay._count.grandChampionCredits > 0 ||
+        showDay._count.grandCompletedTitleProgresses > 0 ||
+        showDay._count.prestigeCredits > 0
+    )
+  );
 }
 
 function normalizeGroupName(groupName: string | null): string {
@@ -477,11 +523,19 @@ async function getActiveJudgesForShows(): Promise<ActiveJudgeForShows[]> {
 
 function canRepairGeneratedClusterStructure(cluster: {
   status: string;
+  _count: {
+    ledgerTransactions: number;
+    primaryWeekendPlans: number;
+    serviceClaims: number;
+  };
   showDays: Array<{
     status: string;
     _count: {
+      showEntries: number;
       showResults: number;
       showAwards: number;
+      grandChampionCredits: number;
+      grandCompletedTitleProgresses: number;
       prestigeCredits: number;
     };
     judgingBlocks: Array<{
@@ -495,14 +549,12 @@ function canRepairGeneratedClusterStructure(cluster: {
 }, expectedShowDayCount: number): boolean {
   return (
     !TERMINAL_CLUSTER_STATUSES.has(cluster.status) &&
+    !hasProtectedGeneratedClusterState(cluster) &&
     cluster.showDays.length === expectedShowDayCount &&
     cluster.showDays.every(
       (showDay) =>
         showDay.status !== "JUDGING" &&
         !TERMINAL_DAY_STATUSES.has(showDay.status) &&
-        showDay._count.showResults === 0 &&
-        showDay._count.showAwards === 0 &&
-        showDay._count.prestigeCredits === 0 &&
         showDay.judgingBlocks.every(
           (block) =>
             block.status !== "JUDGING" &&
@@ -741,6 +793,10 @@ export async function ensureGeneratedShowSchedule(args?: {
   });
 
   for (const cluster of obsoleteClusters) {
+    if (isPausedGeneratedRegularClusterId(cluster.id)) {
+      continue;
+    }
+
     await deleteEmptyGeneratedCluster(cluster.id);
   }
 
@@ -762,6 +818,11 @@ export async function ensureGeneratedShowSchedule(args?: {
 
   for (const cluster of clusters) {
     const clusterId = getGeneratedClusterId(cluster);
+
+    if (isYear13RegularShowPaused({ id: clusterId, year: cluster.year })) {
+      continue;
+    }
+
     const showDayEpochs = [...cluster.showDayEpochs].sort((a, b) => a - b);
     const clusterStatus = getClusterStatus({
       currentEpoch,
@@ -778,6 +839,13 @@ export async function ensureGeneratedShowSchedule(args?: {
         endEpoch: true,
         entryOpenEpoch: true,
         entryCloseEpoch: true,
+        _count: {
+          select: {
+            ledgerTransactions: true,
+            primaryWeekendPlans: true,
+            serviceClaims: true,
+          },
+        },
         showDays: {
           orderBy: [{ dayIndex: "asc" }],
           select: {
@@ -785,8 +853,11 @@ export async function ensureGeneratedShowSchedule(args?: {
             status: true,
             _count: {
               select: {
+                showEntries: true,
                 showResults: true,
                 showAwards: true,
+                grandChampionCredits: true,
+                grandCompletedTitleProgresses: true,
                 prestigeCredits: true,
               },
             },
@@ -805,6 +876,11 @@ export async function ensureGeneratedShowSchedule(args?: {
         },
       },
     });
+
+    if (existingCluster && hasProtectedGeneratedClusterState(existingCluster)) {
+      continue;
+    }
+
     let generatedStructureRepaired = false;
     const generatedStructureChanged =
       existingCluster &&
