@@ -184,26 +184,106 @@ assertIncludes(
   "Current Run:",
   "multi-run view can show each dog's current run after movement"
 );
+assertIncludes(
+  kennelPanel,
+  "+ Run",
+  "Kennel Runs sidebar renders a compact create run control"
+);
+assertIncludes(
+  kennelPanel,
+  "Run name",
+  "create run form labels the run name field"
+);
+assertIncludes(
+  kennelPanel,
+  "Create Run",
+  "create run form renders a submit action"
+);
+assertIncludes(
+  kennelPanel,
+  "const canCreateRun = newRunName.trim().length > 0 && !creatingRun;",
+  "blank run names cannot be submitted"
+);
+assertIncludes(
+  kennelPanel,
+  'fetch("/api/kennel/runs",',
+  "create run calls the Kennel Runs collection API"
+);
+assertIncludes(
+  kennelPanel,
+  'method: "POST"',
+  "create run uses POST"
+);
+assertIncludes(
+  kennelPanel,
+  "setSelectedRunIds([data.run.id]);",
+  "newly created run is selected predictably"
+);
+assertIncludes(
+  kennelPanel,
+  "!run.isSystem",
+  "rename/delete controls render only for non-system runs"
+);
+assertIncludes(
+  kennelPanel,
+  "Rename Run",
+  "non-system runs expose a rename control"
+);
+assertIncludes(
+  kennelPanel,
+  "startRenameRun(run)",
+  "rename action opens the inline rename form for that run"
+);
+assertIncludes(
+  kennelPanel,
+  'fetch(`/api/kennel/runs/${renamingRunId}`',
+  "rename calls the run detail API"
+);
+assertIncludes(
+  kennelPanel,
+  'method: "PATCH"',
+  "rename uses PATCH"
+);
+assertIncludes(
+  kennelPanel,
+  "Delete Run",
+  "non-system runs expose a delete control"
+);
+assertIncludes(
+  kennelPanel,
+  "Dogs in this run will move to Uncategorized.",
+  "delete confirmation explains dog movement"
+);
+assertIncludes(
+  kennelPanel,
+  'fetch(`/api/kennel/runs/${run.id}`',
+  "delete calls the run detail API"
+);
+assertIncludes(
+  kennelPanel,
+  'method: "DELETE"',
+  "delete uses DELETE"
+);
+assertIncludes(
+  kennelPanel,
+  "nextSelectedRunIds.length > 0",
+  "deleting a selected run preserves remaining selected runs"
+);
+assertIncludes(
+  kennelPanel,
+  "uncategorizedRun",
+  "deleting the last selected run falls back to Uncategorized"
+);
+assertIncludes(
+  kennelPanel,
+  "Moved ${",
+  "delete success can include moved dog count"
+);
 
 assertExcludes(
   kennelPanel,
   "Kennel Areas",
   "legacy area selector label is not shown on the kennel roster"
-);
-assertExcludes(
-  kennelPanel,
-  "New Run",
-  "run creation UI is not shown in Phase 5B"
-);
-assertExcludes(
-  kennelPanel,
-  "Rename Run",
-  "run rename UI is not shown in Phase 5B"
-);
-assertExcludes(
-  kennelPanel,
-  "Delete Run",
-  "run delete UI is not shown in Phase 5B"
 );
 assertExcludes(
   kennelPanel,

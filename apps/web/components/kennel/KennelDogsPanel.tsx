@@ -101,6 +101,19 @@ type MoveDogsResponse = {
   error?: string;
 };
 
+type MutateRunResponse = {
+  ok?: boolean;
+  run?: KennelRunDto;
+  error?: string;
+};
+
+type DeleteRunResponse = {
+  ok?: boolean;
+  runId?: string;
+  movedCount?: number;
+  error?: string;
+};
+
 type GroomingSummaryDto = {
   groomingActionsUsedThisWeek: number;
   groomingActionsRemainingThisWeek: number;
@@ -273,6 +286,16 @@ export default function KennelDogsPanel() {
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [moveDogsLoading, setMoveDogsLoading] = useState(false);
   const [selectedMoveRunId, setSelectedMoveRunId] = useState("");
+  const [showCreateRunForm, setShowCreateRunForm] = useState(false);
+  const [newRunName, setNewRunName] = useState("");
+  const [creatingRun, setCreatingRun] = useState(false);
+  const [renamingRunId, setRenamingRunId] = useState<string | null>(null);
+  const [renameRunName, setRenameRunName] = useState("");
+  const [renameRunLoading, setRenameRunLoading] = useState(false);
+  const [confirmingDeleteRunId, setConfirmingDeleteRunId] = useState<
+    string | null
+  >(null);
+  const [deleteRunLoading, setDeleteRunLoading] = useState(false);
   const [groomingActionDogId, setGroomingActionDogId] = useState<string | null>(
     null
   );
@@ -322,6 +345,9 @@ export default function KennelDogsPanel() {
 
       const nextRuns = data.runs ?? [];
       setRuns(nextRuns);
+      setSelectedMoveRunId((current) =>
+        nextRuns.some((run) => run.id === current) ? current : ""
+      );
       setSelectedRunIds((current) => {
         const validCurrent = current.filter((runId) =>
           nextRuns.some((run) => run.id === runId)
@@ -546,6 +572,8 @@ export default function KennelDogsPanel() {
     filteredDogIds.every((dogId) => selectedDogIds.includes(dogId));
   const canMoveSelectedDogs =
     selectedDogIds.length > 0 && Boolean(selectedMoveRunId) && !moveDogsLoading;
+  const canCreateRun = newRunName.trim().length > 0 && !creatingRun;
+  const canRenameRun = renameRunName.trim().length > 0 && !renameRunLoading;
 
   useEffect(() => {
     setSelectedDogIds((current) =>
@@ -697,6 +725,149 @@ export default function KennelDogsPanel() {
       );
     } finally {
       setMoveDogsLoading(false);
+    }
+  }
+
+  async function createRun() {
+    const name = newRunName.trim();
+
+    if (!name || creatingRun) {
+      return;
+    }
+
+    setCreatingRun(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/kennel/runs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+      });
+      const data = (await response.json()) as MutateRunResponse;
+
+      if (!response.ok || !data.ok || !data.run) {
+        throw new Error(data.error || "Failed to create Kennel Run.");
+      }
+
+      await loadRuns();
+      setSelectedRunIds([data.run.id]);
+      await loadDogs({ preserveLoadingState: true, runIds: [data.run.id] });
+      clearSelection();
+      setNewRunName("");
+      setShowCreateRunForm(false);
+      setMessage(`Created Kennel Run "${data.run.name}".`);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to create Kennel Run."
+      );
+    } finally {
+      setCreatingRun(false);
+    }
+  }
+
+  function startRenameRun(run: KennelRunDto) {
+    if (run.isSystem) {
+      return;
+    }
+
+    setRenamingRunId(run.id);
+    setRenameRunName(run.name);
+    setConfirmingDeleteRunId(null);
+  }
+
+  async function renameRun() {
+    const name = renameRunName.trim();
+
+    if (!renamingRunId || !name || renameRunLoading) {
+      return;
+    }
+
+    setRenameRunLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/kennel/runs/${renamingRunId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+      });
+      const data = (await response.json()) as MutateRunResponse;
+
+      if (!response.ok || !data.ok || !data.run) {
+        throw new Error(data.error || "Failed to rename Kennel Run.");
+      }
+
+      await loadRuns();
+      setRenamingRunId(null);
+      setRenameRunName("");
+      setMessage(`Renamed Kennel Run to "${data.run.name}".`);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to rename Kennel Run."
+      );
+    } finally {
+      setRenameRunLoading(false);
+    }
+  }
+
+  async function deleteRun(run: KennelRunDto) {
+    if (run.isSystem || deleteRunLoading) {
+      return;
+    }
+
+    const uncategorizedRun = runs.find(
+      (candidate) => candidate.name === "Uncategorized" && candidate.isSystem
+    );
+    const nextSelectedRunIds = selectedRunIds.filter(
+      (runId) => runId !== run.id
+    );
+    const selectedAfterDelete =
+      nextSelectedRunIds.length > 0
+        ? nextSelectedRunIds
+        : uncategorizedRun
+          ? [uncategorizedRun.id]
+          : [];
+
+    setDeleteRunLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/kennel/runs/${run.id}`, {
+        method: "DELETE",
+      });
+      const data = (await response.json()) as DeleteRunResponse;
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Failed to delete Kennel Run.");
+      }
+
+      await loadRuns();
+      setSelectedRunIds(selectedAfterDelete);
+      await loadDogs({
+        preserveLoadingState: true,
+        runIds: selectedAfterDelete,
+      });
+      clearSelection();
+      setConfirmingDeleteRunId(null);
+      setMessage(
+        `Deleted Kennel Run "${run.name}". Moved ${
+          data.movedCount ?? 0
+        } dog${(data.movedCount ?? 0) === 1 ? "" : "s"} to Uncategorized.`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to delete Kennel Run."
+      );
+    } finally {
+      setDeleteRunLoading(false);
     }
   }
 
@@ -907,6 +1078,60 @@ export default function KennelDogsPanel() {
             </button>
           </div>
 
+          <button
+            type="button"
+            onClick={() => {
+              setShowCreateRunForm((current) => !current);
+              setRenamingRunId(null);
+              setConfirmingDeleteRunId(null);
+            }}
+            className="theme-secondary-button mt-2 w-full rounded-lg px-3 py-2 text-xs font-semibold"
+          >
+            + Run
+          </button>
+
+          {showCreateRunForm ? (
+            <form
+              className="mt-2 rounded-lg border border-sky-300/20 bg-sky-500/10 p-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void createRun();
+              }}
+            >
+              <label className="grid gap-1.5">
+                <span className="theme-label text-[0.68rem] uppercase tracking-wide">
+                  Run name
+                </span>
+                <input
+                  type="text"
+                  value={newRunName}
+                  onChange={(event) => setNewRunName(event.target.value)}
+                  className="theme-control rounded-lg px-3 py-2 text-sm outline-none"
+                />
+              </label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateRunForm(false);
+                    setNewRunName("");
+                  }}
+                  disabled={creatingRun}
+                  className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!canCreateRun}
+                  className="rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {creatingRun ? "Creating..." : "Create Run"}
+                </button>
+              </div>
+            </form>
+          ) : null}
+
           {runError ? (
             <button
               type="button"
@@ -934,24 +1159,127 @@ export default function KennelDogsPanel() {
             <div className="mt-4 grid max-h-[360px] gap-1.5 overflow-y-auto pr-1 xl:max-h-[calc(100vh-260px)]">
               {runs.map((run) => {
                 const selected = selectedRunIds.includes(run.id);
+                const isRenaming = renamingRunId === run.id;
+                const isConfirmingDelete = confirmingDeleteRunId === run.id;
 
                 return (
-                  <button
+                  <div
                     key={run.id}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => toggleRunSelection(run.id)}
-                    className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
-                      selected
-                        ? "border-fuchsia-200/70 bg-fuchsia-500/20 text-fuchsia-100"
-                        : "theme-neutral-badge hover:opacity-80"
-                    }`}
+                    className="rounded-lg border border-white/10 bg-black/10 p-1.5"
                   >
-                    <span className="truncate">{run.name}</span>
-                    <span className="shrink-0 tabular-nums">
-                      {run.dogCount}
-                    </span>
-                  </button>
+                    {isRenaming ? (
+                      <form
+                        className="grid gap-2"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          void renameRun();
+                        }}
+                      >
+                        <label className="grid gap-1.5">
+                          <span className="theme-label text-[0.68rem] uppercase tracking-wide">
+                            Rename Run
+                          </span>
+                          <input
+                            type="text"
+                            value={renameRunName}
+                            onChange={(event) =>
+                              setRenameRunName(event.target.value)
+                            }
+                            className="theme-control rounded-lg px-3 py-2 text-sm outline-none"
+                          />
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRenamingRunId(null);
+                              setRenameRunName("");
+                            }}
+                            disabled={renameRunLoading}
+                            className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={!canRenameRun}
+                            className="rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-45"
+                          >
+                            {renameRunLoading ? "Saving..." : "Save"}
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => toggleRunSelection(run.id)}
+                          className={`flex w-full min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
+                            selected
+                              ? "border-fuchsia-200/70 bg-fuchsia-500/20 text-fuchsia-100"
+                              : "theme-neutral-badge hover:opacity-80"
+                          }`}
+                        >
+                          <span className="truncate">{run.name}</span>
+                          <span className="shrink-0 tabular-nums">
+                            {run.dogCount}
+                          </span>
+                        </button>
+
+                        {!run.isSystem ? (
+                          <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => startRenameRun(run)}
+                              className="theme-secondary-button rounded-md px-2 py-1 text-[0.68rem] font-semibold"
+                            >
+                              Rename Run
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmingDeleteRunId(run.id);
+                                setRenamingRunId(null);
+                              }}
+                              className="rounded-md border border-red-300/25 bg-red-500/10 px-2 py-1 text-[0.68rem] font-semibold text-red-100 transition hover:bg-red-500/20"
+                            >
+                              Delete Run
+                            </button>
+                          </div>
+                        ) : null}
+
+                        {isConfirmingDelete ? (
+                          <div className="mt-2 rounded-lg border border-red-300/25 bg-red-500/10 p-2">
+                            <div className="text-xs font-semibold text-red-100">
+                              Delete Run?
+                            </div>
+                            <p className="mt-1 text-[0.7rem] leading-5 text-red-100/80">
+                              Dogs in this run will move to Uncategorized.
+                            </p>
+                            <div className="mt-2 grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setConfirmingDeleteRunId(null)}
+                                disabled={deleteRunLoading}
+                                className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void deleteRun(run)}
+                                disabled={deleteRunLoading}
+                                className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
+                              >
+                                {deleteRunLoading ? "Deleting..." : "Delete"}
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
                 );
               })}
             </div>
