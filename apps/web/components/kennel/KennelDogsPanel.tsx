@@ -94,6 +94,13 @@ type KennelRunsResponse = {
   error?: string;
 };
 
+type MoveDogsResponse = {
+  ok?: boolean;
+  targetRunId?: string;
+  movedCount?: number;
+  error?: string;
+};
+
 type GroomingSummaryDto = {
   groomingActionsUsedThisWeek: number;
   groomingActionsRemainingThisWeek: number;
@@ -264,6 +271,8 @@ export default function KennelDogsPanel() {
   const [bulkAction, setBulkAction] = useState<BulkAction>("");
   const [confirmingBulkAction, setConfirmingBulkAction] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [moveDogsLoading, setMoveDogsLoading] = useState(false);
+  const [selectedMoveRunId, setSelectedMoveRunId] = useState("");
   const [groomingActionDogId, setGroomingActionDogId] = useState<string | null>(
     null
   );
@@ -484,6 +493,11 @@ export default function KennelDogsPanel() {
     sortDirection,
   ]);
 
+  const filteredDogIds = useMemo(
+    () => filteredDogs.map((dog) => dog.dogId),
+    [filteredDogs]
+  );
+
   const selectedDogs = useMemo(() => {
     const selected = new Set(selectedDogIds);
     return dogs.filter((dog) => selected.has(dog.dogId));
@@ -524,13 +538,20 @@ export default function KennelDogsPanel() {
   const canApplyBulkAction =
     bulkAction === "show-entry" ||
     (bulkAction === "rehome" && canBulkRehome && !bulkActionLoading);
-  const filteredDogIds = filteredDogs.map((dog) => dog.dogId);
   const selectedVisibleDogCount = filteredDogIds.filter((dogId) =>
     selectedDogIds.includes(dogId)
   ).length;
   const allFilteredDogsSelected =
     filteredDogIds.length > 0 &&
     filteredDogIds.every((dogId) => selectedDogIds.includes(dogId));
+  const canMoveSelectedDogs =
+    selectedDogIds.length > 0 && Boolean(selectedMoveRunId) && !moveDogsLoading;
+
+  useEffect(() => {
+    setSelectedDogIds((current) =>
+      current.filter((dogId) => filteredDogIds.includes(dogId))
+    );
+  }, [filteredDogIds]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -571,6 +592,7 @@ export default function KennelDogsPanel() {
   function clearSelection() {
     setSelectedDogIds([]);
     setBulkAction("");
+    setSelectedMoveRunId("");
     setConfirmingBulkAction(false);
   }
 
@@ -629,6 +651,52 @@ export default function KennelDogsPanel() {
 
     if (bulkAction === "rehome") {
       setConfirmingBulkAction(true);
+    }
+  }
+
+  async function moveSelectedDogs() {
+    if (!canMoveSelectedDogs) {
+      return;
+    }
+
+    const targetRun = runs.find((run) => run.id === selectedMoveRunId);
+    const dogIdsToMove = [...selectedDogIds];
+
+    setMoveDogsLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch("/api/kennel/dogs/run", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dogIds: dogIdsToMove,
+          targetRunId: selectedMoveRunId,
+        }),
+      });
+      const data = (await response.json()) as MoveDogsResponse;
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Failed to move selected dogs.");
+      }
+
+      await loadRuns();
+      await loadDogs({ preserveLoadingState: true, runIds: selectedRunIds });
+      clearSelection();
+      setMessage(
+        `Moved ${data.movedCount ?? dogIdsToMove.length} dog${
+          (data.movedCount ?? dogIdsToMove.length) === 1 ? "" : "s"
+        } to ${targetRun?.name ?? "the selected Kennel Run"}.`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to move selected dogs."
+      );
+    } finally {
+      setMoveDogsLoading(false);
     }
   }
 
@@ -1026,7 +1094,7 @@ export default function KennelDogsPanel() {
             disabled={filteredDogs.length === 0}
             className="rounded-xl border border-purple-300/25 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-45"
           >
-            {allFilteredDogsSelected ? "Deselect Filtered" : "Select All Filtered"}
+            {allFilteredDogsSelected ? "Deselect Visible" : "Select All Visible"}
           </button>
           <button
             type="button"
@@ -1041,7 +1109,58 @@ export default function KennelDogsPanel() {
 
       {selectedDogIds.length > 0 ? (
         <div className="theme-card mb-4 rounded-2xl p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="rounded-xl border border-fuchsia-300/20 bg-fuchsia-500/10 p-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <div className="theme-heading text-sm font-semibold">
+                  Move selected dogs
+                </div>
+                <div className="theme-copy mt-1 text-xs">
+                  Selected: {selectedDogIds.length}
+                </div>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto_auto]">
+                <label className="grid gap-1.5">
+                  <span className="theme-label text-[0.68rem] uppercase tracking-wide">
+                    Move to
+                  </span>
+                  <select
+                    value={selectedMoveRunId}
+                    onChange={(event) => setSelectedMoveRunId(event.target.value)}
+                    className="theme-control rounded-xl px-3 py-2 text-sm outline-none"
+                  >
+                    <option value="">Choose Kennel Run...</option>
+                    {runs.map((run) => (
+                      <option key={run.id} value={run.id}>
+                        {run.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  disabled={moveDogsLoading}
+                  className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 sm:self-end"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={moveSelectedDogs}
+                  disabled={!canMoveSelectedDogs}
+                  className="rounded-xl bg-fuchsia-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-fuchsia-500 disabled:cursor-not-allowed disabled:opacity-45 sm:self-end"
+                >
+                  {moveDogsLoading ? "Moving..." : "Move Dogs"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="theme-heading text-sm font-semibold">
                 {selectedDogIds.length} selected
@@ -1366,7 +1485,7 @@ export default function KennelDogsPanel() {
                     </div>
                     {selectedRuns.length > 1 && dog.currentRun ? (
                       <div className="theme-copy mt-0.5 truncate text-[0.68rem]">
-                        {dog.currentRun.name}
+                        Current Run: {dog.currentRun.name}
                       </div>
                     ) : null}
                   </td>

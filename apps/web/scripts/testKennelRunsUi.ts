@@ -89,11 +89,121 @@ assertIncludes(
   "No dogs match the current filters.",
   "kennel roster distinguishes a filtered empty result"
 );
+assertIncludes(
+  kennelPanel,
+  "Select All Visible",
+  "kennel roster offers a visible-only selection control"
+);
+assertIncludes(
+  kennelPanel,
+  "Clear Selection",
+  "kennel roster can clear selected dogs"
+);
+assertIncludes(
+  kennelPanel,
+  "checked={selectedDogIds.includes(dog.dogId)}",
+  "kennel roster renders selected-state checkboxes per visible dog"
+);
+assertIncludes(
+  kennelPanel,
+  "onChange={() => toggleDogSelection(dog.dogId)}",
+  "kennel roster checkboxes toggle dog IDs"
+);
+assertIncludes(
+  kennelPanel,
+  "const visibleIdSet = new Set(filteredDogIds);",
+  "Select All Visible is based on currently filtered dog IDs"
+);
+assertIncludes(
+  kennelPanel,
+  "Array.from(new Set([...current, ...filteredDogIds]))",
+  "Select All Visible selects only filtered dog IDs"
+);
+assertIncludes(
+  kennelPanel,
+  "current.filter((dogId) => filteredDogIds.includes(dogId))",
+  "selection is pruned when filters or selected runs hide dogs"
+);
+assertIncludes(
+  kennelPanel,
+  "Move selected dogs",
+  "kennel roster renders the move-selected panel"
+);
+assertIncludes(
+  kennelPanel,
+  "Choose Kennel Run...",
+  "move panel requires a real Kennel Run target"
+);
+assertIncludes(
+  kennelPanel,
+  "Move Dogs",
+  "move panel renders the move action"
+);
+assertIncludes(
+  kennelPanel,
+  'fetch("/api/kennel/dogs/run"',
+  "move panel calls the existing Kennel Run move API"
+);
+assertIncludes(
+  kennelPanel,
+  'method: "PATCH"',
+  "move panel uses PATCH for dog movement"
+);
+assertIncludes(
+  kennelPanel,
+  "dogIds: dogIdsToMove",
+  "move panel sends selected dog IDs"
+);
+assertIncludes(
+  kennelPanel,
+  "targetRunId: selectedMoveRunId",
+  "move panel sends the selected target run ID"
+);
+assertIncludes(
+  kennelPanel,
+  "await loadRuns();",
+  "successful movement refreshes run counts"
+);
+assertIncludes(
+  kennelPanel,
+  "await loadDogs({ preserveLoadingState: true, runIds: selectedRunIds });",
+  "successful movement refreshes the current dog view"
+);
+assertIncludes(
+  kennelPanel,
+  "clearSelection();",
+  "successful movement clears selection"
+);
+assertIncludes(
+  kennelPanel,
+  "Failed to move selected dogs.",
+  "failed movement shows an error"
+);
+assertIncludes(
+  kennelPanel,
+  "Current Run:",
+  "multi-run view can show each dog's current run after movement"
+);
 
 assertExcludes(
   kennelPanel,
   "Kennel Areas",
   "legacy area selector label is not shown on the kennel roster"
+);
+assertExcludes(
+  kennelPanel,
+  "New Run",
+  "run creation UI is not shown in Phase 5B"
+);
+assertExcludes(
+  kennelPanel,
+  "Rename Run",
+  "run rename UI is not shown in Phase 5B"
+);
+assertExcludes(
+  kennelPanel,
+  "Delete Run",
+  "run delete UI is not shown in Phase 5B"
 );
 assertExcludes(
   kennelPanel,
