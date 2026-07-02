@@ -7,7 +7,8 @@ type AreaDogsAction = "add" | "remove";
 
 // Legacy kennel areas add/remove many-to-many memberships. This is tagging-style
 // grouping, not moving dogs. Kennel Runs should use a future move endpoint that
-// updates Dog.kennelRunId exactly once per dog.
+// updates Dog.kennelRunId exactly once per dog. New Kennel Runs UI should not
+// surface these legacy saved groups.
 function uniqueDogIds(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 

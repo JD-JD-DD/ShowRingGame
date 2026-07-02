@@ -473,7 +473,8 @@ model DogPlannerTag {
   // Legacy saved-group behavior: KennelArea/KennelAreaDog are many-to-many
   // dog organization memberships. Do not extend them for the new Kennel Runs
   // placement model; use future KennelRun and Dog.kennelRunId for exclusive
-  // one-run-per-dog placement.
+  // one-run-per-dog placement. New Kennel Runs UI should not surface these
+  // legacy saved groups.
   model KennelArea {
     id        String   @id @default(cuid())
     kennelId  String

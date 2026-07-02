@@ -10,7 +10,8 @@ const MAX_AREA_NAME_LENGTH = 60;
 
 // Legacy kennel areas are saved many-to-many dog groupings, not physical dog
 // placement. Do not extend this API for Kennel Runs; future exclusive placement
-// should use KennelRun and Dog.kennelRunId endpoints.
+// should use KennelRun and Dog.kennelRunId endpoints. New Kennel Runs UI
+// should not surface these legacy saved groups.
 function normalizeAreaName(value: unknown): string {
   return String(value ?? "").trim().replace(/\s+/g, " ");
 }

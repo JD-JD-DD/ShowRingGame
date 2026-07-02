@@ -1,14 +1,14 @@
 import { db } from "@/lib/db";
 import {
-  backfillKennelRuns,
+  formatKennelRunResetStats,
   kennelRunResetHasIntegrityFailures,
-  formatKennelRunBackfillStats,
+  resetKennelRunsToUncategorized,
 } from "@/server/services/kennelRunBackfill.service";
 
 async function main() {
-  const stats = await backfillKennelRuns();
+  const stats = await resetKennelRunsToUncategorized();
 
-  console.log(formatKennelRunBackfillStats(stats));
+  console.log(formatKennelRunResetStats(stats));
 
   if (kennelRunResetHasIntegrityFailures(stats)) {
     process.exitCode = 1;
@@ -17,7 +17,7 @@ async function main() {
 
 main()
   .catch((error) => {
-    console.error("Kennel Run backfill failed:", error);
+    console.error("Kennel Run reset failed:", error);
     process.exitCode = 1;
   })
   .finally(async () => {

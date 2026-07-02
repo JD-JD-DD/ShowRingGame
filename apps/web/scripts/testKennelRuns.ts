@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import {
   backfillKennelRuns,
-  selectLegacyKennelRunCandidate,
+  resetKennelRunsToUncategorized,
 } from "@/server/services/kennelRunBackfill.service";
 import {
   STARTER_KENNEL_RUNS,
@@ -33,13 +33,7 @@ type FakeDog = {
   ownerKennelId: string | null;
   kennelRunId: string | null;
   lifecycleState: string;
-};
-
-type FakeKennelArea = {
-  id: string;
-  kennelId: string;
-  name: string;
-  sortOrder: number;
+  isPlayerVisible: boolean;
 };
 
 type FakeKennelAreaDog = {
@@ -55,13 +49,11 @@ function createFakeClient(seed?: {
   kennels?: FakeKennel[];
   runs?: FakeKennelRun[];
   dogs?: FakeDog[];
-  areas?: FakeKennelArea[];
   memberships?: FakeKennelAreaDog[];
 }) {
   const kennels = seed?.kennels ?? [];
   const rows: FakeKennelRun[] = seed?.runs ?? [];
   const dogs = seed?.dogs ?? [];
-  const areas = seed?.areas ?? [];
   const memberships = seed?.memberships ?? [];
   let nextId = 1;
 
@@ -69,7 +61,6 @@ function createFakeClient(seed?: {
     kennels,
     rows,
     dogs,
-    areas,
     memberships,
     client: {
       kennel: {
@@ -114,14 +105,29 @@ function createFakeClient(seed?: {
           return projectRun(created);
         },
         async findMany(args: {
-          where: { kennelId: string; name?: { in: string[] } };
+          where: {
+            kennelId: string | { in: string[] };
+            name?: string | { in: string[] };
+            isSystem?: boolean;
+          };
           orderBy?: { sortOrder: "desc" } | Array<Record<string, string>>;
           take?: number;
         }) {
+          const kennelIds =
+            typeof args.where.kennelId === "string"
+              ? [args.where.kennelId]
+              : args.where.kennelId.in;
+          const names =
+            typeof args.where.name === "string"
+              ? [args.where.name]
+              : args.where.name?.in;
           let result = rows
-            .filter((row) => row.kennelId === args.where.kennelId)
+            .filter((row) => kennelIds.includes(row.kennelId))
+            .filter((row) => (names ? names.includes(row.name) : true))
             .filter((row) =>
-              args.where.name?.in ? args.where.name.in.includes(row.name) : true
+              args.where.isSystem === undefined
+                ? true
+                : row.isSystem === args.where.isSystem
             );
 
           if (
@@ -138,41 +144,14 @@ function createFakeClient(seed?: {
 
           return result.slice(0, args.take ?? result.length).map(projectRun);
         },
-        async findUnique(args: {
-          where: { kennelId_name: { kennelId: string; name: string } };
-        }) {
-          const key = args.where.kennelId_name;
-          const existing = rows.find(
-            (row) => row.kennelId === key.kennelId && row.name === key.name
-          );
-
-          return existing ? projectRun(existing) : null;
-        },
-        async create(args: {
-          data: Pick<
-            FakeKennelRun,
-            "kennelId" | "name" | "sortOrder" | "isSystem"
-          >;
-        }) {
-          const created = {
-            id: `run-${nextId}`,
-            kennelId: args.data.kennelId,
-            name: args.data.name,
-            sortOrder: args.data.sortOrder,
-            isSystem: args.data.isSystem,
-            createdAt: new Date(0),
-            updatedAt: new Date(0),
-          };
-          nextId += 1;
-          rows.push(created);
-          return projectRun(created);
-        },
       },
       dog: {
         async findMany(args?: {
           where?: {
             ownerKennelId?: { in?: string[]; not?: null };
             lifecycleState?: string;
+            isPlayerVisible?: boolean;
+            kennelRunId?: { not: null };
           };
         }) {
           return dogs
@@ -189,23 +168,61 @@ function createFakeClient(seed?: {
                 ? dog.lifecycleState === args.where.lifecycleState
                 : true
             )
-            .map((dog) => ({ ...dog }));
+            .filter((dog) =>
+              args?.where?.isPlayerVisible === undefined
+                ? true
+                : dog.isPlayerVisible === args.where.isPlayerVisible
+            )
+            .filter((dog) =>
+              args?.where?.kennelRunId?.not === null
+                ? dog.kennelRunId !== null
+                : true
+            )
+            .map((dog) => ({
+              ...dog,
+              kennelRun: dog.kennelRunId
+                ? {
+                    kennelId:
+                      rows.find((row) => row.id === dog.kennelRunId)
+                        ?.kennelId ?? null,
+                  }
+                : null,
+            }));
         },
         async updateMany(args: {
           where: {
             id: string;
             ownerKennelId: string;
             lifecycleState: string;
-            kennelRunId: null;
+            isPlayerVisible: boolean;
+            OR: Array<
+              { kennelRunId: null } | { kennelRunId: { not: string } }
+            >;
           };
           data: { kennelRunId: string | null };
         }) {
+          if (args.where.id === "stale-owner") {
+            const staleDog = dogs.find(
+              (candidate) => candidate.id === args.where.id
+            );
+
+            if (staleDog) {
+              staleDog.ownerKennelId = null;
+              staleDog.kennelRunId = null;
+            }
+          }
+
           const dog = dogs.find(
             (candidate) =>
               candidate.id === args.where.id &&
               candidate.ownerKennelId === args.where.ownerKennelId &&
               candidate.lifecycleState === args.where.lifecycleState &&
-              candidate.kennelRunId === args.where.kennelRunId
+              candidate.isPlayerVisible === args.where.isPlayerVisible &&
+              args.where.OR.some((condition) =>
+                condition.kennelRunId === null
+                  ? candidate.kennelRunId === null
+                  : candidate.kennelRunId !== condition.kennelRunId.not
+              )
           );
 
           if (!dog) {
@@ -217,65 +234,72 @@ function createFakeClient(seed?: {
         },
         async count(args?: {
           where?: {
-            ownerKennelId?: { in?: string[] };
+            ownerKennelId?: { in?: string[]; not?: null } | null;
             lifecycleState?: string;
-            kennelRunId?: null;
+            isPlayerVisible?: boolean;
+            kennelRunId?: null | { not: null };
           };
         }) {
-          return dogs.filter(
-            (dog) =>
-              (args?.where?.ownerKennelId?.in
-                ? dog.ownerKennelId !== null &&
-                  args.where.ownerKennelId.in.includes(dog.ownerKennelId)
-                : true) &&
-              (args?.where?.lifecycleState
-                ? dog.lifecycleState === args.where.lifecycleState
-                : true) &&
-              (args?.where?.kennelRunId === null
-                ? dog.kennelRunId === null
-                : true)
-          ).length;
+          return dogs.filter((dog) => {
+            const ownerMatches = args?.where?.ownerKennelId?.in
+              ? dog.ownerKennelId !== null &&
+                args.where.ownerKennelId.in.includes(dog.ownerKennelId)
+              : args?.where?.ownerKennelId?.not === null
+                ? dog.ownerKennelId !== null
+                : args?.where?.ownerKennelId === null
+                  ? dog.ownerKennelId === null
+                  : true;
+            const visibleMatches =
+              args?.where?.isPlayerVisible === undefined
+                ? true
+                : dog.isPlayerVisible === args.where.isPlayerVisible;
+            const runMatches =
+              args?.where?.kennelRunId &&
+              typeof args.where.kennelRunId === "object" &&
+              args.where.kennelRunId.not === null
+                ? dog.kennelRunId !== null
+                : args?.where?.kennelRunId === null
+                  ? dog.kennelRunId === null
+                  : true;
+            const lifecycleMatches = args?.where?.lifecycleState
+              ? dog.lifecycleState === args.where.lifecycleState
+              : true;
+
+            return (
+              ownerMatches && visibleMatches && runMatches && lifecycleMatches
+            );
+          }).length;
         },
       },
       kennelAreaDog: {
-        async findMany(args: {
-          where: { dogId: string | { in: string[] }; area?: { kennelId: string } };
-        }) {
-          const dogIds =
-            typeof args.where.dogId === "string"
-              ? [args.where.dogId]
-              : args.where.dogId.in;
-
-          return memberships
-            .filter((membership) => dogIds.includes(membership.dogId))
-            .flatMap((membership) => {
-              const area = areas.find(
-                (candidate) => candidate.id === membership.areaId
-              );
-
-              if (
-                !area ||
-                (args.where.area && area.kennelId !== args.where.area.kennelId)
-              ) {
-                return [];
-              }
-
-              return [
-                {
-                  dogId: membership.dogId,
-                  area: {
-                    id: area.id,
-                    kennelId: area.kennelId,
-                    name: area.name,
-                    sortOrder: area.sortOrder,
-                  },
-                },
-              ];
-            });
+        async findMany() {
+          assert.fail(
+            "Kennel Run reset must ignore legacy KennelAreaDog memberships"
+          );
         },
       },
     },
   };
+}
+
+function countActiveOwnedRunOwnerMismatches(
+  fake: ReturnType<typeof createFakeClient>
+) {
+  return fake.dogs.filter((dog) => {
+    if (
+      !dog.ownerKennelId ||
+      dog.lifecycleState !== "ALIVE" ||
+      !dog.isPlayerVisible ||
+      !dog.kennelRunId
+    ) {
+      return false;
+    }
+
+    return (
+      fake.rows.find((run) => run.id === dog.kennelRunId)?.kennelId !==
+      dog.ownerKennelId
+    );
+  }).length;
 }
 
 function source(path: string): string {
@@ -287,6 +311,14 @@ function source(path: string): string {
 
 function assertIncludes(haystack: string, needle: string, label: string) {
   assert.ok(haystack.includes(needle), label);
+}
+
+function dogRunName(fake: ReturnType<typeof createFakeClient>, dogId: string) {
+  const dog = fake.dogs.find((candidate) => candidate.id === dogId);
+
+  return dog?.kennelRunId
+    ? fake.rows.find((run) => run.id === dog.kennelRunId)?.name ?? null
+    : null;
 }
 
 async function main() {
@@ -336,130 +368,165 @@ async function main() {
     "ensureStarterKennelRuns remains stable on repeated calls"
   );
 
-  const uncategorized = fake.rows.find(
-    (run) => run.name === UNCATEGORIZED_KENNEL_RUN_NAME
-  );
-  assert.ok(uncategorized, "Uncategorized exists");
-  assert.equal(uncategorized.isSystem, true, "Uncategorized is protected");
-
-  const nonSystemStarterRuns = fake.rows.filter(
-    (run) => run.name !== UNCATEGORIZED_KENNEL_RUN_NAME
-  );
-  assert.ok(nonSystemStarterRuns.length > 0);
-  assert.ok(
-    nonSystemStarterRuns.every((run) => run.isSystem === false),
-    "starter runs other than Uncategorized are not system runs"
-  );
-
-  assert.deepEqual(
-    selectLegacyKennelRunCandidate([
-      { id: "z", name: "Zeta", sortOrder: 2 },
-      { id: "b", name: "Beta", sortOrder: 1 },
-      { id: "a", name: "Alpha", sortOrder: 1 },
-    ]),
-    { id: "a", name: "Alpha", sortOrder: 1 },
-    "multiple legacy memberships pick lowest sort order, then name/id"
-  );
-
-  const backfillFake = createFakeClient({
+  const resetFake = createFakeClient({
     kennels: [
       { id: kennelId, isNpc: false },
+      { id: "other-kennel", isNpc: false },
       { id: "npc-1", isNpc: true },
     ],
     runs: [
       {
-        id: "existing-run",
+        id: "uncat-run",
         kennelId,
-        name: "Existing",
+        name: UNCATEGORIZED_KENNEL_RUN_NAME,
+        sortOrder: 0,
+        isSystem: true,
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+      },
+      {
+        id: "specials-run",
+        kennelId,
+        name: "Specials",
+        sortOrder: 1,
+        isSystem: false,
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+      },
+      {
+        id: "custom-run",
+        kennelId,
+        name: "Custom Yard",
         sortOrder: 99,
         isSystem: false,
+        createdAt: new Date(0),
+        updatedAt: new Date(0),
+      },
+      {
+        id: "other-uncat-run",
+        kennelId: "other-kennel",
+        name: UNCATEGORIZED_KENNEL_RUN_NAME,
+        sortOrder: 0,
+        isSystem: true,
         createdAt: new Date(0),
         updatedAt: new Date(0),
       },
     ],
     dogs: [
       {
-        id: "no-legacy",
+        id: "already-uncategorized",
         ownerKennelId: kennelId,
-        kennelRunId: null,
+        kennelRunId: "uncat-run",
         lifecycleState: "ALIVE",
+        isPlayerVisible: true,
       },
       {
         id: "single-legacy",
         ownerKennelId: kennelId,
-        kennelRunId: null,
+        kennelRunId: "specials-run",
         lifecycleState: "ALIVE",
+        isPlayerVisible: true,
       },
       {
         id: "multi-legacy",
         ownerKennelId: kennelId,
-        kennelRunId: null,
+        kennelRunId: "custom-run",
         lifecycleState: "ALIVE",
+        isPlayerVisible: true,
       },
       {
-        id: "custom-legacy",
+        id: "missing-run",
         ownerKennelId: kennelId,
         kennelRunId: null,
         lifecycleState: "ALIVE",
+        isPlayerVisible: true,
       },
       {
-        id: "already-assigned",
+        id: "stale-owner",
         ownerKennelId: kennelId,
-        kennelRunId: "existing-run",
+        kennelRunId: null,
         lifecycleState: "ALIVE",
+        isPlayerVisible: true,
+      },
+      {
+        id: "hidden-active",
+        ownerKennelId: kennelId,
+        kennelRunId: null,
+        lifecycleState: "ALIVE",
+        isPlayerVisible: false,
+      },
+      {
+        id: "deceased",
+        ownerKennelId: kennelId,
+        kennelRunId: null,
+        lifecycleState: "DECEASED",
+        isPlayerVisible: true,
       },
       {
         id: "unowned",
         ownerKennelId: null,
         kennelRunId: null,
         lifecycleState: "ALIVE",
+        isPlayerVisible: true,
       },
-    ],
-    areas: [
-      { id: "area-specials", kennelId, name: "Specials", sortOrder: 2 },
-      { id: "area-puppies", kennelId, name: "Puppies", sortOrder: 1 },
-      { id: "area-custom", kennelId, name: "Custom Yard", sortOrder: 7 },
     ],
     memberships: [
       { dogId: "single-legacy", areaId: "area-specials" },
       { dogId: "multi-legacy", areaId: "area-specials" },
       { dogId: "multi-legacy", areaId: "area-puppies" },
-      { dogId: "custom-legacy", areaId: "area-custom" },
     ],
   });
-  const firstBackfill = await backfillKennelRuns({
-    client: backfillFake.client as never,
+  const firstReset = await resetKennelRunsToUncategorized({
+    client: resetFake.client as never,
   });
-  const secondBackfill = await backfillKennelRuns({
-    client: backfillFake.client as never,
+  const secondReset = await resetKennelRunsToUncategorized({
+    client: resetFake.client as never,
+  });
+  const aliasReset = await backfillKennelRuns({
+    client: resetFake.client as never,
   });
 
-  assert.equal(firstBackfill.kennelsScanned, 1);
-  assert.equal(firstBackfill.starterRunsCreated, STARTER_KENNEL_RUNS.length);
-  assert.equal(firstBackfill.dogsAssignedToUncategorized, 1);
-  assert.equal(firstBackfill.dogsAssignedFromLegacySingleMembership, 2);
-  assert.equal(firstBackfill.dogsAssignedFromLegacyMultipleMemberships, 1);
-  assert.equal(firstBackfill.activeOwnedDogsStillMissingKennelRunId, 0);
-  assert.equal(secondBackfill.starterRunsCreated, 0);
-  assert.equal(secondBackfill.dogsAssignedToUncategorized, 0);
+  assert.equal(firstReset.kennelsScanned, 2);
+  assert.equal(firstReset.activeOwnedDogsScanned, 5);
+  assert.equal(firstReset.dogsAlreadyInUncategorized, 1);
+  assert.equal(firstReset.dogsMovedToUncategorized, 3);
+  assert.equal(firstReset.dogsSkipped, 1);
+  assert.equal(firstReset.activeOwnedDogsMissingKennelRunIdAfterReset, 0);
+  assert.equal(firstReset.activeOwnedDogsWithRunOwnerMismatchAfterReset, 0);
+  assert.equal(firstReset.unownedDogsWithKennelRunIdAfterReset, 0);
+  assert.equal(secondReset.dogsMovedToUncategorized, 0);
+  assert.equal(secondReset.dogsAlreadyInUncategorized, 4);
+  assert.equal(aliasReset.dogsMovedToUncategorized, 0);
+
   assert.equal(
-    secondBackfill.dogsSkipped,
-    5,
-    "second backfill skips all already assigned active owned dogs"
+    dogRunName(resetFake, "single-legacy"),
+    UNCATEGORIZED_KENNEL_RUN_NAME,
+    "legacy single-area membership is ignored for Kennel Run placement"
   );
-
-  const runNameById = new Map(
-    backfillFake.rows.map((run) => [run.id, run.name])
+  assert.equal(
+    dogRunName(resetFake, "multi-legacy"),
+    UNCATEGORIZED_KENNEL_RUN_NAME,
+    "legacy multi-area membership is ignored for Kennel Run placement"
   );
-  const dogRunName = (dogId: string) => {
-    const dog = backfillFake.dogs.find((candidate) => candidate.id === dogId);
-    return dog?.kennelRunId ? runNameById.get(dog.kennelRunId) : null;
-  };
-
-  assert.equal(dogRunName("no-legacy"), UNCATEGORIZED_KENNEL_RUN_NAME);
-  assert.equal(dogRunName("single-legacy"), "Specials");
-  assert.equal(dogRunName("multi-legacy"), "Puppies");
-  assert.equal(dogRunName("custom-legacy"), "Custom Yard");
+  assert.equal(dogRunName(resetFake, "missing-run"), UNCATEGORIZED_KENNEL_RUN_NAME);
+  assert.equal(dogRunName(resetFake, "hidden-active"), null);
+  assert.equal(dogRunName(resetFake, "deceased"), null);
+  assert.equal(dogRunName(resetFake, "unowned"), null);
+  assert.equal(
+    resetFake.rows.some((run) => run.id === "custom-run"),
+    true,
+    "custom non-Uncategorized runs remain valid"
+  );
+  assert.equal(
+    resetFake.dogs.some((dog) => dog.kennelRunId === "custom-run"),
+    false,
+    "custom non-Uncategorized runs are emptied by initial reset"
+  );
+  assert.equal(
+    countActiveOwnedRunOwnerMismatches(resetFake),
+    0,
+    "live ownership guard avoids stale-owner run assignment"
+  );
 
   const foundationDogService = source(
     "apps/web/server/services/foundationDog.service.ts"
@@ -468,6 +535,9 @@ async function main() {
   const breedingService = source("apps/web/server/services/breeding.service.ts");
   const rehomeService = source("apps/web/server/services/rehome.service.ts");
   const dogService = source("apps/web/server/services/dog.service.ts");
+  const backfillService = source(
+    "apps/web/server/services/kennelRunBackfill.service.ts"
+  );
 
   assertIncludes(
     foundationDogService,
@@ -503,6 +573,11 @@ async function main() {
     dogService,
     "await ensureUncategorizedKennelRun({ kennelId: ownerKennelId })",
     "saveEngineDog defaults owned dogs to Uncategorized"
+  );
+  assert.equal(
+    backfillService.includes("kennelAreaDog"),
+    false,
+    "Kennel Run reset does not read legacy KennelAreaDog memberships"
   );
 
   console.log("Kennel run helper checks passed.");
