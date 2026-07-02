@@ -298,7 +298,7 @@ assert.equal(
     id: "generated-year-13-fixed-week-1-slot-1",
     year: 13,
   }),
-  true
+  false
 );
 
 const competitivePlan = buildYear13RegularShowRepairPlan({

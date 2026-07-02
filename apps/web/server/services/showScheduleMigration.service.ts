@@ -40,15 +40,12 @@ export function isYear13GeneratedRegularShowClusterId(
   );
 }
 
-// TODO: Remove this temporary migration guard after Year 13 generated regular
-// show clusters are corrected to the fixed district circuit rotation.
 export function isYear13RegularShowPaused(
-  cluster: ShowClusterPauseCandidate
+  _cluster: ShowClusterPauseCandidate
 ): boolean {
-  return (
-    cluster.year === YEAR_13_REGULAR_SHOW_PAUSE_YEAR &&
-    isYear13GeneratedRegularShowClusterId(cluster.id)
-  );
+  void _cluster;
+
+  return false;
 }
 
 export function assertYear13RegularShowEntryNotPaused(
