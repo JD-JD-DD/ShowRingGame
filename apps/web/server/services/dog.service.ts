@@ -32,6 +32,7 @@ import {
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
 import { getStoredProducerMeritForDog } from "@/server/services/producerMerit.service";
+import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
 import type { Dog as EngineDog } from "@showring/rules";
 import {
   DAM_MAX_BREED_AGE_HOURS,
@@ -109,12 +110,18 @@ async function ensureBreedExists(breedCode2: string): Promise<void> {
 export async function saveEngineDog(args: {
   dog: EngineDog;
   ownerKennelId?: string;
+  kennelRunId?: string;
   breederKennelId?: string;
   isFoundation?: boolean;
 }) {
   const { dog, ownerKennelId, breederKennelId, isFoundation } = args;
 
   await ensureBreedExists(dog.breedCode2);
+
+  const kennelRunId = ownerKennelId
+    ? args.kennelRunId ??
+      (await ensureUncategorizedKennelRun({ kennelId: ownerKennelId })).id
+    : null;
 
   return db.dog.create({
     data: {
@@ -124,6 +131,7 @@ export async function saveEngineDog(args: {
       registeredName: null,
       breedCode2: dog.breedCode2,
       ownerKennelId: ownerKennelId ?? null,
+      kennelRunId,
       breederKennelId: breederKennelId ?? null,
       sireId: dog.sireId ?? null,
       damId: dog.damId ?? null,

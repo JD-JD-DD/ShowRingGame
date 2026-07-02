@@ -18,6 +18,7 @@ import { SHOW_WEEK_HOURS } from "@showring/rules";
 import { applyBetaBalanceTopUp } from "@/lib/betaEconomy";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { maybeSeedFoundationBrucellosis } from "@/server/services/infectiousDisease.service";
+import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
@@ -975,6 +976,10 @@ export async function buyFoundationDog(args: {
       throw new Error("Insufficient funds.");
     }
 
+    const kennelRun = await ensureUncategorizedKennelRun({
+      kennelId: kennel.id,
+      client: tx,
+    });
     const balanceAfter = kennel.balance - listing.askingPrice;
 
     await tx.kennel.update({
@@ -1000,6 +1005,7 @@ export async function buyFoundationDog(args: {
       where: { id: listing.dog.id },
       data: {
         ownerKennelId: kennel.id,
+        kennelRunId: kennelRun.id,
         marketState: "NOT_FOR_SALE",
       },
     });

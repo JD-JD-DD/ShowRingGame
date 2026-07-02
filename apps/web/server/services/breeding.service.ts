@@ -18,6 +18,7 @@ import {
 } from "@/server/services/lifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
+import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
 import {
   getValidNegativeBrucellosisTest,
   infectPuppiesFromDamBrucellosis,
@@ -618,6 +619,7 @@ export async function resolveBreedingProgressForKennel(args: {
               select: {
                 id: true,
                 ownerKennelId: true,
+                kennelRunId: true,
                 registeredName: true,
                 callName: true,
                 regNumber: true,
@@ -714,10 +716,21 @@ export async function resolveBreedingProgressForKennel(args: {
           },
         });
 
+        const puppyKennelRunId = fresh.createdByKennelId
+          ? fresh.dam.kennelRunId ??
+            (
+              await ensureUncategorizedKennelRun({
+                kennelId: fresh.createdByKennelId,
+                client: tx,
+              })
+            ).id
+          : null;
+
         await tx.dog.createMany({
           data: outcome.puppies.map((puppy) => ({
             id: puppy.dogId,
             ownerKennelId: fresh.createdByKennelId,
+            kennelRunId: puppyKennelRunId,
             breederKennelId: fresh.createdByKennelId,
             callName: null,
             registeredName: null,

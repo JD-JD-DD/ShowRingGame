@@ -2,9 +2,10 @@ import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const root = process.cwd();
-
 function source(path: string): string {
+  const cwd = process.cwd();
+  const root = cwd.endsWith(`${join("apps", "web")}`) ? join(cwd, "..", "..") : cwd;
+
   return readFileSync(join(root, path), "utf8");
 }
 

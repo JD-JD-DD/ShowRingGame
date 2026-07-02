@@ -13,7 +13,7 @@ export const STARTER_KENNEL_RUNS = [
   { name: "Retired", sortOrder: 6, isSystem: false },
 ] as const;
 
-type KennelRunClient = Pick<PrismaClient, "kennelRun">;
+export type KennelRunClient = Pick<PrismaClient, "kennelRun">;
 
 const kennelRunSelect = {
   id: true,

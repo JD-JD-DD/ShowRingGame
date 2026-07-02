@@ -3,6 +3,7 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
@@ -447,6 +448,10 @@ export async function buyPlayerDogListing(args: {
       throw new Error("Insufficient funds.");
     }
 
+    const buyerKennelRun = await ensureUncategorizedKennelRun({
+      kennelId: buyer.id,
+      client: tx,
+    });
     const buyerBalanceAfter = buyer.balance - listing.askingPrice;
     const sellerBalanceAfter = seller.balance + listing.askingPrice;
 
@@ -490,6 +495,7 @@ export async function buyPlayerDogListing(args: {
       where: { id: listing.dog.id },
       data: {
         ownerKennelId: buyer.id,
+        kennelRunId: buyerKennelRun.id,
         marketState: "NOT_FOR_SALE",
       },
     });

@@ -114,6 +114,7 @@ export async function rehomeOwnedDogs(args: {
       },
       data: {
         ownerKennelId: null,
+        kennelRunId: null,
         marketState: "NOT_FOR_SALE",
         lifecycleState: "TRANSFERRED",
       },
