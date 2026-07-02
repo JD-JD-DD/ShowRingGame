@@ -10,6 +10,7 @@
     "test:game-time-format": "tsx scripts/testGameTimeFormat.ts",
     "test:dog-action-windows": "tsx scripts/testDogActionWindows.ts",
     "test:dog-profile-area-navigation": "tsx scripts/testDogProfileAreaNavigation.ts",
+    "test:dog-profile-kennel-run-move": "tsx scripts/testDogProfileKennelRunMove.ts",
     "test:dog-show-record-title-points": "tsx scripts/testDogShowRecordTitlePoints.ts",
     "test:dog-titles": "tsx scripts/testDogTitles.ts",
     "test:kennel-run-apis": "tsx scripts/testKennelRunApis.ts",

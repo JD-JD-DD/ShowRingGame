@@ -25,6 +25,11 @@ export type DogProfileAreaNavigationDto = {
   nextDog: DogProfileDogLinkDto | null;
 } | null;
 
+export type DogProfileKennelRunDto = {
+  runId: string;
+  name: string;
+} | null;
+
 export type DogProfileHeaderDto = {
   dogId: string;
   displayName: string;
@@ -410,6 +415,7 @@ export type DogProfileViewerContextDto = {
 export type DogProfileDto = {
   header: DogProfileHeaderDto;
   areaNavigation: DogProfileAreaNavigationDto;
+  currentRun: DogProfileKennelRunDto;
   snapshot: DogProfileSnapshotDto;
   qualityAndPresentation: DogProfileQualityPresentationDto;
   titlesAndShowCareer: DogProfileShowCareerDto;
@@ -469,6 +475,12 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
                 profileUrl: input.areaNavigation.nextDog.profileUrl,
               }
             : null,
+        }
+      : null,
+    currentRun: input.currentRun
+      ? {
+          runId: input.currentRun.runId,
+          name: input.currentRun.name,
         }
       : null,
     snapshot: {

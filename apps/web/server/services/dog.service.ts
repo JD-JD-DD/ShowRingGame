@@ -913,6 +913,7 @@ export async function getDogProfile(args: {
       isFoundation: true,
       isPlayerVisible: true,
       ownerKennelId: true,
+      kennelRunId: true,
       sireId: true,
       damId: true,
       coiPercent: true,
@@ -938,6 +939,9 @@ export async function getDogProfile(args: {
       },
       ownerKennel: {
         select: { id: true, name: true, slug: true },
+      },
+      kennelRun: {
+        select: { id: true, kennelId: true, name: true },
       },
       breederKennel: {
         select: { id: true, name: true, slug: true },
@@ -1587,6 +1591,13 @@ export async function getDogProfile(args: {
       badges,
     },
     areaNavigation,
+    currentRun:
+      dog.kennelRun && dog.kennelRun.kennelId === dog.ownerKennelId
+        ? {
+            runId: dog.kennelRun.id,
+            name: dog.kennelRun.name,
+          }
+        : null,
     snapshot: {
       owner: dog.ownerKennel
         ? {

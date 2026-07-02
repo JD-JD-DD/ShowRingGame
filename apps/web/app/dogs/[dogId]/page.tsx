@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import CancelGroomingListingForm from "@/components/dogs/CancelGroomingListingForm";
+import DogProfileKennelRunMove from "@/components/dogs/DogProfileKennelRunMove";
 import DogProfileDashboard from "@/components/dogs/DogProfileDashboard";
 import HealthClearBadge from "@/components/dogs/HealthClearBadge";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
@@ -120,6 +121,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const showError = firstQueryValue(resolvedSearchParams.showError);
   const showMessage = firstQueryValue(resolvedSearchParams.showMessage);
   const { header, areaNavigation, actions, viewerContext } = profile;
+  const canMoveKennelRun =
+    viewerContext.isOwnedByCurrentKennel && header.lifecycleState === "ALIVE";
   const saleListing = profile.breedingAndProduction.activeSaleListing;
   const studListing = profile.breedingAndProduction.activeStudListing;
   const grooming = profile.groomingDetails;
@@ -203,6 +206,13 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               </Link>
 
               <div className="grid gap-3 sm:grid-cols-2">
+                <DogProfileKennelRunMove
+                  dogId={header.dogId}
+                  currentRunId={profile.currentRun?.runId ?? null}
+                  currentRunName={profile.currentRun?.name ?? null}
+                  canMove={canMoveKennelRun}
+                />
+
                 {actions.canBreed ? (
                   <Link
                     href={`/breed?dogId=${header.dogId}`}
