@@ -62,7 +62,7 @@ Canaan Dog,CG,Herding,TRUE,3
 American Bulldog,AB,Working,TRUE,3
 Otterhound,OH,Hound,TRUE,3
 Harrier,HR,Hound,TRUE,3
-Wirehaired Vizsla,WV,Sporting,TRUE,3
+Wirehaired Vizsla,WV,Sporting,TRUE,4
 Pointer,PT,Sporting,FALSE,4
 Spinone Italiano,SP,Sporting,FALSE,4
 Whippet,WP,Hound,FALSE,4
@@ -211,3 +211,43 @@ Yakutian Laika,YL,Miscellaneous,FALSE,13
 Australian Cattle Dog,YY,Herding,FALSE,14
 English Cocker,QM,Sporting,FALSE,14
 American Cocker,QE,Sporting,FALSE,14
+American Water Spaniel,AW,Sporting,FALSE,15
+Boykin Spaniel,YK,Sporting,FALSE,15
+Clumber Spaniel,CL,Sporting,FALSE,15
+Cocker Spaniel,QK,Sporting,FALSE,15
+English Cocker Spaniel,EG,Sporting,FALSE,15
+English Springer Spaniel,ER,Sporting,FALSE,15
+American English Coonhound,EC,Hound,FALSE,15
+Dachshund,DH,Hound,FALSE,15
+Black Russian Terrier,QR,Working,FALSE,15
+Bichon Frise,ZF,Non-Sporting,FALSE,15
+Chinese Shar-Pei,ZX,Non-Sporting,FALSE,15
+Bearded Collie,VC,Herding,FALSE,15
+Cardigan Welsh Corgi,WC,Herding,FALSE,15
+Collie,OL,Herding,FALSE,15
+Field Spaniel,FD,Sporting,FALSE,16
+Irish Red and White Setter,RW,Sporting,FALSE,16
+Irish Water Spaniel,UW,Sporting,FALSE,16
+German Pinscher,GN,Working,FALSE,16
+Giant Schnauzer,GZ,Working,FALSE,16
+Great Pyrenees,GY,Working,FALSE,16
+Kuvasz,KU,Working,FALSE,16
+Mastiff,MF,Working,FALSE,16
+Neapolitan Mastiff,NM,Working,FALSE,16
+Miniature Schnauzer,MZ,Terrier,FALSE,16
+Norwegian Lundehund,NL,Non-Sporting,FALSE,16
+Icelandic Sheepdog,IC,Herding,FALSE,16
+Norwegian Buhund,NR,Herding,FALSE,16
+Sussex Spaniel,SU,Sporting,FALSE,17
+Welsh Springer Spaniel,WE,Sporting,FALSE,17
+Wirehaired Pointing Griffon,WG,Sporting,FALSE,17
+Plott,LP,Hound,FALSE,17
+Portuguese Podengo Pequeno,QQ,Hound,FALSE,17
+Portuguese Water Dog,WD,Working,FALSE,17
+Standard Schnauzer,ZS,Working,FALSE,17
+Russell Terrier,RU,Terrier,FALSE,17
+Smooth Fox Terrier,XF,Terrier,FALSE,17
+Wire Fox Terrier,WF,Terrier,FALSE,17
+Pug,UG,Toy,FALSE,17
+Silky Terrier,SQ,Toy,FALSE,17
+Pembroke Welsh Corgi,PW,Herding,FALSE,17
