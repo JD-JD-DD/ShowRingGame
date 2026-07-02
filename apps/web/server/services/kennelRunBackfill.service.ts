@@ -20,6 +20,7 @@ export type KennelRunResetStats = {
   dogsAlreadyInUncategorized: number;
   dogsMovedToUncategorized: number;
   dogsSkipped: number;
+  staleUnownedKennelRunIdsCleared: number;
   activeOwnedDogsMissingKennelRunIdAfterReset: number;
   activeOwnedDogsWithRunOwnerMismatchAfterReset: number;
   unownedDogsWithKennelRunIdAfterReset: number;
@@ -42,6 +43,7 @@ function createEmptyStats(): KennelRunResetStats {
     dogsAlreadyInUncategorized: 0,
     dogsMovedToUncategorized: 0,
     dogsSkipped: 0,
+    staleUnownedKennelRunIdsCleared: 0,
     activeOwnedDogsMissingKennelRunIdAfterReset: 0,
     activeOwnedDogsWithRunOwnerMismatchAfterReset: 0,
     unownedDogsWithKennelRunIdAfterReset: 0,
@@ -217,6 +219,20 @@ export async function resetKennelRunsToUncategorized(args?: {
       stats.dogsMovedToUncategorized += update.count;
     }
   }
+
+  const staleUnownedClear = await client.dog.updateMany({
+    where: {
+      ownerKennelId: null,
+      kennelRunId: {
+        not: null,
+      },
+    },
+    data: {
+      kennelRunId: null,
+    },
+  });
+
+  stats.staleUnownedKennelRunIdsCleared = staleUnownedClear.count;
   stats.activeOwnedDogsMissingKennelRunIdAfterReset = await client.dog.count({
     where: {
       ownerKennelId: {
@@ -377,6 +393,7 @@ export function formatKennelRunResetStats(stats: KennelRunResetStats): string {
     `Dogs already in ${UNCATEGORIZED_KENNEL_RUN_NAME}: ${stats.dogsAlreadyInUncategorized}`,
     `Dogs moved to ${UNCATEGORIZED_KENNEL_RUN_NAME}: ${stats.dogsMovedToUncategorized}`,
     `Dogs skipped: ${stats.dogsSkipped}`,
+    `Stale unowned kennelRunId rows cleared: ${stats.staleUnownedKennelRunIdsCleared}`,
     `Active owned dogs missing kennelRunId after reset: ${stats.activeOwnedDogsMissingKennelRunIdAfterReset}`,
     `Active owned dogs assigned to another kennel's run after reset: ${stats.activeOwnedDogsWithRunOwnerMismatchAfterReset}`,
     `Unowned dogs with kennelRunId after reset: ${stats.unownedDogsWithKennelRunIdAfterReset}`,

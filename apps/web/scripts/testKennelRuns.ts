@@ -191,11 +191,12 @@ function createFakeClient(seed?: {
         },
         async updateMany(args: {
           where: {
-            id: string;
-            ownerKennelId: string;
-            lifecycleState: string;
-            isPlayerVisible: boolean;
-            OR: Array<
+            id?: string;
+            ownerKennelId?: string | null;
+            lifecycleState?: string;
+            isPlayerVisible?: boolean;
+            kennelRunId?: { not: null };
+            OR?: Array<
               { kennelRunId: null } | { kennelRunId: { not: string } }
             >;
           };
@@ -212,25 +213,49 @@ function createFakeClient(seed?: {
             }
           }
 
-          const dog = dogs.find(
-            (candidate) =>
-              candidate.id === args.where.id &&
-              candidate.ownerKennelId === args.where.ownerKennelId &&
-              candidate.lifecycleState === args.where.lifecycleState &&
-              candidate.isPlayerVisible === args.where.isPlayerVisible &&
-              args.where.OR.some((condition) =>
-                condition.kennelRunId === null
-                  ? candidate.kennelRunId === null
-                  : candidate.kennelRunId !== condition.kennelRunId.not
-              )
-          );
+          let count = 0;
 
-          if (!dog) {
-            return { count: 0 };
+          for (const candidate of dogs) {
+            const idMatches = args.where.id
+              ? candidate.id === args.where.id
+              : true;
+            const ownerMatches =
+              args.where.ownerKennelId === undefined
+                ? true
+                : candidate.ownerKennelId === args.where.ownerKennelId;
+            const lifecycleMatches = args.where.lifecycleState
+              ? candidate.lifecycleState === args.where.lifecycleState
+              : true;
+            const visibleMatches =
+              args.where.isPlayerVisible === undefined
+                ? true
+                : candidate.isPlayerVisible === args.where.isPlayerVisible;
+            const runNotNullMatches =
+              args.where.kennelRunId?.not === null
+                ? candidate.kennelRunId !== null
+                : true;
+            const orMatches = args.where.OR
+              ? args.where.OR.some((condition) =>
+                  condition.kennelRunId === null
+                    ? candidate.kennelRunId === null
+                    : candidate.kennelRunId !== condition.kennelRunId.not
+                )
+              : true;
+
+            if (
+              idMatches &&
+              ownerMatches &&
+              lifecycleMatches &&
+              visibleMatches &&
+              runNotNullMatches &&
+              orMatches
+            ) {
+              candidate.kennelRunId = args.data.kennelRunId;
+              count += 1;
+            }
           }
 
-          dog.kennelRunId = args.data.kennelRunId;
-          return { count: 1 };
+          return { count };
         },
         async count(args?: {
           where?: {
@@ -469,6 +494,13 @@ async function main() {
         lifecycleState: "ALIVE",
         isPlayerVisible: true,
       },
+      {
+        id: "unowned-stale-run",
+        ownerKennelId: null,
+        kennelRunId: "custom-run",
+        lifecycleState: "TRANSFERRED",
+        isPlayerVisible: true,
+      },
     ],
     memberships: [
       { dogId: "single-legacy", areaId: "area-specials" },
@@ -491,11 +523,13 @@ async function main() {
   assert.equal(firstReset.dogsAlreadyInUncategorized, 1);
   assert.equal(firstReset.dogsMovedToUncategorized, 3);
   assert.equal(firstReset.dogsSkipped, 1);
+  assert.equal(firstReset.staleUnownedKennelRunIdsCleared, 1);
   assert.equal(firstReset.activeOwnedDogsMissingKennelRunIdAfterReset, 0);
   assert.equal(firstReset.activeOwnedDogsWithRunOwnerMismatchAfterReset, 0);
   assert.equal(firstReset.unownedDogsWithKennelRunIdAfterReset, 0);
   assert.equal(secondReset.dogsMovedToUncategorized, 0);
   assert.equal(secondReset.dogsAlreadyInUncategorized, 4);
+  assert.equal(secondReset.staleUnownedKennelRunIdsCleared, 0);
   assert.equal(aliasReset.dogsMovedToUncategorized, 0);
 
   assert.equal(
@@ -512,6 +546,7 @@ async function main() {
   assert.equal(dogRunName(resetFake, "hidden-active"), null);
   assert.equal(dogRunName(resetFake, "deceased"), null);
   assert.equal(dogRunName(resetFake, "unowned"), null);
+  assert.equal(dogRunName(resetFake, "unowned-stale-run"), null);
   assert.equal(
     resetFake.rows.some((run) => run.id === "custom-run"),
     true,
