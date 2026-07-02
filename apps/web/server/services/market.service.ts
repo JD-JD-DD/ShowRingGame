@@ -1,9 +1,12 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { getVisibleCategoriesFromDogRecord } from "@/server/services/foundationDog.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import {
+  deriveCurrentVisibleCategoriesForDogDisplay,
+  DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
+} from "@/server/services/dogVisibleCategories.service";
 import {
   canSellPuppy,
   MIN_BREED_AGE_HOURS,
@@ -46,6 +49,15 @@ type MarketListingRecord = {
     sex: "M" | "F";
     birthEpoch: number;
     ownerKennelId: string | null;
+    healthConditionTruths: Array<{
+      conditionCode: string;
+      geneticLiability: number;
+      environmentModifier: number;
+    }>;
+    healthTests: Array<{
+      testTypeCode: string;
+      resultCode: string;
+    }>;
     breed: {
       name: string;
     };
@@ -106,7 +118,11 @@ function mapMarketListing(args: {
     sellerKennelName: listing.sellerKennel?.name ?? null,
     listingType: listing.listingType,
     isOwnedByCurrentKennel: listing.dog.ownerKennelId === currentKennelId,
-    visibleCategories: getVisibleCategoriesFromDogRecord(listing.dog),
+    visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
+      storedTraits: listing.dog,
+      phenotypeHealthTruths: listing.dog.healthConditionTruths,
+      phenotypeHealthResults: listing.dog.healthTests,
+    }),
   };
 }
 
@@ -205,6 +221,28 @@ export async function listMarketDogs(args: {
           traitShowShine: true,
           traitFeet: true,
           traitTopline: true,
+          healthConditionTruths: {
+            where: {
+              conditionCode: {
+                in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+              },
+            },
+            select: {
+              conditionCode: true,
+              geneticLiability: true,
+              environmentModifier: true,
+            },
+          },
+          healthTests: {
+            where: {
+              isPublic: true,
+            },
+            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+            select: {
+              testTypeCode: true,
+              resultCode: true,
+            },
+          },
         },
       },
     },

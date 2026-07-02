@@ -17,12 +17,14 @@ import {
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
 import {
+  deriveCurrentVisibleCategoriesForDogDisplay,
+  DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
+} from "@/server/services/dogVisibleCategories.service";
+import {
   DAM_MAX_BREED_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
   PHENOTYPE_HEALTH_TEST_CODES,
   WHELPING_COOLDOWN_HOURS,
-  deriveConditioningHandlingScore,
-  deriveVisibleCategoriesFromTraits,
 } from "@showring/rules";
 
 const RECENT_BREEDING_RESULT_HOURS = 14;
@@ -53,6 +55,11 @@ type RosterDogRecord = {
   traitShowShine: number;
   traitFeet: number;
   traitTopline: number;
+  healthConditionTruths: Array<{
+    conditionCode: string;
+    geneticLiability: number;
+    environmentModifier: number;
+  }>;
   ringObedience: number;
   muscleTone: number;
   coatCondition: number;
@@ -102,27 +109,21 @@ type ActiveListingSummary = {
   listingType: string;
 };
 
-function toVisibleCategories(dog: RosterDogRecord) {
-  return {
-    ...deriveVisibleCategoriesFromTraits({
-    head: dog.traitHead,
-    forequarters: dog.traitForequarters,
-    hindquarters: dog.traitHindquarters,
-    gait: dog.traitGait,
-    coat: dog.traitCoat,
-    size: dog.traitSize,
-    temperament: dog.traitTemperament,
-    show_shine: dog.traitShowShine,
-    feet: dog.traitFeet,
-    topline: dog.traitTopline,
-    }),
-    conditioningHandling: deriveConditioningHandlingScore({
+function toVisibleCategories(
+  dog: RosterDogRecord,
+  healthTests: Array<{ testTypeCode: string; resultCode: string }>
+) {
+  return deriveCurrentVisibleCategoriesForDogDisplay({
+    storedTraits: dog,
+    phenotypeHealthTruths: dog.healthConditionTruths,
+    phenotypeHealthResults: healthTests,
+    conditioning: {
       coatCondition: dog.coatCondition,
       muscleTone: dog.muscleTone,
       ringObedience: dog.ringObedience,
       fatiguePoints: dog.fatiguePoints,
-    }),
-  };
+    },
+  });
 }
 
 function getBreedingCardStatus(
@@ -329,6 +330,18 @@ export async function GET() {
         traitShowShine: true,
         traitFeet: true,
         traitTopline: true,
+        healthConditionTruths: {
+          where: {
+            conditionCode: {
+              in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+            },
+          },
+          select: {
+            conditionCode: true,
+            geneticLiability: true,
+            environmentModifier: true,
+          },
+        },
         ringObedience: true,
         muscleTone: true,
         coatCondition: true,
@@ -573,7 +586,7 @@ export async function GET() {
             groomingStatusLabel: "Needs grooming",
           },
           areaIds: areaIdsByDogId.get(dog.id) ?? [],
-          visibleCategories: toVisibleCategories(dog),
+          visibleCategories: toVisibleCategories(dog, healthTests),
           breedingCardStatus: getBreedingCardStatus(
             dog,
             {

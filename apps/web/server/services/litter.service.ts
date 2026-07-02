@@ -10,6 +10,7 @@ import {
   type LitterDetailDto,
   type LitterListItemDto,
 } from "@/server/mappers/litter.mapper";
+import { DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES } from "@/server/services/dogVisibleCategories.service";
 
 const litterSelect = Prisma.validator<Prisma.LitterSelect>()({
   id: true,
@@ -90,6 +91,28 @@ const litterSelect = Prisma.validator<Prisma.LitterSelect>()({
       traitShowShine: true,
       traitFeet: true,
       traitTopline: true,
+      healthConditionTruths: {
+        where: {
+          conditionCode: {
+            in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+          },
+        },
+        select: {
+          conditionCode: true,
+          geneticLiability: true,
+          environmentModifier: true,
+        },
+      },
+      healthTests: {
+        where: {
+          isPublic: true,
+        },
+        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+        select: {
+          testTypeCode: true,
+          resultCode: true,
+        },
+      },
     },
   },
 });

@@ -44,6 +44,20 @@ const presentationEngine = source("packages/rules/engines/presentation.engine.ts
 const prismaSchema = source("apps/web/prisma/schema.prisma");
 const healthService = source("apps/web/server/services/healthTest.service.ts");
 const dogService = source("apps/web/server/services/dog.service.ts");
+const dogVisibleCategoriesService = source(
+  "apps/web/server/services/dogVisibleCategories.service.ts"
+);
+const litterService = source("apps/web/server/services/litter.service.ts");
+const litterMapper = source("apps/web/server/mappers/litter.mapper.ts");
+const mineDogsRoute = source("apps/web/app/api/dogs/mine/route.ts");
+const marketService = source("apps/web/server/services/market.service.ts");
+const studsPage = source("apps/web/app/studs/page.tsx");
+const breedingPlannerPage = source(
+  "apps/web/components/breeding/BreedingPlannerPage.tsx"
+);
+const programPlannerService = source(
+  "apps/web/server/services/programPlanner.service.ts"
+);
 const groomingService = source("apps/web/server/services/grooming.service.ts");
 const lifecycleService = source("apps/web/server/services/lifecycle.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
@@ -208,13 +222,29 @@ assertDoesNotIncludeAny(
   "public dog profile DTO mapper should not expose hidden health truth values"
 );
 assertIncludes(
-  dogService,
+  dogVisibleCategoriesService,
   "deriveHealthAdjustedExpressedTraits",
-  "dog profile service uses health-adjusted expressed traits for visible categories"
+  "shared dog visible category display helper uses health-adjusted expressed traits"
+);
+assertBefore(
+  dogVisibleCategoriesService,
+  "const expressedTraits = deriveHealthAdjustedExpressedTraits({",
+  "...deriveVisibleCategoriesFromTraits(expressedTraits)",
+  "shared dog visible category display helper derives visible categories from expressed traits"
+);
+assertIncludes(
+  dogVisibleCategoriesService,
+  "DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES",
+  "shared dog visible category display helper centralizes display health expression condition codes"
 );
 assertIncludes(
   dogService,
-  'in: ["HIP_DYSPLASIA", "ELBOW_DYSPLASIA", "CAER_EYE"]',
+  "deriveCurrentVisibleCategoriesForDogDisplay({",
+  "dog profile service uses the shared current visible category display helper"
+);
+assertIncludes(
+  dogService,
+  "in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES]",
   "dog profile service selects hidden hip, elbow, and CAER truths for visible category expression"
 );
 assertIncludes(
@@ -226,6 +256,49 @@ assertIncludes(
   dogService,
   "phenotypeHealthResults: dog.healthTests",
   "dog profile visible category expression can fall back to revealed health results"
+);
+for (const [label, fileSource] of [
+  ["litter mapper", litterMapper],
+  ["kennel dog list route", mineDogsRoute],
+  ["market listing service", marketService],
+  ["stud listing page", studsPage],
+  ["breeding planner page", breedingPlannerPage],
+  ["program planner service", programPlannerService],
+] as const) {
+  assertIncludes(
+    fileSource,
+    "deriveCurrentVisibleCategoriesForDogDisplay",
+    `${label} uses the shared current visible category display helper`
+  );
+  assertDoesNotIncludeAny(
+    fileSource,
+    ["visibleCategories: deriveVisibleCategoriesFromTraits"],
+    `${label} should not derive displayed visible categories directly from raw stored traits`
+  );
+}
+for (const [label, fileSource] of [
+  ["litter service", litterService],
+  ["kennel dog list route", mineDogsRoute],
+  ["market listing service", marketService],
+  ["stud listing page", studsPage],
+  ["breeding planner page", breedingPlannerPage],
+  ["program planner service", programPlannerService],
+] as const) {
+  assertIncludes(
+    fileSource,
+    "in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES]",
+    `${label} loads only display-relevant hidden health truths server-side`
+  );
+}
+assertIncludes(
+  foundationDogService,
+  "deriveCurrentVisibleCategoriesForDogDisplay",
+  "foundation market display uses the shared current visible category display helper"
+);
+assertDoesNotIncludeAny(
+  foundationDogService,
+  ["visibleCategories: deriveVisibleCategoriesFromTraits"],
+  "foundation market display should not derive visible categories directly from raw stored traits"
 );
 assertIncludes(
   dogService,
@@ -492,15 +565,9 @@ assertIncludes(
   "cardiacModifiers.ageDeathMultiplier",
   "cardiac modifies only the age-death projection"
 );
-assertBefore(
-  dogService,
-  "const expressedTraits = deriveHealthAdjustedExpressedTraits({",
-  "...deriveVisibleCategoriesFromTraits(expressedTraits)",
-  "dog profile derives visible categories from expressed traits"
-);
 assertIncludes(
   dogService,
-  'in: ["HIP_DYSPLASIA", "ELBOW_DYSPLASIA", "CAER_EYE"]',
+  "in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES]",
   "dog profile service selects hidden CAER truth for visible category expression"
 );
 assertIncludes(
@@ -558,6 +625,16 @@ assertIncludes(
   breedingService,
   "await ensurePhenotypeHealthTruthsForDogs(",
   "puppies receive hidden health truths after whelping"
+);
+assertIncludes(
+  breedingService,
+  "sireTraits: mapTraits(fresh.sire)",
+  "breeding inheritance still uses stored sire genetic traits"
+);
+assertIncludes(
+  breedingService,
+  "damTraits: mapTraits(fresh.dam)",
+  "breeding inheritance still uses stored dam genetic traits"
 );
 assertIncludes(
   breedingService,

@@ -8,7 +8,6 @@ import {
   BRUCELLOSIS_DISEASE_CODE,
   MIN_BREED_AGE_HOURS,
   WHELPING_COOLDOWN_HOURS,
-  deriveVisibleCategoriesFromTraits,
 } from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
@@ -16,6 +15,10 @@ import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
+import {
+  deriveCurrentVisibleCategoriesForDogDisplay,
+  DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
+} from "@/server/services/dogVisibleCategories.service";
 
 type BreedingPlannerPageProps = {
   experience: "breed-dog" | "worksheet";
@@ -175,6 +178,18 @@ export default async function BreedingPlannerPage({
       traitShowShine: true,
       traitFeet: true,
       traitTopline: true,
+      healthConditionTruths: {
+        where: {
+          conditionCode: {
+            in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+          },
+        },
+        select: {
+          conditionCode: true,
+          geneticLiability: true,
+          environmentModifier: true,
+        },
+      },
       breed: {
         select: {
           name: true,
@@ -301,17 +316,10 @@ export default async function BreedingPlannerPage({
       coiPercent: dog.coiPercent,
       lastLitterEpoch,
       healthTests: dog.healthTests,
-      visibleCategories: deriveVisibleCategoriesFromTraits({
-        head: dog.traitHead,
-        forequarters: dog.traitForequarters,
-        hindquarters: dog.traitHindquarters,
-        gait: dog.traitGait,
-        coat: dog.traitCoat,
-        size: dog.traitSize,
-        temperament: dog.traitTemperament,
-        show_shine: dog.traitShowShine,
-        feet: dog.traitFeet,
-        topline: dog.traitTopline,
+      visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
+        storedTraits: dog,
+        phenotypeHealthTruths: dog.healthConditionTruths,
+        phenotypeHealthResults: dog.healthTests,
       }),
     };
   });
@@ -389,6 +397,18 @@ export default async function BreedingPlannerPage({
           traitShowShine: true,
           traitFeet: true,
           traitTopline: true,
+          healthConditionTruths: {
+            where: {
+              conditionCode: {
+                in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+              },
+            },
+            select: {
+              conditionCode: true,
+              geneticLiability: true,
+              environmentModifier: true,
+            },
+          },
           breed: {
             select: {
               name: true,
@@ -475,17 +495,10 @@ export default async function BreedingPlannerPage({
       coiPercent: dog.coiPercent,
       lastLitterEpoch: null,
       healthTests: dog.healthTests,
-      visibleCategories: deriveVisibleCategoriesFromTraits({
-        head: dog.traitHead,
-        forequarters: dog.traitForequarters,
-        hindquarters: dog.traitHindquarters,
-        gait: dog.traitGait,
-        coat: dog.traitCoat,
-        size: dog.traitSize,
-        temperament: dog.traitTemperament,
-        show_shine: dog.traitShowShine,
-        feet: dog.traitFeet,
-        topline: dog.traitTopline,
+      visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
+        storedTraits: dog,
+        phenotypeHealthTruths: dog.healthConditionTruths,
+        phenotypeHealthResults: dog.healthTests,
       }),
     };
   });

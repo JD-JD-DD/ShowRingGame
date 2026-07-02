@@ -7,8 +7,6 @@ import {
   PHENOTYPE_HEALTH_TEST_CODES,
   PHENOTYPE_HEALTH_TESTS,
   WHELPING_COOLDOWN_HOURS,
-  deriveConditioningHandlingScore,
-  deriveVisibleCategoriesFromTraits,
 } from "@showring/rules";
 
 import { getPhenotypeHealthSeverity } from "@/lib/dogHealth";
@@ -22,6 +20,10 @@ import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
+import {
+  deriveCurrentVisibleCategoriesForDogDisplay,
+  DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
+} from "@/server/services/dogVisibleCategories.service";
 
 export type ProgramPlannerTagType =
   | "KEEP"
@@ -180,27 +182,27 @@ function toVisibleCategories(dog: {
   muscleTone: number;
   coatCondition: number;
   fatiguePoints: number;
+  healthConditionTruths?: Array<{
+    conditionCode: string;
+    geneticLiability: number;
+    environmentModifier: number;
+  }>;
+  healthTests?: Array<{
+    testTypeCode: string;
+    resultCode: string;
+  }>;
 }): VisibleCategories {
-  return {
-    ...deriveVisibleCategoriesFromTraits({
-      head: dog.traitHead,
-      forequarters: dog.traitForequarters,
-      hindquarters: dog.traitHindquarters,
-      gait: dog.traitGait,
-      coat: dog.traitCoat,
-      size: dog.traitSize,
-      temperament: dog.traitTemperament,
-      show_shine: dog.traitShowShine,
-      feet: dog.traitFeet,
-      topline: dog.traitTopline,
-    }),
-    conditioningHandling: deriveConditioningHandlingScore({
+  return deriveCurrentVisibleCategoriesForDogDisplay({
+    storedTraits: dog,
+    phenotypeHealthTruths: dog.healthConditionTruths,
+    phenotypeHealthResults: dog.healthTests,
+    conditioning: {
       coatCondition: dog.coatCondition,
       muscleTone: dog.muscleTone,
       ringObedience: dog.ringObedience,
       fatiguePoints: dog.fatiguePoints,
-    }),
-  };
+    },
+  });
 }
 
 function latestPhenotypeTests(
@@ -917,6 +919,18 @@ async function fetchProgramPlannerDogs(args: {
           resultCode: true,
           testedAtEpoch: true,
           createdAt: true,
+        },
+      },
+      healthConditionTruths: {
+        where: {
+          conditionCode: {
+            in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+          },
+        },
+        select: {
+          conditionCode: true,
+          geneticLiability: true,
+          environmentModifier: true,
         },
       },
       breedingAttemptsAsDam: {

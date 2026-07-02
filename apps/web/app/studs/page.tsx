@@ -8,12 +8,15 @@ import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
+import {
+  deriveCurrentVisibleCategoriesForDogDisplay,
+  DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
+} from "@/server/services/dogVisibleCategories.service";
 import TraitLine from "@/components/ui/TraitLine";
 import {
   BRUCELLOSIS_DISEASE_CODE,
   CURRENT_BREED_RELEASE,
   MIN_BREED_AGE_HOURS,
-  deriveVisibleCategoriesFromTraits,
 } from "@showring/rules";
 
 type PageProps = {
@@ -217,6 +220,28 @@ export default async function StudsPage({ searchParams }: PageProps) {
           traitShowShine: true,
           traitFeet: true,
           traitTopline: true,
+          healthConditionTruths: {
+            where: {
+              conditionCode: {
+                in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+              },
+            },
+            select: {
+              conditionCode: true,
+              geneticLiability: true,
+              environmentModifier: true,
+            },
+          },
+          healthTests: {
+            where: {
+              isPublic: true,
+            },
+            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+            select: {
+              testTypeCode: true,
+              resultCode: true,
+            },
+          },
           infectiousDiseaseStatuses: {
             where: {
               diseaseCode: BRUCELLOSIS_DISEASE_CODE,
@@ -342,17 +367,10 @@ export default async function StudsPage({ searchParams }: PageProps) {
                 dog,
                 currentEpoch
               );
-              const visibleCategories = deriveVisibleCategoriesFromTraits({
-                head: dog.traitHead,
-                forequarters: dog.traitForequarters,
-                hindquarters: dog.traitHindquarters,
-                gait: dog.traitGait,
-                coat: dog.traitCoat,
-                size: dog.traitSize,
-                temperament: dog.traitTemperament,
-                show_shine: dog.traitShowShine,
-                feet: dog.traitFeet,
-                topline: dog.traitTopline,
+              const visibleCategories = deriveCurrentVisibleCategoriesForDogDisplay({
+                storedTraits: dog,
+                phenotypeHealthTruths: dog.healthConditionTruths,
+                phenotypeHealthResults: dog.healthTests,
               });
 
               return (

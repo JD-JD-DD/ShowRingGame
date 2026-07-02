@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import {
   createFoundationDogProfile,
-  deriveVisibleCategoriesFromTraits,
   type FoundationBreedBaseline,
   type VisibleCategories,
 } from "@showring/rules";
@@ -19,6 +18,10 @@ import { SHOW_WEEK_HOURS } from "@showring/rules";
 import { applyBetaBalanceTopUp } from "@/lib/betaEconomy";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { maybeSeedFoundationBrucellosis } from "@/server/services/infectiousDisease.service";
+import {
+  deriveCurrentVisibleCategoriesForDogDisplay,
+  DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
+} from "@/server/services/dogVisibleCategories.service";
 
 const FOUNDATION_LISTING_TYPE = "FOUNDATION";
 const FOUNDATION_DESCRIPTION_PUBLIC = "Foundation dog available for purchase.";
@@ -162,6 +165,15 @@ type MarketDogRecord = HiddenTraitRecord & {
   breed: {
     name: string;
   };
+  healthConditionTruths: Array<{
+    conditionCode: string;
+    geneticLiability: number;
+    environmentModifier: number;
+  }>;
+  healthTests: Array<{
+    testTypeCode: string;
+    resultCode: string;
+  }>;
 };
 
 type BreedFoundationPolicy = {
@@ -209,25 +221,17 @@ function pickFoundationBirthEpoch(currentEpoch: number): number {
   return currentEpoch - ageHours;
 }
 
-function toDogTraits(record: HiddenTraitRecord): DogTraits {
-  return {
-    head: record.traitHead,
-    forequarters: record.traitForequarters,
-    hindquarters: record.traitHindquarters,
-    gait: record.traitGait,
-    coat: record.traitCoat,
-    size: record.traitSize,
-    temperament: record.traitTemperament,
-    show_shine: record.traitShowShine,
-    feet: record.traitFeet,
-    topline: record.traitTopline,
-  };
-}
-
 export function getVisibleCategoriesFromDogRecord(
-  dog: HiddenTraitRecord
+  dog: HiddenTraitRecord & {
+    healthConditionTruths?: MarketDogRecord["healthConditionTruths"];
+    healthTests?: MarketDogRecord["healthTests"];
+  }
 ): VisibleCategories {
-  return deriveVisibleCategoriesFromTraits(toDogTraits(dog));
+  return deriveCurrentVisibleCategoriesForDogDisplay({
+    storedTraits: dog,
+    phenotypeHealthTruths: dog.healthConditionTruths,
+    phenotypeHealthResults: dog.healthTests,
+  });
 }
 
 function toFoundationDogMarketDto(args: {
@@ -788,6 +792,28 @@ export async function listFoundationDogs(args: {
           traitShowShine: true,
           traitFeet: true,
           traitTopline: true,
+          healthConditionTruths: {
+            where: {
+              conditionCode: {
+                in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+              },
+            },
+            select: {
+              conditionCode: true,
+              geneticLiability: true,
+              environmentModifier: true,
+            },
+          },
+          healthTests: {
+            where: {
+              isPublic: true,
+            },
+            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+            select: {
+              testTypeCode: true,
+              resultCode: true,
+            },
+          },
         },
       },
     },
@@ -851,6 +877,28 @@ export async function getFoundationDogById(args: {
           traitShowShine: true,
           traitFeet: true,
           traitTopline: true,
+          healthConditionTruths: {
+            where: {
+              conditionCode: {
+                in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+              },
+            },
+            select: {
+              conditionCode: true,
+              geneticLiability: true,
+              environmentModifier: true,
+            },
+          },
+          healthTests: {
+            where: {
+              isPublic: true,
+            },
+            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+            select: {
+              testTypeCode: true,
+              resultCode: true,
+            },
+          },
         },
       },
     },
@@ -1006,6 +1054,28 @@ export async function buyFoundationDog(args: {
       traitShowShine: true,
       traitFeet: true,
       traitTopline: true,
+      healthConditionTruths: {
+        where: {
+          conditionCode: {
+            in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+          },
+        },
+        select: {
+          conditionCode: true,
+          geneticLiability: true,
+          environmentModifier: true,
+        },
+      },
+      healthTests: {
+        where: {
+          isPublic: true,
+        },
+        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+        select: {
+          testTypeCode: true,
+          resultCode: true,
+        },
+      },
     },
   });
 

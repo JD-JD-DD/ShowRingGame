@@ -1,5 +1,6 @@
-import { deriveVisibleCategoriesFromTraits } from "@showring/rules";
+import type { VisibleCategories } from "@showring/rules";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { deriveCurrentVisibleCategoriesForDogDisplay } from "@/server/services/dogVisibleCategories.service";
 
 type ParentDogInput = {
   id: string;
@@ -29,6 +30,15 @@ type PuppyDogInput = ParentDogInput & {
   traitShowShine: number;
   traitFeet: number;
   traitTopline: number;
+  healthConditionTruths: Array<{
+    conditionCode: string;
+    geneticLiability: number;
+    environmentModifier: number;
+  }>;
+  healthTests: Array<{
+    testTypeCode: string;
+    resultCode: string;
+  }>;
 };
 
 type LitterInput = {
@@ -76,7 +86,7 @@ export type LitterPuppyDto = LitterParentDto & {
   isNeonatalLoss: boolean;
   marketState: string;
   litterOrder: number | null;
-  visibleCategories: ReturnType<typeof deriveVisibleCategoriesFromTraits>;
+  visibleCategories: VisibleCategories;
 };
 
 export type LitterListItemDto = {
@@ -138,17 +148,10 @@ function mapPuppy(dog: PuppyDogInput, currentEpoch: number): LitterPuppyDto {
     isNeonatalLoss,
     marketState: dog.marketState,
     litterOrder: dog.litterOrder,
-    visibleCategories: deriveVisibleCategoriesFromTraits({
-      head: dog.traitHead,
-      forequarters: dog.traitForequarters,
-      hindquarters: dog.traitHindquarters,
-      gait: dog.traitGait,
-      coat: dog.traitCoat,
-      size: dog.traitSize,
-      temperament: dog.traitTemperament,
-      show_shine: dog.traitShowShine,
-      feet: dog.traitFeet,
-      topline: dog.traitTopline,
+    visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
+      storedTraits: dog,
+      phenotypeHealthTruths: dog.healthConditionTruths,
+      phenotypeHealthResults: dog.healthTests,
     }),
   };
 }
