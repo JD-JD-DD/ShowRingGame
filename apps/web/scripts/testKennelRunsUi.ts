@@ -17,6 +17,20 @@ function assertExcludes(haystack: string, needle: string, label: string): void {
   assert.ok(!haystack.includes(needle), label);
 }
 
+function assertBefore(
+  haystack: string,
+  first: string,
+  second: string,
+  label: string
+): void {
+  const firstIndex = haystack.indexOf(first);
+  const secondIndex = haystack.indexOf(second);
+
+  assert.ok(firstIndex >= 0, `${label}: missing first marker`);
+  assert.ok(secondIndex >= 0, `${label}: missing second marker`);
+  assert.ok(firstIndex < secondIndex, label);
+}
+
 const kennelPanel = source("apps/web/components/kennel/KennelDogsPanel.tsx");
 
 assertIncludes(
@@ -181,8 +195,116 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "Current Run:",
+  'label: "Current Run"',
   "multi-run view can show each dog's current run after movement"
+);
+assertIncludes(
+  kennelPanel,
+  "Columns",
+  "column chooser control renders"
+);
+assertIncludes(
+  kennelPanel,
+  "Visible Columns",
+  "column chooser panel labels visible columns"
+);
+assertIncludes(
+  kennelPanel,
+  'const VISIBLE_COLUMNS_STORAGE_KEY = "showring.kennelRoster.visibleColumns";',
+  "visible column preferences use the canonical localStorage key"
+);
+assertIncludes(
+  kennelPanel,
+  'window.localStorage.getItem(VISIBLE_COLUMNS_STORAGE_KEY)',
+  "visible column preferences load from localStorage"
+);
+assertIncludes(
+  kennelPanel,
+  'window.localStorage.setItem(',
+  "visible column preferences persist to localStorage"
+);
+assertIncludes(
+  kennelPanel,
+  'const DEFAULT_VISIBLE_COLUMNS: OptionalColumnId[] = [',
+  "default optional columns are declared"
+);
+for (const defaultColumn of [
+  '"dog"',
+  '"breed"',
+  '"sex"',
+  '"age"',
+  '"typeExpression"',
+  '"structureBalance"',
+  '"movement"',
+]) {
+  assertIncludes(
+    kennelPanel,
+    defaultColumn,
+    `default optional column ${defaultColumn} is configured`
+  );
+}
+assertIncludes(
+  kennelPanel,
+  "Reset Columns",
+  "column chooser can reset to default columns"
+);
+assertIncludes(
+  kennelPanel,
+  "Clear Optional",
+  "column chooser allows all optional columns to be hidden"
+);
+assertIncludes(
+  kennelPanel,
+  "toggleVisibleColumn(column.id)",
+  "column chooser toggles optional columns"
+);
+assertIncludes(
+  kennelPanel,
+  "visibleColumnDefinitions.map((column)",
+  "table renders only selected optional columns"
+);
+assertIncludes(
+  kennelPanel,
+  "colSpan={rosterColumnCount}",
+  "expanded rows span the dynamic visible column count"
+);
+assertIncludes(
+  kennelPanel,
+  'target="_blank"',
+  "open dog action opens in a new tab"
+);
+assertIncludes(
+  kennelPanel,
+  'rel="noopener noreferrer"',
+  "open dog action uses safe new-tab rel attributes"
+);
+assertBefore(
+  kennelPanel,
+  '<th className="w-10 px-2 py-2">',
+  "visibleColumnDefinitions.map((column)",
+  "required selection column renders before optional columns"
+);
+assertBefore(
+  kennelPanel,
+  '<th className="w-[58px] px-2 py-2 text-center">Open</th>',
+  "visibleColumnDefinitions.map((column)",
+  "required open action column renders before optional columns"
+);
+assertBefore(
+  kennelPanel,
+  'target="_blank"',
+  "visibleColumnDefinitions.map((column) => {",
+  "open dog action remains outside optional dog/name rendering"
+);
+assertIncludes(
+  kennelPanel,
+  "Move selected dogs",
+  "bulk move UI still renders with customizable columns"
+);
+assertIncludes(
+  kennelPanel,
+  "Filters",
+  "filters still render with customizable columns"
 );
 assertIncludes(
   kennelPanel,

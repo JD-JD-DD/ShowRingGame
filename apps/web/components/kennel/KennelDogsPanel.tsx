@@ -141,6 +141,69 @@ type SortKey =
 
 type BulkAction = "" | "show-entry" | "rehome";
 type GroomingStateFilter = "" | "groomed" | "ungroomed";
+type OptionalColumnId =
+  | "dog"
+  | "breed"
+  | "sex"
+  | "age"
+  | "typeExpression"
+  | "structureBalance"
+  | "movement"
+  | "coatPresentation"
+  | "temperamentRingBehavior"
+  | "conditioningHandling"
+  | "currentRun"
+  | "titleStatus"
+  | "isListedForSale"
+  | "isListedAtStud"
+  | "breedable"
+  | "breedingStatus"
+  | "groomingStatus"
+  | "healthStatus";
+
+const VISIBLE_COLUMNS_STORAGE_KEY = "showring.kennelRoster.visibleColumns";
+const OPTIONAL_COLUMNS: Array<{
+  id: OptionalColumnId;
+  label: string;
+  sortKey?: SortKey;
+}> = [
+  { id: "dog", label: "Dog", sortKey: "name" },
+  { id: "breed", label: "Breed", sortKey: "breed" },
+  { id: "sex", label: "Sex", sortKey: "sex" },
+  { id: "age", label: "Age", sortKey: "age" },
+  { id: "typeExpression", label: "Type", sortKey: "typeExpression" },
+  { id: "structureBalance", label: "Structure", sortKey: "structureBalance" },
+  { id: "movement", label: "Movement", sortKey: "movement" },
+  { id: "coatPresentation", label: "Coat Condition", sortKey: "coatPresentation" },
+  {
+    id: "temperamentRingBehavior",
+    label: "Temperament",
+    sortKey: "temperamentRingBehavior",
+  },
+  {
+    id: "conditioningHandling",
+    label: "Conditioning & Handling",
+    sortKey: "conditioningHandling",
+  },
+  { id: "currentRun", label: "Current Run" },
+  { id: "titleStatus", label: "CH/GCH" },
+  { id: "isListedForSale", label: "For Sale" },
+  { id: "isListedAtStud", label: "At Stud" },
+  { id: "breedable", label: "Breedable" },
+  { id: "breedingStatus", label: "Pregnancy/Whelping" },
+  { id: "groomingStatus", label: "Grooming" },
+  { id: "healthStatus", label: "Health Tests" },
+];
+const OPTIONAL_COLUMN_IDS = OPTIONAL_COLUMNS.map((column) => column.id);
+const DEFAULT_VISIBLE_COLUMNS: OptionalColumnId[] = [
+  "dog",
+  "breed",
+  "sex",
+  "age",
+  "typeExpression",
+  "structureBalance",
+  "movement",
+];
 
 function formatAge(ageHours: number): string {
   const weeks = Math.floor(ageHours / 7);
@@ -296,6 +359,11 @@ export default function KennelDogsPanel() {
     string | null
   >(null);
   const [deleteRunLoading, setDeleteRunLoading] = useState(false);
+  const [showColumnChooser, setShowColumnChooser] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<OptionalColumnId[]>(
+    DEFAULT_VISIBLE_COLUMNS
+  );
+  const [visibleColumnsLoaded, setVisibleColumnsLoaded] = useState(false);
   const [groomingActionDogId, setGroomingActionDogId] = useState<string | null>(
     null
   );
@@ -315,6 +383,39 @@ export default function KennelDogsPanel() {
 
   const [sortKey, setSortKey] = useState<SortKey>("breed");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(VISIBLE_COLUMNS_STORAGE_KEY);
+
+      if (saved) {
+        const parsed = JSON.parse(saved);
+
+        if (Array.isArray(parsed)) {
+          setVisibleColumns(
+            parsed.filter((columnId): columnId is OptionalColumnId =>
+              OPTIONAL_COLUMN_IDS.includes(columnId as OptionalColumnId)
+            )
+          );
+        }
+      }
+    } catch {
+      setVisibleColumns(DEFAULT_VISIBLE_COLUMNS);
+    } finally {
+      setVisibleColumnsLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!visibleColumnsLoaded) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      VISIBLE_COLUMNS_STORAGE_KEY,
+      JSON.stringify(visibleColumns)
+    );
+  }, [visibleColumns, visibleColumnsLoaded]);
 
   function buildDogsUrl(runIds: string[]) {
     const url = new URL("/api/dogs/mine", window.location.origin);
@@ -574,6 +675,15 @@ export default function KennelDogsPanel() {
     selectedDogIds.length > 0 && Boolean(selectedMoveRunId) && !moveDogsLoading;
   const canCreateRun = newRunName.trim().length > 0 && !creatingRun;
   const canRenameRun = renameRunName.trim().length > 0 && !renameRunLoading;
+  const visibleColumnSet = useMemo(
+    () => new Set<OptionalColumnId>(visibleColumns),
+    [visibleColumns]
+  );
+  const visibleColumnDefinitions = OPTIONAL_COLUMNS.filter((column) =>
+    visibleColumnSet.has(column.id)
+  );
+  const visibleOptionalColumnCount = visibleColumnDefinitions.length;
+  const rosterColumnCount = 2 + visibleOptionalColumnCount;
 
   useEffect(() => {
     setSelectedDogIds((current) =>
@@ -622,6 +732,30 @@ export default function KennelDogsPanel() {
     setBulkAction("");
     setSelectedMoveRunId("");
     setConfirmingBulkAction(false);
+  }
+
+  function hasColumn(columnId: OptionalColumnId) {
+    return visibleColumnSet.has(columnId);
+  }
+
+  function toggleVisibleColumn(columnId: OptionalColumnId) {
+    setVisibleColumns((current) =>
+      current.includes(columnId)
+        ? current.filter((visibleColumnId) => visibleColumnId !== columnId)
+        : [...current, columnId]
+    );
+  }
+
+  function resetVisibleColumns() {
+    setVisibleColumns(DEFAULT_VISIBLE_COLUMNS);
+  }
+
+  function selectAllColumns() {
+    setVisibleColumns([...OPTIONAL_COLUMN_IDS]);
+  }
+
+  function clearOptionalColumns() {
+    setVisibleColumns([]);
   }
 
   function clearAllFilters() {
@@ -1395,6 +1529,71 @@ export default function KennelDogsPanel() {
                 </div>
               ) : null}
             </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowColumnChooser((current) => !current)}
+                className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
+              >
+                Columns
+              </button>
+
+              {showColumnChooser ? (
+                <div className="theme-card absolute right-0 z-20 mt-2 w-72 rounded-2xl p-4 shadow-xl">
+                  <div className="theme-heading text-sm font-semibold">
+                    Visible Columns
+                  </div>
+                  <div className="theme-copy mt-1 text-xs leading-5">
+                    Select and Open always stay visible.
+                  </div>
+                  <div className="mt-3 grid max-h-80 gap-2 overflow-y-auto pr-1">
+                    {OPTIONAL_COLUMNS.map((column) => (
+                      <label
+                        key={column.id}
+                        className="theme-control flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={hasColumn(column.id)}
+                          onChange={() => toggleVisibleColumn(column.id)}
+                        />
+                        {column.label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={resetVisibleColumns}
+                      className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold"
+                    >
+                      Reset Columns
+                    </button>
+                    <button
+                      type="button"
+                      onClick={selectAllColumns}
+                      className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearOptionalColumns}
+                      className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold"
+                    >
+                      Clear Optional
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowColumnChooser(false)}
+                      className="rounded-lg bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
 
       {message ? (
@@ -1602,10 +1801,13 @@ export default function KennelDogsPanel() {
         </div>
       ) : (
         <div className="overflow-x-auto pb-1 touch-pan-x">
-          <table className="w-full min-w-[980px] table-fixed border-separate border-spacing-y-2 text-sm">
-            <caption className="theme-label mb-2 caption-top text-left text-xs uppercase tracking-[0.16em]">
-              Main categories: 0–20 directional · 10 ideal; Cond/Handling: 0–10 · 10 optimized
-            </caption>
+          <table className="w-full min-w-[640px] table-auto border-separate border-spacing-y-2 text-sm">
+            {visibleOptionalColumnCount > 0 ? (
+              <caption className="theme-label mb-2 caption-top text-left text-xs uppercase tracking-[0.16em]">
+                Columns are view-only. Filters and Kennel Runs control which
+                dogs appear.
+              </caption>
+            ) : null}
             <thead>
               <tr className="theme-label text-left text-xs uppercase tracking-[0.16em]">
                 <th className="w-10 px-2 py-2">
@@ -1618,97 +1820,21 @@ export default function KennelDogsPanel() {
                   </button>
                 </th>
                 <th className="w-[58px] px-2 py-2 text-center">Open</th>
-                <th className="w-[12%] px-2 py-2">
-                  <SortButton
-                    active={sortKey === "breed"}
-                    direction={sortDirection}
-                    onClick={() => toggleSort("breed")}
-                  >
-                    Breed
-                  </SortButton>
-                </th>
-                <th className="w-[18%] px-2 py-2">
-                  <SortButton
-                    active={sortKey === "name"}
-                    direction={sortDirection}
-                    onClick={() => toggleSort("name")}
-                  >
-                    Dog
-                  </SortButton>
-                </th>
-                <th className="w-12 px-2 py-2">
-                  <SortButton
-                    active={sortKey === "sex"}
-                    direction={sortDirection}
-                    onClick={() => toggleSort("sex")}
-                  >
-                    Sex
-                  </SortButton>
-                </th>
-                <th className="w-16 px-2 py-2">
-                  <SortButton
-                    active={sortKey === "age"}
-                    direction={sortDirection}
-                    onClick={() => toggleSort("age")}
-                  >
-                    Age
-                  </SortButton>
-                </th>
-                <th className="w-14 px-2 py-2">
-                  <SortButton
-                    active={sortKey === "typeExpression"}
-                    direction={sortDirection}
-                    onClick={() => toggleSort("typeExpression")}
-                  >
-                    Type
-                  </SortButton>
-                </th>
-                <th className="w-16 px-2 py-2">
-                  <SortButton
-                    active={sortKey === "structureBalance"}
-                    direction={sortDirection}
-                    onClick={() => toggleSort("structureBalance")}
-                  >
-                    Struct.
-                  </SortButton>
-                </th>
-                <th className="w-14 px-2 py-2">
-                  <SortButton
-                    active={sortKey === "movement"}
-                    direction={sortDirection}
-                    onClick={() => toggleSort("movement")}
-                  >
-                    Move.
-                  </SortButton>
-                </th>
-                <th className="w-14 px-2 py-2">
-                  <SortButton
-                    active={sortKey === "coatPresentation"}
-                    direction={sortDirection}
-                    onClick={() => toggleSort("coatPresentation")}
-                  >
-                    Coat
-                  </SortButton>
-                </th>
-                <th className="w-14 px-2 py-2">
-                  <SortButton
-                    active={sortKey === "temperamentRingBehavior"}
-                    direction={sortDirection}
-                    onClick={() => toggleSort("temperamentRingBehavior")}
-                  >
-                    Temp.
-                  </SortButton>
-                </th>
-                <th className="w-14 px-2 py-2">
-                  <SortButton
-                    active={sortKey === "conditioningHandling"}
-                    direction={sortDirection}
-                    onClick={() => toggleSort("conditioningHandling")}
-                  >
-                    Prep
-                  </SortButton>
-                </th>
-                <th className="w-[118px] px-2 py-2 text-center">Groom</th>
+                {visibleColumnDefinitions.map((column) => (
+                  <th key={column.id} className="px-2 py-2">
+                    {column.sortKey ? (
+                      <SortButton
+                        active={sortKey === column.sortKey}
+                        direction={sortDirection}
+                        onClick={() => toggleSort(column.sortKey!)}
+                      >
+                        {column.label}
+                      </SortButton>
+                    ) : (
+                      column.label
+                    )}
+                  </th>
+                ))}
               </tr>
             </thead>
 
@@ -1761,16 +1887,7 @@ export default function KennelDogsPanel() {
                 return (
                   <Fragment key={dog.dogId}>
                   <tr
-                    role="link"
-                    tabIndex={0}
-                    onClick={() => router.push(dogHref)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        router.push(dogHref);
-                      }
-                    }}
-                    className="theme-card-interactive cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-purple-300/45"
+                    className="theme-card-interactive transition focus:outline-none focus:ring-2 focus:ring-purple-300/45"
                   >
                     <td className="rounded-l-2xl px-2 py-2">
                       <input
@@ -1786,6 +1903,8 @@ export default function KennelDogsPanel() {
                     <td className="px-2 py-2 text-center">
                       <Link
                         href={dogHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         aria-label={`View ${dog.callName ?? dog.regNumber}`}
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={(event) => event.stopPropagation()}
@@ -1795,118 +1914,192 @@ export default function KennelDogsPanel() {
                       </Link>
                     </td>
 
-                  <td className="theme-heading px-2 py-2 font-medium">
-                    <div className="truncate text-xs leading-4">
-                      {dog.breedName}
-                    </div>
-                  </td>
+                  {visibleColumnDefinitions.map((column) => {
+                    const columnId = column.id;
 
-                  <td className="theme-heading px-2 py-2 font-medium">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate">{getDogDisplayName(dog)}</span>
-                      <DogStatusBadges
-                        healthStatus={dog.healthBadgeStatus}
-                        fullHealthClearance={dog.hasAllGreenHealthTests}
-                        isListedForSale={dog.isListedForSale}
-                        isListedAtStud={dog.isListedAtStud}
-                      />
-                    </div>
-                    {selectedRuns.length > 1 && dog.currentRun ? (
-                      <div className="theme-copy mt-0.5 truncate text-[0.68rem]">
-                        Current Run: {dog.currentRun.name}
-                      </div>
-                    ) : null}
-                  </td>
-
-                  <td className="theme-heading px-2 py-2">{dog.sex}</td>
-                  <td className="theme-heading px-2 py-2">
-                    {formatAge(dog.ageHours)}
-                  </td>
-
-                  <td className="px-2 py-2">
-                    <StatCell value={dog.visibleCategories.typeExpression ?? 0} />
-                  </td>
-                  <td className="px-2 py-2">
-                    <StatCell value={dog.visibleCategories.structureBalance ?? 0} />
-                  </td>
-                  <td className="px-2 py-2">
-                    <StatCell value={dog.visibleCategories.movement ?? 0} />
-                  </td>
-                  <td className="px-2 py-2">
-                    <StatCell value={dog.visibleCategories.coatPresentation ?? 0} />
-                  </td>
-                  <td className="px-2 py-2">
-                    <StatCell
-                      value={dog.visibleCategories.temperamentRingBehavior ?? 0}
-                    />
-                  </td>
-                  <td className="px-2 py-2">
-                    <StatCell
-                      value={dog.visibleCategories.conditioningHandling ?? 0}
-                    />
-                  </td>
-
-                  <td className="rounded-r-2xl px-2 py-2">
-                    <div className="grid gap-1">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setExpandedGroomingDogId((current) =>
-                            current === dog.dogId ? null : dog.dogId
-                          );
-                          setConfirmingGroomingOfferDogId(null);
-                        }}
-                        onKeyDown={(event) => event.stopPropagation()}
-                        disabled={groomingMenuDisabled}
-                        title={groomingMenuTitle}
-                        aria-expanded={groomingMenuOpen}
-                        aria-controls={groomingMenuId}
-                        className="w-full rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[0.7rem] font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-45"
-                      >
-                        {groomingMenuLabel}
-                      </button>
-                      {groomingMenuOpen ? (
-                        <div id={groomingMenuId} className="grid gap-1">
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              void runGroomingAction({
-                                dogId: dog.dogId,
-                                endpoint: "/api/services/grooming/self-groom",
-                              });
-                            }}
-                            onKeyDown={(event) => event.stopPropagation()}
-                            disabled={groomDisabled}
-                            title={groomingSelfActionTitle}
-                            className="w-full rounded-md border border-amber-300/20 bg-black/20 px-2 py-1 text-[0.64rem] font-semibold text-amber-100 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-45"
+                    switch (columnId) {
+                      case "dog":
+                        return (
+                          <td
+                            key={columnId}
+                            className="theme-heading px-2 py-2 font-medium"
                           >
-                            {noGroomingActionsRemaining
-                              ? "No Grooming Left"
-                              : "Groom yourself"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setConfirmingGroomingOfferDogId(dog.dogId);
-                            }}
-                            onKeyDown={(event) => event.stopPropagation()}
-                            disabled={offerDisabled}
-                            title={groomingAgeTitle}
-                            className="w-full rounded-md border border-sky-300/20 bg-sky-500/10 px-2 py-1 text-[0.64rem] font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <span className="truncate">
+                                {getDogDisplayName(dog)}
+                              </span>
+                              <DogStatusBadges
+                                healthStatus={dog.healthBadgeStatus}
+                                fullHealthClearance={dog.hasAllGreenHealthTests}
+                                isListedForSale={dog.isListedForSale}
+                                isListedAtStud={dog.isListedAtStud}
+                              />
+                            </div>
+                          </td>
+                        );
+                      case "breed":
+                        return (
+                          <td
+                            key={columnId}
+                            className="theme-heading px-2 py-2 font-medium"
                           >
-                            Offer for grooming
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  </td>
+                            <div className="truncate text-xs leading-4">
+                              {dog.breedName}
+                            </div>
+                          </td>
+                        );
+                      case "sex":
+                        return (
+                          <td key={columnId} className="theme-heading px-2 py-2">
+                            {dog.sex}
+                          </td>
+                        );
+                      case "age":
+                        return (
+                          <td key={columnId} className="theme-heading px-2 py-2">
+                            {formatAge(dog.ageHours)}
+                          </td>
+                        );
+                      case "typeExpression":
+                      case "structureBalance":
+                      case "movement":
+                      case "coatPresentation":
+                      case "temperamentRingBehavior":
+                      case "conditioningHandling":
+                        return (
+                          <td key={columnId} className="px-2 py-2">
+                            <StatCell value={dog.visibleCategories[columnId] ?? 0} />
+                          </td>
+                        );
+                      case "currentRun":
+                        return (
+                          <td key={columnId} className="theme-copy px-2 py-2 text-xs">
+                            {dog.currentRun?.name ?? "Uncategorized"}
+                          </td>
+                        );
+                      case "titleStatus": {
+                        const titleText = [
+                          dog.visibleTitlePrefix,
+                          dog.visibleTitleSuffix,
+                        ]
+                          .filter(Boolean)
+                          .join(" ");
+
+                        return (
+                          <td key={columnId} className="theme-copy px-2 py-2 text-xs">
+                            {titleText || "None"}
+                          </td>
+                        );
+                      }
+                      case "isListedForSale":
+                        return (
+                          <td key={columnId} className="theme-copy px-2 py-2 text-xs">
+                            {dog.isListedForSale ? "Yes" : "No"}
+                          </td>
+                        );
+                      case "isListedAtStud":
+                        return (
+                          <td key={columnId} className="theme-copy px-2 py-2 text-xs">
+                            {dog.isListedAtStud ? "Yes" : "No"}
+                          </td>
+                        );
+                      case "breedable":
+                        return (
+                          <td key={columnId} className="theme-copy px-2 py-2 text-xs">
+                            {dog.breedingCardStatus.label === "Open" ||
+                            dog.breedingCardStatus.label === "Available for Stud"
+                              ? "Yes"
+                              : "No"}
+                          </td>
+                        );
+                      case "breedingStatus":
+                        return (
+                          <td key={columnId} className="theme-copy px-2 py-2 text-xs">
+                            {dog.breedingCardStatus.label}
+                          </td>
+                        );
+                      case "healthStatus":
+                        return (
+                          <td key={columnId} className="theme-copy px-2 py-2 text-xs">
+                            {dog.hasAllGreenHealthTests
+                              ? "All green"
+                              : dog.healthBadgeStatus ?? "Unknown"}
+                          </td>
+                        );
+                      case "groomingStatus":
+                        return (
+                          <td key={columnId} className="px-2 py-2">
+                            <div className="grid gap-1">
+                              <div className="theme-copy truncate text-[0.68rem]">
+                                {dog.groomingStatus.groomingStatusLabel}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setExpandedGroomingDogId((current) =>
+                                    current === dog.dogId ? null : dog.dogId
+                                  );
+                                  setConfirmingGroomingOfferDogId(null);
+                                }}
+                                onKeyDown={(event) => event.stopPropagation()}
+                                disabled={groomingMenuDisabled}
+                                title={groomingMenuTitle}
+                                aria-expanded={groomingMenuOpen}
+                                aria-controls={groomingMenuId}
+                                className="w-full rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[0.7rem] font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                              >
+                                {groomingMenuLabel}
+                              </button>
+                              {groomingMenuOpen ? (
+                                <div id={groomingMenuId} className="grid gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      void runGroomingAction({
+                                        dogId: dog.dogId,
+                                        endpoint: "/api/services/grooming/self-groom",
+                                      });
+                                    }}
+                                    onKeyDown={(event) => event.stopPropagation()}
+                                    disabled={groomDisabled}
+                                    title={groomingSelfActionTitle}
+                                    className="w-full rounded-md border border-amber-300/20 bg-black/20 px-2 py-1 text-[0.64rem] font-semibold text-amber-100 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-45"
+                                  >
+                                    {noGroomingActionsRemaining
+                                      ? "No Grooming Left"
+                                      : "Groom yourself"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setConfirmingGroomingOfferDogId(dog.dogId);
+                                    }}
+                                    onKeyDown={(event) => event.stopPropagation()}
+                                    disabled={offerDisabled}
+                                    title={groomingAgeTitle}
+                                    className="w-full rounded-md border border-sky-300/20 bg-sky-500/10 px-2 py-1 text-[0.64rem] font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                                  >
+                                    Offer for grooming
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          </td>
+                        );
+                      default:
+                        return null;
+                    }
+                  })}
                 </tr>
                   {groomingOfferConfirmOpen ? (
                     <tr className="theme-card">
-                      <td colSpan={13} className="rounded-2xl px-4 py-3">
+                      <td
+                        colSpan={rosterColumnCount}
+                        className="rounded-2xl px-4 py-3"
+                      >
                         <div className="rounded-xl border border-sky-300/25 bg-sky-500/10 p-3">
                           <div className="text-sm font-semibold text-sky-100">
                             Offer this dog for outside grooming?
