@@ -63,191 +63,191 @@ American Bulldog,AB,Working,TRUE,3
 Otterhound,OH,Hound,TRUE,3
 Harrier,HR,Hound,TRUE,3
 Wirehaired Vizsla,WV,Sporting,TRUE,4
-Pointer,PT,Sporting,FALSE,4
-Spinone Italiano,SP,Sporting,FALSE,4
-Whippet,WP,Hound,FALSE,4
-Redbone Coonhound,RB,Hound,FALSE,4
-Saint Bernard,SA,Working,FALSE,4
-Greater Swiss Mountain Dog,SW,Working,FALSE,4
-Siberian Husky,SH,Working,FALSE,4
-American Staffordshire Terrier,ST,Terrier,FALSE,4
-Border Terrier,TB,Terrier,FALSE,4
-Dandie Dinmont Terrier,DD,Terrier,FALSE,4
-Maltese,ML,Toy,FALSE,4
-Shih Tzu,SZ,Toy,FALSE,4
-Yorkshire Terrier,YT,Toy,FALSE,4
-American Eskimo Dog,AE,Non-Sporting,FALSE,4
-Tibetan Spaniel,TS,Non-Sporting,FALSE,4
-Xoloitzcuintli,XL,Non-Sporting,FALSE,4
-Old English Sheepdog,OE,Herding,FALSE,4
-Belgian Malinois,BM,Herding,FALSE,4
-Bouvier des Flandres,BV,Herding,FALSE,4
-Petit Basset Griffon Vendeen,PV,Hound,FALSE,4
-Brittany,BY,Sporting,FALSE,5
-English Setter,ES,Sporting,FALSE,5
-Bracco Italiano,BI,Sporting,FALSE,5
-Scottish Deerhound,SD,Hound,FALSE,5
-Ibizan Hound,IH,Hound,FALSE,5
-English Foxhound,EX,Hound,FALSE,5
-Doberman Pinscher,DP,Working,FALSE,5
-Dogue de Bordeaux,DB,Working,FALSE,5
-West Highland White Terrier,WH,Terrier,FALSE,5
-Toy Fox Terrier,TF,Terrier,FALSE,5
-Pekingese,PK,Toy,FALSE,5
-Japanese Chin,JC,Toy,FALSE,5
-Miniature Pinscher,MP,Toy,FALSE,5
-Poodle Miniature,PM,Non-Sporting,FALSE,5
-Tibetan Terrier,TT,Non-Sporting,FALSE,5
-Coton de Tulear,CU,Non-Sporting,FALSE,5
-Shetland Sheepdog,SS,Herding,FALSE,5
-Belgian Tervuren,AV,Herding,FALSE,5
-Beauceron,BE,Herding,FALSE,5
-Dogo Argentino,DA,Working,FALSE,5
-Kerry Blue Terrier,KB,Terrier,FALSE,5
-Curly-Coated Retriever,CR,Sporting,FALSE,6
-Lagotto Romagnolo,LG,Sporting,FALSE,6
-Small Munsterlander,SM,Sporting,FALSE,6
-Afghan Hound,AF,Hound,FALSE,6
-Basset Hound,BH,Hound,FALSE,6
-American Foxhound,AX,Hound,FALSE,6
-Newfoundland,NF,Working,FALSE,6
-Akita,AK,Working,FALSE,6
-Alaskan Malamute,AM,Working,FALSE,6
-Norfolk Terrier,NT,Terrier,FALSE,6
-Pomeranian,PE,Toy,FALSE,6
-English Toy Spaniel,ET,Toy,FALSE,6
-Biewer Terrier,BW,Toy,FALSE,6
-Eurasier,EU,Non-Sporting,FALSE,6
-Dutch Shepherd,DS,Herding,FALSE,6
-Swedish Vallhund,SV,Herding,FALSE,6
-Polish Lowland Sheepdog,PG,Herding,FALSE,6
-Korean Jindo,JD,Non-Sporting,FALSE,6
-Carolina Dog,CD,Non-Sporting,FALSE,6
-Australian Terrier,AU,Terrier,FALSE,6
-Manchester Terrier,MT,Terrier,FALSE,6
-Flat-Coated Retriever,FR,Sporting,FALSE,7
-German Wirehaired Pointer,GW,Sporting,FALSE,7
-Basenji,BJ,Hound,FALSE,7
-Black and Tan Coonhound,BT,Hound,FALSE,7
-Keeshond,KH,Working,FALSE,7
-Chinook,CN,Working,FALSE,7
-Phalene,PL,Toy,FALSE,7
-Russian Toy,RS,Toy,FALSE,7
-Peruvian Inca Orchid,PQ,Non-Sporting,FALSE,7
-Kromfohrlander,KR,Non-Sporting,FALSE,7
-Catalan Sheepdog,CP,Herding,FALSE,7
-Boerboel,BB,Working,FALSE,7
-Finnish Lapphund,FL,Herding,FALSE,7
-White Swiss Shepherd,WS,Herding,FALSE,7
-Taiwan Dog,TD,Non-Sporting,FALSE,7
-Grand Basset Griffon Vendeen,GV,Hound,FALSE,7
-American Hairless Terrier,AH,Terrier,FALSE,7
-Irish Terrier,IT,Terrier,FALSE,7
-Soft Coated Wheaten Terrier,SN,Terrier,FALSE,7
-Azawakh,AZ,Hound,FALSE,8
-Anatolian Shepherd,AN,Working,FALSE,8
-Miniature Bull Terrier,MB,Terrier,FALSE,8
-Cairn Terrier,CT,Terrier,FALSE,8
-Glen of Imaal Terrier,GI,Terrier,FALSE,8
-Lowchen,LW,Non-Sporting,FALSE,8
-Thai Ridgeback,TR,Non-Sporting,FALSE,8
-Belgian Laekenois,LK,Herding,FALSE,8
-Pumi,PX,Herding,FALSE,8
-Kangal Dog,KG,Working,FALSE,8
-Central Asian Shepherd,CA,Working,FALSE,8
-Bouvier des Ardennes,BA,Herding,FALSE,8
-New Guinea Singing Dog,NG,Non-Sporting,FALSE,8
-Drever,DR,Hound,FALSE,8
-Porcelaine,PO,Hound,FALSE,8
-Bluetick Coonhound,BK,Hound,FALSE,9
-Skye Terrier,SJ,Terrier,FALSE,9
-Mudi,MI,Herding,FALSE,9
-Bergamasco Sheepdog,BP,Herding,FALSE,9
-Appenzeller Sennenhund,AD,Working,FALSE,9
-Saarloos Wolfdog,SF,Working,FALSE,9
-Azores Cattle Dog,AC,Herding,FALSE,9
-Fila Brasileiro,FA,Working,FALSE,9
-Thai Bangkaew Dog,TA,Non-Sporting,FALSE,9
-Podenco Andaluz,PA,Hound,FALSE,9
-Artois Hound,AR,Hound,FALSE,9
-Cesky Terrier,CY,Terrier,FALSE,9
-Lakeland Terrier,LT,Terrier,FALSE,9
-Sealyham Terrier,SE,Terrier,FALSE,10
-Rat Terrier,RA,Terrier,FALSE,10
-Entlebucher Mountain Dog,EN,Working,FALSE,10
-Caucasian Shepherd,CS,Working,FALSE,10
-Perro de Presa Canario,PD,Working,FALSE,10
-Pyrenean Shepherd,PY,Herding,FALSE,10
-South Russian Ovcharka,SR,Herding,FALSE,10
-Basque Shepherd,AA,Herding,FALSE,10
-Podenco Ibicenco,PI,Hound,FALSE,10
-Hamiltonstovare,HS,Hound,FALSE,10
-Black Norwegian Elkhound,BN,Hound,FALSE,10
-Treeing Walker Coonhound,TW,Hound,FALSE,11
-Bullmastiff,BF,Working,FALSE,11
-Rough Collie,RC,Herding,FALSE,11
-Czechoslovakian Wolfdog,CW,Working,FALSE,11
-Tosa Inu,TI,Working,FALSE,11
-Cirneco dell'Etna,CE,Hound,FALSE,11
-Norwegian Elkhound,NE,Hound,FALSE,11
-Sloughi,SG,Hound,FALSE,12
-Podenco Canario,PC,Hound,FALSE,12
-Portuguese Podengo,PZ,Hound,FALSE,12
-Finnish Spitz,FS,Hound,FALSE,12
-Karelian Bear Dog,KD,Hound,FALSE,12
-Halden Hound,HH,Hound,FALSE,12
-Hygen Hound,HY,Hound,FALSE,12
-Grand Bleu de Gascogne,GB,Hound,FALSE,12
-Rhodesian Ridgeback,RR,Hound,FALSE,12
-Alaskan Klee Kai,KK,Miscellaneous,FALSE,13
-Bolognese,ZB,Miscellaneous,FALSE,13
-Czechoslovakian Vlciak,VL,Miscellaneous,FALSE,13
-Japanese Akitainu,JA,Miscellaneous,FALSE,13
-German Spitz,GG,Miscellaneous,FALSE,13
-Kai Ken,KN,Miscellaneous,FALSE,13
-Norbottenspets,NB,Miscellaneous,FALSE,13
-Pyrenean Mastiff,PN,Miscellaneous,FALSE,13
-Yakutian Laika,YL,Miscellaneous,FALSE,13
-Australian Cattle Dog,YY,Herding,FALSE,14
-English Cocker,QM,Sporting,FALSE,14
-American Cocker,QE,Sporting,FALSE,14
-American Water Spaniel,AW,Sporting,FALSE,15
-Boykin Spaniel,YK,Sporting,FALSE,15
-Clumber Spaniel,CL,Sporting,FALSE,15
-Cocker Spaniel,QK,Sporting,FALSE,15
-English Cocker Spaniel,EG,Sporting,FALSE,15
-English Springer Spaniel,ER,Sporting,FALSE,15
-American English Coonhound,EC,Hound,FALSE,15
-Dachshund,DH,Hound,FALSE,15
-Black Russian Terrier,QR,Working,FALSE,15
-Bichon Frise,ZF,Non-Sporting,FALSE,15
-Chinese Shar-Pei,ZX,Non-Sporting,FALSE,15
-Bearded Collie,VC,Herding,FALSE,15
-Cardigan Welsh Corgi,WC,Herding,FALSE,15
-Collie,OL,Herding,FALSE,15
-Field Spaniel,FD,Sporting,FALSE,16
-Irish Red and White Setter,RW,Sporting,FALSE,16
-Irish Water Spaniel,UW,Sporting,FALSE,16
-German Pinscher,GN,Working,FALSE,16
-Giant Schnauzer,GZ,Working,FALSE,16
-Great Pyrenees,GY,Working,FALSE,16
-Kuvasz,KU,Working,FALSE,16
-Mastiff,MF,Working,FALSE,16
-Neapolitan Mastiff,NM,Working,FALSE,16
-Miniature Schnauzer,MZ,Terrier,FALSE,16
-Norwegian Lundehund,NL,Non-Sporting,FALSE,16
-Icelandic Sheepdog,IC,Herding,FALSE,16
-Norwegian Buhund,NR,Herding,FALSE,16
-Sussex Spaniel,SU,Sporting,FALSE,17
-Welsh Springer Spaniel,WE,Sporting,FALSE,17
-Wirehaired Pointing Griffon,WG,Sporting,FALSE,17
-Plott,LP,Hound,FALSE,17
-Portuguese Podengo Pequeno,QQ,Hound,FALSE,17
-Portuguese Water Dog,WD,Working,FALSE,17
-Standard Schnauzer,ZS,Working,FALSE,17
-Russell Terrier,RU,Terrier,FALSE,17
-Smooth Fox Terrier,XF,Terrier,FALSE,17
-Wire Fox Terrier,WF,Terrier,FALSE,17
-Pug,UG,Toy,FALSE,17
-Silky Terrier,SQ,Toy,FALSE,17
-Pembroke Welsh Corgi,PW,Herding,FALSE,17
+Pointer,PT,Sporting,TRUE,4
+Spinone Italiano,SP,Sporting,TRUE,4
+Whippet,WP,Hound,TRUE,4
+Redbone Coonhound,RB,Hound,TRUE,4
+Saint Bernard,SA,Working,TRUE,4
+Greater Swiss Mountain Dog,SW,Working,TRUE,4
+Siberian Husky,SH,Working,TRUE,4
+American Staffordshire Terrier,ST,Terrier,TRUE,4
+Border Terrier,TB,Terrier,TRUE,4
+Dandie Dinmont Terrier,DD,Terrier,TRUE,4
+Maltese,ML,Toy,TRUE,4
+Shih Tzu,SZ,Toy,TRUE,4
+Yorkshire Terrier,YT,Toy,TRUE,4
+American Eskimo Dog,AE,Non-Sporting,TRUE,4
+Tibetan Spaniel,TS,Non-Sporting,TRUE,4
+Xoloitzcuintli,XL,Non-Sporting,TRUE,4
+Old English Sheepdog,OE,Herding,TRUE,4
+Belgian Malinois,BM,Herding,TRUE,4
+Bouvier des Flandres,BV,Herding,TRUE,4
+Petit Basset Griffon Vendeen,PV,Hound,TRUE,4
+Brittany,BY,Sporting,TRUE,5
+English Setter,ES,Sporting,TRUE,5
+Bracco Italiano,BI,Sporting,TRUE,5
+Scottish Deerhound,SD,Hound,TRUE,5
+Ibizan Hound,IH,Hound,TRUE,5
+English Foxhound,EX,Hound,TRUE,5
+Doberman Pinscher,DP,Working,TRUE,5
+Dogue de Bordeaux,DB,Working,TRUE,5
+West Highland White Terrier,WH,Terrier,TRUE,5
+Toy Fox Terrier,TF,Terrier,TRUE,5
+Pekingese,PK,Toy,TRUE,5
+Japanese Chin,JC,Toy,TRUE,5
+Miniature Pinscher,MP,Toy,TRUE,5
+Poodle Miniature,PM,Non-Sporting,TRUE,5
+Tibetan Terrier,TT,Non-Sporting,TRUE,5
+Coton de Tulear,CU,Non-Sporting,TRUE,5
+Shetland Sheepdog,SS,Herding,TRUE,5
+Belgian Tervuren,AV,Herding,TRUE,5
+Beauceron,BE,Herding,TRUE,5
+Dogo Argentino,DA,Working,TRUE,5
+Kerry Blue Terrier,KB,Terrier,TRUE,5
+Curly-Coated Retriever,CR,Sporting,TRUE,6
+Lagotto Romagnolo,LG,Sporting,TRUE,6
+Small Munsterlander,SM,Sporting,TRUE,6
+Afghan Hound,AF,Hound,TRUE,6
+Basset Hound,BH,Hound,TRUE,6
+American Foxhound,AX,Hound,TRUE,6
+Newfoundland,NF,Working,TRUE,6
+Akita,AK,Working,TRUE,6
+Alaskan Malamute,AM,Working,TRUE,6
+Norfolk Terrier,NT,Terrier,TRUE,6
+Pomeranian,PE,Toy,TRUE,6
+English Toy Spaniel,ET,Toy,TRUE,6
+Biewer Terrier,BW,Toy,TRUE,6
+Eurasier,EU,Non-Sporting,TRUE,6
+Dutch Shepherd,DS,Herding,TRUE,6
+Swedish Vallhund,SV,Herding,TRUE,6
+Polish Lowland Sheepdog,PG,Herding,TRUE,6
+Korean Jindo,JD,Non-Sporting,TRUE,6
+Carolina Dog,CD,Non-Sporting,TRUE,6
+Australian Terrier,AU,Terrier,TRUE,6
+Manchester Terrier,MT,Terrier,TRUE,6
+Flat-Coated Retriever,FR,Sporting,TRUE,7
+German Wirehaired Pointer,GW,Sporting,TRUE,7
+Basenji,BJ,Hound,TRUE,7
+Black and Tan Coonhound,BT,Hound,TRUE,7
+Keeshond,KH,Working,TRUE,7
+Chinook,CN,Working,TRUE,7
+Phalene,PL,Toy,TRUE,7
+Russian Toy,RS,Toy,TRUE,7
+Peruvian Inca Orchid,PQ,Non-Sporting,TRUE,7
+Kromfohrlander,KR,Non-Sporting,TRUE,7
+Catalan Sheepdog,CP,Herding,TRUE,7
+Boerboel,BB,Working,TRUE,7
+Finnish Lapphund,FL,Herding,TRUE,7
+White Swiss Shepherd,WS,Herding,TRUE,7
+Taiwan Dog,TD,Non-Sporting,TRUE,7
+Grand Basset Griffon Vendeen,GV,Hound,TRUE,7
+American Hairless Terrier,AH,Terrier,TRUE,7
+Irish Terrier,IT,Terrier,TRUE,7
+Soft Coated Wheaten Terrier,SN,Terrier,TRUE,7
+Azawakh,AZ,Hound,TRUE,8
+Anatolian Shepherd,AN,Working,TRUE,8
+Miniature Bull Terrier,MB,Terrier,TRUE,8
+Cairn Terrier,CT,Terrier,TRUE,8
+Glen of Imaal Terrier,GI,Terrier,TRUE,8
+Lowchen,LW,Non-Sporting,TRUE,8
+Thai Ridgeback,TR,Non-Sporting,TRUE,8
+Belgian Laekenois,LK,Herding,TRUE,8
+Pumi,PX,Herding,TRUE,8
+Kangal Dog,KG,Working,TRUE,8
+Central Asian Shepherd,CA,Working,TRUE,8
+Bouvier des Ardennes,BA,Herding,TRUE,8
+New Guinea Singing Dog,NG,Non-Sporting,TRUE,8
+Drever,DR,Hound,TRUE,8
+Porcelaine,PO,Hound,TRUE,8
+Bluetick Coonhound,BK,Hound,TRUE,9
+Skye Terrier,SJ,Terrier,TRUE,9
+Mudi,MI,Herding,TRUE,9
+Bergamasco Sheepdog,BP,Herding,TRUE,9
+Appenzeller Sennenhund,AD,Working,TRUE,9
+Saarloos Wolfdog,SF,Working,TRUE,9
+Azores Cattle Dog,AC,Herding,TRUE,9
+Fila Brasileiro,FA,Working,TRUE,9
+Thai Bangkaew Dog,TA,Non-Sporting,TRUE,9
+Podenco Andaluz,PA,Hound,TRUE,9
+Artois Hound,AR,Hound,TRUE,9
+Cesky Terrier,CY,Terrier,TRUE,9
+Lakeland Terrier,LT,Terrier,TRUE,9
+Sealyham Terrier,SE,Terrier,TRUE,10
+Rat Terrier,RA,Terrier,TRUE,10
+Entlebucher Mountain Dog,EN,Working,TRUE,10
+Caucasian Shepherd,CS,Working,TRUE,10
+Perro de Presa Canario,PD,Working,TRUE,10
+Pyrenean Shepherd,PY,Herding,TRUE,10
+South Russian Ovcharka,SR,Herding,TRUE,10
+Basque Shepherd,AA,Herding,TRUE,10
+Podenco Ibicenco,PI,Hound,TRUE,10
+Hamiltonstovare,HS,Hound,TRUE,10
+Black Norwegian Elkhound,BN,Hound,TRUE,10
+Treeing Walker Coonhound,TW,Hound,TRUE,11
+Bullmastiff,BF,Working,TRUE,11
+Rough Collie,RC,Herding,TRUE,11
+Czechoslovakian Wolfdog,CW,Working,TRUE,11
+Tosa Inu,TI,Working,TRUE,11
+Cirneco dell'Etna,CE,Hound,TRUE,11
+Norwegian Elkhound,NE,Hound,TRUE,11
+Sloughi,SG,Hound,TRUE,12
+Podenco Canario,PC,Hound,TRUE,12
+Portuguese Podengo,PZ,Hound,TRUE,12
+Finnish Spitz,FS,Hound,TRUE,12
+Karelian Bear Dog,KD,Hound,TRUE,12
+Halden Hound,HH,Hound,TRUE,12
+Hygen Hound,HY,Hound,TRUE,12
+Grand Bleu de Gascogne,GB,Hound,TRUE,12
+Rhodesian Ridgeback,RR,Hound,TRUE,12
+Alaskan Klee Kai,KK,Miscellaneous,TRUE,13
+Bolognese,ZB,Miscellaneous,TRUE,13
+Czechoslovakian Vlciak,VL,Miscellaneous,TRUE,13
+Japanese Akitainu,JA,Miscellaneous,TRUE,13
+German Spitz,GG,Miscellaneous,TRUE,13
+Kai Ken,KN,Miscellaneous,TRUE,13
+Norbottenspets,NB,Miscellaneous,TRUE,13
+Pyrenean Mastiff,PN,Miscellaneous,TRUE,13
+Yakutian Laika,YL,Miscellaneous,TRUE,13
+Australian Cattle Dog,YY,Herding,TRUE,14
+English Cocker,QM,Sporting,TRUE,14
+American Cocker,QE,Sporting,TRUE,14
+American Water Spaniel,AW,Sporting,TRUE,15
+Boykin Spaniel,YK,Sporting,TRUE,15
+Clumber Spaniel,CL,Sporting,TRUE,15
+Cocker Spaniel,QK,Sporting,TRUE,15
+English Cocker Spaniel,EG,Sporting,TRUE,15
+English Springer Spaniel,ER,Sporting,TRUE,15
+American English Coonhound,EC,Hound,TRUE,15
+Dachshund,DH,Hound,TRUE,15
+Black Russian Terrier,QR,Working,TRUE,15
+Bichon Frise,ZF,Non-Sporting,TRUE,15
+Chinese Shar-Pei,ZX,Non-Sporting,TRUE,15
+Bearded Collie,VC,Herding,TRUE,15
+Cardigan Welsh Corgi,WC,Herding,TRUE,15
+Collie,OL,Herding,TRUE,15
+Field Spaniel,FD,Sporting,TRUE,16
+Irish Red and White Setter,RW,Sporting,TRUE,16
+Irish Water Spaniel,UW,Sporting,TRUE,16
+German Pinscher,GN,Working,TRUE,16
+Giant Schnauzer,GZ,Working,TRUE,16
+Great Pyrenees,GY,Working,TRUE,16
+Kuvasz,KU,Working,TRUE,16
+Mastiff,MF,Working,TRUE,16
+Neapolitan Mastiff,NM,Working,TRUE,16
+Miniature Schnauzer,MZ,Terrier,TRUE,16
+Norwegian Lundehund,NL,Non-Sporting,TRUE,16
+Icelandic Sheepdog,IC,Herding,TRUE,16
+Norwegian Buhund,NR,Herding,TRUE,16
+Sussex Spaniel,SU,Sporting,TRUE,17
+Welsh Springer Spaniel,WE,Sporting,TRUE,17
+Wirehaired Pointing Griffon,WG,Sporting,TRUE,17
+Plott,LP,Hound,TRUE,17
+Portuguese Podengo Pequeno,QQ,Hound,TRUE,17
+Portuguese Water Dog,WD,Working,TRUE,17
+Standard Schnauzer,ZS,Working,TRUE,17
+Russell Terrier,RU,Terrier,TRUE,17
+Smooth Fox Terrier,XF,Terrier,TRUE,17
+Wire Fox Terrier,WF,Terrier,TRUE,17
+Pug,UG,Toy,TRUE,17
+Silky Terrier,SQ,Toy,TRUE,17
+Pembroke Welsh Corgi,PW,Herding,TRUE,17
