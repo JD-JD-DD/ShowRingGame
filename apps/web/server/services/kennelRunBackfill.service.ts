@@ -25,6 +25,15 @@ export type KennelRunResetStats = {
   unownedDogsWithKennelRunIdAfterReset: number;
 };
 
+export type KennelRunRepairStats = {
+  kennelsScanned: number;
+  activeOwnedDogsAssignedToUncategorized: number;
+  unownedDogsCleared: number;
+  activeOwnedDogsMissingKennelRunIdAfterRepair: number;
+  activeOwnedDogsWithRunOwnerMismatchAfterRepair: number;
+  unownedDogsWithKennelRunIdAfterRepair: number;
+};
+
 function createEmptyStats(): KennelRunResetStats {
   return {
     kennelsScanned: 0,
@@ -236,6 +245,118 @@ export async function backfillKennelRuns(args?: {
   client?: KennelRunBackfillClient;
 }): Promise<KennelRunResetStats> {
   return resetKennelRunsToUncategorized(args);
+}
+
+export async function repairKennelRunAssignments(args?: {
+  client?: KennelRunBackfillClient;
+}): Promise<KennelRunRepairStats> {
+  const client = args?.client ?? db;
+  const kennels = await client.kennel.findMany({
+    where: {
+      isNpc: false,
+    },
+    select: {
+      id: true,
+    },
+  });
+  const stats: KennelRunRepairStats = {
+    kennelsScanned: kennels.length,
+    activeOwnedDogsAssignedToUncategorized: 0,
+    unownedDogsCleared: 0,
+    activeOwnedDogsMissingKennelRunIdAfterRepair: 0,
+    activeOwnedDogsWithRunOwnerMismatchAfterRepair: 0,
+    unownedDogsWithKennelRunIdAfterRepair: 0,
+  };
+
+  for (const kennel of kennels) {
+    await ensureStarterKennelRuns({
+      kennelId: kennel.id,
+      client,
+    });
+  }
+
+  const kennelIds = kennels.map((kennel) => kennel.id);
+  const uncategorizedRunsByKennelId = await getUncategorizedRunsByKennelId(
+    client,
+    kennelIds
+  );
+  const activeOwnedDogsMissingRuns = await client.dog.findMany({
+    where: {
+      ownerKennelId: {
+        in: kennelIds,
+      },
+      lifecycleState: "ALIVE",
+      isPlayerVisible: true,
+      kennelRunId: null,
+    },
+    select: {
+      id: true,
+      ownerKennelId: true,
+    },
+  });
+
+  for (const dog of activeOwnedDogsMissingRuns) {
+    if (!dog.ownerKennelId) {
+      continue;
+    }
+
+    const uncategorizedRun = uncategorizedRunsByKennelId.get(dog.ownerKennelId);
+
+    if (!uncategorizedRun) {
+      continue;
+    }
+
+    const update = await client.dog.updateMany({
+      where: {
+        id: dog.id,
+        ownerKennelId: dog.ownerKennelId,
+        lifecycleState: "ALIVE",
+        isPlayerVisible: true,
+        kennelRunId: null,
+      },
+      data: {
+        kennelRunId: uncategorizedRun.id,
+      },
+    });
+
+    stats.activeOwnedDogsAssignedToUncategorized += update.count;
+  }
+
+  const unownedClear = await client.dog.updateMany({
+    where: {
+      ownerKennelId: null,
+      kennelRunId: {
+        not: null,
+      },
+    },
+    data: {
+      kennelRunId: null,
+    },
+  });
+
+  stats.unownedDogsCleared = unownedClear.count;
+  stats.activeOwnedDogsMissingKennelRunIdAfterRepair = await client.dog.count({
+    where: {
+      ownerKennelId: {
+        not: null,
+      },
+      lifecycleState: "ALIVE",
+      isPlayerVisible: true,
+      kennelRunId: null,
+    },
+  });
+  stats.activeOwnedDogsWithRunOwnerMismatchAfterRepair =
+    await countActiveOwnedRunOwnerMismatches(client);
+  stats.unownedDogsWithKennelRunIdAfterRepair = await client.dog.count({
+    where: {
+      ownerKennelId: null,
+      kennelRunId: {
+        not: null,
+      },
+    },
+  });
+
+  return stats;
 }
 
 export function kennelRunResetHasIntegrityFailures(

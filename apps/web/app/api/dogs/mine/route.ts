@@ -41,6 +41,11 @@ type RosterDogRecord = {
   birthEpoch: number;
   lifecycleState: string;
   marketState: string;
+  kennelRunId: string | null;
+  kennelRun: {
+    id: string;
+    name: string;
+  } | null;
   breed: {
     name: string;
     groupName: string | null;
@@ -278,7 +283,34 @@ function mapByDogId<T extends { dogId: string }>(rows: T[]) {
   return new Map(rows.map((row) => [row.dogId, row]));
 }
 
-export async function GET() {
+function parseRunFilter(request: Request): string[] | Response {
+  const url = new URL(request.url);
+  const runId = url.searchParams.get("runId")?.trim();
+  const runIds = url.searchParams.get("runIds")?.trim();
+
+  if (runId && runIds) {
+    return fail("Use either runId or runIds, not both.", 400);
+  }
+
+  if (runId) {
+    return [runId];
+  }
+
+  if (runIds) {
+    return [
+      ...new Set(
+        runIds
+          .split(",")
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0)
+      ),
+    ];
+  }
+
+  return [];
+}
+
+export async function GET(request: Request) {
   try {
     const userId = await getSessionUserId();
 
@@ -294,12 +326,42 @@ export async function GET() {
 
     const currentEpoch = getCurrentEpoch();
     await resolveBreedingProgressForKennel({ kennelId: kennel.id, currentEpoch });
+    const runFilter = parseRunFilter(request);
+
+    if (runFilter instanceof Response) {
+      return runFilter;
+    }
+
+    if (runFilter.length > 0) {
+      const matchingRuns = await db.kennelRun.findMany({
+        where: {
+          kennelId: kennel.id,
+          id: {
+            in: runFilter,
+          },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (matchingRuns.length !== runFilter.length) {
+        return fail("One or more Kennel Runs were not found.", 400);
+      }
+    }
 
     const dogs: RosterDogRecord[] = await db.dog.findMany({
       where: {
         ownerKennelId: kennel.id,
         lifecycleState: "ALIVE",
         isPlayerVisible: true,
+        ...(runFilter.length > 0
+          ? {
+              kennelRunId: {
+                in: runFilter,
+              },
+            }
+          : {}),
       },
       orderBy: [{ birthEpoch: "desc" }],
       select: {
@@ -314,6 +376,13 @@ export async function GET() {
         birthEpoch: true,
         lifecycleState: true,
         marketState: true,
+        kennelRunId: true,
+        kennelRun: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         breed: {
           select: {
             name: true,
@@ -572,6 +641,13 @@ export async function GET() {
           ),
           isListedForSale: activeListingTypes.has(PLAYER_SALE_LISTING_TYPE),
           isListedAtStud: activeListingTypes.has(PLAYER_STUD_LISTING_TYPE),
+          kennelRunId: dog.kennelRunId,
+          currentRun: dog.kennelRun
+            ? {
+                id: dog.kennelRun.id,
+                name: dog.kennelRun.name,
+              }
+            : null,
           groomingStatus: groomingStatuses.get(dog.id) ?? {
             dogId: dog.id,
             groomedThisWeek: false,
@@ -585,6 +661,8 @@ export async function GET() {
             currentGroomingWeek: 0,
             groomingStatusLabel: "Needs grooming",
           },
+          // TODO(Kennel Runs UI): areaIds are legacy saved-group memberships.
+          // Keep them only until the current /kennel UI is replaced.
           areaIds: areaIdsByDogId.get(dog.id) ?? [],
           visibleCategories: toVisibleCategories(dog, healthTests),
           breedingCardStatus: getBreedingCardStatus(
