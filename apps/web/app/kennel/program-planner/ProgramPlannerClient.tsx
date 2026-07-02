@@ -794,7 +794,10 @@ export default function ProgramPlannerClient() {
                         </Link>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      <div className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-purple-100/55">
+                        0–20 directional · 10 ideal
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {CATEGORY_KEYS.map((key) => (
                           <div
                             key={key}

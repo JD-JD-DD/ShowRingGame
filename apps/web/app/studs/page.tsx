@@ -42,13 +42,23 @@ function formatMoney(amount: number): string {
   return `$${amount.toLocaleString()}`;
 }
 
+const VISIBLE_CATEGORY_LABELS: Record<string, string> = {
+  typeExpression: "Type & Expression",
+  structureBalance: "Structure & Balance",
+  movement: "Movement",
+  coatPresentation: "Coat & Presentation",
+  temperamentRingBehavior: "Temperament & Ring Behavior",
+  conditioningHandling: "Conditioning & Handling",
+};
+
 function formatCategoryName(key: string): string {
-  return key
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  return (
+    VISIBLE_CATEGORY_LABELS[key] ??
+    key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+  );
 }
 
-function geneticVisibleCategoryEntries(categories: Record<string, number>) {
+function visibleCategoryEntries(categories: Record<string, number>) {
   return Object.entries(categories).filter(
     ([key]) => key !== "conditioningHandling"
   );
@@ -455,7 +465,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                       </h3>
 
                       <div className="space-y-3">
-                        {geneticVisibleCategoryEntries(visibleCategories).map(
+                        {visibleCategoryEntries(visibleCategories).map(
                           ([key, value]) => (
                             <TraitLine
                               key={key}
@@ -464,8 +474,8 @@ export default async function StudsPage({ searchParams }: PageProps) {
                               min={0}
                               max={20}
                               ideal={10}
-                              leftLabel="0"
-                              rightLabel="20"
+                              leftLabel="Under ideal"
+                              rightLabel="Over ideal"
                             />
                           )
                         )}

@@ -5,6 +5,7 @@ type TraitLineProps = {
   max?: number;
   ideal?: number;
   leftLabel?: string;
+  centerLabel?: string;
   rightLabel?: string;
 };
 
@@ -28,8 +29,9 @@ export default function TraitLine({
   min = 0,
   max = 20,
   ideal = 10,
-  leftLabel = "0",
-  rightLabel = "20",
+  leftLabel = "Under ideal",
+  centerLabel = "10 ideal",
+  rightLabel = "Over ideal",
 }: TraitLineProps) {
   const safeValue = clamp(value, min, max);
   const safeIdeal = clamp(ideal, min, max);
@@ -68,7 +70,7 @@ export default function TraitLine({
 
       <div className="dog-copy mt-1 flex items-center justify-between text-[11px] uppercase tracking-wide">
         <span>{leftLabel}</span>
-        <span className="text-emerald-300/80">10</span>
+        <span className="text-emerald-300/80">{centerLabel}</span>
         <span>{rightLabel}</span>
       </div>
     </div>

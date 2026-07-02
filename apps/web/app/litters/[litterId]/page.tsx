@@ -20,13 +20,23 @@ function formatGameDays(hours: number | null): string {
   return `${hours} days`;
 }
 
+const VISIBLE_CATEGORY_LABELS: Record<string, string> = {
+  typeExpression: "Type & Expression",
+  structureBalance: "Structure & Balance",
+  movement: "Movement",
+  coatPresentation: "Coat & Presentation",
+  temperamentRingBehavior: "Temperament & Ring Behavior",
+  conditioningHandling: "Conditioning & Handling",
+};
+
 function formatCategoryName(key: string): string {
-  return key
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  return (
+    VISIBLE_CATEGORY_LABELS[key] ??
+    key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+  );
 }
 
-function geneticVisibleCategoryEntries(categories: Record<string, number>) {
+function visibleCategoryEntries(categories: Record<string, number>) {
   return Object.entries(categories).filter(
     ([key]) => key !== "conditioningHandling"
   );
@@ -199,7 +209,7 @@ export default async function LitterDetailPage({ params }: PageProps) {
 
           <div className="grid gap-5 lg:grid-cols-2">
             {litter.puppies.map((puppy) => {
-              const visibleCategories = geneticVisibleCategoryEntries(
+              const visibleCategories = visibleCategoryEntries(
                 puppy.visibleCategories
               );
 
@@ -249,8 +259,8 @@ export default async function LitterDetailPage({ params }: PageProps) {
                           min={0}
                           max={20}
                           ideal={10}
-                          leftLabel="Poor"
-                          rightLabel="Poor"
+                          leftLabel="Under ideal"
+                          rightLabel="Over ideal"
                         />
                       ))}
                     </div>

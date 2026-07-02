@@ -1257,6 +1257,9 @@ export default function KennelDogsPanel() {
       ) : (
         <div className="overflow-x-auto pb-1 touch-pan-x">
           <table className="w-full min-w-[980px] table-fixed border-separate border-spacing-y-2 text-sm">
+            <caption className="theme-label mb-2 caption-top text-left text-xs uppercase tracking-[0.16em]">
+              0–20 directional · 10 ideal
+            </caption>
             <thead>
               <tr className="theme-label text-left text-xs uppercase tracking-[0.16em]">
                 <th className="w-10 px-2 py-2">

@@ -196,20 +196,30 @@ function brucellosisTestCost(args: {
   );
 }
 
+const VISIBLE_CATEGORY_LABELS: Record<string, string> = {
+  typeExpression: "Type & Expression",
+  structureBalance: "Structure & Balance",
+  movement: "Movement",
+  coatPresentation: "Coat & Presentation",
+  temperamentRingBehavior: "Temperament & Ring Behavior",
+  conditioningHandling: "Conditioning & Handling",
+};
+
 function formatCategoryName(key: string): string {
-  return key
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  return (
+    VISIBLE_CATEGORY_LABELS[key] ??
+    key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+  );
 }
 
-function geneticVisibleCategoryEntries(categories: VisibleCategories) {
+function visibleCategoryEntries(categories: VisibleCategories) {
   return Object.entries(categories).filter(
     ([key]) => key !== "conditioningHandling"
   );
 }
 
-function geneticVisibleCategoryKeys(categories: VisibleCategories) {
-  return geneticVisibleCategoryEntries(categories).map(([key]) => key);
+function visibleCategoryKeys(categories: VisibleCategories) {
+  return visibleCategoryEntries(categories).map(([key]) => key);
 }
 
 function latestHealthTests(dog: DogCardDto) {
@@ -310,7 +320,7 @@ function traitNumberTone(value: number) {
 }
 
 function visibleTraitNotes(dog: DogCardDto) {
-  const categories = geneticVisibleCategoryEntries(dog.visibleCategories)
+  const categories = visibleCategoryEntries(dog.visibleCategories)
     .map(([key, value]) => ({
       label: formatCategoryName(key),
       value,
@@ -533,7 +543,7 @@ function coiLabel(coiPercent: number | null) {
 function complementCount(dam: DogCardDto | null, sire: DogCardDto) {
   if (!dam) return 0;
 
-  return geneticVisibleCategoryKeys(dam.visibleCategories).filter((key) => {
+  return visibleCategoryKeys(dam.visibleCategories).filter((key) => {
     const damDistance = Math.abs((dam.visibleCategories[key] ?? 10) - 10);
     const sireDistance = Math.abs((sire.visibleCategories[key] ?? 10) - 10);
     return damDistance >= 2 && sireDistance < damDistance;
@@ -615,7 +625,7 @@ function TraitNumberGrid({
 }) {
   return (
     <div className={`grid gap-2 ${columns}`}>
-      {geneticVisibleCategoryEntries(dog.visibleCategories).map(([key, value]) => (
+      {visibleCategoryEntries(dog.visibleCategories).map(([key, value]) => (
         <div
           key={key}
           className={`rounded-xl border px-3 py-2 ${traitNumberTone(value)}`}
@@ -722,7 +732,7 @@ function DogOptionCard({
       <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-black/15 p-3 text-xs sm:grid-cols-2">
         <div>
           <div className="font-semibold uppercase tracking-wide text-emerald-200">
-            Visible Strengths
+            Closest to Ideal
           </div>
           <div className="mt-1 text-purple-100/70">
             {traitNotes.strengths
@@ -778,7 +788,7 @@ function DogOptionCard({
 function MiniTraitSummary({ dog }: { dog: DogCardDto }) {
   return (
     <div className="space-y-3">
-      {geneticVisibleCategoryEntries(dog.visibleCategories).map(([key, value]) => (
+      {visibleCategoryEntries(dog.visibleCategories).map(([key, value]) => (
         <TraitLine
           key={key}
           label={formatCategoryName(key)}
@@ -786,8 +796,8 @@ function MiniTraitSummary({ dog }: { dog: DogCardDto }) {
           min={0}
           max={20}
           ideal={10}
-          leftLabel="0"
-          rightLabel="20"
+          leftLabel="Under ideal"
+          rightLabel="Over ideal"
         />
       ))}
     </div>
@@ -1055,7 +1065,7 @@ function TraitOutlook({ dam, sire }: { dam: DogCardDto; sire: DogCardDto }) {
           </tr>
         </thead>
         <tbody>
-          {geneticVisibleCategoryEntries(dam.visibleCategories).map(([key, damValue]) => {
+          {visibleCategoryEntries(dam.visibleCategories).map(([key, damValue]) => {
             const sireValue = sire.visibleCategories[key] ?? damValue;
             const midpoint = (damValue + sireValue) / 2;
             const low = Math.max(0, midpoint - 2);
@@ -1066,7 +1076,7 @@ function TraitOutlook({ dam, sire }: { dam: DogCardDto; sire: DogCardDto }) {
             );
             const outlook =
               Math.abs(midpoint - 10) <= 1.5
-                ? "Likely strength"
+                ? "Likely near ideal"
                 : parentBest < Math.abs(damValue - 10)
                   ? "Sire complements dam"
                   : Math.abs(damValue - sireValue) >= 4
