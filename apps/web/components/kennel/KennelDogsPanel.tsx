@@ -352,6 +352,7 @@ export default function KennelDogsPanel() {
   const [showCreateRunForm, setShowCreateRunForm] = useState(false);
   const [newRunName, setNewRunName] = useState("");
   const [creatingRun, setCreatingRun] = useState(false);
+  const [managingRuns, setManagingRuns] = useState(false);
   const [renamingRunId, setRenamingRunId] = useState<string | null>(null);
   const [renameRunName, setRenameRunName] = useState("");
   const [renameRunLoading, setRenameRunLoading] = useState(false);
@@ -632,8 +633,6 @@ export default function KennelDogsPanel() {
 
   const selectedDogsQuery = selectedDogIds.join(",");
   const selectedRuns = runs.filter((run) => selectedRunIds.includes(run.id));
-  const allRunsSelected =
-    runs.length > 0 && selectedRunIds.length === runs.length;
   const selectedRunNames = selectedRuns.map((run) => run.name);
   const viewingLabel =
     selectedRuns.length === 1
@@ -754,10 +753,6 @@ export default function KennelDogsPanel() {
     setVisibleColumns([...OPTIONAL_COLUMN_IDS]);
   }
 
-  function clearOptionalColumns() {
-    setVisibleColumns([]);
-  }
-
   function clearAllFilters() {
     setBreedFilter("");
     setSexFilter("");
@@ -765,20 +760,6 @@ export default function KennelDogsPanel() {
     setOnlyForSale(false);
     setOnlyAtStud(false);
     setGroomingStateFilter("");
-  }
-
-  function selectUncategorizedRun() {
-    const uncategorizedRun = runs.find(
-      (run) => run.name === "Uncategorized" && run.isSystem
-    );
-
-    setSelectedRunIds(uncategorizedRun ? [uncategorizedRun.id] : []);
-    clearSelection();
-  }
-
-  function selectAllRuns() {
-    setSelectedRunIds(runs.map((run) => run.id));
-    clearSelection();
   }
 
   function toggleRunSelection(runId: string) {
@@ -1182,47 +1163,25 @@ export default function KennelDogsPanel() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)_minmax(220px,260px)] xl:items-start">
         <aside className="theme-card order-1 rounded-2xl p-4 xl:order-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100">
-            Kennel Runs
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100">
+              Kennel Runs
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowCreateRunForm((current) => !current);
+                setRenamingRunId(null);
+                setConfirmingDeleteRunId(null);
+              }}
+              className="theme-secondary-button rounded-md px-2 py-1 text-[0.68rem] font-semibold"
+            >
+              + Run
+            </button>
           </div>
           <p className="theme-copy mt-2 text-sm leading-6">
             Choose one or more runs to view.
           </p>
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={selectAllRuns}
-              disabled={runs.length === 0}
-              className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-                allRunsSelected
-                  ? "border-sky-200/70 bg-sky-500/20 text-sky-100"
-                  : "theme-secondary-button"
-              } disabled:cursor-not-allowed disabled:opacity-45`}
-            >
-              Select All Runs
-            </button>
-            <button
-              type="button"
-              onClick={selectUncategorizedRun}
-              disabled={runs.length === 0}
-              className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              Uncategorized
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowCreateRunForm((current) => !current);
-              setRenamingRunId(null);
-              setConfirmingDeleteRunId(null);
-            }}
-            className="theme-secondary-button mt-2 w-full rounded-lg px-3 py-2 text-xs font-semibold"
-          >
-            + Run
-          </button>
 
           {showCreateRunForm ? (
             <form
@@ -1361,7 +1320,7 @@ export default function KennelDogsPanel() {
                           </span>
                         </button>
 
-                        {!run.isSystem ? (
+                        {managingRuns && !run.isSystem ? (
                           <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                             <button
                               type="button"
@@ -1418,6 +1377,17 @@ export default function KennelDogsPanel() {
               })}
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              setManagingRuns((current) => !current);
+              setRenamingRunId(null);
+              setConfirmingDeleteRunId(null);
+            }}
+            className="theme-secondary-button mt-3 w-full rounded-lg px-3 py-2 text-xs font-semibold"
+          >
+            {managingRuns ? "Done Managing" : "Manage Runs"}
+          </button>
         </aside>
 
         <aside className="theme-card order-2 rounded-2xl p-4 xl:order-1">
@@ -1428,6 +1398,7 @@ export default function KennelDogsPanel() {
             Narrow the selected run view.
           </div>
 
+          {/* TODO: Add low-risk age milestone filters here when the roster filter set expands. */}
           <div className="mt-4 grid gap-3">
             <label className="grid gap-1.5">
               <span className="theme-label text-[0.7rem] uppercase tracking-wide">
@@ -1533,24 +1504,25 @@ export default function KennelDogsPanel() {
               <button
                 type="button"
                 onClick={() => setShowColumnChooser((current) => !current)}
-                className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
+                className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold"
               >
-                Columns
+                View Options
               </button>
 
               {showColumnChooser ? (
-                <div className="theme-card absolute right-0 z-20 mt-2 w-72 rounded-2xl p-4 shadow-xl">
+                <div className="theme-card absolute right-0 z-20 mt-2 w-72 rounded-2xl p-3 shadow-xl">
                   <div className="theme-heading text-sm font-semibold">
-                    Visible Columns
+                    Visible Traits
                   </div>
                   <div className="theme-copy mt-1 text-xs leading-5">
-                    Select and Open always stay visible.
+                    Select which details appear in the roster. Select and Open
+                    always stay visible.
                   </div>
-                  <div className="mt-3 grid max-h-80 gap-2 overflow-y-auto pr-1">
+                  <div className="mt-3 grid max-h-72 gap-1.5 overflow-y-auto pr-1">
                     {OPTIONAL_COLUMNS.map((column) => (
                       <label
                         key={column.id}
-                        className="theme-control flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                        className="theme-control flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs"
                       >
                         <input
                           type="checkbox"
@@ -1561,32 +1533,25 @@ export default function KennelDogsPanel() {
                       </label>
                     ))}
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="mt-3 flex flex-wrap justify-end gap-1.5">
                     <button
                       type="button"
                       onClick={resetVisibleColumns}
-                      className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold"
+                      className="theme-secondary-button rounded-md px-2.5 py-1.5 text-[0.68rem] font-semibold"
                     >
-                      Reset Columns
+                      Reset View
                     </button>
                     <button
                       type="button"
                       onClick={selectAllColumns}
-                      className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold"
+                      className="theme-secondary-button rounded-md px-2.5 py-1.5 text-[0.68rem] font-semibold"
                     >
                       Select All
                     </button>
                     <button
                       type="button"
-                      onClick={clearOptionalColumns}
-                      className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold"
-                    >
-                      Clear Optional
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => setShowColumnChooser(false)}
-                      className="rounded-lg bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500"
+                      className="rounded-md bg-purple-600 px-2.5 py-1.5 text-[0.68rem] font-semibold text-white transition hover:bg-purple-500"
                     >
                       Done
                     </button>
@@ -1804,8 +1769,7 @@ export default function KennelDogsPanel() {
           <table className="w-full min-w-[640px] table-auto border-separate border-spacing-y-2 text-sm">
             {visibleOptionalColumnCount > 0 ? (
               <caption className="theme-label mb-2 caption-top text-left text-xs uppercase tracking-[0.16em]">
-                Columns are view-only. Filters and Kennel Runs control which
-                dogs appear.
+                View options only change visible details.
               </caption>
             ) : null}
             <thead>

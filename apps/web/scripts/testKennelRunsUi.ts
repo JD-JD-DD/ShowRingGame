@@ -60,11 +60,6 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "Select All Runs",
-  "kennel roster supports viewing all runs without creating an All Dogs run"
-);
-assertIncludes(
-  kennelPanel,
   "Clear All Filters",
   "kennel roster retains a clear filters control"
 );
@@ -200,13 +195,18 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "Columns",
-  "column chooser control renders"
+  "View Options",
+  "view options control renders"
 );
 assertIncludes(
   kennelPanel,
-  "Visible Columns",
-  "column chooser panel labels visible columns"
+  "Visible Traits",
+  "view options panel labels visible traits"
+);
+assertIncludes(
+  kennelPanel,
+  "Select which details appear in the roster.",
+  "view options panel explains visible trait toggles"
 );
 assertIncludes(
   kennelPanel,
@@ -245,13 +245,8 @@ for (const defaultColumn of [
 }
 assertIncludes(
   kennelPanel,
-  "Reset Columns",
-  "column chooser can reset to default columns"
-);
-assertIncludes(
-  kennelPanel,
-  "Clear Optional",
-  "column chooser allows all optional columns to be hidden"
+  "Reset View",
+  "view options can reset to default columns"
 );
 assertIncludes(
   kennelPanel,
@@ -311,6 +306,12 @@ assertIncludes(
   "+ Run",
   "Kennel Runs sidebar renders a compact create run control"
 );
+assertBefore(
+  kennelPanel,
+  "Kennel Runs",
+  "+ Run",
+  "+ Run is associated with the Kennel Runs heading"
+);
 assertIncludes(
   kennelPanel,
   "Run name",
@@ -343,8 +344,18 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "!run.isSystem",
-  "rename/delete controls render only for non-system runs"
+  "Manage Runs",
+  "Kennel Runs sidebar exposes manage mode"
+);
+assertIncludes(
+  kennelPanel,
+  "Done Managing",
+  "Kennel Runs sidebar can exit manage mode"
+);
+assertIncludes(
+  kennelPanel,
+  "managingRuns && !run.isSystem",
+  "rename/delete controls render only for non-system runs in manage mode"
 );
 assertIncludes(
   kennelPanel,
@@ -406,6 +417,26 @@ assertExcludes(
   kennelPanel,
   "Kennel Areas",
   "legacy area selector label is not shown on the kennel roster"
+);
+assertExcludes(
+  kennelPanel,
+  "Select All Runs",
+  "normal run sidebar no longer shows the broad select-all shortcut"
+);
+assertExcludes(
+  kennelPanel,
+  "selectUncategorizedRun",
+  "normal run sidebar no longer shows the Uncategorized shortcut handler"
+);
+assertExcludes(
+  kennelPanel,
+  "Reset Columns",
+  "old column reset copy was replaced by Reset View"
+);
+assertExcludes(
+  kennelPanel,
+  "Clear Optional",
+  "view options footer no longer shows Clear Optional"
 );
 assertExcludes(
   kennelPanel,
