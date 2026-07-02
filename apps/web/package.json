@@ -14,6 +14,7 @@
     "test:dog-titles": "tsx scripts/testDogTitles.ts",
     "test:kennel-run-apis": "tsx scripts/testKennelRunApis.ts",
     "test:kennel-runs": "tsx scripts/testKennelRuns.ts",
+    "test:kennel-runs-ui": "tsx scripts/testKennelRunsUi.ts",
     "test:grand-champion-credits": "tsx scripts/testGrandChampionCredits.ts",
     "test:grand-champion-promotion": "tsx scripts/testGrandChampionPromotion.ts",
     "test:show-countdowns": "tsx scripts/testShowCountdowns.ts",
