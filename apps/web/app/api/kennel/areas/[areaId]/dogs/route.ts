@@ -5,6 +5,9 @@ import { getKennelForUser } from "@/server/services/kennel.service";
 
 type AreaDogsAction = "add" | "remove";
 
+// Legacy kennel areas add/remove many-to-many memberships. This is tagging-style
+// grouping, not moving dogs. Kennel Runs should use a future move endpoint that
+// updates Dog.kennelRunId exactly once per dog.
 function uniqueDogIds(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
 

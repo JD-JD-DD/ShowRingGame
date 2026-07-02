@@ -12,6 +12,7 @@
     "test:dog-profile-area-navigation": "tsx scripts/testDogProfileAreaNavigation.ts",
     "test:dog-show-record-title-points": "tsx scripts/testDogShowRecordTitlePoints.ts",
     "test:dog-titles": "tsx scripts/testDogTitles.ts",
+    "test:kennel-runs": "tsx scripts/testKennelRuns.ts",
     "test:grand-champion-credits": "tsx scripts/testGrandChampionCredits.ts",
     "test:grand-champion-promotion": "tsx scripts/testGrandChampionPromotion.ts",
     "test:show-countdowns": "tsx scripts/testShowCountdowns.ts",

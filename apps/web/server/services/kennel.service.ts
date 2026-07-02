@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { applyBetaBalanceTopUpToKennel } from "@/lib/betaEconomy";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { ensureStarterKennelRuns } from "@/server/services/kennelRun.service";
 
 const createKennelSchema = z.object({
   name: z.string().trim().min(2).max(60),
@@ -107,6 +108,11 @@ export async function createKennelForUser(userId: string, input: unknown) {
         occurredAtEpoch: currentEpoch,
         memo: "Starter funds granted at kennel creation.",
       },
+    });
+
+    await ensureStarterKennelRuns({
+      kennelId: createdKennel.id,
+      client: tx,
     });
 
     return createdKennel;

@@ -765,6 +765,8 @@ async function buildAreaNavigation(args: {
   viewerKennelId: string | null;
   isOwnedByCurrentKennel: boolean;
 }): Promise<DogProfileAreaNavigationDto> {
+  // Legacy KennelArea navigation is scoped to many-to-many saved groups. Future
+  // Kennel Runs navigation should use Dog.kennelRunId, not memberships.
   const areaId = args.areaId?.trim();
 
   if (!areaId || !args.viewerKennelId || !args.isOwnedByCurrentKennel) {

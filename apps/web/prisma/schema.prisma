@@ -285,6 +285,7 @@ model Kennel {
     notices                 KennelNotice[]
     privateDogNotes         KennelDogPrivateNote[]
     areas                   KennelArea[]
+    runs                    KennelRun[]
     serviceClaims           KennelServiceClaim[]
     groomingListingsOwned   GroomingListing[] @relation("GroomingListingOwnerKennel")
     groomingListingsClaimed GroomingListing[] @relation("GroomingListingGroomerKennel")
@@ -327,6 +328,7 @@ model Dog {
   registeredName     String?
   breedCode2         String
   ownerKennelId      String?
+  kennelRunId        String?
   breederKennelId    String?
   sireId             String?
   damId              String?
@@ -376,6 +378,7 @@ model Dog {
 
   breed         Breed   @relation(fields: [breedCode2], references: [code2])
   ownerKennel   Kennel? @relation("OwnerKennelDogs", fields: [ownerKennelId], references: [id])
+  kennelRun     KennelRun? @relation(fields: [kennelRunId], references: [id])
   breederKennel Kennel? @relation("BreederKennelDogs", fields: [breederKennelId], references: [id])
 
   sire   Dog?  @relation("DogSire", fields: [sireId], references: [id])
@@ -417,6 +420,8 @@ model Dog {
 
   @@index([breedCode2])
   @@index([ownerKennelId])
+  @@index([ownerKennelId, kennelRunId])
+  @@index([kennelRunId])
   @@index([breederKennelId])
   @@index([sireId])
   @@index([damId])
@@ -465,6 +470,10 @@ model DogPlannerTag {
     @@index([dogId])
   }
 
+  // Legacy saved-group behavior: KennelArea/KennelAreaDog are many-to-many
+  // dog organization memberships. Do not extend them for the new Kennel Runs
+  // placement model; use future KennelRun and Dog.kennelRunId for exclusive
+  // one-run-per-dog placement.
   model KennelArea {
     id        String   @id @default(cuid())
     kennelId  String
@@ -491,6 +500,23 @@ model DogPlannerTag {
 
     @@unique([kennelAreaId, dogId])
     @@index([dogId])
+  }
+
+  model KennelRun {
+    id        String   @id @default(cuid())
+    kennelId  String
+    name      String
+    sortOrder Int
+    isSystem  Boolean  @default(false)
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    kennel Kennel @relation(fields: [kennelId], references: [id], onDelete: Cascade)
+    dogs   Dog[]
+
+    @@unique([kennelId, name])
+    @@index([kennelId])
+    @@index([kennelId, sortOrder])
   }
 
 model Judge {

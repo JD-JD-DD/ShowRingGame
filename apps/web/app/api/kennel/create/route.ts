@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import { ensureStarterKennelRuns } from "@/server/services/kennelRun.service";
 
 type KennelCreateTx = {
   kennel: typeof db.kennel;
+  kennelRun: typeof db.kennelRun;
   ledgerTransaction: typeof db.ledgerTransaction;
 };
 
@@ -172,6 +174,11 @@ const kennel = await db.$transaction(async (tx: KennelCreateTx) => {
       occurredAtEpoch: getCurrentEpoch(),
       memo: "Starter funds for new kennel creation",
     },
+  });
+
+  await ensureStarterKennelRuns({
+    kennelId: createdKennel.id,
+    client: tx,
   });
 
   return createdKennel;

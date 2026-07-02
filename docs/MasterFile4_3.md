@@ -823,6 +823,18 @@ Its purpose is to keep naming stable across the project and prevent mismatches b
 
 - Public kennel name.
 
+## 2.3.1 Kennel Runs Terminology Lock
+
+- Player-facing name: Kennel Runs.
+- Future database model name: `KennelRun`.
+- Future dog placement field: `Dog.kennelRunId`.
+- A dog may belong to exactly one Kennel Run at a time.
+- Moving a dog means changing `Dog.kennelRunId`; moving is not tagging.
+- Filters only narrow the currently selected run and never change placement.
+- `All Dogs` is a roster view, not a Kennel Run.
+- `Uncategorized` is a real system run and cannot be deleted.
+- Existing `KennelArea` / `KennelAreaDog` code is legacy many-to-many saved-group behavior and must not be extended for Kennel Runs.
+
 ## 2.4 Dog
 
 ### id
