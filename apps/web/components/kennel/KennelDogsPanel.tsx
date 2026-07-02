@@ -754,89 +754,6 @@ export default function KennelDogsPanel() {
         </div>
       </div>
 
-      <div className="theme-card mb-5 rounded-2xl p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100">
-              Kennel Runs
-            </div>
-            <p className="theme-copy mt-2 text-sm leading-6">
-              Choose one or more runs to view. Filters narrow the selected runs.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={selectAllRuns}
-              disabled={runs.length === 0}
-              className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${
-                allRunsSelected
-                  ? "border-sky-200/70 bg-sky-500/20 text-sky-100"
-                  : "theme-secondary-button"
-              } disabled:cursor-not-allowed disabled:opacity-45`}
-            >
-              Select All Runs
-            </button>
-            <button
-              type="button"
-              onClick={selectUncategorizedRun}
-              disabled={runs.length === 0}
-              className="theme-secondary-button rounded-xl px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              Uncategorized
-            </button>
-            <button
-              type="button"
-              onClick={() => void loadRuns()}
-              disabled={runsLoading}
-              className="theme-secondary-button rounded-xl px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              {runsLoading ? "Refreshing..." : "Retry"}
-            </button>
-          </div>
-        </div>
-
-        {runsLoading ? (
-          <div className="theme-copy mt-4 rounded-xl border border-white/10 px-3 py-3 text-sm">
-            Loading runs...
-          </div>
-        ) : runError ? (
-          <div className="mt-4 rounded-xl border border-red-300/25 bg-red-500/10 px-3 py-3 text-sm text-red-100">
-            {runError}
-          </div>
-        ) : runs.length === 0 ? (
-          <div className="theme-copy mt-4 rounded-xl border border-white/10 px-3 py-3 text-sm">
-            No runs available.
-          </div>
-        ) : (
-          <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {runs.map((run) => {
-              const selected = selectedRunIds.includes(run.id);
-
-              return (
-                <button
-                  key={run.id}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => toggleRunSelection(run.id)}
-                  className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
-                    selected
-                      ? "border-fuchsia-200/70 bg-fuchsia-500/20 text-fuchsia-100"
-                      : "theme-neutral-badge hover:opacity-80"
-                  }`}
-                >
-                  <span className="truncate">{run.name}</span>
-                  <span className="shrink-0 tabular-nums">
-                    {run.dogCount}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
       {groomingSummary ? (
         <div className="mb-5 rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -890,90 +807,199 @@ export default function KennelDogsPanel() {
         </div>
       ) : null}
 
-      <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <div className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
-            {viewingLabel}
+      <div className="grid gap-5 xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)_minmax(220px,260px)] xl:items-start">
+        <aside className="theme-card order-1 rounded-2xl p-4 xl:order-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100">
+            Kennel Runs
           </div>
-          <div className="theme-copy mt-1 text-sm">
-            {filteredDogs.length} visible dog
-            {filteredDogs.length === 1 ? "" : "s"}
+          <p className="theme-copy mt-2 text-sm leading-6">
+            Choose one or more runs to view.
+          </p>
+
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={selectAllRuns}
+              disabled={runs.length === 0}
+              className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                allRunsSelected
+                  ? "border-sky-200/70 bg-sky-500/20 text-sky-100"
+                  : "theme-secondary-button"
+              } disabled:cursor-not-allowed disabled:opacity-45`}
+            >
+              Select All Runs
+            </button>
+            <button
+              type="button"
+              onClick={selectUncategorizedRun}
+              disabled={runs.length === 0}
+              className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Uncategorized
+            </button>
           </div>
-          {selectedRunSummary ? (
-            <div className="theme-copy mt-1 max-w-xl truncate text-xs">
-              {selectedRunSummary}
-            </div>
+
+          {runError ? (
+            <button
+              type="button"
+              onClick={() => void loadRuns()}
+              disabled={runsLoading}
+              className="theme-secondary-button mt-2 w-full rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {runsLoading ? "Refreshing..." : "Retry"}
+            </button>
           ) : null}
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[minmax(260px,1.2fr)_minmax(150px,0.7fr)_minmax(130px,0.7fr)_minmax(120px,0.6fr)_minmax(120px,0.6fr)_minmax(180px,0.9fr)_auto]">
-          <select
-            value={breedFilter}
-            onChange={(e) => setBreedFilter(e.target.value)}
-            className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
-          >
-            <option value="">All Breeds</option>
-            <BreedSelectOptions options={breedOptions} />
-          </select>
 
-          <select
-            value={sexFilter}
-            onChange={(e) => setSexFilter(e.target.value as "" | "M" | "F")}
-            className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
-          >
-            <option value="">All Sexes</option>
-            <option value="M">Dogs</option>
-            <option value="F">Bitches</option>
-          </select>
+          {runsLoading ? (
+            <div className="theme-copy mt-4 rounded-lg border border-white/10 px-3 py-3 text-sm">
+              Loading runs...
+            </div>
+          ) : runError ? (
+            <div className="mt-4 rounded-lg border border-red-300/25 bg-red-500/10 px-3 py-3 text-sm text-red-100">
+              {runError}
+            </div>
+          ) : runs.length === 0 ? (
+            <div className="theme-copy mt-4 rounded-lg border border-white/10 px-3 py-3 text-sm">
+              No runs available.
+            </div>
+          ) : (
+            <div className="mt-4 grid max-h-[360px] gap-1.5 overflow-y-auto pr-1 xl:max-h-[calc(100vh-260px)]">
+              {runs.map((run) => {
+                const selected = selectedRunIds.includes(run.id);
 
-          <label className="theme-control flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
-            <input
-              type="checkbox"
-              checked={onlyBreedable}
-              onChange={(e) => setOnlyBreedable(e.target.checked)}
-            />
-            Breedable
-          </label>
+                return (
+                  <button
+                    key={run.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => toggleRunSelection(run.id)}
+                    className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
+                      selected
+                        ? "border-fuchsia-200/70 bg-fuchsia-500/20 text-fuchsia-100"
+                        : "theme-neutral-badge hover:opacity-80"
+                    }`}
+                  >
+                    <span className="truncate">{run.name}</span>
+                    <span className="shrink-0 tabular-nums">
+                      {run.dogCount}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </aside>
 
-          <label className="theme-control flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
-            <input
-              type="checkbox"
-              checked={onlyForSale}
-              onChange={(e) => setOnlyForSale(e.target.checked)}
-            />
-            For Sale
-          </label>
+        <aside className="theme-card order-2 rounded-2xl p-4 xl:order-1">
+          <div className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
+            Filters
+          </div>
+          <div className="theme-copy mt-2 text-xs leading-5">
+            Narrow the selected run view.
+          </div>
 
-          <label className="theme-control flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
-            <input
-              type="checkbox"
-              checked={onlyAtStud}
-              onChange={(e) => setOnlyAtStud(e.target.checked)}
-            />
-            At Stud
-          </label>
+          <div className="mt-4 grid gap-3">
+            <label className="grid gap-1.5">
+              <span className="theme-label text-[0.7rem] uppercase tracking-wide">
+                Breed
+              </span>
+              <select
+                value={breedFilter}
+                onChange={(e) => setBreedFilter(e.target.value)}
+                className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
+              >
+                <option value="">All Breeds</option>
+                <BreedSelectOptions options={breedOptions} />
+              </select>
+            </label>
 
-          <select
-            value={groomingStateFilter}
-            onChange={(e) =>
-              setGroomingStateFilter(e.target.value as GroomingStateFilter)
-            }
-            className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
-          >
-            <option value="">All Grooming</option>
-            <option value="groomed">Groomed</option>
-            <option value="ungroomed">Ungroomed</option>
-          </select>
+            <label className="grid gap-1.5">
+              <span className="theme-label text-[0.7rem] uppercase tracking-wide">
+                Sex
+              </span>
+              <select
+                value={sexFilter}
+                onChange={(e) => setSexFilter(e.target.value as "" | "M" | "F")}
+                className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
+              >
+                <option value="">All Sexes</option>
+                <option value="M">Dogs</option>
+                <option value="F">Bitches</option>
+              </select>
+            </label>
 
-          <button
-            type="button"
-            onClick={clearAllFilters}
-            disabled={!filtersActive}
-            className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            Clear All Filters
-          </button>
-        </div>
-      </div>
+            <label className="theme-control flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
+              <input
+                type="checkbox"
+                checked={onlyBreedable}
+                onChange={(e) => setOnlyBreedable(e.target.checked)}
+              />
+              Breedable
+            </label>
+
+            <label className="theme-control flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
+              <input
+                type="checkbox"
+                checked={onlyForSale}
+                onChange={(e) => setOnlyForSale(e.target.checked)}
+              />
+              For Sale
+            </label>
+
+            <label className="theme-control flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
+              <input
+                type="checkbox"
+                checked={onlyAtStud}
+                onChange={(e) => setOnlyAtStud(e.target.checked)}
+              />
+              At Stud
+            </label>
+
+            <label className="grid gap-1.5">
+              <span className="theme-label text-[0.7rem] uppercase tracking-wide">
+                Grooming
+              </span>
+              <select
+                value={groomingStateFilter}
+                onChange={(e) =>
+                  setGroomingStateFilter(e.target.value as GroomingStateFilter)
+                }
+                className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
+              >
+                <option value="">All Grooming</option>
+                <option value="groomed">Groomed</option>
+                <option value="ungroomed">Ungroomed</option>
+              </select>
+            </label>
+
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              disabled={!filtersActive}
+              className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Clear All Filters
+            </button>
+          </div>
+        </aside>
+
+        <main className="order-3 min-w-0 xl:order-2">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
+                {viewingLabel}
+              </div>
+              <div className="theme-copy mt-1 text-sm">
+                {filteredDogs.length} visible dog
+                {filteredDogs.length === 1 ? "" : "s"}
+              </div>
+              {selectedRunSummary ? (
+                <div className="theme-copy mt-1 max-w-xl truncate text-xs">
+                  {selectedRunSummary}
+                </div>
+              ) : null}
+            </div>
+          </div>
 
       {message ? (
         <div className="mb-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
@@ -1483,6 +1509,8 @@ export default function KennelDogsPanel() {
           </table>
         </div>
       )}
+        </main>
+      </div>
     </section>
   );
 }

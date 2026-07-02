@@ -56,6 +56,31 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
+  "Filters",
+  "kennel roster renders the filter sidebar"
+);
+assertIncludes(
+  kennelPanel,
+  "xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)_minmax(220px,260px)]",
+  "kennel roster uses the planned three-column desktop layout"
+);
+assertIncludes(
+  kennelPanel,
+  "theme-card order-1 rounded-2xl p-4 xl:order-3",
+  "kennel runs render as the right sidebar on desktop and first on mobile"
+);
+assertIncludes(
+  kennelPanel,
+  "theme-card order-2 rounded-2xl p-4 xl:order-1",
+  "filters render as the left sidebar on desktop and second on mobile"
+);
+assertIncludes(
+  kennelPanel,
+  "order-3 min-w-0 xl:order-2",
+  "dog roster renders in the center column on desktop and after sidebars on mobile"
+);
+assertIncludes(
+  kennelPanel,
   "This run is empty.",
   "kennel roster distinguishes an empty selected run"
 );
