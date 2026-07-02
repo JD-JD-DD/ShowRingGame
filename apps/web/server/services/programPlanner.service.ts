@@ -121,6 +121,14 @@ function directionLabel(value: number): "under ideal" | "near ideal" | "over ide
   return "near ideal";
 }
 
+function categoryDirectionLabel(key: VisibleCategoryKey, value: number): string {
+  if (key === "conditioningHandling") {
+    return value >= 9.25 ? "optimized" : "below optimized";
+  }
+
+  return directionLabel(value);
+}
+
 function average(values: number[]) {
   if (values.length === 0) return 0;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -1264,7 +1272,7 @@ export async function getProgramPlannerData(args: {
       key,
       label: CATEGORY_LABELS[key],
       average: Number(avg.toFixed(1)),
-      direction: directionLabel(avg),
+      direction: categoryDirectionLabel(key, avg),
       under,
       near,
       over,

@@ -192,13 +192,13 @@ export default function DogProfileDashboard(props: Props) {
 
       <CollapsibleDogSection
         title="Quality & Presentation"
-        description="Public directional ring categories on a 0–20 scale with 10 as ideal."
+        description="Most public ring categories are 0–20 directional with 10 ideal. Conditioning & Handling is 0–10 with 10 optimized."
         className={`${PANEL_CLASS} order-2 lg:col-span-6 lg:order-4`}
         contentClassName="mt-6 grid gap-x-8 gap-y-5 lg:grid-cols-2"
         defaultOpen
       >
         {profile.qualityAndPresentation.visibleCategories.map((category) => (
-          <TraitLine key={category.key} label={category.label} value={category.numericScore} min={category.min} max={category.max} ideal={category.ideal} leftLabel={category.leftLabel} rightLabel={category.rightLabel} />
+          <TraitLine key={category.key} label={category.label} value={category.numericScore} min={category.min} max={category.max} ideal={category.ideal} leftLabel={category.leftLabel} centerLabel={category.centerLabel} rightLabel={category.rightLabel} />
         ))}
       </CollapsibleDogSection>
 

@@ -846,19 +846,36 @@ function buildVisibleCategories(scores: {
   temperamentRingBehavior: number;
   conditioningHandling: number;
 }): DogProfileVisibleCategoryDto[] {
-  return VISIBLE_CATEGORY_DEFINITIONS.map(({ key, label }) => ({
-    key,
-    label,
-    numericScore: scores[key],
-    min: 0,
-    ideal: 10,
-    max: 20,
-    leftLabel: "Under ideal",
-    centerLabel: "Ideal",
-    rightLabel: "Over ideal",
-    scaleMeaning:
-      "Scores below 10 appear under ideal; scores above 10 appear over ideal.",
-  }));
+  return VISIBLE_CATEGORY_DEFINITIONS.map(({ key, label }) => {
+    if (key === "conditioningHandling") {
+      return {
+        key,
+        label,
+        numericScore: scores[key],
+        min: 0,
+        ideal: 10,
+        max: 10,
+        leftLabel: "0",
+        centerLabel: "",
+        rightLabel: "10 optimized",
+        scaleMeaning: "0-10 scale; 10 is optimized conditioning and handling.",
+      };
+    }
+
+    return {
+      key,
+      label,
+      numericScore: scores[key],
+      min: 0,
+      ideal: 10,
+      max: 20,
+      leftLabel: "Under ideal",
+      centerLabel: "10 ideal",
+      rightLabel: "Over ideal",
+      scaleMeaning:
+        "Scores below 10 appear under ideal; scores above 10 appear over ideal.",
+    };
+  });
 }
 
 export async function getDogProfile(args: {

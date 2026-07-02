@@ -87,10 +87,10 @@ export type DogProfileVisibleCategoryDto = {
   min: number;
   ideal: number;
   max: number;
-  leftLabel: "Under ideal";
-  centerLabel: "Ideal";
-  rightLabel: "Over ideal";
-  scaleMeaning: "Scores below 10 appear under ideal; scores above 10 appear over ideal.";
+  leftLabel: string;
+  centerLabel: string;
+  rightLabel: string;
+  scaleMeaning: string;
 };
 
 export type DogProfileQualityPresentationDto = {

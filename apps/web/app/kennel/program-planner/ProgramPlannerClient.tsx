@@ -601,9 +601,19 @@ export default function ProgramPlannerClient() {
                         </span>
                       </div>
                       <div className="mt-2 flex gap-1 text-[0.68rem] text-purple-100/70">
-                        <span>under {category.under}</span>
-                        <span>near {category.near}</span>
-                        <span>over {category.over}</span>
+                        {category.key === "conditioningHandling" ? (
+                          <>
+                            <span>below opt. {category.under}</span>
+                            <span>opt. {category.near}</span>
+                            <span>above opt. {category.over}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>under {category.under}</span>
+                            <span>near {category.near}</span>
+                            <span>over {category.over}</span>
+                          </>
+                        )}
                         <span>spread {category.spread}</span>
                       </div>
                     </div>
@@ -795,7 +805,7 @@ export default function ProgramPlannerClient() {
                       </div>
 
                       <div className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-purple-100/55">
-                        0–20 directional · 10 ideal
+                        Main categories: 0–20 directional · 10 ideal; Cond/Handling: 0–10 · 10 optimized
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                         {CATEGORY_KEYS.map((key) => (
