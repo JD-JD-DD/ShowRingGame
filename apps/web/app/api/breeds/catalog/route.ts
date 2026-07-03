@@ -6,6 +6,7 @@ export async function GET() {
   try {
     const breeds = await db.breed.findMany({
       where: {
+        isActive: true,
         releaseVersion: {
           lte: CURRENT_BREED_RELEASE,
         },

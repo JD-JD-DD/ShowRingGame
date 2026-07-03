@@ -56,7 +56,7 @@ Havanese,HV,Toy,TRUE,3
 Shiba Inu,SI,Non-Sporting,TRUE,3
 Lhasa Apso,LA,Non-Sporting,TRUE,3
 Boston Terrier,BS,Non-Sporting,TRUE,3
-Smooth Collie,SO,Herding,TRUE,3
+Smooth Collie,SO,Herding,TRUE,999
 Komondor,KM,Herding,TRUE,3
 Canaan Dog,CG,Herding,TRUE,3
 American Bulldog,AB,Working,TRUE,3
@@ -185,7 +185,7 @@ Hamiltonstovare,HS,Hound,TRUE,10
 Black Norwegian Elkhound,BN,Hound,TRUE,10
 Treeing Walker Coonhound,TW,Hound,TRUE,11
 Bullmastiff,BF,Working,TRUE,11
-Rough Collie,RC,Herding,TRUE,11
+Rough Collie,RC,Herding,TRUE,999
 Czechoslovakian Wolfdog,CW,Working,TRUE,11
 Tosa Inu,TI,Working,TRUE,11
 Cirneco dell'Etna,CE,Hound,TRUE,11
@@ -209,8 +209,8 @@ Norbottenspets,NB,Miscellaneous,TRUE,13
 Pyrenean Mastiff,PN,Miscellaneous,TRUE,13
 Yakutian Laika,YL,Miscellaneous,TRUE,13
 Australian Cattle Dog,YY,Herding,TRUE,14
-English Cocker,QM,Sporting,TRUE,14
-American Cocker,QE,Sporting,TRUE,14
+English Cocker,QM,Sporting,TRUE,999
+American Cocker,QE,Sporting,TRUE,999
 American Water Spaniel,AW,Sporting,TRUE,15
 Boykin Spaniel,YK,Sporting,TRUE,15
 Clumber Spaniel,CL,Sporting,TRUE,15

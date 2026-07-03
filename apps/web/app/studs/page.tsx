@@ -135,6 +135,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
 
   const breeds = await db.breed.findMany({
     where: {
+      isActive: true,
       releaseVersion: {
         lte: CURRENT_BREED_RELEASE,
       },

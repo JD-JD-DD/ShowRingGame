@@ -100,6 +100,7 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
     .toUpperCase();
   const breeds = await db.breed.findMany({
     where: {
+      isActive: true,
       releaseVersion: {
         lte: CURRENT_BREED_RELEASE,
       },

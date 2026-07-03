@@ -12,6 +12,7 @@ import {
   generateSerial7,
 } from "@showring/rules";
 import {
+  CURRENT_BREED_RELEASE,
   MIN_BREED_AGE_HOURS,
 } from "@showring/rules";
 import { SHOW_WEEK_HOURS } from "@showring/rules";
@@ -410,6 +411,23 @@ async function getFoundationPolicyForBreed(args: {
   };
 }
 
+async function isActiveReleasedBreedCode(breedCode2: string): Promise<boolean> {
+  const breed = await db.breed.findFirst({
+    where: {
+      code2: breedCode2,
+      isActive: true,
+      releaseVersion: {
+        lte: CURRENT_BREED_RELEASE,
+      },
+    },
+    select: {
+      code2: true,
+    },
+  });
+
+  return breed !== null;
+}
+
 function getEffectiveFoundationTarget(policy: BreedFoundationPolicy): number {
   return Math.max(
     policy.targetInventory,
@@ -637,6 +655,10 @@ export async function ensureFoundationInventoryForBreed(args: {
 }): Promise<void> {
   const { breedCode2, currentEpoch } = args;
 
+  if (!(await isActiveReleasedBreedCode(breedCode2))) {
+    return;
+  }
+
   await expireStaleFoundationListings({
     currentEpoch,
     breedCode2,
@@ -706,6 +728,10 @@ export async function seedFoundationDogsForBreed(args: {
   count: number;
 }): Promise<void> {
   const { breedCode2, currentEpoch, count } = args;
+
+  if (!(await isActiveReleasedBreedCode(breedCode2))) {
+    return;
+  }
 
   const [currentFemaleCount, currentMaleCount] = await Promise.all([
     countUnsoldFoundationFemalesByBreed(breedCode2),
