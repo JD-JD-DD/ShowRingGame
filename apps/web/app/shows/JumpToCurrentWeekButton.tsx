@@ -10,7 +10,7 @@ export function JumpToCurrentWeekButton() {
           ?.scrollIntoView({ block: "start", behavior: "smooth" });
         window.history.replaceState(null, "", "#current-week");
       }}
-      className="rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 px-5 py-3 text-sm font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/20"
+      className="rounded-xl border border-fuchsia-300/35 bg-fuchsia-500/10 px-4 py-2 text-sm font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/20"
     >
       Jump to Current Week
     </button>

@@ -400,96 +400,67 @@ export default async function ShowsPage({
   }
 
   return (
-    <main className="shows-page mx-auto max-w-7xl px-6 py-8">
-      <section className="theme-panel mb-8 rounded-[28px] px-6 py-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="theme-heading text-4xl font-bold tracking-tight">
-              Annual Show Calendar
-            </h1>
-            <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
-              Week 52 is reserved for the invitational show.
-            </p>
-          </div>
+    <main className="shows-page mx-auto max-w-7xl px-6 pb-8 pt-4">
+      <nav
+        aria-label="Shows navigation"
+        className="theme-panel mb-4 flex flex-wrap items-center gap-2 rounded-2xl px-4 py-3"
+      >
+        <JumpToCurrentWeekButton />
+        <Link
+          href="/shows/invitationals"
+          className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
+        >
+          Invitationals
+        </Link>
+        <Link
+          href="/shows/history"
+          className="rounded-xl border border-sky-300/30 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+        >
+          Historical Results
+        </Link>
+        <Link
+          href="/shows/top-ten"
+          className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
+        >
+          Top Ten Dogs
+        </Link>
+        <Link
+          href="/travel-map"
+          className="rounded-xl border border-sky-300/30 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+        >
+          District Map
+        </Link>
+      </nav>
 
-          <div className="flex flex-wrap gap-3">
-            <JumpToCurrentWeekButton />
-            <Link
-              href="/shows/invitationals"
-              className="rounded-2xl border border-amber-300/30 bg-amber-500/10 px-5 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
-            >
-              Invitationals
-            </Link>
-            <Link
-              href="/shows/history"
-              className="rounded-2xl border border-sky-300/30 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
-            >
-              Historical Results
-            </Link>
-            <Link
-              href="/shows/top-ten"
-              className="rounded-2xl border border-amber-300/30 bg-amber-500/10 px-5 py-3 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
-            >
-              Top Ten
-            </Link>
-            <Link
-              href="/travel-map"
-              className="rounded-2xl border border-sky-300/30 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
-            >
-              District Map
-            </Link>
-
-            {/*
-            remove refresh button
-
-            <form action="/api/shows" method="post">
-              <input type="hidden" name="redirectTo" value="/shows" />
-              <button
-                type="submit"
-                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
-              >
-                Refresh Shows
-              </button>
-            </form>
-            */}
-
-            <Link
-              href="/kennel"
-              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-            >
-              My Kennel
-            </Link>
-            <Link
-              href="/"
-              className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
-            >
-              Home
-            </Link>
-          </div>
-        </div>
-
-        {selectedDogIdsQuery ? (
-          <div className="mt-3 rounded-2xl border border-[var(--dog-border)] bg-purple-500/10 px-4 py-3 text-sm text-[var(--dog-copy)]">
-            Carrying selected kennel dogs into show entry planning.
-          </div>
-        ) : null}
-
-        {generated ? (
-          <div className="mt-3 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            Shows refreshed.
-          </div>
-        ) : null}
-
-        {generateError ? (
-          <div className="mt-3 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-            {generateError}
-          </div>
-        ) : null}
-
-        <div className="theme-card theme-copy mt-4 rounded-2xl px-4 py-3 text-xs">
+      <section className="theme-panel mb-4 rounded-[24px] px-5 py-4">
+        <h1 className="theme-heading text-3xl font-bold tracking-tight">
+          Annual Show Calendar
+        </h1>
+        <p className="theme-copy mt-2 max-w-3xl text-sm leading-6">
+          Week 52 is reserved for the invitational show.
+        </p>
+        <div className="theme-card theme-copy mt-3 rounded-xl px-3 py-2 text-xs">
           Entry activity is shown by Enter button color intensity.
         </div>
       </section>
+
+      {selectedDogIdsQuery ? (
+        <div className="mb-4 rounded-2xl border border-[var(--dog-border)] bg-purple-500/10 px-4 py-3 text-sm text-[var(--dog-copy)]">
+          Carrying selected kennel dogs into show entry planning.
+        </div>
+      ) : null}
+
+      {generated ? (
+        <div className="mb-4 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          Shows refreshed.
+        </div>
+      ) : null}
+
+      {generateError ? (
+        <div className="mb-4 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+          {generateError}
+        </div>
+      ) : null}
 
       <section className="theme-panel mb-8 rounded-[28px] p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
