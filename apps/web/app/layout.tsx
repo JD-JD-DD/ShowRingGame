@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Suspense } from "react";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
-import GlobalUtcClock from "@/components/GlobalUtcClock";
-import EmergencyCareLink from "@/components/EmergencyCareLink";
-import NotificationInboxLink from "@/components/NotificationInboxLink";
+import GameHeader from "@/components/layout/GameHeader";
 import ReturnToTopButton from "@/components/ReturnToTopButton";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -45,11 +42,7 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <ThemeToggle />
-        <GlobalUtcClock />
-        <Suspense fallback={null}>
-          <NotificationInboxLink />
-          <EmergencyCareLink />
-        </Suspense>
+        <GameHeader />
         {children}
         <ReturnToTopButton />
         <Analytics />

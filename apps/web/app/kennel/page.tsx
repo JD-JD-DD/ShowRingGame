@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import LogoutButton from "@/components/LogoutButton";
 import KennelDogsPanel from "@/components/kennel/KennelDogsPanel";
 import { db } from "@/lib/db";
 import { getDistrictPanelStyle } from "@/lib/districtStyles";
@@ -59,14 +58,17 @@ export default async function KennelPage() {
           </div>
         </div>
 
-        <div className="theme-card rounded-2xl p-3">
+        <Link
+          href="/ledger"
+          className="theme-card rounded-2xl p-3 transition hover:border-purple-200/40 hover:bg-purple-500/10"
+        >
           <div className="theme-label text-xs uppercase tracking-[0.16em]">
             Balance
           </div>
           <div className="theme-heading mt-0.5 text-base font-semibold">
             ${kennel.balance.toLocaleString()}
           </div>
-        </div>
+        </Link>
 
         <div className="theme-card rounded-2xl p-3">
           <div className="theme-label flex items-center gap-2 text-xs uppercase tracking-[0.16em]">
@@ -91,69 +93,6 @@ export default async function KennelPage() {
           >
             View details
           </Link>
-        </div>
-      </section>
-
-      <section className="mb-4">
-        <div className="mb-3 flex flex-wrap items-center gap-3">
-          <Link
-            href="/"
-            className="theme-secondary-button rounded-md px-5 py-2 text-sm font-semibold"
-          >
-            Home
-          </Link>
-          <Link
-            href="/shows"
-            className="rounded-md border border-sky-400/40 px-5 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-950/40"
-          >
-            Shows
-          </Link>
-          <Link
-            href="/my-results"
-            className="rounded-md border border-sky-300/40 px-5 py-2 text-sm font-semibold text-sky-100 hover:bg-sky-950/40"
-          >
-            My Results
-          </Link>
-          <Link
-            href="/litters"
-            className="rounded-md border border-emerald-400/40 px-5 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-950/40"
-          >
-            Litters
-          </Link>
-          <Link
-            href="/market"
-            className="theme-secondary-button rounded-md px-5 py-2 text-sm font-semibold"
-          >
-            Market
-          </Link>
-          <Link
-            href="/community"
-            className="rounded-md border border-amber-300/40 px-5 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-950/40"
-          >
-            Community
-          </Link>
-          <Link
-            href="/ledger"
-            className="theme-secondary-button rounded-md px-5 py-2 text-sm font-semibold"
-          >
-            Ledger
-          </Link>
-          <Link
-            href="/kennel/services"
-            className="rounded-md border border-emerald-300/40 px-5 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-950/40"
-          >
-            Services
-          </Link>
-          <Link
-            href="/memorium"
-            className="rounded-md border border-rose-300/40 px-5 py-2 text-sm font-semibold text-rose-100 hover:bg-rose-950/40"
-          >
-            In Memoriam
-          </Link>
-
-          <div className="ml-auto">
-            <LogoutButton />
-          </div>
         </div>
       </section>
 
