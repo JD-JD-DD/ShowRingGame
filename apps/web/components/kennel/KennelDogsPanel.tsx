@@ -1108,12 +1108,12 @@ export default function KennelDogsPanel() {
         </div>
 
         {groomingSummary ? (
-          <div className="theme-card w-full max-w-sm rounded-2xl p-3 xl:w-[22rem]">
-            <div className="theme-label mb-2 text-xs font-semibold uppercase tracking-[0.18em]">
+          <div className="w-full max-w-sm rounded-2xl border border-purple-300/35 bg-purple-100/70 p-3 shadow-sm shadow-purple-950/5 dark:border-purple-300/20 dark:bg-purple-950/35 dark:shadow-black/20 xl:w-[22rem]">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-purple-700 dark:text-purple-100">
               Grooming
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="theme-control rounded-xl px-3 py-2">
+              <div className="rounded-xl border border-purple-300/30 bg-white/70 px-3 py-2 dark:border-purple-200/15 dark:bg-black/20">
                 <div className="theme-label text-[0.66rem] uppercase tracking-wide">
                   Remaining
                 </div>
@@ -1121,7 +1121,7 @@ export default function KennelDogsPanel() {
                   {groomingSummary.groomingActionsRemainingThisWeek}
                 </div>
               </div>
-              <div className="theme-control rounded-xl px-3 py-2">
+              <div className="rounded-xl border border-purple-300/30 bg-white/70 px-3 py-2 dark:border-purple-200/15 dark:bg-black/20">
                 <div className="theme-label text-[0.66rem] uppercase tracking-wide">
                   Next Reset
                 </div>
@@ -1129,7 +1129,7 @@ export default function KennelDogsPanel() {
                   resetEpoch={groomingSummary.nextGroomingResetEpoch}
                 />
               </div>
-              <div className="theme-control rounded-xl px-3 py-2">
+              <div className="rounded-xl border border-purple-300/30 bg-white/70 px-3 py-2 dark:border-purple-200/15 dark:bg-black/20">
                 <div className="theme-label text-[0.66rem] uppercase tracking-wide">
                   Level
                 </div>
@@ -1137,7 +1137,7 @@ export default function KennelDogsPanel() {
                   {groomingSummary.groomingLevel}
                 </div>
               </div>
-              <div className="theme-control rounded-xl px-3 py-2">
+              <div className="rounded-xl border border-purple-300/30 bg-white/70 px-3 py-2 dark:border-purple-200/15 dark:bg-black/20">
                 <div className="theme-label text-[0.66rem] uppercase tracking-wide">
                   XP
                 </div>

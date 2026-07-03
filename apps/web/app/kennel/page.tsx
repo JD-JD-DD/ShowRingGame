@@ -24,7 +24,7 @@ export default async function KennelPage() {
   }
 
   return (
-    <main className="kennel-page mx-auto max-w-7xl px-6 py-8">
+    <main className="kennel-page mx-auto max-w-[96rem] px-4 py-8 sm:px-6 lg:px-8">
       <section className="theme-card mb-8 rounded-2xl p-4">
         <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-100/75">
           Premium Features
