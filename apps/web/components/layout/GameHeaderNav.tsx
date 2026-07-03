@@ -21,6 +21,7 @@ const accountItems = [
   { label: "Region", href: "/travel-map" },
   { label: "Prestige", href: "/kennel/prestige" },
   { label: "In Memoriam", href: "/memorium" },
+  { label: "Ledger", href: "/ledger" },
 ] as const;
 
 function isActivePath(pathname: string, href: string): boolean {
