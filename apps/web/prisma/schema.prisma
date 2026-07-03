@@ -284,7 +284,6 @@ model Kennel {
     bulletinPosts           BulletinPost[]
     notices                 KennelNotice[]
     privateDogNotes         KennelDogPrivateNote[]
-    areas                   KennelArea[]
     runs                    KennelRun[]
     serviceClaims           KennelServiceClaim[]
     groomingListingsOwned   GroomingListing[] @relation("GroomingListingOwnerKennel")
@@ -410,7 +409,6 @@ model Dog {
     infectiousDiseaseSourceFor DogInfectiousDiseaseStatus[] @relation("DogDiseaseSource")
     infectiousDiseaseTests InfectiousDiseaseTestRecord[]
     privateKennelNotes KennelDogPrivateNote[]
-    kennelAreaMemberships KennelAreaDog[]
     serviceClaims KennelServiceClaim[]
     groomingListings GroomingListing[]
     groomingServiceActions GroomingServiceAction[]
@@ -467,39 +465,6 @@ model DogPlannerTag {
   dog    Dog    @relation(fields: [dogId], references: [id], onDelete: Cascade)
 
   @@unique([kennelId, dogId])
-    @@index([dogId])
-  }
-
-  // Legacy saved-group behavior: KennelArea/KennelAreaDog are many-to-many
-  // dog organization memberships. Do not extend them for the new Kennel Runs
-  // placement model; use future KennelRun and Dog.kennelRunId for exclusive
-  // one-run-per-dog placement. New Kennel Runs UI should not surface these
-  // legacy saved groups.
-  model KennelArea {
-    id        String   @id @default(cuid())
-    kennelId  String
-    name      String
-    sortOrder Int      @default(0)
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    kennel Kennel          @relation(fields: [kennelId], references: [id], onDelete: Cascade)
-    dogs   KennelAreaDog[]
-
-    @@unique([kennelId, name])
-    @@index([kennelId, sortOrder])
-  }
-
-  model KennelAreaDog {
-    id           String   @id @default(cuid())
-    kennelAreaId String
-    dogId        String
-    addedAt      DateTime @default(now())
-
-    area KennelArea @relation(fields: [kennelAreaId], references: [id], onDelete: Cascade)
-    dog  Dog        @relation(fields: [dogId], references: [id], onDelete: Cascade)
-
-    @@unique([kennelAreaId, dogId])
     @@index([dogId])
   }
 

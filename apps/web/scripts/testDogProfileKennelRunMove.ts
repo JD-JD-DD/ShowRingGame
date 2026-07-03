@@ -142,16 +142,6 @@ assertNotIncludes(
   "dog profile service no longer builds legacy area navigation"
 );
 assertNotIncludes(
-  dogService,
-  "kennelAreaMemberships",
-  "dog profile service no longer reads legacy area memberships"
-);
-assertNotIncludes(
-  dogMapper,
-  "DogProfileAreaNavigationDto",
-  "dog profile DTO no longer exposes legacy area navigation"
-);
-assertNotIncludes(
   profileFormSources,
   "areaId",
   "dog profile forms no longer preserve legacy areaId"

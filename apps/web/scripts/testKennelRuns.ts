@@ -36,11 +36,6 @@ type FakeDog = {
   isPlayerVisible: boolean;
 };
 
-type FakeKennelAreaDog = {
-  dogId: string;
-  areaId: string;
-};
-
 function projectRun(run: FakeKennelRun): FakeKennelRun {
   return { ...run };
 }
@@ -49,19 +44,16 @@ function createFakeClient(seed?: {
   kennels?: FakeKennel[];
   runs?: FakeKennelRun[];
   dogs?: FakeDog[];
-  memberships?: FakeKennelAreaDog[];
 }) {
   const kennels = seed?.kennels ?? [];
   const rows: FakeKennelRun[] = seed?.runs ?? [];
   const dogs = seed?.dogs ?? [];
-  const memberships = seed?.memberships ?? [];
   let nextId = 1;
 
   return {
     kennels,
     rows,
     dogs,
-    memberships,
     client: {
       kennel: {
         async findMany() {
@@ -296,13 +288,6 @@ function createFakeClient(seed?: {
           }).length;
         },
       },
-      kennelAreaDog: {
-        async findMany() {
-          assert.fail(
-            "Kennel Run reset must ignore legacy KennelAreaDog memberships"
-          );
-        },
-      },
     },
   };
 }
@@ -502,11 +487,6 @@ async function main() {
         isPlayerVisible: true,
       },
     ],
-    memberships: [
-      { dogId: "single-legacy", areaId: "area-specials" },
-      { dogId: "multi-legacy", areaId: "area-specials" },
-      { dogId: "multi-legacy", areaId: "area-puppies" },
-    ],
   });
   const firstReset = await resetKennelRunsToUncategorized({
     client: resetFake.client as never,
@@ -535,12 +515,12 @@ async function main() {
   assert.equal(
     dogRunName(resetFake, "single-legacy"),
     UNCATEGORIZED_KENNEL_RUN_NAME,
-    "legacy single-area membership is ignored for Kennel Run placement"
+    "active owned dog is reset to Uncategorized"
   );
   assert.equal(
     dogRunName(resetFake, "multi-legacy"),
     UNCATEGORIZED_KENNEL_RUN_NAME,
-    "legacy multi-area membership is ignored for Kennel Run placement"
+    "active owned dog with prior custom run is reset to Uncategorized"
   );
   assert.equal(dogRunName(resetFake, "missing-run"), UNCATEGORIZED_KENNEL_RUN_NAME);
   assert.equal(dogRunName(resetFake, "hidden-active"), null);
@@ -594,11 +574,6 @@ async function main() {
     "kennelRunId: puppyKennelRunId",
     "whelped puppies inherit the selected Kennel Run"
   );
-  assert.equal(
-    breedingService.includes("kennelAreaDog"),
-    false,
-    "whelping no longer creates legacy KennelAreaDog memberships"
-  );
   assertIncludes(
     rehomeService,
     "kennelRunId: null",
@@ -614,12 +589,6 @@ async function main() {
     "await ensureUncategorizedKennelRun({ kennelId: ownerKennelId })",
     "saveEngineDog defaults owned dogs to Uncategorized"
   );
-  assert.equal(
-    backfillService.includes("kennelAreaDog"),
-    false,
-    "Kennel Run reset does not read legacy KennelAreaDog memberships"
-  );
-
   console.log("Kennel run helper checks passed.");
 }
 

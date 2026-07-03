@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS "KennelAreaDog";
+DROP TABLE IF EXISTS "KennelArea";

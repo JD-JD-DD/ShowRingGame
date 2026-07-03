@@ -124,15 +124,6 @@ export async function rehomeOwnedDogs(args: {
       throw new Error("One or more dogs are no longer available to re-home.");
     }
 
-    await tx.kennelAreaDog.deleteMany({
-      where: {
-        dogId: { in: dogIds },
-        area: {
-          kennelId: args.kennelId,
-        },
-      },
-    });
-
     if (creditsAdded > 0) {
       const updatedKennel = await tx.kennel.update({
         where: { id: args.kennelId },

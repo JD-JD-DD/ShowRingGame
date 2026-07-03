@@ -4,7 +4,7 @@ export function DELETE() {
   return NextResponse.json(
     {
       ok: false,
-      error: "This legacy dog grouping endpoint is no longer available.",
+      error: "Legacy kennel areas have been retired. Use Kennel Runs.",
     },
     { status: 410 }
   );

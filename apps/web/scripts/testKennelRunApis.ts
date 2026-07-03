@@ -476,8 +476,6 @@ async function main() {
   assertIncludes(mineRoute, "currentRun:", "mine API returns current run details");
   assertExcludes(mineRoute, "areaIds", "mine API no longer returns legacy areaIds");
   assertExcludes(mineRoute, "areas,", "mine API no longer returns legacy areas");
-  assertExcludes(mineRoute, "kennelAreaDog", "mine API no longer reads legacy area memberships");
-  assertExcludes(mineRoute, "kennelArea.findMany", "mine API no longer loads legacy areas");
 
   const newApiSources = [
     source("apps/web/app/api/kennel/runs/route.ts"),
@@ -486,9 +484,9 @@ async function main() {
     source("apps/web/server/services/kennelRunManagement.service.ts"),
   ].join("\n");
   assert.equal(
-    /kennelArea|KennelArea/.test(newApiSources),
+    newApiSources.includes("areaIds"),
     false,
-    "new Kennel Run APIs do not reference legacy areas"
+    "new Kennel Run APIs do not return legacy area IDs"
   );
 
   console.log("Kennel Run API checks passed.");
