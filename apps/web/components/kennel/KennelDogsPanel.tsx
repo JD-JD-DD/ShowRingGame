@@ -298,7 +298,7 @@ function GroomingResetCountdown({ resetEpoch }: { resetEpoch: number }) {
   }, []);
 
   return (
-    <div className="mt-1 font-semibold text-white">
+    <div className="theme-heading mt-1 font-semibold">
       {formatCountdown(msRemaining)}
     </div>
   );
@@ -1094,7 +1094,7 @@ export default function KennelDogsPanel() {
 
   return (
     <section className="theme-panel rounded-[28px] p-5">
-      <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <div className="theme-label text-sm font-semibold uppercase tracking-[0.18em]">
             My Dogs
@@ -1106,50 +1106,39 @@ export default function KennelDogsPanel() {
             Sort, filter, and compare your dogs in one working roster.
           </p>
         </div>
-      </div>
 
-      {groomingSummary ? (
-        <div className="mb-5 rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-100">
-                Grooming Assistance
-              </div>
-              <p className="theme-copy mt-2 text-sm leading-6">
-                Grooming actions used this week:{" "}
-                {groomingSummary.groomingActionsUsedThisWeek} /{" "}
-                {groomingSummary.totalGroomingActionLimit}. Own dogs groomed:{" "}
-                {groomingSummary.selfGroomsCompletedThisWeek}. Outside jobs
-                completed: {groomingSummary.outsideGroomsCompletedThisWeek}.
-              </p>
+        {groomingSummary ? (
+          <div className="theme-card w-full max-w-sm rounded-2xl p-3 xl:w-[22rem]">
+            <div className="theme-label mb-2 text-xs font-semibold uppercase tracking-[0.18em]">
+              Grooming
             </div>
-            <div className="grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-4">
-              <div className="theme-card rounded-xl px-3 py-2">
-                <div className="theme-label text-xs uppercase tracking-wide">
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="theme-control rounded-xl px-3 py-2">
+                <div className="theme-label text-[0.66rem] uppercase tracking-wide">
                   Remaining
                 </div>
                 <div className="theme-heading mt-1 font-semibold">
                   {groomingSummary.groomingActionsRemainingThisWeek}
                 </div>
               </div>
-              <div className="theme-card rounded-xl px-3 py-2">
-                <div className="theme-label text-xs uppercase tracking-wide">
+              <div className="theme-control rounded-xl px-3 py-2">
+                <div className="theme-label text-[0.66rem] uppercase tracking-wide">
                   Next Reset
                 </div>
                 <GroomingResetCountdown
                   resetEpoch={groomingSummary.nextGroomingResetEpoch}
                 />
               </div>
-              <div className="theme-card rounded-xl px-3 py-2">
-                <div className="theme-label text-xs uppercase tracking-wide">
+              <div className="theme-control rounded-xl px-3 py-2">
+                <div className="theme-label text-[0.66rem] uppercase tracking-wide">
                   Level
                 </div>
                 <div className="theme-heading mt-1 font-semibold">
                   {groomingSummary.groomingLevel}
                 </div>
               </div>
-              <div className="theme-card rounded-xl px-3 py-2">
-                <div className="theme-label text-xs uppercase tracking-wide">
+              <div className="theme-control rounded-xl px-3 py-2">
+                <div className="theme-label text-[0.66rem] uppercase tracking-wide">
                   XP
                 </div>
                 <div className="theme-heading mt-1 font-semibold">
@@ -1158,8 +1147,8 @@ export default function KennelDogsPanel() {
               </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)_minmax(220px,260px)] xl:items-start">
         <aside className="theme-card order-1 rounded-2xl p-4 xl:order-3">
