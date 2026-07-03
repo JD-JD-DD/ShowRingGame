@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  normalizeAreaId,
-  redirectToDogPageWithField,
-} from "@/lib/dogPageAreaContext";
+import { redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { updatePlayerDogListingPrice } from "@/server/services/market.service";
@@ -24,7 +21,6 @@ export async function POST(
   { params }: { params: Promise<{ listingId: string }> }
 ) {
   let dogIdForError = "";
-  let areaId: string | null = null;
 
   try {
     const { listingId } = await params;
@@ -42,7 +38,6 @@ export async function POST(
 
     const formData = await request.formData();
     dogIdForError = String(formData.get("dogId") ?? "");
-    areaId = normalizeAreaId(formData.get("areaId"));
 
     const askingPrice = parseWholeDollarPrice(formData.get("askingPrice"));
 
@@ -51,8 +46,7 @@ export async function POST(
         request,
         dogIdForError,
         "saleError",
-        "Sale price must be a whole dollar amount of at least $1.",
-        areaId
+        "Sale price must be a whole dollar amount of at least $1."
       );
     }
 
@@ -66,8 +60,7 @@ export async function POST(
       request,
       dogId,
       "saleMessage",
-      "Listing price updated.",
-      areaId
+      "Listing price updated."
     );
   } catch (error) {
     console.error("POST /api/market-dogs/[listingId]/update-price failed:", error);
@@ -76,8 +69,7 @@ export async function POST(
       request,
       dogIdForError,
       "saleError",
-      error instanceof Error ? error.message : "Failed to update listing price.",
-      areaId
+      error instanceof Error ? error.message : "Failed to update listing price."
     );
   }
 }

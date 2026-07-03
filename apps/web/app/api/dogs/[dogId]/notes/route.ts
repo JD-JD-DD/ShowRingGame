@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  normalizeAreaId,
-  redirectToDogPageWithField,
-} from "@/lib/dogPageAreaContext";
+import { redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 
@@ -14,7 +11,6 @@ export async function POST(
   { params }: { params: Promise<{ dogId: string }> }
 ) {
   const { dogId } = await params;
-  let areaId: string | null = null;
 
   try {
     const userId = await getSessionUserId();
@@ -52,7 +48,6 @@ export async function POST(
     }
 
     const formData = await request.formData();
-    areaId = normalizeAreaId(formData.get("areaId"));
     const notes = String(formData.get("notes") ?? "").trim();
 
     if (notes.length > MAX_PRIVATE_NOTES_LENGTH) {
@@ -60,8 +55,7 @@ export async function POST(
         request,
         dogId,
         "notesError",
-        `Notes cannot exceed ${MAX_PRIVATE_NOTES_LENGTH.toLocaleString()} characters.`,
-        areaId
+        `Notes cannot exceed ${MAX_PRIVATE_NOTES_LENGTH.toLocaleString()} characters.`
       );
     }
 
@@ -95,8 +89,7 @@ export async function POST(
       request,
       dogId,
       "notesMessage",
-      "Private notes saved.",
-      areaId
+      "Private notes saved."
     );
   } catch (error) {
     console.error("POST /api/dogs/[dogId]/notes failed:", error);
@@ -105,8 +98,7 @@ export async function POST(
       request,
       dogId,
       "notesError",
-      "Failed to save private notes.",
-      areaId
+      "Failed to save private notes."
     );
   }
 }

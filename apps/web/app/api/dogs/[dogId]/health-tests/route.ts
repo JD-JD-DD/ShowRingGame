@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  normalizeAreaId,
-  redirectToDogPageWithField,
-} from "@/lib/dogPageAreaContext";
+import { redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -14,7 +11,6 @@ export async function POST(
   { params }: { params: Promise<{ dogId: string }> }
 ) {
   const { dogId } = await params;
-  let areaId: string | null = null;
 
   try {
     const userId = await getSessionUserId();
@@ -30,7 +26,6 @@ export async function POST(
     }
 
     const formData = await request.formData();
-    areaId = normalizeAreaId(formData.get("areaId"));
     const testTypeCodes = formData
       .getAll("testTypeCodes")
       .filter((value): value is string => typeof value === "string");
@@ -48,8 +43,7 @@ export async function POST(
       "healthMessage",
       records.length === 1
         ? "Health test completed."
-        : `${records.length} health tests completed.`,
-      areaId
+        : `${records.length} health tests completed.`
     );
   } catch (error) {
     console.error("POST /api/dogs/[dogId]/health-tests failed:", error);
@@ -60,8 +54,7 @@ export async function POST(
       "healthError",
       error instanceof Error
         ? error.message
-        : "Failed to complete selected health tests.",
-      areaId
+        : "Failed to complete selected health tests."
     );
   }
 }

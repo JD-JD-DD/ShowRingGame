@@ -45,6 +45,10 @@ function assertIncludes(haystack: string, needle: string, label: string) {
   assert.ok(haystack.includes(needle), label);
 }
 
+function assertExcludes(haystack: string, needle: string, label: string) {
+  assert.ok(!haystack.includes(needle), label);
+}
+
 async function assertRejectsServiceError(
   fn: () => Promise<unknown>,
   label: string
@@ -470,6 +474,10 @@ async function main() {
   assertIncludes(mineRoute, "Use either runId or runIds", "mine API rejects mixed filters");
   assertIncludes(mineRoute, "kennelRunId: dog.kennelRunId", "mine API returns kennelRunId");
   assertIncludes(mineRoute, "currentRun:", "mine API returns current run details");
+  assertExcludes(mineRoute, "areaIds", "mine API no longer returns legacy areaIds");
+  assertExcludes(mineRoute, "areas,", "mine API no longer returns legacy areas");
+  assertExcludes(mineRoute, "kennelAreaDog", "mine API no longer reads legacy area memberships");
+  assertExcludes(mineRoute, "kennelArea.findMany", "mine API no longer loads legacy areas");
 
   const newApiSources = [
     source("apps/web/app/api/kennel/runs/route.ts"),

@@ -7,7 +7,6 @@ type RehomeDogFormProps = {
   action: string;
   dogName: string;
   payout: number;
-  areaId?: string | null;
 };
 
 function RehomeSubmitButton() {
@@ -26,7 +25,6 @@ function RehomeSubmitButton() {
 
 export default function RehomeDogForm({
   action,
-  areaId,
 }: RehomeDogFormProps) {
   const [isConfirmingRehome, setIsConfirmingRehome] = useState(false);
 
@@ -42,7 +40,6 @@ export default function RehomeDogForm({
         </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <form action={action} method="post">
-            {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
             <RehomeSubmitButton />
           </form>
           <button

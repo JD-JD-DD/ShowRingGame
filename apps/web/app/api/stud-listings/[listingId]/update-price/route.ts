@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  normalizeAreaId,
-  redirectToDogPageWithField,
-} from "@/lib/dogPageAreaContext";
+import { redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { updatePlayerStudListingPrice } from "@/server/services/market.service";
@@ -24,7 +21,6 @@ export async function POST(
   { params }: { params: Promise<{ listingId: string }> }
 ) {
   let dogIdForError = "";
-  let areaId: string | null = null;
 
   try {
     const { listingId } = await params;
@@ -42,7 +38,6 @@ export async function POST(
 
     const formData = await request.formData();
     dogIdForError = String(formData.get("dogId") ?? "");
-    areaId = normalizeAreaId(formData.get("areaId"));
 
     const studFeeAmount = parseWholeDollarPrice(formData.get("studFeeAmount"));
 
@@ -51,8 +46,7 @@ export async function POST(
         request,
         dogIdForError,
         "saleError",
-        "Stud fee must be a whole dollar amount of at least $1.",
-        areaId
+        "Stud fee must be a whole dollar amount of at least $1."
       );
     }
 
@@ -66,8 +60,7 @@ export async function POST(
       request,
       dogId,
       "saleMessage",
-      "Stud fee updated.",
-      areaId
+      "Stud fee updated."
     );
   } catch (error) {
     console.error(
@@ -79,8 +72,7 @@ export async function POST(
       request,
       dogIdForError,
       "saleError",
-      error instanceof Error ? error.message : "Failed to update stud fee.",
-      areaId
+      error instanceof Error ? error.message : "Failed to update stud fee."
     );
   }
 }

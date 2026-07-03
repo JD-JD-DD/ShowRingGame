@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  normalizeAreaId,
-  redirectToDogPageWithField,
-} from "@/lib/dogPageAreaContext";
+import { redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
@@ -26,7 +23,6 @@ export async function POST(
   { params }: { params: Promise<{ dogId: string }> }
 ) {
   const { dogId } = await params;
-  let areaId: string | null = null;
 
   try {
     const userId = await getSessionUserId();
@@ -41,8 +37,6 @@ export async function POST(
       return NextResponse.json({ error: "Kennel not found." }, { status: 404 });
     }
 
-    const formData = await request.formData();
-    areaId = normalizeAreaId(formData.get("areaId"));
     const currentEpoch = getCurrentEpoch();
 
     const result = await db.$transaction(async (tx) => {
@@ -127,8 +121,7 @@ export async function POST(
       request,
       dogId,
       "healthMessage",
-      `Brucellosis screening completed: ${formatResultLabel(result.resultCode)}.`,
-      areaId
+      `Brucellosis screening completed: ${formatResultLabel(result.resultCode)}.`
     );
   } catch (error) {
     console.error(
@@ -142,8 +135,7 @@ export async function POST(
       "healthError",
       error instanceof BrucellosisScreeningError
         ? error.message
-        : "Unable to complete brucellosis screening.",
-      areaId
+        : "Unable to complete brucellosis screening."
     );
   }
 }

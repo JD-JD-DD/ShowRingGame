@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  normalizeAreaId,
-  redirectToDogPageWithField,
-} from "@/lib/dogPageAreaContext";
+import { redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -16,7 +13,6 @@ export async function POST(
   const { showEntryId } = await params;
   const formData = await request.formData();
   const dogId = String(formData.get("dogId") ?? "").trim();
-  const areaId = normalizeAreaId(formData.get("areaId"));
 
   if (!dogId) {
     return NextResponse.json({ error: "Dog ID is required." }, { status: 400 });
@@ -45,8 +41,7 @@ export async function POST(
       request,
       dogId,
       "showMessage",
-      "Dog pulled from the show. Entry fees were not refunded.",
-      areaId
+      "Dog pulled from the show. Entry fees were not refunded."
     );
   } catch (error) {
     console.error("POST /api/show-entries/[showEntryId]/pull failed:", error);
@@ -55,8 +50,7 @@ export async function POST(
       request,
       dogId,
       "showError",
-      error instanceof Error ? error.message : "Failed to pull dog from show.",
-      areaId
+      error instanceof Error ? error.message : "Failed to pull dog from show."
     );
   }
 }

@@ -761,34 +761,6 @@ export async function resolveBreedingProgressForKennel(args: {
           })),
         });
 
-        // Puppies inherit the dam's persisted kennel areas so custom roster
-        // organization carries forward automatically at whelping time.
-        if (fresh.createdByKennelId) {
-          const damAreaMemberships = await tx.kennelAreaDog.findMany({
-            where: {
-              dogId: fresh.damId,
-              area: {
-                kennelId: fresh.createdByKennelId,
-              },
-            },
-            select: {
-              kennelAreaId: true,
-            },
-          });
-
-          if (damAreaMemberships.length > 0) {
-            await tx.kennelAreaDog.createMany({
-              data: outcome.puppies.flatMap((puppy) =>
-                damAreaMemberships.map((membership) => ({
-                  kennelAreaId: membership.kennelAreaId,
-                  dogId: puppy.dogId,
-                }))
-              ),
-              skipDuplicates: true,
-            });
-          }
-        }
-
         await ensurePhenotypeHealthTruthsForDogs(
           tx,
           outcome.puppies.map((puppy) => puppy.dogId)

@@ -238,20 +238,6 @@ function getBreedingCardStatus(
   };
 }
 
-function groupAreaIdsByDog(
-  memberships: Array<{ dogId: string; kennelAreaId: string }>
-) {
-  const areaIdsByDogId = new Map<string, string[]>();
-
-  for (const membership of memberships) {
-    const areaIds = areaIdsByDogId.get(membership.dogId) ?? [];
-    areaIds.push(membership.kennelAreaId);
-    areaIdsByDogId.set(membership.dogId, areaIds);
-  }
-
-  return areaIdsByDogId;
-}
-
 function groupHealthTestsByDog(healthTests: HealthTestSummary[]) {
   const testsByDogId = new Map<string, Array<{ testTypeCode: string; resultCode: string }>>();
 
@@ -419,31 +405,15 @@ export async function GET(request: Request) {
     });
     const dogIds = dogs.map((dog) => dog.id);
     const [
-      areaMemberships,
       activeDamAttempts,
       latestWhelpedAttempts,
       recentNotPregnantAttempts,
       latestHealthTests,
       activeListings,
-      areas,
       groomingStatuses,
       groomingSummary,
     ] = dogIds.length
       ? await Promise.all([
-          db.kennelAreaDog.findMany({
-            where: {
-              dogId: {
-                in: dogIds,
-              },
-              area: {
-                kennelId: kennel.id,
-              },
-            },
-            select: {
-              dogId: true,
-              kennelAreaId: true,
-            },
-          }),
           db.breedingAttempt.findMany({
             where: {
               damId: {
@@ -536,17 +506,6 @@ export async function GET(request: Request) {
               listingType: true,
             },
           }),
-          db.kennelArea.findMany({
-            where: {
-              kennelId: kennel.id,
-            },
-            orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-            select: {
-              id: true,
-              name: true,
-              sortOrder: true,
-            },
-          }),
           getOwnedDogGroomingStatuses({
             kennelId: kennel.id,
             dogIds,
@@ -563,15 +522,12 @@ export async function GET(request: Request) {
           [],
           [],
           [],
-          [],
-          [],
           new Map(),
           await getKennelGroomingSummary({
             kennelId: kennel.id,
             currentEpoch,
           }),
         ];
-    const areaIdsByDogId = groupAreaIdsByDog(areaMemberships);
     const activeAttemptByDogId = mapByDogId(
       activeDamAttempts.map((attempt) => ({
         dogId: attempt.damId,
@@ -611,7 +567,6 @@ export async function GET(request: Request) {
     const activeListingTypesByDogId = groupActiveListingTypesByDog(activeListings);
 
     return ok({
-      areas,
       groomingSummary,
       dogs: dogs.map((dog) => {
         const healthTests = healthTestsByDogId.get(dog.id) ?? [];
@@ -661,9 +616,6 @@ export async function GET(request: Request) {
             currentGroomingWeek: 0,
             groomingStatusLabel: "Needs grooming",
           },
-          // TODO(Kennel Runs UI): areaIds are legacy saved-group memberships.
-          // Keep them only until the current /kennel UI is replaced.
-          areaIds: areaIdsByDogId.get(dog.id) ?? [],
           visibleCategories: toVisibleCategories(dog, healthTests),
           breedingCardStatus: getBreedingCardStatus(
             dog,

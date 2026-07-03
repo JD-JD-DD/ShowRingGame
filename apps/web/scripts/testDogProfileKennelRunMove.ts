@@ -23,6 +23,31 @@ const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
 const moveComponent = source(
   "apps/web/components/dogs/DogProfileKennelRunMove.tsx"
 );
+const profileFormSources = [
+  "apps/web/components/dogs/RegisterDogNameForm.tsx",
+  "apps/web/components/dogs/OfferDogForSaleForm.tsx",
+  "apps/web/components/dogs/OfferDogAtStudForm.tsx",
+  "apps/web/components/dogs/ManageDogListingForm.tsx",
+  "apps/web/components/dogs/ManageDogStudListingForm.tsx",
+  "apps/web/components/dogs/RehomeDogForm.tsx",
+  "apps/web/components/dogs/HealthTestingPanel.tsx",
+  "apps/web/components/dogs/DogPrivateNotesEditor.tsx",
+  "apps/web/components/dogs/DogProfileDashboard.tsx",
+].map(source).join("\n");
+const dogProfileRouteSources = [
+  "apps/web/app/api/dogs/[dogId]/rename/route.ts",
+  "apps/web/app/api/dogs/[dogId]/notes/route.ts",
+  "apps/web/app/api/dogs/[dogId]/list-for-sale/route.ts",
+  "apps/web/app/api/dogs/[dogId]/list-at-stud/route.ts",
+  "apps/web/app/api/dogs/[dogId]/health-tests/route.ts",
+  "apps/web/app/api/dogs/[dogId]/health-tests/[testTypeCode]/route.ts",
+  "apps/web/app/api/dogs/[dogId]/brucellosis-screening/route.ts",
+  "apps/web/app/api/show-entries/[showEntryId]/pull/route.ts",
+  "apps/web/app/api/market-dogs/[listingId]/update-price/route.ts",
+  "apps/web/app/api/market-dogs/[listingId]/cancel/route.ts",
+  "apps/web/app/api/stud-listings/[listingId]/update-price/route.ts",
+  "apps/web/app/api/stud-listings/[listingId]/cancel/route.ts",
+].map(source).join("\n");
 
 assertIncludes(
   dogMapper,
@@ -100,6 +125,51 @@ assertIncludes(
   dogPage,
   "canMove={canMoveKennelRun}",
   "dog page passes the owner-active move gate"
+);
+assertNotIncludes(
+  dogPage,
+  "areaId",
+  "dog page ignores legacy areaId query params"
+);
+assertNotIncludes(
+  dogPage,
+  "areaNavigation",
+  "dog page no longer renders legacy area navigation"
+);
+assertNotIncludes(
+  dogService,
+  "buildAreaNavigation",
+  "dog profile service no longer builds legacy area navigation"
+);
+assertNotIncludes(
+  dogService,
+  "kennelAreaMemberships",
+  "dog profile service no longer reads legacy area memberships"
+);
+assertNotIncludes(
+  dogMapper,
+  "DogProfileAreaNavigationDto",
+  "dog profile DTO no longer exposes legacy area navigation"
+);
+assertNotIncludes(
+  profileFormSources,
+  "areaId",
+  "dog profile forms no longer preserve legacy areaId"
+);
+assertNotIncludes(
+  dogProfileRouteSources,
+  "dogPageAreaContext",
+  "dog profile routes no longer use legacy area redirect helper"
+);
+assertNotIncludes(
+  dogProfileRouteSources,
+  "formData.get(\"areaId\")",
+  "dog profile routes no longer read legacy areaId form fields"
+);
+assertNotIncludes(
+  dogProfileRouteSources,
+  "areaId",
+  "dog profile routes no longer preserve legacy areaId redirects"
 );
 
 assertIncludes(

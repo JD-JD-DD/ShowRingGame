@@ -18,7 +18,6 @@ import { getDogProfile } from "@/server/services/dog.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
 
 type DogSearchParams = {
-    areaId?: string | string[];
     nameError?: string | string[];
     saleError?: string | string[];
     saleMessage?: string | string[];
@@ -98,13 +97,11 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const currentKennel = await getKennelForUser(userId);
   if (!currentKennel) redirect("/onboarding");
 
-  const areaId = firstQueryValue(resolvedSearchParams.areaId);
   const currentEpoch = getCurrentEpoch();
   const profile = await getDogProfile({
     dogId,
     viewerKennelId: currentKennel.id,
     currentEpoch,
-    areaId,
   });
 
   if (!profile) notFound();
@@ -120,15 +117,13 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const notesMessage = firstQueryValue(resolvedSearchParams.notesMessage);
   const showError = firstQueryValue(resolvedSearchParams.showError);
   const showMessage = firstQueryValue(resolvedSearchParams.showMessage);
-  const { header, areaNavigation, actions, viewerContext } = profile;
+  const { header, actions, viewerContext } = profile;
   const canMoveKennelRun =
     viewerContext.isOwnedByCurrentKennel && header.lifecycleState === "ALIVE";
   const saleListing = profile.breedingAndProduction.activeSaleListing;
   const studListing = profile.breedingAndProduction.activeStudListing;
   const grooming = profile.groomingDetails;
-  const dogPageReturnTo = `/dogs/${header.dogId}${
-    areaId ? `?areaId=${encodeURIComponent(areaId)}` : ""
-  }`;
+  const dogPageReturnTo = `/dogs/${header.dogId}`;
   const headerDisplayName = [
     header.visibleTitlePrefix,
     header.registeredName ?? header.callName ?? header.displayName,
@@ -165,7 +160,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               {actions.canName ? (
                 <RegisterDogNameForm
                   action={`/api/dogs/${header.dogId}/rename`}
-                  areaId={areaId}
                   nameError={nameError}
                 />
               ) : null}
@@ -252,7 +246,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 {actions.canOfferForSale ? (
                   <OfferDogForSaleForm
                     action={`/api/dogs/${header.dogId}/list-for-sale`}
-                    areaId={areaId}
                   />
                 ) : (actions.canEditSaleListing ||
                     actions.canCancelSaleListing) && saleListing ? (
@@ -262,14 +255,12 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     currentPrice={saleListing.askingPrice}
                     updateAction={`/api/market-dogs/${saleListing.listingId}/update-price`}
                     cancelAction={`/api/market-dogs/${saleListing.listingId}/cancel`}
-                    areaId={areaId}
                   />
                 ) : null}
 
                 {actions.canOfferAtStud ? (
                   <OfferDogAtStudForm
                     action={`/api/dogs/${header.dogId}/list-at-stud`}
-                    areaId={areaId}
                   />
                 ) : (actions.canEditStudFee ||
                     actions.canCancelStudListing) && studListing ? (
@@ -279,7 +270,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     currentPrice={studListing.studFee}
                     updateAction={`/api/stud-listings/${studListing.listingId}/update-price`}
                     cancelAction={`/api/stud-listings/${studListing.listingId}/cancel`}
-                    areaId={areaId}
                   />
                 ) : null}
 
@@ -349,55 +339,16 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     action={`/api/dogs/${header.dogId}/rehome`}
                     dogName={header.displayName}
                     payout={actions.rehomePayout}
-                    areaId={areaId}
                   />
                 ) : null}
               </div>
             </div>
 
-            {areaNavigation ? (
-              <div className="border-t border-[var(--dog-border)] pt-4 lg:col-span-2">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {areaNavigation.previousDog ? (
-                    <Link
-                      href={areaNavigation.previousDog.profileUrl}
-                      className="dog-secondary-button rounded-2xl px-4 py-2 text-center text-xs font-semibold sm:justify-self-start"
-                    >
-                      ← Previous Dog
-                      <span className="mt-0.5 block truncate text-[11px] font-medium opacity-75 sm:max-w-60">
-                        {areaNavigation.previousDog.displayName}
-                      </span>
-                    </Link>
-                  ) : (
-                    <div className="dog-card dog-copy rounded-2xl px-4 py-2 text-center text-xs font-semibold opacity-50 sm:justify-self-start">
-                      ← Previous Dog
-                    </div>
-                  )}
-
-                  {areaNavigation.nextDog ? (
-                    <Link
-                      href={areaNavigation.nextDog.profileUrl}
-                      className="dog-secondary-button rounded-2xl px-4 py-2 text-center text-xs font-semibold sm:justify-self-end"
-                    >
-                      Next Dog →
-                      <span className="mt-0.5 block truncate text-[11px] font-medium opacity-75 sm:max-w-60">
-                        {areaNavigation.nextDog.displayName}
-                      </span>
-                    </Link>
-                  ) : (
-                    <div className="dog-card dog-copy rounded-2xl px-4 py-2 text-center text-xs font-semibold opacity-50 sm:justify-self-end">
-                      Next Dog →
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : null}
           </div>
         </section>
 
         <DogProfileDashboard
           profile={profile}
-          areaId={areaId}
           currentEpoch={currentEpoch}
           healthMessage={healthMessage}
           healthError={healthError}

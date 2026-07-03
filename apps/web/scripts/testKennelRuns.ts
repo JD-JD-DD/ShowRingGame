@@ -594,6 +594,11 @@ async function main() {
     "kennelRunId: puppyKennelRunId",
     "whelped puppies inherit the selected Kennel Run"
   );
+  assert.equal(
+    breedingService.includes("kennelAreaDog"),
+    false,
+    "whelping no longer creates legacy KennelAreaDog memberships"
+  );
   assertIncludes(
     rehomeService,
     "kennelRunId: null",

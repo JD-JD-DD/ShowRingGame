@@ -9,7 +9,6 @@ type ManageDogStudListingFormProps = {
   currentPrice: number;
   updateAction: string;
   cancelAction: string;
-  areaId?: string | null;
 };
 
 function formatMoney(amount: number): string {
@@ -36,7 +35,6 @@ export default function ManageDogStudListingForm({
   currentPrice,
   updateAction,
   cancelAction,
-  areaId,
 }: ManageDogStudListingFormProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
@@ -65,7 +63,6 @@ export default function ManageDogStudListingForm({
           <form action={updateAction} method="post" className="mt-3">
             <input type="hidden" name="dogId" value={dogId} />
             <input type="hidden" name="listingId" value={listingId} />
-            {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
             <input
               type="number"
               name="studFeeAmount"
@@ -96,9 +93,6 @@ export default function ManageDogStudListingForm({
                 <form action={cancelAction} method="post">
                   <input type="hidden" name="dogId" value={dogId} />
                   <input type="hidden" name="listingId" value={listingId} />
-                  {areaId ? (
-                    <input type="hidden" name="areaId" value={areaId} />
-                  ) : null}
                   <CancelStudListingSubmitButton />
                 </form>
                 <button

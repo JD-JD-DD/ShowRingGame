@@ -21,7 +21,6 @@ const CARD_CLASS = "dog-card rounded-2xl px-4 py-3";
 
 type Props = {
   profile: DogProfileDto;
-  areaId: string | null;
   currentEpoch: number;
   healthMessage: string | null;
   healthError: string | null;
@@ -109,7 +108,7 @@ function formatBreedingSafetyCost(amount: number): string {
 }
 
 export default function DogProfileDashboard(props: Props) {
-  const { profile, areaId } = props;
+  const { profile } = props;
   const { header, snapshot, viewerContext } = profile;
   const healthControls = profile.healthTesting.ownerControls;
   const saleListing = profile.breedingAndProduction.activeSaleListing;
@@ -286,7 +285,7 @@ export default function DogProfileDashboard(props: Props) {
       >
         {statusMessage(props.healthMessage)}
         {statusMessage(props.healthError, true)}
-        <HealthTestingPanel dogId={header.dogId} areaId={areaId} kennelBalance={healthControls?.kennelBalance ?? 0} canOrderHealthTests={Boolean(healthControls?.checkoutNeeded)} rows={profile.healthTesting.tests.map((test) => ({ testTypeCode: test.testCode, label: test.displayName, fee: test.cost, isAvailable: test.isCurrentlyAvailable, availabilityLabel: test.minimumAgeLabel, result: test.isComplete ? { label: test.resultLabel ?? "Complete", testedLabel: test.testedDateLabel ?? "Test date unavailable", severity: test.severityKey ?? "yellow", impactStatement: test.healthImpactStatement } : null }))} />
+        <HealthTestingPanel dogId={header.dogId} kennelBalance={healthControls?.kennelBalance ?? 0} canOrderHealthTests={Boolean(healthControls?.checkoutNeeded)} rows={profile.healthTesting.tests.map((test) => ({ testTypeCode: test.testCode, label: test.displayName, fee: test.cost, isAvailable: test.isCurrentlyAvailable, availabilityLabel: test.minimumAgeLabel, result: test.isComplete ? { label: test.resultLabel ?? "Complete", testedLabel: test.testedDateLabel ?? "Test date unavailable", severity: test.severityKey ?? "yellow", impactStatement: test.healthImpactStatement } : null }))} />
         {profile.healthTesting.breedingSafetyScreening.length > 0 ? (
           <div className="rounded-2xl border border-sky-300/25 bg-sky-500/10 p-4">
             <div className="dog-heading text-sm font-semibold">
@@ -331,7 +330,6 @@ export default function DogProfileDashboard(props: Props) {
                       method="post"
                       className="mt-3"
                     >
-                      {areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}
                       <button
                         type="submit"
                         className="w-full rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-sky-500"
@@ -377,12 +375,12 @@ export default function DogProfileDashboard(props: Props) {
 
       {viewerContext.canManage && profile.entries ? <CollapsibleDogSection title="Entries" description="Your dog’s next three show entries." badge={<span className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-semibold">{profile.entries.currentEntriesCount}</span>} className={`${PANEL_CLASS} order-7 lg:col-span-2 lg:order-7`} contentClassName="mt-4 space-y-3" titleClassName="text-xl">
         {statusMessage(props.showMessage)}{statusMessage(props.showError, true)}
-        {profile.entries.nextEntries.length > 0 ? profile.entries.nextEntries.map((entry) => <div key={entry.entryId} className={`${CARD_CLASS} text-sm`}><Link href={entry.showUrl} className="dog-heading font-semibold hover:underline">{entry.showName}</Link><div className="dog-copy text-xs">{entry.showDateLabel} · Day {entry.showDayNumber} · {entry.district}</div>{entry.canPullEntry && entry.pullEntryActionUrl ? <form action={entry.pullEntryActionUrl} method="post" className="mt-2"><input type="hidden" name="dogId" value={header.dogId} />{areaId ? <input type="hidden" name="areaId" value={areaId} /> : null}<button type="submit" className="rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-xs font-bold text-red-700 dark:text-red-200">Pull entry</button></form> : null}</div>) : <div className="dog-card dog-copy rounded-2xl p-4 text-sm">No upcoming show entries.</div>}
+        {profile.entries.nextEntries.length > 0 ? profile.entries.nextEntries.map((entry) => <div key={entry.entryId} className={`${CARD_CLASS} text-sm`}><Link href={entry.showUrl} className="dog-heading font-semibold hover:underline">{entry.showName}</Link><div className="dog-copy text-xs">{entry.showDateLabel} · Day {entry.showDayNumber} · {entry.district}</div>{entry.canPullEntry && entry.pullEntryActionUrl ? <form action={entry.pullEntryActionUrl} method="post" className="mt-2"><input type="hidden" name="dogId" value={header.dogId} /><button type="submit" className="rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-xs font-bold text-red-700 dark:text-red-200">Pull entry</button></form> : null}</div>) : <div className="dog-card dog-copy rounded-2xl p-4 text-sm">No upcoming show entries.</div>}
       </CollapsibleDogSection> : null}
 
       {viewerContext.canViewPrivatePlanning && profile.privatePlanning ? <CollapsibleDogSection title="Private Planner" description="Owner-only notes and program tags." className={`${PANEL_CLASS} order-8 lg:col-span-2 lg:order-8`} contentClassName="mt-4 space-y-4" titleClassName="text-xl">
         {profile.privatePlanning.programPlannerTags.map((tag) => <div key={`${tag.tagTypeLabel}-${tag.updatedAt}`} className={`${CARD_CLASS} dog-copy text-sm`}><div className="flex justify-between gap-2"><span className="dog-heading font-semibold">{tag.tagTypeLabel}</span><span className="dog-label text-xs">{tag.goalLabel}</span></div><div className="mt-2 whitespace-pre-wrap">{tag.note ?? "No planner note saved."}</div></div>)}
-        {profile.privatePlanning.canEditNotes ? <DogPrivateNotesEditor action={`/api/dogs/${header.dogId}/notes`} areaId={areaId} initialNotes={profile.privatePlanning.notes ?? ""} notesError={props.notesError} notesMessage={props.notesMessage} /> : null}
+        {profile.privatePlanning.canEditNotes ? <DogPrivateNotesEditor action={`/api/dogs/${header.dogId}/notes`} initialNotes={profile.privatePlanning.notes ?? ""} notesError={props.notesError} notesMessage={props.notesMessage} /> : null}
       </CollapsibleDogSection> : null}
     </section>
   );

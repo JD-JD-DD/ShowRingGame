@@ -9,7 +9,6 @@ import { isChampionOfRecordTitleCode } from "@/lib/dogTitles";
 import { buildTitlePointsDisplay } from "@/lib/titlePoints";
 import {
   mapDogProfile,
-  type DogProfileAreaNavigationDto,
   type DogProfileBadgeDto,
   type DogProfileDto,
   type DogProfilePedigreeDogDto,
@@ -767,87 +766,6 @@ async function loadFourGenerationPedigree(args: {
   return ancestors;
 }
 
-async function buildAreaNavigation(args: {
-  areaId: string | null | undefined;
-  currentDogId: string;
-  viewerKennelId: string | null;
-  isOwnedByCurrentKennel: boolean;
-}): Promise<DogProfileAreaNavigationDto> {
-  // Legacy KennelArea navigation is scoped to many-to-many saved groups. Future
-  // Kennel Runs navigation should use Dog.kennelRunId, not memberships.
-  const areaId = args.areaId?.trim();
-
-  if (!areaId || !args.viewerKennelId || !args.isOwnedByCurrentKennel) {
-    return null;
-  }
-
-  const kennelArea = await db.kennelArea.findFirst({
-    where: {
-      id: areaId,
-      kennelId: args.viewerKennelId,
-    },
-    select: { id: true },
-  });
-
-  if (!kennelArea) {
-    return null;
-  }
-
-  const kennelAreaId = kennelArea.id;
-  const areaDogs = await db.dog.findMany({
-    where: {
-      ownerKennelId: args.viewerKennelId,
-      lifecycleState: DogLifecycleState.ALIVE,
-      isPlayerVisible: true,
-      kennelAreaMemberships: {
-        some: {
-          kennelAreaId,
-        },
-      },
-    },
-    orderBy: [
-      { breed: { name: "asc" } },
-      { birthEpoch: "desc" },
-      { regNumber: "asc" },
-    ],
-    select: {
-      id: true,
-      callName: true,
-      registeredName: true,
-      regNumber: true,
-      visibleTitlePrefix: true,
-      visibleTitleSuffix: true,
-    },
-  });
-  const currentIndex = areaDogs.findIndex(
-    (candidate) => candidate.id === args.currentDogId
-  );
-
-  if (currentIndex < 0) {
-    return null;
-  }
-
-  function toDogLink(dog: (typeof areaDogs)[number] | null) {
-    if (!dog) return null;
-
-    return {
-      dogId: dog.id,
-      displayName: formatDogDisplayName(dog),
-      profileUrl: `/dogs/${dog.id}?areaId=${encodeURIComponent(kennelAreaId)}`,
-    };
-  }
-
-  return {
-    areaId: kennelAreaId,
-    previousDog: toDogLink(
-      currentIndex > 0 ? areaDogs[currentIndex - 1] : null
-    ),
-    nextDog: toDogLink(
-      currentIndex < areaDogs.length - 1 ? areaDogs[currentIndex + 1] : null
-    ),
-  };
-}
-
 function buildVisibleCategories(scores: {
   typeExpression: number;
   structureBalance: number;
@@ -892,9 +810,8 @@ export async function getDogProfile(args: {
   dogId: string;
   viewerKennelId: string | null;
   currentEpoch: number;
-  areaId?: string | null;
 }): Promise<DogProfileDto | null> {
-  const { dogId, viewerKennelId, currentEpoch, areaId } = args;
+  const { dogId, viewerKennelId, currentEpoch } = args;
 
   await resolveDogDeaths({ currentEpoch, dogIds: [dogId] });
 
@@ -1161,12 +1078,6 @@ export async function getDogProfile(args: {
   const isAlive = dog.lifecycleState === DogLifecycleState.ALIVE;
   const isOwnedByCurrentKennel =
     viewerKennelId !== null && dog.ownerKennelId === viewerKennelId;
-  const areaNavigation = await buildAreaNavigation({
-    areaId,
-    currentDogId: dog.id,
-    viewerKennelId,
-    isOwnedByCurrentKennel,
-  });
   const pendingEmergencyCare = isOwnedByCurrentKennel
     ? dog.emergencyCareEvents[0] ?? null
     : null;
@@ -1590,7 +1501,6 @@ export async function getDogProfile(args: {
       originLabel,
       badges,
     },
-    areaNavigation,
     currentRun:
       dog.kennelRun && dog.kennelRun.kennelId === dog.ownerKennelId
         ? {

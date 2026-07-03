@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  normalizeAreaId,
-  redirectToDogPageWithField,
-} from "@/lib/dogPageAreaContext";
+import { redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -25,7 +22,6 @@ export async function POST(
   { params }: { params: Promise<{ dogId: string }> }
 ) {
   const { dogId } = await params;
-  let areaId: string | null = null;
 
   try {
     const userId = await getSessionUserId();
@@ -41,7 +37,6 @@ export async function POST(
     }
 
     const formData = await request.formData();
-    areaId = normalizeAreaId(formData.get("areaId"));
     const askingPrice = parseWholeDollarPrice(formData.get("askingPrice"));
 
     if (askingPrice === null || askingPrice < 1) {
@@ -49,8 +44,7 @@ export async function POST(
         request,
         dogId,
         "saleError",
-        "Sale price must be a whole dollar amount of at least $1.",
-        areaId
+        "Sale price must be a whole dollar amount of at least $1."
       );
     }
 
@@ -65,8 +59,7 @@ export async function POST(
       request,
       dogId,
       "saleMessage",
-      "Dog listed for sale.",
-      areaId
+      "Dog listed for sale."
     );
   } catch (error) {
     console.error("POST /api/dogs/[dogId]/list-for-sale failed:", error);
@@ -75,8 +68,7 @@ export async function POST(
       request,
       dogId,
       "saleError",
-      error instanceof Error ? error.message : "Failed to list dog for sale.",
-      areaId
+      error instanceof Error ? error.message : "Failed to list dog for sale."
     );
   }
 }

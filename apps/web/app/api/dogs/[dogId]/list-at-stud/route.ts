@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  normalizeAreaId,
-  redirectToDogPageWithField,
-} from "@/lib/dogPageAreaContext";
+import { redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -25,7 +22,6 @@ export async function POST(
   { params }: { params: Promise<{ dogId: string }> }
 ) {
   const { dogId } = await params;
-  let areaId: string | null = null;
 
   try {
     const userId = await getSessionUserId();
@@ -41,7 +37,6 @@ export async function POST(
     }
 
     const formData = await request.formData();
-    areaId = normalizeAreaId(formData.get("areaId"));
     const studFeeAmount = parseWholeDollarPrice(formData.get("studFeeAmount"));
     const requiresBrucellosisNegativeDam =
       formData.get("requiresBrucellosisNegativeDam") === "on";
@@ -59,8 +54,7 @@ export async function POST(
         request,
         dogId,
         "saleError",
-        "Stud fee must be a whole dollar amount of at least $1.",
-        areaId
+        "Stud fee must be a whole dollar amount of at least $1."
       );
     }
 
@@ -80,8 +74,7 @@ export async function POST(
       request,
       dogId,
       "saleMessage",
-      "Dog listed at stud.",
-      areaId
+      "Dog listed at stud."
     );
   } catch (error) {
     console.error("POST /api/dogs/[dogId]/list-at-stud failed:", error);
@@ -90,8 +83,7 @@ export async function POST(
       request,
       dogId,
       "saleError",
-      error instanceof Error ? error.message : "Failed to list dog at stud.",
-      areaId
+      error instanceof Error ? error.message : "Failed to list dog at stud."
     );
   }
 }
