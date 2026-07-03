@@ -226,30 +226,6 @@ export default async function ShowDetailPage({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={`/shows/${cluster.id}/results`}
-              className={
-                resultCount > 0
-                  ? "rounded-2xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-500"
-                  : "theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-              }
-            >
-              Results
-            </Link>
-            <Link
-              href="/shows"
-              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-            >
-              All Shows
-            </Link>
-            <Link
-              href="/kennel"
-              className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
-            >
-              My Kennel
-            </Link>
-          </div>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-3 text-sm">
