@@ -24,6 +24,9 @@
     "backfill:kennel-runs": "tsx scripts/backfillKennelRuns.ts",
     "reset:kennel-runs-to-uncategorized": "tsx scripts/resetKennelRunsToUncategorized.ts",
     "cleanup:inactive-breed-foundation-listings": "tsx scripts/cleanupInactiveBreedFoundationListings.ts",
+    "report:duplicate-breed-migration": "tsx scripts/reportDuplicateBreedMigration.ts",
+    "migrate:duplicate-breed-codes": "tsx scripts/migrateDuplicateBreedCodes.ts",
+    "verify:duplicate-breed-migration": "tsx scripts/verifyDuplicateBreedMigration.ts",
     "password-reset-link": "tsx scripts/create-password-reset-link.ts",
     "admin:set": "tsx scripts/set-admin.ts"
   },
