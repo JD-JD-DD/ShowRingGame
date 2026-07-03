@@ -5,7 +5,18 @@ import type { KennelNotice, KennelNoticeType } from "@prisma/client";
 import { db } from "@/lib/db";
 import { epochToDate } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import DeleteReadNoticesForm from "@/components/notices/DeleteReadNoticesForm";
 import { listKennelNotices } from "@/server/services/kennelNotice.service";
+
+type NoticesSearchParams = {
+  message?: string | string[];
+  error?: string | string[];
+};
+
+function firstQueryValue(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
 
 function formatNoticeDate(epoch: number): string {
   return epochToDate(epoch).toLocaleString("en-US", {
@@ -39,7 +50,11 @@ function getNoticeHref(notice: KennelNotice): string | null {
   return null;
 }
 
-export default async function NoticesPage() {
+export default async function NoticesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<NoticesSearchParams>;
+}) {
   const userId = await getSessionUserId();
 
   if (!userId) {
@@ -58,6 +73,9 @@ export default async function NoticesPage() {
   const notices = await listKennelNotices({ kennelId: kennel.id, take: 100 });
   const unreadCount = notices.filter((notice) => notice.readAtEpoch === null)
     .length;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const message = firstQueryValue(resolvedSearchParams.message);
+  const error = firstQueryValue(resolvedSearchParams.error);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
@@ -89,9 +107,21 @@ export default async function NoticesPage() {
                 </button>
               </form>
             ) : null}
+            <DeleteReadNoticesForm />
           </div>
         </div>
       </section>
+
+      {message ? (
+        <div className="mt-5 rounded-2xl border border-emerald-300/35 bg-emerald-500/10 px-5 py-4 text-sm font-semibold text-emerald-100">
+          {message}
+        </div>
+      ) : null}
+      {error ? (
+        <div className="mt-5 rounded-2xl border border-red-300/35 bg-red-500/10 px-5 py-4 text-sm font-semibold text-red-100">
+          {error}
+        </div>
+      ) : null}
 
       <section className="mt-8 rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
         {notices.length === 0 ? (

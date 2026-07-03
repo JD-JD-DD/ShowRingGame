@@ -150,3 +150,28 @@ export async function markAllKennelNoticesRead(args: {
     },
   });
 }
+
+export async function deleteReadKennelInboxNotices(args: {
+  client?: DbClient;
+  kennelId: string;
+  currentEpoch: number;
+}) {
+  const client = args.client ?? db;
+
+  const result = await client.kennelNotice.updateMany({
+    where: {
+      kennelId: args.kennelId,
+      readAtEpoch: {
+        not: null,
+      },
+      dismissedAtEpoch: null,
+    },
+    data: {
+      dismissedAtEpoch: args.currentEpoch,
+    },
+  });
+
+  return {
+    deletedCount: result.count,
+  };
+}
