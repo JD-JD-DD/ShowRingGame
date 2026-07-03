@@ -60,3 +60,12 @@ export async function getSessionUserId(): Promise<string | null> {
 
   return userId;
 }
+
+export async function peekSessionUserId(): Promise<string | null> {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE_NAME)?.value;
+
+  if (!token) return null;
+
+  return decodeSessionToken(token)?.userId ?? null;
+}

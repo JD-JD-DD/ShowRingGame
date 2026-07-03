@@ -1,32 +1,51 @@
-import Link from "next/link";
+"use client";
 
-import { db } from "@/lib/db";
-import { getSessionUserId } from "@/lib/session";
-import { getUnreadKennelNoticeCount } from "@/server/services/kennelNotice.service";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
 import NotificationInboxBadge from "./NotificationInboxBadge";
 
-export default async function NotificationInboxLink() {
-  const userId = await getSessionUserId();
+type UnreadCountResponse = {
+  unreadCount?: number;
+};
 
-  if (!userId) {
-    return null;
-  }
+export default function NotificationInboxLink() {
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const kennel = await db.kennel.findUnique({
-    where: { userId },
-    select: { id: true },
-  });
+  useEffect(() => {
+    let isMounted = true;
 
-  if (!kennel) {
-    return null;
-  }
+    async function loadUnreadCount() {
+      try {
+        const response = await fetch("/api/notices/unread-count", {
+          cache: "no-store",
+        });
 
-  const unreadCount = await getUnreadKennelNoticeCount(kennel.id);
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as UnreadCountResponse;
+
+        if (isMounted && typeof data.unreadCount === "number") {
+          setUnreadCount(data.unreadCount);
+        }
+      } catch {
+        // The inbox link remains useful if the unread-count request fails.
+      }
+    }
+
+    loadUnreadCount();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <Link
       href="/notices"
-      className="fixed right-4 top-[4.75rem] z-50 rounded-2xl border border-purple-300/20 bg-black/55 px-3 py-1.5 text-right text-[11px] font-semibold leading-4 text-purple-100/85 shadow-[0_10px_30px_rgba(0,0,0,0.35)] backdrop-blur hover:border-purple-200/40 hover:text-white"
+      className="game-header__inbox fixed right-4 top-[4.75rem] z-50 rounded-2xl px-3 py-1.5 text-right text-[11px] font-semibold leading-4 backdrop-blur"
     >
       <span>Inbox</span>
       <NotificationInboxBadge initialUnreadCount={unreadCount} />

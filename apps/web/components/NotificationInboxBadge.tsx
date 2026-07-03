@@ -15,6 +15,10 @@ export default function NotificationInboxBadge({
   const shouldRefreshOnFocusRef = useRef(false);
 
   useEffect(() => {
+    setUnreadCount(initialUnreadCount);
+  }, [initialUnreadCount]);
+
+  useEffect(() => {
     let isMounted = true;
     let isRefreshing = false;
 

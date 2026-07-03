@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import LogoutButton from "@/components/LogoutButton";
 
@@ -30,22 +31,54 @@ function isActivePath(pathname: string, href: string): boolean {
 
 function navClass(active: boolean): string {
   return [
-    "rounded-xl border px-3 py-2 text-sm font-semibold transition",
-    active
-      ? "border-fuchsia-200/45 bg-fuchsia-500/25 text-white shadow-[0_8px_26px_rgba(168,85,247,0.22)]"
-      : "border-purple-200/15 bg-white/5 text-purple-50/85 hover:border-purple-100/35 hover:bg-white/10 hover:text-white",
+    "rounded-xl px-3 py-2 text-sm font-semibold transition",
+    active ? "game-header__link game-header__link--active" : "game-header__link",
   ].join(" ");
 }
 
-export default function GameHeaderNav({
-  isLoggedIn,
-}: {
-  isLoggedIn: boolean;
-}) {
+export default function GameHeaderNav() {
   const pathname = usePathname();
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement | null>(null);
   const accountActive = accountItems.some((item) =>
     isActivePath(pathname, item.href)
   );
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setAccountOpen(false), 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+
+      if (
+        target instanceof Node &&
+        accountRef.current &&
+        !accountRef.current.contains(target)
+      ) {
+        setAccountOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setAccountOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [accountOpen]);
 
   return (
     <nav
@@ -62,40 +95,52 @@ export default function GameHeaderNav({
         </Link>
       ))}
 
-      <details className="group relative">
-        <summary
+      <div ref={accountRef} className="relative">
+        <button
+          type="button"
+          aria-expanded={accountOpen}
+          aria-haspopup="menu"
+          onClick={() => setAccountOpen((current) => !current)}
           className={[
-            "list-none cursor-pointer rounded-xl border px-3 py-2 text-sm font-semibold transition marker:hidden",
+            "rounded-xl px-3 py-2 text-sm font-semibold transition",
             accountActive
-              ? "border-fuchsia-200/45 bg-fuchsia-500/25 text-white shadow-[0_8px_26px_rgba(168,85,247,0.22)]"
-              : "border-purple-200/15 bg-white/5 text-purple-50/85 hover:border-purple-100/35 hover:bg-white/10 hover:text-white",
+              ? "game-header__account-button game-header__account-button--active"
+              : "game-header__account-button",
           ].join(" ")}
         >
           Account
-        </summary>
+        </button>
 
-        <div className="absolute right-0 top-full z-[70] mt-2 min-w-48 rounded-2xl border border-purple-200/20 bg-[#1b102c]/95 p-2 text-sm shadow-[0_18px_55px_rgba(0,0,0,0.45)] backdrop-blur">
-          {accountItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={[
-                "block rounded-xl px-3 py-2 font-semibold transition",
-                isActivePath(pathname, item.href)
-                  ? "bg-fuchsia-500/20 text-white"
-                  : "text-purple-50/85 hover:bg-white/10 hover:text-white",
-              ].join(" ")}
+        {accountOpen ? (
+          <div
+            role="menu"
+            className="game-header__menu absolute right-0 top-full z-[70] mt-2 min-w-48 rounded-2xl p-2 text-sm backdrop-blur"
+          >
+            {accountItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                role="menuitem"
+                onClick={() => setAccountOpen(false)}
+                className={[
+                  "game-header__menu-item block rounded-xl px-3 py-2 font-semibold transition",
+                  isActivePath(pathname, item.href)
+                    ? "game-header__menu-item--active"
+                    : "",
+                ].join(" ")}
+              >
+                {item.label}
+              </Link>
+            ))}
+            <div
+              className="game-header__menu-divider mt-2 border-t pt-2"
+              onClickCapture={() => setAccountOpen(false)}
             >
-              {item.label}
-            </Link>
-          ))}
-          {isLoggedIn ? (
-            <div className="mt-2 border-t border-purple-200/15 pt-2">
               <LogoutButton />
             </div>
-          ) : null}
-        </div>
-      </details>
+          </div>
+        ) : null}
+      </div>
     </nav>
   );
 }

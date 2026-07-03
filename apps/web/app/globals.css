@@ -132,6 +132,125 @@ html[data-theme="dark"] .theme-toggle {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
+.game-header {
+  border-bottom: 1px solid var(--dog-border);
+  background: color-mix(in srgb, var(--dog-panel) 88%, transparent);
+  box-shadow: var(--dog-shadow);
+  color: var(--dog-heading);
+}
+
+.game-header__inner {
+  padding-left: 7.75rem;
+}
+
+.game-header__brand {
+  border: 1px solid var(--dog-border-strong);
+  background: color-mix(in srgb, var(--dog-card) 78%, var(--purple-main) 22%);
+  color: var(--dog-heading);
+}
+
+.game-header__link,
+.game-header__account-button {
+  border: 1px solid var(--dog-border);
+  background: color-mix(in srgb, var(--dog-card) 88%, transparent);
+  color: var(--dog-heading);
+}
+
+.game-header__link:hover,
+.game-header__account-button:hover,
+.game-header__link:focus-visible,
+.game-header__account-button:focus-visible {
+  border-color: var(--dog-border-strong);
+  background: color-mix(in srgb, var(--dog-card) 72%, var(--purple-main) 28%);
+  color: var(--dog-heading);
+}
+
+.game-header__link--active,
+.game-header__account-button--active {
+  border-color: color-mix(in srgb, var(--purple-main) 64%, var(--dog-border));
+  background: color-mix(in srgb, var(--dog-card) 46%, var(--purple-main) 54%);
+  color: #fff;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--purple-main) 22%, transparent);
+}
+
+.game-header__menu {
+  border: 1px solid var(--dog-border-strong);
+  background: color-mix(in srgb, var(--dog-panel) 94%, transparent);
+  box-shadow: var(--dog-shadow);
+  color: var(--dog-heading);
+}
+
+.game-header__menu-item {
+  color: var(--dog-heading);
+}
+
+.game-header__menu-item:hover,
+.game-header__menu-item:focus-visible {
+  background: color-mix(in srgb, var(--dog-card) 70%, var(--purple-main) 30%);
+}
+
+.game-header__menu-item--active {
+  background: color-mix(in srgb, var(--dog-card) 50%, var(--purple-main) 50%);
+  color: #fff;
+}
+
+.game-header__menu-divider {
+  border-color: var(--dog-border);
+}
+
+.game-header__status,
+.game-header__inbox {
+  border: 1px solid var(--dog-border-strong);
+  background: color-mix(in srgb, var(--dog-panel) 86%, transparent);
+  color: var(--dog-heading);
+  box-shadow: var(--dog-shadow);
+}
+
+.game-header__status-muted {
+  color: var(--dog-copy);
+}
+
+.game-header__inbox:hover,
+.game-header__inbox:focus-visible {
+  border-color: var(--purple-bright);
+  background: color-mix(in srgb, var(--dog-panel) 70%, var(--purple-main) 30%);
+}
+
+.game-header__emergency {
+  border: 1px solid rgba(220, 38, 38, 0.42);
+  background: rgba(254, 226, 226, 0.94);
+  color: #991b1b;
+  box-shadow: var(--dog-shadow);
+}
+
+.game-header__emergency:hover,
+.game-header__emergency:focus-visible {
+  border-color: rgba(220, 38, 38, 0.68);
+  background: rgba(254, 202, 202, 0.98);
+}
+
+html[data-theme="dark"] .game-header__brand,
+html[data-theme="dark"] .game-header__link,
+html[data-theme="dark"] .game-header__account-button,
+html[data-theme="dark"] .game-header__menu,
+html[data-theme="dark"] .game-header__status,
+html[data-theme="dark"] .game-header__inbox {
+  backdrop-filter: blur(14px);
+}
+
+html[data-theme="dark"] .game-header__emergency {
+  border-color: rgba(252, 165, 165, 0.38);
+  background: rgba(69, 10, 10, 0.82);
+  color: #fee2e2;
+}
+
+@media (max-width: 720px) {
+  .game-header__inner {
+    padding-left: 0;
+    padding-top: 2.85rem;
+  }
+}
+
 /* The original interface used dark Tailwind utilities directly. These light-mode
    mappings keep every existing screen readable while preserving those utilities
    unchanged for the optional dark theme. */
