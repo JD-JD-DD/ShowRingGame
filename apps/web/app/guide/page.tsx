@@ -195,7 +195,10 @@ export default function GuidePage() {
           ))}
         </section>
 
-        <section className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 shadow-[var(--dog-shadow)]">
+        <section
+          id="first-useful-route"
+          className="mb-8 scroll-mt-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 shadow-[var(--dog-shadow)]"
+        >
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">

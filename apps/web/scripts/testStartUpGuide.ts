@@ -66,6 +66,16 @@ function main() {
   );
   assertIncludes(
     stepperSource,
+    "View Example Dog",
+    "Step 3 action opens the example dog"
+  );
+  assertIncludes(
+    stepperSource,
+    'href: "/start-up-guide/example-dog"',
+    "Step 3 action links to the example dog page"
+  );
+  assertIncludes(
+    stepperSource,
     "Continue to breeding or showing",
     "Step 3 continue copy is present"
   );
@@ -75,14 +85,24 @@ function main() {
     "Step 4 continue copy is present"
   );
   assertIncludes(
-    stepperSource,
-    "Start Playing",
-    "Final step shows Start Playing"
+    pageSource,
+    'id="first-useful-route"',
+    "first useful route section has an anchor target"
   );
   assertIncludes(
     stepperSource,
-    'href="/kennel"',
-    "Final step links players to My Kennel"
+    "Continue to your first route",
+    "Final step guides players to the first route section"
+  );
+  assertIncludes(
+    stepperSource,
+    'href="#first-useful-route"',
+    "Final step uses an in-page anchor"
+  );
+  assertExcludes(
+    stepperSource,
+    "Start Playing",
+    "Final step no longer shows Start Playing"
   );
   assertIncludes(
     stepperSource,

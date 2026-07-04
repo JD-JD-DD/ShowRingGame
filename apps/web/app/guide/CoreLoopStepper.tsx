@@ -29,7 +29,7 @@ const coreLoopSteps: CoreLoopStep[] = [
   {
     title: "View Dog",
     body: "Dog pages show the details that matter over time: traits, condition, health testing, show record, breeding status, and current Kennel Run.",
-    actions: [{ label: "My Kennel", href: "/kennel" }],
+    actions: [{ label: "View Example Dog", href: "/start-up-guide/example-dog" }],
     continueLabel: "Continue to breeding or showing",
   },
   {
@@ -159,10 +159,10 @@ export default function CoreLoopStepper() {
                   </button>
                 ) : (
                   <Link
-                    href="/kennel"
+                    href="#first-useful-route"
                     className="rounded-xl bg-white px-3 py-2 text-center text-xs font-semibold text-purple-800 transition hover:bg-purple-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300"
                   >
-                    Start Playing
+                    Continue to your first route
                   </Link>
                 )}
               </div>
