@@ -4,6 +4,7 @@ import {
   listBreedingsForKennel,
   resolveBreedingProgressForKennel,
 } from "@/server/services/breeding.service";
+import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   mapLitterDetail,
   mapLitterListItem,
@@ -117,6 +118,80 @@ const litterSelect = Prisma.validator<Prisma.LitterSelect>()({
   },
 });
 
+type LitterForMapping = Prisma.LitterGetPayload<{ select: typeof litterSelect }>;
+type PuppyHealthConditionTruth = {
+  dogId: string;
+  conditionCode: string;
+  geneticLiability: number;
+  environmentModifier: number;
+};
+
+function groupHealthConditionTruthsByDog(
+  healthConditionTruths: PuppyHealthConditionTruth[]
+) {
+  const truthsByDogId = new Map<
+    string,
+    Array<{
+      conditionCode: string;
+      geneticLiability: number;
+      environmentModifier: number;
+    }>
+  >();
+
+  for (const truth of healthConditionTruths) {
+    const truths = truthsByDogId.get(truth.dogId) ?? [];
+    truths.push({
+      conditionCode: truth.conditionCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    });
+    truthsByDogId.set(truth.dogId, truths);
+  }
+
+  return truthsByDogId;
+}
+
+async function withFreshPuppyHealthConditionTruths<T extends LitterForMapping>(
+  litters: T[]
+): Promise<T[]> {
+  const dogIds = [
+    ...new Set(litters.flatMap((litter) => litter.puppies.map((puppy) => puppy.id))),
+  ];
+
+  if (dogIds.length === 0) {
+    return litters;
+  }
+
+  await ensurePhenotypeHealthTruthsForDogs(db, dogIds);
+
+  const healthConditionTruths = await db.dogHealthConditionTruth.findMany({
+    where: {
+      dogId: {
+        in: dogIds,
+      },
+      conditionCode: {
+        in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+      },
+    },
+    select: {
+      dogId: true,
+      conditionCode: true,
+      geneticLiability: true,
+      environmentModifier: true,
+    },
+  });
+  const truthsByDogId = groupHealthConditionTruthsByDog(healthConditionTruths);
+
+  return litters.map((litter) => ({
+    ...litter,
+    puppies: litter.puppies.map((puppy) => ({
+      ...puppy,
+      healthConditionTruths:
+        truthsByDogId.get(puppy.id) ?? puppy.healthConditionTruths,
+    })),
+  }));
+}
+
 function visibleToKennelWhere(kennelId: string) {
   return {
     OR: [
@@ -157,8 +232,13 @@ export async function listLittersForKennel(args: {
     listBreedingsForKennel({ kennelId, currentEpoch }),
   ]);
 
+  const littersWithFreshHealthTruths =
+    await withFreshPuppyHealthConditionTruths(litters);
+
   return {
-    litters: litters.map((litter) => mapLitterListItem(litter, currentEpoch)),
+    litters: littersWithFreshHealthTruths.map((litter) =>
+      mapLitterListItem(litter, currentEpoch)
+    ),
     activeBreedings,
   };
 }
@@ -180,5 +260,12 @@ export async function getLitterForKennel(args: {
     select: litterSelect,
   });
 
-  return litter ? mapLitterDetail(litter, currentEpoch) : null;
+  if (!litter) {
+    return null;
+  }
+
+  const [litterWithFreshHealthTruths] =
+    await withFreshPuppyHealthConditionTruths([litter]);
+
+  return mapLitterDetail(litterWithFreshHealthTruths, currentEpoch);
 }
