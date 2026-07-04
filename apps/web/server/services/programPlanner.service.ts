@@ -20,6 +20,7 @@ import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
+import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
@@ -47,6 +48,13 @@ type Direction = "under" | "near" | "over";
 type PlannerDogRecord = Awaited<
   ReturnType<typeof fetchProgramPlannerDogs>
 >[number];
+
+type ProgramPlannerHealthConditionTruth = {
+  dogId: string;
+  conditionCode: string;
+  geneticLiability: number;
+  environmentModifier: number;
+};
 
 export const PROGRAM_PLANNER_GOALS = [
   {
@@ -211,6 +219,67 @@ function toVisibleCategories(dog: {
       fatiguePoints: dog.fatiguePoints,
     },
   });
+}
+
+function groupHealthConditionTruthsByDog(
+  healthConditionTruths: ProgramPlannerHealthConditionTruth[]
+) {
+  const truthsByDogId = new Map<
+    string,
+    Array<{
+      conditionCode: string;
+      geneticLiability: number;
+      environmentModifier: number;
+    }>
+  >();
+
+  for (const truth of healthConditionTruths) {
+    const truths = truthsByDogId.get(truth.dogId) ?? [];
+    truths.push({
+      conditionCode: truth.conditionCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    });
+    truthsByDogId.set(truth.dogId, truths);
+  }
+
+  return truthsByDogId;
+}
+
+async function ensureAndLoadProgramPlannerHealthTruths(dogIds: string[]) {
+  const uniqueDogIds = [...new Set(dogIds)];
+
+  if (uniqueDogIds.length === 0) {
+    return new Map<
+      string,
+      Array<{
+        conditionCode: string;
+        geneticLiability: number;
+        environmentModifier: number;
+      }>
+    >();
+  }
+
+  await ensurePhenotypeHealthTruthsForDogs(db, uniqueDogIds);
+
+  const healthConditionTruths = await db.dogHealthConditionTruth.findMany({
+    where: {
+      dogId: {
+        in: uniqueDogIds,
+      },
+      conditionCode: {
+        in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+      },
+    },
+    select: {
+      dogId: true,
+      conditionCode: true,
+      geneticLiability: true,
+      environmentModifier: true,
+    },
+  });
+
+  return groupHealthConditionTruthsByDog(healthConditionTruths);
 }
 
 function latestPhenotypeTests(
@@ -1107,11 +1176,20 @@ export async function getProgramPlannerData(args: {
   const selectedDogs = selectedBreedCode2
     ? allDogs.filter((dog) => dog.breedCode2 === selectedBreedCode2)
     : [];
+  const healthConditionTruthsByDogId =
+    await ensureAndLoadProgramPlannerHealthTruths(
+      selectedDogs.map((dog) => dog.id)
+    );
 
   const baseDogs: ProgramPlannerDogDto[] = selectedDogs.map((dog) => {
     const ageHours = Math.max(0, args.currentEpoch - dog.birthEpoch);
     const dogAgeClass = ageClass(ageHours);
-    const visibleCategories = toVisibleCategories(dog);
+    const visibleCategories = toVisibleCategories({
+      ...dog,
+      healthConditionTruths:
+        healthConditionTruthsByDogId.get(dog.id) ??
+        dog.healthConditionTruths,
+    });
     const health = healthSummary(ageHours, dog.healthTests);
     const isChampion = isChampionOfRecordDog(dog);
     const pointCount =
