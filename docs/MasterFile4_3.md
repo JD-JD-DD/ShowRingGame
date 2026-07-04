@@ -12,9 +12,9 @@ Each dog has hidden raw traits on a 0–20 scale where:
 
 Players do not see raw traits directly.
 
-Instead, players see visible ring categories derived from groups of hidden traits.
+Instead, players see directional visible ring categories derived from groups of hidden traits, plus separate optimized care/condition information.
 
-These visible categories must also remain on a 0–20 scale with 10 as the ideal midpoint.
+Directional visible ring categories must remain on a 0-20 scale with 10 as the ideal midpoint. Conditioning & Handling is separate and remains a 0-10 optimized score.
 
 This is required because players need to be able to reason directionally about breeding stock:
 
@@ -90,7 +90,9 @@ These hidden traits remain private.
 
 Visible ring categories are derived from mapped groups of hidden traits using `CATEGORY_TRAIT_MAP`.
 
-Visible ring categories must also be expressed on a 0–20 scale with 10 ideal.
+Directional visible ring categories must also be expressed on a 0-20 scale with 10 ideal.
+
+Conditioning & Handling is separate. It is a 0-10 optimized score where higher means better conditioning and handling within that separate scale.
 
 ### mandatory display rule
 
@@ -163,7 +165,7 @@ Underlying structural / genetic values:
 - feet
 - topline
 
-### visible categories
+### directional visible categories
 
 Player-facing ring summaries:
 
@@ -172,6 +174,11 @@ Player-facing ring summaries:
 - Movement
 - Coat & Presentation
 - Temperament & Ring Behavior
+
+### optimized visible category
+
+Separate 0-10 optimized score:
+
 - Conditioning & Handling
 
 ### category mapping
@@ -240,12 +247,16 @@ round to 1 decimal place
 
 ### base algorithm
 
-For each visible category:
+For each directional visible category:
 
-1. get the hidden traits mapped to that category
-2. average those hidden traits
-3. round to one decimal
-4. clamp to 0–20
+1. get the mapped component values for that category
+2. compute each component's distance from 10 ideal
+3. preserve side of ideal from the signed component deviations
+4. use deterministic tie-breaks when under-ideal and over-ideal faults cancel
+5. round to one decimal
+6. clamp to 0-20
+
+Mixed under/over faults should not cancel into a false ideal category.
 
 Base formula:
 
@@ -253,19 +264,21 @@ Base formula:
 visibleCategory = clamp(
   0,
   20,
-  round1(average(mappedHiddenTraits))
+  round1(aggregateDirectionalCategory(mappedTraitValues))
 )
 ```
 
+Conditioning & Handling is not directionally aggregated. It remains a separate 0-10 optimized score.
+
 ### weighted algorithm
 
-If category trait weights are used:
+If category trait weights are used, weighting may adjust component inputs before directional aggregation, but it must preserve side-of-ideal semantics.
 
 ```ts
 visibleCategory = clamp(
   0,
   20,
-  round1(weightedAverage(mappedHiddenTraits))
+  round1(aggregateDirectionalCategory(weightedMappedTraitValues))
 )
 ```
 
@@ -273,12 +286,19 @@ visibleCategory = clamp(
 
 If small display variance is used:
 
+1. apply weighting and any allowed variance before or around directional aggregation only if the final value still preserves side of ideal
+2. do not flip a truly under-ideal category to over ideal
+3. do not flip a truly over-ideal category to under ideal
+4. do not let mixed faults falsely display as ideal
+
 ```ts
 visibleCategory = clamp(
   0,
   20,
   round1(
-    weightedAverage(mappedHiddenTraits) + displayVariance
+    applySafeDisplayVariance(
+      aggregateDirectionalCategory(weightedMappedTraitValues)
+    )
   )
 )
 ```
@@ -292,12 +312,14 @@ visibleCategory = clamp(
   0,
   20,
   round1(
-    weightedAverage(
-      mappedHiddenTraitsUsingBreedDisplayWeights
-    ) + smallDisplayVariance
+    aggregateDirectionalCategory(
+      mappedTraitValuesUsingBreedDisplayWeights
+    )
   )
 )
 ```
+
+Breed-specific weighting may change how strongly a mapped component contributes, but it must not turn directional display into raw averaging or a directionless closeness score.
 
 ---
 
@@ -364,7 +386,7 @@ A category value very close to 10 should remain visually understandable as near 
 
 ### mixed category inputs
 
-A category may average hidden traits that lie on different sides of ideal. In that case, the visible category should truthfully reflect the resulting average.
+Mixed under/over inputs should not cancel into ideal. Aggregate by distance from 10 while preserving a deterministic display direction.
 
 ### breed emphasis
 
@@ -427,7 +449,7 @@ This ensures that visible category display remains explainable and stable even w
 Use this as the locked summary line:
 
 ```txt
-Visible ring categories are displayed on the same 0–20 scale as hidden raw traits, with 10 as ideal. They must preserve whether a dog appears under or over ideal. They are derived approximations, not direct raw traits, and may include weighting and small display variance, but they must never collapse into a directionless closeness-to-ideal score.
+Directional visible ring categories are displayed on a 0-20 scale with 10 as ideal. They must preserve whether a dog appears under or over ideal. They are derived approximations, not direct raw traits, and may include weighting and small display variance, but they must never collapse into raw averaging or a directionless closeness-to-ideal score. Conditioning & Handling is separate and remains a 0-10 optimized score.
 ```
 
 ---
@@ -438,11 +460,11 @@ Visible ring categories are displayed on the same 0–20 scale as hidden raw tra
 visibleCategory = clamp(
   0,
   20,
-  round1(
-    weightedAverage(mappedHiddenTraits) + smallDisplayVariance
-  )
+  round1(aggregateDirectionalCategory(mappedTraitValues))
 )
 ```
+
+Optional weighting or small display variance may be added only if it preserves directional meaning and cannot make mixed faults falsely appear ideal.
 
 ---
 
@@ -540,8 +562,8 @@ For each dog:
 
 - start from breed-specific foundation baseline
 - roll each trait independently with small correlation structure
-- allow a few strengths and a few weaknesses
-- reject dogs that are too uniformly good
+- allow a few near-ideal areas and a few areas that need balancing
+- reject dogs that are too uniformly near ideal
 - reject dogs that are too uniformly bad
 
 ---
@@ -556,9 +578,9 @@ A foundation dog should usually have:
 
 That creates “shopping psychology”:
 
-- nice mover, weaker coat
+- near-ideal mover, coat needs balancing
 - lovely outline, average temperament
-- strong head and front, less rear drive
+- near-ideal head and front, less rear drive
 
 That feels like real dog evaluation.
 
@@ -572,12 +594,12 @@ Reject and reroll any dog where:
 
 - too many traits exceed breed mean
 - total trait sum exceeds threshold
-- visible categories are all strong at once
+- visible categories are too uniformly near ideal at once
 
 Example rules:
 
 - no more than 3 traits above breed mean + 1
-- no more than 2 visible categories above strong threshold
+- no more than 2 visible categories above the near-ideal appeal threshold
 - total hidden trait sum must stay below breed mean total minus a small margin
 
 ---
@@ -618,7 +640,7 @@ For example:
   - slightly below breed mean
 
 - 30% Nice Foundation
-  - one or two appealing strengths
+  - one or two appealing near-ideal areas
   - still below top player stock
 
 - 10% Rough Foundation
@@ -2088,6 +2110,8 @@ All dogs are evaluated using six universal judging categories:
 - Temperament & Ring Behavior
 - Conditioning & Handling
 
+The first five are directional category values where 10 is ideal. Values below 10 and above 10 represent different deviations from ideal, so higher is not automatically better. Conditioning & Handling is separate and remains an optimized 0-10 category where higher is better.
+
 Some breeds additionally use a Breed Essential category.
 
 Breed Essential may cause:
@@ -2162,6 +2186,8 @@ Judging produces:
 ### Universal Category Evaluation
 
 Every dog is scored across six judging categories.
+
+Directional categories are evaluated for category fitness/idealness before contributing to judging. They are not treated as simple higher-is-better numbers.
 
 ### Judge Preferences
 
@@ -2296,13 +2322,15 @@ Exact tuning TBD.
 
 ```txt
 score =
-(Type × weight)
-+ (Structure × weight)
-+ (Movement × weight)
-+ (Coat × weight)
-+ (Temperament × weight)
-+ (Conditioning × weight)
+(TypeFitness × weight)
++ (StructureFitness × weight)
++ (MovementFitness × weight)
++ (CoatFitness × weight)
++ (TemperamentFitness × weight)
++ (ConditioningHandlingScore × weight)
 ```
+
+The directional categories are interpreted as fitness to ideal before scoring. Higher raw 0-20 directional values are not automatically better; above-ideal and below-ideal values are different kinds of deviation. Conditioning & Handling remains optimized, where higher is better within its own 0-10 scale.
 
 ### Judge Preference Adjustment
 
@@ -2401,8 +2429,8 @@ Dog removed from placements entirely.
 Tie-break priority:
 
 ```txt
-1. higher structure score
-2. higher movement score
+1. better structure fitness to ideal
+2. better movement fitness to ideal
 3. random tie-break
 ```
 
