@@ -84,6 +84,46 @@ function ComingSoonCard({
   );
 }
 
+function GroomingAssistanceStrip({
+  openJobs,
+  actionsUsed,
+  actionLimit,
+}: {
+  openJobs: number;
+  actionsUsed: number;
+  actionLimit: number;
+}) {
+  return (
+    <Link
+      href="/kennel/services/grooming"
+      className="group flex flex-col gap-3 border-y border-[var(--dog-border)] bg-white/[0.03] px-4 py-3 text-sm transition hover:bg-white/[0.06] sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 className="text-base font-semibold text-white">
+            Grooming Assistance
+          </h2>
+          <span className="text-xs font-semibold uppercase tracking-wide text-emerald-200/80">
+            Status
+          </span>
+        </div>
+        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-[var(--dog-copy)]">
+          <span>
+            {openJobs} open job{openJobs === 1 ? "" : "s"}
+          </span>
+          <span>
+            Weekly actions: {actionsUsed} / {actionLimit}
+          </span>
+          <span>Pay: {formatMoney(500)} per job</span>
+        </div>
+      </div>
+      <span className="shrink-0 text-xs font-semibold text-purple-100 transition group-hover:text-white">
+        View Grooming Jobs
+      </span>
+    </Link>
+  );
+}
+
 export default async function KennelServicesPage({ searchParams }: PageProps) {
   const { kennel } = await getKennelServicesContext();
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -118,7 +158,7 @@ export default async function KennelServicesPage({ searchParams }: PageProps) {
 
       <ServiceMessages message={message} error={error} />
 
-      <section className="grid gap-5 lg:grid-cols-2">
+      <section className="grid gap-5 lg:grid-cols-2 lg:items-start">
         <ServiceCard
           title="Club Stewarding"
           description="Claim stewarding assignments at local show weekends. Stewarding pays kennel income, but makes that show or cluster your primary show commitment."
@@ -132,18 +172,10 @@ export default async function KennelServicesPage({ searchParams }: PageProps) {
           action="View Stewarding Assignments"
         />
 
-        <ServiceCard
-          title="Grooming Assistance"
-          description="Accept outside grooming jobs from other kennels, improve dogs' coat condition, earn income, and build grooming experience."
-          metadata={[
-            `${groomingJobs.length} open grooming job${
-              groomingJobs.length === 1 ? "" : "s"
-            }`,
-            `Weekly grooming actions used: ${groomingSummary.groomingActionsUsedThisWeek} / ${groomingSummary.totalGroomingActionLimit}`,
-            `Pay: ${formatMoney(500)} per job`,
-          ]}
-          href="/kennel/services/grooming"
-          action="View Grooming Jobs"
+        <GroomingAssistanceStrip
+          openJobs={groomingJobs.length}
+          actionsUsed={groomingSummary.groomingActionsUsedThisWeek}
+          actionLimit={groomingSummary.totalGroomingActionLimit}
         />
       </section>
 
