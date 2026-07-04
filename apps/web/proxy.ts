@@ -13,12 +13,18 @@ const ANONYMOUS_ROUTES = new Set([
   "/reset-password"
 ]);
 
+function isAnonymousRoute(pathname: string): boolean {
+  return (
+    ANONYMOUS_ROUTES.has(pathname) || pathname.startsWith("/guide/")
+  );
+}
+
 /**
  * Game content belongs to registered, logged-in players. Authentication pages
  * remain public so a player can create or recover an account.
  */
 export function proxy(request: NextRequest) {
-  if (ANONYMOUS_ROUTES.has(request.nextUrl.pathname)) {
+  if (isAnonymousRoute(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
 

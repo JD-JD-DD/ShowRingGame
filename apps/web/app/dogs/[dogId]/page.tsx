@@ -127,10 +127,12 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
   if (!profile) notFound();
 
+  const currentDogKennelRunId = profile.currentRun?.runId ?? null;
   const ownedDogRoster = profile.viewerContext.isOwnedByCurrentKennel
     ? await db.dog.findMany({
         where: {
           ownerKennelId: currentKennel.id,
+          kennelRunId: currentDogKennelRunId,
           lifecycleState: "ALIVE",
           isPlayerVisible: true,
         },
@@ -253,6 +255,58 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 )}
               </div>
 
+              {dogRosterNavigation ? (
+                <nav
+                  aria-label="Kennel run dog navigation"
+                  className="mt-4 max-w-3xl rounded-2xl border border-purple-300/25 bg-white/5 p-2"
+                >
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
+                    {dogRosterNavigation.previousDog ? (
+                      <Link
+                        href={`/dogs/${dogRosterNavigation.previousDog.id}`}
+                        className="flex min-h-12 flex-col justify-center rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-sm font-semibold text-purple-50 transition hover:bg-white/10"
+                      >
+                        <span>&larr; Previous Dog</span>
+                        <span className="mt-0.5 truncate text-xs font-medium text-purple-100/70">
+                          Previous: {dogRosterNavigation.previousDog.displayName}
+                        </span>
+                      </Link>
+                    ) : (
+                      <span className="flex min-h-12 flex-col justify-center rounded-xl border border-purple-300/10 bg-black/20 px-3 py-2 text-sm font-semibold text-purple-100/40">
+                        <span>&larr; Previous Dog</span>
+                        <span className="mt-0.5 text-xs font-medium">
+                          Previous: None
+                        </span>
+                      </span>
+                    )}
+
+                    <div className="flex min-h-12 items-center justify-center rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-purple-100/75">
+                      Dog {dogRosterNavigation.currentIndex + 1} of{" "}
+                      {dogRosterNavigation.totalDogs}
+                    </div>
+
+                    {dogRosterNavigation.nextDog ? (
+                      <Link
+                        href={`/dogs/${dogRosterNavigation.nextDog.id}`}
+                        className="flex min-h-12 flex-col justify-center rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-left text-sm font-semibold text-purple-50 transition hover:bg-white/10 sm:text-right"
+                      >
+                        <span>Next Dog &rarr;</span>
+                        <span className="mt-0.5 truncate text-xs font-medium text-purple-100/70">
+                          Next: {dogRosterNavigation.nextDog.displayName}
+                        </span>
+                      </Link>
+                    ) : (
+                      <span className="flex min-h-12 flex-col justify-center rounded-xl border border-purple-300/10 bg-black/20 px-3 py-2 text-left text-sm font-semibold text-purple-100/40 sm:text-right">
+                        <span>Next Dog &rarr;</span>
+                        <span className="mt-0.5 text-xs font-medium">
+                          Next: None
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </nav>
+              ) : null}
+
               {statusMessage(saleMessage)}
               {statusMessage(saleError, true)}
               {statusMessage(groomingMessage)}
@@ -266,58 +320,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               >
                 Back to My Kennel
               </Link>
-
-              {dogRosterNavigation ? (
-                <nav
-                  aria-label="Kennel dog navigation"
-                  className="rounded-2xl border border-purple-300/25 bg-white/5 p-3"
-                >
-                  <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
-                    {dogRosterNavigation.previousDog ? (
-                      <Link
-                        href={`/dogs/${dogRosterNavigation.previousDog.id}`}
-                        className="flex min-h-14 flex-col justify-center rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-sm font-semibold text-purple-50 transition hover:bg-white/10"
-                      >
-                        <span>&larr; Previous Dog</span>
-                        <span className="mt-1 truncate text-xs font-medium text-purple-100/70">
-                          Previous: {dogRosterNavigation.previousDog.displayName}
-                        </span>
-                      </Link>
-                    ) : (
-                      <span className="flex min-h-14 flex-col justify-center rounded-xl border border-purple-300/10 bg-black/20 px-3 py-2 text-sm font-semibold text-purple-100/40">
-                        <span>&larr; Previous Dog</span>
-                        <span className="mt-1 text-xs font-medium">
-                          Previous: None
-                        </span>
-                      </span>
-                    )}
-
-                    <div className="flex min-h-14 items-center justify-center rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-purple-100/75">
-                      Dog {dogRosterNavigation.currentIndex + 1} of{" "}
-                      {dogRosterNavigation.totalDogs}
-                    </div>
-
-                    {dogRosterNavigation.nextDog ? (
-                      <Link
-                        href={`/dogs/${dogRosterNavigation.nextDog.id}`}
-                        className="flex min-h-14 flex-col justify-center rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-left text-sm font-semibold text-purple-50 transition hover:bg-white/10 sm:text-right"
-                      >
-                        <span>Next Dog &rarr;</span>
-                        <span className="mt-1 truncate text-xs font-medium text-purple-100/70">
-                          Next: {dogRosterNavigation.nextDog.displayName}
-                        </span>
-                      </Link>
-                    ) : (
-                      <span className="flex min-h-14 flex-col justify-center rounded-xl border border-purple-300/10 bg-black/20 px-3 py-2 text-left text-sm font-semibold text-purple-100/40 sm:text-right">
-                        <span>Next Dog &rarr;</span>
-                        <span className="mt-1 text-xs font-medium">
-                          Next: None
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                </nav>
-              ) : null}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <DogProfileKennelRunMove

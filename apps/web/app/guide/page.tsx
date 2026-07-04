@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import TraitLine from "@/components/ui/TraitLine";
 import GuideVisitedMarker from "./GuideVisitedMarker";
+import { exampleVisibleCategories } from "./exampleDogData";
 
 export const metadata: Metadata = {
   title: "New Player Guide | ShowRing Game",
@@ -71,9 +73,9 @@ const firstSteps = [
   {
     title: "Click a dog",
     body: "Dog pages are where you evaluate visible categories, age, condition, health, pedigree, and actions.",
-    where: "Open button",
-    href: "/kennel",
-    action: "Open Roster",
+    where: "Example dog page",
+    href: "/guide/example-dog",
+    action: "View Example Dog",
   },
   {
     title: "Enter a show or plan a breeding",
@@ -82,15 +84,6 @@ const firstSteps = [
     href: "/shows",
     action: "Find Shows",
   },
-];
-
-const visibleCategories = [
-  ["Type & Expression", "11.2"],
-  ["Structure & Balance", "9.4"],
-  ["Movement", "12.1"],
-  ["Coat & Presentation", "8.8"],
-  ["Temperament", "10.6"],
-  ["Conditioning & Handling", "7.5"],
 ];
 
 const dogPageNotes = [
@@ -302,24 +295,22 @@ export default function GuidePage() {
             <h3 className="text-lg font-semibold text-white">
               Sample Visible Categories
             </h3>
-            <div className="mt-5 grid gap-3">
-              {visibleCategories.map(([label, value]) => (
-                <div key={label}>
-                  <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-                    <span className="font-semibold text-[var(--dog-heading)]">
-                      {label}
-                    </span>
-                    <span className="font-mono text-[var(--dog-label)]">
-                      {value}
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-[var(--dog-border)]">
-                    <div
-                      className="h-2 rounded-full bg-purple-500"
-                      style={{ width: `${Math.min(Number(value) * 7, 100)}%` }}
-                    />
-                  </div>
-                </div>
+            <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
+              This uses the same slider display as a real dog profile.
+            </p>
+            <div className="mt-5 grid gap-5">
+              {exampleVisibleCategories.map((category) => (
+                <TraitLine
+                  key={category.key}
+                  label={category.label}
+                  value={category.numericScore}
+                  min={category.min}
+                  max={category.max}
+                  ideal={category.ideal}
+                  leftLabel={category.leftLabel}
+                  centerLabel={category.centerLabel}
+                  rightLabel={category.rightLabel}
+                />
               ))}
             </div>
           </div>
