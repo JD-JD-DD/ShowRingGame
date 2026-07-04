@@ -1094,16 +1094,18 @@ export default function KennelDogsPanel() {
 
   return (
     <section className="theme-panel rounded-[28px] p-5">
-      <div className="mb-4">
-        <h2 className="theme-heading text-3xl font-semibold">
-          Kennel Roster
-        </h2>
-        <p className="theme-copy mt-2 text-sm leading-7">
-          Sort, filter, and compare your dogs in one working roster.
-        </p>
+      <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <h2 className="theme-heading text-3xl font-semibold">
+            Kennel Roster
+          </h2>
+          <p className="theme-copy mt-2 text-sm leading-7">
+            Sort, filter, and compare your dogs in one working roster.
+          </p>
+        </div>
 
         {groomingSummary ? (
-          <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-purple-300/35 bg-purple-100/60 px-3 py-1 text-xs text-purple-900 dark:border-purple-300/20 dark:bg-purple-950/30 dark:text-purple-100">
+          <div className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-purple-300/35 bg-purple-100/60 px-3 py-1 text-xs text-purple-900 dark:border-purple-300/20 dark:bg-purple-950/30 dark:text-purple-100 lg:mt-1 lg:shrink-0 lg:self-start">
             <span className="font-semibold">Grooming:</span>
             <span>
               Remaining{" "}
