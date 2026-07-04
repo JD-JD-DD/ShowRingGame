@@ -42,7 +42,15 @@ export async function createSession(userId: string): Promise<void> {
 
 export async function clearSession(): Promise<void> {
   const store = await cookies();
-  store.delete(SESSION_COOKIE_NAME);
+
+  store.set(SESSION_COOKIE_NAME, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+    expires: new Date(0),
+  });
 }
 
 export async function getSessionUserId(): Promise<string | null> {

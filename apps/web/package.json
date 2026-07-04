@@ -16,6 +16,7 @@
     "test:kennel-inbox-notices": "tsx scripts/testKennelInboxNotices.ts",
     "test:kennel-runs": "tsx scripts/testKennelRuns.ts",
     "test:kennel-runs-ui": "tsx scripts/testKennelRunsUi.ts",
+    "test:global-header-logout": "tsx scripts/testGlobalHeaderLogout.ts",
     "test:breed-visibility": "tsx scripts/testBreedVisibility.ts",
     "test:grand-champion-credits": "tsx scripts/testGrandChampionCredits.ts",
     "test:grand-champion-promotion": "tsx scripts/testGrandChampionPromotion.ts",

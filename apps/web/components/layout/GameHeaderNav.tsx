@@ -134,10 +134,7 @@ export default function GameHeaderNav() {
                 {item.label}
               </Link>
             ))}
-            <div
-              className="game-header__menu-divider mt-2 border-t pt-2"
-              onClickCapture={() => setAccountOpen(false)}
-            >
+            <div className="game-header__menu-divider mt-2 border-t pt-2">
               <LogoutButton />
             </div>
           </div>
