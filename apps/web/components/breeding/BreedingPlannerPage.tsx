@@ -15,6 +15,7 @@ import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
+import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
@@ -30,6 +31,13 @@ type BreedingPlannerPageProps = {
 };
 
 type VisibleCategories = Record<string, number>;
+
+type BreedingPlannerHealthConditionTruth = {
+  dogId: string;
+  conditionCode: string;
+  geneticLiability: number;
+  environmentModifier: number;
+};
 
 type DogCardDto = {
   id: string;
@@ -106,6 +114,67 @@ function validBrucellosisUntil(
         test.validUntilEpoch >= currentEpoch
     )?.validUntilEpoch ?? null
   );
+}
+
+function groupHealthConditionTruthsByDog(
+  healthConditionTruths: BreedingPlannerHealthConditionTruth[]
+) {
+  const truthsByDogId = new Map<
+    string,
+    Array<{
+      conditionCode: string;
+      geneticLiability: number;
+      environmentModifier: number;
+    }>
+  >();
+
+  for (const truth of healthConditionTruths) {
+    const truths = truthsByDogId.get(truth.dogId) ?? [];
+    truths.push({
+      conditionCode: truth.conditionCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    });
+    truthsByDogId.set(truth.dogId, truths);
+  }
+
+  return truthsByDogId;
+}
+
+async function ensureAndLoadBreedingPlannerHealthTruths(dogIds: string[]) {
+  const uniqueDogIds = [...new Set(dogIds)];
+
+  if (uniqueDogIds.length === 0) {
+    return new Map<
+      string,
+      Array<{
+        conditionCode: string;
+        geneticLiability: number;
+        environmentModifier: number;
+      }>
+    >();
+  }
+
+  await ensurePhenotypeHealthTruthsForDogs(db, uniqueDogIds);
+
+  const healthConditionTruths = await db.dogHealthConditionTruth.findMany({
+    where: {
+      dogId: {
+        in: uniqueDogIds,
+      },
+      conditionCode: {
+        in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+      },
+    },
+    select: {
+      dogId: true,
+      conditionCode: true,
+      geneticLiability: true,
+      environmentModifier: true,
+    },
+  });
+
+  return groupHealthConditionTruthsByDog(healthConditionTruths);
 }
 
 export default async function BreedingPlannerPage({
@@ -261,6 +330,10 @@ export default async function BreedingPlannerPage({
     },
     orderBy: [{ breedCode2: "asc" }, { birthEpoch: "asc" }],
   });
+  const dogHealthConditionTruthsByDogId =
+    await ensureAndLoadBreedingPlannerHealthTruths(
+      dogs.map((dog) => dog.id)
+    );
 
   const dogCards: DogCardDto[] = dogs.map((dog) => {
     const ageHours = currentEpoch - dog.birthEpoch;
@@ -318,7 +391,9 @@ export default async function BreedingPlannerPage({
       healthTests: dog.healthTests,
       visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
         storedTraits: dog,
-        phenotypeHealthTruths: dog.healthConditionTruths,
+        phenotypeHealthTruths:
+          dogHealthConditionTruthsByDogId.get(dog.id) ??
+          dog.healthConditionTruths,
         phenotypeHealthResults: dog.healthTests,
       }),
     };
@@ -454,6 +529,10 @@ export default async function BreedingPlannerPage({
       },
     },
   });
+  const publicStudHealthConditionTruthsByDogId =
+    await ensureAndLoadBreedingPlannerHealthTruths(
+      publicStudListings.map((listing) => listing.dog.id)
+    );
 
   const publicStudCards: DogCardDto[] = publicStudListings.map((listing) => {
     const dog = listing.dog;
@@ -497,7 +576,9 @@ export default async function BreedingPlannerPage({
       healthTests: dog.healthTests,
       visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
         storedTraits: dog,
-        phenotypeHealthTruths: dog.healthConditionTruths,
+        phenotypeHealthTruths:
+          publicStudHealthConditionTruthsByDogId.get(dog.id) ??
+          dog.healthConditionTruths,
         phenotypeHealthResults: dog.healthTests,
       }),
     };
