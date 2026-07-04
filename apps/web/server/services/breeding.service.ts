@@ -79,6 +79,13 @@ type DogForBreeding = {
   }>;
 };
 
+type BreedingHealthConditionTruth = {
+  dogId: string;
+  conditionCode: string;
+  geneticLiability: number;
+  environmentModifier: number;
+};
+
 type AttemptForResolution = {
   id: string;
   sireId: string;
@@ -244,6 +251,56 @@ function getVisibleCategories(dog: DogForBreeding) {
     phenotypeHealthTruths: dog.healthConditionTruths,
     phenotypeHealthResults: dog.healthTests,
   });
+}
+
+function groupHealthConditionTruthsByDog(
+  healthConditionTruths: BreedingHealthConditionTruth[]
+) {
+  const truthsByDogId = new Map<
+    string,
+    DogForBreeding["healthConditionTruths"]
+  >();
+
+  for (const truth of healthConditionTruths) {
+    const truths = truthsByDogId.get(truth.dogId) ?? [];
+    truths.push({
+      conditionCode: truth.conditionCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    });
+    truthsByDogId.set(truth.dogId, truths);
+  }
+
+  return truthsByDogId;
+}
+
+async function ensureAndLoadBreedingDisplayHealthTruths(dogIds: string[]) {
+  const uniqueDogIds = [...new Set(dogIds)];
+
+  if (uniqueDogIds.length === 0) {
+    return new Map<string, DogForBreeding["healthConditionTruths"]>();
+  }
+
+  await ensurePhenotypeHealthTruthsForDogs(db, uniqueDogIds);
+
+  const healthConditionTruths = await db.dogHealthConditionTruth.findMany({
+    where: {
+      dogId: {
+        in: uniqueDogIds,
+      },
+      conditionCode: {
+        in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+      },
+    },
+    select: {
+      dogId: true,
+      conditionCode: true,
+      geneticLiability: true,
+      environmentModifier: true,
+    },
+  });
+
+  return groupHealthConditionTruthsByDog(healthConditionTruths);
 }
 
 function displayDogName(dog: {
@@ -1348,12 +1405,25 @@ export async function createBreedingAttemptForKennel(args: {
     throw new Error(attempt.blockedMessage);
   }
 
+  const healthConditionTruthsByDogId =
+    await ensureAndLoadBreedingDisplayHealthTruths([sire.id, dam.id]);
+  const sireHealthConditionTruths =
+    healthConditionTruthsByDogId.get(sire.id) ?? sire.healthConditionTruths;
+  const damHealthConditionTruths =
+    healthConditionTruthsByDogId.get(dam.id) ?? dam.healthConditionTruths;
+
   return {
     ...attempt.attempt,
     sireName: displayDogName(sire),
     damName: displayDogName(dam),
-    sireVisibleCategories: getVisibleCategories(sire),
-    damVisibleCategories: getVisibleCategories(dam),
+    sireVisibleCategories: getVisibleCategories({
+      ...sire,
+      healthConditionTruths: sireHealthConditionTruths,
+    }),
+    damVisibleCategories: getVisibleCategories({
+      ...dam,
+      healthConditionTruths: damHealthConditionTruths,
+    }),
     hoursUntilPregCheck: Math.max(0, attempt.attempt.pregCheckEpoch! - currentEpoch),
     hoursUntilDue: Math.max(0, attempt.attempt.dueEpoch! - currentEpoch),
   };
