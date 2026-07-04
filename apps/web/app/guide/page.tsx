@@ -74,7 +74,7 @@ const firstSteps = [
     title: "Click a dog",
     body: "Dog pages are where you evaluate visible categories, age, condition, health, pedigree, and actions.",
     where: "Example dog page",
-    href: "/guide/example-dog",
+    href: "/start-up-guide/example-dog",
     action: "View Example Dog",
   },
   {

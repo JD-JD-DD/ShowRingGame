@@ -18,7 +18,7 @@ const primaryActions = [
   {
     title: "New? Start Here",
     body: "Follow the beginner guide through buying foundation dogs, opening dog pages, shows, breeding, and results.",
-    href: "/guide",
+    href: "/start-up-guide",
     action: "Open Guide",
   },
   {
@@ -263,7 +263,7 @@ export default async function HomePage() {
 
           <nav className="flex flex-wrap items-center gap-3 text-sm">
             <Link
-              href="/guide"
+              href="/start-up-guide"
               className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-2.5 font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
             >
               New? Start Here

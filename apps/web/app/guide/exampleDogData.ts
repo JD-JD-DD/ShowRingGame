@@ -114,12 +114,12 @@ export const exampleDogProfile: DogProfileDto = {
     sire: {
       dogId: "guide-example-sire",
       displayName: "Foundation Sire",
-      profileUrl: "/guide/example-dog",
+      profileUrl: "/start-up-guide/example-dog",
     },
     dam: {
       dogId: "guide-example-dam",
       displayName: "Foundation Dam",
-      profileUrl: "/guide/example-dog",
+      profileUrl: "/start-up-guide/example-dog",
     },
     originLabel: "Foundation Dog",
     marketLabel: "Not for sale",
@@ -168,7 +168,7 @@ export const exampleDogProfile: DogProfileDto = {
     currentGrandTitleLabel: "Champion",
     nextGrandMilestoneLabel: "Needs 17 GCH points",
     summaryLabel: "Champion finished; Grand Champion progress started.",
-    fullShowRecordUrl: "/guide/example-dog",
+    fullShowRecordUrl: "/start-up-guide/example-dog",
     recentPointWins: [
       {
         showDayId: "guide-show-day-3",
@@ -359,7 +359,7 @@ export const exampleDogProfile: DogProfileDto = {
         attemptId: "guide-breeding-1",
         sireDogId: "guide-sire-2",
         sireName: "CH Meadowlark Lowbeam",
-        sireUrl: "/guide/example-dog",
+        sireUrl: "/start-up-guide/example-dog",
         litterId: "guide-litter-1",
         litterUrl: "/litters",
         breedingDateLabel: "Year 2, Week 6",
@@ -373,14 +373,14 @@ export const exampleDogProfile: DogProfileDto = {
       {
         dogId: "guide-puppy-1",
         displayName: "Demo's Copper Comet",
-        dogUrl: "/guide/example-dog",
+        dogUrl: "/start-up-guide/example-dog",
         sexLabel: "Male",
         titleSummary: "Started",
       },
       {
         dogId: "guide-puppy-2",
         displayName: "Demo's Bright Fern",
-        dogUrl: "/guide/example-dog",
+        dogUrl: "/start-up-guide/example-dog",
         sexLabel: "Female",
         titleSummary: null,
       },
@@ -407,7 +407,7 @@ export const exampleDogProfile: DogProfileDto = {
         dogId: "guide-sire",
         displayName: "Foundation Sire",
         relationship: "Sire",
-        profileUrl: "/guide/example-dog",
+        profileUrl: "/start-up-guide/example-dog",
         healthStatusMarkers: {
           badgeStatus: "green",
           hasFullClearance: true,
@@ -431,7 +431,7 @@ export const exampleDogProfile: DogProfileDto = {
         dogId: "guide-dam",
         displayName: "Foundation Dam",
         relationship: "Dam",
-        profileUrl: "/guide/example-dog",
+        profileUrl: "/start-up-guide/example-dog",
         healthStatusMarkers: {
           badgeStatus: "yellow",
           hasFullClearance: false,
@@ -455,7 +455,7 @@ export const exampleDogProfile: DogProfileDto = {
         dogId: "guide-grandsire",
         displayName: "Old Creek Compass",
         relationship: "Sire's Sire",
-        profileUrl: "/guide/example-dog",
+        profileUrl: "/start-up-guide/example-dog",
         healthStatusMarkers: {
           badgeStatus: null,
           hasFullClearance: false,
@@ -468,7 +468,7 @@ export const exampleDogProfile: DogProfileDto = {
         dogId: "guide-granddam",
         displayName: "Willowbank Starling",
         relationship: "Sire's Dam",
-        profileUrl: "/guide/example-dog",
+        profileUrl: "/start-up-guide/example-dog",
         healthStatusMarkers: {
           badgeStatus: "green",
           hasFullClearance: true,

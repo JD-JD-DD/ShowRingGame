@@ -81,7 +81,7 @@ export default function ExampleDogPage() {
 
             <div className="flex flex-col gap-3 lg:items-end">
               <Link
-                href="/guide"
+                href="/start-up-guide"
                 className="dog-secondary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"
               >
                 Back to Guide

@@ -52,18 +52,6 @@ export default async function KennelPage() {
           Premium Features
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link href="/guide" className="premium-planner-link">
-            <span className="premium-planner-link__spark" aria-hidden="true">
-            </span>
-            <span>
-              <span className="block text-[0.58rem] font-bold uppercase tracking-[0.2em] text-fuchsia-100/85">
-                New? Start Here
-              </span>
-              <span className="mt-0.5 block text-sm font-bold tracking-wide text-white">
-                New Player Guide
-              </span>
-            </span>
-          </Link>
           <Link href="/plan-a-litter" className="premium-planner-link">
             <span className="premium-planner-link__spark" aria-hidden="true">
               

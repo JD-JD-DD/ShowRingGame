@@ -7,6 +7,7 @@ import {
 const ANONYMOUS_ROUTES = new Set([
   "/faq",
   "/guide",
+  "/start-up-guide",
   "/login",
   "/signup",
   "/forgot-password",
@@ -15,7 +16,9 @@ const ANONYMOUS_ROUTES = new Set([
 
 function isAnonymousRoute(pathname: string): boolean {
   return (
-    ANONYMOUS_ROUTES.has(pathname) || pathname.startsWith("/guide/")
+    ANONYMOUS_ROUTES.has(pathname) ||
+    pathname.startsWith("/guide/") ||
+    pathname.startsWith("/start-up-guide/")
   );
 }
 

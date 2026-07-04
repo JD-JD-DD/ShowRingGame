@@ -43,7 +43,7 @@ export default function NewKennelChecklist({
     () => [
       {
         label: "Read the beginner guide",
-        href: "/guide",
+        href: "/start-up-guide",
         action: "Open Guide",
         complete: guideVisited,
       },
@@ -95,7 +95,7 @@ export default function NewKennelChecklist({
   }
 
   function markGuideVisited(href: string) {
-    if (href !== "/guide") {
+    if (href !== "/start-up-guide") {
       return;
     }
 

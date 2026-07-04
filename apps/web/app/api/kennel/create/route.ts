@@ -187,7 +187,7 @@ const kennel = await db.$transaction(async (tx: KennelCreateTx) => {
     return NextResponse.json({
       ok: true,
       kennel,
-      nextPath: "/kennel",
+      nextPath: "/start-up-guide",
     });
   } catch (error) {
     console.error("POST /api/kennel/create failed:", error);
