@@ -36,6 +36,21 @@ function assertDoesNotIncludeAny(
   assert.deepEqual(found, [], label);
 }
 
+function sectionBetween(
+  haystack: string,
+  startMarker: string,
+  endMarker: string,
+  label: string
+): string {
+  const startIndex = haystack.indexOf(startMarker);
+  assert.ok(startIndex >= 0, `${label}: missing start marker`);
+
+  const endIndex = haystack.indexOf(endMarker, startIndex + startMarker.length);
+  assert.ok(endIndex >= 0, `${label}: missing end marker`);
+
+  return haystack.slice(startIndex, endIndex);
+}
+
 const healthConstants = source("packages/rules/constants/health.constants.ts");
 const healthExpression = source(
   "packages/rules/engines/healthExpression.engine.ts"
@@ -60,6 +75,7 @@ const programPlannerService = source(
 );
 const groomingService = source("apps/web/server/services/grooming.service.ts");
 const lifecycleService = source("apps/web/server/services/lifecycle.service.ts");
+const judgingService = source("apps/web/server/services/judging.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
 const dogProfileDashboard = source(
   "apps/web/components/dogs/DogProfileDashboard.tsx"
@@ -249,13 +265,106 @@ assertIncludes(
 );
 assertIncludes(
   dogService,
-  "phenotypeHealthTruths: dog.healthConditionTruths",
-  "dog profile visible category expression uses hidden health truth when available"
+  "phenotypeHealthTruths: healthConditionTruths",
+  "dog profile visible category expression uses freshly refetched hidden health truths"
 );
 assertIncludes(
   dogService,
   "phenotypeHealthResults: dog.healthTests",
   "dog profile visible category expression can fall back to revealed health results"
+);
+
+const breedJudgingSection = sectionBetween(
+  judgingService,
+  "export async function judgeShowBlock",
+  "export async function judgeShowDay",
+  "breed judging section"
+);
+const groupJudgingSection = sectionBetween(
+  judgingService,
+  "async function createGroupAwardsForShowDay",
+  "async function createBestInShowAwardsForShowDay",
+  "group judging section"
+);
+const bestInShowJudgingSection = sectionBetween(
+  judgingService,
+  "async function createBestInShowAwardsForShowDay",
+  "export async function publishReadyShowDayResults",
+  "Best in Show judging section"
+);
+
+for (const [label, helperName] of [
+  ["breed judging", "ensureAndLoadBreedJudgingHealthTruths"],
+  ["group judging", "ensureAndLoadGroupJudgingHealthTruths"],
+  ["Best in Show judging", "ensureAndLoadBestInShowJudgingHealthTruths"],
+] as const) {
+  const helperSection = sectionBetween(
+    judgingService,
+    `async function ${helperName}`,
+    "function awardsChampionshipPoints",
+    `${label} health truth helper`
+  );
+
+  assertBefore(
+    helperSection,
+    "await ensurePhenotypeHealthTruthsForDogs(tx, uniqueDogIds);",
+    "const healthConditionTruths = await tx.dogHealthConditionTruth.findMany({",
+    `${label} ensures hidden health truths before refetching them`
+  );
+  assertIncludes(
+    helperSection,
+    "dogId: true",
+    `${label} refetches hidden health truths keyed by dog ID`
+  );
+  assertIncludes(
+    helperSection,
+    "conditionCode: true",
+    `${label} refetches hidden health truth condition codes server-side`
+  );
+}
+
+assertBefore(
+  breedJudgingSection,
+  "const healthTruthsByDogId = await ensureAndLoadBreedJudgingHealthTruths(",
+  "const judgedBlock = judgeBreedBlock({",
+  "breed judging ensures/refetches hidden health truths before breed scoring"
+);
+assertBefore(
+  groupJudgingSection,
+  "const healthTruthsByDogId = await ensureAndLoadGroupJudgingHealthTruths(",
+  "const judgedGroupAwards = judgeGroup({",
+  "group judging ensures/refetches hidden health truths before group scoring"
+);
+assertBefore(
+  bestInShowJudgingSection,
+  "await ensureAndLoadBestInShowJudgingHealthTruths(",
+  "const judgedBestInShowAwards = judgeBestInShow({",
+  "Best in Show judging ensures/refetches hidden health truths before BIS scoring"
+);
+assertIncludes(
+  breedJudgingSection,
+  "dog: toEngineDog(entry, healthTruthsByDogId.get(entry.dogId))",
+  "breed judging passes fresh hidden health truths into engine scoring"
+);
+assertIncludes(
+  groupJudgingSection,
+  "healthTruthsByDogId.get(award.dogId)",
+  "group judging passes fresh hidden health truths into engine scoring"
+);
+assertIncludes(
+  bestInShowJudgingSection,
+  "healthTruthsByDogId.get(award.dogId)",
+  "Best in Show judging passes fresh hidden health truths into engine scoring"
+);
+assertDoesNotIncludeAny(
+  sectionBetween(
+    judgingService,
+    "export type JudgedShowResultDto",
+    "export type JudgeShowBlockDto",
+    "judged show result DTO"
+  ),
+  ["healthConditionTruths", "geneticLiability", "environmentModifier"],
+  "show result DTO should not expose hidden health truth values"
 );
 for (const [label, fileSource] of [
   ["litter mapper", litterMapper],

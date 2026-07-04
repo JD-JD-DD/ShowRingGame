@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 import {
   aggregateDirectionalCategory,
   DEFAULT_CATEGORY_WEIGHTS,
+  deriveHealthAdjustedExpressedTraits,
   deriveShowCharacteristicsFromTraits,
   deriveVisibleCategoriesFromTraits,
   scoreDogByJudgeWeights,
@@ -15,6 +16,21 @@ function assertClose(actual: number, expected: number, label: string): void {
   assert.ok(
     Math.abs(actual - expected) < 0.0001,
     `${label}: expected ${expected}, got ${actual}`
+  );
+}
+
+function distanceFromIdeal(value: number): number {
+  return Math.abs(value - 10);
+}
+
+function assertDistanceDoesNotImprove(
+  before: number,
+  after: number,
+  label: string
+): void {
+  assert.ok(
+    distanceFromIdeal(after) >= distanceFromIdeal(before),
+    `${label}: expected distance from ideal to stay same or increase, got ${before} -> ${after}`
   );
 }
 
@@ -219,6 +235,133 @@ assertClose(
   }).characteristics.CONDITIONING_HANDLING,
   6,
   "judging conditioning handling remains derived from conditioning inputs"
+);
+
+const mixedHipTraits: DogTraits = {
+  ...idealTraits,
+  gait: 8,
+  hindquarters: 12,
+  topline: 8,
+};
+const redHipExpressedTraits = deriveHealthAdjustedExpressedTraits({
+  storedTraits: mixedHipTraits,
+  phenotypeHealthTruths: [
+    {
+      conditionCode: "HIP_DYSPLASIA",
+      geneticLiability: 0.9,
+      environmentModifier: 0,
+    },
+  ],
+});
+const mixedHipVisibleBefore = deriveVisibleCategoriesFromTraits(mixedHipTraits);
+const mixedHipVisibleAfter = deriveVisibleCategoriesFromTraits(
+  redHipExpressedTraits
+);
+const mixedHipJudgingBefore = deriveShowCharacteristicsFromTraits(mixedHipTraits);
+const mixedHipJudgingAfter =
+  deriveShowCharacteristicsFromTraits(redHipExpressedTraits);
+
+assertDistanceDoesNotImprove(
+  mixedHipVisibleBefore.movement,
+  mixedHipVisibleAfter.movement,
+  "red hips do not improve affected visible Movement under mixed faults"
+);
+assertDistanceDoesNotImprove(
+  mixedHipVisibleBefore.structureBalance,
+  mixedHipVisibleAfter.structureBalance,
+  "red hips do not improve affected visible Structure & Balance under mixed faults"
+);
+assertDistanceDoesNotImprove(
+  mixedHipJudgingBefore.MOVEMENT,
+  mixedHipJudgingAfter.MOVEMENT,
+  "red hips do not improve judging Movement under mixed faults"
+);
+assertDistanceDoesNotImprove(
+  mixedHipJudgingBefore.STRUCTURE_BALANCE,
+  mixedHipJudgingAfter.STRUCTURE_BALANCE,
+  "red hips do not improve judging Structure & Balance under mixed faults"
+);
+
+const mixedElbowTraits: DogTraits = {
+  ...idealTraits,
+  gait: 8,
+  forequarters: 12,
+  topline: 8,
+};
+const redElbowExpressedTraits = deriveHealthAdjustedExpressedTraits({
+  storedTraits: mixedElbowTraits,
+  phenotypeHealthTruths: [
+    {
+      conditionCode: "ELBOW_DYSPLASIA",
+      geneticLiability: 0.9,
+      environmentModifier: 0,
+    },
+  ],
+});
+const mixedElbowVisibleBefore =
+  deriveVisibleCategoriesFromTraits(mixedElbowTraits);
+const mixedElbowVisibleAfter = deriveVisibleCategoriesFromTraits(
+  redElbowExpressedTraits
+);
+const mixedElbowJudgingBefore =
+  deriveShowCharacteristicsFromTraits(mixedElbowTraits);
+const mixedElbowJudgingAfter =
+  deriveShowCharacteristicsFromTraits(redElbowExpressedTraits);
+
+assertDistanceDoesNotImprove(
+  mixedElbowVisibleBefore.movement,
+  mixedElbowVisibleAfter.movement,
+  "red elbows do not improve affected visible Movement under mixed faults"
+);
+assertDistanceDoesNotImprove(
+  mixedElbowVisibleBefore.structureBalance,
+  mixedElbowVisibleAfter.structureBalance,
+  "red elbows do not improve affected visible Structure & Balance under mixed faults"
+);
+assertDistanceDoesNotImprove(
+  mixedElbowJudgingBefore.MOVEMENT,
+  mixedElbowJudgingAfter.MOVEMENT,
+  "red elbows do not improve judging Movement under mixed faults"
+);
+assertDistanceDoesNotImprove(
+  mixedElbowJudgingBefore.STRUCTURE_BALANCE,
+  mixedElbowJudgingAfter.STRUCTURE_BALANCE,
+  "red elbows do not improve judging Structure & Balance under mixed faults"
+);
+
+const mixedCaerTraits: DogTraits = {
+  ...idealTraits,
+  temperament: 12,
+  show_shine: 8,
+};
+const redCaerExpressedTraits = deriveHealthAdjustedExpressedTraits({
+  storedTraits: mixedCaerTraits,
+  phenotypeHealthTruths: [
+    {
+      conditionCode: "CAER_EYE",
+      geneticLiability: 0.9,
+      environmentModifier: 0,
+    },
+  ],
+});
+const mixedCaerVisibleBefore = deriveVisibleCategoriesFromTraits(mixedCaerTraits);
+const mixedCaerVisibleAfter = deriveVisibleCategoriesFromTraits(
+  redCaerExpressedTraits
+);
+const mixedCaerJudgingBefore =
+  deriveShowCharacteristicsFromTraits(mixedCaerTraits);
+const mixedCaerJudgingAfter =
+  deriveShowCharacteristicsFromTraits(redCaerExpressedTraits);
+
+assertDistanceDoesNotImprove(
+  mixedCaerVisibleBefore.temperamentRingBehavior,
+  mixedCaerVisibleAfter.temperamentRingBehavior,
+  "red CAER does not improve affected visible Temperament & Ring Behavior under mixed faults"
+);
+assertDistanceDoesNotImprove(
+  mixedCaerJudgingBefore.TEMPERAMENT_RING_BEHAVIOR,
+  mixedCaerJudgingAfter.TEMPERAMENT_RING_BEHAVIOR,
+  "red CAER does not improve judging Temperament & Ring Behavior under mixed faults"
 );
 
 console.log("Visible category aggregation checks passed.");
