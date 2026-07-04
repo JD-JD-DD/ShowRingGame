@@ -84,7 +84,7 @@ function ComingSoonCard({
   );
 }
 
-function GroomingAssistanceStrip({
+function GroomingAssistancePanel({
   openJobs,
   actionsUsed,
   actionLimit,
@@ -94,33 +94,49 @@ function GroomingAssistanceStrip({
   actionLimit: number;
 }) {
   return (
-    <Link
-      href="/kennel/services/grooming"
-      className="group flex flex-col gap-3 border-y border-[var(--dog-border)] bg-white/[0.03] px-4 py-3 text-sm transition hover:bg-white/[0.06] sm:flex-row sm:items-center sm:justify-between"
-    >
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 className="text-base font-semibold text-white">
+    <article className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 shadow-[var(--dog-shadow)] lg:col-span-2">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(8rem,0.75fr)_minmax(11rem,0.9fr)_minmax(10rem,0.85fr)] lg:items-center">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold text-white">
             Grooming Assistance
           </h2>
-          <span className="text-xs font-semibold uppercase tracking-wide text-emerald-200/80">
-            Status
-          </span>
+          <p className="mt-1 text-xs leading-5 text-[var(--dog-copy)]">
+            Accept outside grooming jobs from other kennels, improve dogs' coat
+            condition, earn income, and build grooming experience.
+          </p>
         </div>
-        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-[var(--dog-copy)]">
-          <span>
-            {openJobs} open job{openJobs === 1 ? "" : "s"}
-          </span>
-          <span>
-            Weekly actions: {actionsUsed} / {actionLimit}
-          </span>
-          <span>Pay: {formatMoney(500)} per job</span>
+
+        <div className="rounded-xl border border-[var(--dog-border)] bg-white/[0.03] px-3 py-2">
+          <div className="text-[0.68rem] font-semibold uppercase tracking-wide text-emerald-200/80">
+            Open Jobs
+          </div>
+          <div className="mt-1 text-sm font-semibold text-[var(--dog-heading)]">
+            {openJobs} job{openJobs === 1 ? "" : "s"}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-[var(--dog-border)] bg-white/[0.03] px-3 py-2">
+          <div className="text-[0.68rem] font-semibold uppercase tracking-wide text-emerald-200/80">
+            Weekly Actions
+          </div>
+          <div className="mt-1 text-sm font-semibold text-[var(--dog-heading)]">
+            {actionsUsed} / {actionLimit} used
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:flex-col lg:items-stretch">
+          <div className="rounded-xl border border-[var(--dog-border)] bg-white/[0.03] px-3 py-2 text-sm font-semibold text-[var(--dog-heading)]">
+            {formatMoney(500)} per job
+          </div>
+          <Link
+            href="/kennel/services/grooming"
+            className="inline-flex justify-center rounded-xl bg-purple-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-purple-500"
+          >
+            View Grooming Jobs
+          </Link>
         </div>
       </div>
-      <span className="shrink-0 text-xs font-semibold text-purple-100 transition group-hover:text-white">
-        View Grooming Jobs
-      </span>
-    </Link>
+    </article>
   );
 }
 
@@ -172,7 +188,7 @@ export default async function KennelServicesPage({ searchParams }: PageProps) {
           action="View Stewarding Assignments"
         />
 
-        <GroomingAssistanceStrip
+        <GroomingAssistancePanel
           openJobs={groomingJobs.length}
           actionsUsed={groomingSummary.groomingActionsUsedThisWeek}
           actionLimit={groomingSummary.totalGroomingActionLimit}
