@@ -1137,7 +1137,7 @@ function PairingParentSnapshot({
       <div className="mt-3 grid gap-2 rounded-xl border border-white/10 bg-black/15 p-3 text-xs sm:grid-cols-2">
         <div>
           <div className="font-semibold uppercase tracking-wide text-emerald-200">
-            Strengths
+            Closest to Ideal
           </div>
           <div className="mt-1 text-purple-100/70">
             {traitNotes.strengths

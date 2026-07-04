@@ -51,7 +51,7 @@ const firstSteps = [
   },
   {
     title: "Buy at least two dogs",
-    body: "Foundation dogs are starter stock. Look for strengths you want to build on.",
+    body: "Foundation dogs are starter stock. Look for near-ideal areas or useful profiles you want to build around.",
     where: "Dog listing",
     href: "/market",
     action: "Find Dogs",
@@ -89,7 +89,7 @@ const dogPageNotes = [
 
 const foundationTips = [
   "Foundation dogs are starter stock, not finished perfection.",
-  "Look for dogs with strengths you want to build on.",
+  "Look for dogs with near-ideal areas or useful profiles you want to build around.",
   "Compare visible categories, age, sex, breed, and price.",
   "Buy more than one dog if you want to start breeding.",
 ];
@@ -253,7 +253,8 @@ export default function GuidePage() {
             <p className="mt-3 text-sm leading-7 text-[var(--dog-copy)]">
               They are what you can observe about the dog in the ring. Hidden
               inherited traits still exist, but the dog page is about practical
-              evaluation: what appears strong, weak, balanced, or extreme.
+              evaluation: what appears under ideal, near ideal, over ideal,
+              balanced, or extreme.
             </p>
 
             <div className="mt-5 grid gap-2">

@@ -17,7 +17,7 @@ const faqSections = [
       {
         question: "What is the best beginner strategy?",
         answer:
-          "Start with one breed, buy a small number of dogs, learn visible category strengths, breed thoughtfully, and plan for future generations.",
+          "Start with one breed, buy a small number of dogs, learn how visible categories sit under, near, or over ideal, breed thoughtfully, and plan for future generations.",
       },
     ],
   },
@@ -62,7 +62,7 @@ const faqSections = [
       {
         question: "Are foundation dogs all the same quality?",
         answer:
-          "No. Some foundation dogs have standout strengths, while others have weaknesses that require careful breeding decisions to improve.",
+          "No. Some foundation dogs have useful near-ideal areas or distinctive profiles, while others need careful balancing.",
       },
       {
         question: "Why do judges disagree?",
@@ -102,7 +102,7 @@ const faqSections = [
       {
         question: "How does health testing work?",
         answer:
-          "When a dog reaches breeding age, its owner can purchase health screening from the dog's profile. Results are available immediately and become part of the dog's public profile and pedigree information. Untested dogs show as not tested.",
+          "When a dog reaches breeding age, its owner can purchase health screening from the dog's profile. Health screening reveals and explains an existing health outcome; it does not create the first effect. Results are available immediately and become part of the dog's public profile and pedigree information. Untested dogs show as not tested.",
       },
       {
         question: "Are health risks inherited?",
@@ -206,7 +206,7 @@ const faqSections = [
 const beginnerTips = [
   "Start with a small number of dogs.",
   "Learn what judges reward.",
-  "Pay attention to visible category strengths.",
+  "Pay attention to whether visible categories are under ideal, near 10 ideal, or over ideal.",
   "Condition dogs regularly.",
   "Breed for balance, not perfection.",
   "Plan for future generations.",

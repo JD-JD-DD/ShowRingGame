@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 const signupHighlights = [
   {
     title: "Start With Foundation Dogs",
-    body: "Choose released breeds, compare visible category strengths, and build a kennel with a plan.",
+    body: "Choose released breeds, compare directional visible categories, and build a kennel with a plan.",
   },
   {
     title: "Breed For The Next Generation",
@@ -113,8 +113,8 @@ export default function SignupPage() {
 
               <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--dog-copy)] sm:text-lg sm:leading-8">
                 ShowRing Game is a dog show and breeder simulation built around
-                thoughtful pairings, visible strengths, show strategy, and the
-                slow satisfaction of improving a line.
+                thoughtful pairings, directional visible categories, show
+                strategy, and the slow satisfaction of improving a line.
               </p>
 
               <div className="mt-7 grid gap-3">

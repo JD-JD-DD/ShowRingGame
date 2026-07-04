@@ -124,12 +124,12 @@ No.
 
 Some may have:
 
-* stronger movement
-* better structure
-* excellent temperament
-* standout presentation
+* useful near-ideal areas
+* distinctive profiles
+* balanced traits
+* traits that pair well with another dog
 
-Others may have weaknesses that require careful breeding decisions to improve.
+Others may need careful balancing.
 
 Finding promising dogs is part of the fun.
 
@@ -298,7 +298,7 @@ Managing finances is a major part of long-term success.
 New players usually do best by:
 
 * focusing on one breed first
-* learning visible category strengths
+* learning how visible categories sit under, near, or over ideal
 * breeding thoughtfully
 * conditioning consistently
 * campaigning selectively
@@ -311,7 +311,7 @@ Strong kennels are built over generations, not overnight.
 
 ✅ Start with a small number of dogs
 ✅ Learn what judges reward
-✅ Pay attention to visible category strengths
+✅ Pay attention to whether visible categories are under ideal, near 10 ideal, or over ideal
 ✅ Condition dogs regularly
 ✅ Breed for balance, not perfection
 ✅ Plan for future generations
