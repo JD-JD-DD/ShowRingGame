@@ -12,6 +12,7 @@ import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
 import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
 import RehomeDogForm from "@/components/dogs/RehomeDogForm";
 import ConfirmSubmitButton from "@/components/ui/ConfirmSubmitButton";
+import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getDogProfile } from "@/server/services/dog.service";
@@ -36,8 +37,28 @@ type PageProps = {
   searchParams?: Promise<DogSearchParams>;
 };
 
+type RosterNavigationDog = {
+  id: string;
+  displayName: string;
+  regNumber: string;
+  breedCode2: string;
+};
+
 function firstQueryValue(value: string | string[] | undefined): string | null {
   return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
+function getRosterDogDisplayName(dog: {
+  callName: string | null;
+  registeredName: string | null;
+  regNumber: string;
+}): string {
+  return (
+    dog.callName?.trim() ||
+    dog.registeredName?.trim() ||
+    dog.regNumber ||
+    "Unnamed Dog"
+  );
 }
 
 function formatMoney(amount: number): string {
@@ -105,6 +126,53 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   });
 
   if (!profile) notFound();
+
+  const ownedDogRoster = profile.viewerContext.isOwnedByCurrentKennel
+    ? await db.dog.findMany({
+        where: {
+          ownerKennelId: currentKennel.id,
+          lifecycleState: "ALIVE",
+          isPlayerVisible: true,
+        },
+        orderBy: [{ birthEpoch: "desc" }],
+        select: {
+          id: true,
+          callName: true,
+          registeredName: true,
+          regNumber: true,
+          breedCode2: true,
+          birthEpoch: true,
+        },
+      })
+    : [];
+  const currentRosterIndex = ownedDogRoster.findIndex(
+    (rosterDog) => rosterDog.id === profile.header.dogId
+  );
+  const toRosterNavigationDog = (
+    rosterDog: (typeof ownedDogRoster)[number]
+  ): RosterNavigationDog => ({
+    id: rosterDog.id,
+    displayName: getRosterDogDisplayName(rosterDog),
+    regNumber: rosterDog.regNumber,
+    breedCode2: rosterDog.breedCode2,
+  });
+  const dogRosterNavigation =
+    profile.viewerContext.isOwnedByCurrentKennel &&
+    ownedDogRoster.length > 1 &&
+    currentRosterIndex >= 0
+      ? {
+          previousDog:
+            currentRosterIndex > 0
+              ? toRosterNavigationDog(ownedDogRoster[currentRosterIndex - 1])
+              : null,
+          nextDog:
+            currentRosterIndex < ownedDogRoster.length - 1
+              ? toRosterNavigationDog(ownedDogRoster[currentRosterIndex + 1])
+              : null,
+          currentIndex: currentRosterIndex,
+          totalDogs: ownedDogRoster.length,
+        }
+      : null;
 
   const nameError = firstQueryValue(resolvedSearchParams.nameError);
   const saleError = firstQueryValue(resolvedSearchParams.saleError);
@@ -198,6 +266,58 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               >
                 Back to My Kennel
               </Link>
+
+              {dogRosterNavigation ? (
+                <nav
+                  aria-label="Kennel dog navigation"
+                  className="rounded-2xl border border-purple-300/25 bg-white/5 p-3"
+                >
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
+                    {dogRosterNavigation.previousDog ? (
+                      <Link
+                        href={`/dogs/${dogRosterNavigation.previousDog.id}`}
+                        className="flex min-h-14 flex-col justify-center rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-sm font-semibold text-purple-50 transition hover:bg-white/10"
+                      >
+                        <span>&larr; Previous Dog</span>
+                        <span className="mt-1 truncate text-xs font-medium text-purple-100/70">
+                          Previous: {dogRosterNavigation.previousDog.displayName}
+                        </span>
+                      </Link>
+                    ) : (
+                      <span className="flex min-h-14 flex-col justify-center rounded-xl border border-purple-300/10 bg-black/20 px-3 py-2 text-sm font-semibold text-purple-100/40">
+                        <span>&larr; Previous Dog</span>
+                        <span className="mt-1 text-xs font-medium">
+                          Previous: None
+                        </span>
+                      </span>
+                    )}
+
+                    <div className="flex min-h-14 items-center justify-center rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-purple-100/75">
+                      Dog {dogRosterNavigation.currentIndex + 1} of{" "}
+                      {dogRosterNavigation.totalDogs}
+                    </div>
+
+                    {dogRosterNavigation.nextDog ? (
+                      <Link
+                        href={`/dogs/${dogRosterNavigation.nextDog.id}`}
+                        className="flex min-h-14 flex-col justify-center rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-left text-sm font-semibold text-purple-50 transition hover:bg-white/10 sm:text-right"
+                      >
+                        <span>Next Dog &rarr;</span>
+                        <span className="mt-1 truncate text-xs font-medium text-purple-100/70">
+                          Next: {dogRosterNavigation.nextDog.displayName}
+                        </span>
+                      </Link>
+                    ) : (
+                      <span className="flex min-h-14 flex-col justify-center rounded-xl border border-purple-300/10 bg-black/20 px-3 py-2 text-left text-sm font-semibold text-purple-100/40 sm:text-right">
+                        <span>Next Dog &rarr;</span>
+                        <span className="mt-1 text-xs font-medium">
+                          Next: None
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </nav>
+              ) : null}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <DogProfileKennelRunMove
