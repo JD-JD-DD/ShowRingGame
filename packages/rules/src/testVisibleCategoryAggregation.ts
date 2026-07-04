@@ -2,8 +2,13 @@ import { strict as assert } from "node:assert";
 
 import {
   aggregateDirectionalCategory,
+  DEFAULT_CATEGORY_WEIGHTS,
+  deriveShowCharacteristicsFromTraits,
   deriveVisibleCategoriesFromTraits,
+  scoreDogByJudgeWeights,
+  type Dog,
   type DogTraits,
+  type Judge,
 } from "./index";
 
 function assertClose(actual: number, expected: number, label: string): void {
@@ -133,6 +138,87 @@ assertClose(
   }).conditioningHandling,
   0,
   "conditioning handling remains separate from directional aggregation"
+);
+
+const mixedMovementUnderTraits: DogTraits = {
+  ...idealTraits,
+  gait: 8,
+  hindquarters: 12,
+};
+const mixedMovementOverTraits: DogTraits = {
+  ...idealTraits,
+  gait: 12,
+  hindquarters: 8,
+};
+const mixedMovementVisible = deriveVisibleCategoriesFromTraits(
+  mixedMovementUnderTraits
+);
+const mixedMovementJudging = deriveShowCharacteristicsFromTraits(
+  mixedMovementUnderTraits
+);
+
+assertClose(
+  mixedMovementJudging.MOVEMENT,
+  8.67,
+  "judging categories do not raw-average mixed faults back to ideal"
+);
+
+assertClose(
+  deriveShowCharacteristicsFromTraits(mixedMovementOverTraits).MOVEMENT,
+  11.33,
+  "judging category tie uses first largest over-ideal component"
+);
+
+assert.equal(
+  Math.sign(mixedMovementVisible.movement - 10),
+  Math.sign(mixedMovementJudging.MOVEMENT - 10),
+  "public visible and judging aggregation agree in direction"
+);
+
+const judge: Judge = {
+  judgeId: "aggregation-test-judge",
+  name: "Aggregation Test Judge",
+  style: "BALANCED",
+  categoryWeights: { ...DEFAULT_CATEGORY_WEIGHTS },
+};
+const dog: Dog = {
+  dogId: "aggregation-test-dog",
+  regNumber: "AGG-1",
+  breedCode2: "TST",
+  birthEpoch: 0,
+  sex: "M",
+  status: "ALIVE",
+  litterId: null,
+  litterOrder: null,
+  sireId: null,
+  damId: null,
+  traits: {
+    ...idealTraits,
+    head: 20,
+    forequarters: 20,
+    hindquarters: 20,
+    gait: 20,
+    coat: 20,
+    size: 20,
+    temperament: 20,
+    show_shine: 20,
+    feet: 20,
+    topline: 20,
+  },
+  presentation: {
+    conditioningSnapshot: 8,
+    fatigueSnapshot: 2,
+  },
+};
+
+assertClose(
+  scoreDogByJudgeWeights({
+    dog,
+    judge,
+    random01: () => 0.5,
+  }).characteristics.CONDITIONING_HANDLING,
+  6,
+  "judging conditioning handling remains derived from conditioning inputs"
 );
 
 console.log("Visible category aggregation checks passed.");

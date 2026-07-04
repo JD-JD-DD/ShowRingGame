@@ -11,6 +11,7 @@ import {
   type JudgingCategory,
 } from "../constants/judging.constants";
 import { deriveConditioningHandlingScore } from "./conditioning.engine";
+import { aggregateDirectionalCategory } from "./directionalCategory.engine";
 import { deriveHealthAdjustedExpressedTraits } from "./healthExpression.engine";
 import { applyPresentationModifiersToCharacteristics } from "./presentation.engine";
 import { scoreValueAgainstIdeal } from "./idealScoring.engine";
@@ -102,15 +103,6 @@ const DEFAULT_CHAMPIONSHIP_POINT_SCHEDULE: ChampionshipPointScheduleRow[] = [
   { dogsInCompetition: 2, points: 1 },
 ];
 
-function average(values: readonly number[]): number {
-  if (values.length === 0) {
-    return 0;
-  }
-
-  const total = values.reduce((sum, value) => sum + value, 0);
-  return total / values.length;
-}
-
 function roundScore(value: number): number {
   return Number(value.toFixed(2));
 }
@@ -132,7 +124,7 @@ export function deriveShowCharacteristicsFromTraits(
   for (const category of GENETIC_JUDGING_CATEGORIES) {
     const traitKeys = CATEGORY_TRAIT_MAP[category];
     const values = traitKeys.map((trait) => traits[trait]);
-    result[category] = roundScore(average(values));
+    result[category] = roundScore(aggregateDirectionalCategory(values));
   }
 
   result.CONDITIONING_HANDLING = deriveConditioningHandlingScore();
