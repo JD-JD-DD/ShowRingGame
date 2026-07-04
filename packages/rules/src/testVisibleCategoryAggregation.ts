@@ -1,6 +1,10 @@
 import { strict as assert } from "node:assert";
 
-import { aggregateDirectionalCategory } from "./index";
+import {
+  aggregateDirectionalCategory,
+  deriveVisibleCategoriesFromTraits,
+  type DogTraits,
+} from "./index";
 
 function assertClose(actual: number, expected: number, label: string): void {
   assert.ok(
@@ -67,6 +71,68 @@ assertClose(
   aggregateDirectionalCategory([6, 10, 14]),
   10 - 8 / 3,
   "average absolute deviation is used instead of raw average"
+);
+
+const idealTraits: DogTraits = {
+  head: 10,
+  forequarters: 10,
+  hindquarters: 10,
+  gait: 10,
+  coat: 10,
+  size: 10,
+  temperament: 10,
+  show_shine: 10,
+  feet: 10,
+  topline: 10,
+};
+
+assertClose(
+  deriveVisibleCategoriesFromTraits({
+    ...idealTraits,
+    head: 7,
+    size: 13,
+  }).typeExpression,
+  8,
+  "public visible categories do not raw-average mixed faults back to ideal"
+);
+
+assertClose(
+  deriveVisibleCategoriesFromTraits({
+    ...idealTraits,
+    coat: 8,
+    show_shine: 12,
+  }).coatPresentation,
+  8,
+  "public visible category tie uses first largest under-ideal component"
+);
+
+assertClose(
+  deriveVisibleCategoriesFromTraits({
+    ...idealTraits,
+    coat: 12,
+    show_shine: 8,
+  }).coatPresentation,
+  12,
+  "public visible category tie uses first largest over-ideal component"
+);
+
+assertClose(
+  deriveVisibleCategoriesFromTraits({
+    ...idealTraits,
+    gait: 8,
+  }).movement,
+  9.3,
+  "public visible category rounding remains one decimal"
+);
+
+assertClose(
+  deriveVisibleCategoriesFromTraits({
+    ...idealTraits,
+    coat: 8,
+    show_shine: 12,
+  }).conditioningHandling,
+  0,
+  "conditioning handling remains separate from directional aggregation"
 );
 
 console.log("Visible category aggregation checks passed.");
