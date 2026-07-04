@@ -298,9 +298,9 @@ function GroomingResetCountdown({ resetEpoch }: { resetEpoch: number }) {
   }, []);
 
   return (
-    <div className="theme-heading mt-1 font-semibold">
+    <span className="font-semibold text-[var(--dog-heading)]">
       {formatCountdown(msRemaining)}
-    </div>
+    </span>
   );
 }
 
@@ -1094,55 +1094,50 @@ export default function KennelDogsPanel() {
 
   return (
     <section className="theme-panel rounded-[28px] p-5">
-      <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <h2 className="theme-heading text-3xl font-semibold">
-            Kennel Roster
-          </h2>
-          <p className="theme-copy mt-2 text-sm leading-7">
-            Sort, filter, and compare your dogs in one working roster.
-          </p>
-        </div>
+      <div className="mb-4">
+        <h2 className="theme-heading text-3xl font-semibold">
+          Kennel Roster
+        </h2>
+        <p className="theme-copy mt-2 text-sm leading-7">
+          Sort, filter, and compare your dogs in one working roster.
+        </p>
 
         {groomingSummary ? (
-          <div className="w-full max-w-xs rounded-xl border border-purple-300/35 bg-purple-100/70 px-2.5 py-2 shadow-sm shadow-purple-950/5 dark:border-purple-300/20 dark:bg-purple-950/35 dark:shadow-black/20 xl:w-[18rem]">
-            <div className="mb-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-purple-700 dark:text-purple-100">
-              Grooming
-            </div>
-            <div className="grid grid-cols-2 gap-1.5 text-xs">
-              <div className="rounded-lg border border-purple-300/30 bg-white/70 px-2 py-1.5 dark:border-purple-200/15 dark:bg-black/20">
-                <div className="theme-label text-[0.62rem] uppercase tracking-wide">
-                  Remaining
-                </div>
-                <div className="theme-heading mt-1 font-semibold">
-                  {groomingSummary.groomingActionsRemainingThisWeek}
-                </div>
-              </div>
-              <div className="rounded-lg border border-purple-300/30 bg-white/70 px-2 py-1.5 dark:border-purple-200/15 dark:bg-black/20">
-                <div className="theme-label text-[0.62rem] uppercase tracking-wide">
-                  Next Reset
-                </div>
-                <GroomingResetCountdown
-                  resetEpoch={groomingSummary.nextGroomingResetEpoch}
-                />
-              </div>
-              <div className="rounded-lg border border-purple-300/30 bg-white/70 px-2 py-1.5 dark:border-purple-200/15 dark:bg-black/20">
-                <div className="theme-label text-[0.62rem] uppercase tracking-wide">
-                  Level
-                </div>
-                <div className="theme-heading mt-1 font-semibold">
-                  {groomingSummary.groomingLevel}
-                </div>
-              </div>
-              <div className="rounded-lg border border-purple-300/30 bg-white/70 px-2 py-1.5 dark:border-purple-200/15 dark:bg-black/20">
-                <div className="theme-label text-[0.62rem] uppercase tracking-wide">
-                  XP
-                </div>
-                <div className="theme-heading mt-1 font-semibold">
-                  {groomingSummary.groomingXp}
-                </div>
-              </div>
-            </div>
+          <div className="mt-2 inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-purple-300/35 bg-purple-100/60 px-3 py-1 text-xs text-purple-900 dark:border-purple-300/20 dark:bg-purple-950/30 dark:text-purple-100">
+            <span className="font-semibold">Grooming:</span>
+            <span>
+              Remaining{" "}
+              <span className="font-semibold text-[var(--dog-heading)]">
+                {groomingSummary.groomingActionsRemainingThisWeek}
+              </span>
+            </span>
+            <span aria-hidden="true" className="text-purple-500/70">
+              &middot;
+            </span>
+            <span>
+              Reset{" "}
+              <GroomingResetCountdown
+                resetEpoch={groomingSummary.nextGroomingResetEpoch}
+              />
+            </span>
+            <span aria-hidden="true" className="text-purple-500/70">
+              &middot;
+            </span>
+            <span>
+              Level{" "}
+              <span className="font-semibold text-[var(--dog-heading)]">
+                {groomingSummary.groomingLevel}
+              </span>
+            </span>
+            <span aria-hidden="true" className="text-purple-500/70">
+              &middot;
+            </span>
+            <span>
+              XP{" "}
+              <span className="font-semibold text-[var(--dog-heading)]">
+                {groomingSummary.groomingXp}
+              </span>
+            </span>
           </div>
         ) : null}
       </div>
