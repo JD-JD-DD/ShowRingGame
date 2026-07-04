@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import TraitLine from "@/components/ui/TraitLine";
+import CoreLoopStepper from "./CoreLoopStepper";
 import GuideVisitedMarker from "./GuideVisitedMarker";
 import { exampleVisibleCategories } from "./exampleDogData";
 
@@ -10,14 +11,6 @@ export const metadata: Metadata = {
   description:
     "A beginner guide to building a kennel, buying foundation dogs, reading dog pages, breeding, entering shows, and checking results in ShowRing.",
 };
-
-const coreLoop = [
-  "Create Kennel",
-  "Buy Dogs",
-  "View Dog",
-  "Breed or Show",
-  "Check Results",
-];
 
 const overviewCards = [
   {
@@ -184,26 +177,7 @@ export default function GuidePage() {
           </div>
         </header>
 
-        <section className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
-          <h2 className="text-2xl font-semibold text-white">
-            The Core Loop
-          </h2>
-          <div className="mt-5 grid gap-3 md:grid-cols-5">
-            {coreLoop.map((step, index) => (
-              <div key={step} className="theme-card rounded-2xl p-4">
-                <div className="theme-label text-xs font-semibold uppercase tracking-[0.16em]">
-                  Step {index + 1}
-                </div>
-                <div className="theme-heading mt-2 min-h-12 text-base font-semibold">
-                  {step}
-                </div>
-                <div className="theme-copy mt-2 text-sm">
-                  {index < coreLoop.length - 1 ? "Then continue ->" : "Repeat and refine"}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <CoreLoopStepper />
 
         <section className="mb-8 grid gap-5 md:grid-cols-3">
           {overviewCards.map((card) => (
