@@ -11,6 +11,7 @@ import {
   getKennelGroomingSummary,
   getOwnedDogGroomingStatuses,
 } from "@/server/services/grooming.service";
+import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveBreedingProgressForKennel } from "@/server/services/breeding.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -107,6 +108,13 @@ type HealthTestSummary = {
   dogId: string;
   testTypeCode: string;
   resultCode: string;
+};
+
+type HealthConditionTruthSummary = {
+  dogId: string;
+  conditionCode: string;
+  geneticLiability: number;
+  environmentModifier: number;
 };
 
 type ActiveListingSummary = {
@@ -251,6 +259,31 @@ function groupHealthTestsByDog(healthTests: HealthTestSummary[]) {
   }
 
   return testsByDogId;
+}
+
+function groupHealthConditionTruthsByDog(
+  healthConditionTruths: HealthConditionTruthSummary[]
+) {
+  const truthsByDogId = new Map<
+    string,
+    Array<{
+      conditionCode: string;
+      geneticLiability: number;
+      environmentModifier: number;
+    }>
+  >();
+
+  for (const truth of healthConditionTruths) {
+    const truths = truthsByDogId.get(truth.dogId) ?? [];
+    truths.push({
+      conditionCode: truth.conditionCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    });
+    truthsByDogId.set(truth.dogId, truths);
+  }
+
+  return truthsByDogId;
 }
 
 function groupActiveListingTypesByDog(listings: ActiveListingSummary[]) {
@@ -404,7 +437,13 @@ export async function GET(request: Request) {
       },
     });
     const dogIds = dogs.map((dog) => dog.id);
+
+    if (dogIds.length > 0) {
+      await ensurePhenotypeHealthTruthsForDogs(db, dogIds);
+    }
+
     const [
+      freshHealthConditionTruths,
       activeDamAttempts,
       latestWhelpedAttempts,
       recentNotPregnantAttempts,
@@ -414,6 +453,22 @@ export async function GET(request: Request) {
       groomingSummary,
     ] = dogIds.length
       ? await Promise.all([
+          db.dogHealthConditionTruth.findMany({
+            where: {
+              dogId: {
+                in: dogIds,
+              },
+              conditionCode: {
+                in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+              },
+            },
+            select: {
+              dogId: true,
+              conditionCode: true,
+              geneticLiability: true,
+              environmentModifier: true,
+            },
+          }),
           db.breedingAttempt.findMany({
             where: {
               damId: {
@@ -522,12 +577,16 @@ export async function GET(request: Request) {
           [],
           [],
           [],
+          [],
           new Map(),
           await getKennelGroomingSummary({
             kennelId: kennel.id,
             currentEpoch,
           }),
         ];
+    const healthConditionTruthsByDogId = groupHealthConditionTruthsByDog(
+      freshHealthConditionTruths
+    );
     const activeAttemptByDogId = mapByDogId(
       activeDamAttempts.map((attempt) => ({
         dogId: attempt.damId,
@@ -570,6 +629,8 @@ export async function GET(request: Request) {
       groomingSummary,
       dogs: dogs.map((dog) => {
         const healthTests = healthTestsByDogId.get(dog.id) ?? [];
+        const healthConditionTruths =
+          healthConditionTruthsByDogId.get(dog.id) ?? dog.healthConditionTruths;
         const activeListingTypes = activeListingTypesByDogId.get(dog.id) ?? new Set<string>();
 
         return {
@@ -616,7 +677,13 @@ export async function GET(request: Request) {
             currentGroomingWeek: 0,
             groomingStatusLabel: "Needs grooming",
           },
-          visibleCategories: toVisibleCategories(dog, healthTests),
+          visibleCategories: toVisibleCategories(
+            {
+              ...dog,
+              healthConditionTruths,
+            },
+            healthTests
+          ),
           breedingCardStatus: getBreedingCardStatus(
             dog,
             {

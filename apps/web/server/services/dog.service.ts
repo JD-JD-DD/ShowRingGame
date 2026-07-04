@@ -25,6 +25,7 @@ import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
 } from "@/server/services/dogVisibleCategories.service";
+import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -1074,6 +1075,22 @@ export async function getDogProfile(args: {
     return null;
   }
 
+  await ensurePhenotypeHealthTruthsForDogs(db, [dog.id]);
+
+  const healthConditionTruths = await db.dogHealthConditionTruth.findMany({
+    where: {
+      dogId: dog.id,
+      conditionCode: {
+        in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+      },
+    },
+    select: {
+      conditionCode: true,
+      geneticLiability: true,
+      environmentModifier: true,
+    },
+  });
+
   const ageHours = Math.max(0, currentEpoch - dog.birthEpoch);
   const isAlive = dog.lifecycleState === DogLifecycleState.ALIVE;
   const isOwnedByCurrentKennel =
@@ -1273,7 +1290,7 @@ export async function getDogProfile(args: {
     isOwnedByCurrentKennel && availableHealthTests.length > 0;
   const visibleScores = deriveCurrentVisibleCategoriesForDogDisplay({
     storedTraits: dog,
-    phenotypeHealthTruths: dog.healthConditionTruths,
+    phenotypeHealthTruths: healthConditionTruths,
     phenotypeHealthResults: dog.healthTests,
     conditioning: {
       coatCondition: dog.coatCondition,

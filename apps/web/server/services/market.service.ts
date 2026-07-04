@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
+import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
 import {
@@ -65,6 +66,13 @@ type MarketListingRecord = {
   };
 };
 
+type MarketHealthConditionTruth = {
+  dogId: string;
+  conditionCode: string;
+  geneticLiability: number;
+  environmentModifier: number;
+};
+
 export type MarketDogDto = {
   listingId: string;
   dogId: string;
@@ -97,8 +105,11 @@ function mapMarketListing(args: {
   listing: MarketListingRecord;
   currentEpoch: number;
   currentKennelId?: string | null;
+  healthConditionTruths?: MarketListingRecord["dog"]["healthConditionTruths"];
 }): MarketDogDto {
   const { listing, currentEpoch, currentKennelId } = args;
+  const healthConditionTruths =
+    args.healthConditionTruths ?? listing.dog.healthConditionTruths;
 
   return {
     listingId: listing.id,
@@ -121,10 +132,31 @@ function mapMarketListing(args: {
     isOwnedByCurrentKennel: listing.dog.ownerKennelId === currentKennelId,
     visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
       storedTraits: listing.dog,
-      phenotypeHealthTruths: listing.dog.healthConditionTruths,
+      phenotypeHealthTruths: healthConditionTruths,
       phenotypeHealthResults: listing.dog.healthTests,
     }),
   };
+}
+
+function groupHealthConditionTruthsByDog(
+  healthConditionTruths: MarketHealthConditionTruth[]
+) {
+  const truthsByDogId = new Map<
+    string,
+    MarketListingRecord["dog"]["healthConditionTruths"]
+  >();
+
+  for (const truth of healthConditionTruths) {
+    const truths = truthsByDogId.get(truth.dogId) ?? [];
+    truths.push({
+      conditionCode: truth.conditionCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    });
+    truthsByDogId.set(truth.dogId, truths);
+  }
+
+  return truthsByDogId;
 }
 
 export async function listMarketDogs(args: {
@@ -249,11 +281,41 @@ export async function listMarketDogs(args: {
     },
   });
 
+  const dogIds = listings.map((listing) => listing.dog.id);
+
+  if (dogIds.length > 0) {
+    await ensurePhenotypeHealthTruthsForDogs(db, dogIds);
+  }
+
+  const healthConditionTruths = dogIds.length
+    ? await db.dogHealthConditionTruth.findMany({
+        where: {
+          dogId: {
+            in: dogIds,
+          },
+          conditionCode: {
+            in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+          },
+        },
+        select: {
+          dogId: true,
+          conditionCode: true,
+          geneticLiability: true,
+          environmentModifier: true,
+        },
+      })
+    : [];
+  const healthConditionTruthsByDogId =
+    groupHealthConditionTruthsByDog(healthConditionTruths);
+
   return listings.map((listing) =>
     mapMarketListing({
       listing,
       currentEpoch,
       currentKennelId,
+      healthConditionTruths:
+        healthConditionTruthsByDogId.get(listing.dog.id) ??
+        listing.dog.healthConditionTruths,
     })
   );
 }
