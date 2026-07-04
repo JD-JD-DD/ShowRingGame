@@ -178,6 +178,13 @@ type MarketDogRecord = HiddenTraitRecord & {
   }>;
 };
 
+type FoundationHealthConditionTruth = {
+  dogId: string;
+  conditionCode: string;
+  geneticLiability: number;
+  environmentModifier: number;
+};
+
 type BreedFoundationPolicy = {
   targetInventory: number;
   listingHours: number;
@@ -241,8 +248,11 @@ function toFoundationDogMarketDto(args: {
   price: number;
   dog: MarketDogRecord;
   currentEpoch: number;
+  healthConditionTruths?: MarketDogRecord["healthConditionTruths"];
 }): FoundationDogMarketDto {
   const { listingId, price, dog, currentEpoch } = args;
+  const healthConditionTruths =
+    args.healthConditionTruths ?? dog.healthConditionTruths;
 
   return {
   listingId,
@@ -255,8 +265,61 @@ function toFoundationDogMarketDto(args: {
   birthEpoch: dog.birthEpoch,
   ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
   price,
-  visibleCategories: getVisibleCategoriesFromDogRecord(dog),
+  visibleCategories: getVisibleCategoriesFromDogRecord({
+    ...dog,
+    healthConditionTruths,
+  }),
   };
+}
+
+function groupHealthConditionTruthsByDog(
+  healthConditionTruths: FoundationHealthConditionTruth[]
+) {
+  const truthsByDogId = new Map<
+    string,
+    MarketDogRecord["healthConditionTruths"]
+  >();
+
+  for (const truth of healthConditionTruths) {
+    const truths = truthsByDogId.get(truth.dogId) ?? [];
+    truths.push({
+      conditionCode: truth.conditionCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    });
+    truthsByDogId.set(truth.dogId, truths);
+  }
+
+  return truthsByDogId;
+}
+
+async function ensureAndLoadFoundationDisplayHealthTruths(dogIds: string[]) {
+  const uniqueDogIds = [...new Set(dogIds)];
+
+  if (uniqueDogIds.length === 0) {
+    return new Map<string, MarketDogRecord["healthConditionTruths"]>();
+  }
+
+  await ensurePhenotypeHealthTruthsForDogs(db, uniqueDogIds);
+
+  const healthConditionTruths = await db.dogHealthConditionTruth.findMany({
+    where: {
+      dogId: {
+        in: uniqueDogIds,
+      },
+      conditionCode: {
+        in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+      },
+    },
+    select: {
+      dogId: true,
+      conditionCode: true,
+      geneticLiability: true,
+      environmentModifier: true,
+    },
+  });
+
+  return groupHealthConditionTruthsByDog(healthConditionTruths);
 }
 
 async function getLiveBreedBaseline(
@@ -846,12 +909,20 @@ export async function listFoundationDogs(args: {
     },
   });
 
+  const healthConditionTruthsByDogId =
+    await ensureAndLoadFoundationDisplayHealthTruths(
+      listings.map((listing) => listing.dog.id)
+    );
+
   return listings.map((listing) =>
     toFoundationDogMarketDto({
       listingId: listing.id,
       price: listing.askingPrice,
       dog: listing.dog,
       currentEpoch,
+      healthConditionTruths:
+        healthConditionTruthsByDogId.get(listing.dog.id) ??
+        listing.dog.healthConditionTruths,
     })
   );
 }
@@ -935,11 +1006,17 @@ export async function getFoundationDogById(args: {
     return null;
   }
 
+  const healthConditionTruthsByDogId =
+    await ensureAndLoadFoundationDisplayHealthTruths([listing.dog.id]);
+
   return toFoundationDogMarketDto({
     listingId: listing.id,
     price: listing.askingPrice,
     dog: listing.dog,
     currentEpoch,
+    healthConditionTruths:
+      healthConditionTruthsByDogId.get(listing.dog.id) ??
+      listing.dog.healthConditionTruths,
   });
 }
 export async function buyFoundationDog(args: {
@@ -1115,6 +1192,12 @@ export async function buyFoundationDog(args: {
     throw new Error("Purchased dog not found after sale.");
   }
 
+  const healthConditionTruthsByDogId =
+    await ensureAndLoadFoundationDisplayHealthTruths([purchasedDog.id]);
+  const healthConditionTruths =
+    healthConditionTruthsByDogId.get(purchasedDog.id) ??
+    purchasedDog.healthConditionTruths;
+
   await ensureFoundationInventoryForBreed({
     breedCode2: purchasedDog.breedCode2,
     currentEpoch,
@@ -1136,6 +1219,9 @@ export async function buyFoundationDog(args: {
     birthEpoch: purchasedDog.birthEpoch,
     ageHours: Math.max(0, currentEpoch - purchasedDog.birthEpoch),
     price: 0,
-    visibleCategories: getVisibleCategoriesFromDogRecord(purchasedDog),
+    visibleCategories: getVisibleCategoriesFromDogRecord({
+      ...purchasedDog,
+      healthConditionTruths,
+    }),
   };
 }
