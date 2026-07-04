@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import {
@@ -23,6 +24,13 @@ type PageProps = {
   searchParams?: Promise<{
     breedCode2?: string | string[];
   }>;
+};
+
+type StudHealthConditionTruth = {
+  dogId: string;
+  conditionCode: string;
+  geneticLiability: number;
+  environmentModifier: number;
 };
 
 function firstQueryValue(value: string | string[] | undefined): string | null {
@@ -106,6 +114,31 @@ function validBrucellosisUntil(
         test.validUntilEpoch >= currentEpoch
     )?.validUntilEpoch ?? null
   );
+}
+
+function groupHealthConditionTruthsByDog(
+  healthConditionTruths: StudHealthConditionTruth[]
+) {
+  const truthsByDogId = new Map<
+    string,
+    Array<{
+      conditionCode: string;
+      geneticLiability: number;
+      environmentModifier: number;
+    }>
+  >();
+
+  for (const truth of healthConditionTruths) {
+    const truths = truthsByDogId.get(truth.dogId) ?? [];
+    truths.push({
+      conditionCode: truth.conditionCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    });
+    truthsByDogId.set(truth.dogId, truths);
+  }
+
+  return truthsByDogId;
 }
 
 export default async function StudsPage({ searchParams }: PageProps) {
@@ -277,6 +310,32 @@ export default async function StudsPage({ searchParams }: PageProps) {
       },
     },
   });
+  const dogIds = listings.map((listing) => listing.dog.id);
+
+  if (dogIds.length > 0) {
+    await ensurePhenotypeHealthTruthsForDogs(db, dogIds);
+  }
+
+  const healthConditionTruths = dogIds.length
+    ? await db.dogHealthConditionTruth.findMany({
+        where: {
+          dogId: {
+            in: dogIds,
+          },
+          conditionCode: {
+            in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+          },
+        },
+        select: {
+          dogId: true,
+          conditionCode: true,
+          geneticLiability: true,
+          environmentModifier: true,
+        },
+      })
+    : [];
+  const healthConditionTruthsByDogId =
+    groupHealthConditionTruthsByDog(healthConditionTruths);
 
   return (
     <main className="min-h-screen px-6 py-8 text-white">
@@ -380,7 +439,9 @@ export default async function StudsPage({ searchParams }: PageProps) {
               );
               const visibleCategories = deriveCurrentVisibleCategoriesForDogDisplay({
                 storedTraits: dog,
-                phenotypeHealthTruths: dog.healthConditionTruths,
+                phenotypeHealthTruths:
+                  healthConditionTruthsByDogId.get(dog.id) ??
+                  dog.healthConditionTruths,
                 phenotypeHealthResults: dog.healthTests,
               });
 
