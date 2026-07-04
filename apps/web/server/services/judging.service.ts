@@ -325,6 +325,49 @@ async function ensureAndLoadGroupJudgingHealthTruths(
   return truthsByDogId;
 }
 
+async function ensureAndLoadBestInShowJudgingHealthTruths(
+  tx: Prisma.TransactionClient,
+  dogIds: string[]
+): Promise<Map<string, NonNullable<DogForEngine["healthConditionTruths"]>>> {
+  const uniqueDogIds = [...new Set(dogIds)];
+
+  if (uniqueDogIds.length === 0) {
+    return new Map();
+  }
+
+  await ensurePhenotypeHealthTruthsForDogs(tx, uniqueDogIds);
+
+  const healthConditionTruths = await tx.dogHealthConditionTruth.findMany({
+    where: {
+      dogId: {
+        in: uniqueDogIds,
+      },
+    },
+    select: {
+      dogId: true,
+      conditionCode: true,
+      geneticLiability: true,
+      environmentModifier: true,
+    },
+  });
+  const truthsByDogId = new Map<
+    string,
+    NonNullable<DogForEngine["healthConditionTruths"]>
+  >();
+
+  for (const truth of healthConditionTruths) {
+    const dogTruths = truthsByDogId.get(truth.dogId) ?? [];
+    dogTruths.push({
+      conditionCode: truth.conditionCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    });
+    truthsByDogId.set(truth.dogId, dogTruths);
+  }
+
+  return truthsByDogId;
+}
+
 function awardsChampionshipPoints(clusterId: string): boolean {
   return !clusterId.startsWith("invitational-year-");
 }
@@ -1620,6 +1663,11 @@ async function createBestInShowAwardsForShowDay(args: {
       return 0;
     }
 
+    const healthTruthsByDogId =
+      await ensureAndLoadBestInShowJudgingHealthTruths(
+        tx,
+        groupOneAwards.map((award) => award.dogId)
+      );
     const awardByEntryId = new Map(
       groupOneAwards.map((award) => [award.showEntryId, award])
     );
@@ -1631,10 +1679,18 @@ async function createBestInShowAwardsForShowDay(args: {
       showEpoch: showDayTiming.scheduledEpoch,
       entries: groupOneAwards.map((award) => ({
         showEntryId: award.showEntryId,
-        dog: toEngineDogRecord(award.dog, {
-          conditioningSnapshot: award.showEntry.conditioningSnapshot,
-          fatigueSnapshot: award.showEntry.fatigueSnapshot,
-        }),
+        dog: toEngineDogRecord(
+          {
+            ...award.dog,
+            healthConditionTruths:
+              healthTruthsByDogId.get(award.dogId) ??
+              award.dog.healthConditionTruths,
+          },
+          {
+            conditioningSnapshot: award.showEntry.conditioningSnapshot,
+            fatigueSnapshot: award.showEntry.fatigueSnapshot,
+          }
+        ),
       })),
     });
     const awardsToCreate: Prisma.ShowAwardCreateManyInput[] = [];
