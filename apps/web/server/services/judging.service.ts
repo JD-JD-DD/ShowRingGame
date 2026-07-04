@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
 import {
@@ -217,15 +218,68 @@ function toEngineDogRecord(
   };
 }
 
-function toEngineDog(entry: EntryForJudging): EngineDog {
-  return toEngineDogRecord(entry.dog, {
-    conditioningSnapshot: entry.conditioningSnapshot,
-    fatigueSnapshot: entry.fatigueSnapshot,
-  });
+function toEngineDog(
+  entry: EntryForJudging,
+  healthConditionTruths?: DogForEngine["healthConditionTruths"]
+): EngineDog {
+  return toEngineDogRecord(
+    {
+      ...entry.dog,
+      healthConditionTruths:
+        healthConditionTruths ?? entry.dog.healthConditionTruths,
+    },
+    {
+      conditioningSnapshot: entry.conditioningSnapshot,
+      fatigueSnapshot: entry.fatigueSnapshot,
+    }
+  );
 }
 
 function isChampionEntry(entry: EntryForJudging): boolean {
   return isChampionOfRecordDog(entry.dog);
+}
+
+async function ensureAndLoadBreedJudgingHealthTruths(
+  tx: Prisma.TransactionClient,
+  dogIds: string[]
+): Promise<Map<string, NonNullable<DogForEngine["healthConditionTruths"]>>> {
+  const uniqueDogIds = [...new Set(dogIds)];
+
+  if (uniqueDogIds.length === 0) {
+    return new Map();
+  }
+
+  await ensurePhenotypeHealthTruthsForDogs(tx, uniqueDogIds);
+
+  const healthConditionTruths = await tx.dogHealthConditionTruth.findMany({
+    where: {
+      dogId: {
+        in: uniqueDogIds,
+      },
+    },
+    select: {
+      dogId: true,
+      conditionCode: true,
+      geneticLiability: true,
+      environmentModifier: true,
+    },
+  });
+  const truthsByDogId = new Map<
+    string,
+    NonNullable<DogForEngine["healthConditionTruths"]>
+  >();
+
+  for (const truth of healthConditionTruths) {
+    const dogTruths = truthsByDogId.get(truth.dogId) ?? [];
+    dogTruths.push({
+      conditionCode: truth.conditionCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    });
+    truthsByDogId.set(truth.dogId, dogTruths);
+  }
+
+  return truthsByDogId;
 }
 
 function awardsChampionshipPoints(clusterId: string): boolean {
@@ -778,13 +832,17 @@ export async function judgeShowBlock(args: {
     const uniqueKennelsInCompetition = new Set(
       eligibleEntries.map((entry) => entry.kennelId)
     ).size;
+    const healthTruthsByDogId = await ensureAndLoadBreedJudgingHealthTruths(
+      tx,
+      eligibleEntries.map((entry) => entry.dogId)
+    );
     const engineJudge = toEngineJudge(block.judge);
     const judgedBlock = judgeBreedBlock({
       judge: engineJudge,
       showEpoch: block.startEpoch,
       entries: eligibleEntries.map((entry) => ({
         showEntryId: entry.id,
-        dog: toEngineDog(entry),
+        dog: toEngineDog(entry, healthTruthsByDogId.get(entry.dogId)),
         isChampion: isChampionEntry(entry),
       })),
     });
