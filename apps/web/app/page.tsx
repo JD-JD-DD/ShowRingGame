@@ -16,10 +16,10 @@ const primaryActions = [
     featured: true,
   },
   {
-    title: "New Users Start Here",
-    body: "Browse released breeds, compare visible ring categories, and shop for dogs.",
-    href: "/market",
-    action: "Open Market",
+    title: "New? Start Here",
+    body: "Follow the beginner guide through buying foundation dogs, opening dog pages, shows, breeding, and results.",
+    href: "/guide",
+    action: "Open Guide",
   },
   {
     title: "Kennel Prestige Top Ten",
@@ -262,6 +262,12 @@ export default async function HomePage() {
           </div>
 
           <nav className="flex flex-wrap items-center gap-3 text-sm">
+            <Link
+              href="/guide"
+              className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-2.5 font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+            >
+              New? Start Here
+            </Link>
             <Link
               href="/kennel"
               className="rounded-full bg-purple-600 px-5 py-2.5 font-semibold text-white transition hover:bg-purple-500"

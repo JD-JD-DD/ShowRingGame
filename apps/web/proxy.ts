@@ -5,6 +5,8 @@ import {
 } from "@/lib/sessionToken";
 
 const ANONYMOUS_ROUTES = new Set([
+  "/faq",
+  "/guide",
   "/login",
   "/signup",
   "/forgot-password",
