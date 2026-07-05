@@ -71,7 +71,7 @@ type FakeGroomingDecayClient = {
   ) => Promise<T>;
 };
 
-function createFakeGroomingDecayClient() {
+function createFakeGroomingDecayClient(args?: { gainAmount?: number }) {
   const dog = {
     id: "dog-no-positive-impact",
     ownerKennelId: "kennel-1",
@@ -88,7 +88,7 @@ function createFakeGroomingDecayClient() {
       id: "gain-1",
       dogId: dog.id,
       eventType: "GROOMING_GAIN",
-      amount: 1,
+      amount: args?.gainAmount ?? 1,
       groomingWeek: 0,
       decayKey: null,
     },
@@ -165,6 +165,28 @@ function createFakeGroomingDecayClient() {
   };
 }
 
+async function assertNoopBatchLimit(args: {
+  requestedLimit?: number;
+  label: string;
+}) {
+  const fake = createFakeGroomingDecayClient();
+  const result = await applyMissedGroomingDecayForDueDogs({
+    currentEpoch: GROOMING_WEEK_HOURS * 501,
+    limit: args.requestedLimit,
+    client: fake.client as never,
+  });
+  const noopEvents = fake.conditionEvents.filter(
+    (event) => event.eventType === "MISSED_GROOMING_DECAY"
+  );
+
+  assert.equal(result.checked, 400, `${args.label}: checked is capped at 400`);
+  assert.equal(result.applied, 0, `${args.label}: no-op batch does not apply decay`);
+  assert.equal(result.skipped, 400, `${args.label}: no-op batch skips 400`);
+  assert.equal(noopEvents.length, 400, `${args.label}: creates 400 no-op markers`);
+  assert.equal(result.hasMore, true, `${args.label}: leaves remaining backlog`);
+  assert.equal(result.caughtUp, false, `${args.label}: reports remaining backlog`);
+}
+
 async function main() {
   const fake = createFakeGroomingDecayClient();
   const currentEpoch = GROOMING_WEEK_HOURS;
@@ -236,6 +258,18 @@ async function main() {
     1,
     "no-op marker is not duplicated"
   );
+
+  await assertNoopBatchLimit({
+    label: "default batch",
+  });
+  await assertNoopBatchLimit({
+    requestedLimit: 400,
+    label: "requested 400 batch",
+  });
+  await assertNoopBatchLimit({
+    requestedLimit: 500,
+    label: "oversized requested batch",
+  });
 
   console.log("Grooming decay no-op catch-up checks passed.");
 }

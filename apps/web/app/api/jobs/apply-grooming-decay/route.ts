@@ -6,9 +6,10 @@ import { fail, ok } from "@/lib/http";
 import { applyMissedGroomingDecayForDueDogs } from "@/server/services/grooming.service";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
-const DEFAULT_DECAY_BATCH_SIZE = 100;
-const MAX_DECAY_BATCH_SIZE = 500;
+const DEFAULT_DECAY_BATCH_SIZE = 400;
+const MAX_DECAY_BATCH_SIZE = 400;
 const DB_PREFLIGHT_ATTEMPTS = 4;
 const DB_PREFLIGHT_DELAY_MS = 2000;
 

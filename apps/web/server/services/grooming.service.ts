@@ -26,6 +26,8 @@ export const GROOMING_WEEK_HOURS = 7;
 
 const MAX_COAT_CONDITION = 20;
 const MIN_COAT_CONDITION = 0;
+const DEFAULT_MISSED_GROOMING_DECAY_BATCH_SIZE = 400;
+const MAX_MISSED_GROOMING_DECAY_BATCH_SIZE = 400;
 
 export type KennelGroomingSummaryDto = {
   groomingActionsUsedThisWeek: number;
@@ -1691,7 +1693,10 @@ export async function applyMissedGroomingDecayForDueDogs(args: {
 }): Promise<GroomingDecayMaintenanceResultDto> {
   const currentGroomingWeek = getGroomingWeekIndex(args.currentEpoch);
   const latestCompletedGroomingWeek = currentGroomingWeek - 1;
-  const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
+  const limit = Math.min(
+    Math.max(args.limit ?? DEFAULT_MISSED_GROOMING_DECAY_BATCH_SIZE, 1),
+    MAX_MISSED_GROOMING_DECAY_BATCH_SIZE
+  );
   const client = args.client ?? db;
 
   if (latestCompletedGroomingWeek < 0) {

@@ -74,6 +74,10 @@ const programPlannerService = source(
   "apps/web/server/services/programPlanner.service.ts"
 );
 const groomingService = source("apps/web/server/services/grooming.service.ts");
+const groomingDecayJobRoute = source(
+  "apps/web/app/api/jobs/apply-grooming-decay/route.ts"
+);
+const groomingDecayWorkflow = source(".github/workflows/grooming-decay.yml");
 const lifecycleService = source("apps/web/server/services/lifecycle.service.ts");
 const judgingService = source("apps/web/server/services/judging.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
@@ -611,8 +615,38 @@ assertIncludes(
 );
 assertIncludes(
   groomingService,
-  "Math.min(Math.max(args.limit ?? 100, 1), 500)",
+  "DEFAULT_MISSED_GROOMING_DECAY_BATCH_SIZE = 400",
+  "grooming decay service defaults to the requested 400-candidate batch"
+);
+assertIncludes(
+  groomingService,
+  "MAX_MISSED_GROOMING_DECAY_BATCH_SIZE = 400",
   "grooming decay keeps the service batch limit bounded"
+);
+assertIncludes(
+  groomingDecayJobRoute,
+  "export const maxDuration = 300",
+  "grooming decay job route declares an intentional max duration"
+);
+assertIncludes(
+  groomingDecayJobRoute,
+  "const DEFAULT_DECAY_BATCH_SIZE = 400",
+  "grooming decay job route defaults to the requested 400-candidate batch"
+);
+assertIncludes(
+  groomingDecayJobRoute,
+  "const MAX_DECAY_BATCH_SIZE = 400",
+  "grooming decay job route caps requested batches at 400"
+);
+assertIncludes(
+  groomingDecayWorkflow,
+  '${SHOWRING_JOBS_BASE_URL%/}/api/jobs/apply-grooming-decay"',
+  "scheduled grooming decay workflow uses the default job batch size"
+);
+assertDoesNotIncludeAny(
+  groomingDecayWorkflow,
+  ["apply-grooming-decay?limit=", "limit=500"],
+  "scheduled grooming decay workflow does not request an oversized batch"
 );
 assertIncludes(
   groomingService,
