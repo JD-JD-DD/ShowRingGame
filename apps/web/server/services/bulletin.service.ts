@@ -122,6 +122,8 @@ export type BulletinThreadDetailDto = BulletinThreadListItem & {
   posts: BulletinPostDto[];
 };
 
+type BulletinDbClient = typeof db | Prisma.TransactionClient;
+
 function sanitizeText(value: string, maxLength: number): string {
   return value.replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
@@ -143,6 +145,112 @@ function policyAllows(policy: string, isAdmin: boolean): boolean {
   if (policy === "DISABLED") return false;
   if (policy === "ADMINS") return isAdmin;
   return true;
+}
+
+function getCommunityTopicAdminNoticeSourceKey(threadId: string, kennelId: string) {
+  return `community-topic:${threadId}:admin:${kennelId}`;
+}
+
+function formatCommunityTopicAdminNoticeBody(args: {
+  topicTitle: string;
+  categoryName: string | null;
+  authorDisplayName: string | null;
+  authorKennelName: string | null;
+  topicPath: string;
+}) {
+  const authorName = args.authorDisplayName
+    ? args.authorKennelName
+      ? `${args.authorDisplayName} (${args.authorKennelName})`
+      : args.authorDisplayName
+    : args.authorKennelName ?? "A player";
+  const categoryText = args.categoryName ? ` in ${args.categoryName}` : "";
+
+  return `${authorName} started "${args.topicTitle}"${categoryText}. Topic: ${args.topicPath}`;
+}
+
+export async function createAdminCommunityTopicNotices(args: {
+  client?: BulletinDbClient;
+  threadId: string;
+  topicTitle: string;
+  categoryName?: string | null;
+  categorySlug?: string | null;
+  authorKennelId: string;
+  currentEpoch: number;
+}) {
+  const client = args.client ?? db;
+
+  try {
+    const [adminKennels, authorKennel] = await Promise.all([
+      client.kennel.findMany({
+        where: {
+          user: {
+            isAdmin: true,
+          },
+        },
+        select: {
+          id: true,
+        },
+      }),
+      client.kennel.findUnique({
+        where: {
+          id: args.authorKennelId,
+        },
+        select: {
+          name: true,
+          user: {
+            select: {
+              displayName: true,
+            },
+          },
+        },
+      }),
+    ]);
+    const topicPath = args.categorySlug
+      ? `/community/${args.categorySlug}/${args.threadId}`
+      : `/bulletin/thread/${args.threadId}`;
+    const body = formatCommunityTopicAdminNoticeBody({
+      topicTitle: args.topicTitle,
+      categoryName: args.categoryName ?? null,
+      authorDisplayName: authorKennel?.user?.displayName ?? null,
+      authorKennelName: authorKennel?.name ?? null,
+      topicPath,
+    });
+
+    for (const adminKennel of adminKennels) {
+      await createKennelNotice({
+        client,
+        kennelId: adminKennel.id,
+        sourceKey: getCommunityTopicAdminNoticeSourceKey(
+          args.threadId,
+          adminKennel.id
+        ),
+        type: "KENNEL_SERVICE",
+        title: "New Community Topic",
+        body,
+        currentEpoch: args.currentEpoch,
+        linkedThreadId: args.threadId,
+        metadataJson: {
+          kind: "COMMUNITY_TOPIC",
+          topicId: args.threadId,
+          topicPath,
+          categoryName: args.categoryName ?? "",
+          categorySlug: args.categorySlug ?? "",
+          authorKennelId: args.authorKennelId,
+          authorKennelName: authorKennel?.name ?? "",
+          authorDisplayName: authorKennel?.user?.displayName ?? "",
+        },
+      });
+    }
+
+    return {
+      recipientCount: adminKennels.length,
+    };
+  } catch (error) {
+    console.error("Unable to create admin community topic notices:", error);
+    return {
+      recipientCount: 0,
+    };
+  }
 }
 
 function previewBody(value: string): string {
@@ -540,7 +648,7 @@ export async function createBulletinThread(args: {
       slug: args.categorySlug,
       isActive: true,
     },
-    select: { id: true, topicCreationPolicy: true },
+    select: { id: true, name: true, slug: true, topicCreationPolicy: true },
   });
 
   if (!category) {
@@ -583,6 +691,17 @@ export async function createBulletinThread(args: {
       id: true,
     },
   });
+
+  if ((args.sourceType ?? "PLAYER") === "PLAYER") {
+    await createAdminCommunityTopicNotices({
+      threadId: thread.id,
+      topicTitle: title,
+      categoryName: category.name,
+      categorySlug: category.slug,
+      authorKennelId: args.kennelId,
+      currentEpoch,
+    });
+  }
 
   return thread.id;
 }

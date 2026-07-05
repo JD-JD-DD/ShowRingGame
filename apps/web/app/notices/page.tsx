@@ -38,7 +38,30 @@ function formatNoticeType(type: KennelNoticeType): string {
     .join(" ");
 }
 
+function getNoticeMetadataString(
+  notice: KennelNotice,
+  key: string
+): string | null {
+  const metadata = notice.metadataJson;
+
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const value = (metadata as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : null;
+}
+
 function getNoticeHref(notice: KennelNotice): string | null {
+  const communityTopicPath = getNoticeMetadataString(notice, "topicPath");
+
+  if (
+    notice.linkedThreadId &&
+    communityTopicPath?.startsWith("/community/")
+  ) {
+    return communityTopicPath;
+  }
+
   if (notice.linkedThreadId) return `/bulletin/thread/${notice.linkedThreadId}`;
   if (notice.linkedLitterId) return `/litters/${notice.linkedLitterId}`;
   if (notice.type === "INVITATIONAL_INVITE" && notice.linkedShowId) {
