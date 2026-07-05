@@ -10,6 +10,10 @@ import {
 } from "@showring/rules";
 
 type DbClient = typeof db | Prisma.TransactionClient;
+type GroomingDecayRootClient = Pick<
+  typeof db,
+  "dog" | "groomingServiceAction" | "dogConditionEvent" | "$transaction"
+>;
 
 export const GROOMING_BASE_PAY = 500;
 export const TOTAL_GROOMING_ACTION_LIMIT_PER_WEEK = 10;
@@ -87,6 +91,11 @@ export type GroomingDecayMaintenanceResultDto = {
   checked: number;
   applied: number;
   skipped: number;
+  earliestPendingWeek: number | null;
+  latestPendingWeek: number | null;
+  pendingCandidateCount: number | null;
+  hasMore: boolean;
+  caughtUp: boolean;
   results: MissedGroomingDecayResultDto[];
 };
 
@@ -147,6 +156,35 @@ function calculateGroomingLevel(xp: number): number {
 
 function getMissedGroomingDecayKey(dogId: string, groomingWeek: number): string {
   return `missed-grooming:${dogId}:${groomingWeek}`;
+}
+
+async function createMissedGroomingDecayNoopEvent(args: {
+  client: Prisma.TransactionClient;
+  dog: {
+    id: string;
+    ownerKennelId: string | null;
+    coatCondition: number;
+  };
+  groomingWeek: number;
+  currentEpoch: number;
+  decayKey: string;
+  note: string;
+}): Promise<void> {
+  await args.client.dogConditionEvent.create({
+    data: {
+      dogId: args.dog.id,
+      actorKennelId: null,
+      ownerKennelIdAtEvent: args.dog.ownerKennelId,
+      eventType: "MISSED_GROOMING_DECAY",
+      amount: 0,
+      conditionBefore: args.dog.coatCondition,
+      conditionAfter: args.dog.coatCondition,
+      groomingWeek: args.groomingWeek,
+      occurredAtEpoch: args.currentEpoch,
+      decayKey: args.decayKey,
+      note: args.note,
+    },
+  });
 }
 
 type ThyroidHealthSource = {
@@ -1258,8 +1296,10 @@ export async function applyMissedGroomingDecayForCompletedWeek(args: {
   dogId: string;
   completedGroomingWeek: number;
   currentEpoch: number;
+  client?: GroomingDecayRootClient;
 }): Promise<MissedGroomingDecayResultDto> {
   const currentGroomingWeek = getGroomingWeekIndex(args.currentEpoch);
+  const client = args.client ?? db;
   const decayKey = getMissedGroomingDecayKey(
     args.dogId,
     args.completedGroomingWeek
@@ -1276,7 +1316,7 @@ export async function applyMissedGroomingDecayForCompletedWeek(args: {
   }
 
   try {
-    return await db.$transaction(async (tx) => {
+    return await client.$transaction(async (tx) => {
       const dog = await tx.dog.findUnique({
         where: {
           id: args.dogId,
@@ -1396,6 +1436,15 @@ export async function applyMissedGroomingDecayForCompletedWeek(args: {
       });
 
       if (netGroomingImpact <= 0) {
+        await createMissedGroomingDecayNoopEvent({
+          client: tx,
+          dog,
+          groomingWeek: args.completedGroomingWeek,
+          currentEpoch: args.currentEpoch,
+          decayKey,
+          note: "Missed grooming decay no-op: dog has no positive grooming impact to decay.",
+        });
+
         return {
           dogId: dog.id,
           groomingWeek: args.completedGroomingWeek,
@@ -1415,6 +1464,15 @@ export async function applyMissedGroomingDecayForCompletedWeek(args: {
       );
 
       if (actualDecay <= 0) {
+        await createMissedGroomingDecayNoopEvent({
+          client: tx,
+          dog,
+          groomingWeek: args.completedGroomingWeek,
+          currentEpoch: args.currentEpoch,
+          decayKey,
+          note: "Missed grooming decay no-op: dog coat condition is already at the minimum.",
+        });
+
         return {
           dogId: dog.id,
           groomingWeek: args.completedGroomingWeek,
@@ -1474,30 +1532,26 @@ export async function applyMissedGroomingDecayForCompletedWeek(args: {
   }
 }
 
-export async function applyMissedGroomingDecayForDueDogs(args: {
-  currentEpoch: number;
-  limit?: number;
-}): Promise<GroomingDecayMaintenanceResultDto> {
-  const currentGroomingWeek = getGroomingWeekIndex(args.currentEpoch);
-  const latestCompletedGroomingWeek = currentGroomingWeek - 1;
-  const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
+type MissedGroomingDecayCandidate = { dogId: string; groomingWeek: number };
 
-  if (latestCompletedGroomingWeek < 0) {
-    return {
-      currentGroomingWeek,
-      completedGroomingWeek: null,
-      checked: 0,
-      applied: 0,
-      skipped: 0,
-      results: [],
-    };
-  }
+type MissedGroomingDecayCandidateScan = {
+  candidates: MissedGroomingDecayCandidate[];
+  earliestPendingWeek: number | null;
+  latestPendingWeek: number | null;
+  pendingCandidateCount: number;
+};
 
+async function findMissedGroomingDecayCandidates(args: {
+  latestCompletedGroomingWeek: number;
+  candidateLimit?: number;
+  dogScanLimit: number;
+  client?: Pick<GroomingDecayRootClient, "dog">;
+}): Promise<MissedGroomingDecayCandidateScan> {
+  const client = args.client ?? db;
   const latestCompletedWeekEnd = getGroomingWeekEndEpochByIndex(
-    latestCompletedGroomingWeek
+    args.latestCompletedGroomingWeek
   );
-  const dogScanLimit = Math.min(limit * 5, 1000);
-  const dogs = await db.dog.findMany({
+  const dogs = await client.dog.findMany({
     where: {
       ownerKennelId: {
         not: null,
@@ -1515,7 +1569,7 @@ export async function applyMissedGroomingDecayForDueDogs(args: {
       },
     },
     orderBy: [{ birthEpoch: "asc" }, { regNumber: "asc" }],
-    take: dogScanLimit,
+    take: args.dogScanLimit,
     select: {
       id: true,
       birthEpoch: true,
@@ -1543,7 +1597,10 @@ export async function applyMissedGroomingDecayForDueDogs(args: {
       },
     },
   });
-  const candidates: Array<{ dogId: string; groomingWeek: number }> = [];
+  const candidates: MissedGroomingDecayCandidate[] = [];
+  let earliestPendingWeek: number | null = null;
+  let latestPendingWeek: number | null = null;
+  let pendingCandidateCount = 0;
 
   for (const dog of dogs) {
     const totalGroomingGain = dog.conditionEvents
@@ -1579,24 +1636,87 @@ export async function applyMissedGroomingDecayForDueDogs(args: {
 
     for (
       let groomingWeek = firstEligibleGroomingWeek;
-      groomingWeek <= latestCompletedGroomingWeek;
+      groomingWeek <= args.latestCompletedGroomingWeek;
       groomingWeek += 1
     ) {
       if (groomedWeeks.has(groomingWeek) || decayedWeeks.has(groomingWeek)) {
         continue;
       }
 
-      candidates.push({ dogId: dog.id, groomingWeek });
+      pendingCandidateCount += 1;
+      earliestPendingWeek =
+        earliestPendingWeek === null
+          ? groomingWeek
+          : Math.min(earliestPendingWeek, groomingWeek);
+      latestPendingWeek =
+        latestPendingWeek === null
+          ? groomingWeek
+          : Math.max(latestPendingWeek, groomingWeek);
 
-      if (candidates.length >= limit) {
+      if (
+        args.candidateLimit !== undefined &&
+        candidates.length < args.candidateLimit
+      ) {
+        candidates.push({ dogId: dog.id, groomingWeek });
+      }
+
+      if (
+        args.candidateLimit !== undefined &&
+        candidates.length >= args.candidateLimit
+      ) {
         break;
       }
     }
 
-    if (candidates.length >= limit) {
+    if (
+      args.candidateLimit !== undefined &&
+      candidates.length >= args.candidateLimit
+    ) {
       break;
     }
   }
+
+  return {
+    candidates,
+    earliestPendingWeek,
+    latestPendingWeek,
+    pendingCandidateCount,
+  };
+}
+
+export async function applyMissedGroomingDecayForDueDogs(args: {
+  currentEpoch: number;
+  limit?: number;
+  client?: GroomingDecayRootClient;
+}): Promise<GroomingDecayMaintenanceResultDto> {
+  const currentGroomingWeek = getGroomingWeekIndex(args.currentEpoch);
+  const latestCompletedGroomingWeek = currentGroomingWeek - 1;
+  const limit = Math.min(Math.max(args.limit ?? 100, 1), 500);
+  const client = args.client ?? db;
+
+  if (latestCompletedGroomingWeek < 0) {
+    return {
+      currentGroomingWeek,
+      completedGroomingWeek: null,
+      checked: 0,
+      applied: 0,
+      skipped: 0,
+      earliestPendingWeek: null,
+      latestPendingWeek: null,
+      pendingCandidateCount: 0,
+      hasMore: false,
+      caughtUp: true,
+      results: [],
+    };
+  }
+
+  const dogScanLimit = Math.min(limit * 5, 1000);
+  const { candidates } = await findMissedGroomingDecayCandidates({
+    latestCompletedGroomingWeek,
+    candidateLimit: limit,
+    dogScanLimit,
+    client,
+  });
   const results: MissedGroomingDecayResultDto[] = [];
 
   for (const candidate of candidates) {
@@ -1605,11 +1725,18 @@ export async function applyMissedGroomingDecayForDueDogs(args: {
         dogId: candidate.dogId,
         completedGroomingWeek: candidate.groomingWeek,
         currentEpoch: args.currentEpoch,
+        client,
       })
     );
   }
 
   const applied = results.filter((result) => result.applied).length;
+  const backlog = await findMissedGroomingDecayCandidates({
+    latestCompletedGroomingWeek,
+    dogScanLimit,
+    client,
+  });
+  const hasMore = backlog.pendingCandidateCount > 0;
 
   return {
     currentGroomingWeek,
@@ -1617,6 +1744,11 @@ export async function applyMissedGroomingDecayForDueDogs(args: {
     checked: results.length,
     applied,
     skipped: results.length - applied,
+    earliestPendingWeek: backlog.earliestPendingWeek,
+    latestPendingWeek: backlog.latestPendingWeek,
+    pendingCandidateCount: backlog.pendingCandidateCount,
+    hasMore,
+    caughtUp: !hasMore,
     results,
   };
 }

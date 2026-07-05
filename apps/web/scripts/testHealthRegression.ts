@@ -621,7 +621,7 @@ assertIncludes(
 );
 assertIncludes(
   groomingService,
-  "groomingWeek <= latestCompletedGroomingWeek",
+  "groomingWeek <= args.latestCompletedGroomingWeek",
   "grooming decay catches up through the latest completed week"
 );
 assertIncludes(
@@ -643,6 +643,26 @@ assertIncludes(
   groomingService,
   "netGroomingImpact <= 0",
   "grooming decay skips dogs without positive net grooming impact"
+);
+assertIncludes(
+  groomingService,
+  "earliestPendingWeek",
+  "grooming decay response reports the earliest pending backlog week"
+);
+assertIncludes(
+  groomingService,
+  "latestPendingWeek",
+  "grooming decay response reports the latest pending backlog week"
+);
+assertIncludes(
+  groomingService,
+  "pendingCandidateCount",
+  "grooming decay response reports the pending backlog candidate count"
+);
+assertIncludes(
+  groomingService,
+  "caughtUp: !hasMore",
+  "grooming decay response reports caught-up state from remaining backlog"
 );
 assertDoesNotIncludeAny(
   presentationEngine,
