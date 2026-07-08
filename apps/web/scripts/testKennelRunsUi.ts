@@ -32,6 +32,9 @@ function assertBefore(
 }
 
 const kennelPanel = source("apps/web/components/kennel/KennelDogsPanel.tsx");
+const kennelRunFiltering = source(
+  "apps/web/components/kennel/kennelDogFiltering.ts"
+);
 
 assertIncludes(
   kennelPanel,
@@ -40,13 +43,23 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  'url.searchParams.set("runId"',
-  "kennel roster requests dogs for a single selected run"
+  'fetch("/api/dogs/mine"',
+  "kennel roster loads one canonical full-roster dog collection"
+);
+assertIncludes(
+  kennelRunFiltering,
+  "filterDogsBySelectedRuns",
+  "kennel roster has a single run-membership filter"
 );
 assertIncludes(
   kennelPanel,
-  'url.searchParams.set("runIds"',
-  "kennel roster requests dogs for multiple selected runs"
+  "filterDogsBySelectedRuns(allDogs, runs, selectedRunIds)",
+  "run membership is derived from the full roster before display filters"
+);
+assertExcludes(
+  kennelPanel,
+  'url.searchParams.set("runId"',
+  "run selection does not launch a request that can race with another run"
 );
 assertIncludes(
   kennelPanel,
@@ -120,17 +133,17 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "const visibleIdSet = new Set(filteredDogIds);",
+  "const visibleIdSet = new Set(displayedDogIds);",
   "Select All Visible is based on currently filtered dog IDs"
 );
 assertIncludes(
   kennelPanel,
-  "Array.from(new Set([...current, ...filteredDogIds]))",
+  "Array.from(new Set([...current, ...displayedDogIds]))",
   "Select All Visible selects only filtered dog IDs"
 );
 assertIncludes(
   kennelPanel,
-  "current.filter((dogId) => filteredDogIds.includes(dogId))",
+  "current.filter((dogId) => displayedDogIds.includes(dogId))",
   "selection is pruned when filters or selected runs hide dogs"
 );
 assertIncludes(
@@ -175,7 +188,7 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "await loadDogs({ preserveLoadingState: true, runIds: selectedRunIds });",
+  "await loadDogs({ preserveLoadingState: true });",
   "successful movement refreshes the current dog view"
 );
 assertIncludes(

@@ -18,6 +18,7 @@
     "test:community-topic-admin-notice": "tsx scripts/testCommunityTopicAdminNotice.ts",
     "test:kennel-runs": "tsx scripts/testKennelRuns.ts",
     "test:kennel-runs-ui": "tsx scripts/testKennelRunsUi.ts",
+    "test:kennel-run-filtering": "tsx scripts/testKennelRunFiltering.ts",
     "test:global-header-logout": "tsx scripts/testGlobalHeaderLogout.ts",
     "test:breed-visibility": "tsx scripts/testBreedVisibility.ts",
     "test:start-up-guide": "tsx scripts/testStartUpGuide.ts",

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
+import { filterDogsBySelectedRuns } from "@/components/kennel/kennelDogFiltering";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
 import {
@@ -338,9 +339,10 @@ export default function KennelDogsPanel() {
   const [error, setError] = useState<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [dogs, setDogs] = useState<KennelDogDto[]>([]);
+  const [allDogs, setAllDogs] = useState<KennelDogDto[]>([]);
   const [runs, setRuns] = useState<KennelRunDto[]>([]);
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
+  const dogsRequestSequence = useRef(0);
   const [groomingSummary, setGroomingSummary] =
     useState<GroomingSummaryDto | null>(null);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
@@ -418,18 +420,6 @@ export default function KennelDogsPanel() {
     );
   }, [visibleColumns, visibleColumnsLoaded]);
 
-  function buildDogsUrl(runIds: string[]) {
-    const url = new URL("/api/dogs/mine", window.location.origin);
-
-    if (runIds.length === 1) {
-      url.searchParams.set("runId", runIds[0]);
-    } else if (runIds.length > 1) {
-      url.searchParams.set("runIds", runIds.join(","));
-    }
-
-    return `${url.pathname}${url.search}`;
-  }
-
   async function loadRuns() {
     setRunsLoading(true);
     setRunError(null);
@@ -476,38 +466,42 @@ export default function KennelDogsPanel() {
     }
   }
 
-  async function loadDogs(options?: {
-    preserveLoadingState?: boolean;
-    runIds?: string[];
-  }) {
+  async function loadDogs(options?: { preserveLoadingState?: boolean }) {
+    const requestSequence = ++dogsRequestSequence.current;
+
     if (!options?.preserveLoadingState) {
       setLoading(true);
     }
     setError(null);
 
     try {
-      const response = await fetch(
-        buildDogsUrl(options?.runIds ?? selectedRunIds),
-        {
-          method: "GET",
-          cache: "no-store",
-        }
-      );
+      const response = await fetch("/api/dogs/mine", {
+        method: "GET",
+        cache: "no-store",
+      });
 
       const data: KennelDogsResponse = await response.json();
+
+      if (requestSequence !== dogsRequestSequence.current) {
+        return;
+      }
 
       if (!response.ok || !data.ok) {
         throw new Error(data.error || "Failed to load kennel dogs.");
       }
 
-      setDogs(data.dogs ?? []);
+      setAllDogs(data.dogs ?? []);
       setGroomingSummary(data.groomingSummary ?? null);
     } catch (err) {
+      if (requestSequence !== dogsRequestSequence.current) {
+        return;
+      }
+
       setError(
         err instanceof Error ? err.message : "Failed to load kennel dogs."
       );
     } finally {
-      if (!options?.preserveLoadingState) {
+      if (requestSequence === dogsRequestSequence.current) {
         setLoading(false);
       }
     }
@@ -515,30 +509,8 @@ export default function KennelDogsPanel() {
 
   useEffect(() => {
     void loadRuns();
+    void loadDogs();
   }, []);
-
-  useEffect(() => {
-    if (runsLoading) {
-      return;
-    }
-
-    if (selectedRunIds.length === 0) {
-      setDogs([]);
-      setLoading(false);
-      return;
-    }
-
-    void loadDogs({ runIds: selectedRunIds });
-  }, [runsLoading, selectedRunIds]);
-
-  useEffect(() => {
-    setSelectedDogIds((current) =>
-      current.filter((dogId) => dogs.some((dog) => dog.dogId === dogId))
-    );
-    setConfirmingGroomingOfferDogId((current) =>
-      current && dogs.some((dog) => dog.dogId === current) ? current : null
-    );
-  }, [dogs]);
 
   useEffect(() => {
     if (selectedDogIds.length === 0) {
@@ -547,13 +519,18 @@ export default function KennelDogsPanel() {
     }
   }, [selectedDogIds.length]);
 
+  const runFilteredDogs = useMemo(
+    () => filterDogsBySelectedRuns(allDogs, runs, selectedRunIds),
+    [allDogs, runs, selectedRunIds]
+  );
+
   const breedOptions = useMemo(() => {
     const breedByCode = new Map<
       string,
       { code2: string; name: string; groupName: string | null }
     >();
 
-    for (const dog of dogs) {
+    for (const dog of runFilteredDogs) {
       breedByCode.set(dog.breedCode2, {
         code2: dog.breedCode2,
         name: dog.breedName,
@@ -562,10 +539,10 @@ export default function KennelDogsPanel() {
     }
 
     return [...breedByCode.values()];
-  }, [dogs]);
+  }, [runFilteredDogs]);
 
-  const filteredDogs = useMemo(() => {
-    const list = dogs.filter((dog) => {
+  const displayedDogs = useMemo(() => {
+    const list = runFilteredDogs.filter((dog) => {
       const breedMatch = breedFilter ? dog.breedCode2 === breedFilter : true;
       const sexMatch = sexFilter ? dog.sex === sexFilter : true;
 
@@ -610,7 +587,7 @@ export default function KennelDogsPanel() {
 
     return list;
   }, [
-    dogs,
+    runFilteredDogs,
     breedFilter,
     sexFilter,
     onlyBreedable,
@@ -621,15 +598,15 @@ export default function KennelDogsPanel() {
     sortDirection,
   ]);
 
-  const filteredDogIds = useMemo(
-    () => filteredDogs.map((dog) => dog.dogId),
-    [filteredDogs]
+  const displayedDogIds = useMemo(
+    () => displayedDogs.map((dog) => dog.dogId),
+    [displayedDogs]
   );
 
   const selectedDogs = useMemo(() => {
     const selected = new Set(selectedDogIds);
-    return dogs.filter((dog) => selected.has(dog.dogId));
-  }, [dogs, selectedDogIds]);
+    return allDogs.filter((dog) => selected.has(dog.dogId));
+  }, [allDogs, selectedDogIds]);
 
   const selectedDogsQuery = selectedDogIds.join(",");
   const selectedRuns = runs.filter((run) => selectedRunIds.includes(run.id));
@@ -664,12 +641,12 @@ export default function KennelDogsPanel() {
   const canApplyBulkAction =
     bulkAction === "show-entry" ||
     (bulkAction === "rehome" && canBulkRehome && !bulkActionLoading);
-  const selectedVisibleDogCount = filteredDogIds.filter((dogId) =>
+  const selectedVisibleDogCount = displayedDogIds.filter((dogId) =>
     selectedDogIds.includes(dogId)
   ).length;
   const allFilteredDogsSelected =
-    filteredDogIds.length > 0 &&
-    filteredDogIds.every((dogId) => selectedDogIds.includes(dogId));
+    displayedDogIds.length > 0 &&
+    displayedDogIds.every((dogId) => selectedDogIds.includes(dogId));
   const canMoveSelectedDogs =
     selectedDogIds.length > 0 && Boolean(selectedMoveRunId) && !moveDogsLoading;
   const canCreateRun = newRunName.trim().length > 0 && !creatingRun;
@@ -686,9 +663,12 @@ export default function KennelDogsPanel() {
 
   useEffect(() => {
     setSelectedDogIds((current) =>
-      current.filter((dogId) => filteredDogIds.includes(dogId))
+      current.filter((dogId) => displayedDogIds.includes(dogId))
     );
-  }, [filteredDogIds]);
+    setConfirmingGroomingOfferDogId((current) =>
+      current && displayedDogIds.includes(current) ? current : null
+    );
+  }, [displayedDogIds]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -710,7 +690,7 @@ export default function KennelDogsPanel() {
   }
 
   function toggleVisibleSelection() {
-    const visibleIdSet = new Set(filteredDogIds);
+    const visibleIdSet = new Set(displayedDogIds);
 
     if (allFilteredDogsSelected) {
       setConfirmingBulkAction(false);
@@ -722,7 +702,7 @@ export default function KennelDogsPanel() {
 
     setConfirmingBulkAction(false);
     setSelectedDogIds((current) =>
-      Array.from(new Set([...current, ...filteredDogIds]))
+      Array.from(new Set([...current, ...displayedDogIds]))
     );
   }
 
@@ -827,7 +807,7 @@ export default function KennelDogsPanel() {
       }
 
       await loadRuns();
-      await loadDogs({ preserveLoadingState: true, runIds: selectedRunIds });
+      await loadDogs({ preserveLoadingState: true });
       clearSelection();
       setMessage(
         `Moved ${data.movedCount ?? dogIdsToMove.length} dog${
@@ -870,7 +850,7 @@ export default function KennelDogsPanel() {
 
       await loadRuns();
       setSelectedRunIds([data.run.id]);
-      await loadDogs({ preserveLoadingState: true, runIds: [data.run.id] });
+      await loadDogs({ preserveLoadingState: true });
       clearSelection();
       setNewRunName("");
       setShowCreateRunForm(false);
@@ -966,10 +946,7 @@ export default function KennelDogsPanel() {
 
       await loadRuns();
       setSelectedRunIds(selectedAfterDelete);
-      await loadDogs({
-        preserveLoadingState: true,
-        runIds: selectedAfterDelete,
-      });
+      await loadDogs({ preserveLoadingState: true });
       clearSelection();
       setConfirmingDeleteRunId(null);
       setMessage(
@@ -1068,7 +1045,7 @@ export default function KennelDogsPanel() {
       }
 
       const rehomedIds = new Set(data.dogIds ?? selectedDogIds);
-      setDogs((current) =>
+      setAllDogs((current) =>
         current.filter((dog) => !rehomedIds.has(dog.dogId))
       );
       setSelectedDogIds([]);
@@ -1474,8 +1451,8 @@ export default function KennelDogsPanel() {
                 {viewingLabel}
               </div>
               <div className="theme-copy mt-1 text-sm">
-                {filteredDogs.length} visible dog
-                {filteredDogs.length === 1 ? "" : "s"}
+                {selectedVisibleDogCount} selected, {displayedDogs.length} visible dog
+                {displayedDogs.length === 1 ? "" : "s"}
               </div>
               {selectedRunSummary ? (
                 <div className="theme-copy mt-1 max-w-xl truncate text-xs">
@@ -1557,7 +1534,7 @@ export default function KennelDogsPanel() {
           </div>
           <div className="theme-copy mt-1 text-xs">
             {selectedDogIds.length} selected
-            {filteredDogs.length > 0
+            {displayedDogs.length > 0
               ? `, ${selectedVisibleDogCount} visible under current filters`
               : ""}
           </div>
@@ -1566,7 +1543,7 @@ export default function KennelDogsPanel() {
           <button
             type="button"
             onClick={toggleVisibleSelection}
-            disabled={filteredDogs.length === 0}
+            disabled={displayedDogs.length === 0}
             className="rounded-xl border border-purple-300/25 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-45"
           >
             {allFilteredDogsSelected ? "Deselect Visible" : "Select All Visible"}
@@ -1733,7 +1710,7 @@ export default function KennelDogsPanel() {
         </div>
       ) : null}
 
-      {loading ? (
+      {loading || runsLoading ? (
         <div className="theme-card theme-copy rounded-2xl px-4 py-6 text-sm">
           Loading kennel dogs...
         </div>
@@ -1741,9 +1718,9 @@ export default function KennelDogsPanel() {
         <div className="rounded-2xl border border-red-300/20 bg-red-500/10 px-4 py-6 text-sm text-red-100">
           {error}
         </div>
-      ) : filteredDogs.length === 0 ? (
+      ) : displayedDogs.length === 0 ? (
         <div className="theme-card theme-copy rounded-2xl px-4 py-6 text-sm">
-          {dogs.length === 0 && !filtersActive
+          {runFilteredDogs.length === 0 && !filtersActive
             ? "This run is empty."
             : "No dogs match the current filters."}
         </div>
@@ -1786,7 +1763,7 @@ export default function KennelDogsPanel() {
             </thead>
 
             <tbody>
-              {filteredDogs.map((dog) => {
+              {displayedDogs.map((dog) => {
                 const dogHref = `/dogs/${dog.dogId}`;
                 const groomingBusy = groomingActionDogId === dog.dogId;
                 const hasOpenGroomingListing = Boolean(
