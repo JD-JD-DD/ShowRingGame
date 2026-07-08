@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import {
   createSessionToken,
   decodeSessionToken,
@@ -63,6 +64,25 @@ export async function getSessionUserId(): Promise<string | null> {
   const userId = payload?.userId ?? null;
 
   if (userId) {
+    const account = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        moderationStatus: true,
+        kennel: {
+          select: { moderationStatus: true },
+        },
+      },
+    });
+
+    if (!account) return null;
+
+    if (
+      account.moderationStatus === "BANNED" ||
+      account.kennel?.moderationStatus === "CLOSED"
+    ) {
+      redirect("/account-closed");
+    }
+
     await touchUserLastActive(userId);
   }
 

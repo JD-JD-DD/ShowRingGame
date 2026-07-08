@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { createUserAccessAudit } from "@/lib/requestAudit";
+import { isIpBanned } from "@/lib/moderation";
+import { createUserAccessAudit, getClientIp } from "@/lib/requestAudit";
 import { createSession } from "@/lib/session";
 import { hashPassword, normalizeEmail } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    if (await isIpBanned(getClientIp(request))) {
+      return NextResponse.json(
+        { error: "Access from this network is not permitted." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const email = normalizeEmail(body.email ?? "");
     const password = String(body.password ?? "");

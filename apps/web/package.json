@@ -33,6 +33,11 @@
     "verify:duplicate-breed-migration": "tsx scripts/verifyDuplicateBreedMigration.ts",
     "password-reset-link": "tsx scripts/create-password-reset-link.ts",
     "audit:kennel-access": "tsx scripts/compareKennelAccessAudit.ts",
+    "moderation:close-kennel": "tsx scripts/closeKennel.ts",
+    "moderation:ban-user": "tsx scripts/banUser.ts",
+    "moderation:ban-ip": "tsx scripts/banIp.ts",
+    "moderation:reopen-kennel": "tsx scripts/reopenKennel.ts",
+    "moderation:unban-ip": "tsx scripts/unbanIp.ts",
     "admin:set": "tsx scripts/set-admin.ts"
   },
   "dependencies": {

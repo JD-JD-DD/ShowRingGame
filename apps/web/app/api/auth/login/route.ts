@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { createUserAccessAudit } from "@/lib/requestAudit";
+import { isIpBanned } from "@/lib/moderation";
+import { createUserAccessAudit, getClientIp } from "@/lib/requestAudit";
 import { createSession } from "@/lib/session";
 import { normalizeEmail, verifyPassword } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    if (await isIpBanned(getClientIp(request))) {
+      return NextResponse.json(
+        { error: "Access from this network is not permitted." },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const email = normalizeEmail(body.email ?? "");
     const password = String(body.password ?? "");
@@ -25,6 +33,7 @@ export async function POST(request: Request) {
             id: true,
             name: true,
             slug: true,
+            moderationStatus: true,
           },
         },
       },
@@ -48,6 +57,20 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Invalid email or password." },
         { status: 401 }
+      );
+    }
+
+    if (
+      user.moderationStatus === "BANNED" ||
+      user.kennel?.moderationStatus === "CLOSED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This account or kennel has been closed for a policy violation.",
+          nextPath: "/account-closed",
+        },
+        { status: 403 }
       );
     }
 
@@ -75,7 +98,13 @@ export async function POST(request: Request) {
         email: user.email,
         displayName: user.displayName,
       },
-      kennel: user.kennel,
+      kennel: user.kennel
+        ? {
+            id: user.kennel.id,
+            name: user.kennel.name,
+            slug: user.kennel.slug,
+          }
+        : null,
       nextPath: user.kennel ? "/kennel" : "/onboarding",
     });
   } catch (error) {

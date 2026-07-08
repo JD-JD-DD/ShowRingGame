@@ -226,16 +226,36 @@ enum ProducerMeritLevel {
   LEGACY
 }
 
+enum UserModerationStatus {
+  ACTIVE
+  BANNED
+}
+
+enum KennelModerationStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum ModerationTargetType {
+  USER
+  KENNEL
+  IP
+}
+
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  isAdmin      Boolean  @default(false)
-  passwordHash String
-  displayName  String?
-  lastLoginAt  DateTime?
-  lastActiveAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id               String               @id @default(cuid())
+  email            String               @unique
+  isAdmin          Boolean              @default(false)
+  passwordHash     String
+  displayName      String?
+  lastLoginAt      DateTime?
+  lastActiveAt     DateTime?
+  moderationStatus UserModerationStatus @default(ACTIVE)
+  moderationReason String?
+  moderatedAt      DateTime?
+  moderatedBy      String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   kennel              Kennel?
   passwordResetTokens PasswordResetToken[]
@@ -257,6 +277,32 @@ model UserAccessAudit {
   @@index([createdAt])
 }
 
+model AccessDenylist {
+  id        String   @id @default(cuid())
+  ipAddress String
+  reason    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  createdBy String?
+  expiresAt DateTime?
+
+  @@index([ipAddress])
+  @@index([isActive])
+}
+
+model ModerationAudit {
+  id             String               @id @default(cuid())
+  targetType     ModerationTargetType
+  targetId       String
+  action         String
+  reason         String?
+  moderatorLabel String?
+  createdAt      DateTime             @default(now())
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
 model PasswordResetToken {
   id        String    @id @default(cuid())
   userId    String
@@ -272,17 +318,21 @@ model PasswordResetToken {
 }
 
 model Kennel {
-  id              String   @id @default(cuid())
-  userId          String?  @unique
-  name            String   @unique
-  slug            String   @unique
-  isNpc           Boolean  @default(false)
-  homeDistrict    Int?
-  balance         Int      @default(0)
-  reputationScore Int      @default(0)
-  publicSlogan    String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String                 @id @default(cuid())
+  userId           String?                @unique
+  name             String                 @unique
+  slug             String                 @unique
+  isNpc            Boolean                @default(false)
+  homeDistrict     Int?
+  balance          Int                    @default(0)
+  reputationScore  Int                    @default(0)
+  publicSlogan     String?
+  moderationStatus KennelModerationStatus @default(ACTIVE)
+  moderationReason String?
+  moderatedAt      DateTime?
+  moderatedBy      String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
 
   user User? @relation(fields: [userId], references: [id])
 

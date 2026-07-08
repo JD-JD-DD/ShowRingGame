@@ -10,6 +10,7 @@ const ANONYMOUS_ROUTES = new Set([
   "/start-up-guide",
   "/login",
   "/signup",
+  "/account-closed",
   "/forgot-password",
   "/reset-password"
 ]);
