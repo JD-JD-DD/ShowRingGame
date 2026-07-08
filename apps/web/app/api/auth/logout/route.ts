@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clearSession } from "@/lib/session";
+import { db } from "@/lib/db";
+import { createUserAccessAudit } from "@/lib/requestAudit";
+import { clearSession, peekSessionUserId } from "@/lib/session";
 
 const LOGOUT_REDIRECT_PATH = "/login";
 
@@ -9,6 +11,23 @@ function wantsHtmlRedirect(request: NextRequest): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await peekSessionUserId();
+    const kennel = userId
+      ? await db.kennel.findUnique({
+          where: { userId },
+          select: { id: true },
+        })
+      : null;
+
+    if (userId) {
+      await createUserAccessAudit({
+        request,
+        userId,
+        kennelId: kennel?.id ?? null,
+        action: "LOGOUT",
+      });
+    }
+
     await clearSession();
 
     if (wantsHtmlRedirect(request)) {

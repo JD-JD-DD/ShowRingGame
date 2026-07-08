@@ -32,6 +32,7 @@
     "migrate:duplicate-breed-codes": "tsx scripts/migrateDuplicateBreedCodes.ts",
     "verify:duplicate-breed-migration": "tsx scripts/verifyDuplicateBreedMigration.ts",
     "password-reset-link": "tsx scripts/create-password-reset-link.ts",
+    "audit:kennel-access": "tsx scripts/compareKennelAccessAudit.ts",
     "admin:set": "tsx scripts/set-admin.ts"
   },
   "dependencies": {

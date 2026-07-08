@@ -241,6 +241,22 @@ model User {
   passwordResetTokens PasswordResetToken[]
 }
 
+model UserAccessAudit {
+  id        String   @id @default(cuid())
+  userId    String?
+  kennelId  String?
+  action    String
+  ipAddress String?
+  userAgent String?
+  path      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([kennelId])
+  @@index([ipAddress])
+  @@index([createdAt])
+}
+
 model PasswordResetToken {
   id        String    @id @default(cuid())
   userId    String

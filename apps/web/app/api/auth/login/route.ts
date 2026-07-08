@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { createUserAccessAudit } from "@/lib/requestAudit";
 import { createSession } from "@/lib/session";
 import { normalizeEmail, verifyPassword } from "@/lib/auth";
 
@@ -29,7 +30,21 @@ export async function POST(request: Request) {
       },
     });
 
-    if (!user || !verifyPassword(password, user.passwordHash)) {
+    if (!user) {
+      return NextResponse.json(
+        { error: "Invalid email or password." },
+        { status: 401 }
+      );
+    }
+
+    if (!verifyPassword(password, user.passwordHash)) {
+      await createUserAccessAudit({
+        request,
+        userId: user.id,
+        kennelId: user.kennel?.id ?? null,
+        action: "LOGIN_FAILED_EMAIL_FOUND",
+      });
+
       return NextResponse.json(
         { error: "Invalid email or password." },
         { status: 401 }
@@ -46,6 +61,12 @@ export async function POST(request: Request) {
       WHERE "id" = ${user.id}
     `;
     await createSession(user.id);
+    await createUserAccessAudit({
+      request,
+      userId: user.id,
+      kennelId: user.kennel?.id ?? null,
+      action: "LOGIN_SUCCESS",
+    });
 
     return NextResponse.json({
       ok: true,

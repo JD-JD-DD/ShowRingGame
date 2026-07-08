@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { createUserAccessAudit } from "@/lib/requestAudit";
 import { getSessionUserId } from "@/lib/session";
 import { ensureStarterKennelRuns } from "@/server/services/kennelRun.service";
 
@@ -142,47 +143,54 @@ export async function POST(request: Request) {
 
     const homeDistrict = await chooseHomeDistrict();
 
-const kennel = await db.$transaction(async (tx: KennelCreateTx) => {
-  const createdKennel = await tx.kennel.create({
-    data: {
+    const kennel = await db.$transaction(async (tx: KennelCreateTx) => {
+      const createdKennel = await tx.kennel.create({
+        data: {
+          userId,
+          name,
+          slug,
+          homeDistrict,
+          publicSlogan,
+          balance: STARTER_FUNDS,
+          reputationScore: 0,
+          isNpc: false,
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          homeDistrict: true,
+          publicSlogan: true,
+          balance: true,
+          reputationScore: true,
+        },
+      });
+
+      await tx.ledgerTransaction.create({
+        data: {
+          kennelId: createdKennel.id,
+          transactionType: "STARTER_FUNDS",
+          amount: STARTER_FUNDS,
+          balanceAfter: STARTER_FUNDS,
+          occurredAtEpoch: getCurrentEpoch(),
+          memo: "Starter funds for new kennel creation",
+        },
+      });
+
+      await ensureStarterKennelRuns({
+        kennelId: createdKennel.id,
+        client: tx,
+      });
+
+      return createdKennel;
+    });
+
+    await createUserAccessAudit({
+      request,
       userId,
-      name,
-      slug,
-      homeDistrict,
-      publicSlogan,
-      balance: STARTER_FUNDS,
-      reputationScore: 0,
-      isNpc: false,
-    },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      homeDistrict: true,
-      publicSlogan: true,
-      balance: true,
-      reputationScore: true,
-    },
-  });
-
-  await tx.ledgerTransaction.create({
-    data: {
-      kennelId: createdKennel.id,
-      transactionType: "STARTER_FUNDS",
-      amount: STARTER_FUNDS,
-      balanceAfter: STARTER_FUNDS,
-      occurredAtEpoch: getCurrentEpoch(),
-      memo: "Starter funds for new kennel creation",
-    },
-  });
-
-  await ensureStarterKennelRuns({
-    kennelId: createdKennel.id,
-    client: tx,
-  });
-
-  return createdKennel;
-});
+      kennelId: kennel.id,
+      action: "KENNEL_CREATE_SUCCESS",
+    });
 
     return NextResponse.json({
       ok: true,

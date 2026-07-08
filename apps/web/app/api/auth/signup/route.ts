@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { createUserAccessAudit } from "@/lib/requestAudit";
 import { createSession } from "@/lib/session";
 import { hashPassword, normalizeEmail } from "@/lib/auth";
 
@@ -51,6 +52,11 @@ export async function POST(request: Request) {
     });
 
     await createSession(user.id);
+    await createUserAccessAudit({
+      request,
+      userId: user.id,
+      action: "SIGNUP_SUCCESS",
+    });
 
     return NextResponse.json({
       ok: true,
