@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { createUserAccessAudit } from "@/lib/requestAudit";
 import { getSessionUserId } from "@/lib/session";
 import {
   createBulletinThread,
@@ -38,6 +39,13 @@ export async function POST(request: Request) {
       title,
       body,
       currentEpoch: getCurrentEpoch(),
+    });
+
+    await createUserAccessAudit({
+      request,
+      userId,
+      kennelId: kennel.id,
+      action: "COMMUNITY_TOPIC_CREATE_SUCCESS",
     });
 
     return NextResponse.redirect(

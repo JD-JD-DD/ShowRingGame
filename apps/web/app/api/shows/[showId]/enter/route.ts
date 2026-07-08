@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { createUserAccessAudit } from "@/lib/requestAudit";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import {
@@ -102,6 +103,13 @@ export async function POST(
       breedCode2,
       selections,
       currentEpoch,
+    });
+
+    await createUserAccessAudit({
+      request,
+      userId,
+      kennelId: kennel.id,
+      action: "SHOW_ENTRY_SUCCESS",
     });
 
     return redirectWithEntryMessage(
