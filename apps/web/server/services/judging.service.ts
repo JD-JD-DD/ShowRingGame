@@ -2067,15 +2067,18 @@ export async function finalizeReadyShowDayResults(args: {
 export async function closeReadyEmptyShowDays(args: {
   currentEpoch: number;
   batchSize?: number;
+  statuses?: ShowDayStatus[];
 }): Promise<{
   closedShowDayIds: string[];
 }> {
   const showDays = await db.showDay.findMany({
     where: {
       scheduledEpoch: { lte: args.currentEpoch },
-      status: {
-        notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
-      },
+      status: args.statuses
+        ? { in: args.statuses }
+        : {
+            notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
+          },
       showEntries: {
         none: {
           entryStatus: {
