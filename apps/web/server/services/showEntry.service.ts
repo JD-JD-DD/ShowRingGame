@@ -29,6 +29,7 @@ import {
   getShowDistrictRegionName,
   getShowWeekendKey,
   getShowWeekendStartEpoch,
+  type DogStatus,
 } from "@showring/rules";
 import { Prisma } from "@prisma/client";
 
@@ -153,6 +154,39 @@ export type ShowEntryEligibilityResult = {
   reason?: string;
 };
 
+export type ShowDayEntryEligibilityDog = {
+  ownerKennelId: string | null;
+  lifecycleState: DogStatus;
+  marketState: string;
+  breedCode2: string;
+  birthEpoch: number;
+  breedingAttemptsAsDam: Array<{
+    status: string;
+    whelpedEpoch: number | null;
+  }>;
+};
+
+export type ShowDayEntryEligibilityCluster = {
+  id?: string | null;
+  year?: number | null;
+  entryOpenEpoch: number;
+  entryCloseEpoch: number;
+  status: string;
+};
+
+export type ShowDayEntryEligibilityShowDay = {
+  status: string;
+  scheduledEpoch: number;
+};
+
+export type ShowDayEntryEligibilityArgs = {
+  dog: ShowDayEntryEligibilityDog;
+  cluster: ShowDayEntryEligibilityCluster;
+  showDay: ShowDayEntryEligibilityShowDay;
+  breedCode2: string;
+  currentEpoch: number;
+};
+
 export type CreatedShowEntryDto = {
   showEntryId: string;
   showDayId: string;
@@ -263,7 +297,7 @@ function getConditioningSnapshot(dog: DogForEntry): number {
   return Math.round((dog.ringObedience + dog.muscleTone + dog.coatCondition) / 3);
 }
 
-function getShowReproState(dog: DogForEntry) {
+function getShowReproState(dog: ShowDayEntryEligibilityDog) {
   const latestWhelp = dog.breedingAttemptsAsDam.find(
     (attempt) => attempt.status === "WHELPED" && attempt.whelpedEpoch != null
   );
@@ -277,7 +311,7 @@ function getShowReproState(dog: DogForEntry) {
 }
 
 function getShowReproEligibilityReason(
-  dog: DogForEntry,
+  dog: ShowDayEntryEligibilityDog,
   showEpoch: number
 ): string | null {
   const repro = getShowReproState(dog);
@@ -462,22 +496,9 @@ export async function getShowWeekendEntryPlanStatus(args: {
   });
 }
 
-function getShowDayEntryEligibilityReason(args: {
-  dog: DogForEntry;
-  cluster: {
-    id?: string | null;
-    year?: number | null;
-    entryOpenEpoch: number;
-    entryCloseEpoch: number;
-    status: string;
-  };
-  showDay: {
-    status: string;
-    scheduledEpoch: number;
-  };
-  breedCode2: string;
-  currentEpoch: number;
-}): string | null {
+export function getShowDayEntryEligibilityReason(
+  args: ShowDayEntryEligibilityArgs
+): string | null {
   const { dog, cluster, showDay, breedCode2, currentEpoch } = args;
   const dayAvailability = getShowDayEntryAvailability({
     cluster,
@@ -523,6 +544,18 @@ function getShowDayEntryEligibilityReason(args: {
   }
 
   return null;
+}
+
+export function canEnterShowDay(
+  args: ShowDayEntryEligibilityArgs
+): ShowEntryEligibilityResult {
+  const reason = getShowDayEntryEligibilityReason(args);
+
+  if (reason) {
+    return { ok: false, reason };
+  }
+
+  return { ok: true };
 }
 
 function uniqueSelections(
