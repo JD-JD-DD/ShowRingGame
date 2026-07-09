@@ -421,21 +421,20 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   />
                 ) : null}
 
-                <button
-                  type="button"
-                  disabled
-                  className="dog-secondary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold opacity-60"
+                <DogProfileKennelRunMove
+                  dogId={header.dogId}
+                  currentRunId={profile.currentRun?.runId ?? null}
+                  currentRunName={profile.currentRun?.name ?? null}
+                  canMove={canMoveKennelRun}
                 >
-                  Move Run
-                </button>
-
-                {actions.canRehome && actions.rehomePayout !== null ? (
-                  <RehomeDogForm
-                    action={`/api/dogs/${header.dogId}/rehome`}
-                    dogName={header.displayName}
-                    payout={actions.rehomePayout}
-                  />
-                ) : null}
+                  {actions.canRehome && actions.rehomePayout !== null ? (
+                    <RehomeDogForm
+                      action={`/api/dogs/${header.dogId}/rehome`}
+                      dogName={header.displayName}
+                      payout={actions.rehomePayout}
+                    />
+                  ) : null}
+                </DogProfileKennelRunMove>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -478,14 +477,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 ) : null}
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <DogProfileKennelRunMove
-                  dogId={header.dogId}
-                  currentRunId={profile.currentRun?.runId ?? null}
-                  currentRunName={profile.currentRun?.name ?? null}
-                  canMove={canMoveKennelRun}
-                />
-              </div>
             </div>
 
           </div>
