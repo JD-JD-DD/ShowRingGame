@@ -147,6 +147,11 @@ export async function runPublishShowResultsJob(args: {
   finalizeBatchSize: number;
   currentEpoch?: number;
   trigger: "GITHUB_ACTIONS" | "VERCEL_CRON" | "MANUAL" | string;
+  runBlocks?: boolean;
+  runFinalizers?: boolean;
+  runEmptyClosures?: boolean;
+  runInvitationals?: boolean;
+  maxRuntimeMs?: number;
 }) {
   const jobStartedAtMs = Date.now();
   const jobStartedAtIso = new Date(jobStartedAtMs).toISOString();
@@ -164,6 +169,14 @@ export async function runPublishShowResultsJob(args: {
         (phaseDurationsMs[phaseName] ?? 0) + Date.now() - startedAtMs;
     }
   };
+  const runBlocks = args.runBlocks ?? true;
+  const runFinalizers = args.runFinalizers ?? true;
+  const runEmptyClosures = args.runEmptyClosures ?? true;
+  const runInvitationals = args.runInvitationals ?? true;
+  const maxRuntimeMs = args.maxRuntimeMs;
+  let stoppedForRuntimeBudget = false;
+  const isRuntimeBudgetSpent = () =>
+    maxRuntimeMs !== undefined && Date.now() - jobStartedAtMs >= maxRuntimeMs;
 
   try {
     await runPhase("dbPreflight", ensureDatabaseReachable);
@@ -174,10 +187,11 @@ export async function runPublishShowResultsJob(args: {
   const currentEpoch = args.currentEpoch ?? getCurrentEpoch();
   const currentTimeIso = new Date().toISOString();
   const { blockBatchSize, finalizeBatchSize, trigger } = args;
-  const invitationalsBeforeJudging = await runPhase(
-    "ensureDueAnnualInvitationalShows",
-    () => ensureDueAnnualInvitationalShows({ currentEpoch })
-  );
+  const invitationalsBeforeJudging = runInvitationals
+    ? await runPhase("ensureDueAnnualInvitationalShows", () =>
+        ensureDueAnnualInvitationalShows({ currentEpoch })
+      )
+    : { results: [] };
   const readyBlockWhere = Prisma.validator<Prisma.ShowJudgingBlockWhereInput>()({
     startEpoch: { lte: currentEpoch },
     status: { notIn: ["RESULTS_PUBLISHED", "CANCELLED"] },
@@ -192,35 +206,39 @@ export async function runPublishShowResultsJob(args: {
       },
     },
   });
-  const dueBlockBacklogCount = await runPhase("countReadyBlocks", () =>
-    db.showJudgingBlock.count({
-      where: readyBlockWhere,
-    })
-  );
-  const readyBlocks = await runPhase("findReadyBlocks", () =>
-    db.showJudgingBlock.findMany({
-      where: readyBlockWhere,
-      orderBy: [
-        { showDay: { scheduledEpoch: "asc" } },
-        { showDay: { dayIndex: "asc" } },
-        { startEpoch: "asc" },
-        { ringNumber: "asc" },
-        { blockOrder: "asc" },
-      ],
-      select: {
-        id: true,
-        showDayId: true,
-        breedCode2: true,
-        showDay: {
+  const dueBlockBacklogCount = runBlocks
+    ? await runPhase("countReadyBlocks", () =>
+        db.showJudgingBlock.count({
+          where: readyBlockWhere,
+        })
+      )
+    : 0;
+  const readyBlocks = runBlocks
+    ? await runPhase("findReadyBlocks", () =>
+        db.showJudgingBlock.findMany({
+          where: readyBlockWhere,
+          orderBy: [
+            { showDay: { scheduledEpoch: "asc" } },
+            { showDay: { dayIndex: "asc" } },
+            { startEpoch: "asc" },
+            { ringNumber: "asc" },
+            { blockOrder: "asc" },
+          ],
           select: {
-            clusterId: true,
-            dayIndex: true,
+            id: true,
+            showDayId: true,
+            breedCode2: true,
+            showDay: {
+              select: {
+                clusterId: true,
+                dayIndex: true,
+              },
+            },
           },
-        },
-      },
-      take: blockBatchSize,
-    })
-  );
+          take: blockBatchSize,
+        })
+      )
+    : [];
   const earliestReadyShowDayId = readyBlocks[0]?.showDayId;
   const selectedBlocks = earliestReadyShowDayId
     ? readyBlocks.filter((block) => block.showDayId === earliestReadyShowDayId)
@@ -239,24 +257,37 @@ export async function runPublishShowResultsJob(args: {
     currentEpoch,
     currentTimeIso,
     jobStartedAtIso,
+    phase: runBlocks && runFinalizers ? "combined" : runBlocks ? "blocks" : "finalizers",
     blockBatchSize,
     finalizeBatchSize,
+    runBlocks,
+    runFinalizers,
+    runEmptyClosures,
+    runInvitationals,
+    maxRuntimeMs,
     dueBlockBacklogCount,
     dueBlocksLoaded: readyBlocks.length,
     selectedShowDayIds,
     selectedJudgingBlockIds,
   });
 
-  const emptyClosed = await runPhase("closeReadyEmptyShowDays", () =>
-    closeReadyEmptyShowDays({
-      currentEpoch,
-      batchSize: finalizeBatchSize,
-    })
-  );
+  const emptyClosed = runEmptyClosures
+    ? await runPhase("closeReadyEmptyShowDays", () =>
+        closeReadyEmptyShowDays({
+          currentEpoch,
+          batchSize: finalizeBatchSize,
+        })
+      )
+    : { closedShowDayIds: [] };
 
   // Keep each run within one show day. This lets Group and BIS finals update
   // championship titles before any later-day breed blocks are judged.
   for (const block of selectedBlocks) {
+    if (isRuntimeBudgetSpent()) {
+      stoppedForRuntimeBudget = true;
+      break;
+    }
+
     const blockStartedAtMs = Date.now();
 
     try {
@@ -375,23 +406,27 @@ export async function runPublishShowResultsJob(args: {
       },
     ],
   });
-  const readyFinalizerBacklogCount = await runPhase("countReadyFinalizers", () =>
-    db.showDay.count({
-      where: readyFinalizerWhere,
-    })
-  );
-  const readyToFinalize = await runPhase("findReadyFinalizers", () =>
-    db.showDay.findMany({
-      where: readyFinalizerWhere,
-      orderBy: [{ scheduledEpoch: "asc" }, { dayIndex: "asc" }],
-      select: {
-        id: true,
-        clusterId: true,
-        dayIndex: true,
-      },
-      take: finalizeBatchSize,
-    })
-  );
+  const readyFinalizerBacklogCount = runFinalizers
+    ? await runPhase("countReadyFinalizers", () =>
+        db.showDay.count({
+          where: readyFinalizerWhere,
+        })
+      )
+    : 0;
+  const readyToFinalize = runFinalizers
+    ? await runPhase("findReadyFinalizers", () =>
+        db.showDay.findMany({
+          where: readyFinalizerWhere,
+          orderBy: [{ scheduledEpoch: "asc" }, { dayIndex: "asc" }],
+          select: {
+            id: true,
+            clusterId: true,
+            dayIndex: true,
+          },
+          take: finalizeBatchSize,
+        })
+      )
+    : [];
 
   console.info("publish-show-results selected finalizers", {
     trigger,
@@ -400,6 +435,11 @@ export async function runPublishShowResultsJob(args: {
   });
 
   for (const showDay of readyToFinalize) {
+    if (isRuntimeBudgetSpent()) {
+      stoppedForRuntimeBudget = true;
+      break;
+    }
+
     touchedShowDayIds.add(showDay.id);
     const finalizerStartedAtMs = Date.now();
 
@@ -460,19 +500,21 @@ export async function runPublishShowResultsJob(args: {
     }
   }
 
-  const invitationalsAfterFinalization = await runPhase(
-    "ensureDueAnnualInvitationalShows",
-    () => ensureDueAnnualInvitationalShows({ currentEpoch })
-  );
+  const invitationalsAfterFinalization = runInvitationals
+    ? await runPhase("ensureDueAnnualInvitationalShows", () =>
+        ensureDueAnnualInvitationalShows({ currentEpoch })
+      )
+    : { results: [] };
   const invitationalResults = [
     ...invitationalsBeforeJudging.results,
     ...invitationalsAfterFinalization.results,
   ];
-  const invitational =
-    invitationalResults.at(-1) ??
-    (await runPhase("ensureAnnualInvitationalShow", () =>
-      ensureAnnualInvitationalShow({ currentEpoch })
-    ));
+  const invitational = runInvitationals
+    ? invitationalResults.at(-1) ??
+      (await runPhase("ensureAnnualInvitationalShow", () =>
+        ensureAnnualInvitationalShow({ currentEpoch })
+      ))
+    : null;
   const jobDurationMs = Date.now() - jobStartedAtMs;
   const blockFailureCount = errors.filter((error) => "judgingBlockId" in error)
     .length;
@@ -514,6 +556,7 @@ export async function runPublishShowResultsJob(args: {
   );
   const summary = {
     trigger,
+    phase: runBlocks && runFinalizers ? "combined" : runBlocks ? "blocks" : "finalizers",
     currentEpoch,
     currentTimeIso,
     jobStartedAtIso,
@@ -542,6 +585,8 @@ export async function runPublishShowResultsJob(args: {
     finalized: finalized.length,
     finalizedShowDays: finalized.length,
     failedCount: errors.length,
+    stoppedForRuntimeBudget,
+    maxRuntimeMs: maxRuntimeMs ?? null,
     grandChampionExecuted: grandChampionExecutedCount,
     grandChampionSkipped: grandChampionSkippedCount,
     grandChampionCreditsProcessed,
@@ -560,6 +605,7 @@ export async function runPublishShowResultsJob(args: {
   };
   const payload = {
     trigger,
+    phase: runBlocks && runFinalizers ? "combined" : runBlocks ? "blocks" : "finalizers",
     currentEpoch,
     currentTimeIso,
     jobStartedAtIso,

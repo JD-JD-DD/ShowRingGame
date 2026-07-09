@@ -1,8 +1,12 @@
 {
   "crons": [
     {
-      "path": "/api/cron/judge-due-shows",
-      "schedule": "*/30 * * * *"
+      "path": "/api/cron/judge-show-blocks",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/finalize-show-results",
+      "schedule": "*/2 * * * *"
     }
   ]
 }
