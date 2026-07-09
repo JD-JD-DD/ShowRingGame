@@ -330,7 +330,7 @@ function getShowReproEligibilityReason(
   return null;
 }
 
-function getSameWeekendClusterWhere(
+export function getSameWeekendClusterWhere(
   cluster: WeekendCluster
 ): Prisma.ShowClusterWhereInput {
   const generatedPrefix = getGeneratedShowWeekendPrefix(cluster.id);
