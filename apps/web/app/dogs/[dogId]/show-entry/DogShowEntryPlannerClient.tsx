@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 
 import type {
@@ -69,6 +70,38 @@ function StatusBadge({
 
 function selectionKey(clusterId: string, showDayId: string): string {
   return `${clusterId}:${showDayId}`;
+}
+
+function formatWeekendLabel(weekendKey: string): string {
+  const match = weekendKey.match(/^year-(\d+)-week-(\d+)$/);
+
+  if (!match) {
+    return weekendKey;
+  }
+
+  return `Year ${match[1]}, Week ${match[2]}`;
+}
+
+function getWeekendGroups(
+  clusters: DogShowEntryPlannerClusterDto[]
+): Array<{
+  weekendKey: string;
+  weekendLabel: string;
+  clusters: DogShowEntryPlannerClusterDto[];
+}> {
+  const groups = new Map<string, DogShowEntryPlannerClusterDto[]>();
+
+  for (const cluster of clusters) {
+    const groupClusters = groups.get(cluster.weekendKey) ?? [];
+    groupClusters.push(cluster);
+    groups.set(cluster.weekendKey, groupClusters);
+  }
+
+  return [...groups.entries()].map(([weekendKey, groupClusters]) => ({
+    weekendKey,
+    weekendLabel: formatWeekendLabel(weekendKey),
+    clusters: groupClusters,
+  }));
 }
 
 function getSelectedDayCount(
@@ -144,14 +177,20 @@ function DaySelector({
   clusterId,
   day,
   checked,
+  locallyDisabled,
+  localDisabledReason,
   onToggle,
 }: {
   clusterId: string;
   day: DogShowEntryPlannerDayDto;
   checked: boolean;
+  locallyDisabled: boolean;
+  localDisabledReason: string | null;
   onToggle: (key: string, checked: boolean) => void;
 }) {
-  const tone = day.canSelect
+  const canSelect = day.canSelect && !locallyDisabled;
+  const disabledReason = day.disabledReason ?? localDisabledReason;
+  const tone = canSelect
     ? "green"
     : day.alreadyEntered
       ? "sky"
@@ -163,7 +202,7 @@ function DaySelector({
   return (
     <label
       className={`block rounded-xl border px-3 py-3 ${
-        day.canSelect
+        canSelect
           ? checked
             ? "border-emerald-200/60 bg-emerald-500/20"
             : "border-emerald-300/30 bg-emerald-500/10"
@@ -175,7 +214,7 @@ function DaySelector({
           <input
             type="checkbox"
             checked={checked}
-            disabled={!day.canSelect}
+            disabled={!canSelect}
             onChange={(event) => onToggle(key, event.target.checked)}
             className="mt-1 h-5 w-5 accent-emerald-500 disabled:cursor-not-allowed disabled:opacity-30"
             aria-label={`Select day ${day.dayIndex}`}
@@ -191,16 +230,16 @@ function DaySelector({
           </div>
         </div>
         <StatusBadge tone={tone}>
-          {day.canSelect
+          {canSelect
             ? "Selectable"
             : day.alreadyEntered
               ? "Entered"
               : "Unavailable"}
         </StatusBadge>
       </div>
-      {day.disabledReason ? (
+      {disabledReason ? (
         <div className="mt-2 text-xs font-medium text-[var(--dog-copy)]">
-          {day.disabledReason}
+          {disabledReason}
         </div>
       ) : null}
       {day.sameWeekendConflict ? (
@@ -215,19 +254,26 @@ function DaySelector({
 function ShowClusterCard({
   cluster,
   selected,
+  disabledByWeekendSelection,
   onToggle,
 }: {
   cluster: DogShowEntryPlannerClusterDto;
   selected: Set<string>;
+  disabledByWeekendSelection: boolean;
   onToggle: (key: string, checked: boolean) => void;
 }) {
   const selectedDayCount = getSelectedDayCount(cluster, selected);
   const hasSelection = selectedDayCount > 0;
+  const localDisabledReason = disabledByWeekendSelection
+    ? "This dog already has selected entries in another show for this weekend."
+    : null;
 
   return (
     <article
       className={`theme-card rounded-2xl p-4 ${
-        cluster.hasSelectableDays ? "" : "opacity-80"
+        cluster.hasSelectableDays && !disabledByWeekendSelection
+          ? ""
+          : "opacity-80"
       }`}
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -264,6 +310,8 @@ function ShowClusterCard({
           className={`mt-3 rounded-xl border px-3 py-2 text-sm ${
             hasSelection
               ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
+              : disabledByWeekendSelection
+                ? "border-sky-300/15 bg-sky-500/5 text-sky-100/70"
               : "border-sky-300/25 bg-sky-500/10 text-sky-100"
           }`}
         >
@@ -277,6 +325,12 @@ function ShowClusterCard({
         </div>
       ) : null}
 
+      {localDisabledReason ? (
+        <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+          {localDisabledReason}
+        </div>
+      ) : null}
+
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {cluster.days.map((day) => {
           const key = selectionKey(cluster.showId, day.showDayId);
@@ -287,6 +341,8 @@ function ShowClusterCard({
               clusterId={cluster.showId}
               day={day}
               checked={selected.has(key)}
+              locallyDisabled={disabledByWeekendSelection}
+              localDisabledReason={localDisabledReason}
               onToggle={onToggle}
             />
           );
@@ -304,6 +360,21 @@ function ShowClusterCard({
       </div>
     </article>
   );
+}
+
+function getSelectedClusterIdByWeekend(
+  clusters: DogShowEntryPlannerClusterDto[],
+  selected: Set<string>
+): Map<string, string> {
+  const selectedClusterIdByWeekend = new Map<string, string>();
+
+  for (const cluster of clusters) {
+    if (getSelectedDayCount(cluster, selected) > 0) {
+      selectedClusterIdByWeekend.set(cluster.weekendKey, cluster.showId);
+    }
+  }
+
+  return selectedClusterIdByWeekend;
 }
 
 function getSelectedSummary(args: {
@@ -336,13 +407,58 @@ function getSelectedSummary(args: {
   };
 }
 
+function getSelectedShowDayIds(args: {
+  clusters: DogShowEntryPlannerClusterDto[];
+  selected: Set<string>;
+}): string[] {
+  const showDayIds: string[] = [];
+
+  for (const cluster of args.clusters) {
+    for (const day of cluster.days) {
+      if (args.selected.has(selectionKey(cluster.showId, day.showDayId))) {
+        showDayIds.push(day.showDayId);
+      }
+    }
+  }
+
+  return showDayIds;
+}
+
+type SubmitResponse = {
+  ok: boolean;
+  message?: string;
+  error?: string;
+  enteredDayCount?: number;
+  enteredClusterCount?: number;
+  totalCost?: number;
+  partialSuccess?: boolean;
+  failed?: Array<{
+    showClusterId: string;
+    showClusterName: string;
+    reason: string;
+  }>;
+};
+
 export function DogShowEntryPlannerClient({
   planner,
 }: {
   planner: DogShowEntryPlannerDto;
 }) {
+  const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
-  const [message, setMessage] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{
+    tone: "success" | "error" | "info";
+    message: string;
+  } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const weekendGroups = useMemo(
+    () => getWeekendGroups(planner.clusters),
+    [planner.clusters]
+  );
+  const selectedClusterIdByWeekend = useMemo(
+    () => getSelectedClusterIdByWeekend(planner.clusters, selected),
+    [planner.clusters, selected]
+  );
   const summary = useMemo(
     () => getSelectedSummary({ clusters: planner.clusters, selected }),
     [planner.clusters, selected]
@@ -360,7 +476,63 @@ export function DogShowEntryPlannerClient({
 
       return next;
     });
-    setMessage(null);
+    setFeedback(null);
+  }
+
+  async function handleSubmit() {
+    if (summary.selectedDayCount === 0 || isSubmitting) {
+      return;
+    }
+
+    const showDayIds = getSelectedShowDayIds({
+      clusters: planner.clusters,
+      selected,
+    });
+
+    setIsSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const response = await fetch(
+        `/api/dogs/${planner.dog.dogId}/show-entry`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ showDayIds }),
+        }
+      );
+      const data = (await response.json().catch(() => ({}))) as SubmitResponse;
+
+      if (!response.ok || !data.ok) {
+        const failedReason = data.failed?.[0]?.reason;
+        throw new Error(
+          failedReason || data.error || "Unable to submit selected show entries."
+        );
+      }
+
+      setSelected(new Set());
+      setFeedback({
+        tone: "success",
+        message:
+          data.message ??
+          `Entered ${data.enteredDayCount ?? showDayIds.length} show day${
+            (data.enteredDayCount ?? showDayIds.length) === 1 ? "" : "s"
+          }. Total cost: ${formatMoney(data.totalCost ?? 0)}.`,
+      });
+      router.refresh();
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to submit selected show entries.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -375,7 +547,8 @@ export function DogShowEntryPlannerClient({
           </h2>
           <p className="theme-copy mt-2 max-w-2xl text-sm leading-6">
             Select eligible show days to preview the estimated entry cost.
-            Submission is not wired yet.
+            Choose one show per weekend for this dog. You may select multiple
+            eligible days within that show.
           </p>
         </div>
         <div className="theme-neutral-badge rounded-full px-3 py-1 text-sm">
@@ -408,13 +581,11 @@ export function DogShowEntryPlannerClient({
               </div>
               <button
                 type="button"
-                disabled={summary.selectedDayCount === 0}
-                onClick={() =>
-                  setMessage("Entry submission will be enabled in the next step.")
-                }
+                disabled={summary.selectedDayCount === 0 || isSubmitting}
+                onClick={handleSubmit}
                 className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-[color:var(--dog-card)] disabled:text-[color:var(--dog-copy)]"
               >
-                Enter Selected Shows
+                {isSubmitting ? "Entering..." : "Enter Selected Shows"}
               </button>
             </div>
             <div className="theme-copy mt-3 text-xs leading-5">
@@ -423,21 +594,57 @@ export function DogShowEntryPlannerClient({
               once per selected show when present. Final travel and primary-show
               charges will be confirmed before entry.
             </div>
-            {message ? (
-              <div className="mt-3 rounded-xl border border-sky-300/25 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
-                {message}
+            {feedback ? (
+              <div
+                className={`mt-3 rounded-xl border px-3 py-2 text-sm ${
+                  feedback.tone === "success"
+                    ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100"
+                    : feedback.tone === "error"
+                      ? "border-red-300/25 bg-red-500/10 text-red-100"
+                      : "border-sky-300/25 bg-sky-500/10 text-sky-100"
+                }`}
+              >
+                {feedback.message}
               </div>
             ) : null}
           </div>
 
-          <div className="mt-6 grid gap-4">
-            {planner.clusters.map((cluster) => (
-              <ShowClusterCard
-                key={cluster.showId}
-                cluster={cluster}
-                selected={selected}
-                onToggle={handleToggle}
-              />
+          <div className="mt-6 grid gap-5">
+            {weekendGroups.map((group) => (
+              <section
+                key={group.weekendKey}
+                className="rounded-2xl border border-[var(--dog-border)] bg-black/10 p-3"
+              >
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="theme-heading text-lg font-semibold">
+                    {group.weekendLabel}
+                  </h3>
+                  <div className="theme-copy text-xs">
+                    {group.clusters.length} open show
+                    {group.clusters.length === 1 ? "" : "s"}
+                  </div>
+                </div>
+                <div className="grid gap-4">
+                  {group.clusters.map((cluster) => {
+                    const selectedClusterId = selectedClusterIdByWeekend.get(
+                      cluster.weekendKey
+                    );
+                    const disabledByWeekendSelection = Boolean(
+                      selectedClusterId && selectedClusterId !== cluster.showId
+                    );
+
+                    return (
+                      <ShowClusterCard
+                        key={cluster.showId}
+                        cluster={cluster}
+                        selected={selected}
+                        disabledByWeekendSelection={disabledByWeekendSelection}
+                        onToggle={handleToggle}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
             ))}
           </div>
         </>
