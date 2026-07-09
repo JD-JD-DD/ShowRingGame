@@ -190,6 +190,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const { header, actions, viewerContext } = profile;
   const canMoveKennelRun =
     viewerContext.isOwnedByCurrentKennel && header.lifecycleState === "ALIVE";
+  const canEnterShow =
+    viewerContext.isOwnedByCurrentKennel &&
+    header.lifecycleState === "ALIVE" &&
+    profile.snapshot.canShow;
   const saleListing = profile.breedingAndProduction.activeSaleListing;
   const studListing = profile.breedingAndProduction.activeStudListing;
   const grooming = profile.groomingDetails;
@@ -314,21 +318,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             </div>
 
             <div className="flex flex-col gap-4 lg:justify-self-end">
-              <Link
-                href="/kennel"
-                className="dog-secondary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold sm:self-start lg:self-end"
-              >
-                Back to My Kennel
-              </Link>
-
               <div className="grid gap-3 sm:grid-cols-2">
-                <DogProfileKennelRunMove
-                  dogId={header.dogId}
-                  currentRunId={profile.currentRun?.runId ?? null}
-                  currentRunName={profile.currentRun?.name ?? null}
-                  canMove={canMoveKennelRun}
-                />
-
                 {actions.canBreed ? (
                   <Link
                     href={`/breed?dogId=${header.dogId}`}
@@ -342,58 +332,18 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </div>
                 )}
 
-                {actions.canBuyActiveListing && saleListing ? (
-                  <form
-                    action={`/api/market-dogs/${saleListing.listingId}/buy`}
-                    method="post"
-                  >
-                    <button
-                      type="submit"
-                      className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
-                    >
-                      Buy for {formatMoney(saleListing.askingPrice)}
-                    </button>
-                  </form>
-                ) : null}
-
-                {actions.canUseActiveStudListing && studListing ? (
+                {canEnterShow ? (
                   <Link
-                    href={`/breed?studListingId=${studListing.listingId}`}
-                    className="rounded-2xl bg-sky-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-sky-500"
+                    href={`/dogs/${header.dogId}/show-entry`}
+                    className="rounded-2xl bg-purple-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
                   >
-                    Use At Stud for {formatMoney(studListing.studFee)}
+                    Show Entry
                   </Link>
-                ) : null}
-
-                {actions.canOfferForSale ? (
-                  <OfferDogForSaleForm
-                    action={`/api/dogs/${header.dogId}/list-for-sale`}
-                  />
-                ) : (actions.canEditSaleListing ||
-                    actions.canCancelSaleListing) && saleListing ? (
-                  <ManageDogListingForm
-                    dogId={header.dogId}
-                    listingId={saleListing.listingId}
-                    currentPrice={saleListing.askingPrice}
-                    updateAction={`/api/market-dogs/${saleListing.listingId}/update-price`}
-                    cancelAction={`/api/market-dogs/${saleListing.listingId}/cancel`}
-                  />
-                ) : null}
-
-                {actions.canOfferAtStud ? (
-                  <OfferDogAtStudForm
-                    action={`/api/dogs/${header.dogId}/list-at-stud`}
-                  />
-                ) : (actions.canEditStudFee ||
-                    actions.canCancelStudListing) && studListing ? (
-                  <ManageDogStudListingForm
-                    dogId={header.dogId}
-                    listingId={studListing.listingId}
-                    currentPrice={studListing.studFee}
-                    updateAction={`/api/stud-listings/${studListing.listingId}/update-price`}
-                    cancelAction={`/api/stud-listings/${studListing.listingId}/cancel`}
-                  />
-                ) : null}
+                ) : (
+                  <div className="dog-card dog-copy rounded-2xl px-5 py-3 text-center text-sm font-semibold opacity-60">
+                    Show Entry
+                  </div>
+                )}
 
                 {viewerContext.canManage && grooming ? (
                   <details className="group">
@@ -456,6 +406,29 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </details>
                 ) : null}
 
+                {actions.canOfferForSale ? (
+                  <OfferDogForSaleForm
+                    action={`/api/dogs/${header.dogId}/list-for-sale`}
+                  />
+                ) : (actions.canEditSaleListing ||
+                    actions.canCancelSaleListing) && saleListing ? (
+                  <ManageDogListingForm
+                    dogId={header.dogId}
+                    listingId={saleListing.listingId}
+                    currentPrice={saleListing.askingPrice}
+                    updateAction={`/api/market-dogs/${saleListing.listingId}/update-price`}
+                    cancelAction={`/api/market-dogs/${saleListing.listingId}/cancel`}
+                  />
+                ) : null}
+
+                <button
+                  type="button"
+                  disabled
+                  className="dog-secondary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold opacity-60"
+                >
+                  Move Run
+                </button>
+
                 {actions.canRehome && actions.rehomePayout !== null ? (
                   <RehomeDogForm
                     action={`/api/dogs/${header.dogId}/rehome`}
@@ -463,6 +436,55 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     payout={actions.rehomePayout}
                   />
                 ) : null}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {actions.canBuyActiveListing && saleListing ? (
+                  <form
+                    action={`/api/market-dogs/${saleListing.listingId}/buy`}
+                    method="post"
+                  >
+                    <button
+                      type="submit"
+                      className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
+                    >
+                      Buy for {formatMoney(saleListing.askingPrice)}
+                    </button>
+                  </form>
+                ) : null}
+
+                {actions.canUseActiveStudListing && studListing ? (
+                  <Link
+                    href={`/breed?studListingId=${studListing.listingId}`}
+                    className="rounded-2xl bg-sky-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-sky-500"
+                  >
+                    Use At Stud for {formatMoney(studListing.studFee)}
+                  </Link>
+                ) : null}
+
+                {actions.canOfferAtStud ? (
+                  <OfferDogAtStudForm
+                    action={`/api/dogs/${header.dogId}/list-at-stud`}
+                  />
+                ) : (actions.canEditStudFee ||
+                    actions.canCancelStudListing) && studListing ? (
+                  <ManageDogStudListingForm
+                    dogId={header.dogId}
+                    listingId={studListing.listingId}
+                    currentPrice={studListing.studFee}
+                    updateAction={`/api/stud-listings/${studListing.listingId}/update-price`}
+                    cancelAction={`/api/stud-listings/${studListing.listingId}/cancel`}
+                  />
+                ) : null}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DogProfileKennelRunMove
+                  dogId={header.dogId}
+                  currentRunId={profile.currentRun?.runId ?? null}
+                  currentRunName={profile.currentRun?.name ?? null}
+                  canMove={canMoveKennelRun}
+                />
               </div>
             </div>
 
