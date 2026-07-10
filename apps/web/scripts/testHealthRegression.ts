@@ -122,6 +122,12 @@ const allBreedRequiredHealthTestCodeBlock =
   healthConstants.match(
     /ALL_BREED_REQUIRED_HEALTH_TEST_CODES = \[[\s\S]*?\] as const/
   )?.[0] ?? "";
+const thyroidHealthTestDefinitionBlock = sectionBetween(
+  healthConstants,
+  "THYROID: {",
+  "minimumAgeHours: 365",
+  "thyroid health test definition"
+);
 
 assertIncludes(
   healthConstants,
@@ -132,6 +138,41 @@ assertIncludes(
   healthConstants,
   'BRUCELLOSIS_TEST_FEE = 75',
   "brucellosis screening fee remains the shared $75 constant"
+);
+assertIncludes(
+  thyroidHealthTestDefinitionBlock,
+  "fee: 300",
+  "thyroid screening fee remains the shared $300 health test catalog value"
+);
+assertIncludes(
+  dogService,
+  "cost: definition.fee",
+  "dog profile health test rows expose the shared health test fee"
+);
+assertIncludes(
+  healthTestingPanel,
+  "{formatMoney(row.fee)}",
+  "dog profile health test panel displays the row fee from the shared catalog"
+);
+assertIncludes(
+  healthService,
+  "(sum, testTypeCode) => sum + PHENOTYPE_HEALTH_TESTS[testTypeCode].fee",
+  "health test checkout totals are driven by the shared health test fee"
+);
+assertIncludes(
+  healthService,
+  "amount: -definition.fee",
+  "health test ledger charges are driven by the shared health test fee"
+);
+assertDoesNotIncludeAny(
+  healthService,
+  ["amount: -175", "amount: -300"],
+  "health test purchase charges must not hard-code thyroid or other test fees"
+);
+assertDoesNotIncludeAny(
+  healthTestingPanel,
+  ["$175", "$300"],
+  "health test panel must not hard-code displayed test fees"
 );
 assertDoesNotIncludeAny(
   phenotypeHealthTestCodeBlock,

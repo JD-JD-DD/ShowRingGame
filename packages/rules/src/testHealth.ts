@@ -107,6 +107,11 @@ assertEqual(
   PHENOTYPE_HEALTH_TESTS.HIP_DYSPLASIA.fee,
   "elbow dysplasia uses orthopedic test fee"
 );
+assertEqual(
+  PHENOTYPE_HEALTH_TESTS.THYROID.fee,
+  300,
+  "thyroid uses the current health test fee"
+);
 
 const foundationTruths = generateFoundationPhenotypeHealthTruths(() => 0.5);
 assertEqual(

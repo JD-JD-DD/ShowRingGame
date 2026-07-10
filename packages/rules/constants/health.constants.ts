@@ -108,7 +108,7 @@ export const PHENOTYPE_HEALTH_TESTS: Record<
   },
   THYROID: {
     label: "Thyroid",
-    fee: 175,
+    fee: 300,
     minimumAgeHours: 365,
     minimumAgeLabel: "Available at 12 months",
     resultSeverityByCode: {
