@@ -45,6 +45,10 @@ assert.ok(
   eightyThreeHourDog.groomingWindow.value.startsWith("Grooming available in "),
   "83-hour-old living dog cannot be groomed yet"
 );
+assert.ok(
+  eightyThreeHourDog.nextMilestone.value.startsWith("Grooming unlocks in "),
+  "83-hour-old living dog sees grooming as the next milestone"
+);
 
 const eightyFourHourDog = actionWindowsForAge({
   ageHours: MIN_GROOMING_AGE_HOURS,

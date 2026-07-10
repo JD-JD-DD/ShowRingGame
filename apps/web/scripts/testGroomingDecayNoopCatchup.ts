@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 
-import { MIN_SHOW_AGE_HOURS } from "@showring/rules";
+import { MIN_GROOMING_AGE_HOURS } from "@showring/rules";
 
 import {
   GROOMING_WEEK_HOURS,
@@ -71,14 +71,18 @@ type FakeGroomingDecayClient = {
   ) => Promise<T>;
 };
 
-function createFakeGroomingDecayClient(args?: { gainAmount?: number }) {
+function createFakeGroomingDecayClient(args?: {
+  birthEpoch?: number;
+  dogId?: string;
+  gainAmount?: number;
+}) {
   const dog = {
-    id: "dog-no-positive-impact",
+    id: args?.dogId ?? "dog-no-positive-impact",
     ownerKennelId: "kennel-1",
     lifecycleState: "ALIVE",
     visibilityState: "VISIBLE",
     isPlayerVisible: true,
-    birthEpoch: -MIN_SHOW_AGE_HOURS,
+    birthEpoch: args?.birthEpoch ?? -MIN_GROOMING_AGE_HOURS,
     coatCondition: 10,
     healthConditionTruths: [],
     healthTests: [],
@@ -188,6 +192,50 @@ async function assertNoopBatchLimit(args: {
 }
 
 async function main() {
+  const boundaryFake = createFakeGroomingDecayClient({
+    birthEpoch: 0,
+    dogId: "dog-exact-grooming-age-boundary",
+  });
+  const boundaryRun = await applyMissedGroomingDecayForDueDogs({
+    currentEpoch: MIN_GROOMING_AGE_HOURS,
+    limit: 10,
+    client: boundaryFake.client as never,
+  });
+
+  assert.equal(
+    boundaryRun.checked,
+    0,
+    "completed week ending exactly at grooming eligibility age is not checked"
+  );
+  assert.equal(
+    boundaryFake.conditionEvents.filter(
+      (event) => event.eventType === "MISSED_GROOMING_DECAY"
+    ).length,
+    0,
+    "completed week ending exactly at grooming eligibility age does not create decay"
+  );
+
+  const afterBoundaryFake = createFakeGroomingDecayClient({
+    birthEpoch: 0,
+    dogId: "dog-after-grooming-age-boundary",
+  });
+  const afterBoundaryRun = await applyMissedGroomingDecayForDueDogs({
+    currentEpoch: MIN_GROOMING_AGE_HOURS + GROOMING_WEEK_HOURS,
+    limit: 10,
+    client: afterBoundaryFake.client as never,
+  });
+
+  assert.equal(
+    afterBoundaryRun.checked,
+    1,
+    "completed week ending after grooming eligibility age can be checked"
+  );
+  assert.equal(
+    afterBoundaryRun.results[0]?.groomingWeek,
+    MIN_GROOMING_AGE_HOURS / GROOMING_WEEK_HOURS,
+    "first decay candidate is the first completed week after grooming unlock"
+  );
+
   const fake = createFakeGroomingDecayClient();
   const currentEpoch = GROOMING_WEEK_HOURS;
   const firstRun = await applyMissedGroomingDecayForDueDogs({

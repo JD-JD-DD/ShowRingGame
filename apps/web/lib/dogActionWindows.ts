@@ -271,6 +271,16 @@ function buildNextMilestone(
     };
   }
 
+  if (input.ageHours < MIN_GROOMING_AGE_HOURS) {
+    return {
+      label: "Next Milestone",
+      value: `Grooming unlocks in ${formatGameCountdownHours(
+        MIN_GROOMING_AGE_HOURS - input.ageHours
+      )}.`,
+      tone: "pending",
+    };
+  }
+
   if (input.ageHours < MIN_SHOW_AGE_HOURS) {
     return {
       label: "Next Milestone",

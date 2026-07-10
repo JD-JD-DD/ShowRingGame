@@ -1385,7 +1385,7 @@ export async function applyMissedGroomingDecayForCompletedWeek(args: {
         dog.lifecycleState !== "ALIVE" ||
         dog.visibilityState !== "VISIBLE" ||
         !dog.isPlayerVisible ||
-        ageAtCompletedWeekEnd < MIN_GROOMING_AGE_HOURS
+        ageAtCompletedWeekEnd <= MIN_GROOMING_AGE_HOURS
       ) {
         return {
           dogId: dog.id,
@@ -1569,7 +1569,7 @@ async function findMissedGroomingDecayCandidates(args: {
       visibilityState: "VISIBLE",
       isPlayerVisible: true,
       birthEpoch: {
-        lte: latestCompletedWeekEnd - MIN_GROOMING_AGE_HOURS,
+        lt: latestCompletedWeekEnd - MIN_GROOMING_AGE_HOURS,
       },
       conditionEvents: {
         some: {
@@ -1638,9 +1638,7 @@ async function findMissedGroomingDecayCandidates(args: {
     );
     const firstEligibleGroomingWeek = Math.max(
       0,
-      Math.ceil(
-        (dog.birthEpoch + MIN_GROOMING_AGE_HOURS) / GROOMING_WEEK_HOURS - 1
-      )
+      Math.floor((dog.birthEpoch + MIN_GROOMING_AGE_HOURS) / GROOMING_WEEK_HOURS)
     );
 
     for (
