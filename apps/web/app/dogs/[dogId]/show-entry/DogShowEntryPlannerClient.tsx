@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import type {
   DogShowEntryPlannerClusterDto,
@@ -113,6 +113,16 @@ function getSelectedDayCount(
   ).length;
 }
 
+function isSelectableDay(day: DogShowEntryPlannerDayDto): boolean {
+  return day.canSelect && !day.alreadyEntered && !day.disabledReason;
+}
+
+function getSelectableDayKeys(cluster: DogShowEntryPlannerClusterDto): string[] {
+  return cluster.days
+    .filter(isSelectableDay)
+    .map((day) => selectionKey(cluster.showId, day.showDayId));
+}
+
 function getSelectedClusterEstimate(args: {
   quote: DogShowEntryQuotePreviewDto;
   selectedDayCount: number;
@@ -170,6 +180,70 @@ function QuotePreview({
         value={quote.isSecondaryEntry ? "Travel entry" : "Primary show entry"}
       />
     </div>
+  );
+}
+
+function AllEligibleDaysSelector({
+  selectableDayCount,
+  checked,
+  indeterminate,
+  disabled,
+  disabledReason,
+  onToggle,
+}: {
+  selectableDayCount: number;
+  checked: boolean;
+  indeterminate: boolean;
+  disabled: boolean;
+  disabledReason: string | null;
+  onToggle: (checked: boolean) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
+
+  return (
+    <label
+      className={`block rounded-xl border px-3 py-3 md:w-52 md:shrink-0 ${
+        disabled
+          ? "border-[var(--dog-border)] bg-black/10 opacity-75"
+          : checked || indeterminate
+            ? "border-emerald-200/60 bg-emerald-500/20"
+            : "border-emerald-300/30 bg-emerald-500/10"
+      }`}
+    >
+      <div className="flex gap-3">
+        <input
+          ref={inputRef}
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          onChange={(event) => onToggle(event.target.checked)}
+          className="mt-1 h-5 w-5 accent-emerald-500 disabled:cursor-not-allowed disabled:opacity-30"
+          aria-label="Select all eligible days"
+        />
+        <div>
+          <div className="theme-heading text-sm font-semibold">
+            All eligible days
+          </div>
+          <div className="theme-copy mt-0.5 text-xs">
+            Select all available days for this show.
+          </div>
+          <div className="theme-copy mt-1 text-xs">
+            {selectableDayCount} available
+          </div>
+        </div>
+      </div>
+      {disabledReason ? (
+        <div className="mt-2 text-xs font-medium text-[var(--dog-copy)]">
+          {disabledReason}
+        </div>
+      ) : null}
+    </label>
   );
 }
 
@@ -256,17 +330,36 @@ function ShowClusterCard({
   selected,
   disabledByWeekendSelection,
   onToggle,
+  onToggleCluster,
 }: {
   cluster: DogShowEntryPlannerClusterDto;
   selected: Set<string>;
   disabledByWeekendSelection: boolean;
   onToggle: (key: string, checked: boolean) => void;
+  onToggleCluster: (cluster: DogShowEntryPlannerClusterDto, checked: boolean) => void;
 }) {
   const selectedDayCount = getSelectedDayCount(cluster, selected);
   const hasSelection = selectedDayCount > 0;
+  const selectableDayKeys = getSelectableDayKeys(cluster);
+  const selectableSelectedDayCount = selectableDayKeys.filter((key) =>
+    selected.has(key)
+  ).length;
+  const allEligibleChecked =
+    selectableDayKeys.length > 0 &&
+    selectableSelectedDayCount === selectableDayKeys.length;
+  const allEligibleIndeterminate =
+    selectableSelectedDayCount > 0 &&
+    selectableSelectedDayCount < selectableDayKeys.length;
   const localDisabledReason = disabledByWeekendSelection
     ? "This dog already has selected entries in another show for this weekend."
     : null;
+  const allEligibleDisabled =
+    selectableDayKeys.length === 0 || disabledByWeekendSelection;
+  const allEligibleDisabledReason =
+    localDisabledReason ??
+    (selectableDayKeys.length === 0
+      ? "No eligible days are available for this show."
+      : null);
 
   return (
     <article
@@ -331,22 +424,32 @@ function ShowClusterCard({
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        {cluster.days.map((day) => {
-          const key = selectionKey(cluster.showId, day.showDayId);
+      <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-stretch">
+        <AllEligibleDaysSelector
+          selectableDayCount={selectableDayKeys.length}
+          checked={allEligibleChecked}
+          indeterminate={allEligibleIndeterminate}
+          disabled={allEligibleDisabled}
+          disabledReason={allEligibleDisabledReason}
+          onToggle={(checked) => onToggleCluster(cluster, checked)}
+        />
+        <div className="grid flex-1 gap-3 md:grid-cols-2">
+          {cluster.days.map((day) => {
+            const key = selectionKey(cluster.showId, day.showDayId);
 
-          return (
-            <DaySelector
-              key={day.showDayId}
-              clusterId={cluster.showId}
-              day={day}
-              checked={selected.has(key)}
-              locallyDisabled={disabledByWeekendSelection}
-              localDisabledReason={localDisabledReason}
-              onToggle={onToggle}
-            />
-          );
-        })}
+            return (
+              <DaySelector
+                key={day.showDayId}
+                clusterId={cluster.showId}
+                day={day}
+                checked={selected.has(key)}
+                locallyDisabled={disabledByWeekendSelection}
+                localDisabledReason={localDisabledReason}
+                onToggle={onToggle}
+              />
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-4 border-t border-[var(--dog-border)] pt-4">
@@ -472,6 +575,28 @@ export function DogShowEntryPlannerClient({
         next.add(key);
       } else {
         next.delete(key);
+      }
+
+      return next;
+    });
+    setFeedback(null);
+  }
+
+  function handleToggleCluster(
+    cluster: DogShowEntryPlannerClusterDto,
+    checked: boolean
+  ) {
+    const selectableDayKeys = getSelectableDayKeys(cluster);
+
+    setSelected((current) => {
+      const next = new Set(current);
+
+      for (const key of selectableDayKeys) {
+        if (checked) {
+          next.add(key);
+        } else {
+          next.delete(key);
+        }
       }
 
       return next;
@@ -640,6 +765,7 @@ export function DogShowEntryPlannerClient({
                         selected={selected}
                         disabledByWeekendSelection={disabledByWeekendSelection}
                         onToggle={handleToggle}
+                        onToggleCluster={handleToggleCluster}
                       />
                     );
                   })}
