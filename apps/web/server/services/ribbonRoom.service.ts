@@ -55,6 +55,7 @@ export type RibbonRoomAwardCode = (typeof RIBBON_AWARDS)[number];
 
 export type RibbonRoomDogDto = {
   id: string;
+  regNumber: string;
   registeredName: string | null;
   callName: string | null;
   breed: {
@@ -127,6 +128,7 @@ export type RibbonRoomInvitationalStatus =
 
 export type RibbonRoomInvitationalDto = {
   year: number;
+  week: number;
   status: RibbonRoomInvitationalStatus;
 };
 
@@ -377,6 +379,7 @@ export function buildInvitationalHistory(
     .sort(([yearA], [yearB]) => yearA - yearB)
     .map(([year, award]) => ({
       year,
+      week: 52,
       status: award ? getInvitationalStatusForAward(award) : "INVITED",
     }));
 }
@@ -661,6 +664,7 @@ export async function getDogRibbonRoom(
     where: { id: dogId, isPlayerVisible: true },
     select: {
       id: true,
+      regNumber: true,
       registeredName: true,
       callName: true,
       breedCode2: true,
@@ -988,6 +992,7 @@ export async function getDogRibbonRoom(
   return {
     dog: {
       id: dog.id,
+      regNumber: dog.regNumber,
       registeredName: dog.registeredName,
       callName: dog.callName,
       breed: dog.breed,
