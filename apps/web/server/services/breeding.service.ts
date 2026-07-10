@@ -134,6 +134,45 @@ type AttemptForResolution = {
   };
 };
 
+type DueAttemptForResolution = {
+  id: string;
+  status: AttemptForResolution["status"];
+  pregCheckEpoch: number | null;
+  dueEpoch: number | null;
+};
+
+type PregnancyCheckResolutionOutcome =
+  | {
+      status: "PREGNANT" | "CHECKED_NOT_PREGNANT";
+      dueEpoch: number | null;
+    }
+  | {
+      status: "SKIPPED";
+      dueEpoch: null;
+    };
+
+type WhelpingResolutionOutcome = "WHELPED" | "SKIPPED";
+
+export type BreedingProgressResolutionSummary = {
+  checkedCount: number;
+  becamePregnantCount: number;
+  didNotTakeCount: number;
+  whelpedCount: number;
+  skippedCount: number;
+  failedCount: number;
+};
+
+function createBreedingProgressResolutionSummary(): BreedingProgressResolutionSummary {
+  return {
+    checkedCount: 0,
+    becamePregnantCount: 0,
+    didNotTakeCount: 0,
+    whelpedCount: 0,
+    skippedCount: 0,
+    failedCount: 0,
+  };
+}
+
 function seeded01(seed: string): number {
   let hash = 2166136261;
 
@@ -459,417 +498,516 @@ async function getDogForBreeding(dogId: string): Promise<DogForBreeding | null> 
   });
 }
 
+async function resolvePregnancyCheckAttempt(args: {
+  attemptId: string;
+  currentEpoch: number;
+}): Promise<PregnancyCheckResolutionOutcome> {
+  const { attemptId, currentEpoch } = args;
+
+  return db.$transaction(async (tx) => {
+    const fresh = await tx.breedingAttempt.findUnique({
+      where: { id: attemptId },
+      select: {
+        id: true,
+        sireId: true,
+        damId: true,
+        breedCode2: true,
+        createdEpoch: true,
+        pregCheckEpoch: true,
+        dueEpoch: true,
+        checkedEpoch: true,
+        whelpedEpoch: true,
+        isPregnant: true,
+        status: true,
+        rngSeed: true,
+        litterId: true,
+        createdByKennelId: true,
+        dam: {
+          select: {
+            id: true,
+            registeredName: true,
+            callName: true,
+            regNumber: true,
+            visibleTitlePrefix: true,
+            visibleTitleSuffix: true,
+          },
+        },
+      },
+    });
+
+    if (
+      !fresh ||
+      fresh.status !== "INITIATED" ||
+      fresh.checkedEpoch !== null ||
+      fresh.pregCheckEpoch === null ||
+      fresh.dueEpoch === null
+    ) {
+      return { status: "SKIPPED", dueEpoch: null };
+    }
+
+    const rngSeed = requireRngSeed(fresh.rngSeed);
+    const conceptionRoll = seeded01(`${rngSeed}:pregcheck`);
+
+    const resolved = resolvePregnancyCheck({
+      attempt: {
+        attemptId: fresh.id,
+        sireId: fresh.sireId,
+        damId: fresh.damId,
+        breedCode2: fresh.breedCode2,
+        createdEpoch: fresh.createdEpoch,
+        pregCheckEpoch: fresh.pregCheckEpoch,
+        dueEpoch: fresh.dueEpoch,
+        checkedEpoch: fresh.checkedEpoch,
+        whelpedEpoch: fresh.whelpedEpoch,
+        isPregnant: fresh.isPregnant,
+        status: fresh.status,
+        litterId: fresh.litterId ?? null,
+        rngSeed,
+      },
+      currentEpoch,
+      conceptionRate: 0.75,
+      conceptionRoll,
+    });
+
+    await tx.breedingAttempt.update({
+      where: { id: fresh.id },
+      data: {
+        status: resolved.status,
+        checkedEpoch: resolved.checkedEpoch,
+        isPregnant: resolved.isPregnant,
+      },
+    });
+
+    if (
+      resolved.status === "CHECKED_NOT_PREGNANT" &&
+      fresh.createdByKennelId
+    ) {
+      await createKennelNotice({
+        client: tx,
+        kennelId: fresh.createdByKennelId,
+        type: "DID_NOT_TAKE",
+        title: "Female did not take",
+        body: `${formatDogDisplayName(fresh.dam)} did not take on this breeding.`,
+        currentEpoch,
+        linkedDogId: fresh.dam.id,
+      });
+    }
+
+    if (resolved.status === "PREGNANT") {
+      return {
+        status: "PREGNANT",
+        dueEpoch: fresh.dueEpoch,
+      };
+    }
+
+    return {
+      status: "CHECKED_NOT_PREGNANT",
+      dueEpoch: null,
+    };
+  });
+}
+
+async function resolveWhelpingAttempt(args: {
+  attemptId: string;
+  currentEpoch: number;
+}): Promise<WhelpingResolutionOutcome> {
+  const { attemptId, currentEpoch } = args;
+
+  return db.$transaction(async (tx) => {
+    const fresh = await tx.breedingAttempt.findUnique({
+      where: { id: attemptId },
+      select: {
+        id: true,
+        sireId: true,
+        damId: true,
+        breedCode2: true,
+        createdEpoch: true,
+        pregCheckEpoch: true,
+        dueEpoch: true,
+        checkedEpoch: true,
+        whelpedEpoch: true,
+        isPregnant: true,
+        status: true,
+        rngSeed: true,
+        litterId: true,
+        createdByKennelId: true,
+        sire: {
+          select: {
+            id: true,
+            traitHead: true,
+            traitForequarters: true,
+            traitHindquarters: true,
+            traitGait: true,
+            traitCoat: true,
+            traitSize: true,
+            traitTemperament: true,
+            traitShowShine: true,
+            traitFeet: true,
+            traitTopline: true,
+          },
+        },
+        dam: {
+          select: {
+            id: true,
+            ownerKennelId: true,
+            kennelRunId: true,
+            registeredName: true,
+            callName: true,
+            regNumber: true,
+            visibleTitlePrefix: true,
+            visibleTitleSuffix: true,
+            traitHead: true,
+            traitForequarters: true,
+            traitHindquarters: true,
+            traitGait: true,
+            traitCoat: true,
+            traitSize: true,
+            traitTemperament: true,
+            traitShowShine: true,
+            traitFeet: true,
+            traitTopline: true,
+          },
+        },
+      },
+    });
+
+    if (
+      !fresh ||
+      fresh.status !== "PREGNANT" ||
+      fresh.isPregnant !== true ||
+      fresh.dueEpoch === null ||
+      fresh.whelpedEpoch !== null ||
+      fresh.litterId !== null
+    ) {
+      return "SKIPPED";
+    }
+
+    const rngSeed = requireRngSeed(fresh.rngSeed);
+    let pupCountNoiseIndex = 0;
+    const pupCount = rollLitterSize(() => {
+      const value = seeded01(`${rngSeed}:pup-count:${pupCountNoiseIndex}`);
+      pupCountNoiseIndex += 1;
+      return value;
+    });
+    const puppyDogIds = Array.from({ length: pupCount }, () => randomUUID());
+    const puppySexes = buildPuppySexes(String(rngSeed), pupCount);
+    const pedigree = await loadPedigreeForCoi(tx, [
+      fresh.sireId,
+      fresh.damId,
+    ]);
+    const pairingCoi = calculatePedigreeCoi({
+      sireId: fresh.sireId,
+      damId: fresh.damId,
+      pedigree,
+    });
+    let noiseIndex = 0;
+
+    const outcome = resolveWhelp({
+      attempt: {
+        attemptId: fresh.id,
+        sireId: fresh.sireId,
+        damId: fresh.damId,
+        breedCode2: fresh.breedCode2,
+        createdEpoch: fresh.createdEpoch,
+        pregCheckEpoch: fresh.pregCheckEpoch ?? 0,
+        dueEpoch: fresh.dueEpoch,
+        checkedEpoch: fresh.checkedEpoch,
+        whelpedEpoch: fresh.whelpedEpoch,
+        isPregnant: fresh.isPregnant,
+        litterId: fresh.litterId,
+        status: fresh.status,
+        rngSeed,
+      },
+      currentEpoch,
+      litterId: randomUUID(),
+      pupCount,
+      puppyDogIds,
+      puppySexes,
+      sireTraits: mapTraits(fresh.sire),
+      damTraits: mapTraits(fresh.dam),
+      coiPercent: pairingCoi.coiPercent,
+      coiGenerationDepth: pairingCoi.generationDepth,
+      random01: () => {
+        const value = seeded01(`${rngSeed}:whelp:${noiseIndex}`);
+        noiseIndex += 1;
+        return value;
+      },
+    });
+
+    await tx.litter.create({
+      data: {
+        id: outcome.litter.litterId,
+        bredByKennelId: fresh.createdByKennelId,
+        sireId: outcome.litter.sireId,
+        damId: outcome.litter.damId,
+        breedCode2: outcome.litter.breedCode2,
+        serial7: outcome.litter.serial7,
+        bornEpoch: outcome.litter.bornEpoch,
+        pupCount: outcome.litter.pupCount,
+      },
+    });
+
+    const puppyKennelRunId = fresh.createdByKennelId
+      ? fresh.dam.kennelRunId ??
+        (
+          await ensureUncategorizedKennelRun({
+            kennelId: fresh.createdByKennelId,
+            client: tx,
+          })
+        ).id
+      : null;
+
+    await tx.dog.createMany({
+      data: outcome.puppies.map((puppy) => ({
+        id: puppy.dogId,
+        ownerKennelId: fresh.createdByKennelId,
+        kennelRunId: puppyKennelRunId,
+        breederKennelId: fresh.createdByKennelId,
+        callName: null,
+        registeredName: null,
+        regNumber: puppy.regNumber,
+        breedCode2: puppy.breedCode2,
+        sex: puppy.sex,
+        birthEpoch: puppy.birthEpoch,
+        lifecycleState: "ALIVE",
+        marketState: "NOT_FOR_SALE",
+        originType: "PLAYER_BRED",
+        isFoundation: false,
+        sireId: puppy.sireId,
+        damId: puppy.damId,
+        litterId: puppy.litterId,
+        litterOrder: puppy.litterOrder,
+        coiPercent: outcome.litter.coiPercent,
+        coiGenerationDepth: outcome.litter.coiGenerationDepth,
+        traitHead: puppy.traits.head,
+        traitForequarters: puppy.traits.forequarters,
+        traitHindquarters: puppy.traits.hindquarters,
+        traitGait: puppy.traits.gait,
+        traitCoat: puppy.traits.coat,
+        traitSize: puppy.traits.size,
+        traitTemperament: puppy.traits.temperament,
+        traitShowShine: puppy.traits.show_shine,
+        traitFeet: puppy.traits.feet,
+        traitTopline: puppy.traits.topline,
+      })),
+    });
+
+    await ensurePhenotypeHealthTruthsForDogs(
+      tx,
+      outcome.puppies.map((puppy) => puppy.dogId)
+    );
+
+    await infectPuppiesFromDamBrucellosis(tx, {
+      damId: fresh.damId,
+      puppyDogIds: outcome.puppies.map((puppy) => puppy.dogId),
+      currentEpoch,
+      breedingAttemptId: fresh.id,
+    });
+
+    await tx.breedingAttempt.update({
+      where: { id: fresh.id },
+      data: {
+        status: "WHELPED",
+        whelpedEpoch: currentEpoch,
+        litterId: outcome.litter.litterId,
+      },
+    });
+
+    if (fresh.createdByKennelId) {
+      await createKennelNotice({
+        client: tx,
+        kennelId: fresh.createdByKennelId,
+        type: "LITTER_BORN",
+        title: "Litter born",
+        body: `Litter ${outcome.litter.serial7} has been born with ${outcome.litter.pupCount} puppies.`,
+        currentEpoch,
+        linkedLitterId: outcome.litter.litterId,
+        linkedDogId: outcome.litter.damId,
+      });
+    }
+
+    const damDiedAtWhelp =
+      seeded01(`${rngSeed}:whelp:dam-mortality`) <
+      WHELPING_DAM_DEATH_RATE;
+
+    if (damDiedAtWhelp) {
+      await markDogDeceased({
+        client: tx,
+        dogId: fresh.dam.id,
+        regNumber: fresh.dam.regNumber,
+        ownerKennelId: fresh.dam.ownerKennelId,
+        displayName: formatDogDisplayName(fresh.dam),
+        deathEpoch: currentEpoch,
+        cause: "WHELPING_DAM",
+      });
+    }
+
+    return "WHELPED";
+  });
+}
+
+async function resolveDueBreedingProgress(args: {
+  currentEpoch: number;
+  kennelId?: string;
+  damId?: string;
+  limit?: number;
+  continueOnError?: boolean;
+}): Promise<BreedingProgressResolutionSummary> {
+  const { currentEpoch, kennelId, damId, limit, continueOnError = false } = args;
+  const where: Prisma.BreedingAttemptWhereInput = {
+    ...(kennelId ? { createdByKennelId: kennelId } : {}),
+    ...(damId ? { damId } : {}),
+    OR: [
+      {
+        status: "INITIATED",
+        pregCheckEpoch: {
+          not: null,
+          lte: currentEpoch,
+        },
+      },
+      {
+        status: "PREGNANT",
+        dueEpoch: {
+          not: null,
+          lte: currentEpoch,
+        },
+      },
+    ],
+  };
+  const dueAttempts: DueAttemptForResolution[] =
+    await db.breedingAttempt.findMany({
+      where,
+      orderBy: [{ createdEpoch: "asc" }],
+      ...(limit ? { take: limit } : {}),
+      select: {
+        id: true,
+        status: true,
+        pregCheckEpoch: true,
+        dueEpoch: true,
+      },
+    });
+  const summary = createBreedingProgressResolutionSummary();
+
+  for (const attempt of dueAttempts) {
+    try {
+      let whelpedThisAttempt = false;
+
+      if (
+        attempt.status === "INITIATED" &&
+        attempt.pregCheckEpoch !== null &&
+        attempt.pregCheckEpoch <= currentEpoch
+      ) {
+        const pregnancyOutcome = await resolvePregnancyCheckAttempt({
+          attemptId: attempt.id,
+          currentEpoch,
+        });
+
+        if (pregnancyOutcome.status === "SKIPPED") {
+          summary.skippedCount += 1;
+        } else {
+          summary.checkedCount += 1;
+
+          if (pregnancyOutcome.status === "PREGNANT") {
+            summary.becamePregnantCount += 1;
+
+            if (
+              pregnancyOutcome.dueEpoch !== null &&
+              pregnancyOutcome.dueEpoch <= currentEpoch
+            ) {
+              const whelpOutcome = await resolveWhelpingAttempt({
+                attemptId: attempt.id,
+                currentEpoch,
+              });
+
+              if (whelpOutcome === "WHELPED") {
+                summary.whelpedCount += 1;
+                whelpedThisAttempt = true;
+              } else {
+                summary.skippedCount += 1;
+              }
+            }
+          } else {
+            summary.didNotTakeCount += 1;
+          }
+        }
+      }
+
+      if (
+        !whelpedThisAttempt &&
+        attempt.status === "PREGNANT" &&
+        attempt.dueEpoch !== null &&
+        attempt.dueEpoch <= currentEpoch
+      ) {
+        const whelpOutcome = await resolveWhelpingAttempt({
+          attemptId: attempt.id,
+          currentEpoch,
+        });
+
+        if (whelpOutcome === "WHELPED") {
+          summary.whelpedCount += 1;
+        } else {
+          summary.skippedCount += 1;
+        }
+      }
+    } catch (error) {
+      summary.failedCount += 1;
+
+      if (!continueOnError) {
+        throw error;
+      }
+
+      console.error("Breeding progress resolution failed", {
+        attemptId: attempt.id,
+        status: attempt.status,
+        error,
+      });
+    }
+  }
+
+  return summary;
+}
+
 export async function resolveBreedingProgressForKennel(args: {
   kennelId: string;
   currentEpoch: number;
-}) {
+}): Promise<BreedingProgressResolutionSummary> {
   const { kennelId, currentEpoch } = args;
 
   await resolveDogDeaths({ kennelId, currentEpoch });
 
-  const dueAttempts: AttemptForResolution[] = await db.breedingAttempt.findMany({
-    where: {
-      createdByKennelId: kennelId,
-      OR: [
-        {
-          status: "INITIATED",
-          pregCheckEpoch: {
-            not: null,
-            lte: currentEpoch,
-          },
-        },
-        {
-          status: "PREGNANT",
-          dueEpoch: {
-            not: null,
-            lte: currentEpoch,
-          },
-        },
-      ],
-    },
-    orderBy: [{ createdEpoch: "asc" }],
+  return resolveDueBreedingProgress({ kennelId, currentEpoch });
+}
+
+export async function resolveBreedingProgressForOwnedDam(args: {
+  kennelId: string;
+  dogId: string;
+  currentEpoch: number;
+}): Promise<BreedingProgressResolutionSummary> {
+  const { kennelId, dogId, currentEpoch } = args;
+  const dog = await db.dog.findUnique({
+    where: { id: dogId },
     select: {
-      id: true,
-      sireId: true,
-      damId: true,
-      breedCode2: true,
-      createdEpoch: true,
-      pregCheckEpoch: true,
-      dueEpoch: true,
-      checkedEpoch: true,
-      whelpedEpoch: true,
-      isPregnant: true,
-      status: true,
-      rngSeed: true,
-      createdByKennelId: true,
-      sire: {
-        select: {
-          id: true,
-          traitHead: true,
-          traitForequarters: true,
-          traitHindquarters: true,
-          traitGait: true,
-          traitCoat: true,
-          traitSize: true,
-          traitTemperament: true,
-          traitShowShine: true,
-          traitFeet: true,
-          traitTopline: true,
-        },
-      },
-      dam: {
-        select: {
-          id: true,
-          traitHead: true,
-          traitForequarters: true,
-          traitHindquarters: true,
-          traitGait: true,
-          traitCoat: true,
-          traitSize: true,
-          traitTemperament: true,
-          traitShowShine: true,
-          traitFeet: true,
-          traitTopline: true,
-        },
-      },
+      ownerKennelId: true,
+      sex: true,
     },
   });
 
-  for (const attempt of dueAttempts) {
-    if (
-      attempt.status === "INITIATED" &&
-      attempt.pregCheckEpoch !== null &&
-      attempt.pregCheckEpoch <= currentEpoch
-    ) {
-      await db.$transaction(async (tx) => {
-        const fresh = await tx.breedingAttempt.findUnique({
-          where: { id: attempt.id },
-          select: {
-            id: true,
-            sireId: true,
-            damId: true,
-            breedCode2: true,
-            createdEpoch: true,
-            pregCheckEpoch: true,
-            dueEpoch: true,
-            checkedEpoch: true,
-            whelpedEpoch: true,
-            isPregnant: true,
-            status: true,
-            rngSeed: true,
-            litterId: true,
-            createdByKennelId: true,
-            dam: {
-              select: {
-                id: true,
-                registeredName: true,
-                callName: true,
-                regNumber: true,
-                visibleTitlePrefix: true,
-                visibleTitleSuffix: true,
-              },
-            },
-          },
-        });
-
-        if (
-          !fresh ||
-          fresh.status !== "INITIATED" ||
-          fresh.checkedEpoch !== null ||
-          fresh.pregCheckEpoch === null ||
-          fresh.dueEpoch === null
-        ) {
-          return;
-        }
-
-        const rngSeed = requireRngSeed(fresh.rngSeed);
-        const conceptionRoll = seeded01(`${rngSeed}:pregcheck`);
-
-        const resolved = resolvePregnancyCheck({
-          attempt: {
-            attemptId: fresh.id,
-            sireId: fresh.sireId,
-            damId: fresh.damId,
-            breedCode2: fresh.breedCode2,
-            createdEpoch: fresh.createdEpoch,
-            pregCheckEpoch: fresh.pregCheckEpoch,
-            dueEpoch: fresh.dueEpoch,
-            checkedEpoch: fresh.checkedEpoch,
-            whelpedEpoch: fresh.whelpedEpoch,
-            isPregnant: fresh.isPregnant,
-            status: fresh.status,
-            litterId: fresh.litterId ?? null,
-            rngSeed,
-          },
-          currentEpoch,
-          conceptionRate: 0.75,
-          conceptionRoll,
-        });
-
-        await tx.breedingAttempt.update({
-          where: { id: fresh.id },
-          data: {
-            status: resolved.status,
-            checkedEpoch: resolved.checkedEpoch,
-            isPregnant: resolved.isPregnant,
-          },
-        });
-
-        if (
-          resolved.status === "CHECKED_NOT_PREGNANT" &&
-          fresh.createdByKennelId
-        ) {
-          await createKennelNotice({
-            client: tx,
-            kennelId: fresh.createdByKennelId,
-            type: "DID_NOT_TAKE",
-            title: "Female did not take",
-            body: `${formatDogDisplayName(fresh.dam)} did not take on this breeding.`,
-            currentEpoch,
-            linkedDogId: fresh.dam.id,
-          });
-        }
-      });
-    }
+  if (!dog || dog.ownerKennelId !== kennelId || dog.sex !== "F") {
+    return createBreedingProgressResolutionSummary();
   }
 
-  for (const attempt of dueAttempts) {
-    if (
-      attempt.status === "PREGNANT" &&
-      attempt.dueEpoch !== null &&
-      attempt.dueEpoch <= currentEpoch
-    ) {
-      await db.$transaction(async (tx) => {
-        const fresh = await tx.breedingAttempt.findUnique({
-          where: { id: attempt.id },
-          select: {
-            id: true,
-            sireId: true,
-            damId: true,
-            breedCode2: true,
-            createdEpoch: true,
-            pregCheckEpoch: true,
-            dueEpoch: true,
-            checkedEpoch: true,
-            whelpedEpoch: true,
-            isPregnant: true,
-            status: true,
-            rngSeed: true,
-            litterId: true,
-            createdByKennelId: true,
-            sire: {
-              select: {
-                id: true,
-                traitHead: true,
-                traitForequarters: true,
-                traitHindquarters: true,
-                traitGait: true,
-                traitCoat: true,
-                traitSize: true,
-                traitTemperament: true,
-                traitShowShine: true,
-                traitFeet: true,
-                traitTopline: true,
-              },
-            },
-            dam: {
-              select: {
-                id: true,
-                ownerKennelId: true,
-                kennelRunId: true,
-                registeredName: true,
-                callName: true,
-                regNumber: true,
-                visibleTitlePrefix: true,
-                visibleTitleSuffix: true,
-                traitHead: true,
-                traitForequarters: true,
-                traitHindquarters: true,
-                traitGait: true,
-                traitCoat: true,
-                traitSize: true,
-                traitTemperament: true,
-                traitShowShine: true,
-                traitFeet: true,
-                traitTopline: true,
-              },
-            },
-          },
-        });
+  return resolveDueBreedingProgress({ kennelId, damId: dogId, currentEpoch });
+}
 
-        if (
-          !fresh ||
-          fresh.status !== "PREGNANT" ||
-          fresh.isPregnant !== true ||
-          fresh.dueEpoch === null ||
-          fresh.whelpedEpoch !== null ||
-          fresh.litterId !== null
-        ) {
-          return;
-        }
-
-        const rngSeed = requireRngSeed(fresh.rngSeed);
-        let pupCountNoiseIndex = 0;
-        const pupCount = rollLitterSize(() => {
-          const value = seeded01(`${rngSeed}:pup-count:${pupCountNoiseIndex}`);
-          pupCountNoiseIndex += 1;
-          return value;
-        });
-        const puppyDogIds = Array.from({ length: pupCount }, () => randomUUID());
-        const puppySexes = buildPuppySexes(String(rngSeed), pupCount);
-        const pedigree = await loadPedigreeForCoi(tx, [
-          fresh.sireId,
-          fresh.damId,
-        ]);
-        const pairingCoi = calculatePedigreeCoi({
-          sireId: fresh.sireId,
-          damId: fresh.damId,
-          pedigree,
-        });
-        let noiseIndex = 0;
-
-        const outcome = resolveWhelp({
-          attempt: {
-            attemptId: fresh.id,
-            sireId: fresh.sireId,
-            damId: fresh.damId,
-            breedCode2: fresh.breedCode2,
-            createdEpoch: fresh.createdEpoch,
-            pregCheckEpoch: fresh.pregCheckEpoch ?? 0,
-            dueEpoch: fresh.dueEpoch,
-            checkedEpoch: fresh.checkedEpoch,
-            whelpedEpoch: fresh.whelpedEpoch,
-            isPregnant: fresh.isPregnant,
-            litterId: fresh.litterId,
-            status: fresh.status,
-            rngSeed,
-          },
-          currentEpoch,
-          litterId: randomUUID(),
-          pupCount,
-          puppyDogIds,
-          puppySexes,
-          sireTraits: mapTraits(fresh.sire),
-          damTraits: mapTraits(fresh.dam),
-          coiPercent: pairingCoi.coiPercent,
-          coiGenerationDepth: pairingCoi.generationDepth,
-          random01: () => {
-            const value = seeded01(`${rngSeed}:whelp:${noiseIndex}`);
-            noiseIndex += 1;
-            return value;
-          },
-        });
-
-        await tx.litter.create({
-          data: {
-            id: outcome.litter.litterId,
-            bredByKennelId: fresh.createdByKennelId,
-            sireId: outcome.litter.sireId,
-            damId: outcome.litter.damId,
-            breedCode2: outcome.litter.breedCode2,
-            serial7: outcome.litter.serial7,
-            bornEpoch: outcome.litter.bornEpoch,
-            pupCount: outcome.litter.pupCount,
-          },
-        });
-
-        const puppyKennelRunId = fresh.createdByKennelId
-          ? fresh.dam.kennelRunId ??
-            (
-              await ensureUncategorizedKennelRun({
-                kennelId: fresh.createdByKennelId,
-                client: tx,
-              })
-            ).id
-          : null;
-
-        await tx.dog.createMany({
-          data: outcome.puppies.map((puppy) => ({
-            id: puppy.dogId,
-            ownerKennelId: fresh.createdByKennelId,
-            kennelRunId: puppyKennelRunId,
-            breederKennelId: fresh.createdByKennelId,
-            callName: null,
-            registeredName: null,
-            regNumber: puppy.regNumber,
-            breedCode2: puppy.breedCode2,
-            sex: puppy.sex,
-            birthEpoch: puppy.birthEpoch,
-            lifecycleState: "ALIVE",
-            marketState: "NOT_FOR_SALE",
-            originType: "PLAYER_BRED",
-            isFoundation: false,
-            sireId: puppy.sireId,
-            damId: puppy.damId,
-            litterId: puppy.litterId,
-            litterOrder: puppy.litterOrder,
-            coiPercent: outcome.litter.coiPercent,
-            coiGenerationDepth: outcome.litter.coiGenerationDepth,
-            traitHead: puppy.traits.head,
-            traitForequarters: puppy.traits.forequarters,
-            traitHindquarters: puppy.traits.hindquarters,
-            traitGait: puppy.traits.gait,
-            traitCoat: puppy.traits.coat,
-            traitSize: puppy.traits.size,
-            traitTemperament: puppy.traits.temperament,
-            traitShowShine: puppy.traits.show_shine,
-            traitFeet: puppy.traits.feet,
-            traitTopline: puppy.traits.topline,
-          })),
-        });
-
-        await ensurePhenotypeHealthTruthsForDogs(
-          tx,
-          outcome.puppies.map((puppy) => puppy.dogId)
-        );
-
-        await infectPuppiesFromDamBrucellosis(tx, {
-          damId: fresh.damId,
-          puppyDogIds: outcome.puppies.map((puppy) => puppy.dogId),
-          currentEpoch,
-          breedingAttemptId: fresh.id,
-        });
-
-        await tx.breedingAttempt.update({
-          where: { id: fresh.id },
-          data: {
-            status: "WHELPED",
-            whelpedEpoch: currentEpoch,
-            litterId: outcome.litter.litterId,
-          },
-        });
-
-        if (fresh.createdByKennelId) {
-          await createKennelNotice({
-            client: tx,
-            kennelId: fresh.createdByKennelId,
-            type: "LITTER_BORN",
-            title: "Litter born",
-            body: `Litter ${outcome.litter.serial7} has been born with ${outcome.litter.pupCount} puppies.`,
-            currentEpoch,
-            linkedLitterId: outcome.litter.litterId,
-            linkedDogId: outcome.litter.damId,
-          });
-        }
-
-        const damDiedAtWhelp =
-          seeded01(`${rngSeed}:whelp:dam-mortality`) <
-          WHELPING_DAM_DEATH_RATE;
-
-        if (damDiedAtWhelp) {
-          await markDogDeceased({
-            client: tx,
-            dogId: fresh.dam.id,
-            regNumber: fresh.dam.regNumber,
-            ownerKennelId: fresh.dam.ownerKennelId,
-            displayName: formatDogDisplayName(fresh.dam),
-            deathEpoch: currentEpoch,
-            cause: "WHELPING_DAM",
-          });
-        }
-      });
-    }
-  }
+export async function resolveDueBreedingProgressBatch(args: {
+  currentEpoch: number;
+  limit: number;
+}): Promise<BreedingProgressResolutionSummary> {
+  return resolveDueBreedingProgress({
+    currentEpoch: args.currentEpoch,
+    limit: args.limit,
+    continueOnError: true,
+  });
 }
 
 export async function listBreedingsForKennel(args: {

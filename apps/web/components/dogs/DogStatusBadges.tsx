@@ -6,8 +6,13 @@ type DogStatusBadgesProps = {
   fullHealthClearance?: boolean;
   isListedForSale?: boolean;
   isListedAtStud?: boolean;
+  isPregnant?: boolean;
   size?: "sm" | "lg";
 };
+
+const FOR_SALE_STATUS_INDICATOR = "\u{1F4B2}";
+const AT_STUD_STATUS_INDICATOR = "\u{1F9EC}";
+const PREGNANT_STATUS_INDICATOR = "P";
 
 const LISTING_SIZE_STYLES = {
   sm: "h-5 w-5 text-[0.7rem]",
@@ -19,9 +24,10 @@ export default function DogStatusBadges({
   fullHealthClearance = false,
   isListedForSale = false,
   isListedAtStud = false,
+  isPregnant = false,
   size = "sm",
 }: DogStatusBadgesProps) {
-  if (!healthStatus && !isListedForSale && !isListedAtStud) {
+  if (!healthStatus && !isListedForSale && !isListedAtStud && !isPregnant) {
     return null;
   }
 
@@ -40,7 +46,7 @@ export default function DogStatusBadges({
           aria-label="Dog is listed for sale"
           className={`inline-flex shrink-0 items-center justify-center rounded-full border border-emerald-300/55 bg-emerald-500/20 font-bold text-emerald-100 ${LISTING_SIZE_STYLES[size]}`}
         >
-          💲
+          {FOR_SALE_STATUS_INDICATOR}
         </span>
       ) : null}
       {isListedAtStud ? (
@@ -49,7 +55,16 @@ export default function DogStatusBadges({
           aria-label="Dog is listed at stud"
           className={`inline-flex shrink-0 items-center justify-center rounded-full border border-sky-300/55 bg-sky-500/20 font-bold text-sky-100 ${LISTING_SIZE_STYLES[size]}`}
         >
-          🧬
+          {AT_STUD_STATUS_INDICATOR}
+        </span>
+      ) : null}
+      {isPregnant ? (
+        <span
+          title="Dog is confirmed pregnant"
+          aria-label="Dog is confirmed pregnant"
+          className={`inline-flex shrink-0 items-center justify-center rounded-full border border-fuchsia-300/55 bg-fuchsia-500/20 font-bold text-fuchsia-100 ${LISTING_SIZE_STYLES[size]}`}
+        >
+          {PREGNANT_STATUS_INDICATOR}
         </span>
       ) : null}
     </span>

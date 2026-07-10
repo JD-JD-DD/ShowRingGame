@@ -51,6 +51,12 @@ export type DogProfileHealthSummaryDto = {
   hasFullClearance: boolean;
 };
 
+export type FemaleReproductiveSnapshotStatusDto = {
+  key: "OPEN" | "BRED" | "PREGNANT";
+  label: "Open" | "Bred" | "Pregnant";
+  detail: string | null;
+} | null;
+
 export type DogProfileEmergencyCareDto = {
   eventId: string;
   status: "PENDING";
@@ -74,6 +80,7 @@ export type DogProfileSnapshotDto = {
   canBreed: boolean;
   showEligibilityLabel: string;
   breedingEligibilityLabel: string;
+  femaleReproductiveStatus: FemaleReproductiveSnapshotStatusDto;
   groomingLabel: string | null;
   healthTestingSummary: DogProfileHealthSummaryDto;
   coatConditionDisplay: string | null;
@@ -492,6 +499,13 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       canBreed: input.snapshot.canBreed,
       showEligibilityLabel: input.snapshot.showEligibilityLabel,
       breedingEligibilityLabel: input.snapshot.breedingEligibilityLabel,
+      femaleReproductiveStatus: input.snapshot.femaleReproductiveStatus
+        ? {
+            key: input.snapshot.femaleReproductiveStatus.key,
+            label: input.snapshot.femaleReproductiveStatus.label,
+            detail: input.snapshot.femaleReproductiveStatus.detail,
+          }
+        : null,
       groomingLabel: input.snapshot.groomingLabel,
       healthTestingSummary: mapHealthSummary(input.snapshot.healthTestingSummary),
       coatConditionDisplay: input.snapshot.coatConditionDisplay,

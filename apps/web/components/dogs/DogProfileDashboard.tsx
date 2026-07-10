@@ -125,6 +125,9 @@ export default function DogProfileDashboard(props: Props) {
     ...(snapshot.marketLabel !== "Not for sale" ? [snapshot.marketLabel] : []),
     `Show: ${snapshot.showEligibilityLabel}`,
     `Breeding: ${snapshot.breedingEligibilityLabel}`,
+    ...(snapshot.femaleReproductiveStatus
+      ? [`Repro: ${snapshot.femaleReproductiveStatus.label}`]
+      : []),
   ];
   const actionWindows = buildDogActionWindows({
     ageHours: header.ageHours,
@@ -178,6 +181,13 @@ export default function DogProfileDashboard(props: Props) {
           <LinkedSummaryValue label="Dam" value={snapshot.dam?.displayName ?? "Unknown"} href={snapshot.dam?.profileUrl ?? null} />
           <SummaryValue label="Lifecycle" value={header.lifecycleLabel} />
           <SummaryValue label="Market" value={snapshot.marketLabel} />
+          {snapshot.femaleReproductiveStatus ? (
+            <SummaryValue
+              label="Reproductive status"
+              value={snapshot.femaleReproductiveStatus.label}
+              detail={snapshot.femaleReproductiveStatus.detail ?? undefined}
+            />
+          ) : null}
         </div>
         <div className="mt-5">
           <h3 className="dog-heading font-semibold">Current Action Windows</h3>

@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import CancelGroomingListingForm from "@/components/dogs/CancelGroomingListingForm";
 import DogProfileKennelRunMove from "@/components/dogs/DogProfileKennelRunMove";
 import DogProfileDashboard from "@/components/dogs/DogProfileDashboard";
-import HealthClearBadge from "@/components/dogs/HealthClearBadge";
+import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import ManageDogStudListingForm from "@/components/dogs/ManageDogStudListingForm";
 import OfferDogAtStudForm from "@/components/dogs/OfferDogAtStudForm";
@@ -222,13 +222,18 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <h1 className="dog-heading text-4xl font-bold tracking-tight sm:text-5xl">
                   {headerDisplayName}
                 </h1>
-                {profile.snapshot.healthTestingSummary.badgeStatus ? (
-                  <HealthClearBadge
-                    status={profile.snapshot.healthTestingSummary.badgeStatus}
-                    fullClearance={profile.snapshot.healthTestingSummary.hasFullClearance}
-                    size="lg"
-                  />
-                ) : null}
+                <DogStatusBadges
+                  healthStatus={profile.snapshot.healthTestingSummary.badgeStatus}
+                  fullHealthClearance={
+                    profile.snapshot.healthTestingSummary.hasFullClearance
+                  }
+                  isListedForSale={Boolean(saleListing)}
+                  isListedAtStud={Boolean(studListing)}
+                  isPregnant={
+                    profile.activeBreedingAttempt?.breedingStatus === "PREGNANT"
+                  }
+                  size="lg"
+                />
               </div>
 
               {actions.canName ? (

@@ -9,6 +9,7 @@ import { isChampionOfRecordTitleCode } from "@/lib/dogTitles";
 import { buildTitlePointsDisplay } from "@/lib/titlePoints";
 import {
   mapDogProfile,
+  type FemaleReproductiveSnapshotStatusDto,
   type DogProfileBadgeDto,
   type DogProfileDto,
   type DogProfilePedigreeDogDto,
@@ -17,6 +18,7 @@ import {
   type DogProfileVisibleCategoryDto,
 } from "@/server/mappers/dog.mapper";
 import { epochToDate } from "@/lib/gameClock";
+import { formatGameCountdownHours } from "@/lib/gameTimeFormat";
 import {
   getKennelGroomingSummary,
   getOwnedDogGroomingStatuses,
@@ -27,6 +29,7 @@ import {
 } from "@/server/services/dogVisibleCategories.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import { resolveBreedingProgressForOwnedDam } from "@/server/services/breeding.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -451,6 +454,54 @@ function formatBreedingAttemptStatus(status: string): string {
   }
 }
 
+function buildFemaleReproductiveSnapshotStatus(args: {
+  sex: "M" | "F";
+  activeBreedingAttempt: {
+    status: string;
+    pregCheckEpoch: number | null;
+    dueEpoch: number | null;
+  } | null;
+  currentEpoch: number;
+}): FemaleReproductiveSnapshotStatusDto {
+  const { sex, activeBreedingAttempt, currentEpoch } = args;
+
+  if (sex !== "F") {
+    return null;
+  }
+
+  if (activeBreedingAttempt?.status === "INITIATED") {
+    return {
+      key: "BRED",
+      label: "Bred",
+      detail:
+        activeBreedingAttempt.pregCheckEpoch === null
+          ? null
+          : `Pregnancy check due in ${formatGameCountdownHours(
+              activeBreedingAttempt.pregCheckEpoch - currentEpoch
+            )}`,
+    };
+  }
+
+  if (activeBreedingAttempt?.status === "PREGNANT") {
+    return {
+      key: "PREGNANT",
+      label: "Pregnant",
+      detail:
+        activeBreedingAttempt.dueEpoch === null
+          ? null
+          : `Whelping due in ${formatGameCountdownHours(
+              activeBreedingAttempt.dueEpoch - currentEpoch
+            )}`,
+    };
+  }
+
+  return {
+    key: "OPEN",
+    label: "Open",
+    detail: null,
+  };
+}
+
 function formatOffspringTitleSummary(dog: {
   visibleTitlePrefix: string | null;
   visibleTitleSuffix: string | null;
@@ -815,6 +866,14 @@ export async function getDogProfile(args: {
   const { dogId, viewerKennelId, currentEpoch } = args;
 
   await resolveDogDeaths({ currentEpoch, dogIds: [dogId] });
+
+  if (viewerKennelId) {
+    await resolveBreedingProgressForOwnedDam({
+      kennelId: viewerKennelId,
+      dogId,
+      currentEpoch,
+    });
+  }
 
   const dog = await db.dog.findUnique({
     where: { id: dogId },
@@ -1318,7 +1377,7 @@ export async function getDogProfile(args: {
     badges.push({ code: "at-stud", label: "At Stud", tone: "blue" });
   }
   if (dog.breedingAttemptsAsDam.some((attempt) => attempt.status === "PREGNANT")) {
-    badges.push({ code: "pregnant", label: "Bred", tone: "yellow" });
+    badges.push({ code: "pregnant", label: "Pregnant", tone: "yellow" });
   }
   for (const award of dog.showAwards) {
     badges.push({
@@ -1564,6 +1623,11 @@ export async function getDogProfile(args: {
       canBreed: breedingEligible,
       showEligibilityLabel: formatEligibilityLabel(showEligible),
       breedingEligibilityLabel: formatEligibilityLabel(breedingEligible),
+      femaleReproductiveStatus: buildFemaleReproductiveSnapshotStatus({
+        sex: dog.sex,
+        activeBreedingAttempt,
+        currentEpoch,
+      }),
       groomingLabel: groomingStatus?.groomingStatusLabel ?? null,
       healthTestingSummary: healthSummary,
       coatConditionDisplay: dog.coatCondition.toFixed(2),

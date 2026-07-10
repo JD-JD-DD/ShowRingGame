@@ -127,6 +127,11 @@ export const exampleDogProfile: DogProfileDto = {
     canBreed: true,
     showEligibilityLabel: "Eligible",
     breedingEligibilityLabel: "Eligible",
+    femaleReproductiveStatus: {
+      key: "OPEN",
+      label: "Open",
+      detail: null,
+    },
     groomingLabel: "Needs grooming",
     healthTestingSummary: {
       completedCount: 4,

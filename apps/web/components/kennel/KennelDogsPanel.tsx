@@ -1857,6 +1857,7 @@ export default function KennelDogsPanel() {
                                 fullHealthClearance={dog.hasAllGreenHealthTests}
                                 isListedForSale={dog.isListedForSale}
                                 isListedAtStud={dog.isListedAtStud}
+                                isPregnant={dog.breedingCardStatus.label === "Pregnant"}
                               />
                             </div>
                           </td>
