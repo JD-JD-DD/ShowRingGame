@@ -13,6 +13,9 @@ export const MAX_SHOW_AGE_HOURS = 3840
 export const MIN_SHOW_AGE_HOURS = 182
 export const VETERAN_START_HOURS = 3240
 
+// grooming eligibility
+export const MIN_GROOMING_AGE_HOURS = 84 // 12 weeks; 1 ShowRing hour = 1 in-game day.
+
 
 // Reproduction
 export const MIN_BREED_AGE_HOURS = 2 * SHOW_YEAR_HOURS;

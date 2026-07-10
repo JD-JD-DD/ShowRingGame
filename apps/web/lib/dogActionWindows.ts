@@ -2,6 +2,7 @@ import {
   DAM_MAX_BREED_AGE_HOURS,
   MAX_SHOW_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
+  MIN_GROOMING_AGE_HOURS,
   MIN_SHOW_AGE_HOURS,
 } from "@showring/rules";
 
@@ -168,6 +169,24 @@ function buildGroomingWindow(
     input.nextGroomingResetEpoch,
     input.currentEpoch
   );
+
+  if (!isAlive(input.lifecycleState)) {
+    return {
+      label: "Grooming Window",
+      value: "Unavailable.",
+      tone: "unavailable",
+    };
+  }
+
+  if (input.ageHours < MIN_GROOMING_AGE_HOURS) {
+    return {
+      label: "Grooming Window",
+      value: `Grooming available in ${formatGameCountdownHours(
+        MIN_GROOMING_AGE_HOURS - input.ageHours
+      )}.`,
+      tone: "pending",
+    };
+  }
 
   if (input.groomedThisWeek) {
     return {

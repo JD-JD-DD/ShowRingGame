@@ -41,6 +41,7 @@ import {
   DAM_MAX_BREED_AGE_HOURS,
   MAX_SHOW_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
+  MIN_GROOMING_AGE_HOURS,
   MIN_SHOW_AGE_HOURS,
   BRUCELLOSIS_DISEASE_CODE,
   PHENOTYPE_HEALTH_TEST_CODES,
@@ -1407,6 +1408,7 @@ export async function getDogProfile(args: {
   const canGroom =
     isOwnedByCurrentKennel &&
     isAlive &&
+    ageHours >= MIN_GROOMING_AGE_HOURS &&
     Boolean(groomingStatus) &&
     !groomingStatus?.groomedThisWeek &&
     !groomingStatus?.openListingId &&

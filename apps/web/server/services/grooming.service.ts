@@ -6,7 +6,7 @@ import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyV
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import {
   deriveThyroidGroomingModifiers,
-  MIN_SHOW_AGE_HOURS,
+  MIN_GROOMING_AGE_HOURS,
 } from "@showring/rules";
 
 type DbClient = typeof db | Prisma.TransactionClient;
@@ -145,11 +145,15 @@ function formatCoatGain(gain: number): string {
   return gain.toFixed(2);
 }
 
-function isShowAgeEligibleForGrooming(args: {
+function isDogEligibleForGrooming(args: {
   birthEpoch: number;
   currentEpoch: number;
+  lifecycleState: string;
 }): boolean {
-  return Math.max(0, args.currentEpoch - args.birthEpoch) >= MIN_SHOW_AGE_HOURS;
+  return (
+    args.lifecycleState === "ALIVE" &&
+    Math.max(0, args.currentEpoch - args.birthEpoch) >= MIN_GROOMING_AGE_HOURS
+  );
 }
 
 function calculateGroomingLevel(xp: number): number {
@@ -693,12 +697,13 @@ export async function selfGroomDog(args: {
     await assertDogHasNoPendingEmergencyCare(dog.id, tx);
 
     if (
-      !isShowAgeEligibleForGrooming({
+      !isDogEligibleForGrooming({
         birthEpoch: dog.birthEpoch,
         currentEpoch: args.currentEpoch,
+        lifecycleState: dog.lifecycleState,
       })
     ) {
-      throw new Error("Dogs must be show eligible age before they can be groomed.");
+      throw new Error("Dogs must be at least 12 weeks old before they can be groomed.");
     }
 
     await assertDogNotGroomedThisWeek({
@@ -825,13 +830,14 @@ export async function listDogForOutsideGrooming(args: {
     await assertDogHasNoPendingEmergencyCare(dog.id, tx);
 
     if (
-      !isShowAgeEligibleForGrooming({
+      !isDogEligibleForGrooming({
         birthEpoch: dog.birthEpoch,
         currentEpoch: args.currentEpoch,
+        lifecycleState: dog.lifecycleState,
       })
     ) {
       throw new Error(
-        "Dogs must be show eligible age before they can be offered for grooming."
+        "Dogs must be at least 12 weeks old before they can be offered for grooming."
       );
     }
 
@@ -936,7 +942,7 @@ export async function listOpenGroomingJobs(args: {
         lifecycleState: "ALIVE",
         isPlayerVisible: true,
         birthEpoch: {
-          lte: args.currentEpoch - MIN_SHOW_AGE_HOURS,
+          lte: args.currentEpoch - MIN_GROOMING_AGE_HOURS,
         },
         groomingServiceActions: {
           none: {
@@ -1109,9 +1115,10 @@ export async function acceptGroomingJob(args: {
     await assertDogHasNoPendingEmergencyCare(listing.dog.id, tx);
 
     if (
-      !isShowAgeEligibleForGrooming({
+      !isDogEligibleForGrooming({
         birthEpoch: listing.dog.birthEpoch,
         currentEpoch: args.currentEpoch,
+        lifecycleState: listing.dog.lifecycleState,
       })
     ) {
       throw new Error("This dog is no longer eligible for grooming.");
@@ -1378,7 +1385,7 @@ export async function applyMissedGroomingDecayForCompletedWeek(args: {
         dog.lifecycleState !== "ALIVE" ||
         dog.visibilityState !== "VISIBLE" ||
         !dog.isPlayerVisible ||
-        ageAtCompletedWeekEnd < MIN_SHOW_AGE_HOURS
+        ageAtCompletedWeekEnd < MIN_GROOMING_AGE_HOURS
       ) {
         return {
           dogId: dog.id,
@@ -1562,7 +1569,7 @@ async function findMissedGroomingDecayCandidates(args: {
       visibilityState: "VISIBLE",
       isPlayerVisible: true,
       birthEpoch: {
-        lte: latestCompletedWeekEnd - MIN_SHOW_AGE_HOURS,
+        lte: latestCompletedWeekEnd - MIN_GROOMING_AGE_HOURS,
       },
       conditionEvents: {
         some: {
@@ -1632,7 +1639,7 @@ async function findMissedGroomingDecayCandidates(args: {
     const firstEligibleGroomingWeek = Math.max(
       0,
       Math.ceil(
-        (dog.birthEpoch + MIN_SHOW_AGE_HOURS) / GROOMING_WEEK_HOURS - 1
+        (dog.birthEpoch + MIN_GROOMING_AGE_HOURS) / GROOMING_WEEK_HOURS - 1
       )
     );
 

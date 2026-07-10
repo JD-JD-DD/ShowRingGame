@@ -9,7 +9,7 @@ import { filterDogsBySelectedRuns } from "@/components/kennel/kennelDogFiltering
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
 import {
-  MIN_SHOW_AGE_HOURS,
+  MIN_GROOMING_AGE_HOURS,
   PUPPY_SALE_MIN_AGE_HOURS,
   getPuppyRehomePayoutForAgeHours,
 } from "@showring/rules";
@@ -1773,7 +1773,7 @@ export default function KennelDogsPanel() {
                   (groomingSummary?.groomingActionsRemainingThisWeek ?? 0) > 0;
                 const noGroomingActionsRemaining = !canUseGroomingAction;
                 const isGroomingAgeEligible =
-                  dog.ageHours >= MIN_SHOW_AGE_HOURS;
+                  dog.ageHours >= MIN_GROOMING_AGE_HOURS;
                 const groomDisabled =
                   !isGroomingAgeEligible ||
                   dog.groomingStatus.groomedThisWeek ||
@@ -1787,7 +1787,7 @@ export default function KennelDogsPanel() {
                   groomingBusy;
                 const groomingAgeTitle = isGroomingAgeEligible
                   ? undefined
-                  : "Dogs must be show eligible age before grooming.";
+                  : "Dogs must be at least 12 weeks old before grooming.";
                 const groomingCapacityTitle = noGroomingActionsRemaining
                   ? "No grooming actions remaining this week."
                   : undefined;
