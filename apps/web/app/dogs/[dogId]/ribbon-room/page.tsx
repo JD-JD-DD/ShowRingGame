@@ -8,8 +8,6 @@ import { RibbonTotalsSection } from "@/components/awards/RibbonTotalsSection";
 import { RibbonRoomStatCard } from "@/components/awards/RibbonRoomStatCard";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
-import {
-} from "@/lib/awards/ribbonRoomUi";
 import { getDogRibbonRoom } from "@/server/services/ribbonRoom.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
 
@@ -23,9 +21,16 @@ function formatRank(value: number | null): string {
 
 function sectionHeading(title: string, description: string) {
   return (
-    <div className="mb-4">
-      <h2 className="text-2xl font-semibold text-white">{title}</h2>
-      <p className="mt-1 text-sm text-[var(--dog-copy)]">{description}</p>
+    <div className="mb-5 sm:mb-6">
+      <div className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+        Ribbon Room
+      </div>
+      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[2rem]">
+        {title}
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--dog-copy)]">
+        {description}
+      </p>
     </div>
   );
 }
@@ -53,38 +58,38 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
     "Unnamed Dog";
 
   return (
-    <main className="dog-page min-h-screen px-6 py-8">
+    <main className="dog-page min-h-screen px-4 py-6 sm:px-6 sm:py-8">
       <div className="mx-auto max-w-7xl">
-        <section className="dog-panel rounded-[28px] px-6 py-6 backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="inline-flex rounded-full border border-[var(--dog-border)] bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+        <section className="dog-panel overflow-hidden rounded-[30px] border border-white/10 px-5 py-6 shadow-[0_24px_80px_rgba(4,6,20,0.36)] backdrop-blur sm:px-7 sm:py-7">
+          <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(168,85,247,0.18),transparent_70%)] pointer-events-none" />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-4xl">
+              <div className="inline-flex rounded-full border border-[var(--dog-border)] bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
                 Ribbon Room
               </div>
-              <div className="mt-4 text-sm font-medium text-[var(--dog-label)]">
-                {ribbonRoom.dog.breed.name}
+              <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-medium text-[var(--dog-label)]">
+                <span>{ribbonRoom.dog.breed.name}</span>
+                <span className="hidden h-1.5 w-1.5 rounded-full bg-[var(--dog-label)]/60 sm:inline-block" />
+                <span>{ribbonRoom.dog.sex === "M" ? "Male" : "Female"}</span>
               </div>
               <h1 className="dog-heading mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
                 <Link
                   href={ribbonRoom.dog.dogPageUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:underline"
+                  className="decoration-purple-300/60 underline-offset-4 transition hover:underline"
                 >
                   {registeredName}
                 </Link>
               </h1>
               {ribbonRoom.dog.callName &&
               ribbonRoom.dog.callName !== ribbonRoom.dog.registeredName ? (
-                <div className="mt-2 text-base text-[var(--dog-copy)]">
+                <div className="mt-3 text-base text-[var(--dog-copy)]">
                   Call name: {ribbonRoom.dog.callName}
                 </div>
               ) : null}
-              <div className="mt-4 flex flex-wrap gap-2 text-sm text-[var(--dog-copy)]">
-                <span className="rounded-full border border-[var(--dog-border)] bg-black/20 px-3 py-1">
-                  {ribbonRoom.dog.sex === "M" ? "Male" : "Female"}
-                </span>
-                <span className="rounded-full border border-[var(--dog-border)] bg-black/20 px-3 py-1">
+              <div className="mt-5 flex flex-wrap gap-2 text-sm text-[var(--dog-copy)]">
+                <span className="rounded-full border border-[var(--dog-border)] bg-black/20 px-3 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
                   Reg. {ribbonRoom.dog.regNumber}
                 </span>
               </div>
@@ -109,8 +114,8 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-6 lg:grid-cols-2">
-          <article className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
+        <section className="mt-8 grid gap-6 xl:mt-10 lg:grid-cols-2">
+          <article className="rounded-[28px] border border-[var(--dog-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(7,11,28,0.38))] p-5 shadow-[var(--dog-shadow)] sm:p-6">
             {sectionHeading(
               "Champion Progress",
               "Canonical championship progress from title records."
@@ -139,7 +144,7 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
             </div>
           </article>
 
-          <article className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
+          <article className="rounded-[28px] border border-[var(--dog-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(7,11,28,0.38))] p-5 shadow-[var(--dog-shadow)] sm:p-6">
             {sectionHeading(
               "Grand Champion Progress",
               "Grand Champion credits and the current earned level."
@@ -169,8 +174,8 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
           </article>
         </section>
 
-        <section className="mt-8 grid gap-6 xl:grid-cols-2">
-          <article className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
+        <section className="mt-8 grid gap-6 xl:mt-10 xl:grid-cols-2">
+          <article className="rounded-[28px] border border-[var(--dog-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(7,11,28,0.34))] p-5 shadow-[var(--dog-shadow)] sm:p-6">
             {sectionHeading(
               "Lifetime Statistics",
               "Career totals across every recorded year."
@@ -197,7 +202,7 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
             </div>
           </article>
 
-          <article className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
+          <article className="rounded-[28px] border border-[var(--dog-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(7,11,28,0.34))] p-5 shadow-[var(--dog-shadow)] sm:p-6">
             {sectionHeading(
               "Current Year Statistics",
               `Year ${currentYear} standing from the current prestige rollup.`
@@ -225,7 +230,7 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
           </article>
         </section>
 
-        <section className="mt-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
+        <section className="mt-8 rounded-[28px] border border-[var(--dog-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(7,11,28,0.36))] p-5 shadow-[var(--dog-shadow)] sm:p-6 xl:mt-10">
           {sectionHeading(
             "Ribbon Totals",
             "Graphical breed, group, and Best in Show awards."
@@ -238,7 +243,7 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
           <RibbonTotalsSection ribbons={ribbonRoom.ribbons} />
         </section>
 
-        <section className="mt-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
+        <section className="mt-8 rounded-[28px] border border-[var(--dog-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(7,11,28,0.36))] p-5 shadow-[var(--dog-shadow)] sm:p-6 xl:mt-10">
           {sectionHeading(
             "Invitational Hall",
             "Only proven invitational history is shown here."
@@ -259,7 +264,7 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
           )}
         </section>
 
-        <section className="mt-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
+        <section className="mt-8 rounded-[28px] border border-[var(--dog-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(7,11,28,0.36))] p-5 shadow-[var(--dog-shadow)] sm:p-6 xl:mt-10">
           {sectionHeading(
             "Career Milestones",
             "The key moments in this dog's show career."

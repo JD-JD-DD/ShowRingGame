@@ -30,16 +30,16 @@ export function CareerMilestones({ milestones }: CareerMilestonesProps) {
   }
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-4">
       {milestones.map((milestone) => (
         <article
           key={`${milestone.type}-${milestone.year}-${milestone.week}`}
-          className={`rounded-2xl border px-4 py-4 ${toneClass(milestone.type)}`}
+          className={`rounded-[22px] border px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${toneClass(milestone.type)}`}
         >
-          <div className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[var(--dog-label)]">
+          <div className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
             Year {milestone.year}, Week {milestone.week}
           </div>
-          <div className="mt-3 text-lg font-semibold text-white">
+          <div className="mt-3 text-lg font-semibold leading-6 tracking-tight text-white">
             {MILESTONE_LABELS[milestone.type]}
           </div>
         </article>

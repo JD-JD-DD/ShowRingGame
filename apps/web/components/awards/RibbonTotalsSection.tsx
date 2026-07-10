@@ -135,7 +135,7 @@ export function RibbonTotalsSection({
               }}
               type="button"
               onClick={() => openDetails(award)}
-              className="rounded-2xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-purple-300/70"
+              className="rounded-[22px] text-left outline-none transition duration-150 hover:-translate-y-0.5 hover:brightness-105 focus-visible:ring-2 focus-visible:ring-purple-300/70"
               aria-haspopup="dialog"
               aria-label={`Open ${RIBBON_LABELS[award]} ribbon details`}
             >
@@ -147,7 +147,7 @@ export function RibbonTotalsSection({
 
       {selectedRibbon ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(4,6,18,0.82)] px-3 py-4 sm:px-4 sm:py-6"
           onClick={closeDetails}
         >
           <div
@@ -155,21 +155,24 @@ export function RibbonTotalsSection({
             aria-modal="true"
             aria-labelledby={detailHeadingId}
             aria-describedby={detailDescriptionId}
-            className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] shadow-[var(--dog-shadow)]"
+            className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-[30px] border border-[var(--dog-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(8,12,28,0.96))] shadow-[0_32px_90px_rgba(0,0,0,0.48)]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 border-b border-[var(--dog-border)] px-6 py-5">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--dog-border)] px-4 py-4 sm:px-6 sm:py-5">
               <div>
                 <div
                   id={detailDescriptionId}
-                  className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[var(--dog-label)]"
+                  className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]"
                 >
                   Ribbon Detail
                 </div>
-                <h3 id={detailHeadingId} className="mt-2 text-2xl font-semibold text-white">
+                <h3
+                  id={detailHeadingId}
+                  className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[2rem]"
+                >
                   {RIBBON_LABELS[selectedRibbon.award]}
                 </h3>
-                <p className="mt-1 text-sm text-[var(--dog-copy)]">
+                <p className="mt-1 text-sm leading-6 text-[var(--dog-copy)]">
                   {selectedRibbon.count} recorded occurrence
                   {selectedRibbon.count === 1 ? "" : "s"}
                 </p>
@@ -183,18 +186,18 @@ export function RibbonTotalsSection({
               </button>
             </div>
 
-            <div className="max-h-[calc(90vh-110px)] overflow-y-auto px-6 py-5">
-              <div className="mb-5 flex items-center gap-4 rounded-2xl border border-[var(--dog-border)] bg-black/20 p-4">
+            <div className="max-h-[calc(92vh-96px)] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+              <div className="mb-5 flex items-center gap-4 rounded-[24px] border border-[var(--dog-border)] bg-black/20 p-4">
                 <img
                   src={getRegularRibbonAssetPath(selectedRibbon.award)}
                   alt={RIBBON_LABELS[selectedRibbon.award]}
-                  className="h-24 w-24 shrink-0 object-contain"
+                  className="h-28 w-28 shrink-0 object-contain"
                 />
                 <div>
-                  <div className="text-lg font-semibold text-white">
+                  <div className="text-lg font-semibold tracking-tight text-white">
                     {RIBBON_LABELS[selectedRibbon.award]}
                   </div>
-                  <div className="mt-1 text-sm text-[var(--dog-copy)]">
+                  <div className="mt-1 text-sm leading-6 text-[var(--dog-copy)]">
                     Full recorded history, newest first.
                   </div>
                 </div>
@@ -206,14 +209,14 @@ export function RibbonTotalsSection({
                   .map((occurrence, index) => (
                     <article
                       key={`${occurrence.originalAwardCode}-${occurrence.show.name}-${occurrence.year}-${occurrence.week}-${index}`}
-                      className="rounded-2xl border border-[var(--dog-border)] bg-black/20 p-4"
+                      className="rounded-[22px] border border-[var(--dog-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(4,9,20,0.34))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                     >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <div className="text-lg font-semibold text-white">
+                          <div className="text-lg font-semibold tracking-tight text-white">
                             {occurrence.show.name}
                           </div>
-                          <div className="mt-1 text-sm text-[var(--dog-copy)]">
+                          <div className="mt-1 text-sm leading-6 text-[var(--dog-copy)]">
                             Year {occurrence.year}, Week {occurrence.week}
                           </div>
                         </div>
@@ -222,7 +225,7 @@ export function RibbonTotalsSection({
                         </div>
                       </div>
 
-                      <div className="mt-4 grid gap-2">
+                      <div className="mt-4 grid gap-2.5">
                         {detailRow(
                           "Judge",
                           occurrence.judge.name || "Judge not recorded"
