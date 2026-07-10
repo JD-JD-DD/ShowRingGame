@@ -105,6 +105,7 @@ export type RibbonRoomRibbonOccurrenceDto = {
   dogsDefeated: number;
   pointsEarned: number;
   award: RibbonRoomAwardCode;
+  originalAwardCode: string;
   awardGroup: string;
 };
 
@@ -298,6 +299,7 @@ export function buildRibbonTotals(
       pointsEarned:
         award.grandChampionCredit?.pointsAwarded ?? award.pointsAwarded,
       award: normalizedAward,
+      originalAwardCode: award.awardCode,
       awardGroup: award.awardGroup,
     });
     totals.set(normalizedAward, history);

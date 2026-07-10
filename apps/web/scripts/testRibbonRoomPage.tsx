@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { CareerMilestones } from "../components/awards/CareerMilestones";
 import { InvitationalHistoryCard } from "../components/awards/InvitationalHistoryCard";
 import { InvitationalRecognitionBadge } from "../components/awards/InvitationalRecognitionBadge";
+import { RibbonTotalsSection } from "../components/awards/RibbonTotalsSection";
 import { RibbonTotalTile } from "../components/awards/RibbonTotalTile";
 import {
   getInvitationalRibbonAssetPath,
@@ -26,6 +27,20 @@ function assertIncludes(haystack: string, needle: string, label: string): void {
   assert.ok(haystack.includes(needle), label);
 }
 
+function assertBefore(
+  haystack: string,
+  first: string,
+  second: string,
+  label: string
+): void {
+  const firstIndex = haystack.indexOf(first);
+  const secondIndex = haystack.indexOf(second);
+
+  assert.ok(firstIndex >= 0, `${label}: missing first marker`);
+  assert.ok(secondIndex >= 0, `${label}: missing second marker`);
+  assert.ok(firstIndex < secondIndex, label);
+}
+
 function assetExists(assetPath: string): boolean {
   return existsSync(join(rootDir(), "apps/web/public", assetPath.slice(1)));
 }
@@ -41,8 +56,8 @@ assertIncludes(
 );
 assertIncludes(
   ribbonRoomPage,
-  "RIBBON_TOTAL_ORDER.map((award) =>",
-  "page renders the full stable ribbon award grid"
+  "<RibbonTotalsSection ribbons={ribbonRoom.ribbons} />",
+  "page delegates ribbon totals rendering to the detail-capable totals section"
 );
 assertIncludes(
   ribbonRoomPage,
@@ -78,6 +93,28 @@ assertIncludes(
   dogPage,
   'href={`/dogs/${header.dogId}/ribbon-room`}',
   "dog page contains the Ribbon Room link"
+);
+assertIncludes(
+  dogPage,
+  'className="w-full rounded-2xl border border-[var(--dog-border)] bg-white/5',
+  "dog page renders Ribbon Room as a full-width secondary action"
+);
+assertIncludes(
+  dogPage,
+  "Ribbon Room",
+  "dog page uses the lighter secondary styling for Ribbon Room"
+);
+assertBefore(
+  dogPage,
+  "</DogProfileKennelRunMove>",
+  "href={`/dogs/${header.dogId}/ribbon-room`}",
+  "dog page places Ribbon Room after the six primary action slots"
+);
+assertBefore(
+  dogPage,
+  "href={`/dogs/${header.dogId}/ribbon-room`}",
+  "{actions.canBuyActiveListing && saleListing ? (",
+  "dog page places Ribbon Room before the lower market-action grid"
 );
 
 for (const award of RIBBON_TOTAL_ORDER) {
@@ -121,6 +158,102 @@ assertIncludes(
   zeroRibbonMarkup,
   getRegularRibbonAssetPath("BIS"),
   "ribbon total tile uses regular assets"
+);
+
+const ribbonDetailsMarkup = renderToStaticMarkup(
+  <RibbonTotalsSection
+    ribbons={[
+      {
+        award: "SELECT",
+        count: 2,
+        history: [
+          {
+            show: { id: "show-1", name: "Spring Cluster" },
+            judge: { id: "judge-1", name: "Judge Blue" },
+            year: 8,
+            week: 12,
+            dogsDefeated: 3,
+            pointsEarned: 1,
+            award: "SELECT",
+            originalAwardCode: "SELECT_DOG",
+            awardGroup: "BREED",
+          },
+          {
+            show: { id: "show-2", name: "Summer Cluster" },
+            judge: { id: "judge-2", name: "" },
+            year: 9,
+            week: 4,
+            dogsDefeated: 0,
+            pointsEarned: 0,
+            award: "SELECT",
+            originalAwardCode: "SELECT_BITCH",
+            awardGroup: "BREED",
+          },
+        ],
+      },
+    ]}
+    initialSelectedAward="SELECT"
+  />
+);
+assertIncludes(
+  ribbonDetailsMarkup,
+  'role="dialog"',
+  "positive-count ribbon totals can open an accessible detail view"
+);
+assertIncludes(
+  ribbonDetailsMarkup,
+  "Close",
+  "detail view exposes a close action"
+);
+assertIncludes(
+  ribbonDetailsMarkup,
+  "Full recorded history, newest first.",
+  "detail view announces newest-first ordering"
+);
+assertIncludes(
+  ribbonDetailsMarkup,
+  "Year 9, Week 4",
+  "detail view renders year and week"
+);
+assertIncludes(
+  ribbonDetailsMarkup,
+  "Judge not recorded",
+  "missing optional judge values render safely"
+);
+assertIncludes(
+  ribbonDetailsMarkup,
+  "Select Dog",
+  "SELECT history preserves Select Dog labeling"
+);
+assertIncludes(
+  ribbonDetailsMarkup,
+  "Select Bitch",
+  "SELECT history preserves Select Bitch labeling"
+);
+assert.ok(
+  ribbonDetailsMarkup.indexOf("Year 9, Week 4") <
+    ribbonDetailsMarkup.indexOf("Year 8, Week 12"),
+  "occurrences render newest first"
+);
+assert.ok(
+  !ribbonDetailsMarkup.includes("Dogs defeated</span><span>0"),
+  "missing optional dogs-defeated values are omitted safely"
+);
+
+const zeroDetailsSectionMarkup = renderToStaticMarkup(
+  <RibbonTotalsSection
+    ribbons={[
+      {
+        award: "BIS",
+        count: 0,
+        history: [],
+      },
+    ]}
+  />
+);
+assert.ok(
+  !zeroDetailsSectionMarkup.includes('role="dialog"'),
+  "zero-count ribbon totals do not open an empty detail view"
 );
 
 const invitationalRosetteMarkup = renderToStaticMarkup(
@@ -199,6 +332,11 @@ assertIncludes(
   service,
   "week: 52",
   "ribbon room service supplies invitational week data"
+);
+assertIncludes(
+  service,
+  "originalAwardCode: award.awardCode",
+  "ribbon room service preserves the specific stored award code for detail display"
 );
 
 console.log("Ribbon Room page checks passed.");

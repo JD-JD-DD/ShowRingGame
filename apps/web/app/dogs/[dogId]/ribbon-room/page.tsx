@@ -4,14 +4,11 @@ import { SHOW_YEAR_HOURS } from "@showring/rules";
 
 import { CareerMilestones } from "@/components/awards/CareerMilestones";
 import { InvitationalHistoryCard } from "@/components/awards/InvitationalHistoryCard";
+import { RibbonTotalsSection } from "@/components/awards/RibbonTotalsSection";
 import { RibbonRoomStatCard } from "@/components/awards/RibbonRoomStatCard";
-import { RibbonTotalTile } from "@/components/awards/RibbonTotalTile";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import {
-  getRegularRibbonAssetPath,
-  RIBBON_LABELS,
-  RIBBON_TOTAL_ORDER,
 } from "@/lib/awards/ribbonRoomUi";
 import { getDogRibbonRoom } from "@/server/services/ribbonRoom.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -46,9 +43,6 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
   if (!ribbonRoom) notFound();
 
   const currentYear = Math.floor(getCurrentEpoch() / SHOW_YEAR_HOURS) + 1;
-  const ribbonCounts = new Map(
-    ribbonRoom.ribbons.map((ribbon) => [ribbon.award, ribbon.count])
-  );
   const invitationalRecords = [...ribbonRoom.invitational].sort(
     (a, b) => b.year - a.year || b.week - a.week
   );
@@ -241,17 +235,7 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
               No BIS, group, breed, or Select awards recorded yet.
             </div>
           ) : null}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {RIBBON_TOTAL_ORDER.map((award) => (
-              <RibbonTotalTile
-                key={award}
-                label={award}
-                count={ribbonCounts.get(award) ?? 0}
-                assetPath={getRegularRibbonAssetPath(award)}
-                alt={RIBBON_LABELS[award]}
-              />
-            ))}
-          </div>
+          <RibbonTotalsSection ribbons={ribbonRoom.ribbons} />
         </section>
 
         <section className="mt-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">

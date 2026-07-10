@@ -350,13 +350,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </div>
                 )}
 
-                <Link
-                  href={`/dogs/${header.dogId}/ribbon-room`}
-                  className="rounded-2xl border border-[var(--dog-border)] bg-white/5 px-5 py-3 text-center text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-white/10"
-                >
-                  Ribbon Room
-                </Link>
-
                 {viewerContext.canManage && grooming ? (
                   <details className="group">
                     <summary className="list-none rounded-2xl bg-amber-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-amber-500 [&::-webkit-details-marker]:hidden">
@@ -448,6 +441,13 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   ) : null}
                 </DogProfileKennelRunMove>
               </div>
+
+              <Link
+                href={`/dogs/${header.dogId}/ribbon-room`}
+                className="w-full rounded-2xl border border-[var(--dog-border)] bg-white/5 px-5 py-3 text-center text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-white/10"
+              >
+                Ribbon Room
+              </Link>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 {actions.canBuyActiveListing && saleListing ? (

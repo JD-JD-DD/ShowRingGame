@@ -98,9 +98,9 @@ const judge = (id: string) => ({ id, name: `Judge ${id}` });
       { year: 13, awardCode: "SELECT_BITCH" },
     ]),
     [
-      { year: 11, status: "INVITED" },
-      { year: 12, status: "GROUP_FIRST" },
-      { year: 13, status: "SELECT" },
+      { year: 11, week: 52, status: "INVITED" },
+      { year: 12, week: 52, status: "GROUP_FIRST" },
+      { year: 13, week: 52, status: "SELECT" },
     ]
   );
 }

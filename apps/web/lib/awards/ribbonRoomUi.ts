@@ -1,5 +1,6 @@
 import type {
   RibbonRoomAwardCode,
+  RibbonRoomRibbonOccurrenceDto,
   RibbonRoomInvitationalStatus,
   RibbonRoomMilestoneType,
 } from "@/server/services/ribbonRoom.service";
@@ -129,4 +130,18 @@ export function milestoneTone(type: RibbonRoomMilestoneType): string {
   }
 
   return "standard";
+}
+
+export function getRibbonOccurrenceLabel(
+  occurrence: Pick<RibbonRoomRibbonOccurrenceDto, "award" | "originalAwardCode">
+): string {
+  if (occurrence.originalAwardCode === "SELECT_DOG") {
+    return "Select Dog";
+  }
+
+  if (occurrence.originalAwardCode === "SELECT_BITCH") {
+    return "Select Bitch";
+  }
+
+  return RIBBON_LABELS[occurrence.award];
 }
