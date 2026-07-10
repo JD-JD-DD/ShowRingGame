@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { HomePayPalButton } from "@/components/payments/HomePayPalButton";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getSessionUserId } from "@/lib/session";
@@ -399,41 +400,50 @@ export default async function HomePage() {
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
-            <div>
-              <h2 className="text-xl font-semibold text-white">
-                Welcome These New Kennels
-              </h2>
-              <p className="mt-1 text-sm text-[var(--dog-copy)]">
-                Joined in the last 48 hours
-              </p>
-            </div>
+          <div className="flex flex-col gap-6">
+            <section className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
+              <div>
+                <h2 className="text-xl font-semibold text-white">
+                  Welcome These New Kennels
+                </h2>
+                <p className="mt-1 text-sm text-[var(--dog-copy)]">
+                  Joined in the last 48 hours
+                </p>
+              </div>
 
-            {newKennels.length === 0 ? (
-              <div className="mt-4 text-sm text-[var(--dog-copy)]">
-                No new kennels have joined recently.
-              </div>
-            ) : (
-              <div className="mt-4 grid gap-2.5">
-                {newKennels.map((kennel) => (
-                  <div
-                    key={kennel.id}
-                    className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3"
-                  >
-                    <Link
-                      href={`/kennels/${kennel.slug}`}
-                      className="truncate text-sm font-semibold text-white underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
+              {newKennels.length === 0 ? (
+                <div className="mt-4 text-sm text-[var(--dog-copy)]">
+                  No new kennels have joined recently.
+                </div>
+              ) : (
+                <div className="mt-4 grid gap-2.5">
+                  {newKennels.map((kennel) => (
+                    <div
+                      key={kennel.id}
+                      className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3"
                     >
-                      {kennel.name}
-                    </Link>
-                    <div className="mt-1 text-xs text-[var(--dog-copy)]">
-                      Joined {formatJoinedAt(kennel.createdAt)}
+                      <Link
+                        href={`/kennels/${kennel.slug}`}
+                        className="truncate text-sm font-semibold text-white underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
+                      >
+                        {kennel.name}
+                      </Link>
+                      <div className="mt-1 text-xs text-[var(--dog-copy)]">
+                        Joined {formatJoinedAt(kennel.createdAt)}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section
+              className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]"
+              aria-label="PayPal button"
+            >
+              <HomePayPalButton />
+            </section>
+          </div>
         </section>
 
         <section className="mb-8">
