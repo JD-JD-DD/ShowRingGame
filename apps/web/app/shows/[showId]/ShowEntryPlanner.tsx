@@ -22,6 +22,8 @@ type PlannerDog = {
   dogId: string;
   displayName: string;
   regNumber: string;
+  breedCode2: string;
+  breedName: string;
   sex: "M" | "F";
   ageLabel: string;
   eligibleShowDayIds: string[];
@@ -35,10 +37,21 @@ type PlannerDog = {
   pendingEmergencyBlockReason: string | null;
 };
 
+type PlannerScope =
+  | {
+      type: "BREED";
+      breedCode2: string;
+      label: string;
+    }
+  | {
+      type: "KENNEL_RUN";
+      kennelRunId: string;
+      label: string;
+    };
+
 type PlannerProps = {
   showId: string;
-  breedCode2: string;
-  breedLabel: string;
+  scope: PlannerScope;
   days: PlannerDay[];
   dogs: PlannerDog[];
   kennelBalance: number;
@@ -46,7 +59,7 @@ type PlannerProps = {
   clusterDistrict: number;
   showRole: "PRIMARY" | "SECONDARY";
   travelCostAlreadyPlanned: boolean;
-  existingDogIdsForBreed: string[];
+  existingDogIdsByBreed: Record<string, string[]>;
   initiallySelectedDogIds: string[];
   bulkEligibleSelections: Array<{ dogId: string; showDayId: string }>;
   bulkSkippedSelectionCount: number;
@@ -86,8 +99,7 @@ function getInitialSelection(args: {
 
 export function ShowEntryPlanner({
   showId,
-  breedCode2,
-  breedLabel,
+  scope,
   days,
   dogs,
   kennelBalance,
@@ -95,7 +107,7 @@ export function ShowEntryPlanner({
   clusterDistrict,
   showRole,
   travelCostAlreadyPlanned,
-  existingDogIdsForBreed,
+  existingDogIdsByBreed,
   initiallySelectedDogIds,
   bulkEligibleSelections,
   bulkSkippedSelectionCount,
@@ -142,13 +154,11 @@ export function ShowEntryPlanner({
         clusterDistrict,
         ledgerBalance: kennelBalance,
         showRole,
-        existingDogIdsByBreed: {
-          [breedCode2]: existingDogIdsForBreed,
-        },
+        existingDogIdsByBreed,
         dogs: dogs.map((dog) => ({
           dogId: dog.dogId,
           dogName: dog.displayName,
-          breed: breedCode2,
+          breed: dog.breedCode2,
           sex: dog.sex === "M" ? "Dog" : "Bitch",
           selectedShowDays: selectedDaysByDogId.get(dog.dogId) ?? [],
         })),
@@ -172,11 +182,10 @@ export function ShowEntryPlanner({
       };
     },
     [
-      breedCode2,
       clusterDistrict,
       days,
       dogs,
-      existingDogIdsForBreed,
+      existingDogIdsByBreed,
       homeDistrict,
       kennelBalance,
       showRole,
@@ -201,6 +210,14 @@ export function ShowEntryPlanner({
     [bulkEligibleSelections]
   );
   const hasBulkSelections = bulkEligibleSelections.length > 0;
+  const bulkActionLabel =
+    scope.type === "BREED"
+      ? `Enter All Eligible ${scope.label}`
+      : `Enter All Eligible Dogs in ${scope.label}`;
+  const bulkEmptyMessage =
+    scope.type === "BREED"
+      ? `No new eligible dog/day combinations are available for ${scope.label} in the current cluster.`
+      : "No dogs in this kennel run are currently eligible for an open show day.";
 
   function handleBulkSubmit(event: FormEvent<HTMLFormElement>) {
     if (submittingRef.current || !hasBulkSelections || !bulkQuote.canAfford) {
@@ -245,7 +262,12 @@ export function ShowEntryPlanner({
         method="post"
         onSubmit={handleSubmit}
       >
-        <input type="hidden" name="breedCode2" value={breedCode2} />
+        <input type="hidden" name="scopeType" value={scope.type} />
+        {scope.type === "BREED" ? (
+          <input type="hidden" name="breedCode2" value={scope.breedCode2} />
+        ) : (
+          <input type="hidden" name="kennelRunId" value={scope.kennelRunId} />
+        )}
         {selectedPairs.map((pair) => (
           <input
             key={`${pair.dogId}-${pair.showDayId}`}
@@ -255,11 +277,14 @@ export function ShowEntryPlanner({
           />
         ))}
 
-      <div className="overflow-x-auto">
+        <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] border-separate border-spacing-y-2 text-sm">
           <thead>
             <tr className="theme-label text-left text-xs uppercase tracking-[0.16em]">
               <th className="px-3 py-2">Dog</th>
+              {scope.type === "KENNEL_RUN" ? (
+                <th className="px-3 py-2">Breed</th>
+              ) : null}
               <th className="px-3 py-2">Sex</th>
               <th className="px-3 py-2">Age</th>
               {days.map((day) => (
@@ -304,6 +329,9 @@ export function ShowEntryPlanner({
                     </div>
                   ) : null}
                 </td>
+                {scope.type === "KENNEL_RUN" ? (
+                  <td className="theme-copy px-3 py-3">{dog.breedName}</td>
+                ) : null}
                 <td className="theme-copy px-3 py-3">{dog.sex}</td>
                 <td className="theme-copy px-3 py-3">{dog.ageLabel}</td>
                 {days.map((day) => {
@@ -368,7 +396,7 @@ export function ShowEntryPlanner({
             ))}
           </tbody>
         </table>
-      </div>
+        </div>
 
       <div className="mt-5 grid gap-3 border-t border-[color:var(--dog-border)] pt-5 md:grid-cols-[1fr_auto] md:items-end">
         <div className="theme-copy grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
@@ -447,11 +475,12 @@ export function ShowEntryPlanner({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="theme-heading text-lg font-semibold">
-              Enter All Eligible Dogs
+              {bulkActionLabel}
             </div>
             <p className="theme-copy mt-1 text-sm">
-              Enter every currently eligible {breedLabel} in this cluster across
-              all open days, then confirm the full quote before submission.
+              {scope.type === "BREED"
+                ? `Enter every currently eligible ${scope.label} in this cluster across all open days, then confirm the full quote before submission.`
+                : `Enter every currently eligible dog in ${scope.label} across all open days, then confirm the full quote before submission.`}
             </p>
           </div>
           <button
@@ -460,14 +489,13 @@ export function ShowEntryPlanner({
             disabled={isSubmitting || !hasBulkSelections}
             className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-200"
           >
-            Enter All Eligible Dogs
+            {bulkActionLabel}
           </button>
         </div>
 
         {!hasBulkSelections ? (
           <div className="theme-copy mt-4 rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-panel)] px-4 py-3 text-sm">
-            No new eligible dog/day combinations are available for this breed in
-            the current cluster.
+            {bulkEmptyMessage}
           </div>
         ) : null}
 
@@ -567,7 +595,12 @@ export function ShowEntryPlanner({
                 method="post"
                 onSubmit={handleBulkSubmit}
               >
-                <input type="hidden" name="breedCode2" value={breedCode2} />
+                <input type="hidden" name="scopeType" value={scope.type} />
+                {scope.type === "BREED" ? (
+                  <input type="hidden" name="breedCode2" value={scope.breedCode2} />
+                ) : (
+                  <input type="hidden" name="kennelRunId" value={scope.kennelRunId} />
+                )}
                 <input type="hidden" name="entryMode" value="ALL_ELIGIBLE" />
                 {bulkEligibleSelections.map((pair) => (
                   <input

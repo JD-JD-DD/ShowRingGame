@@ -231,7 +231,10 @@ export async function POST(
         const result = await createShowEntriesForCluster({
           showId: cluster.showId,
           kennelId: kennel.id,
-          breedCode2: planner.dog.breedCode2,
+          scope: {
+            type: "BREED",
+            breedCode2: planner.dog.breedCode2,
+          },
           selections,
           currentEpoch,
         });

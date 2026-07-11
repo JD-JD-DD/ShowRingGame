@@ -9,6 +9,7 @@ import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
+import { listKennelRuns } from "@/server/services/kennelRunManagement.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
 import { assertCanCreateOwnerHandledEntriesForCluster } from "@/server/services/kennelService.service";
@@ -53,6 +54,7 @@ const dogForEntryArgs = Prisma.validator<Prisma.DogDefaultArgs>()({
     visibleTitlePrefix: true,
     visibleTitleSuffix: true,
     breedCode2: true,
+    kennelRunId: true,
     sex: true,
     ownerKennelId: true,
     birthEpoch: true,
@@ -102,6 +104,11 @@ const dogForEntryArgs = Prisma.validator<Prisma.DogDefaultArgs>()({
       select: {
         status: true,
         whelpedEpoch: true,
+      },
+    },
+    breed: {
+      select: {
+        name: true,
       },
     },
   },
@@ -239,7 +246,38 @@ export type ShowEntryBreedOptionDto = {
   eligibleDogCount: number;
 };
 
+export type ShowEntryKennelRunOptionDto = {
+  id: string;
+  name: string;
+  dogCount: number;
+  isSystem: boolean;
+};
+
+export type ShowEntryPlannerScope =
+  | {
+      type: "BREED";
+      breedCode2: string;
+      label: string;
+    }
+  | {
+      type: "KENNEL_RUN";
+      kennelRunId: string;
+      label: string;
+    };
+
+export type ShowEntryPlannerScopeInput =
+  | {
+      type: "BREED";
+      breedCode2: string;
+    }
+  | {
+      type: "KENNEL_RUN";
+      kennelRunId: string;
+    };
+
 export type ShowEntryPlannerDogDto = EligibleShowDogDto & {
+  breedCode2: string;
+  breedName: string;
   eligibleShowDayIds: string[];
   alreadyEnteredShowDayIds: string[];
   hasPendingEmergencyCare: boolean;
@@ -248,9 +286,11 @@ export type ShowEntryPlannerDogDto = EligibleShowDogDto & {
 };
 
 export type ShowEntryPlannerDto = {
+  scope: ShowEntryPlannerScope;
   days: ShowEntryPlannerDayDto[];
   dogs: ShowEntryPlannerDogDto[];
-  existingDogIdsForBreed: string[];
+  sourceDogCount: number;
+  existingDogIdsByBreed: Record<string, string[]>;
   bulkEligibleSelections: BulkShowEntrySelection[];
   bulkSkippedSelectionCount: number;
 };
@@ -279,7 +319,7 @@ export type BulkShowEntryQuoteDto = {
 
 export type BulkShowEntryResultDto = {
   showId: string;
-  breedCode2: string;
+  scope: ShowEntryPlannerScope;
   entriesCreated: number;
   dogsEntered: number;
   skippedSelections: number;
@@ -637,6 +677,26 @@ function buildBulkEntryQuote(args: {
     totalCost,
     balanceAfter,
   };
+}
+
+function normalizePlannerScope(
+  scope: ShowEntryPlannerScopeInput
+): ShowEntryPlannerScopeInput {
+  if (scope.type === "BREED") {
+    return {
+      type: "BREED",
+      breedCode2: scope.breedCode2.trim().toUpperCase(),
+    };
+  }
+
+  return {
+    type: "KENNEL_RUN",
+    kennelRunId: scope.kennelRunId.trim(),
+  };
+}
+
+function getSelectionBlockKey(showDayId: string, breedCode2: string): string {
+  return `${showDayId}:${breedCode2}`;
 }
 
 function uniqueSelections(
@@ -1277,14 +1337,25 @@ export async function listShowEntryBreedOptions(args: {
   return [...optionByBreed.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export async function listShowEntryKennelRunOptions(args: {
+  kennelId: string;
+  currentEpoch: number;
+}): Promise<ShowEntryKennelRunOptionDto[]> {
+  const { kennelId, currentEpoch } = args;
+  await resolveDogDeaths({ kennelId, currentEpoch });
+
+  return listKennelRuns({ kennelId });
+}
+
 export async function getShowEntryPlanner(args: {
   showId: string;
   kennelId: string;
-  breedCode2: string;
+  scope: ShowEntryPlannerScopeInput;
   currentEpoch: number;
   selectedDogIds?: Set<string>;
 }): Promise<ShowEntryPlannerDto> {
-  const { showId, kennelId, breedCode2, currentEpoch, selectedDogIds } = args;
+  const { showId, kennelId, currentEpoch, selectedDogIds } = args;
+  const scope = normalizePlannerScope(args.scope);
   await resolveDogDeaths({ kennelId, currentEpoch });
 
   const cluster = await db.showCluster.findUnique({
@@ -1301,26 +1372,97 @@ export async function getShowEntryPlanner(args: {
 
   if (!cluster) {
     return {
+      scope:
+        scope.type === "BREED"
+          ? { type: "BREED", breedCode2: scope.breedCode2, label: scope.breedCode2 }
+          : { type: "KENNEL_RUN", kennelRunId: scope.kennelRunId, label: "Kennel Run" },
       days: [],
       dogs: [],
-      existingDogIdsForBreed: [],
+      sourceDogCount: 0,
+      existingDogIdsByBreed: {},
       bulkEligibleSelections: [],
       bulkSkippedSelectionCount: 0,
     };
   }
 
+  let plannerScope: ShowEntryPlannerScope;
+  let dogWhere: Prisma.DogWhereInput = {
+    ownerKennelId: kennelId,
+    lifecycleState: "ALIVE",
+    isPlayerVisible: true,
+  };
+
+  if (scope.type === "BREED") {
+    const breed = await db.breed.findUnique({
+      where: { code2: scope.breedCode2 },
+      select: {
+        code2: true,
+        name: true,
+      },
+    });
+
+    plannerScope = {
+      type: "BREED",
+      breedCode2: scope.breedCode2,
+      label: breed?.name ?? scope.breedCode2,
+    };
+    dogWhere = {
+      ...dogWhere,
+      breedCode2: scope.breedCode2,
+    };
+  } else {
+    const run = await db.kennelRun.findFirst({
+      where: {
+        id: scope.kennelRunId,
+        kennelId,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    if (!run) {
+      return {
+        scope: {
+          type: "KENNEL_RUN",
+          kennelRunId: scope.kennelRunId,
+          label: "Kennel Run",
+        },
+        days: [],
+        dogs: [],
+        sourceDogCount: 0,
+        existingDogIdsByBreed: {},
+        bulkEligibleSelections: [],
+        bulkSkippedSelectionCount: 0,
+      };
+    }
+
+    plannerScope = {
+      type: "KENNEL_RUN",
+      kennelRunId: run.id,
+      label: run.name,
+    };
+    dogWhere = {
+      ...dogWhere,
+      kennelRunId: run.id,
+    };
+  }
+
   const dogs = await db.dog.findMany({
     where: {
-      ownerKennelId: kennelId,
-      isPlayerVisible: true,
-      breedCode2,
+      ...dogWhere,
       ...(selectedDogIds && selectedDogIds.size > 0
         ? { id: { in: [...selectedDogIds] } }
         : {}),
     },
-    orderBy: [{ registeredName: "asc" }, { regNumber: "asc" }],
+    orderBy:
+      plannerScope.type === "KENNEL_RUN"
+        ? [{ breedCode2: "asc" }, { registeredName: "asc" }, { regNumber: "asc" }]
+        : [{ registeredName: "asc" }, { regNumber: "asc" }],
     ...dogForEntryArgs,
   });
+  const sourceDogCount = dogs.length;
   const weekendConflictDogIds = await getDogIdsWithSameWeekendEntries({
     client: db,
     dogIds: dogs.map((dog) => dog.id),
@@ -1330,7 +1472,6 @@ export async function getShowEntryPlanner(args: {
   const existingEntries = await db.showEntry.findMany({
     where: {
       kennelId,
-      breedCode2,
       showDay: { clusterId: showId },
       dogId: { in: dogs.map((dog) => dog.id) },
     },
@@ -1342,12 +1483,11 @@ export async function getShowEntryPlanner(args: {
   const existingBreedDogEntries = await db.showEntry.findMany({
     where: {
       kennelId,
-      breedCode2,
       showDay: { clusterId: showId },
     },
-    distinct: ["dogId"],
     select: {
       dogId: true,
+      breedCode2: true,
     },
   });
   const enteredDayIdsByDogId = new Map<string, Set<string>>();
@@ -1374,6 +1514,8 @@ export async function getShowEntryPlanner(args: {
     ];
     const hasPendingEmergencyCare = dog.emergencyCareEvents.length > 0;
     const hasWeekendConflict = weekendConflictDogIds.has(dog.id);
+    const eligibilityBreedCode2 =
+      plannerScope.type === "BREED" ? plannerScope.breedCode2 : dog.breedCode2;
 
     for (const showDay of cluster.showDays) {
       if (alreadyEnteredShowDayIds.includes(showDay.id)) {
@@ -1390,7 +1532,7 @@ export async function getShowEntryPlanner(args: {
         dog,
         cluster,
         showDay,
-        breedCode2,
+        breedCode2: eligibilityBreedCode2,
         currentEpoch,
       });
 
@@ -1407,24 +1549,33 @@ export async function getShowEntryPlanner(args: {
   }
 
   return {
+    scope: plannerScope,
     days,
-    existingDogIdsForBreed: existingBreedDogEntries.map((entry) => entry.dogId),
+    sourceDogCount,
+    existingDogIdsByBreed: buildExistingDogIdsByBreed(existingBreedDogEntries),
     bulkEligibleSelections,
     bulkSkippedSelectionCount,
     dogs: dogs
-      .filter((dog) => !weekendConflictDogIds.has(dog.id))
+      .filter((dog) =>
+        plannerScope.type === "KENNEL_RUN"
+          ? true
+          : !weekendConflictDogIds.has(dog.id)
+      )
       .map((dog) => {
         const alreadyEnteredShowDayIds = [
           ...(enteredDayIdsByDogId.get(dog.id) ?? new Set<string>()),
         ];
         const hasPendingEmergencyCare = dog.emergencyCareEvents.length > 0;
+        const hasWeekendConflict = weekendConflictDogIds.has(dog.id);
+        const eligibilityBreedCode2 =
+          plannerScope.type === "BREED" ? plannerScope.breedCode2 : dog.breedCode2;
         const eligibleShowDayIds = cluster.showDays
           .filter((showDay) => {
             if (alreadyEnteredShowDayIds.includes(showDay.id)) {
               return false;
             }
 
-            if (hasPendingEmergencyCare) {
+            if (hasPendingEmergencyCare || hasWeekendConflict) {
               return false;
             }
 
@@ -1433,7 +1584,7 @@ export async function getShowEntryPlanner(args: {
                 dog,
                 cluster,
                 showDay,
-                breedCode2,
+                breedCode2: eligibilityBreedCode2,
                 currentEpoch,
               }) == null
             );
@@ -1444,6 +1595,8 @@ export async function getShowEntryPlanner(args: {
           dogId: dog.id,
           displayName: getDogDisplayName(dog),
           regNumber: dog.regNumber,
+          breedCode2: dog.breedCode2,
+          breedName: dog.breed.name,
           sex: dog.sex,
           ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
           conditioningSnapshot: getConditioningSnapshot(dog),
@@ -1475,6 +1628,7 @@ export async function getShowEntryPlanner(args: {
       })
       .filter(
         (dog) =>
+          plannerScope.type === "KENNEL_RUN" ||
           dog.eligibleShowDayIds.length > 0 ||
           dog.alreadyEnteredShowDayIds.length > 0 ||
           dog.hasPendingEmergencyCare
@@ -1532,7 +1686,7 @@ async function ensureBreedBlockForEntry(args: {
 export async function createShowEntriesForCluster(args: {
   showId: string;
   kennelId: string;
-  breedCode2: string;
+  scope: ShowEntryPlannerScopeInput;
   selections: BulkShowEntrySelection[];
   currentEpoch: number;
   mode?: "SELECTED" | "ALL_ELIGIBLE";
@@ -1540,12 +1694,16 @@ export async function createShowEntriesForCluster(args: {
   const { showId, kennelId, currentEpoch } = args;
   await resolveDogDeaths({ kennelId, currentEpoch });
 
-  const breedCode2 = args.breedCode2.trim().toUpperCase();
+  const scope = normalizePlannerScope(args.scope);
   const selections = uniqueSelections(args.selections);
   const mode = args.mode ?? "SELECTED";
 
-  if (!breedCode2) {
+  if (scope.type === "BREED" && !scope.breedCode2) {
     throw new Error("Choose a breed to enter.");
+  }
+
+  if (scope.type === "KENNEL_RUN" && !scope.kennelRunId) {
+    throw new Error("Choose a kennel run to enter.");
   }
 
   if (selections.length === 0) {
@@ -1644,6 +1802,44 @@ export async function createShowEntriesForCluster(args: {
         ? "SECONDARY"
         : "PRIMARY";
 
+    let resolvedScope: ShowEntryPlannerScope;
+
+    if (scope.type === "BREED") {
+      const breed = await tx.breed.findUnique({
+        where: { code2: scope.breedCode2 },
+        select: { code2: true, name: true },
+      });
+
+      resolvedScope = {
+        type: "BREED",
+        breedCode2: scope.breedCode2,
+        label: breed?.name ?? scope.breedCode2,
+      };
+    } else {
+      const run = await tx.kennelRun.findFirst({
+        where: {
+          id: scope.kennelRunId,
+          kennelId,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+      if (!run) {
+        throw new Error(
+          "This kennel run is no longer available. Choose another run."
+        );
+      }
+
+      resolvedScope = {
+        type: "KENNEL_RUN",
+        kennelRunId: run.id,
+        label: run.name,
+      };
+    }
+
     const dayById = new Map(cluster.showDays.map((day) => [day.id, day]));
     const dogs = await tx.dog.findMany({
       where: { id: { in: dogIds } },
@@ -1671,12 +1867,11 @@ export async function createShowEntriesForCluster(args: {
     const existingBreedDogEntries = await tx.showEntry.findMany({
       where: {
         kennelId,
-        breedCode2,
         showDay: { clusterId: showId },
       },
-      distinct: ["dogId"],
       select: {
         dogId: true,
+        breedCode2: true,
       },
     });
     const weekendConflictDogIds =
@@ -1731,6 +1926,20 @@ export async function createShowEntriesForCluster(args: {
         throw new Error(`You do not own ${dog.regNumber}.`);
       }
 
+      if (
+        resolvedScope.type === "KENNEL_RUN" &&
+        dog.kennelRunId !== resolvedScope.kennelRunId
+      ) {
+        if (mode === "ALL_ELIGIBLE") {
+          skippedSelections += 1;
+          continue;
+        }
+
+        throw new Error(
+          `${dog.regNumber} is no longer assigned to ${resolvedScope.label}.`
+        );
+      }
+
       if (mode === "ALL_ELIGIBLE" && weekendConflictDogIds.has(dog.id)) {
         skippedSelections += 1;
         continue;
@@ -1758,7 +1967,10 @@ export async function createShowEntriesForCluster(args: {
         dog,
         cluster,
         showDay,
-        breedCode2,
+        breedCode2:
+          resolvedScope.type === "BREED"
+            ? resolvedScope.breedCode2
+            : dog.breedCode2,
         currentEpoch,
       });
 
@@ -1777,7 +1989,7 @@ export async function createShowEntriesForCluster(args: {
     if (validSelections.length === 0) {
       return {
         showId,
-        breedCode2,
+        scope: resolvedScope,
         entriesCreated: 0,
         dogsEntered: 0,
         skippedSelections,
@@ -1799,12 +2011,7 @@ export async function createShowEntriesForCluster(args: {
       clusterDistrict: cluster.district,
       showRole,
       shouldChargeTravel: weekendPlan == null,
-      existingDogIdsByBreed: buildExistingDogIdsByBreed(
-        existingBreedDogEntries.map((entry) => ({
-          dogId: entry.dogId,
-          breedCode2,
-        }))
-      ),
+      existingDogIdsByBreed: buildExistingDogIdsByBreed(existingBreedDogEntries),
       dogs: dogs.map((dog) => ({
         dogId: dog.id,
         dogName: getDogDisplayName(dog),
@@ -1825,21 +2032,29 @@ export async function createShowEntriesForCluster(args: {
       throw new Error(`Insufficient funds for show entry. Shortfall: $${shortfall}.`);
     }
 
+    const existingDogIdsByBreed = buildExistingDogIdsByBreed(existingBreedDogEntries);
     const blockIdByDayId = new Map<string, string>();
 
-    for (const showDayId of new Set(validSelections.map((selection) => selection.showDayId))) {
-      const showDay = dayById.get(showDayId);
+    for (const selection of validSelections) {
+      const dog = dogById.get(selection.dogId);
+      const showDay = dayById.get(selection.showDayId);
 
-      if (!showDay) {
+      if (!dog || !showDay) {
+        continue;
+      }
+
+      const blockKey = getSelectionBlockKey(showDay.id, dog.breedCode2);
+
+      if (blockIdByDayId.has(blockKey)) {
         continue;
       }
 
       blockIdByDayId.set(
-        showDay.id,
+        blockKey,
         await ensureBreedBlockForEntry({
           tx,
           showDay,
-          breedCode2,
+          breedCode2: dog.breedCode2,
         })
       );
     }
@@ -1872,7 +2087,9 @@ export async function createShowEntriesForCluster(args: {
 
           return {
             showDayId: selection.showDayId,
-            judgingBlockId: blockIdByDayId.get(selection.showDayId),
+            judgingBlockId: blockIdByDayId.get(
+              getSelectionBlockKey(selection.showDayId, dog.breedCode2)
+            ),
             dogId: dog.id,
             kennelId: kennel.id,
             enteredKennelId: kennel.id,
@@ -1884,7 +2101,7 @@ export async function createShowEntriesForCluster(args: {
             feeCharged: ENTRY_FEE_PER_SHOW,
             handlerUsed:
               quote.handlerFee > 0 &&
-              !existingBreedDogEntries.some((entry) => entry.dogId === dog.id),
+              !(existingDogIdsByBreed[dog.breedCode2] ?? []).includes(dog.id),
             conditioningSnapshot: getConditioningSnapshot(dog),
             fatigueSnapshot: dog.fatiguePoints,
           };
@@ -1910,7 +2127,10 @@ export async function createShowEntriesForCluster(args: {
         balanceAfter: runningBalance,
         occurredAtEpoch: currentEpoch,
         showClusterId: cluster.id,
-        memo: `Entered ${validSelections.length} ${breedCode2} show entry slot(s).`,
+        memo:
+          resolvedScope.type === "BREED"
+            ? `Entered ${validSelections.length} ${resolvedScope.breedCode2} show entry slot(s).`
+            : `Entered ${validSelections.length} show entry slot(s) from kennel run ${resolvedScope.label}.`,
       });
     }
 
@@ -1949,7 +2169,7 @@ export async function createShowEntriesForCluster(args: {
 
       return {
       showId,
-      breedCode2,
+      scope: resolvedScope,
       entriesCreated: validSelections.length,
       dogsEntered,
       skippedSelections,

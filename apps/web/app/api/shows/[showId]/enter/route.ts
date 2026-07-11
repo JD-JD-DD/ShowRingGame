@@ -7,6 +7,7 @@ import { getKennelForUser } from "@/server/services/kennel.service";
 import {
   createShowEntriesForCluster,
   type BulkShowEntrySelection,
+  type ShowEntryPlannerScopeInput,
 } from "@/server/services/showEntry.service";
 
 const GENERIC_ENTRY_ERROR =
@@ -32,11 +33,16 @@ function redirectWithEntryError(
   request: Request,
   showId: string,
   error: string,
-  breedCode2?: string
+  scope?: ShowEntryPlannerScopeInput
 ) {
   const url = new URL(`/shows/${showId}`, request.url);
   url.searchParams.set("entryError", error);
-  if (breedCode2) url.searchParams.set("breedCode2", breedCode2);
+  if (scope?.type === "BREED") {
+    url.searchParams.set("breedCode2", scope.breedCode2);
+  }
+  if (scope?.type === "KENNEL_RUN") {
+    url.searchParams.set("kennelRunId", scope.kennelRunId);
+  }
   return NextResponse.redirect(url);
 }
 
@@ -44,11 +50,16 @@ function redirectWithEntryMessage(
   request: Request,
   showId: string,
   message: string,
-  breedCode2?: string
+  scope?: ShowEntryPlannerScopeInput
 ) {
   const url = new URL(`/shows/${showId}`, request.url);
   url.searchParams.set("entryMessage", message);
-  if (breedCode2) url.searchParams.set("breedCode2", breedCode2);
+  if (scope?.type === "BREED") {
+    url.searchParams.set("breedCode2", scope.breedCode2);
+  }
+  if (scope?.type === "KENNEL_RUN") {
+    url.searchParams.set("kennelRunId", scope.kennelRunId);
+  }
   return NextResponse.redirect(url);
 }
 
@@ -56,7 +67,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ showId: string }> }
 ) {
-  let selectedBreedCode2 = "";
+  let selectedScope: ShowEntryPlannerScopeInput | undefined;
 
   try {
     const { showId } = await params;
@@ -74,11 +85,23 @@ export async function POST(
 
     const formData = await request.formData();
     const breedCode2 = String(formData.get("breedCode2") ?? "").trim();
+    const kennelRunId = String(formData.get("kennelRunId") ?? "").trim();
+    const scopeType = String(formData.get("scopeType") ?? "").trim();
     const entryMode =
       String(formData.get("entryMode") ?? "").trim() === "ALL_ELIGIBLE"
         ? "ALL_ELIGIBLE"
         : "SELECTED";
-    selectedBreedCode2 = breedCode2;
+    const scope: ShowEntryPlannerScopeInput =
+      scopeType === "KENNEL_RUN"
+        ? {
+            type: "KENNEL_RUN",
+            kennelRunId,
+          }
+        : {
+            type: "BREED",
+            breedCode2,
+          };
+    selectedScope = scope;
     const selections: BulkShowEntrySelection[] = formData
       .getAll("dogDaySelections")
       .map((value) => String(value).trim())
@@ -96,7 +119,7 @@ export async function POST(
         request,
         showId,
         "Select at least one dog and show day.",
-        breedCode2
+        scope
       );
     }
 
@@ -104,7 +127,7 @@ export async function POST(
     const result = await createShowEntriesForCluster({
       showId,
       kennelId: kennel.id,
-      breedCode2,
+      scope,
       selections,
       currentEpoch,
       mode: entryMode,
@@ -131,7 +154,7 @@ export async function POST(
               ? ` ${result.skippedSelections} combination(s) were skipped because eligibility changed or they were already entered.`
               : ""
           }`,
-      breedCode2
+      scope
     );
   } catch (error) {
     const { showId } = await params;
@@ -142,7 +165,7 @@ export async function POST(
       request,
       showId,
       getSafeEntryErrorMessage(error),
-      selectedBreedCode2
+      selectedScope
     );
   }
 }

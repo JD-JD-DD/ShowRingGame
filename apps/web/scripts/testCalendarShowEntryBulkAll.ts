@@ -27,13 +27,28 @@ const dogFirstPlanner = source(
 
 assertIncludes(
   planner,
-  "Enter All Eligible Dogs",
-  "calendar planner renders the new bulk-entry trigger"
+  "const bulkActionLabel =",
+  "calendar planner derives the bulk-entry trigger label from the active scope"
 );
 assertIncludes(
   planner,
   "Confirm All Entries",
   "calendar planner requires a final explicit bulk confirmation action"
+);
+assertIncludes(
+  planner,
+  'name="scopeType" value={scope.type}',
+  "calendar planner posts an explicit planner scope"
+);
+assertIncludes(
+  planner,
+  "Enter All Eligible Dogs in",
+  "calendar planner supports kennel-run bulk-entry copy"
+);
+assertIncludes(
+  planner,
+  "dog.breedName",
+  "calendar planner preserves breed info in mixed-breed run rows"
 );
 assertIncludes(
   planner,
@@ -52,15 +67,60 @@ assertIncludes(
 );
 assertIncludes(
   showPage,
-  "bulkEligibleSelections={planner.bulkEligibleSelections}",
-  "show page passes breed-scoped bulk selections into the planner"
+  "listShowEntryKennelRunOptions",
+  "show page loads kennel-run planner options"
 );
 assertIncludes(
   showPage,
-  "bulkSkippedSelectionCount={planner.bulkSkippedSelectionCount}",
-  "show page passes the precomputed skipped count into the planner"
+  "<ShowEntryPlannerScopeForm",
+  "show page renders the mutually exclusive breed/run scope picker"
+);
+assertIncludes(
+  showPage,
+  "scope={planner.scope}",
+  "show page passes the canonical planner scope into the planner"
+);
+assertIncludes(
+  showPage,
+  "No dogs in this kennel run are currently eligible for an open show day.",
+  "show page renders the run-specific empty eligibility message"
+);
+assertIncludes(
+  showPage,
+  "There are no dogs in this kennel run.",
+  "show page renders the empty run message"
 );
 
+assertIncludes(
+  showEntryService,
+  'type: "KENNEL_RUN";',
+  "show entry service supports kennel-run planner scope"
+);
+assertIncludes(
+  showEntryService,
+  "listShowEntryKennelRunOptions",
+  "show entry service exposes kennel-run planner options"
+);
+assertIncludes(
+  showEntryService,
+  "existingDogIdsByBreed: Record<string, string[]>;",
+  "show entry planner DTO exposes canonical existing entries across breeds"
+);
+assertIncludes(
+  showEntryService,
+  "dog.kennelRunId !== resolvedScope.kennelRunId",
+  "show entry submission revalidates current kennel-run membership"
+);
+assertIncludes(
+  showEntryService,
+  "breedCode2: dog.breedCode2",
+  "show entry submission preserves mixed-breed run entries by dog breed"
+);
+assertIncludes(
+  showEntryService,
+  "getSelectionBlockKey(selection.showDayId, dog.breedCode2)",
+  "show entry submission creates judging blocks per day and breed in run mode"
+);
 assertIncludes(
   showEntryService,
   "bulkEligibleSelections: BulkShowEntrySelection[];",
@@ -87,6 +147,16 @@ assertIncludes(
   "show entry planner counts ineligible or already-entered combinations"
 );
 
+assertIncludes(
+  showEntryRoute,
+  'String(formData.get("scopeType") ?? "").trim()',
+  "show entry route recognizes the submitted planner scope"
+);
+assertIncludes(
+  showEntryRoute,
+  "kennelRunId",
+  "show entry route preserves kennel-run planner selection"
+);
 assertIncludes(
   showEntryRoute,
   'String(formData.get("entryMode") ?? "").trim() === "ALL_ELIGIBLE"',

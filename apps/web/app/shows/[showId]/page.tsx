@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
@@ -18,9 +17,11 @@ import {
   getShowEntryPlanner,
   getShowWeekendEntryPlanStatus,
   listShowEntryBreedOptions,
+  listShowEntryKennelRunOptions,
 } from "@/server/services/showEntry.service";
 
 import { ShowEntryPlanner } from "./ShowEntryPlanner";
+import { ShowEntryPlannerScopeForm } from "./ShowEntryPlannerScopeForm";
 
 function formatShowDateTime(epoch: number): string {
   return epochToDate(epoch).toLocaleString("en-US", {
@@ -81,6 +82,7 @@ export default async function ShowDetailPage({
     entryMessage?: string;
     dogIds?: string;
     breedCode2?: string;
+    kennelRunId?: string;
     judged?: string;
     judgedEntries?: string;
     judgeError?: string;
@@ -92,6 +94,7 @@ export default async function ShowDetailPage({
     entryMessage,
     dogIds,
     breedCode2,
+    kennelRunId,
     judged,
     judgedEntries,
     judgeError,
@@ -107,6 +110,10 @@ export default async function ShowDetailPage({
   const selectedBreedCode =
     typeof breedCode2 === "string" && breedCode2.trim()
       ? breedCode2.trim().toUpperCase()
+      : "";
+  const selectedKennelRunId =
+    !selectedBreedCode && typeof kennelRunId === "string" && kennelRunId.trim()
+      ? kennelRunId.trim()
       : "";
   const currentEpoch = getCurrentEpoch();
   const userId = await getSessionUserId();
@@ -194,15 +201,37 @@ export default async function ShowDetailPage({
           currentEpoch,
         })
       : [];
+  const kennelRunOptions =
+    kennel && clusterAvailability.canEnter && !isStewardingThisShow
+      ? await listShowEntryKennelRunOptions({
+          kennelId: kennel.id,
+          currentEpoch,
+        })
+      : [];
   const selectedBreed = selectedBreedCode
     ? breedOptions.find((breed) => breed.code2 === selectedBreedCode) ?? null
     : null;
+  const selectedKennelRun = selectedKennelRunId
+    ? kennelRunOptions.find((run) => run.id === selectedKennelRunId) ?? null
+    : null;
+  const selectedScope =
+    selectedBreed != null
+      ? ({
+          type: "BREED",
+          breedCode2: selectedBreed.code2,
+        } as const)
+      : selectedKennelRun != null
+        ? ({
+            type: "KENNEL_RUN",
+            kennelRunId: selectedKennelRun.id,
+          } as const)
+        : null;
   const planner =
-    kennel && selectedBreed
+    kennel && selectedScope
       ? await getShowEntryPlanner({
           showId: cluster.id,
           kennelId: kennel.id,
-          breedCode2: selectedBreed.code2,
+          scope: selectedScope,
           currentEpoch,
           selectedDogIds,
         })
@@ -222,7 +251,7 @@ export default async function ShowDetailPage({
             <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
               {isStewardingThisShow
                 ? "Review your stewarding assignment and show schedule for this cluster."
-                : "Choose a breed, then enter each dog for one day or the full cluster."}
+                : "Choose a breed or kennel run, then enter each dog for one day or the full cluster."}
             </p>
           </div>
 
@@ -406,57 +435,42 @@ export default async function ShowDetailPage({
           <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
             {clusterAvailability.message}
           </div>
-        ) : breedOptions.length === 0 ? (
+        ) : breedOptions.length === 0 && kennelRunOptions.length === 0 ? (
           <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
             No eligible kennel dogs are available for this show.
           </div>
         ) : (
           <div className="mt-6">
-            <form
-              action={`/shows/${cluster.id}`}
-              method="get"
-              className="grid gap-3 md:grid-cols-[minmax(240px,1fr)_auto]"
-            >
-              {typeof dogIds === "string" && dogIds.trim() ? (
-                <input type="hidden" name="dogIds" value={dogIds} />
-              ) : null}
-              <label className="theme-label grid gap-2 text-sm">
-                Breed to Enter
-                <select
-                  name="breedCode2"
-                  defaultValue={selectedBreed?.code2 ?? ""}
-                  className="theme-control rounded-xl px-4 py-3 text-sm font-semibold outline-none"
-                >
-                  <option value="">Choose a breed...</option>
-                  <BreedSelectOptions
-                    options={breedOptions}
-                    getLabel={(breed) =>
-                      `${breed.name} (${breed.eligibleDogCount})`
-                    }
-                  />
-                </select>
-              </label>
-              <button
-                type="submit"
-                className="self-end rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
-              >
-                Show Dogs
-              </button>
-            </form>
+            <ShowEntryPlannerScopeForm
+              showId={cluster.id}
+              dogIds={typeof dogIds === "string" ? dogIds : ""}
+              breedOptions={breedOptions}
+              kennelRunOptions={kennelRunOptions}
+              selectedBreedCode={selectedBreed?.code2 ?? ""}
+              selectedKennelRunId={selectedKennelRun?.id ?? ""}
+            />
 
-            {!selectedBreedCode ? (
+            {!selectedScope ? (
               <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
-                Choose a breed to see eligible kennel dogs for this show.
+                Choose a breed or kennel run to see eligible kennel dogs for this show.
               </div>
-            ) : selectedBreed && planner && planner.dogs.length > 0 ? (
+            ) : selectedKennelRunId && !selectedKennelRun ? (
+              <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
+                This kennel run is no longer available. Choose another run.
+              </div>
+            ) : planner && planner.dogs.length > 0 ? (
               <>
                 <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <h2 className="theme-heading text-2xl font-semibold">
-                      {selectedBreed.name}
+                      {selectedScope.type === "BREED"
+                        ? selectedBreed?.name
+                        : selectedKennelRun?.name}
                     </h2>
                     <p className="theme-copy mt-1 text-sm">
-                      Select one or more show days for each dog.
+                      {selectedScope.type === "BREED"
+                        ? "Select one or more show days for each dog."
+                        : "Select one or more show days for each dog in this kennel run."}
                     </p>
                   </div>
                   <div className="theme-neutral-badge rounded-full px-3 py-1 text-sm">
@@ -465,8 +479,7 @@ export default async function ShowDetailPage({
                 </div>
                 <ShowEntryPlanner
                   showId={cluster.id}
-                  breedCode2={selectedBreed.code2}
-                  breedLabel={selectedBreed.name}
+                  scope={planner.scope}
                   days={planner.days.map((day) => ({
                     ...day,
                     label: formatShowCalendarLabel(day.scheduledEpoch),
@@ -482,12 +495,26 @@ export default async function ShowDetailPage({
                   travelCostAlreadyPlanned={Boolean(
                     weekendPlanStatus?.primaryClusterId
                   )}
-                  existingDogIdsForBreed={planner.existingDogIdsForBreed}
+                  existingDogIdsByBreed={planner.existingDogIdsByBreed}
                   initiallySelectedDogIds={[...selectedDogIds]}
                   bulkEligibleSelections={planner.bulkEligibleSelections}
                   bulkSkippedSelectionCount={planner.bulkSkippedSelectionCount}
                 />
+                {selectedScope.type === "KENNEL_RUN" &&
+                planner.bulkEligibleSelections.length === 0 ? (
+                  <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
+                    No dogs in this kennel run are currently eligible for an open show day.
+                  </div>
+                ) : null}
               </>
+            ) : selectedScope.type === "KENNEL_RUN" && planner?.sourceDogCount === 0 ? (
+              <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
+                There are no dogs in this kennel run.
+              </div>
+            ) : selectedScope.type === "KENNEL_RUN" ? (
+              <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
+                No dogs in this kennel run are currently eligible for an open show day.
+              </div>
             ) : selectedBreed ? (
               <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">
                 No eligible {selectedBreed.name} dogs are available for open days in this show.
