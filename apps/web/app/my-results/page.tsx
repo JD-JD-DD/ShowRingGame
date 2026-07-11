@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Fragment } from "react";
 
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -22,6 +23,28 @@ function formatShowDate(epoch: number): string {
     year: "numeric",
     timeZone: "UTC",
   });
+}
+
+function buildShowHeaderDetails(entry: {
+  showDay: {
+    dayIndex: number | null;
+    scheduledEpoch: number;
+    cluster: {
+      district: number | null;
+    };
+  };
+}): string[] {
+  const details = [`Date ${formatShowDate(entry.showDay.scheduledEpoch)}`];
+
+  if (entry.showDay.dayIndex != null) {
+    details.push(`Day ${entry.showDay.dayIndex}`);
+  }
+
+  if (entry.showDay.cluster.district != null) {
+    details.push(getShowDistrictRegionName(entry.showDay.cluster.district));
+  }
+
+  return details;
 }
 
 type MyShowResultEntry = {
@@ -228,64 +251,84 @@ export default async function MyShowResultsPage() {
                 </tr>
               </thead>
               <tbody>
-                {entries.map((entry) => {
+                {entries.map((entry, index) => {
+                  const previousEntry = index > 0 ? entries[index - 1] : null;
+                  const startsNewShowGroup =
+                    previousEntry?.showDay.cluster.id !== entry.showDay.cluster.id;
                   const titlePointsAwarded = formatTitlePointsDisplay(
                     getTitlePointsDisplay(entry)
                   );
                   const absenceReasonMessage = getAbsenceReasonMessage(entry);
+                  const showHeaderDetails = buildShowHeaderDetails(entry);
 
                   return (
-                    <tr
-                      key={entry.id}
-                      className="theme-card"
-                    >
-                      <td className="rounded-l-2xl px-3 py-3">
-                        <Link
-                          href={`/dogs/${entry.dog.id}`}
-                          className="theme-heading font-semibold underline-offset-4 hover:underline"
-                        >
-                          {formatDogDisplayName(entry.dog)}
-                        </Link>
-                        <div className="theme-copy text-xs">
-                          {entry.dog.regNumber}
-                        </div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <Link
-                          href={`/shows/${entry.showDay.cluster.id}/results`}
-                          className="theme-heading font-semibold underline-offset-4 hover:underline"
-                        >
-                          {entry.showDay.cluster.name}
-                        </Link>
-                        <div className="theme-copy text-xs">
-                          {getShowDistrictRegionName(
-                            entry.showDay.cluster.district
-                          )}
-                        </div>
-                      </td>
-                      <td className="theme-copy px-3 py-3">
-                        {formatShowDate(entry.showDay.scheduledEpoch)}
-                        <div className="theme-copy text-xs">
-                          Day {entry.showDay.dayIndex}
-                        </div>
-                      </td>
-                      <td className="theme-copy px-3 py-3">
-                        {entry.breed.name} ({entry.breed.code2})
-                      </td>
-                      <td className="theme-heading px-3 py-3 font-semibold">
-                        {formatResult(entry)}
-                        {absenceReasonMessage ? (
-                          <div className="theme-copy mt-1 text-xs font-normal">
-                            {absenceReasonMessage}
+                    <Fragment key={entry.id}>
+                      {startsNewShowGroup ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className={`px-0 ${index === 0 ? "pt-0" : "pt-4"}`}
+                          >
+                            <div className={`border-t border-white/10 ${index === 0 ? "pt-0" : "pt-3"}`}>
+                              <h2 className="theme-heading text-sm font-semibold sm:text-base">
+                                {entry.showDay.cluster.name}
+                              </h2>
+                              <p className="theme-copy mt-1 text-xs sm:text-sm">
+                                {showHeaderDetails.join(" | ")}
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                      <tr className="theme-card">
+                        <td className="rounded-l-2xl px-3 py-3">
+                          <Link
+                            href={`/dogs/${entry.dog.id}`}
+                            className="theme-heading font-semibold underline-offset-4 hover:underline"
+                          >
+                            {formatDogDisplayName(entry.dog)}
+                          </Link>
+                          <div className="theme-copy text-xs">
+                            {entry.dog.regNumber}
                           </div>
-                        ) : null}
-                      </td>
-                      <td className="theme-heading rounded-r-2xl px-3 py-3 font-semibold">
-                        {titlePointsAwarded ?? (
-                          <span className="theme-copy opacity-50">&mdash;</span>
-                        )}
-                      </td>
-                    </tr>
+                        </td>
+                        <td className="px-3 py-3">
+                          <Link
+                            href={`/shows/${entry.showDay.cluster.id}/results`}
+                            className="theme-heading font-semibold underline-offset-4 hover:underline"
+                          >
+                            {entry.showDay.cluster.name}
+                          </Link>
+                          <div className="theme-copy text-xs">
+                            {getShowDistrictRegionName(
+                              entry.showDay.cluster.district
+                            )}
+                          </div>
+                        </td>
+                        <td className="theme-copy px-3 py-3">
+                          {formatShowDate(entry.showDay.scheduledEpoch)}
+                          <div className="theme-copy text-xs">
+                            Day {entry.showDay.dayIndex}
+                          </div>
+                        </td>
+                        <td className="theme-copy px-3 py-3">
+                          {entry.breed.name} ({entry.breed.code2})
+                        </td>
+                        <td className="theme-heading px-3 py-3 font-semibold">
+                          {formatResult(entry)}
+                          {absenceReasonMessage ? (
+                            <div className="theme-copy mt-1 text-xs font-normal">
+                              {absenceReasonMessage}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="theme-heading rounded-r-2xl px-3 py-3 font-semibold">
+                          {titlePointsAwarded ?? (
+                            <span className="theme-copy opacity-50">&mdash;</span>
+                          )}
+                        </td>
+                      </tr>
+                    </Fragment>
                   );
                 })}
               </tbody>
