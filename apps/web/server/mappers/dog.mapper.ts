@@ -52,8 +52,8 @@ export type DogProfileHealthSummaryDto = {
 };
 
 export type FemaleReproductiveSnapshotStatusDto = {
-  key: "OPEN" | "BRED" | "PREGNANT";
-  label: "Open" | "Bred" | "Pregnant";
+  key: "OPEN" | "BRED" | "PREGNANT" | "REST";
+  label: "Open" | "Bred" | "Pregnant" | "Post-whelp Rest";
   detail: string | null;
 } | null;
 
@@ -80,6 +80,8 @@ export type DogProfileSnapshotDto = {
   canBreed: boolean;
   showEligibilityLabel: string;
   breedingEligibilityLabel: string;
+  breedingEligibilityReasonCode?: string | null;
+  breedingEligibilityMessage?: string | null;
   femaleReproductiveStatus: FemaleReproductiveSnapshotStatusDto;
   groomingLabel: string | null;
   healthTestingSummary: DogProfileHealthSummaryDto;
@@ -392,6 +394,7 @@ export type DogProfilePrivatePlanningDto = {
 export type DogProfileActionsDto = {
   canName: boolean;
   canBreed: boolean;
+  breedingDisabledReason?: string | null;
   canBuyActiveListing: boolean;
   canUseActiveStudListing: boolean;
   canOfferForSale: boolean;
@@ -499,6 +502,9 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       canBreed: input.snapshot.canBreed,
       showEligibilityLabel: input.snapshot.showEligibilityLabel,
       breedingEligibilityLabel: input.snapshot.breedingEligibilityLabel,
+      breedingEligibilityReasonCode:
+        input.snapshot.breedingEligibilityReasonCode,
+      breedingEligibilityMessage: input.snapshot.breedingEligibilityMessage,
       femaleReproductiveStatus: input.snapshot.femaleReproductiveStatus
         ? {
             key: input.snapshot.femaleReproductiveStatus.key,
@@ -810,6 +816,7 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
     actions: {
       canName: input.actions.canName,
       canBreed: input.actions.canBreed,
+      breedingDisabledReason: input.actions.breedingDisabledReason,
       canBuyActiveListing: input.actions.canBuyActiveListing,
       canUseActiveStudListing: input.actions.canUseActiveStudListing,
       canOfferForSale: input.actions.canOfferForSale,

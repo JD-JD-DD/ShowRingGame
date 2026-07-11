@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import {
+  DAM_MAX_BREED_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
   WHELPING_COOLDOWN_HOURS,
 } from "@showring/rules";
@@ -12,6 +13,8 @@ import { getIndividualBreedingEligibility } from "../server/services/breedingEli
 const repoRoot = path.resolve(__dirname, "..", "..", "..");
 const currentEpoch = 10_000;
 const adultBirthEpoch = currentEpoch - MIN_BREED_AGE_HOURS - 12;
+const maxAgeDamBirthEpoch = currentEpoch - DAM_MAX_BREED_AGE_HOURS;
+const overMaxAgeDamBirthEpoch = currentEpoch - DAM_MAX_BREED_AGE_HOURS - 1;
 const lastWhelpedEpoch = currentEpoch - WHELPING_COOLDOWN_HOURS + 1;
 const cooldownBoundaryEpoch = lastWhelpedEpoch + WHELPING_COOLDOWN_HOURS;
 
@@ -96,6 +99,32 @@ assert.equal(
   eligibleDam.isEligible,
   true,
   "otherwise eligible adult bitch remains eligible"
+);
+
+const maxAgeDam = getIndividualBreedingEligibility({
+  currentEpoch,
+  birthEpoch: maxAgeDamBirthEpoch,
+  lifecycleState: "ALIVE",
+  sex: "F",
+});
+
+assert.equal(
+  maxAgeDam.isEligible,
+  true,
+  "dam at the exact maximum breeding age remains eligible"
+);
+
+const overMaxAgeDam = getIndividualBreedingEligibility({
+  currentEpoch,
+  birthEpoch: overMaxAgeDamBirthEpoch,
+  lifecycleState: "ALIVE",
+  sex: "F",
+});
+
+assert.equal(
+  overMaxAgeDam.isEligible,
+  false,
+  "dam past the maximum breeding age is ineligible"
 );
 
 const eligibleStud = getIndividualBreedingEligibility({

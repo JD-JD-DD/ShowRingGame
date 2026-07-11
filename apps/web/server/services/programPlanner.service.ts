@@ -5,9 +5,11 @@ import {
   MIN_SHOW_AGE_HOURS,
   PHENOTYPE_HEALTH_TEST_CODES,
   PHENOTYPE_HEALTH_TESTS,
-  WHELPING_COOLDOWN_HOURS,
 } from "@showring/rules";
-import { getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
+import {
+  getBreedingEligibilityMessage,
+  getIndividualBreedingEligibility,
+} from "@/server/services/breedingEligibility.service";
 
 import { getPhenotypeHealthSeverity } from "@/lib/dogHealth";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
@@ -1107,6 +1109,8 @@ export type ProgramPlannerDogDto = {
   breedingSummary: {
     label: string;
     canBreed: boolean;
+    reasonCode: string;
+    detail: string | null;
     alreadyBred: boolean;
     pregnant: boolean;
     cooldown: boolean;
@@ -1195,14 +1199,24 @@ export async function getProgramPlannerData(args: {
       dog.showResults.reduce((sum, result) => sum + result.pointsAwarded, 0);
     const isShowEligible = canShowDog(dog, ageHours);
     const isBreedingEligible = canBreedDog(dog, ageHours, args.currentEpoch);
-    const isPregnant = dog.breedingAttemptsAsDam.some(
-      (attempt) => attempt.status === "PREGNANT"
+    const breedingEligibility = getIndividualBreedingEligibility({
+      currentEpoch: args.currentEpoch,
+      birthEpoch: dog.birthEpoch,
+      lifecycleState: dog.lifecycleState,
+      sex: dog.sex,
+      activeBreedingAttemptStatus:
+        dog.breedingAttemptsAsDam.find((attempt) =>
+          ["INITIATED", "PREGNANT"].includes(attempt.status)
+        )?.status ?? null,
+      lastWhelpedEpoch: dog.dammedLitters[0]?.bornEpoch ?? null,
+    });
+    const breedingEligibilityMessage = getBreedingEligibilityMessage(
+      breedingEligibility
     );
+    const isPregnant = breedingEligibility.reasonCode === "PREGNANT";
     const lastLitterEpoch = dog.dammedLitters[0]?.bornEpoch ?? null;
     const isCoolingDown =
-      dog.sex === "F" &&
-      lastLitterEpoch !== null &&
-      args.currentEpoch < lastLitterEpoch + WHELPING_COOLDOWN_HOURS;
+      breedingEligibility.reasonCode === "POST_WHELP_COOLDOWN";
     const recentLitter =
       lastLitterEpoch !== null && args.currentEpoch - lastLitterEpoch <= 90;
     const isListedForSale = dog.listings.some(
@@ -1261,14 +1275,23 @@ export async function getProgramPlannerData(args: {
         isShowEligible,
       },
       breedingSummary: {
-        label: isPregnant
-          ? "Pregnant"
-          : isCoolingDown
-            ? "Cooldown"
-            : isBreedingEligible
-              ? "Breeding eligible"
-              : "Not breeding eligible",
+        label:
+          breedingEligibility.reasonCode === "PENDING_PREGNANCY_CONFIRMATION"
+            ? "Pending confirmation"
+            : breedingEligibility.reasonCode === "PREGNANT"
+              ? "Pregnant"
+              : breedingEligibility.reasonCode === "POST_WHELP_COOLDOWN"
+                ? "Post-whelp Rest"
+                : breedingEligibility.reasonCode === "UNDER_MINIMUM_AGE"
+                  ? "Too young"
+                  : breedingEligibility.reasonCode === "OVER_MAXIMUM_DAM_AGE"
+                    ? "Over max dam age"
+                    : isBreedingEligible
+                      ? "Breeding eligible"
+                      : "Not breeding eligible",
         canBreed: isBreedingEligible,
+        reasonCode: breedingEligibility.reasonCode,
+        detail: breedingEligibilityMessage,
         alreadyBred: dog.dammedLitters.length > 0 || dog.siredLitters.length > 0,
         pregnant: isPregnant,
         cooldown: isCoolingDown,

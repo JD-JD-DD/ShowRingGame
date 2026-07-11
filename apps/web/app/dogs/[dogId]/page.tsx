@@ -350,8 +350,15 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     Breed Dog
                   </Link>
                 ) : (
-                  <div className="dog-card dog-copy rounded-2xl px-5 py-3 text-center text-sm font-semibold opacity-60">
-                    Breed Dog
+                  <div className="grid gap-2">
+                    <div className="dog-card dog-copy rounded-2xl px-5 py-3 text-center text-sm font-semibold opacity-60">
+                      Breed Dog
+                    </div>
+                    {actions.breedingDisabledReason ? (
+                      <div className="dog-copy max-w-xs text-center text-xs text-purple-100/75">
+                        {actions.breedingDisabledReason}
+                      </div>
+                    ) : null}
                   </div>
                 )}
 

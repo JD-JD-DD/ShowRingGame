@@ -73,6 +73,43 @@ export function formatGameCountdownHours(hours: number): string {
     : pluralUnit(years, "y");
 }
 
+export function formatGameDurationHoursLong(hours: number): string {
+  const remainingDays = clampWholeNumber(hours);
+
+  if (remainingDays <= 0) {
+    return "0 days";
+  }
+
+  if (remainingDays < GAME_AGE_WEEK_HOURS) {
+    return `${remainingDays} ${remainingDays === 1 ? "day" : "days"}`;
+  }
+
+  if (remainingDays < GAME_AGE_YEAR_HOURS) {
+    const weeks = Math.floor(remainingDays / GAME_AGE_WEEK_HOURS);
+    const days = remainingDays % GAME_AGE_WEEK_HOURS;
+
+    if (days <= 0) {
+      return `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
+    }
+
+    return `${weeks} ${weeks === 1 ? "week" : "weeks"}, ${days} ${
+      days === 1 ? "day" : "days"
+    }`;
+  }
+
+  const years = Math.floor(remainingDays / GAME_AGE_YEAR_HOURS);
+  const daysAfterYears = remainingDays % GAME_AGE_YEAR_HOURS;
+  const weeks = Math.floor(daysAfterYears / GAME_AGE_WEEK_HOURS);
+
+  if (weeks <= 0) {
+    return `${years} ${years === 1 ? "year" : "years"}`;
+  }
+
+  return `${years} ${years === 1 ? "year" : "years"}, ${weeks} ${
+    weeks === 1 ? "week" : "weeks"
+  }`;
+}
+
 export function formatShortCountdownHours(hours: number): string {
   const remaining = clampWholeNumber(hours);
 

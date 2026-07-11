@@ -181,6 +181,11 @@ export default function DogProfileDashboard(props: Props) {
           <LinkedSummaryValue label="Dam" value={snapshot.dam?.displayName ?? "Unknown"} href={snapshot.dam?.profileUrl ?? null} />
           <SummaryValue label="Lifecycle" value={header.lifecycleLabel} />
           <SummaryValue label="Market" value={snapshot.marketLabel} />
+          <SummaryValue
+            label="Breeding"
+            value={snapshot.breedingEligibilityLabel}
+            detail={snapshot.breedingEligibilityMessage ?? undefined}
+          />
           {snapshot.femaleReproductiveStatus ? (
             <SummaryValue
               label="Reproductive status"

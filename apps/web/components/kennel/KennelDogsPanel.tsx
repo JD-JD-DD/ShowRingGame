@@ -23,7 +23,7 @@ type BreedingCardStatus = {
     | "Pregnant"
     | "Did Not Take"
     | "Whelped"
-    | "Post-Whelp Cooldown"
+    | "Post-Whelp Rest"
     | "Available for Stud"
     | "Not Eligible";
   pregCheckInHours: number | null;

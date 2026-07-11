@@ -54,7 +54,11 @@ import {
   type PhenotypeHealthTestCode,
 } from "@showring/rules";
 import { DogLifecycleState, DogMarketState, DogOriginType, Sex } from "@prisma/client";
-import { getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
+import {
+  type BreedingEligibilityReasonCode,
+  getBreedingEligibilityMessage,
+  getIndividualBreedingEligibility,
+} from "@/server/services/breedingEligibility.service";
 
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
 const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
@@ -463,9 +467,13 @@ function buildFemaleReproductiveSnapshotStatus(args: {
     pregCheckEpoch: number | null;
     dueEpoch: number | null;
   } | null;
+  breedingEligibility: {
+    reasonCode: BreedingEligibilityReasonCode;
+    remainingHours: number;
+  };
   currentEpoch: number;
 }): FemaleReproductiveSnapshotStatusDto {
-  const { sex, activeBreedingAttempt, currentEpoch } = args;
+  const { sex, activeBreedingAttempt, breedingEligibility, currentEpoch } = args;
 
   if (sex !== "F") {
     return null;
@@ -494,6 +502,14 @@ function buildFemaleReproductiveSnapshotStatus(args: {
           : `Whelping due in ${formatGameCountdownHours(
               activeBreedingAttempt.dueEpoch - currentEpoch
             )}`,
+    };
+  }
+
+  if (breedingEligibility.reasonCode === "POST_WHELP_COOLDOWN") {
+    return {
+      key: "REST",
+      label: "Post-whelp Rest",
+      detail: getBreedingEligibilityMessage(breedingEligibility),
     };
   }
 
@@ -1233,6 +1249,9 @@ export async function getDogProfile(args: {
       )?.whelpedEpoch ?? null,
   });
   const breedingEligible = breedingEligibility.isEligible;
+  const breedingEligibilityMessage = getBreedingEligibilityMessage(
+    breedingEligibility
+  );
 
   const ownerData = isOwnedByCurrentKennel
     ? await measure("ownerContextQueryMs", () =>
@@ -1681,9 +1700,15 @@ export async function getDogProfile(args: {
       canBreed: breedingEligible,
       showEligibilityLabel: formatEligibilityLabel(showEligible),
       breedingEligibilityLabel: formatEligibilityLabel(breedingEligible),
+      breedingEligibilityReasonCode:
+        breedingEligibility.reasonCode === "ELIGIBLE"
+          ? null
+          : breedingEligibility.reasonCode,
+      breedingEligibilityMessage,
       femaleReproductiveStatus: buildFemaleReproductiveSnapshotStatus({
         sex: dog.sex,
         activeBreedingAttempt,
+        breedingEligibility,
         currentEpoch,
       }),
       groomingLabel: groomingStatus?.groomingStatusLabel ?? null,
@@ -1880,6 +1905,10 @@ export async function getDogProfile(args: {
     actions: {
       canName: isOwnedByCurrentKennel && !dog.registeredName?.trim(),
       canBreed: isOwnedByCurrentKennel && breedingEligible,
+      breedingDisabledReason:
+        isOwnedByCurrentKennel && !breedingEligible
+          ? breedingEligibilityMessage
+          : null,
       canBuyActiveListing:
         !isOwnedByCurrentKennel && isAlive && Boolean(activeSaleListing),
       canUseActiveStudListing:

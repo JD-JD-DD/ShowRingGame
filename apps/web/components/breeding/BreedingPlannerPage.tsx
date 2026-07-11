@@ -5,7 +5,11 @@ import { getSessionUserId } from "@/lib/session";
 import BreedPageClient from "@/components/breeding/BreedPageClient";
 import { BRUCELLOSIS_DISEASE_CODE } from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
-import { getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
+import {
+  getBreedingEligibilityMessage,
+  getIndividualBreedingEligibility,
+  type BreedingEligibilityReasonCode,
+} from "@/server/services/breedingEligibility.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -55,6 +59,11 @@ type DogCardDto = {
   isListedAtStud: boolean;
   isEligibleToBreed: boolean;
   inBreedingConflict: boolean;
+  breedingEligibilityReasonCode: BreedingEligibilityReasonCode;
+  breedingEligibilityMessage: string | null;
+  breedingEligibleAtEpoch: number | null;
+  breedingRemainingHours: number;
+  breedingCooldownUntilEpoch: number | null;
   studListingId: string | null;
   studFeeAmount: number | null;
   brucellosisValidUntilEpoch: number | null;
@@ -342,6 +351,9 @@ export default async function BreedingPlannerPage({
       activeBreedingAttemptStatus: dog.breedingAttemptsAsDam[0]?.status ?? null,
       lastWhelpedEpoch: lastLitterEpoch,
     });
+    const breedingEligibilityMessage = getBreedingEligibilityMessage(
+      breedingEligibility
+    );
 
     return {
       id: dog.id,
@@ -369,6 +381,11 @@ export default async function BreedingPlannerPage({
       inBreedingConflict:
         breedingEligibility.activeBreedingAttemptStatus !== null ||
         breedingEligibility.isInPostWhelpCooldown,
+      breedingEligibilityReasonCode: breedingEligibility.reasonCode,
+      breedingEligibilityMessage,
+      breedingEligibleAtEpoch: breedingEligibility.eligibleAtEpoch,
+      breedingRemainingHours: breedingEligibility.remainingHours,
+      breedingCooldownUntilEpoch: breedingEligibility.cooldownUntilEpoch,
       studListingId: null,
       studFeeAmount: null,
       brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
@@ -534,6 +551,9 @@ export default async function BreedingPlannerPage({
       lifecycleState: dog.lifecycleState,
       sex: dog.sex,
     });
+    const breedingEligibilityMessage = getBreedingEligibilityMessage(
+      breedingEligibility
+    );
 
     return {
       id: dog.id,
@@ -555,6 +575,11 @@ export default async function BreedingPlannerPage({
       isListedAtStud: true,
       isEligibleToBreed: breedingEligibility.isEligible,
       inBreedingConflict: false,
+      breedingEligibilityReasonCode: breedingEligibility.reasonCode,
+      breedingEligibilityMessage,
+      breedingEligibleAtEpoch: breedingEligibility.eligibleAtEpoch,
+      breedingRemainingHours: breedingEligibility.remainingHours,
+      breedingCooldownUntilEpoch: breedingEligibility.cooldownUntilEpoch,
       studListingId: listing.id,
       studFeeAmount: listing.askingPrice,
       brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),

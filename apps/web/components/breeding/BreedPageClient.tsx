@@ -20,9 +20,7 @@ import {
   BREEDING_FEE,
   BRUCELLOSIS_TEST_FEE,
   calculatePedigreeCoi,
-  DAM_MAX_BREED_AGE_HOURS,
   GESTATION_HOURS,
-  MIN_BREED_AGE_HOURS,
   PHENOTYPE_HEALTH_TEST_CODES,
   PHENOTYPE_HEALTH_TESTS,
   PREG_CHECK_HOURS,
@@ -68,6 +66,11 @@ type DogCardDto = {
   isListedAtStud: boolean;
   isEligibleToBreed: boolean;
   inBreedingConflict: boolean;
+  breedingEligibilityReasonCode: string;
+  breedingEligibilityMessage: string | null;
+  breedingEligibleAtEpoch: number | null;
+  breedingRemainingHours: number;
+  breedingCooldownUntilEpoch: number | null;
   studListingId: string | null;
   studFeeAmount: number | null;
   brucellosisValidUntilEpoch: number | null;
@@ -341,9 +344,9 @@ function visibleTraitNotes(dog: DogCardDto) {
 
 function damCooldownSummary(dog: DogCardDto, currentEpoch: number) {
   if (dog.sex !== "F") return null;
-  if (dog.lastLitterEpoch === null) return "Cooldown: no prior litter";
+  if (dog.breedingCooldownUntilEpoch === null) return "Cooldown: no prior litter";
 
-  const cooldownUntil = dog.lastLitterEpoch + WHELPING_COOLDOWN_HOURS;
+  const cooldownUntil = dog.breedingCooldownUntilEpoch;
 
   return cooldownUntil <= currentEpoch
     ? `Cooldown complete since ${formatGameDate(cooldownUntil)}`
@@ -412,19 +415,9 @@ function compactHealthSignals(dog: DogCardDto) {
 }
 
 function reasonDogUnavailable(dog: DogCardDto, currentEpoch: number) {
-  if (dog.lifecycleState !== "ALIVE") return "Not alive";
-  if (dog.ageHours < MIN_BREED_AGE_HOURS) return "Too young to breed";
-  if (dog.sex === "F" && dog.ageHours > DAM_MAX_BREED_AGE_HOURS) {
-    return "Past dam breeding age";
-  }
-  if (
-    dog.sex === "F" &&
-    dog.lastLitterEpoch !== null &&
-    currentEpoch < dog.lastLitterEpoch + WHELPING_COOLDOWN_HOURS
-  ) {
-    return `Post-whelp cooldown: ${
-      dog.lastLitterEpoch + WHELPING_COOLDOWN_HOURS - currentEpoch
-    } game days remaining`;
+  void currentEpoch;
+  if (dog.breedingEligibilityMessage) {
+    return dog.breedingEligibilityMessage;
   }
   if (dog.inBreedingConflict) return "Already in breeding cycle";
   if (!dog.isEligibleToBreed) return "Not eligible";

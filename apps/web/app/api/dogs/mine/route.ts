@@ -78,7 +78,7 @@ type BreedingCardStatus = {
     | "Pregnant"
     | "Did Not Take"
     | "Whelped"
-    | "Post-Whelp Cooldown"
+    | "Post-Whelp Rest"
     | "Available for Stud"
     | "Not Eligible";
   pregCheckInHours: number | null;
@@ -159,6 +159,51 @@ function getBreedingCardStatus(
     activeBreedingAttemptStatus: breedingSummary.activeAttempt?.status ?? null,
     lastWhelpedEpoch: breedingSummary.latestWhelpedAttempt?.whelpedEpoch ?? null,
   });
+  if (dog.sex === "M") {
+    return {
+      label: breedingEligibility.isEligible ? "Available for Stud" : "Not Eligible",
+      pregCheckInHours: null,
+      dueInHours: null,
+      cooldownInHours: null,
+    };
+  }
+
+  if (breedingEligibility.reasonCode === "PREGNANT") {
+    const activeAttempt = breedingSummary.activeAttempt;
+
+    return {
+      label: "Pregnant",
+      pregCheckInHours: null,
+      dueInHours:
+        activeAttempt?.dueEpoch == null
+          ? null
+          : Math.max(0, activeAttempt.dueEpoch - currentEpoch),
+      cooldownInHours: null,
+    };
+  }
+
+  if (breedingEligibility.reasonCode === "PENDING_PREGNANCY_CONFIRMATION") {
+    const activeAttempt = breedingSummary.activeAttempt;
+
+    return {
+      label: "Pending Pregnancy Confirmation",
+      pregCheckInHours:
+        activeAttempt?.pregCheckEpoch == null
+          ? null
+          : Math.max(0, activeAttempt.pregCheckEpoch - currentEpoch),
+      dueInHours: null,
+      cooldownInHours: null,
+    };
+  }
+
+  if (breedingEligibility.reasonCode === "POST_WHELP_COOLDOWN") {
+    return {
+      label: "Post-Whelp Rest",
+      pregCheckInHours: null,
+      dueInHours: null,
+      cooldownInHours: breedingEligibility.remainingHours,
+    };
+  }
 
   if (!breedingEligibility.isEligible) {
     return {
@@ -166,54 +211,6 @@ function getBreedingCardStatus(
       pregCheckInHours: null,
       dueInHours: null,
       cooldownInHours: null,
-    };
-  }
-
-  if (dog.sex === "M") {
-    return {
-      label: "Available for Stud",
-      pregCheckInHours: null,
-      dueInHours: null,
-      cooldownInHours: null,
-    };
-  }
-
-  if (breedingSummary.activeAttempt?.status === "PREGNANT") {
-    return {
-      label: "Pregnant",
-      pregCheckInHours: null,
-      dueInHours:
-        breedingSummary.activeAttempt.dueEpoch == null
-          ? null
-          : Math.max(0, breedingSummary.activeAttempt.dueEpoch - currentEpoch),
-      cooldownInHours: null,
-    };
-  }
-
-  if (breedingSummary.activeAttempt?.status === "INITIATED") {
-    return {
-      label: "Pending Pregnancy Confirmation",
-      pregCheckInHours:
-        breedingSummary.activeAttempt.pregCheckEpoch == null
-          ? null
-          : Math.max(
-              0,
-              breedingSummary.activeAttempt.pregCheckEpoch - currentEpoch
-            ),
-      dueInHours: null,
-      cooldownInHours: null,
-    };
-  }
-
-  const cooldownUntil =
-    breedingEligibility.cooldownUntilEpoch;
-
-  if (cooldownUntil !== null && currentEpoch < cooldownUntil) {
-    return {
-      label: "Post-Whelp Cooldown",
-      pregCheckInHours: null,
-      dueInHours: null,
-      cooldownInHours: cooldownUntil - currentEpoch,
     };
   }
 
