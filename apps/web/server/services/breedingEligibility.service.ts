@@ -6,7 +6,7 @@ import {
   type Sex,
   WHELPING_COOLDOWN_HOURS,
 } from "@showring/rules";
-import { formatGameDurationHoursLong } from "../../lib/gameTimeFormat";
+import { formatRealDurationHoursLong } from "../../lib/gameTimeFormat";
 
 export type BreedingEligibilityReasonCode =
   | "ELIGIBLE"
@@ -122,7 +122,7 @@ export function getBreedingEligibilityMessage(
     case "PREGNANT":
       return "This bitch is pregnant.";
     case "POST_WHELP_COOLDOWN":
-      return `This bitch is resting after a litter. Available to breed in ${formatGameDurationHoursLong(
+      return `This bitch is resting after a litter. Available to breed in ${formatRealDurationHoursLong(
         result.remainingHours
       )}.`;
     default:

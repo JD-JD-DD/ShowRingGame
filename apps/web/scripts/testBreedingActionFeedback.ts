@@ -87,7 +87,7 @@ const coolingDam = getIndividualBreedingEligibility({
 });
 assert.equal(
   getBreedingEligibilityMessage(coolingDam),
-  "This bitch is resting after a litter. Available to breed in 5 days.",
+  "This bitch is resting after a litter. Available to breed in 5 hours.",
   "post-whelp cooldown shared message includes the countdown notice"
 );
 

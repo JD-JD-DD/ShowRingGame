@@ -12,6 +12,10 @@ import {
   getBreedingEligibilityMessage,
   getIndividualBreedingEligibility,
 } from "../server/services/breedingEligibility.service";
+import {
+  formatGameCountdownHours,
+  formatRealDurationHoursLong,
+} from "../lib/gameTimeFormat";
 
 const repoRoot = path.resolve(__dirname, "..", "..", "..");
 const currentEpoch = 10_000;
@@ -49,8 +53,29 @@ assert.equal(
 );
 assert.equal(
   getBreedingEligibilityMessage(coolingDam),
-  "This bitch is resting after a litter. Available to breed in 5 days.",
+  "This bitch is resting after a litter. Available to breed in 5 hours.",
   "cooldown message uses the shared duration wording"
+);
+
+assert.equal(
+  formatRealDurationHoursLong(1),
+  "1 hour",
+  "real-time cooldown formatter keeps singular hour wording"
+);
+assert.equal(
+  formatRealDurationHoursLong(24),
+  "1 day",
+  "real-time cooldown formatter converts 24 hours into 1 day"
+);
+assert.equal(
+  formatRealDurationHoursLong(25),
+  "1 day, 1 hour",
+  "real-time cooldown formatter keeps the extra hour after a full day"
+);
+assert.equal(
+  formatRealDurationHoursLong(270),
+  "11 days, 6 hours",
+  "real-time cooldown formatter preserves elapsed real hours for long cooldowns"
 );
 
 const cooldownBoundary = getIndividualBreedingEligibility({
@@ -157,6 +182,13 @@ assert.ok(
   "kennel snapshot consumes the shared cooldown countdown"
 );
 
+const kennelPanelSource = source("apps/web/components/kennel/KennelDogsPanel.tsx");
+assert.ok(
+  kennelPanelSource.includes("formatRealDurationHoursLong(") &&
+    kennelPanelSource.includes("dog.breedingCardStatus.cooldownInHours"),
+  "kennel snapshot formats cooldown countdowns as elapsed real time"
+);
+
 const breedingPlannerPage = source(
   "apps/web/components/breeding/BreedingPlannerPage.tsx"
 );
@@ -167,6 +199,12 @@ assert.ok(
   breedingPlannerPage.includes("breedingEligibilityMessage") &&
     breedingPlannerClient.includes("dog.breedingEligibilityMessage"),
   "breeding planner passes through the specific reason"
+);
+
+assert.equal(
+  formatGameCountdownHours(25),
+  "1d 1h",
+  "unrelated game-time countdown formatting stays on the existing helper"
 );
 
 console.log("Breeding eligibility reason checks passed.");

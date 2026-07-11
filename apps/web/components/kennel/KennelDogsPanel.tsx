@@ -8,6 +8,7 @@ import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import { filterDogsBySelectedRuns } from "@/components/kennel/kennelDogFiltering";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
+import { formatRealDurationHoursLong } from "@/lib/gameTimeFormat";
 import {
   MIN_GROOMING_AGE_HOURS,
   PUPPY_SALE_MIN_AGE_HOURS,
@@ -1940,7 +1941,17 @@ export default function KennelDogsPanel() {
                       case "breedingStatus":
                         return (
                           <td key={columnId} className="theme-copy px-2 py-2 text-xs">
-                            {dog.breedingCardStatus.label}
+                            <div className="grid gap-1">
+                              <div>{dog.breedingCardStatus.label}</div>
+                              {dog.breedingCardStatus.cooldownInHours !== null ? (
+                                <div className="theme-copy text-[0.68rem]">
+                                  Available to breed in{" "}
+                                  {formatRealDurationHoursLong(
+                                    dog.breedingCardStatus.cooldownInHours
+                                  )}
+                                </div>
+                              ) : null}
+                            </div>
                           </td>
                         );
                       case "healthStatus":

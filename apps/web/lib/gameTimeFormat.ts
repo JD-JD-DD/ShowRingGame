@@ -110,6 +110,29 @@ export function formatGameDurationHoursLong(hours: number): string {
   }`;
 }
 
+export function formatRealDurationHoursLong(hours: number): string {
+  const remaining = clampWholeNumber(hours);
+
+  if (remaining <= 0) {
+    return "0 hours";
+  }
+
+  if (remaining < REAL_DAY_HOURS) {
+    return `${remaining} ${remaining === 1 ? "hour" : "hours"}`;
+  }
+
+  const days = Math.floor(remaining / REAL_DAY_HOURS);
+  const hoursLeft = remaining % REAL_DAY_HOURS;
+
+  if (hoursLeft <= 0) {
+    return `${days} ${days === 1 ? "day" : "days"}`;
+  }
+
+  return `${days} ${days === 1 ? "day" : "days"}, ${hoursLeft} ${
+    hoursLeft === 1 ? "hour" : "hours"
+  }`;
+}
+
 export function formatShortCountdownHours(hours: number): string {
   const remaining = clampWholeNumber(hours);
 
