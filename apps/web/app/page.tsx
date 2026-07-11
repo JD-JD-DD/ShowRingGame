@@ -284,7 +284,7 @@ export default async function HomePage() {
               <h2 className="text-2xl font-semibold text-white">
                 Around ShowRing
               </h2>
-              <p className="mt-1 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              <p className="mt-1 rounded-lg border border-red-300 bg-red-100 px-3 py-2 text-sm text-red-900">
                 <span className="font-bold">IMPORTANT:</span> Alpha testing has unlimited funds to encourage large kennels and lots of game play. Go Wild!
               </p>
             </div>

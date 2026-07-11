@@ -19,7 +19,12 @@ import {
   type Dog as EngineDog,
   type Judge as EngineJudge,
 } from "@showring/rules";
-import { Prisma, ShowDayStatus, ShowJudgingBlockStatus } from "@prisma/client";
+import {
+  Prisma,
+  ShowDayStatus,
+  ShowEntryStatus,
+  ShowJudgingBlockStatus,
+} from "@prisma/client";
 
 type DbClient = typeof db | Prisma.TransactionClient;
 
@@ -507,10 +512,44 @@ function canBlockMoveToJudging(
   );
 }
 
-function isEntryEligibleForBlockJudging(
+type BlockJudgingReasonCode =
+  | "ELIGIBLE"
+  | "ENTRY_NOT_ENTERED"
+  | "BREED_MISMATCH"
+  | "SHOW_TIME_UNAVAILABLE";
+
+type BlockJudgingEntryDisposition =
+  | {
+      isEligible: true;
+      reasonCode: "ELIGIBLE";
+      statusToPersist: null;
+    }
+  | {
+      isEligible: false;
+      reasonCode: Exclude<BlockJudgingReasonCode, "ELIGIBLE">;
+      statusToPersist: ShowEntryStatus | null;
+    };
+
+export function getBlockJudgingEntryDisposition(
   entry: EntryForJudging,
   block: ShowBlockForJudging
-): boolean {
+): BlockJudgingEntryDisposition {
+  if (entry.entryStatus !== "ENTERED") {
+    return {
+      isEligible: false,
+      reasonCode: "ENTRY_NOT_ENTERED",
+      statusToPersist: null,
+    };
+  }
+
+  if (entry.breedCode2 !== block.breedCode2) {
+    return {
+      isEligible: false,
+      reasonCode: "BREED_MISMATCH",
+      statusToPersist: "INELIGIBLE",
+    };
+  }
+
   const aliveAtBlockStart =
     entry.dog.lifecycleState === "ALIVE" ||
     (entry.dog.lifecycleState === "DECEASED" &&
@@ -531,13 +570,23 @@ function isEntryEligibleForBlockJudging(
     }
   );
 
-  return (
-    entry.entryStatus === "ENTERED" &&
-    entry.breedCode2 === block.breedCode2 &&
-    aliveAtBlockStart &&
-    showEligibleAtBlockStart &&
-    entry.dog.ownerKennelId === entry.kennelId
-  );
+  if (
+    !aliveAtBlockStart ||
+    !showEligibleAtBlockStart ||
+    entry.dog.ownerKennelId !== entry.kennelId
+  ) {
+    return {
+      isEligible: false,
+      reasonCode: "SHOW_TIME_UNAVAILABLE",
+      statusToPersist: "ABSENT",
+    };
+  }
+
+  return {
+    isEligible: true,
+    reasonCode: "ELIGIBLE",
+    statusToPersist: null,
+  };
 }
 
 async function cancelReadyEmptyShowDay(args: {
@@ -875,20 +924,39 @@ export async function judgeShowBlock(args: {
       data: { status: "JUDGING" },
     });
 
-    const eligibleEntries = block.showEntries.filter((entry) =>
-      isEntryEligibleForBlockJudging(entry, block)
-    );
-    const ineligibleEntryIds = block.showEntries
+    const evaluatedEntries = block.showEntries.map((entry) => ({
+      entry,
+      disposition: getBlockJudgingEntryDisposition(entry, block),
+    }));
+    const eligibleEntries = evaluatedEntries
       .filter(
-        (entry) =>
-          entry.entryStatus === "ENTERED" &&
-          !isEntryEligibleForBlockJudging(entry, block)
+        (candidate): candidate is {
+          entry: EntryForJudging;
+          disposition: Extract<BlockJudgingEntryDisposition, { isEligible: true }>;
+        } => candidate.disposition.isEligible
       )
-      .map((entry) => entry.id);
+      .map((candidate) => candidate.entry);
+    const automaticAbsentEntryIds = evaluatedEntries
+      .filter(
+        (candidate) => candidate.disposition.statusToPersist === "ABSENT"
+      )
+      .map((candidate) => candidate.entry.id);
+    const ineligibleEntryIds = evaluatedEntries
+      .filter(
+        (candidate) => candidate.disposition.statusToPersist === "INELIGIBLE"
+      )
+      .map((candidate) => candidate.entry.id);
+
+    if (automaticAbsentEntryIds.length > 0) {
+      await tx.showEntry.updateMany({
+        where: { id: { in: automaticAbsentEntryIds }, entryStatus: "ENTERED" },
+        data: { entryStatus: "ABSENT" },
+      });
+    }
 
     if (ineligibleEntryIds.length > 0) {
       await tx.showEntry.updateMany({
-        where: { id: { in: ineligibleEntryIds } },
+        where: { id: { in: ineligibleEntryIds }, entryStatus: "ENTERED" },
         data: { entryStatus: "INELIGIBLE" },
       });
     }
