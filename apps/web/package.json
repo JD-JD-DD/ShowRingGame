@@ -22,6 +22,7 @@
     "test:kennel-run-filtering": "tsx scripts/testKennelRunFiltering.ts",
     "test:global-header-logout": "tsx scripts/testGlobalHeaderLogout.ts",
     "test:breed-visibility": "tsx scripts/testBreedVisibility.ts",
+    "test:breeding-eligibility": "tsx scripts/testBreedingEligibilityConsistency.ts",
     "test:start-up-guide": "tsx scripts/testStartUpGuide.ts",
     "test:grand-champion-credits": "tsx scripts/testGrandChampionCredits.ts",
     "test:ribbon-room-read-model": "tsx scripts/testRibbonRoomReadModel.ts",

@@ -14,6 +14,7 @@ import {
 } from "@/server/services/grooming.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveBreedingProgressForKennel } from "@/server/services/breeding.service";
+import { getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -23,10 +24,7 @@ import {
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
 } from "@/server/services/dogVisibleCategories.service";
 import {
-  DAM_MAX_BREED_AGE_HOURS,
-  MIN_BREED_AGE_HOURS,
   PHENOTYPE_HEALTH_TEST_CODES,
-  WHELPING_COOLDOWN_HOURS,
 } from "@showring/rules";
 
 const RECENT_BREEDING_RESULT_HOURS = 14;
@@ -149,15 +147,20 @@ function getBreedingCardStatus(
   },
   currentEpoch: number
 ): BreedingCardStatus {
-  const ageHours = Math.max(0, currentEpoch - dog.birthEpoch);
-  const isAlive = dog.lifecycleState === "ALIVE";
-  const oldEnough = ageHours >= MIN_BREED_AGE_HOURS;
-  const notTooOldIfFemale =
-    dog.sex === "F" ? ageHours <= DAM_MAX_BREED_AGE_HOURS : true;
+  const breedingEligibility = getIndividualBreedingEligibility({
+    currentEpoch,
+    birthEpoch: dog.birthEpoch,
+    lifecycleState: dog.lifecycleState as
+      | "ALIVE"
+      | "RETIRED"
+      | "DECEASED"
+      | "TRANSFERRED",
+    sex: dog.sex,
+    activeBreedingAttemptStatus: breedingSummary.activeAttempt?.status ?? null,
+    lastWhelpedEpoch: breedingSummary.latestWhelpedAttempt?.whelpedEpoch ?? null,
+  });
 
-  const isEligible = isAlive && oldEnough && notTooOldIfFemale;
-
-  if (!isEligible) {
+  if (!breedingEligibility.isEligible) {
     return {
       label: "Not Eligible",
       pregCheckInHours: null,
@@ -203,10 +206,7 @@ function getBreedingCardStatus(
   }
 
   const cooldownUntil =
-    breedingSummary.latestWhelpedAttempt?.whelpedEpoch == null
-      ? null
-      : breedingSummary.latestWhelpedAttempt.whelpedEpoch +
-        WHELPING_COOLDOWN_HOURS;
+    breedingEligibility.cooldownUntilEpoch;
 
   if (cooldownUntil !== null && currentEpoch < cooldownUntil) {
     return {

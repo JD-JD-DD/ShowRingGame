@@ -39,7 +39,6 @@ import { getStoredProducerMeritForDog } from "@/server/services/producerMerit.se
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
 import type { Dog as EngineDog } from "@showring/rules";
 import {
-  DAM_MAX_BREED_AGE_HOURS,
   MAX_SHOW_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
   MIN_GROOMING_AGE_HOURS,
@@ -55,6 +54,7 @@ import {
   type PhenotypeHealthTestCode,
 } from "@showring/rules";
 import { DogLifecycleState, DogMarketState, DogOriginType, Sex } from "@prisma/client";
+import { getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
 
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
 const CHAMPIONSHIP_MAJORS_REQUIRED = 2;
@@ -1217,18 +1217,22 @@ export async function getDogProfile(args: {
   const hasActiveListing = dog.listings.length > 0;
   const showEligible =
     isAlive && ageHours >= MIN_SHOW_AGE_HOURS && ageHours <= MAX_SHOW_AGE_HOURS;
-  const breedingEligible =
-    isAlive &&
-    ageHours >= MIN_BREED_AGE_HOURS &&
-    (dog.sex === Sex.M ||
-      (ageHours <= DAM_MAX_BREED_AGE_HOURS &&
-        !dog.breedingAttemptsAsDam.some((attempt) =>
-          ["INITIATED", "PREGNANT"].includes(attempt.status)
-        )));
   const activeBreedingAttempt =
     dog.breedingAttemptsAsDam.find((attempt) =>
       ["INITIATED", "PREGNANT"].includes(attempt.status)
     ) ?? null;
+  const breedingEligibility = getIndividualBreedingEligibility({
+    currentEpoch,
+    birthEpoch: dog.birthEpoch,
+    lifecycleState: dog.lifecycleState,
+    sex: dog.sex,
+    activeBreedingAttemptStatus: activeBreedingAttempt?.status ?? null,
+    lastWhelpedEpoch:
+      dog.breedingAttemptsAsDam.find(
+        (attempt) => attempt.status === "WHELPED" && attempt.whelpedEpoch != null
+      )?.whelpedEpoch ?? null,
+  });
+  const breedingEligible = breedingEligibility.isEligible;
 
   const ownerData = isOwnedByCurrentKennel
     ? await measure("ownerContextQueryMs", () =>

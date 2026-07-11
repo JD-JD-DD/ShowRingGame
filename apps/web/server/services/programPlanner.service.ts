@@ -1,6 +1,5 @@
 import type { DogPlannerTagType } from "@prisma/client";
 import {
-  DAM_MAX_BREED_AGE_HOURS,
   MAX_SHOW_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
   MIN_SHOW_AGE_HOURS,
@@ -8,6 +7,7 @@ import {
   PHENOTYPE_HEALTH_TESTS,
   WHELPING_COOLDOWN_HOURS,
 } from "@showring/rules";
+import { getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
 
 import { getPhenotypeHealthSeverity } from "@/lib/dogHealth";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
@@ -370,20 +370,18 @@ function healthSummary(
 }
 
 function canBreedDog(dog: PlannerDogRecord, ageHours: number, currentEpoch: number) {
-  if (dog.lifecycleState !== "ALIVE") return false;
-  if (ageHours < MIN_BREED_AGE_HOURS) return false;
-  if (dog.sex === "F" && ageHours > DAM_MAX_BREED_AGE_HOURS) return false;
-  if (
-    dog.sex === "F" &&
-    dog.breedingAttemptsAsDam.some((attempt) =>
-      ["INITIATED", "PREGNANT"].includes(attempt.status)
-    )
-  ) {
-    return false;
-  }
-
-  const lastWhelped = dog.dammedLitters[0]?.bornEpoch ?? null;
-  return lastWhelped === null || currentEpoch >= lastWhelped + WHELPING_COOLDOWN_HOURS;
+  void ageHours;
+  return getIndividualBreedingEligibility({
+    currentEpoch,
+    birthEpoch: dog.birthEpoch,
+    lifecycleState: dog.lifecycleState,
+    sex: dog.sex,
+    activeBreedingAttemptStatus:
+      dog.breedingAttemptsAsDam.find((attempt) =>
+        ["INITIATED", "PREGNANT"].includes(attempt.status)
+      )?.status ?? null,
+    lastWhelpedEpoch: dog.dammedLitters[0]?.bornEpoch ?? null,
+  }).isEligible;
 }
 
 function canShowDog(dog: PlannerDogRecord, ageHours: number) {

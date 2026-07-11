@@ -3,13 +3,9 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import BreedPageClient from "@/components/breeding/BreedPageClient";
-import {
-  DAM_MAX_BREED_AGE_HOURS,
-  BRUCELLOSIS_DISEASE_CODE,
-  MIN_BREED_AGE_HOURS,
-  WHELPING_COOLDOWN_HOURS,
-} from "@showring/rules";
+import { BRUCELLOSIS_DISEASE_CODE } from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -337,17 +333,15 @@ export default async function BreedingPlannerPage({
 
   const dogCards: DogCardDto[] = dogs.map((dog) => {
     const ageHours = currentEpoch - dog.birthEpoch;
-    const alive = dog.lifecycleState === "ALIVE";
-    const oldEnough = ageHours >= MIN_BREED_AGE_HOURS;
-    const notTooOldIfFemale =
-      dog.sex === "F" ? ageHours <= DAM_MAX_BREED_AGE_HOURS : true;
-    const inBreedingConflict =
-      dog.sex === "F" && dog.breedingAttemptsAsDam.length > 0;
     const lastLitterEpoch = dog.dammedLitters[0]?.bornEpoch ?? null;
-    const inPostWhelpCooldown =
-      dog.sex === "F" &&
-      lastLitterEpoch !== null &&
-      currentEpoch < lastLitterEpoch + WHELPING_COOLDOWN_HOURS;
+    const breedingEligibility = getIndividualBreedingEligibility({
+      currentEpoch,
+      birthEpoch: dog.birthEpoch,
+      lifecycleState: dog.lifecycleState,
+      sex: dog.sex,
+      activeBreedingAttemptStatus: dog.breedingAttemptsAsDam[0]?.status ?? null,
+      lastWhelpedEpoch: lastLitterEpoch,
+    });
 
     return {
       id: dog.id,
@@ -371,13 +365,10 @@ export default async function BreedingPlannerPage({
       isListedAtStud: dog.listings.some(
         (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
       ),
-      isEligibleToBreed:
-        alive &&
-        oldEnough &&
-        notTooOldIfFemale &&
-        !inBreedingConflict &&
-        !inPostWhelpCooldown,
-      inBreedingConflict: inBreedingConflict || inPostWhelpCooldown,
+      isEligibleToBreed: breedingEligibility.isEligible,
+      inBreedingConflict:
+        breedingEligibility.activeBreedingAttemptStatus !== null ||
+        breedingEligibility.isInPostWhelpCooldown,
       studListingId: null,
       studFeeAmount: null,
       brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
@@ -537,8 +528,12 @@ export default async function BreedingPlannerPage({
   const publicStudCards: DogCardDto[] = publicStudListings.map((listing) => {
     const dog = listing.dog;
     const ageHours = currentEpoch - dog.birthEpoch;
-    const alive = dog.lifecycleState === "ALIVE";
-    const oldEnough = ageHours >= MIN_BREED_AGE_HOURS;
+    const breedingEligibility = getIndividualBreedingEligibility({
+      currentEpoch,
+      birthEpoch: dog.birthEpoch,
+      lifecycleState: dog.lifecycleState,
+      sex: dog.sex,
+    });
 
     return {
       id: dog.id,
@@ -558,7 +553,7 @@ export default async function BreedingPlannerPage({
       isOwnedByCurrentKennel: false,
       isListedForSale: false,
       isListedAtStud: true,
-      isEligibleToBreed: alive && oldEnough,
+      isEligibleToBreed: breedingEligibility.isEligible,
       inBreedingConflict: false,
       studListingId: listing.id,
       studFeeAmount: listing.askingPrice,
