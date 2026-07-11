@@ -1,11 +1,14 @@
 import { strict as assert } from "node:assert";
 
 import {
+  aggregateGroupDogsBeaten,
   buildInvitationalHistory,
   buildRibbonRoomMilestones,
   buildRibbonTotals,
   findChampionMilestone,
   findGrandChampionMilestone,
+  getGroupDogsBeatenForPlacement,
+  rankGroupDogsBeaten,
   summarizeChampionProgress,
   summarizeGrandChampionProgress,
 } from "../server/services/ribbonRoom.service";
@@ -20,6 +23,136 @@ const show = (year: number, week: number, id = `show-${year}-${week}`) => ({
 });
 
 const judge = (id: string) => ({ id, name: `Judge ${id}` });
+
+{
+  assert.equal(
+    getGroupDogsBeatenForPlacement({ dogsInCompetition: 12, placement: 1 }),
+    11
+  );
+  assert.equal(
+    getGroupDogsBeatenForPlacement({ dogsInCompetition: 12, placement: 2 }),
+    10
+  );
+  assert.equal(
+    getGroupDogsBeatenForPlacement({ dogsInCompetition: 12, placement: 3 }),
+    9
+  );
+  assert.equal(
+    getGroupDogsBeatenForPlacement({ dogsInCompetition: 12, placement: 4 }),
+    8
+  );
+  assert.equal(
+    getGroupDogsBeatenForPlacement({ dogsInCompetition: 2, placement: 4 }),
+    0
+  );
+  assert.equal(
+    getGroupDogsBeatenForPlacement({ dogsInCompetition: null, placement: 1 }),
+    null
+  );
+
+  const aggregated = aggregateGroupDogsBeaten([
+    {
+      id: "group-1",
+      dogId: "sporting-a",
+      year: 14,
+      placement: 1,
+      dogsInCompetition: 12,
+    },
+    {
+      id: "group-2",
+      dogId: "sporting-a",
+      year: 14,
+      placement: 2,
+      dogsInCompetition: 12,
+    },
+    {
+      id: "group-3",
+      dogId: "sporting-a",
+      year: 13,
+      placement: 4,
+      dogsInCompetition: 2,
+    },
+    {
+      id: "group-2",
+      dogId: "sporting-a",
+      year: 14,
+      placement: 2,
+      dogsInCompetition: 12,
+    },
+    {
+      id: "group-4",
+      dogId: "sporting-b",
+      year: 14,
+      placement: 3,
+      dogsInCompetition: 12,
+    },
+    {
+      id: "group-5",
+      dogId: "sporting-b",
+      year: 15,
+      placement: 1,
+      dogsInCompetition: null,
+    },
+  ]);
+
+  assert.equal(aggregated.lifetimeByDogId.get("sporting-a"), 21);
+  assert.equal(aggregated.lifetimeByDogId.get("sporting-b"), 9);
+  assert.equal(aggregated.byYearAndDogId.get("14:sporting-a"), 21);
+  assert.equal(aggregated.byYearAndDogId.get("13:sporting-a"), 0);
+  assert.equal(aggregated.byYearAndDogId.get("15:sporting-b"), undefined);
+
+  assert.equal(
+    rankGroupDogsBeaten(
+      [
+        {
+          dogId: "sporting-a",
+          groupDogsBeaten: 21,
+          bestInShowWinCount: 0,
+          groupWinCount: 1,
+          allBreedDogsBeaten: 40,
+        },
+        {
+          dogId: "sporting-b",
+          groupDogsBeaten: 21,
+          bestInShowWinCount: 1,
+          groupWinCount: 0,
+          allBreedDogsBeaten: 22,
+        },
+      ],
+      "sporting-b"
+    ),
+    1
+  );
+  assert.equal(
+    rankGroupDogsBeaten(
+      [
+        {
+          dogId: "sporting-a",
+          groupDogsBeaten: 21,
+          bestInShowWinCount: 0,
+          groupWinCount: 1,
+          allBreedDogsBeaten: 40,
+        },
+        {
+          dogId: "sporting-b",
+          groupDogsBeaten: 21,
+          bestInShowWinCount: 1,
+          groupWinCount: 0,
+          allBreedDogsBeaten: 22,
+        },
+        {
+          dogId: "sporting-c",
+          groupDogsBeaten: 0,
+          bestInShowWinCount: 5,
+          groupWinCount: 5,
+          allBreedDogsBeaten: 99,
+        },
+      ],
+      "sporting-c"
+    ),
+    null
+  );
+}
 
 {
   const totals = buildRibbonTotals([

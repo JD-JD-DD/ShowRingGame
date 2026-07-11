@@ -191,6 +191,15 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
                 subdued={ribbonRoom.lifetime.breedRank === null}
               />
               <RibbonRoomStatCard
+                label="Group Dogs Beaten"
+                value={ribbonRoom.lifetime.groupDogsBeaten.toLocaleString()}
+              />
+              <RibbonRoomStatCard
+                label="Group Rank"
+                value={formatRank(ribbonRoom.lifetime.groupRank)}
+                subdued={ribbonRoom.lifetime.groupRank === null}
+              />
+              <RibbonRoomStatCard
                 label="All Dogs Beaten"
                 value={ribbonRoom.lifetime.allBreedDogsBeaten.toLocaleString()}
               />
@@ -216,6 +225,15 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
                 label="Breed Rank"
                 value={formatRank(ribbonRoom.currentYear.breedRank)}
                 subdued={ribbonRoom.currentYear.breedRank === null}
+              />
+              <RibbonRoomStatCard
+                label="Group Dogs Beaten"
+                value={ribbonRoom.currentYear.groupDogsBeaten.toLocaleString()}
+              />
+              <RibbonRoomStatCard
+                label="Group Rank"
+                value={formatRank(ribbonRoom.currentYear.groupRank)}
+                subdued={ribbonRoom.currentYear.groupRank === null}
               />
               <RibbonRoomStatCard
                 label="All Dogs Beaten"

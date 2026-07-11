@@ -66,6 +66,21 @@ assertIncludes(
 );
 assertIncludes(
   ribbonRoomPage,
+  'label="Group Dogs Beaten"',
+  "page renders group dogs beaten stat cards"
+);
+assertIncludes(
+  ribbonRoomPage,
+  "formatRank(ribbonRoom.currentYear.groupRank)",
+  "missing current-year group rank is formatted through the neutral rank helper"
+);
+assertIncludes(
+  ribbonRoomPage,
+  "formatRank(ribbonRoom.lifetime.groupRank)",
+  "missing lifetime group rank is formatted through the neutral rank helper"
+);
+assertIncludes(
+  ribbonRoomPage,
   "<CareerMilestones milestones={ribbonRoom.milestones} />",
   "page renders milestones from the DTO"
 );
@@ -88,6 +103,21 @@ assertIncludes(
   ribbonRoomPage,
   "No Invitational history recorded yet.",
   "page includes the invitational empty state"
+);
+assertIncludes(
+  service,
+  "groupName: dog.breed.groupName",
+  "group rank candidates are scoped to the dog's recognized breed group"
+);
+assert.equal(
+  (ribbonRoomPage.match(/label=\"Group Dogs Beaten\"/g) ?? []).length,
+  2,
+  "page renders Group Dogs Beaten in both lifetime and current-year sections"
+);
+assert.equal(
+  (ribbonRoomPage.match(/label=\"Group Rank\"/g) ?? []).length,
+  2,
+  "page renders Group Rank in both lifetime and current-year sections"
 );
 assertIncludes(
   dogPage,

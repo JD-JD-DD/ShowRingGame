@@ -86,8 +86,10 @@ export type RibbonRoomGrandChampionDto = {
 
 export type RibbonRoomPrestigeStatsDto = {
   breedDogsBeaten: number;
+  groupDogsBeaten: number;
   allBreedDogsBeaten: number;
   breedRank: number | null;
+  groupRank: number | null;
   allBreedRank: number | null;
 };
 
@@ -574,6 +576,86 @@ type LifetimeRankRow = CurrentYearRankRow & {
   reserveBisCount: number;
 };
 
+export type GroupPlacementAggregationInput = {
+  id: string;
+  dogId: string;
+  year: number;
+  placement: number | null;
+  dogsInCompetition: number | null;
+};
+
+export type GroupRankRow = {
+  dogId: string;
+  groupDogsBeaten: number;
+  allBreedDogsBeaten: number;
+  groupWinCount: number;
+  bestInShowWinCount: number;
+};
+
+export function getGroupDogsBeatenForPlacement(args: {
+  placement: number | null;
+  dogsInCompetition: number | null;
+}): number | null {
+  if (args.placement == null || args.dogsInCompetition == null) {
+    return null;
+  }
+
+  return Math.max(0, args.dogsInCompetition - args.placement);
+}
+
+export function aggregateGroupDogsBeaten(
+  placements: GroupPlacementAggregationInput[]
+): { lifetimeByDogId: Map<string, number>; byYearAndDogId: Map<string, number> } {
+  const seenAwardIds = new Set<string>();
+  const lifetimeByDogId = new Map<string, number>();
+  const byYearAndDogId = new Map<string, number>();
+
+  for (const placement of placements) {
+    if (seenAwardIds.has(placement.id)) {
+      continue;
+    }
+
+    seenAwardIds.add(placement.id);
+
+    const dogsBeaten = getGroupDogsBeatenForPlacement({
+      placement: placement.placement,
+      dogsInCompetition: placement.dogsInCompetition,
+    });
+
+    if (dogsBeaten == null) {
+      continue;
+    }
+
+    lifetimeByDogId.set(
+      placement.dogId,
+      (lifetimeByDogId.get(placement.dogId) ?? 0) + dogsBeaten
+    );
+
+    const yearKey = `${placement.year}:${placement.dogId}`;
+    byYearAndDogId.set(yearKey, (byYearAndDogId.get(yearKey) ?? 0) + dogsBeaten);
+  }
+
+  return { lifetimeByDogId, byYearAndDogId };
+}
+
+export function rankGroupDogsBeaten(
+  rows: GroupRankRow[],
+  dogId: string
+): number | null {
+  return (
+    rows
+      .filter((row) => row.groupDogsBeaten > 0)
+      .sort(
+        (a, b) =>
+          b.groupDogsBeaten - a.groupDogsBeaten ||
+          b.bestInShowWinCount - a.bestInShowWinCount ||
+          b.groupWinCount - a.groupWinCount ||
+          b.allBreedDogsBeaten - a.allBreedDogsBeaten
+      )
+      .findIndex((row) => row.dogId === dogId) + 1 || null
+  );
+}
+
 function rankCurrentYearAllBreed(
   rows: CurrentYearRankRow[],
   dogId: string
@@ -702,6 +784,7 @@ export async function getDogRibbonRoom(
     pointAwards,
     grandChampionCredits,
     prestigeCredits,
+    groupPlacementAwardsInBreedGroup,
     currentYearStats,
     currentYearRankRows,
     lifetimeTotals,
@@ -719,9 +802,11 @@ export async function getDogRibbonRoom(
       },
       orderBy: [{ showDay: { scheduledEpoch: "asc" } }],
       select: {
+        id: true,
         awardCode: true,
         awardGroup: true,
         pointsAwarded: true,
+        dogsInCompetition: true,
         showDayId: true,
         grandChampionCredit: {
           select: {
@@ -798,6 +883,29 @@ export async function getDogRibbonRoom(
         allBreedDogsBeaten: true,
       },
     }),
+    dog.breed.groupName
+      ? db.showAward.findMany({
+          where: {
+            awardCode: { in: ["G1", "G2", "G3", "G4"] },
+            breed: {
+              groupName: dog.breed.groupName,
+            },
+          },
+          select: {
+            id: true,
+            dogId: true,
+            rank: true,
+            dogsInCompetition: true,
+            showDay: {
+              select: {
+                cluster: {
+                  select: { year: true },
+                },
+              },
+            },
+          },
+        })
+      : Promise.resolve([]),
     db.dogYearlyPrestigeStat.findUnique({
       where: {
         dogId_gameYear: {
@@ -944,6 +1052,80 @@ export async function getDogRibbonRoom(
     bestInShowWinCount: row._sum.bestInShowWinCount ?? 0,
     reserveBisCount: row._sum.reserveBisCount ?? 0,
   }));
+  const { lifetimeByDogId: lifetimeGroupDogsBeatenByDogId, byYearAndDogId } =
+    aggregateGroupDogsBeaten(
+      groupPlacementAwardsInBreedGroup.map((award) => ({
+        id: award.id,
+        dogId: award.dogId,
+        year: award.showDay.cluster.year,
+        placement: award.rank,
+        dogsInCompetition: award.dogsInCompetition,
+      }))
+    );
+  const dogGroupPlacements = awards
+    .filter((award) => ["G1", "G2", "G3", "G4"].includes(award.awardCode))
+    .map((award) => ({
+      id: award.id,
+      dogId,
+      year: award.showDay.cluster.year,
+      placement:
+        award.awardCode === "G1"
+          ? 1
+          : award.awardCode === "G2"
+            ? 2
+            : award.awardCode === "G3"
+              ? 3
+              : 4,
+      dogsInCompetition: award.dogsInCompetition ?? null,
+    }));
+  const {
+    lifetimeByDogId: dogLifetimeGroupDogsBeatenMap,
+    byYearAndDogId: dogGroupDogsBeatenByYear,
+  } = aggregateGroupDogsBeaten(dogGroupPlacements);
+  const currentYearPrestigeByDogId = new Map(
+    currentYearRankRows.map((row) => [row.dogId, row])
+  );
+  const lifetimePrestigeByDogId = new Map(
+    normalizedLifetimeRankRows.map((row) => [row.dogId, row])
+  );
+  const currentYearGroupRankRows: GroupRankRow[] = [...byYearAndDogId.entries()]
+    .filter(([key, total]) => key.startsWith(`${currentYear}:`) && total > 0)
+    .map(([key, groupDogsBeaten]) => {
+      const rankedDogId = key.slice(key.indexOf(":") + 1);
+      const prestigeRow = currentYearPrestigeByDogId.get(rankedDogId);
+
+      return prestigeRow
+        ? {
+            dogId: rankedDogId,
+            groupDogsBeaten,
+            allBreedDogsBeaten: prestigeRow.allBreedDogsBeaten,
+            groupWinCount: prestigeRow.groupWinCount,
+            bestInShowWinCount: prestigeRow.bestInShowWinCount,
+          }
+        : null;
+    })
+    .filter((row): row is GroupRankRow => Boolean(row));
+  const lifetimeGroupRankRows: GroupRankRow[] = [
+    ...lifetimeGroupDogsBeatenByDogId.entries(),
+  ]
+    .filter(([, total]) => total > 0)
+    .map(([rankedDogId, groupDogsBeaten]) => {
+      const prestigeRow = lifetimePrestigeByDogId.get(rankedDogId);
+
+      return prestigeRow
+        ? {
+            dogId: rankedDogId,
+            groupDogsBeaten,
+            allBreedDogsBeaten: prestigeRow.allBreedDogsBeaten,
+            groupWinCount: prestigeRow.groupWinCount,
+            bestInShowWinCount: prestigeRow.bestInShowWinCount,
+          }
+        : null;
+    })
+    .filter((row): row is GroupRankRow => Boolean(row));
+  const currentYearGroupDogsBeaten =
+    dogGroupDogsBeatenByYear.get(`${currentYear}:${dogId}`) ?? 0;
+  const lifetimeGroupDogsBeaten = dogLifetimeGroupDogsBeatenMap.get(dogId) ?? 0;
   const invitationalRecords: InvitationalRecordInput[] = [
     ...invitationalEntries.map((entry) => ({
       year: entry.showDay.cluster.year,
@@ -1012,22 +1194,26 @@ export async function getDogRibbonRoom(
     }),
     lifetime: {
       breedDogsBeaten: lifetimeTotal?._sum.breedDogsBeaten ?? 0,
+      groupDogsBeaten: lifetimeGroupDogsBeaten,
       allBreedDogsBeaten: lifetimeTotal?._sum.allBreedDogsBeaten ?? 0,
       breedRank: rankLifetimeBreed(
         normalizedLifetimeRankRows,
         dogId,
         dog.breedCode2
       ),
+      groupRank: rankGroupDogsBeaten(lifetimeGroupRankRows, dogId),
       allBreedRank: rankLifetimeAllBreed(normalizedLifetimeRankRows, dogId),
     },
     currentYear: {
       breedDogsBeaten: currentYearStats?.breedDogsBeaten ?? 0,
+      groupDogsBeaten: currentYearGroupDogsBeaten,
       allBreedDogsBeaten: currentYearStats?.allBreedDogsBeaten ?? 0,
       breedRank: rankCurrentYearBreed(
         currentYearRankRows,
         dogId,
         dog.breedCode2
       ),
+      groupRank: rankGroupDogsBeaten(currentYearGroupRankRows, dogId),
       allBreedRank: rankCurrentYearAllBreed(currentYearRankRows, dogId),
     },
     ribbons: ribbonTotals,
