@@ -364,6 +364,8 @@ export type DogProfileEntryDto = {
   judgeName: string | null;
   judgeProfileUrl: string | null;
   entryStatusLabel: string;
+  absenceReasonCode: string | null;
+  absenceReasonMessage: string | null;
   canPullEntry: boolean;
   pullEntryActionUrl: string | null;
 };
@@ -895,6 +897,8 @@ function mapDogProfileEntry(entry: DogProfileEntryDto): DogProfileEntryDto {
     judgeName: entry.judgeName,
     judgeProfileUrl: entry.judgeProfileUrl,
     entryStatusLabel: entry.entryStatusLabel,
+    absenceReasonCode: entry.absenceReasonCode,
+    absenceReasonMessage: entry.absenceReasonMessage,
     canPullEntry: entry.canPullEntry,
     pullEntryActionUrl: entry.pullEntryActionUrl,
   };

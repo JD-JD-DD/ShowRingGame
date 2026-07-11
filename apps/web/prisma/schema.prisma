@@ -93,6 +93,16 @@ enum ShowEntryStatus {
   JUDGED
 }
 
+enum ShowEntryAbsenceReason {
+  PREGNANT_AT_SHOW
+  POST_WHELP_REST_AT_SHOW
+  DECEASED_BEFORE_SHOW
+  UNDER_MINIMUM_SHOW_AGE
+  OVER_MAXIMUM_SHOW_AGE
+  OWNERSHIP_CHANGED
+  LIFECYCLE_UNAVAILABLE
+}
+
 enum SellerType {
   PLAYER
   NPC
@@ -278,11 +288,11 @@ model UserAccessAudit {
 }
 
 model AccessDenylist {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   ipAddress String
   reason    String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
   createdBy String?
   expiresAt DateTime?
 
@@ -336,59 +346,59 @@ model Kennel {
 
   user User? @relation(fields: [userId], references: [id])
 
-  ownedDogs               Dog[]               @relation("OwnerKennelDogs")
-  bredDogs                Dog[]               @relation("BreederKennelDogs")
-  createdBreedingAttempts BreedingAttempt[]   @relation("BreedingCreatedByKennel")
-  bredLitters             Litter[]            @relation("LitterBredByKennel")
-  showEntries             ShowEntry[]
-  ledgerTransactions      LedgerTransaction[] @relation("PrimaryKennelLedger")
-  counterpartyLedger      LedgerTransaction[] @relation("CounterpartyKennelLedger")
-  dogListings             DogListing[]        @relation("SellerKennelListings")
-  purchasedListings       DogListing[]        @relation("BuyerKennelListings")
-  showWeekendPlans        KennelShowWeekendPlan[]
-  bulletinThreads         BulletinThread[]
-    bulletinPosts           BulletinPost[]
-    notices                 KennelNotice[]
-    privateDogNotes         KennelDogPrivateNote[]
-    runs                    KennelRun[]
-    serviceClaims           KennelServiceClaim[]
-    groomingListingsOwned   GroomingListing[] @relation("GroomingListingOwnerKennel")
-    groomingListingsClaimed GroomingListing[] @relation("GroomingListingGroomerKennel")
-    groomingActionsOwned    GroomingServiceAction[] @relation("GroomingActionOwnerKennel")
-    groomingActionsPerformed GroomingServiceAction[] @relation("GroomingActionGroomerKennel")
-    conditionEventsActed    DogConditionEvent[] @relation("DogConditionEventActorKennel")
-    conditionEventsOwned    DogConditionEvent[] @relation("DogConditionEventOwnerKennel")
-    emergencyCareEvents     DogEmergencyCareEvent[]
-    serviceProfile          KennelServiceProfile?
-    plannerTags             DogPlannerTag[]
+  ownedDogs                Dog[]                   @relation("OwnerKennelDogs")
+  bredDogs                 Dog[]                   @relation("BreederKennelDogs")
+  createdBreedingAttempts  BreedingAttempt[]       @relation("BreedingCreatedByKennel")
+  bredLitters              Litter[]                @relation("LitterBredByKennel")
+  showEntries              ShowEntry[]
+  ledgerTransactions       LedgerTransaction[]     @relation("PrimaryKennelLedger")
+  counterpartyLedger       LedgerTransaction[]     @relation("CounterpartyKennelLedger")
+  dogListings              DogListing[]            @relation("SellerKennelListings")
+  purchasedListings        DogListing[]            @relation("BuyerKennelListings")
+  showWeekendPlans         KennelShowWeekendPlan[]
+  bulletinThreads          BulletinThread[]
+  bulletinPosts            BulletinPost[]
+  notices                  KennelNotice[]
+  privateDogNotes          KennelDogPrivateNote[]
+  runs                     KennelRun[]
+  serviceClaims            KennelServiceClaim[]
+  groomingListingsOwned    GroomingListing[]       @relation("GroomingListingOwnerKennel")
+  groomingListingsClaimed  GroomingListing[]       @relation("GroomingListingGroomerKennel")
+  groomingActionsOwned     GroomingServiceAction[] @relation("GroomingActionOwnerKennel")
+  groomingActionsPerformed GroomingServiceAction[] @relation("GroomingActionGroomerKennel")
+  conditionEventsActed     DogConditionEvent[]     @relation("DogConditionEventActorKennel")
+  conditionEventsOwned     DogConditionEvent[]     @relation("DogConditionEventOwnerKennel")
+  emergencyCareEvents      DogEmergencyCareEvent[]
+  serviceProfile           KennelServiceProfile?
+  plannerTags              DogPlannerTag[]
 
   @@index([userId])
   @@index([homeDistrict])
 }
 
 model Breed {
-  code2          String   @id
-  name           String   @unique
+  code2          String  @id
+  name           String  @unique
   groupName      String?
-  isActive       Boolean  @default(false)
+  isActive       Boolean @default(false)
   releaseVersion Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  dogs        Dog[]
-  litters     Litter[]
-  showEntries ShowEntry[]
-  showResults ShowResult[]
-  showAwards  ShowAward[]
+  dogs              Dog[]
+  litters           Litter[]
+  showEntries       ShowEntry[]
+  showResults       ShowResult[]
+  showAwards        ShowAward[]
   showJudgingBlocks ShowJudgingBlock[]
 
   @@index([releaseVersion])
 }
 
 model Dog {
-  id                 String            @id @default(cuid())
-  regNumber          String            @unique
+  id                 String             @id @default(cuid())
+  regNumber          String             @unique
   callName           String?
   registeredName     String?
   breedCode2         String
@@ -402,23 +412,23 @@ model Dog {
   sex                Sex
   birthEpoch         Int
   deathEpoch         Int?
-  lifecycleState     DogLifecycleState @default(ALIVE)
+  lifecycleState     DogLifecycleState  @default(ALIVE)
   visibilityState    DogVisibilityState @default(VISIBLE)
-  isPlayerVisible    Boolean           @default(true)
-  showInMemoriam     Boolean           @default(true)
-  marketState        DogMarketState    @default(NOT_FOR_SALE)
+  isPlayerVisible    Boolean            @default(true)
+  showInMemoriam     Boolean            @default(true)
+  marketState        DogMarketState     @default(NOT_FOR_SALE)
   originType         DogOriginType
-  isFoundation       Boolean           @default(false)
+  isFoundation       Boolean            @default(false)
   coiPercent         Float?
   coiGenerationDepth Int?
 
-  visibleTitlePrefix String?
-  visibleTitleSuffix String?
-  championOffspringCount Int @default(0)
-  producerMeritLevel ProducerMeritLevel @default(NONE)
-  producerMeritSuffix String?
-  producerMeritLabel String?
-  notesPublic        String?
+  visibleTitlePrefix     String?
+  visibleTitleSuffix     String?
+  championOffspringCount Int                @default(0)
+  producerMeritLevel     ProducerMeritLevel @default(NONE)
+  producerMeritSuffix    String?
+  producerMeritLabel     String?
+  notesPublic            String?
 
   // Hidden inherited traits
   traitHead         Int
@@ -433,18 +443,18 @@ model Dog {
   traitTopline      Int
 
   // Current mutable dog state
-  ringObedience Int @default(0)
-  muscleTone    Int @default(0)
+  ringObedience Int   @default(0)
+  muscleTone    Int   @default(0)
   coatCondition Float @default(0)
-  fatiguePoints Int @default(0)
+  fatiguePoints Int   @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  breed         Breed   @relation(fields: [breedCode2], references: [code2])
-  ownerKennel   Kennel? @relation("OwnerKennelDogs", fields: [ownerKennelId], references: [id])
+  breed         Breed      @relation(fields: [breedCode2], references: [code2])
+  ownerKennel   Kennel?    @relation("OwnerKennelDogs", fields: [ownerKennelId], references: [id])
   kennelRun     KennelRun? @relation(fields: [kennelRunId], references: [id])
-  breederKennel Kennel? @relation("BreederKennelDogs", fields: [breederKennelId], references: [id])
+  breederKennel Kennel?    @relation("BreederKennelDogs", fields: [breederKennelId], references: [id])
 
   sire   Dog?  @relation("DogSire", fields: [sireId], references: [id])
   sireOf Dog[] @relation("DogSire")
@@ -460,27 +470,27 @@ model Dog {
   siredLitters  Litter[] @relation("LitterSire")
   dammedLitters Litter[] @relation("LitterDam")
 
-  showEntries        ShowEntry[]
-  showResults        ShowResult[]
-  showAwards         ShowAward[]
-  grandChampionCredits DogGrandChampionCredit[]
-  showPrestigeCredits DogShowPrestigeCredit[]
-  yearlyPrestigeStats DogYearlyPrestigeStat[]
-  ledgerTransactions LedgerTransaction[]
-  listings           DogListing[]
-  titleProgress      DogTitleProgress?
-    healthTests        HealthTestRecord[]
-    healthConditionTruths DogHealthConditionTruth[]
-    infectiousDiseaseStatuses DogInfectiousDiseaseStatus[] @relation("DogDiseaseStatuses")
-    infectiousDiseaseSourceFor DogInfectiousDiseaseStatus[] @relation("DogDiseaseSource")
-    infectiousDiseaseTests InfectiousDiseaseTestRecord[]
-    privateKennelNotes KennelDogPrivateNote[]
-    serviceClaims KennelServiceClaim[]
-    groomingListings GroomingListing[]
-    groomingServiceActions GroomingServiceAction[]
-    conditionEvents DogConditionEvent[]
-    emergencyCareEvents DogEmergencyCareEvent[]
-    plannerTags DogPlannerTag[]
+  showEntries                ShowEntry[]
+  showResults                ShowResult[]
+  showAwards                 ShowAward[]
+  grandChampionCredits       DogGrandChampionCredit[]
+  showPrestigeCredits        DogShowPrestigeCredit[]
+  yearlyPrestigeStats        DogYearlyPrestigeStat[]
+  ledgerTransactions         LedgerTransaction[]
+  listings                   DogListing[]
+  titleProgress              DogTitleProgress?
+  healthTests                HealthTestRecord[]
+  healthConditionTruths      DogHealthConditionTruth[]
+  infectiousDiseaseStatuses  DogInfectiousDiseaseStatus[]  @relation("DogDiseaseStatuses")
+  infectiousDiseaseSourceFor DogInfectiousDiseaseStatus[]  @relation("DogDiseaseSource")
+  infectiousDiseaseTests     InfectiousDiseaseTestRecord[]
+  privateKennelNotes         KennelDogPrivateNote[]
+  serviceClaims              KennelServiceClaim[]
+  groomingListings           GroomingListing[]
+  groomingServiceActions     GroomingServiceAction[]
+  conditionEvents            DogConditionEvent[]
+  emergencyCareEvents        DogEmergencyCareEvent[]
+  plannerTags                DogPlannerTag[]
 
   @@index([breedCode2])
   @@index([ownerKennelId])
@@ -519,7 +529,7 @@ model DogPlannerTag {
   @@index([tagType])
 }
 
-  model KennelDogPrivateNote {
+model KennelDogPrivateNote {
   id        String   @id @default(cuid())
   kennelId  String
   dogId     String
@@ -531,25 +541,25 @@ model DogPlannerTag {
   dog    Dog    @relation(fields: [dogId], references: [id], onDelete: Cascade)
 
   @@unique([kennelId, dogId])
-    @@index([dogId])
-  }
+  @@index([dogId])
+}
 
-  model KennelRun {
-    id        String   @id @default(cuid())
-    kennelId  String
-    name      String
-    sortOrder Int
-    isSystem  Boolean  @default(false)
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+model KennelRun {
+  id        String   @id @default(cuid())
+  kennelId  String
+  name      String
+  sortOrder Int
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-    kennel Kennel @relation(fields: [kennelId], references: [id], onDelete: Cascade)
-    dogs   Dog[]
+  kennel Kennel @relation(fields: [kennelId], references: [id], onDelete: Cascade)
+  dogs   Dog[]
 
-    @@unique([kennelId, name])
-    @@index([kennelId])
-    @@index([kennelId, sortOrder])
-  }
+  @@unique([kennelId, name])
+  @@index([kennelId])
+  @@index([kennelId, sortOrder])
+}
 
 model Judge {
   id           String  @id
@@ -569,9 +579,9 @@ model Judge {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  showDays    ShowDay[]
-  showResults ShowResult[]
-  showAwards  ShowAward[]
+  showDays          ShowDay[]
+  showResults       ShowResult[]
+  showAwards        ShowAward[]
   showJudgingBlocks ShowJudgingBlock[]
 
   @@index([isActive])
@@ -596,10 +606,10 @@ model BreedingAttempt {
   studFeeAmount     Int?
   notes             String?
 
-  sire            Dog     @relation("BreedingSire", fields: [sireId], references: [id])
-  dam             Dog     @relation("BreedingDam", fields: [damId], references: [id])
-  createdByKennel Kennel? @relation("BreedingCreatedByKennel", fields: [createdByKennelId], references: [id])
-  litter          Litter? @relation("BreedingAttemptLitter", fields: [litterId], references: [id])
+  sire                   Dog                           @relation("BreedingSire", fields: [sireId], references: [id])
+  dam                    Dog                           @relation("BreedingDam", fields: [damId], references: [id])
+  createdByKennel        Kennel?                       @relation("BreedingCreatedByKennel", fields: [createdByKennelId], references: [id])
+  litter                 Litter?                       @relation("BreedingAttemptLitter", fields: [litterId], references: [id])
   infectiousDiseaseTests InfectiousDiseaseTestRecord[]
 
   @@index([sireId])
@@ -646,10 +656,10 @@ model ShowCluster {
   status          ShowClusterStatus @default(SCHEDULED)
   createdAt       DateTime          @default(now())
 
-  showDays           ShowDay[]
-  ledgerTransactions LedgerTransaction[]
+  showDays            ShowDay[]
+  ledgerTransactions  LedgerTransaction[]
   primaryWeekendPlans KennelShowWeekendPlan[] @relation("PrimaryShowWeekendCluster")
-  serviceClaims      KennelServiceClaim[]
+  serviceClaims       KennelServiceClaim[]
 
   @@index([district])
   @@index([year])
@@ -688,13 +698,13 @@ model ShowDay {
   cluster ShowCluster @relation(fields: [clusterId], references: [id])
   judge   Judge       @relation(fields: [judgeId], references: [id])
 
-  showEntries ShowEntry[]
-  showResults ShowResult[]
-  showAwards  ShowAward[]
-  grandChampionCredits DogGrandChampionCredit[]
-  grandCompletedTitleProgresses DogTitleProgress[] @relation("DogGrandCompletedAtShowDay")
-  prestigeCredits DogShowPrestigeCredit[]
-  judgingBlocks ShowJudgingBlock[]
+  showEntries                   ShowEntry[]
+  showResults                   ShowResult[]
+  showAwards                    ShowAward[]
+  grandChampionCredits          DogGrandChampionCredit[]
+  grandCompletedTitleProgresses DogTitleProgress[]       @relation("DogGrandCompletedAtShowDay")
+  prestigeCredits               DogShowPrestigeCredit[]
+  judgingBlocks                 ShowJudgingBlock[]
 
   @@unique([clusterId, dayIndex])
   @@index([judgeId])
@@ -703,20 +713,20 @@ model ShowDay {
 }
 
 model ShowJudgingBlock {
-  id               String                  @id @default(cuid())
+  id               String                 @id @default(cuid())
   showDayId        String
   judgeId          String
   breedCode2       String
   ringNumber       Int
   ringName         String?
   startEpoch       Int
-  classType        String                  @default("REGULAR")
+  classType        String                 @default("REGULAR")
   blockOrder       Int
   entryCountHint   Int?
-  status           ShowJudgingBlockStatus  @default(SCHEDULED)
+  status           ShowJudgingBlockStatus @default(SCHEDULED)
   publishedAtEpoch Int?
-  createdAt        DateTime                @default(now())
-  updatedAt        DateTime                @updatedAt
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
 
   showDay ShowDay @relation(fields: [showDayId], references: [id])
   judge   Judge   @relation(fields: [judgeId], references: [id])
@@ -735,7 +745,7 @@ model ShowJudgingBlock {
 }
 
 model ShowEntry {
-  id                   String          @id @default(cuid())
+  id                   String                  @id @default(cuid())
   showDayId            String
   judgingBlockId       String?
   dogId                String
@@ -744,18 +754,19 @@ model ShowEntry {
   enteredKennelName    String?
   enteredKennelSlug    String?
   breedCode2           String
-  entryStatus          ShowEntryStatus @default(ENTERED)
+  entryStatus          ShowEntryStatus         @default(ENTERED)
+  absenceReason        ShowEntryAbsenceReason?
   enteredAtEpoch       Int
   feeCharged           Int
-  handlerUsed          Boolean         @default(false)
+  handlerUsed          Boolean                 @default(false)
   conditioningSnapshot Int?
   fatigueSnapshot      Int?
 
-  showDay ShowDay @relation(fields: [showDayId], references: [id])
+  showDay      ShowDay           @relation(fields: [showDayId], references: [id])
   judgingBlock ShowJudgingBlock? @relation(fields: [judgingBlockId], references: [id])
-  dog     Dog     @relation(fields: [dogId], references: [id])
-  kennel  Kennel  @relation(fields: [kennelId], references: [id])
-  breed   Breed   @relation(fields: [breedCode2], references: [code2])
+  dog          Dog               @relation(fields: [dogId], references: [id])
+  kennel       Kennel            @relation(fields: [kennelId], references: [id])
+  breed        Breed             @relation(fields: [breedCode2], references: [code2])
 
   showResult         ShowResult?
   showAwards         ShowAward[]
@@ -793,13 +804,13 @@ model ShowResult {
   scoringVersion             String
   createdAt                  DateTime @default(now())
 
-  showEntry ShowEntry @relation(fields: [showEntryId], references: [id])
-  showDay   ShowDay   @relation(fields: [showDayId], references: [id])
+  showEntry    ShowEntry         @relation(fields: [showEntryId], references: [id])
+  showDay      ShowDay           @relation(fields: [showDayId], references: [id])
   judgingBlock ShowJudgingBlock? @relation(fields: [judgingBlockId], references: [id])
-  dog       Dog       @relation(fields: [dogId], references: [id])
-  breed     Breed     @relation(fields: [breedCode2], references: [code2])
-  judge     Judge     @relation(fields: [judgeId], references: [id])
-  showAwards ShowAward[]
+  dog          Dog               @relation(fields: [dogId], references: [id])
+  breed        Breed             @relation(fields: [breedCode2], references: [code2])
+  judge        Judge             @relation(fields: [judgeId], references: [id])
+  showAwards   ShowAward[]
 
   @@index([showDayId])
   @@index([judgingBlockId])
@@ -830,13 +841,13 @@ model ShowAward {
   publishedAtEpoch           Int
   createdAt                  DateTime @default(now())
 
-  showResult ShowResult? @relation(fields: [showResultId], references: [id])
-  showEntry  ShowEntry   @relation(fields: [showEntryId], references: [id])
-  showDay    ShowDay     @relation(fields: [showDayId], references: [id])
-  judgingBlock ShowJudgingBlock? @relation(fields: [judgingBlockId], references: [id])
-  dog        Dog         @relation(fields: [dogId], references: [id])
-  breed      Breed       @relation(fields: [breedCode2], references: [code2])
-  judge      Judge       @relation(fields: [judgeId], references: [id])
+  showResult          ShowResult?             @relation(fields: [showResultId], references: [id])
+  showEntry           ShowEntry               @relation(fields: [showEntryId], references: [id])
+  showDay             ShowDay                 @relation(fields: [showDayId], references: [id])
+  judgingBlock        ShowJudgingBlock?       @relation(fields: [judgingBlockId], references: [id])
+  dog                 Dog                     @relation(fields: [dogId], references: [id])
+  breed               Breed                   @relation(fields: [breedCode2], references: [code2])
+  judge               Judge                   @relation(fields: [judgeId], references: [id])
   grandChampionCredit DogGrandChampionCredit?
 
   @@index([showResultId])
@@ -851,17 +862,17 @@ model ShowAward {
 }
 
 model DogGrandChampionCredit {
-  id                       String   @id @default(cuid())
-  dogId                    String
-  showDayId                String
-  showAwardId              String?  @unique
-  awardCode                String
-  pointsAwarded            Int      @default(0)
-  isMajor                  Boolean  @default(false)
-  defeatedChampionCount    Int      @default(0)
-  countsAsChampionDefeat   Boolean  @default(false)
-  createdAtEpoch           Int
-  createdAt                DateTime @default(now())
+  id                     String   @id @default(cuid())
+  dogId                  String
+  showDayId              String
+  showAwardId            String?  @unique
+  awardCode              String
+  pointsAwarded          Int      @default(0)
+  isMajor                Boolean  @default(false)
+  defeatedChampionCount  Int      @default(0)
+  countsAsChampionDefeat Boolean  @default(false)
+  createdAtEpoch         Int
+  createdAt              DateTime @default(now())
 
   dog       Dog        @relation(fields: [dogId], references: [id])
   showDay   ShowDay    @relation(fields: [showDayId], references: [id])
@@ -879,20 +890,20 @@ model DogGrandChampionCredit {
 }
 
 model DogShowPrestigeCredit {
-  id                  String   @id @default(cuid())
-  dogId               String
-  showDayId           String
-  gameYear            Int
-  breedCode2          String
-  breedDogsBeaten     Int      @default(0)
-  allBreedDogsBeaten  Int      @default(0)
-  breedWinCount       Int      @default(0)
-  groupWinCount       Int      @default(0)
-  bestInShowWinCount  Int      @default(0)
-  reserveBisCount     Int      @default(0)
-  calculatedAtEpoch   Int
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  dogId              String
+  showDayId          String
+  gameYear           Int
+  breedCode2         String
+  breedDogsBeaten    Int      @default(0)
+  allBreedDogsBeaten Int      @default(0)
+  breedWinCount      Int      @default(0)
+  groupWinCount      Int      @default(0)
+  bestInShowWinCount Int      @default(0)
+  reserveBisCount    Int      @default(0)
+  calculatedAtEpoch  Int
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   dog     Dog     @relation(fields: [dogId], references: [id])
   showDay ShowDay @relation(fields: [showDayId], references: [id])
@@ -906,19 +917,19 @@ model DogShowPrestigeCredit {
 }
 
 model DogYearlyPrestigeStat {
-  id                  String   @id @default(cuid())
-  dogId               String
-  gameYear            Int
-  breedCode2          String
-  breedDogsBeaten     Int      @default(0)
-  allBreedDogsBeaten  Int      @default(0)
-  breedWinCount       Int      @default(0)
-  groupWinCount       Int      @default(0)
-  bestInShowWinCount  Int      @default(0)
-  reserveBisCount     Int      @default(0)
-  updatedAtEpoch      Int
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  dogId              String
+  gameYear           Int
+  breedCode2         String
+  breedDogsBeaten    Int      @default(0)
+  allBreedDogsBeaten Int      @default(0)
+  breedWinCount      Int      @default(0)
+  groupWinCount      Int      @default(0)
+  bestInShowWinCount Int      @default(0)
+  reserveBisCount    Int      @default(0)
+  updatedAtEpoch     Int
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   dog Dog @relation(fields: [dogId], references: [id])
 
@@ -945,11 +956,11 @@ model LedgerTransaction {
   metadataJson         Json?
   createdAt            DateTime              @default(now())
 
-  kennel             Kennel       @relation("PrimaryKennelLedger", fields: [kennelId], references: [id])
-  dog                Dog?         @relation(fields: [dogId], references: [id])
-  showCluster        ShowCluster? @relation(fields: [showClusterId], references: [id])
-  showEntry          ShowEntry?   @relation(fields: [showEntryId], references: [id])
-  counterpartyKennel Kennel?      @relation("CounterpartyKennelLedger", fields: [counterpartyKennelId], references: [id])
+  kennel             Kennel                 @relation("PrimaryKennelLedger", fields: [kennelId], references: [id])
+  dog                Dog?                   @relation(fields: [dogId], references: [id])
+  showCluster        ShowCluster?           @relation(fields: [showClusterId], references: [id])
+  showEntry          ShowEntry?             @relation(fields: [showEntryId], references: [id])
+  counterpartyKennel Kennel?                @relation("CounterpartyKennelLedger", fields: [counterpartyKennelId], references: [id])
   emergencyCareEvent DogEmergencyCareEvent?
 
   @@index([kennelId])
@@ -1001,9 +1012,9 @@ model GroomingListing {
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
 
-  dog          Dog     @relation(fields: [dogId], references: [id])
-  ownerKennel  Kennel  @relation("GroomingListingOwnerKennel", fields: [ownerKennelId], references: [id])
-  groomerKennel Kennel? @relation("GroomingListingGroomerKennel", fields: [groomerKennelId], references: [id])
+  dog            Dog                     @relation(fields: [dogId], references: [id])
+  ownerKennel    Kennel                  @relation("GroomingListingOwnerKennel", fields: [ownerKennelId], references: [id])
+  groomerKennel  Kennel?                 @relation("GroomingListingGroomerKennel", fields: [groomerKennelId], references: [id])
   serviceActions GroomingServiceAction[]
 
   @@index([status])
@@ -1037,23 +1048,23 @@ model GroomingServiceAction {
 }
 
 model DogConditionEvent {
-  id                  String                @id @default(cuid())
-  dogId               String
-  actorKennelId       String?
+  id                   String                @id @default(cuid())
+  dogId                String
+  actorKennelId        String?
   ownerKennelIdAtEvent String?
-  eventType           DogConditionEventType
-  amount              Float
-  conditionBefore     Float
-  conditionAfter      Float
-  groomingWeek        Int
-  occurredAtEpoch     Int
+  eventType            DogConditionEventType
+  amount               Float
+  conditionBefore      Float
+  conditionAfter       Float
+  groomingWeek         Int
+  occurredAtEpoch      Int
   decayKey            String?               @unique
-  note                String?
-  createdAt           DateTime              @default(now())
+  note                 String?
+  createdAt            DateTime              @default(now())
 
-  dog                 Dog     @relation(fields: [dogId], references: [id])
-  actorKennel         Kennel? @relation("DogConditionEventActorKennel", fields: [actorKennelId], references: [id])
-  ownerKennelAtEvent  Kennel? @relation("DogConditionEventOwnerKennel", fields: [ownerKennelIdAtEvent], references: [id])
+  dog                Dog     @relation(fields: [dogId], references: [id])
+  actorKennel        Kennel? @relation("DogConditionEventActorKennel", fields: [actorKennelId], references: [id])
+  ownerKennelAtEvent Kennel? @relation("DogConditionEventOwnerKennel", fields: [ownerKennelIdAtEvent], references: [id])
 
   @@index([dogId])
   @@index([actorKennelId])
@@ -1063,34 +1074,34 @@ model DogConditionEvent {
 }
 
 model DogEmergencyCareEvent {
-  id                         String                        @id @default(cuid())
-  dogId                      String
-  kennelIdAtEvent            String?
-  sourceKey                  String?                       @unique
-  emergencyType              DogEmergencyCareType
-  status                     DogEmergencyCareStatus        @default(PENDING)
-  createdAtEpoch             Int
-  responseDeadlineEpoch      Int
-  treatmentCost              Int
-  survivalChanceBps          Int
-  paidAtEpoch                Int?
-  resolvedAtEpoch            Int?
-  treatmentOutcome           DogEmergencyTreatmentOutcome?
-  ledgerTransactionId        String?                       @unique
-  showIneligibleUntilEpoch   Int?
-  breedIneligibleUntilEpoch  Int?
-  lifetimeBreedIneligible    Boolean                       @default(false)
-  traitModifierJson          Json?
-  outcomeSeed                String?
-  outcomeRollBps             Int?
-  canceledAtEpoch            Int?
-  canceledReason             String?
-  createdAt                  DateTime                      @default(now())
-  updatedAt                  DateTime                      @updatedAt
+  id                        String                        @id @default(cuid())
+  dogId                     String
+  kennelIdAtEvent           String?
+  sourceKey                 String?                       @unique
+  emergencyType             DogEmergencyCareType
+  status                    DogEmergencyCareStatus        @default(PENDING)
+  createdAtEpoch            Int
+  responseDeadlineEpoch     Int
+  treatmentCost             Int
+  survivalChanceBps         Int
+  paidAtEpoch               Int?
+  resolvedAtEpoch           Int?
+  treatmentOutcome          DogEmergencyTreatmentOutcome?
+  ledgerTransactionId       String?                       @unique
+  showIneligibleUntilEpoch  Int?
+  breedIneligibleUntilEpoch Int?
+  lifetimeBreedIneligible   Boolean                       @default(false)
+  traitModifierJson         Json?
+  outcomeSeed               String?
+  outcomeRollBps            Int?
+  canceledAtEpoch           Int?
+  canceledReason            String?
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
 
-  dog                        Dog                @relation(fields: [dogId], references: [id])
-  kennelAtEvent              Kennel?            @relation(fields: [kennelIdAtEvent], references: [id])
-  ledgerTransaction          LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id])
+  dog               Dog                @relation(fields: [dogId], references: [id])
+  kennelAtEvent     Kennel?            @relation(fields: [kennelIdAtEvent], references: [id])
+  ledgerTransaction LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id])
 
   @@index([dogId])
   @@index([kennelIdAtEvent])
@@ -1099,39 +1110,39 @@ model DogEmergencyCareEvent {
 }
 
 model KennelServiceProfile {
-  id                             String   @id @default(cuid())
-  kennelId                       String   @unique
-  groomingXp                     Int      @default(0)
-  groomingLevel                  Int      @default(0)
-  groomingActionsCompleted       Int      @default(0)
-  outsideGroomingJobsCompleted   Int      @default(0)
-  selfGroomingActionsCompleted   Int      @default(0)
-  createdAt                      DateTime @default(now())
-  updatedAt                      DateTime @updatedAt
+  id                           String   @id @default(cuid())
+  kennelId                     String   @unique
+  groomingXp                   Int      @default(0)
+  groomingLevel                Int      @default(0)
+  groomingActionsCompleted     Int      @default(0)
+  outsideGroomingJobsCompleted Int      @default(0)
+  selfGroomingActionsCompleted Int      @default(0)
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
 
   kennel Kennel @relation(fields: [kennelId], references: [id])
 }
 
 model DogListing {
-  id                String           @id @default(cuid())
-  dogId             String
-  sellerKennelId    String?
-  sellerType        SellerType
-  askingPrice       Int
-  listingType       String
-  status            DogListingStatus @default(ACTIVE)
-  listedAtEpoch     Int
-  expiresAtEpoch    Int?
-  soldAtEpoch       Int?
-  buyerKennelId     String?
-  descriptionPublic String?
-  requiresBrucellosisNegativeDam Boolean @default(false)
-  requiresDamHealthTestsCompleted Boolean @default(false)
-  requiresDamHealthAllGreen Boolean @default(false)
-  requiresDamHealthGreenOrYellow Boolean @default(false)
-  requiresDamChampionTitle Boolean @default(false)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  id                              String           @id @default(cuid())
+  dogId                           String
+  sellerKennelId                  String?
+  sellerType                      SellerType
+  askingPrice                     Int
+  listingType                     String
+  status                          DogListingStatus @default(ACTIVE)
+  listedAtEpoch                   Int
+  expiresAtEpoch                  Int?
+  soldAtEpoch                     Int?
+  buyerKennelId                   String?
+  descriptionPublic               String?
+  requiresBrucellosisNegativeDam  Boolean          @default(false)
+  requiresDamHealthTestsCompleted Boolean          @default(false)
+  requiresDamHealthAllGreen       Boolean          @default(false)
+  requiresDamHealthGreenOrYellow  Boolean          @default(false)
+  requiresDamChampionTitle        Boolean          @default(false)
+  createdAt                       DateTime         @default(now())
+  updatedAt                       DateTime         @updatedAt
 
   dog          Dog     @relation(fields: [dogId], references: [id])
   sellerKennel Kennel? @relation("SellerKennelListings", fields: [sellerKennelId], references: [id])
@@ -1177,8 +1188,8 @@ model InfectiousDiseaseTestRecord {
   notes             String?
   createdAt         DateTime @default(now())
 
-  dog              Dog               @relation(fields: [dogId], references: [id])
-  breedingAttempt  BreedingAttempt?  @relation(fields: [breedingAttemptId], references: [id])
+  dog             Dog              @relation(fields: [dogId], references: [id])
+  breedingAttempt BreedingAttempt? @relation(fields: [breedingAttemptId], references: [id])
 
   @@index([dogId, diseaseCode, testedAtEpoch])
   @@index([dogId, diseaseCode, validUntilEpoch])
@@ -1188,16 +1199,16 @@ model InfectiousDiseaseTestRecord {
 }
 
 model BulletinCategory {
-  id                  String                  @id
-  slug                String                  @unique
+  id                  String                @id
+  slug                String                @unique
   name                String
   description         String?
-  sortOrder           Int                     @default(0)
-  isActive            Boolean                 @default(true)
-  topicCreationPolicy BulletinPostingPolicy   @default(MEMBERS)
-  replyPolicy         BulletinPostingPolicy   @default(MEMBERS)
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
+  sortOrder           Int                   @default(0)
+  isActive            Boolean               @default(true)
+  topicCreationPolicy BulletinPostingPolicy @default(MEMBERS)
+  replyPolicy         BulletinPostingPolicy @default(MEMBERS)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   threads BulletinThread[]
 
@@ -1243,20 +1254,20 @@ model BulletinThread {
 }
 
 model BulletinPost {
-  id             String               @id @default(cuid())
-  threadId       String
-  kennelId       String
-  body           String
-  sourceType     BulletinThreadSource @default(PLAYER)
-  hidden         Boolean              @default(false)
-  moderationStatus BulletinPostStatus @default(VISIBLE)
+  id                String               @id @default(cuid())
+  threadId          String
+  kennelId          String
+  body              String
+  sourceType        BulletinThreadSource @default(PLAYER)
+  hidden            Boolean              @default(false)
+  moderationStatus  BulletinPostStatus   @default(VISIBLE)
   moderatedByUserId String?
   moderatedAt       DateTime?
   moderationReason  String?
-  createdAtEpoch Int
-  editedAtEpoch  Int?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  createdAtEpoch    Int
+  editedAtEpoch     Int?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
 
   thread BulletinThread @relation(fields: [threadId], references: [id])
   kennel Kennel         @relation(fields: [kennelId], references: [id])
@@ -1271,22 +1282,22 @@ model BulletinPost {
 }
 
 model KennelNotice {
-  id              String           @id @default(cuid())
-  kennelId        String
-  sourceKey       String?          @unique
-  type            KennelNoticeType
-  title           String
-  body            String?
-  createdAtEpoch  Int
-  readAtEpoch     Int?
+  id               String           @id @default(cuid())
+  kennelId         String
+  sourceKey        String?          @unique
+  type             KennelNoticeType
+  title            String
+  body             String?
+  createdAtEpoch   Int
+  readAtEpoch      Int?
   dismissedAtEpoch Int?
-  linkedDogId     String?
-  linkedLitterId  String?
-  linkedShowId    String?
-  linkedThreadId  String?
-  linkedListingId String?
-  metadataJson    Json?
-  createdAt       DateTime         @default(now())
+  linkedDogId      String?
+  linkedLitterId   String?
+  linkedShowId     String?
+  linkedThreadId   String?
+  linkedListingId  String?
+  metadataJson     Json?
+  createdAt        DateTime         @default(now())
 
   kennel Kennel @relation(fields: [kennelId], references: [id])
 
@@ -1303,20 +1314,20 @@ model KennelNotice {
 }
 
 model DogTitleProgress {
-  dogId                         String   @id
-  championshipPoints            Int      @default(0)
-  majorCount                    Int      @default(0)
-  grandPoints                   Int      @default(0)
-  grandMajorCount               Int      @default(0)
-  grandChampionDefeatShowCount  Int      @default(0)
-  grandCompletedAtShowDayId     String?
-  grandCompletedAtEpoch         Int?
-  winsByTypeJson                Json?
-  currentTitleCode              String?
-  updatedAt                     DateTime @updatedAt
+  dogId                        String   @id
+  championshipPoints           Int      @default(0)
+  majorCount                   Int      @default(0)
+  grandPoints                  Int      @default(0)
+  grandMajorCount              Int      @default(0)
+  grandChampionDefeatShowCount Int      @default(0)
+  grandCompletedAtShowDayId    String?
+  grandCompletedAtEpoch        Int?
+  winsByTypeJson               Json?
+  currentTitleCode             String?
+  updatedAt                    DateTime @updatedAt
 
-  dog                         Dog      @relation(fields: [dogId], references: [id])
-  grandCompletedAtShowDay     ShowDay? @relation("DogGrandCompletedAtShowDay", fields: [grandCompletedAtShowDayId], references: [id], onDelete: SetNull)
+  dog                     Dog      @relation(fields: [dogId], references: [id])
+  grandCompletedAtShowDay ShowDay? @relation("DogGrandCompletedAtShowDay", fields: [grandCompletedAtShowDayId], references: [id], onDelete: SetNull)
 
   @@index([grandCompletedAtShowDayId])
 }

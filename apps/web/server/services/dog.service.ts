@@ -5,6 +5,10 @@ import {
   hasAllGreenPhenotypeHealthTests,
 } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import {
+  formatShowEntryAbsenceReason,
+  formatShowEntryStatusShortLabel,
+} from "@/lib/showEntryAbsence";
 import { isChampionOfRecordTitleCode } from "@/lib/dogTitles";
 import { estimateJsonSizeBytes } from "@/lib/perf";
 import { buildTitlePointsDisplay } from "@/lib/titlePoints";
@@ -534,21 +538,14 @@ function formatOffspringTitleSummary(dog: {
   return titleParts.length > 0 ? [...new Set(titleParts)].join(" / ") : null;
 }
 
-function formatEntryStatusLabel(status: string): string {
-  switch (status) {
-    case "ENTERED":
-      return "Entered";
-    case "ABSENT":
-      return "Absent";
-    case "WITHDRAWN":
-      return "Withdrawn";
-    case "INELIGIBLE":
-      return "Ineligible";
-    case "JUDGED":
-      return "Judged";
-    default:
-      return "Status unavailable";
-  }
+function formatEntryStatusLabel(args: {
+  status: string;
+  absenceReason?: Parameters<typeof formatShowEntryAbsenceReason>[0];
+}): string {
+  return formatShowEntryStatusShortLabel({
+    entryStatus: args.status,
+    absenceReason: args.absenceReason,
+  });
 }
 
 function formatPlannerTagLabel(tagType: string): string {
@@ -1289,6 +1286,7 @@ export async function getDogProfile(args: {
               select: {
                 id: true,
                 entryStatus: true,
+                absenceReason: true,
                 breed: { select: { name: true } },
                 showDay: {
                   select: {
@@ -1619,7 +1617,12 @@ export async function getDogProfile(args: {
         judgeProfileUrl: entry.showDay.judge
           ? `/judges/${entry.showDay.judge.judgeCode}`
           : null,
-        entryStatusLabel: formatEntryStatusLabel(entry.entryStatus),
+        entryStatusLabel: formatEntryStatusLabel({
+          status: entry.entryStatus,
+          absenceReason: entry.absenceReason,
+        }),
+        absenceReasonCode: entry.absenceReason,
+        absenceReasonMessage: formatShowEntryAbsenceReason(entry.absenceReason),
         canPullEntry,
         pullEntryActionUrl: canPullEntry
           ? `/api/show-entries/${entry.id}/pull`

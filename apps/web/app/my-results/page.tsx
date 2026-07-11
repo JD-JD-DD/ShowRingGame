@@ -6,11 +6,13 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { formatShowAwardLabels } from "@/lib/showAwards";
+import { formatShowEntryAbsenceReason } from "@/lib/showEntryAbsence";
 import {
   buildTitlePointsDisplay,
   formatTitlePointsDisplay,
   type TitlePointsDisplay,
 } from "@/lib/titlePoints";
+import type { ShowEntryAbsenceReason } from "@prisma/client";
 import { getShowDistrictRegionName } from "@showring/rules";
 
 function formatShowDate(epoch: number): string {
@@ -24,6 +26,7 @@ function formatShowDate(epoch: number): string {
 
 type MyShowResultEntry = {
   entryStatus: string;
+  absenceReason: ShowEntryAbsenceReason | null;
   showResult: {
     pointsAwarded: number;
     isMajor: boolean;
@@ -38,6 +41,14 @@ type MyShowResultEntry = {
     }>;
   } | null;
 };
+
+function getAbsenceReasonMessage(entry: MyShowResultEntry): string | null {
+  if (entry.entryStatus !== "ABSENT") {
+    return null;
+  }
+
+  return formatShowEntryAbsenceReason(entry.absenceReason);
+}
 
 function formatResult(entry: MyShowResultEntry): string {
   if (!entry.showResult) {
@@ -120,6 +131,7 @@ export default async function MyShowResultsPage() {
     select: {
       id: true,
       entryStatus: true,
+      absenceReason: true,
       dog: {
         select: {
           id: true,
@@ -220,6 +232,7 @@ export default async function MyShowResultsPage() {
                   const titlePointsAwarded = formatTitlePointsDisplay(
                     getTitlePointsDisplay(entry)
                   );
+                  const absenceReasonMessage = getAbsenceReasonMessage(entry);
 
                   return (
                     <tr
@@ -261,6 +274,11 @@ export default async function MyShowResultsPage() {
                       </td>
                       <td className="theme-heading px-3 py-3 font-semibold">
                         {formatResult(entry)}
+                        {absenceReasonMessage ? (
+                          <div className="theme-copy mt-1 text-xs font-normal">
+                            {absenceReasonMessage}
+                          </div>
+                        ) : null}
                       </td>
                       <td className="theme-heading rounded-r-2xl px-3 py-3 font-semibold">
                         {titlePointsAwarded ?? (

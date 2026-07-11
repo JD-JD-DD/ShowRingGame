@@ -10,18 +10,22 @@ import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import { processGrandChampionCreditsForShowDay } from "@/server/services/grandChampion.service";
 import {
   canEnterShows,
+  DAM_SHOW_POST_WHELP_COOLDOWN_HOURS,
   getChampionshipPointsForCompetition,
   JUDGING_SCORING_VERSION,
   judgeBestInShow,
   judgeBreedBlock,
   judgeGroup,
+  MAX_SHOW_AGE_HOURS,
   mapJudgeRosterStyleToJudgeStyle,
+  MIN_SHOW_AGE_HOURS,
   type Dog as EngineDog,
   type Judge as EngineJudge,
 } from "@showring/rules";
 import {
   Prisma,
   ShowDayStatus,
+  ShowEntryAbsenceReason,
   ShowEntryStatus,
   ShowJudgingBlockStatus,
 } from "@prisma/client";
@@ -516,18 +520,26 @@ type BlockJudgingReasonCode =
   | "ELIGIBLE"
   | "ENTRY_NOT_ENTERED"
   | "BREED_MISMATCH"
-  | "SHOW_TIME_UNAVAILABLE";
+  | "PREGNANT_AT_SHOW"
+  | "POST_WHELP_REST_AT_SHOW"
+  | "DECEASED_BEFORE_SHOW"
+  | "UNDER_MINIMUM_SHOW_AGE"
+  | "OVER_MAXIMUM_SHOW_AGE"
+  | "OWNERSHIP_CHANGED"
+  | "LIFECYCLE_UNAVAILABLE";
 
 type BlockJudgingEntryDisposition =
   | {
       isEligible: true;
       reasonCode: "ELIGIBLE";
       statusToPersist: null;
+      absenceReason: null;
     }
   | {
       isEligible: false;
       reasonCode: Exclude<BlockJudgingReasonCode, "ELIGIBLE">;
       statusToPersist: ShowEntryStatus | null;
+      absenceReason: ShowEntryAbsenceReason | null;
     };
 
 export function getBlockJudgingEntryDisposition(
@@ -539,6 +551,7 @@ export function getBlockJudgingEntryDisposition(
       isEligible: false,
       reasonCode: "ENTRY_NOT_ENTERED",
       statusToPersist: null,
+      absenceReason: null,
     };
   }
 
@@ -547,38 +560,103 @@ export function getBlockJudgingEntryDisposition(
       isEligible: false,
       reasonCode: "BREED_MISMATCH",
       statusToPersist: "INELIGIBLE",
+      absenceReason: null,
     };
   }
 
+  const latestWhelp = entry.dog.breedingAttemptsAsDam.find(
+    (attempt) => attempt.status === "WHELPED" && attempt.whelpedEpoch != null
+  );
+  const isPregnantAtShowTime = entry.dog.breedingAttemptsAsDam.some(
+    (attempt) => attempt.status === "PREGNANT"
+  );
+  const inPostWhelpRestAtShowTime =
+    latestWhelp?.whelpedEpoch != null &&
+    block.startEpoch <
+      latestWhelp.whelpedEpoch + DAM_SHOW_POST_WHELP_COOLDOWN_HOURS;
+  const diedBeforeOrAtBlockStart =
+    entry.dog.lifecycleState === "DECEASED" &&
+    entry.dog.deathEpoch !== null &&
+    entry.dog.deathEpoch <= block.startEpoch;
+  const ownershipChanged = entry.dog.ownerKennelId !== entry.kennelId;
+  const showAgeHours = block.startEpoch - entry.dog.birthEpoch;
+  const underMinimumShowAge = showAgeHours < MIN_SHOW_AGE_HOURS;
+  const overMaximumShowAge = showAgeHours > MAX_SHOW_AGE_HOURS;
   const aliveAtBlockStart =
     entry.dog.lifecycleState === "ALIVE" ||
     (entry.dog.lifecycleState === "DECEASED" &&
       entry.dog.deathEpoch !== null &&
       entry.dog.deathEpoch > block.startEpoch);
-  const latestWhelp = entry.dog.breedingAttemptsAsDam.find(
-    (attempt) => attempt.status === "WHELPED" && attempt.whelpedEpoch != null
-  );
   const showEligibleAtBlockStart = canEnterShows(
     block.startEpoch,
     entry.dog.birthEpoch,
     aliveAtBlockStart ? "ALIVE" : entry.dog.lifecycleState,
     {
-      isPregnant: entry.dog.breedingAttemptsAsDam.some(
-        (attempt) => attempt.status === "PREGNANT"
-      ),
+      isPregnant: isPregnantAtShowTime,
       lastWhelpedEpoch: latestWhelp?.whelpedEpoch ?? null,
     }
   );
 
-  if (
-    !aliveAtBlockStart ||
-    !showEligibleAtBlockStart ||
-    entry.dog.ownerKennelId !== entry.kennelId
-  ) {
+  if (ownershipChanged) {
     return {
       isEligible: false,
-      reasonCode: "SHOW_TIME_UNAVAILABLE",
+      reasonCode: "OWNERSHIP_CHANGED",
       statusToPersist: "ABSENT",
+      absenceReason: "OWNERSHIP_CHANGED",
+    };
+  }
+
+  if (diedBeforeOrAtBlockStart) {
+    return {
+      isEligible: false,
+      reasonCode: "DECEASED_BEFORE_SHOW",
+      statusToPersist: "ABSENT",
+      absenceReason: "DECEASED_BEFORE_SHOW",
+    };
+  }
+
+  if (isPregnantAtShowTime) {
+    return {
+      isEligible: false,
+      reasonCode: "PREGNANT_AT_SHOW",
+      statusToPersist: "ABSENT",
+      absenceReason: "PREGNANT_AT_SHOW",
+    };
+  }
+
+  if (inPostWhelpRestAtShowTime) {
+    return {
+      isEligible: false,
+      reasonCode: "POST_WHELP_REST_AT_SHOW",
+      statusToPersist: "ABSENT",
+      absenceReason: "POST_WHELP_REST_AT_SHOW",
+    };
+  }
+
+  if (underMinimumShowAge) {
+    return {
+      isEligible: false,
+      reasonCode: "UNDER_MINIMUM_SHOW_AGE",
+      statusToPersist: "ABSENT",
+      absenceReason: "UNDER_MINIMUM_SHOW_AGE",
+    };
+  }
+
+  if (overMaximumShowAge) {
+    return {
+      isEligible: false,
+      reasonCode: "OVER_MAXIMUM_SHOW_AGE",
+      statusToPersist: "ABSENT",
+      absenceReason: "OVER_MAXIMUM_SHOW_AGE",
+    };
+  }
+
+  if (!aliveAtBlockStart || !showEligibleAtBlockStart) {
+    return {
+      isEligible: false,
+      reasonCode: "LIFECYCLE_UNAVAILABLE",
+      statusToPersist: "ABSENT",
+      absenceReason: "LIFECYCLE_UNAVAILABLE",
     };
   }
 
@@ -586,6 +664,7 @@ export function getBlockJudgingEntryDisposition(
     isEligible: true,
     reasonCode: "ELIGIBLE",
     statusToPersist: null,
+    absenceReason: null,
   };
 }
 
@@ -936,28 +1015,44 @@ export async function judgeShowBlock(args: {
         } => candidate.disposition.isEligible
       )
       .map((candidate) => candidate.entry);
-    const automaticAbsentEntryIds = evaluatedEntries
+    const automaticAbsentEntries = evaluatedEntries
       .filter(
         (candidate) => candidate.disposition.statusToPersist === "ABSENT"
       )
-      .map((candidate) => candidate.entry.id);
+      .map((candidate) => ({
+        entryId: candidate.entry.id,
+        absenceReason: candidate.disposition.absenceReason,
+      }))
+      .filter(
+        (
+          candidate
+        ): candidate is {
+          entryId: string;
+          absenceReason: ShowEntryAbsenceReason;
+        } => candidate.absenceReason !== null
+      );
     const ineligibleEntryIds = evaluatedEntries
       .filter(
         (candidate) => candidate.disposition.statusToPersist === "INELIGIBLE"
       )
       .map((candidate) => candidate.entry.id);
 
-    if (automaticAbsentEntryIds.length > 0) {
-      await tx.showEntry.updateMany({
-        where: { id: { in: automaticAbsentEntryIds }, entryStatus: "ENTERED" },
-        data: { entryStatus: "ABSENT" },
-      });
+    if (automaticAbsentEntries.length > 0) {
+      for (const absentEntry of automaticAbsentEntries) {
+        await tx.showEntry.updateMany({
+          where: { id: absentEntry.entryId, entryStatus: "ENTERED" },
+          data: {
+            entryStatus: "ABSENT",
+            absenceReason: absentEntry.absenceReason,
+          },
+        });
+      }
     }
 
     if (ineligibleEntryIds.length > 0) {
       await tx.showEntry.updateMany({
         where: { id: { in: ineligibleEntryIds }, entryStatus: "ENTERED" },
-        data: { entryStatus: "INELIGIBLE" },
+        data: { entryStatus: "INELIGIBLE", absenceReason: null },
       });
     }
 

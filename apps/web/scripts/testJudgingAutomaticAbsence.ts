@@ -71,6 +71,11 @@ assert.equal(
   "ABSENT",
   "pregnant entered bitch becomes ABSENT at judging time"
 );
+assert.equal(
+  pregnantDisposition.absenceReason,
+  "PREGNANT_AT_SHOW",
+  "pregnant entered bitch persists PREGNANT_AT_SHOW"
+);
 
 const restingDisposition = getBlockJudgingEntryDisposition(
   makeEntry({
@@ -91,6 +96,11 @@ assert.equal(
   restingDisposition.statusToPersist,
   "ABSENT",
   "post-whelp rest bitch becomes ABSENT at judging time"
+);
+assert.equal(
+  restingDisposition.absenceReason,
+  "POST_WHELP_REST_AT_SHOW",
+  "post-whelp rest bitch persists POST_WHELP_REST_AT_SHOW"
 );
 
 const boundaryRestDisposition = getBlockJudgingEntryDisposition(
@@ -128,6 +138,11 @@ assert.equal(
   "ABSENT",
   "deceased dog becomes ABSENT at judging time"
 );
+assert.equal(
+  deceasedDisposition.absenceReason,
+  "DECEASED_BEFORE_SHOW",
+  "deceased dog persists DECEASED_BEFORE_SHOW"
+);
 
 const overAgeDisposition = getBlockJudgingEntryDisposition(
   makeEntry({
@@ -143,6 +158,11 @@ assert.equal(
   "ABSENT",
   "over-age dog becomes ABSENT at judging time"
 );
+assert.equal(
+  overAgeDisposition.absenceReason,
+  "OVER_MAXIMUM_SHOW_AGE",
+  "over-age dog persists OVER_MAXIMUM_SHOW_AGE"
+);
 
 const underAgeDisposition = getBlockJudgingEntryDisposition(
   makeEntry({
@@ -156,6 +176,11 @@ assert.equal(
   underAgeDisposition.statusToPersist,
   "ABSENT",
   "historical under-age entered dogs also classify as ABSENT at judging time"
+);
+assert.equal(
+  underAgeDisposition.absenceReason,
+  "UNDER_MINIMUM_SHOW_AGE",
+  "historical under-age entered dogs persist UNDER_MINIMUM_SHOW_AGE"
 );
 
 const ownerChangedDisposition = getBlockJudgingEntryDisposition(
@@ -171,6 +196,25 @@ assert.equal(
   "ABSENT",
   "ownership changes after entry classify as ABSENT"
 );
+assert.equal(
+  ownerChangedDisposition.absenceReason,
+  "OWNERSHIP_CHANGED",
+  "ownership changes after entry persist OWNERSHIP_CHANGED"
+);
+
+const retiredDisposition = getBlockJudgingEntryDisposition(
+  makeEntry({
+    dog: {
+      lifecycleState: "RETIRED",
+    },
+  }),
+  makeBlock()
+);
+assert.equal(
+  retiredDisposition.absenceReason,
+  "LIFECYCLE_UNAVAILABLE",
+  "generic unavailable lifecycle states persist LIFECYCLE_UNAVAILABLE"
+);
 
 const breedMismatchDisposition = getBlockJudgingEntryDisposition(
   makeEntry({ entry: { breedCode2: "BC" } }),
@@ -180,6 +224,11 @@ assert.equal(
   breedMismatchDisposition.statusToPersist,
   "INELIGIBLE",
   "breed-mismatched entries remain INELIGIBLE"
+);
+assert.equal(
+  breedMismatchDisposition.absenceReason,
+  null,
+  "breed-mismatched entries do not receive an absence reason"
 );
 
 const alreadyAbsentDisposition = getBlockJudgingEntryDisposition(
@@ -207,17 +256,17 @@ assertIncludes(
 );
 assertIncludes(
   judgingService,
-  'data: { entryStatus: "ABSENT" }',
-  "automatic absence persists ABSENT without deleting the entry"
+  'absenceReason: absentEntry.absenceReason',
+  "automatic absence persists the canonical absence reason with ABSENT"
 );
 assertIncludes(
   judgingService,
-  'data: { entryStatus: "INELIGIBLE" }',
+  'data: { entryStatus: "INELIGIBLE", absenceReason: null }',
   "invalid entries still persist INELIGIBLE"
 );
 assertIncludes(
   judgingService,
-  'where: { id: { in: automaticAbsentEntryIds }, entryStatus: "ENTERED" }',
+  'where: { id: absentEntry.entryId, entryStatus: "ENTERED" }',
   "automatic absence updates only currently ENTERED entries for idempotency"
 );
 assertIncludes(

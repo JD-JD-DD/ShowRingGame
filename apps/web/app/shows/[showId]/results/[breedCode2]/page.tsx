@@ -5,7 +5,9 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
 import { formatShowAwardLabel } from "@/lib/showAwards";
+import { formatShowEntryAbsenceReason } from "@/lib/showEntryAbsence";
 import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
+import type { ShowEntryAbsenceReason } from "@prisma/client";
 
 const AWARD_SORT_ORDER: Record<string, number> = {
   "1": 1,
@@ -98,6 +100,7 @@ type ResultRow = {
 type EntryRow = {
   id: string;
   entryStatus: string;
+  absenceReason: ShowEntryAbsenceReason | null;
   enteredKennelName: string | null;
   enteredKennelSlug: string | null;
   dog: {
@@ -303,8 +306,14 @@ function AllEntriesTable({ entries }: { entries: EntryRow[] }) {
                       {entry.dog.regNumber}
                       {entry.entryStatus !== "JUDGED" ? (
                         <span className="ml-2 text-amber-100/70">
-                          {entry.entryStatus}
+                          {entry.entryStatus === "ABSENT" ? "ABS" : entry.entryStatus}
                         </span>
+                      ) : null}
+                      {entry.entryStatus === "ABSENT" &&
+                      entry.absenceReason ? (
+                        <div className="mt-1 text-[11px] text-[var(--dog-copy)]">
+                          {formatShowEntryAbsenceReason(entry.absenceReason)}
+                        </div>
                       ) : null}
                     </div>
                   </td>
