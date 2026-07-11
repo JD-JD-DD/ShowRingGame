@@ -74,6 +74,10 @@ export async function POST(
 
     const formData = await request.formData();
     const breedCode2 = String(formData.get("breedCode2") ?? "").trim();
+    const entryMode =
+      String(formData.get("entryMode") ?? "").trim() === "ALL_ELIGIBLE"
+        ? "ALL_ELIGIBLE"
+        : "SELECTED";
     selectedBreedCode2 = breedCode2;
     const selections: BulkShowEntrySelection[] = formData
       .getAll("dogDaySelections")
@@ -103,6 +107,7 @@ export async function POST(
       breedCode2,
       selections,
       currentEpoch,
+      mode: entryMode,
     });
 
     await createUserAccessAudit({
@@ -115,9 +120,17 @@ export async function POST(
     return redirectWithEntryMessage(
       request,
       result.showId,
-      result.entriesCreated === 1
-        ? `Entry submitted. Total cost: $${result.quote.totalCost}.`
-        : `${result.entriesCreated} entries submitted for ${result.dogsEntered} dog(s). Total cost: $${result.quote.totalCost}.`,
+      result.entriesCreated === 0
+        ? `No new entries were created. ${result.skippedSelections} combination(s) were already entered or no longer eligible.`
+        : `${
+            result.entriesCreated === 1
+              ? `Entry submitted. Total cost: $${result.quote.totalCost}.`
+              : `${result.entriesCreated} entries submitted for ${result.dogsEntered} dog(s). Total cost: $${result.quote.totalCost}.`
+          }${
+            result.skippedSelections > 0
+              ? ` ${result.skippedSelections} combination(s) were skipped because eligibility changed or they were already entered.`
+              : ""
+          }`,
       breedCode2
     );
   } catch (error) {

@@ -466,6 +466,7 @@ export default async function ShowDetailPage({
                 <ShowEntryPlanner
                   showId={cluster.id}
                   breedCode2={selectedBreed.code2}
+                  breedLabel={selectedBreed.name}
                   days={planner.days.map((day) => ({
                     ...day,
                     label: formatShowCalendarLabel(day.scheduledEpoch),
@@ -483,6 +484,8 @@ export default async function ShowDetailPage({
                   )}
                   existingDogIdsForBreed={planner.existingDogIdsForBreed}
                   initiallySelectedDogIds={[...selectedDogIds]}
+                  bulkEligibleSelections={planner.bulkEligibleSelections}
+                  bulkSkippedSelectionCount={planner.bulkSkippedSelectionCount}
                 />
               </>
             ) : selectedBreed ? (

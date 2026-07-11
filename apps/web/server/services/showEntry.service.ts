@@ -251,6 +251,8 @@ export type ShowEntryPlannerDto = {
   days: ShowEntryPlannerDayDto[];
   dogs: ShowEntryPlannerDogDto[];
   existingDogIdsForBreed: string[];
+  bulkEligibleSelections: BulkShowEntrySelection[];
+  bulkSkippedSelectionCount: number;
 };
 
 export type ShowWeekendEntryPlanStatusDto = {
@@ -280,6 +282,7 @@ export type BulkShowEntryResultDto = {
   breedCode2: string;
   entriesCreated: number;
   dogsEntered: number;
+  skippedSelections: number;
   quote: BulkShowEntryQuoteDto;
 };
 
@@ -556,6 +559,84 @@ export function canEnterShowDay(
   }
 
   return { ok: true };
+}
+
+function buildExistingDogIdsByBreed(
+  entries: Array<{ dogId: string; breedCode2: string }>
+): Record<string, string[]> {
+  const byBreed = new Map<string, Set<string>>();
+
+  for (const entry of entries) {
+    const breedDogIds = byBreed.get(entry.breedCode2) ?? new Set<string>();
+    breedDogIds.add(entry.dogId);
+    byBreed.set(entry.breedCode2, breedDogIds);
+  }
+
+  return Object.fromEntries(
+    [...byBreed.entries()].map(([breedCode2, dogIds]) => [
+      breedCode2,
+      [...dogIds],
+    ])
+  );
+}
+
+function buildBulkEntryQuote(args: {
+  kennelBalance: number;
+  homeDistrict: number;
+  clusterDistrict: number;
+  showRole: "PRIMARY" | "SECONDARY";
+  shouldChargeTravel: boolean;
+  existingDogIdsByBreed: Record<string, string[]>;
+  dogs: Array<{
+    dogId: string;
+    dogName: string;
+    breedCode2: string;
+    sex: "M" | "F";
+  }>;
+  selections: BulkShowEntrySelection[];
+  dayById: Map<string, { dayIndex: number }>;
+}): BulkShowEntryQuoteDto {
+  const selectedDaysByDogId = new Map<string, number[]>();
+
+  for (const selection of args.selections) {
+    const day = args.dayById.get(selection.showDayId);
+
+    if (!day) {
+      continue;
+    }
+
+    const selectedDays = selectedDaysByDogId.get(selection.dogId) ?? [];
+    selectedDays.push(day.dayIndex);
+    selectedDaysByDogId.set(selection.dogId, selectedDays);
+  }
+
+  const quote = getClusterEntryQuote({
+    homeDistrict: args.homeDistrict,
+    clusterDistrict: args.clusterDistrict,
+    ledgerBalance: args.kennelBalance,
+    showRole: args.showRole,
+    existingDogIdsByBreed: args.existingDogIdsByBreed,
+    dogs: args.dogs.map((dog) => ({
+      dogId: dog.dogId,
+      dogName: dog.dogName,
+      breed: dog.breedCode2,
+      sex: dog.sex === "M" ? "Dog" : "Bitch",
+      selectedShowDays: selectedDaysByDogId.get(dog.dogId) ?? [],
+    })),
+  });
+  const travelCost = args.shouldChargeTravel ? quote.travel.totalCost : 0;
+  const totalCost = quote.entryFees + travelCost + quote.handlerFee;
+  const balanceAfter = args.kennelBalance - totalCost;
+
+  return {
+    entryFees: quote.entryFees,
+    travelCost,
+    handlerFeeType: quote.handlerFeeType,
+    handlerDogs: quote.handlerDogs,
+    handlerFee: quote.handlerFee,
+    totalCost,
+    balanceAfter,
+  };
 }
 
 function uniqueSelections(
@@ -1219,7 +1300,13 @@ export async function getShowEntryPlanner(args: {
   });
 
   if (!cluster) {
-    return { days: [], dogs: [], existingDogIdsForBreed: [] };
+    return {
+      days: [],
+      dogs: [],
+      existingDogIdsForBreed: [],
+      bulkEligibleSelections: [],
+      bulkSkippedSelectionCount: 0,
+    };
   }
 
   const dogs = await db.dog.findMany({
@@ -1278,10 +1365,52 @@ export async function getShowEntryPlanner(args: {
     judgeName: showDay.judge.name,
     status: showDay.status,
   }));
+  const bulkEligibleSelections: BulkShowEntrySelection[] = [];
+  let bulkSkippedSelectionCount = 0;
+
+  for (const dog of dogs) {
+    const alreadyEnteredShowDayIds = [
+      ...(enteredDayIdsByDogId.get(dog.id) ?? new Set<string>()),
+    ];
+    const hasPendingEmergencyCare = dog.emergencyCareEvents.length > 0;
+    const hasWeekendConflict = weekendConflictDogIds.has(dog.id);
+
+    for (const showDay of cluster.showDays) {
+      if (alreadyEnteredShowDayIds.includes(showDay.id)) {
+        bulkSkippedSelectionCount += 1;
+        continue;
+      }
+
+      if (hasPendingEmergencyCare || hasWeekendConflict) {
+        bulkSkippedSelectionCount += 1;
+        continue;
+      }
+
+      const reason = getShowDayEntryEligibilityReason({
+        dog,
+        cluster,
+        showDay,
+        breedCode2,
+        currentEpoch,
+      });
+
+      if (reason) {
+        bulkSkippedSelectionCount += 1;
+        continue;
+      }
+
+      bulkEligibleSelections.push({
+        dogId: dog.id,
+        showDayId: showDay.id,
+      });
+    }
+  }
 
   return {
     days,
     existingDogIdsForBreed: existingBreedDogEntries.map((entry) => entry.dogId),
+    bulkEligibleSelections,
+    bulkSkippedSelectionCount,
     dogs: dogs
       .filter((dog) => !weekendConflictDogIds.has(dog.id))
       .map((dog) => {
@@ -1406,12 +1535,14 @@ export async function createShowEntriesForCluster(args: {
   breedCode2: string;
   selections: BulkShowEntrySelection[];
   currentEpoch: number;
+  mode?: "SELECTED" | "ALL_ELIGIBLE";
 }): Promise<BulkShowEntryResultDto> {
   const { showId, kennelId, currentEpoch } = args;
   await resolveDogDeaths({ kennelId, currentEpoch });
 
   const breedCode2 = args.breedCode2.trim().toUpperCase();
   const selections = uniqueSelections(args.selections);
+  const mode = args.mode ?? "SELECTED";
 
   if (!breedCode2) {
     throw new Error("Choose a breed to enter.");
@@ -1441,7 +1572,7 @@ export async function createShowEntriesForCluster(args: {
     orderBy: [{ registeredName: "asc" }, { regNumber: "asc" }],
   });
 
-  if (pendingEmergencyDogs.length > 0) {
+  if (mode === "SELECTED" && pendingEmergencyDogs.length > 0) {
     throw new Error(
       pendingEmergencyDogs
         .map((dog) => getPendingEmergencyShowEntryMessage(dog))
@@ -1548,17 +1679,29 @@ export async function createShowEntriesForCluster(args: {
         dogId: true,
       },
     });
-    const weekendConflict = await getSameWeekendEntryConflict({
-      client: tx,
-      dogIds,
-      cluster,
-      excludeClusterId: cluster.id,
-    });
+    const weekendConflictDogIds =
+      mode === "ALL_ELIGIBLE"
+        ? await getDogIdsWithSameWeekendEntries({
+            client: tx,
+            dogIds,
+            cluster,
+            excludeClusterId: cluster.id,
+          })
+        : new Set<string>();
 
-    if (weekendConflict) {
-      throw new Error(
-        `${weekendConflict.dog.regNumber} is already entered in ${weekendConflict.showDay.cluster.name} (${getShowDistrictRegionName(weekendConflict.showDay.cluster.district)}) this weekend.`
-      );
+    if (mode === "SELECTED") {
+      const weekendConflict = await getSameWeekendEntryConflict({
+        client: tx,
+        dogIds,
+        cluster,
+        excludeClusterId: cluster.id,
+      });
+
+      if (weekendConflict) {
+        throw new Error(
+          `${weekendConflict.dog.regNumber} is already entered in ${weekendConflict.showDay.cluster.name} (${getShowDistrictRegionName(weekendConflict.showDay.cluster.district)}) this weekend.`
+        );
+      }
     }
 
     const pendingEmergencyDogIds = new Set(
@@ -1573,6 +1716,9 @@ export async function createShowEntriesForCluster(args: {
       ).map((event) => event.dogId)
     );
 
+    const validSelections: BulkShowEntrySelection[] = [];
+    let skippedSelections = 0;
+
     for (const selection of selections) {
       const dog = dogById.get(selection.dogId);
       const showDay = dayById.get(selection.showDayId);
@@ -1585,11 +1731,26 @@ export async function createShowEntriesForCluster(args: {
         throw new Error(`You do not own ${dog.regNumber}.`);
       }
 
+      if (mode === "ALL_ELIGIBLE" && weekendConflictDogIds.has(dog.id)) {
+        skippedSelections += 1;
+        continue;
+      }
+
       if (existingEntryKeys.has(`${dog.id}:${showDay.id}`)) {
+        if (mode === "ALL_ELIGIBLE") {
+          skippedSelections += 1;
+          continue;
+        }
+
         throw new Error(`${dog.regNumber} is already entered on day ${showDay.dayIndex}.`);
       }
 
       if (pendingEmergencyDogIds.has(dog.id)) {
+        if (mode === "ALL_ELIGIBLE") {
+          skippedSelections += 1;
+          continue;
+        }
+
         throw new Error(getPendingEmergencyShowEntryMessage(dog));
       }
 
@@ -1602,44 +1763,62 @@ export async function createShowEntriesForCluster(args: {
       });
 
       if (reason) {
+        if (mode === "ALL_ELIGIBLE") {
+          skippedSelections += 1;
+          continue;
+        }
+
         throw new Error(`${dog.regNumber}: ${reason}`);
       }
+
+      validSelections.push(selection);
     }
 
-    const selectedDaysByDogId = new Map<string, number[]>();
-
-    for (const selection of selections) {
-      const showDay = dayById.get(selection.showDayId);
-
-      if (!showDay) {
-        continue;
-      }
-
-      const selectedDays = selectedDaysByDogId.get(selection.dogId) ?? [];
-      selectedDays.push(showDay.dayIndex);
-      selectedDaysByDogId.set(selection.dogId, selectedDays);
+    if (validSelections.length === 0) {
+      return {
+        showId,
+        breedCode2,
+        entriesCreated: 0,
+        dogsEntered: 0,
+        skippedSelections,
+        quote: {
+          entryFees: 0,
+          travelCost: 0,
+          handlerFeeType: "RINGSIDE",
+          handlerDogs: 0,
+          handlerFee: 0,
+          totalCost: 0,
+          balanceAfter: kennel.balance,
+        },
+      };
     }
 
-    const quote = getClusterEntryQuote({
+    const quote = buildBulkEntryQuote({
+      kennelBalance: kennel.balance,
       homeDistrict: kennel.homeDistrict ?? cluster.district,
       clusterDistrict: cluster.district,
-      ledgerBalance: kennel.balance,
       showRole,
-      existingDogIdsByBreed: {
-        [breedCode2]: existingBreedDogEntries.map((entry) => entry.dogId),
-      },
+      shouldChargeTravel: weekendPlan == null,
+      existingDogIdsByBreed: buildExistingDogIdsByBreed(
+        existingBreedDogEntries.map((entry) => ({
+          dogId: entry.dogId,
+          breedCode2,
+        }))
+      ),
       dogs: dogs.map((dog) => ({
         dogId: dog.id,
         dogName: getDogDisplayName(dog),
-        breed: dog.breedCode2,
-        sex: dog.sex === "M" ? "Dog" : "Bitch",
-        selectedShowDays: selectedDaysByDogId.get(dog.id) ?? [],
+        breedCode2: dog.breedCode2,
+        sex: dog.sex,
       })),
+      selections: validSelections,
+      dayById,
     });
-    const shouldChargeTravel = weekendPlan == null;
-    const travelCost = shouldChargeTravel ? quote.travel.totalCost : 0;
-    const totalCost = quote.entryFees + travelCost + quote.handlerFee;
-    const balanceAfter = kennel.balance - totalCost;
+    const travelCost = quote.travelCost;
+    const balanceAfter = quote.balanceAfter;
+    const dogsEntered = new Set(
+      validSelections.map((selection) => selection.dogId)
+    ).size;
     const shortfall = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
 
     if (shortfall > 0) {
@@ -1648,7 +1827,7 @@ export async function createShowEntriesForCluster(args: {
 
     const blockIdByDayId = new Map<string, string>();
 
-    for (const showDayId of new Set(selections.map((selection) => selection.showDayId))) {
+    for (const showDayId of new Set(validSelections.map((selection) => selection.showDayId))) {
       const showDay = dayById.get(showDayId);
 
       if (!showDay) {
@@ -1684,7 +1863,7 @@ export async function createShowEntriesForCluster(args: {
 
     await tx.showEntry
       .createMany({
-        data: selections.map((selection) => {
+        data: validSelections.map((selection) => {
           const dog = dogById.get(selection.dogId);
 
           if (!dog) {
@@ -1731,7 +1910,7 @@ export async function createShowEntriesForCluster(args: {
         balanceAfter: runningBalance,
         occurredAtEpoch: currentEpoch,
         showClusterId: cluster.id,
-        memo: `Entered ${selections.length} ${breedCode2} show entry slot(s).`,
+        memo: `Entered ${validSelections.length} ${breedCode2} show entry slot(s).`,
       });
     }
 
@@ -1744,7 +1923,7 @@ export async function createShowEntriesForCluster(args: {
         balanceAfter: runningBalance,
         occurredAtEpoch: currentEpoch,
         showClusterId: cluster.id,
-        memo: `Travel for ${quote.dogsEntered} dog(s) to ${cluster.name}.`,
+        memo: `Travel for ${dogsEntered} dog(s) to ${cluster.name}.`,
       });
     }
 
@@ -1768,19 +1947,14 @@ export async function createShowEntriesForCluster(args: {
       await tx.ledgerTransaction.createMany({ data: ledgerRows });
     }
 
-    return {
+      return {
       showId,
       breedCode2,
-      entriesCreated: selections.length,
-      dogsEntered: quote.dogsEntered,
+      entriesCreated: validSelections.length,
+      dogsEntered,
+      skippedSelections,
       quote: {
-        entryFees: quote.entryFees,
-        travelCost,
-        handlerFeeType: quote.handlerFeeType,
-        handlerDogs: quote.handlerDogs,
-        handlerFee: quote.handlerFee,
-        totalCost,
-        balanceAfter,
+        ...quote,
       },
     };
   });

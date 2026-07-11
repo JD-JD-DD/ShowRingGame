@@ -38,6 +38,7 @@ type PlannerDog = {
 type PlannerProps = {
   showId: string;
   breedCode2: string;
+  breedLabel: string;
   days: PlannerDay[];
   dogs: PlannerDog[];
   kennelBalance: number;
@@ -47,6 +48,8 @@ type PlannerProps = {
   travelCostAlreadyPlanned: boolean;
   existingDogIdsForBreed: string[];
   initiallySelectedDogIds: string[];
+  bulkEligibleSelections: Array<{ dogId: string; showDayId: string }>;
+  bulkSkippedSelectionCount: number;
 };
 
 function formatMoney(value: number): string {
@@ -84,6 +87,7 @@ function getInitialSelection(args: {
 export function ShowEntryPlanner({
   showId,
   breedCode2,
+  breedLabel,
   days,
   dogs,
   kennelBalance,
@@ -93,11 +97,14 @@ export function ShowEntryPlanner({
   travelCostAlreadyPlanned,
   existingDogIdsForBreed,
   initiallySelectedDogIds,
+  bulkEligibleSelections,
+  bulkSkippedSelectionCount,
 }: PlannerProps) {
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
     getInitialSelection({ dogs, initiallySelectedDogIds })
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showBulkConfirmation, setShowBulkConfirmation] = useState(false);
   const submittingRef = useRef(false);
 
   const selectedPairs = useMemo(
@@ -112,66 +119,110 @@ export function ShowEntryPlanner({
     [selected]
   );
 
-  const quote = useMemo(() => {
-    const selectedDaysByDogId = new Map<string, number[]>();
+  const buildQuote = useMemo(
+    () => (pairs: Array<{ dogId: string; showDayId: string }>) => {
+      const selectedDaysByDogId = new Map<string, number[]>();
 
-    for (const pair of selectedPairs) {
-      const day = days.find((candidate) => candidate.showDayId === pair.showDayId);
+      for (const pair of pairs) {
+        const day = days.find(
+          (candidate) => candidate.showDayId === pair.showDayId
+        );
 
-      if (!day) {
-        continue;
+        if (!day) {
+          continue;
+        }
+
+        const selectedDays = selectedDaysByDogId.get(pair.dogId) ?? [];
+        selectedDays.push(day.dayIndex);
+        selectedDaysByDogId.set(pair.dogId, selectedDays);
       }
 
-      const selectedDays = selectedDaysByDogId.get(pair.dogId) ?? [];
-      selectedDays.push(day.dayIndex);
-      selectedDaysByDogId.set(pair.dogId, selectedDays);
+      const baseQuote = getClusterEntryQuote({
+        homeDistrict,
+        clusterDistrict,
+        ledgerBalance: kennelBalance,
+        showRole,
+        existingDogIdsByBreed: {
+          [breedCode2]: existingDogIdsForBreed,
+        },
+        dogs: dogs.map((dog) => ({
+          dogId: dog.dogId,
+          dogName: dog.displayName,
+          breed: breedCode2,
+          sex: dog.sex === "M" ? "Dog" : "Bitch",
+          selectedShowDays: selectedDaysByDogId.get(dog.dogId) ?? [],
+        })),
+      });
+      const travelCost = travelCostAlreadyPlanned ? 0 : baseQuote.travel.totalCost;
+      const totalCost = baseQuote.entryFees + travelCost + baseQuote.handlerFee;
+      const ledgerBalanceAfterEntry = kennelBalance - totalCost;
+      const shortfall =
+        ledgerBalanceAfterEntry < 0 ? Math.abs(ledgerBalanceAfterEntry) : 0;
+
+      return {
+        ...baseQuote,
+        travel: {
+          ...baseQuote.travel,
+          totalCost: travelCost,
+        },
+        totalCost,
+        ledgerBalanceAfterEntry,
+        shortfall,
+        canAfford: ledgerBalanceAfterEntry >= 0,
+      };
+    },
+    [
+      breedCode2,
+      clusterDistrict,
+      days,
+      dogs,
+      existingDogIdsForBreed,
+      homeDistrict,
+      kennelBalance,
+      showRole,
+      travelCostAlreadyPlanned,
+    ]
+  );
+
+  const quote = useMemo(() => {
+    return buildQuote(selectedPairs);
+  }, [buildQuote, selectedPairs]);
+
+  const bulkQuote = useMemo(() => buildQuote(bulkEligibleSelections), [
+    buildQuote,
+    bulkEligibleSelections,
+  ]);
+  const bulkEligibleDogCount = useMemo(
+    () => new Set(bulkEligibleSelections.map((pair) => pair.dogId)).size,
+    [bulkEligibleSelections]
+  );
+  const bulkEligibleShowDayCount = useMemo(
+    () => new Set(bulkEligibleSelections.map((pair) => pair.showDayId)).size,
+    [bulkEligibleSelections]
+  );
+  const hasBulkSelections = bulkEligibleSelections.length > 0;
+
+  function setAllEligibleSelection(): void {
+    setSelected(() => {
+      const next: Record<string, boolean> = {};
+
+      for (const pair of bulkEligibleSelections) {
+        next[selectionKey(pair.dogId, pair.showDayId)] = true;
+      }
+
+      return next;
+    });
+  }
+
+  function handleBulkSubmit(event: FormEvent<HTMLFormElement>) {
+    if (submittingRef.current || !hasBulkSelections || !bulkQuote.canAfford) {
+      event.preventDefault();
+      return;
     }
 
-    const baseQuote = getClusterEntryQuote({
-      homeDistrict,
-      clusterDistrict,
-      ledgerBalance: kennelBalance,
-      showRole,
-      existingDogIdsByBreed: {
-        [breedCode2]: existingDogIdsForBreed,
-      },
-      dogs: dogs.map((dog) => ({
-        dogId: dog.dogId,
-        dogName: dog.displayName,
-        breed: breedCode2,
-        sex: dog.sex === "M" ? "Dog" : "Bitch",
-        selectedShowDays: selectedDaysByDogId.get(dog.dogId) ?? [],
-      })),
-    });
-    const travelCost = travelCostAlreadyPlanned ? 0 : baseQuote.travel.totalCost;
-    const totalCost = baseQuote.entryFees + travelCost + baseQuote.handlerFee;
-    const ledgerBalanceAfterEntry = kennelBalance - totalCost;
-    const shortfall =
-      ledgerBalanceAfterEntry < 0 ? Math.abs(ledgerBalanceAfterEntry) : 0;
-
-    return {
-      ...baseQuote,
-      travel: {
-        ...baseQuote.travel,
-        totalCost: travelCost,
-      },
-      totalCost,
-      ledgerBalanceAfterEntry,
-      shortfall,
-      canAfford: ledgerBalanceAfterEntry >= 0,
-    };
-  }, [
-    breedCode2,
-    clusterDistrict,
-    days,
-    dogs,
-    existingDogIdsForBreed,
-    homeDistrict,
-    kennelBalance,
-    selectedPairs,
-    showRole,
-    travelCostAlreadyPlanned,
-  ]);
+    submittingRef.current = true;
+    setIsSubmitting(true);
+  }
 
   function setDogSelection(dog: PlannerDog, isSelected: boolean) {
     if (dog.hasPendingEmergencyCare) {
@@ -200,12 +251,12 @@ export function ShowEntryPlanner({
   }
 
   return (
-    <form
-      action={`/api/shows/${showId}/enter`}
-      method="post"
-      onSubmit={handleSubmit}
-      className="mt-6"
-    >
+    <div className="mt-6">
+      <form
+        action={`/api/shows/${showId}/enter`}
+        method="post"
+        onSubmit={handleSubmit}
+      >
       <input type="hidden" name="breedCode2" value={breedCode2} />
       {selectedPairs.map((pair) => (
         <input
@@ -401,6 +452,163 @@ export function ShowEntryPlanner({
           Shortfall: {formatMoney(quote.shortfall)}
         </div>
       ) : null}
-    </form>
+
+      </form>
+
+      <div className="mt-8 rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="theme-heading text-lg font-semibold">
+              Enter All Eligible Dogs
+            </div>
+            <p className="theme-copy mt-1 text-sm">
+              Enter every currently eligible {breedLabel} in this cluster across
+              all open days, then confirm the full quote before submission.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowBulkConfirmation((current) => !current)}
+            disabled={isSubmitting || !hasBulkSelections}
+            className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:bg-[color:var(--dog-panel)] disabled:text-[color:var(--dog-copy)]"
+          >
+            Enter All Eligible Dogs
+          </button>
+        </div>
+
+        {!hasBulkSelections ? (
+          <div className="theme-copy mt-4 rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-panel)] px-4 py-3 text-sm">
+            No new eligible dog/day combinations are available for this breed in
+            the current cluster.
+          </div>
+        ) : null}
+
+        {showBulkConfirmation && hasBulkSelections ? (
+          <div className="mt-5 rounded-2xl border border-emerald-300/20 bg-emerald-500/8 p-4">
+            <div className="theme-heading text-base font-semibold">
+              Bulk Entry Confirmation
+            </div>
+            <div className="theme-copy mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <div className="theme-label text-xs uppercase tracking-[0.14em]">
+                  Unique Dogs
+                </div>
+                <div className="theme-heading mt-1 font-semibold">
+                  {bulkEligibleDogCount}
+                </div>
+              </div>
+              <div>
+                <div className="theme-label text-xs uppercase tracking-[0.14em]">
+                  Show Days
+                </div>
+                <div className="theme-heading mt-1 font-semibold">
+                  {bulkEligibleShowDayCount}
+                </div>
+              </div>
+              <div>
+                <div className="theme-label text-xs uppercase tracking-[0.14em]">
+                  Total Entries
+                </div>
+                <div className="theme-heading mt-1 font-semibold">
+                  {bulkEligibleSelections.length}
+                </div>
+              </div>
+              <div>
+                <div className="theme-label text-xs uppercase tracking-[0.14em]">
+                  Skipped
+                </div>
+                <div className="theme-heading mt-1 font-semibold">
+                  {bulkSkippedSelectionCount}
+                </div>
+              </div>
+              <div>
+                <div className="theme-label text-xs uppercase tracking-[0.14em]">
+                  Entry Fees
+                </div>
+                <div className="theme-heading mt-1 font-semibold">
+                  {formatMoney(bulkQuote.entryFees)}
+                </div>
+              </div>
+              <div>
+                <div className="theme-label text-xs uppercase tracking-[0.14em]">
+                  Travel Charges
+                </div>
+                <div className="theme-heading mt-1 font-semibold">
+                  {formatMoney(bulkQuote.travel.totalCost)}
+                </div>
+              </div>
+              <div>
+                <div className="theme-label text-xs uppercase tracking-[0.14em]">
+                  Handler Charges
+                </div>
+                <div className="theme-heading mt-1 font-semibold">
+                  {formatMoney(bulkQuote.handlerFee)}
+                </div>
+              </div>
+              <div>
+                <div className="theme-label text-xs uppercase tracking-[0.14em]">
+                  Total Charge
+                </div>
+                <div className="theme-heading mt-1 font-semibold">
+                  {formatMoney(bulkQuote.totalCost)}
+                </div>
+              </div>
+              <div>
+                <div className="theme-label text-xs uppercase tracking-[0.14em]">
+                  Balance After Entry
+                </div>
+                <div
+                  className={`mt-1 font-semibold ${
+                    bulkQuote.canAfford ? "theme-heading" : "text-red-100"
+                  }`}
+                >
+                  {formatMoney(bulkQuote.ledgerBalanceAfterEntry)}
+                </div>
+              </div>
+            </div>
+
+            {!bulkQuote.canAfford ? (
+              <div className="mt-4 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                Shortfall: {formatMoney(bulkQuote.shortfall)}
+              </div>
+            ) : null}
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={setAllEligibleSelection}
+                disabled={isSubmitting}
+                className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Copy to Manual Selection
+              </button>
+              <form
+                action={`/api/shows/${showId}/enter`}
+                method="post"
+                onSubmit={handleBulkSubmit}
+              >
+                <input type="hidden" name="breedCode2" value={breedCode2} />
+                <input type="hidden" name="entryMode" value="ALL_ELIGIBLE" />
+                {bulkEligibleSelections.map((pair) => (
+                  <input
+                    key={`bulk-${pair.dogId}-${pair.showDayId}`}
+                    type="hidden"
+                    name="dogDaySelections"
+                    value={`${pair.dogId}:${pair.showDayId}`}
+                  />
+                ))}
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !bulkQuote.canAfford}
+                  className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-[color:var(--dog-panel)] disabled:text-[color:var(--dog-copy)]"
+                >
+                  {isSubmitting ? "Submitting..." : "Confirm All Entries"}
+                </button>
+              </form>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
