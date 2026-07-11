@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import CommunityAuthor from "@/components/community/CommunityAuthor";
 import { epochToDate } from "@/lib/gameClock";
+import { createPerfTimer, estimateJsonSizeBytes } from "@/lib/perf";
 import { getSessionUserId } from "@/lib/session";
 import {
   getCommunityActor,
@@ -23,21 +24,32 @@ export default async function CommunityPage({
 }: {
   searchParams: Promise<{ error?: string; saved?: string }>;
 }) {
-  const userId = await getSessionUserId();
+  const perf = createPerfTimer({ route: "/community" });
+  const userId = await perf.measure("sessionMs", () => getSessionUserId());
   if (!userId) redirect("/login?next=/community");
 
-  const actor = await getCommunityActor(userId);
+  const actor = await perf.measure("actorMs", () => getCommunityActor(userId));
   if (!actor.kennel) redirect("/onboarding");
 
   const { error, saved } = await searchParams;
-  const [categories, recentTopics] = await Promise.all([
-    listBulletinCategories({
-      includeInactive: actor.isAdmin,
-      includeModerated: actor.isAdmin,
-    }),
-    listBulletinThreads({ take: 8, includeModerated: actor.isAdmin }),
-  ]);
+  const [categories, recentTopics] = await perf.measure("communityListsMs", () =>
+    Promise.all([
+      listBulletinCategories({
+        includeInactive: actor.isAdmin,
+        includeModerated: actor.isAdmin,
+      }),
+      listBulletinThreads({ take: 8, includeModerated: actor.isAdmin }),
+    ])
+  );
   const canPost = actor.isAdmin || actor.kennel.ownedDogCount > 0;
+  perf.log({
+    userContextPresent: true,
+    kennelContextPresent: true,
+    categoryCount: categories.length,
+    recentTopicCount: recentTopics.length,
+    ownedDogCount: actor.kennel.ownedDogCount,
+    payloadSizeBytes: estimateJsonSizeBytes({ categories, recentTopics }),
+  });
 
   return (
     <main className="community-page min-h-screen px-6 py-8">

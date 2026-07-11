@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { SHOW_INSTANCE_GENERATION_HORIZON_HOURS } from "@showring/rules";
 
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { createPerfTimer, estimateJsonSizeBytes } from "@/lib/perf";
 import { ensureAnnualInvitationalShow } from "@/server/services/invitational.service";
 import { ensureGeneratedShowSchedule } from "@/server/services/showSchedule.service";
 
@@ -19,16 +20,28 @@ async function getRedirectTo(request: Request): Promise<string | null> {
 }
 
 export async function POST(request: Request) {
+  const perf = createPerfTimer({ route: "/api/shows" });
   const redirectTo = await getRedirectTo(request);
 
   try {
     const currentEpoch = getCurrentEpoch();
-    const schedule = await ensureGeneratedShowSchedule({
+    const schedule = await perf.measure("ensureScheduleMs", () =>
+      ensureGeneratedShowSchedule({
+        currentEpoch,
+        horizonHours: SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
+        includeJudgingBlocks: false,
+      })
+    );
+    const invitational = await perf.measure("ensureInvitationalMs", () =>
+      ensureAnnualInvitationalShow({ currentEpoch })
+    );
+    perf.log({
+      userContextPresent: false,
+      kennelContextPresent: false,
       currentEpoch,
-      horizonHours: SHOW_INSTANCE_GENERATION_HORIZON_HOURS,
-      includeJudgingBlocks: false,
+      generatedClusterCount: schedule.clusterCount,
+      payloadSizeBytes: estimateJsonSizeBytes({ schedule, invitational }),
     });
-    const invitational = await ensureAnnualInvitationalShow({ currentEpoch });
 
     if (redirectTo) {
       const url = new URL(redirectTo, request.url);

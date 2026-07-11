@@ -3,6 +3,7 @@ import { SHOW_WEEK_HOURS, SHOW_YEAR_HOURS } from "@showring/rules";
 
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { estimateJsonSizeBytes } from "@/lib/perf";
 import {
   getGrandChampionMilestoneTitle,
   isGrandChampionComplete,
@@ -744,6 +745,7 @@ function metadataYear(metadataJson: Prisma.JsonValue): number | null {
 export async function getDogRibbonRoom(
   dogId: string
 ): Promise<DogRibbonRoomDto | null> {
+  const startedAtMs = Date.now();
   const dog = await db.dog.findFirst({
     where: { id: dogId, isPlayerVisible: true },
     select: {
@@ -774,6 +776,12 @@ export async function getDogRibbonRoom(
   });
 
   if (!dog) {
+    console.info("service-perf", {
+      route: "service:getDogRibbonRoom",
+      dogId,
+      found: false,
+      totalServerDurationMs: Date.now() - startedAtMs,
+    });
     return null;
   }
 
@@ -1173,7 +1181,7 @@ export async function getDogRibbonRoom(
     }),
   ];
 
-  return {
+  const payload = {
     dog: {
       id: dog.id,
       regNumber: dog.regNumber,
@@ -1242,4 +1250,22 @@ export async function getDogRibbonRoom(
       invitationalPlacements: invitationalPlacementEvents,
     }),
   };
+  console.info("service-perf", {
+    route: "service:getDogRibbonRoom",
+    dogId,
+    found: true,
+    awardCount: awards.length,
+    pointAwardCount: pointAwards.length,
+    grandChampionCreditCount: grandChampionCredits.length,
+    prestigeCreditCount: prestigeCredits.length,
+    entryCount: entries.length,
+    invitationalEntryCount: invitationalEntries.length,
+    invitationalAwardCount: invitationalAwards.length,
+    invitationalNoticeCount: invitationalNotices.length,
+    currentYearRankRowCount: currentYearRankRows.length,
+    lifetimeRankRowCount: lifetimeRankRows.length,
+    payloadSizeBytes: estimateJsonSizeBytes(payload),
+    totalServerDurationMs: Date.now() - startedAtMs,
+  });
+  return payload;
 }

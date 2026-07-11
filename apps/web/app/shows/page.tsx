@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ShowCountdownText } from "@/components/shows/ShowCountdownText";
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
+import { estimateJsonSizeBytes } from "@/lib/perf";
 import { buildShowCountdowns } from "@/lib/showCountdowns";
 import { getSessionUserId } from "@/lib/session";
 import {
@@ -278,10 +279,21 @@ export default async function ShowsPage({
   const totalMs = Date.now() - pageStartedAtMs;
 
   console.info("shows page timing", {
+    route: "/shows",
+    userContextPresent: Boolean(userId),
+    kennelContextPresent: Boolean(currentKennel),
     currentEpoch,
     displayedClusterCount: clusters.length,
     displayedShowDayCount: clusters.reduce(
       (total, cluster) => total + cluster.showDays.length,
+      0
+    ),
+    displayedEntryCount: clusters.reduce(
+      (total, cluster) => total + clusterEntryCount(cluster),
+      0
+    ),
+    displayedResultCount: clusters.reduce(
+      (total, cluster) => total + clusterResultCount(cluster),
       0
     ),
     coverageCheckMs: phaseDurationsMs.coverageCheckMs,
@@ -289,6 +301,7 @@ export default async function ShowsPage({
     ensureScheduleMs: phaseDurationsMs.ensureScheduleMs,
     clusterQueryMs: phaseDurationsMs.clusterQueryMs,
     badgeQueryMs: phaseDurationsMs.badgeQueryMs,
+    payloadSizeBytes: estimateJsonSizeBytes(clusters),
     totalMs,
   });
   const enteredClusterIds = new Set(enteredClusters.map((cluster) => cluster.id));

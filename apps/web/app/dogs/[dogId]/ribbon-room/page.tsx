@@ -7,6 +7,7 @@ import { InvitationalHistoryCard } from "@/components/awards/InvitationalHistory
 import { RibbonTotalsSection } from "@/components/awards/RibbonTotalsSection";
 import { RibbonRoomStatCard } from "@/components/awards/RibbonRoomStatCard";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { createPerfTimer, estimateJsonSizeBytes } from "@/lib/perf";
 import { getSessionUserId } from "@/lib/session";
 import { getDogRibbonRoom } from "@/server/services/ribbonRoom.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -36,14 +37,21 @@ function sectionHeading(title: string, description: string) {
 }
 
 export default async function DogRibbonRoomPage({ params }: PageProps) {
-  const [{ dogId }, userId] = await Promise.all([params, getSessionUserId()]);
+  const perf = createPerfTimer({ route: "/dogs/[dogId]/ribbon-room" });
+  const [{ dogId }, userId] = await perf.measure("paramsAndSessionMs", () =>
+    Promise.all([params, getSessionUserId()])
+  );
 
   if (!userId) redirect("/login");
 
-  const currentKennel = await getKennelForUser(userId);
+  const currentKennel = await perf.measure("kennelLookupMs", () =>
+    getKennelForUser(userId)
+  );
   if (!currentKennel) redirect("/onboarding");
 
-  const ribbonRoom = await getDogRibbonRoom(dogId);
+  const ribbonRoom = await perf.measure("ribbonRoomMs", () =>
+    getDogRibbonRoom(dogId)
+  );
 
   if (!ribbonRoom) notFound();
 
@@ -56,6 +64,18 @@ export default async function DogRibbonRoomPage({ params }: PageProps) {
     ribbonRoom.dog.registeredName ??
     ribbonRoom.dog.callName ??
     "Unnamed Dog";
+  perf.log({
+    userContextPresent: true,
+    kennelContextPresent: true,
+    ribbonCount: ribbonRoom.ribbons.length,
+    ribbonHistoryCount: ribbonRoom.ribbons.reduce(
+      (total, ribbon) => total + ribbon.history.length,
+      0
+    ),
+    invitationalCount: ribbonRoom.invitational.length,
+    milestoneCount: ribbonRoom.milestones.length,
+    payloadSizeBytes: estimateJsonSizeBytes(ribbonRoom),
+  });
 
   return (
     <main className="dog-page min-h-screen px-4 py-6 sm:px-6 sm:py-8">

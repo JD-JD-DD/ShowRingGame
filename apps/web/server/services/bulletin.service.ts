@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { estimateJsonSizeBytes } from "@/lib/perf";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { getKennelPrestigeSummary } from "@/server/services/kennelPrestige.service";
 import { Prisma } from "@prisma/client";
@@ -261,6 +262,7 @@ function previewBody(value: string): string {
 async function badgesForKennels(
   kennelIds: string[]
 ): Promise<Map<string, KennelPrestigeBadges>> {
+  const startedAtMs = Date.now();
   const uniqueKennelIds = [...new Set(kennelIds)].filter(Boolean);
   const result = new Map<string, KennelPrestigeBadges>();
 
@@ -281,6 +283,11 @@ async function badgesForKennels(
       });
     })
   );
+  console.info("service-perf", {
+    route: "service:bulletin.badgesForKennels",
+    kennelCount: uniqueKennelIds.length,
+    totalServerDurationMs: Date.now() - startedAtMs,
+  });
 
   return result;
 }
@@ -391,6 +398,7 @@ export async function listBulletinCategories(args: {
   includeInactive?: boolean;
   includeModerated?: boolean;
 } = {}): Promise<BulletinCategoryDto[]> {
+  const startedAtMs = Date.now();
   const threadWhere: Prisma.BulletinThreadWhereInput = args.includeModerated
     ? {}
     : VISIBLE_THREAD_WHERE;
@@ -418,7 +426,7 @@ export async function listBulletinCategories(args: {
     (await mapThreadRecords(latestThreads)).map((thread) => [thread.id, thread])
   );
 
-  return categories.map((category) => ({
+  const payload = categories.map((category) => ({
     id: category.id,
     slug: category.slug,
     name: category.name,
@@ -432,6 +440,14 @@ export async function listBulletinCategories(args: {
       ? latestById.get(category.threads[0].id) ?? null
       : null,
   }));
+  console.info("service-perf", {
+    route: "service:bulletin.listBulletinCategories",
+    categoryCount: payload.length,
+    latestThreadCount: latestThreads.length,
+    payloadSizeBytes: estimateJsonSizeBytes(payload),
+    totalServerDurationMs: Date.now() - startedAtMs,
+  });
+  return payload;
 }
 
 const threadListSelect = Prisma.validator<Prisma.BulletinThreadSelect>()({
@@ -485,6 +501,7 @@ export async function listBulletinThreads(args: {
   includeModerated?: boolean;
   includeInactive?: boolean;
 } = {}): Promise<BulletinThreadListItem[]> {
+  const startedAtMs = Date.now();
   const threads = await db.bulletinThread.findMany({
     where: {
       ...(args.includeModerated
@@ -506,7 +523,15 @@ export async function listBulletinThreads(args: {
     select: threadListSelect,
   });
 
-  return mapThreadRecords(threads);
+  const payload = await mapThreadRecords(threads);
+  console.info("service-perf", {
+    route: "service:bulletin.listBulletinThreads",
+    categorySlug: args.categorySlug ?? null,
+    threadCount: payload.length,
+    payloadSizeBytes: estimateJsonSizeBytes(payload),
+    totalServerDurationMs: Date.now() - startedAtMs,
+  });
+  return payload;
 }
 
 export async function getBulletinCategory(
@@ -535,6 +560,7 @@ export async function getBulletinThread(
   threadId: string,
   options: { includeModerated?: boolean } = {}
 ): Promise<BulletinThreadDetailDto | null> {
+  const startedAtMs = Date.now();
   const thread = await db.bulletinThread.findFirst({
     where: {
       id: threadId,
@@ -578,6 +604,12 @@ export async function getBulletinThread(
   });
 
   if (!thread) {
+    console.info("service-perf", {
+      route: "service:bulletin.getBulletinThread",
+      threadId,
+      found: false,
+      totalServerDurationMs: Date.now() - startedAtMs,
+    });
     return null;
   }
 
@@ -587,7 +619,7 @@ export async function getBulletinThread(
   ]);
   const listItem = mapThreadListItem(thread, badgesByKennelId);
 
-  return {
+  const payload = {
     ...listItem,
     linkedDogId: thread.linkedDogId,
     linkedShowId: thread.linkedShowId,
@@ -612,10 +644,19 @@ export async function getBulletinThread(
         badgesByKennelId.get(post.kennel.id) ??
         {
           prestigeScore: 0,
-          prestigeRank: "New Kennel",
+        prestigeRank: "New Kennel",
         },
     })),
   };
+  console.info("service-perf", {
+    route: "service:bulletin.getBulletinThread",
+    threadId,
+    found: true,
+    postCount: payload.posts.length,
+    payloadSizeBytes: estimateJsonSizeBytes(payload),
+    totalServerDurationMs: Date.now() - startedAtMs,
+  });
+  return payload;
 }
 
 export async function createBulletinThread(args: {

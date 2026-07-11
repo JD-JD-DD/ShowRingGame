@@ -6,6 +6,7 @@ import {
 } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { isChampionOfRecordTitleCode } from "@/lib/dogTitles";
+import { estimateJsonSizeBytes } from "@/lib/perf";
 import { buildTitlePointsDisplay } from "@/lib/titlePoints";
 import {
   mapDogProfile,
@@ -670,6 +671,7 @@ async function listPublishedDogShowResults(args: {
 export async function getDogShowRecord(args: {
   dogId: string;
 }): Promise<DogProfileShowResultDto[] | null> {
+  const startedAtMs = Date.now();
   const dog = await db.dog.findFirst({
     where: {
       id: args.dogId,
@@ -678,9 +680,26 @@ export async function getDogShowRecord(args: {
     select: { id: true },
   });
 
-  if (!dog) return null;
+  if (!dog) {
+    console.info("service-perf", {
+      route: "service:getDogShowRecord",
+      dogId: args.dogId,
+      found: false,
+      totalServerDurationMs: Date.now() - startedAtMs,
+    });
+    return null;
+  }
 
-  return listPublishedDogShowResults({ dogId: dog.id });
+  const results = await listPublishedDogShowResults({ dogId: dog.id });
+  console.info("service-perf", {
+    route: "service:getDogShowRecord",
+    dogId: args.dogId,
+    found: true,
+    resultCount: results.length,
+    payloadSizeBytes: estimateJsonSizeBytes(results),
+    totalServerDurationMs: Date.now() - startedAtMs,
+  });
+  return results;
 }
 
 async function loadFourGenerationPedigree(args: {
@@ -865,20 +884,36 @@ export async function getDogProfile(args: {
   currentEpoch: number;
 }): Promise<DogProfileDto | null> {
   const { dogId, viewerKennelId, currentEpoch } = args;
+  const startedAtMs = Date.now();
+  const phases: Record<string, number> = {};
+  const measure = async <T,>(phase: string, action: () => Promise<T>) => {
+    const phaseStartedAtMs = Date.now();
 
-  await resolveDogDeaths({ currentEpoch, dogIds: [dogId] });
+    try {
+      return await action();
+    } finally {
+      phases[phase] = (phases[phase] ?? 0) + (Date.now() - phaseStartedAtMs);
+    }
+  };
+
+  await measure("resolveDogDeathsMs", () =>
+    resolveDogDeaths({ currentEpoch, dogIds: [dogId] })
+  );
 
   if (viewerKennelId) {
-    await resolveBreedingProgressForOwnedDam({
-      kennelId: viewerKennelId,
-      dogId,
-      currentEpoch,
-    });
+    await measure("resolveBreedingProgressMs", () =>
+      resolveBreedingProgressForOwnedDam({
+        kennelId: viewerKennelId,
+        dogId,
+        currentEpoch,
+      })
+    );
   }
 
-  const dog = await db.dog.findUnique({
-    where: { id: dogId },
-    select: {
+  const dog = await measure("dogQueryMs", () =>
+    db.dog.findUnique({
+      where: { id: dogId },
+      select: {
       id: true,
       callName: true,
       registeredName: true,
@@ -1128,28 +1163,41 @@ export async function getDogProfile(args: {
           },
         },
       },
-    },
-  });
+      },
+    })
+  );
 
   if (!dog?.isPlayerVisible) {
+    console.info("service-perf", {
+      route: "service:getDogProfile",
+      dogId,
+      viewerKennelContextPresent: Boolean(viewerKennelId),
+      found: false,
+      ...phases,
+      totalServerDurationMs: Date.now() - startedAtMs,
+    });
     return null;
   }
 
-  await ensurePhenotypeHealthTruthsForDogs(db, [dog.id]);
+  await measure("ensureHealthTruthsMs", () =>
+    ensurePhenotypeHealthTruthsForDogs(db, [dog.id])
+  );
 
-  const healthConditionTruths = await db.dogHealthConditionTruth.findMany({
-    where: {
-      dogId: dog.id,
-      conditionCode: {
-        in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+  const healthConditionTruths = await measure("healthTruthQueryMs", () =>
+    db.dogHealthConditionTruth.findMany({
+      where: {
+        dogId: dog.id,
+        conditionCode: {
+          in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+        },
       },
-    },
-    select: {
-      conditionCode: true,
-      geneticLiability: true,
-      environmentModifier: true,
-    },
-  });
+      select: {
+        conditionCode: true,
+        geneticLiability: true,
+        environmentModifier: true,
+      },
+    })
+  );
 
   const ageHours = Math.max(0, currentEpoch - dog.birthEpoch);
   const isAlive = dog.lifecycleState === DogLifecycleState.ALIVE;
@@ -1183,57 +1231,59 @@ export async function getDogProfile(args: {
     ) ?? null;
 
   const ownerData = isOwnedByCurrentKennel
-    ? await db.dog.findUnique({
-        where: { id: dog.id },
-        select: {
-          ownerKennel: {
-            select: { balance: true },
-          },
-          privateKennelNotes: {
-            where: { kennelId: viewerKennelId },
-            select: { notes: true },
-            take: 1,
-          },
-          plannerTags: {
-            where: {
-              kennelId: viewerKennelId,
-              source: "PROGRAM_PLANNER",
-              isVisibleOnDogPage: true,
+    ? await measure("ownerContextQueryMs", () =>
+        db.dog.findUnique({
+          where: { id: dog.id },
+          select: {
+            ownerKennel: {
+              select: { balance: true },
             },
-            orderBy: [{ updatedAt: "desc" }],
-            select: {
-              tagType: true,
-              goalKey: true,
-              note: true,
-              updatedAt: true,
+            privateKennelNotes: {
+              where: { kennelId: viewerKennelId },
+              select: { notes: true },
+              take: 1,
             },
-          },
-          showEntries: {
-            where: {
-              entryStatus: { in: ["ENTERED", "ABSENT"] },
-              showDay: { scheduledEpoch: { gt: currentEpoch } },
+            plannerTags: {
+              where: {
+                kennelId: viewerKennelId,
+                source: "PROGRAM_PLANNER",
+                isVisibleOnDogPage: true,
+              },
+              orderBy: [{ updatedAt: "desc" }],
+              select: {
+                tagType: true,
+                goalKey: true,
+                note: true,
+                updatedAt: true,
+              },
             },
-            orderBy: [{ showDay: { scheduledEpoch: "asc" } }],
-            select: {
-              id: true,
-              entryStatus: true,
-              breed: { select: { name: true } },
-              showDay: {
-                select: {
-                  dayIndex: true,
-                  scheduledEpoch: true,
-                  judge: {
-                    select: { judgeCode: true, name: true },
-                  },
-                  cluster: {
-                    select: { id: true, name: true, district: true },
+            showEntries: {
+              where: {
+                entryStatus: { in: ["ENTERED", "ABSENT"] },
+                showDay: { scheduledEpoch: { gt: currentEpoch } },
+              },
+              orderBy: [{ showDay: { scheduledEpoch: "asc" } }],
+              select: {
+                id: true,
+                entryStatus: true,
+                breed: { select: { name: true } },
+                showDay: {
+                  select: {
+                    dayIndex: true,
+                    scheduledEpoch: true,
+                    judge: {
+                      select: { judgeCode: true, name: true },
+                    },
+                    cluster: {
+                      select: { id: true, name: true, district: true },
+                    },
                   },
                 },
               },
             },
           },
-        },
-      })
+        })
+      )
     : null;
 
   const [
@@ -1242,30 +1292,32 @@ export async function getDogProfile(args: {
     groomingStatuses,
     recentShowResults,
     pedigreeAncestors,
-  ] = await Promise.all([
-    getStoredProducerMeritForDog({ dogId: dog.id }),
-    isOwnedByCurrentKennel
-      ? getKennelGroomingSummary({
-          kennelId: viewerKennelId,
-          currentEpoch,
-        })
-      : Promise.resolve(null),
-    isOwnedByCurrentKennel
-      ? getOwnedDogGroomingStatuses({
-          kennelId: viewerKennelId,
-          dogIds: [dog.id],
-          currentEpoch,
-        })
-      : Promise.resolve(null),
-    listPublishedDogShowResults({
-      dogId: dog.id,
-      take: RECENT_SHOW_RESULT_LIMIT,
-    }),
-    loadFourGenerationPedigree({
-      sireId: dog.sireId,
-      damId: dog.damId,
-    }),
-  ]);
+  ] = await measure("secondaryLoadsMs", () =>
+    Promise.all([
+      getStoredProducerMeritForDog({ dogId: dog.id }),
+      isOwnedByCurrentKennel
+        ? getKennelGroomingSummary({
+            kennelId: viewerKennelId,
+            currentEpoch,
+          })
+        : Promise.resolve(null),
+      isOwnedByCurrentKennel
+        ? getOwnedDogGroomingStatuses({
+            kennelId: viewerKennelId,
+            dogIds: [dog.id],
+            currentEpoch,
+          })
+        : Promise.resolve(null),
+      listPublishedDogShowResults({
+        dogId: dog.id,
+        take: RECENT_SHOW_RESULT_LIMIT,
+      }),
+      loadFourGenerationPedigree({
+        sireId: dog.sireId,
+        damId: dog.damId,
+      }),
+    ])
+  );
   const groomingStatus = groomingStatuses?.get(dog.id) ?? null;
   const latestHealthTests = PHENOTYPE_HEALTH_TEST_CODES.flatMap(
     (testTypeCode) => {
@@ -1560,7 +1612,7 @@ export async function getDogProfile(args: {
     })) ?? [];
   const primaryPlannerTag = ownerData?.plannerTags[0] ?? null;
 
-  return mapDogProfile({
+  const profile = mapDogProfile({
     header: {
       dogId: dog.id,
       displayName: formatDogDisplayName(dog),
@@ -1865,5 +1917,21 @@ export async function getDogProfile(args: {
       canViewPrivatePlanning: isOwnedByCurrentKennel,
     },
   });
+  console.info("service-perf", {
+    route: "service:getDogProfile",
+    dogId,
+    viewerKennelContextPresent: Boolean(viewerKennelId),
+    ownerContextPresent: isOwnedByCurrentKennel,
+    recentResultCount: recentShowResults.length,
+    pedigreeAncestorCount: pedigreeAncestors.length,
+    upcomingEntryCount: allEntries.length,
+    breedingAttemptAsDamCount: dog.breedingAttemptsAsDam.length,
+    breedingAttemptAsSireCount: dog.breedingAttemptsAsSire.length,
+    activeListingCount: dog.listings.length,
+    payloadSizeBytes: estimateJsonSizeBytes(profile),
+    ...phases,
+    totalServerDurationMs: Date.now() - startedAtMs,
+  });
+  return profile;
 }
 

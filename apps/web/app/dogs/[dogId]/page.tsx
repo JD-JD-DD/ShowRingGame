@@ -14,6 +14,7 @@ import RehomeDogForm from "@/components/dogs/RehomeDogForm";
 import ConfirmSubmitButton from "@/components/ui/ConfirmSubmitButton";
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { createPerfTimer, estimateJsonSizeBytes } from "@/lib/perf";
 import { getSessionUserId } from "@/lib/session";
 import { getDogProfile } from "@/server/services/dog.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -105,47 +106,53 @@ function statusMessage(message: string | null, isError = false) {
 }
 
 export default async function DogPage({ params, searchParams }: PageProps) {
-  const [{ dogId }, userId] = await Promise.all([
-    params,
-    getSessionUserId(),
-  ]);
+  const perf = createPerfTimer({ route: "/dogs/[dogId]" });
+  const [{ dogId }, userId] = await perf.measure("paramsAndSessionMs", () =>
+    Promise.all([params, getSessionUserId()])
+  );
   const resolvedSearchParams: DogSearchParams = searchParams
     ? await searchParams
     : {};
 
   if (!userId) redirect("/login");
 
-  const currentKennel = await getKennelForUser(userId);
+  const currentKennel = await perf.measure("kennelLookupMs", () =>
+    getKennelForUser(userId)
+  );
   if (!currentKennel) redirect("/onboarding");
 
   const currentEpoch = getCurrentEpoch();
-  const profile = await getDogProfile({
-    dogId,
-    viewerKennelId: currentKennel.id,
-    currentEpoch,
-  });
+  const profile = await perf.measure("dogProfileMs", () =>
+    getDogProfile({
+      dogId,
+      viewerKennelId: currentKennel.id,
+      currentEpoch,
+    })
+  );
 
   if (!profile) notFound();
 
   const currentDogKennelRunId = profile.currentRun?.runId ?? null;
   const ownedDogRoster = profile.viewerContext.isOwnedByCurrentKennel
-    ? await db.dog.findMany({
-        where: {
-          ownerKennelId: currentKennel.id,
-          kennelRunId: currentDogKennelRunId,
-          lifecycleState: "ALIVE",
-          isPlayerVisible: true,
-        },
-        orderBy: [{ birthEpoch: "desc" }],
-        select: {
-          id: true,
-          callName: true,
-          registeredName: true,
-          regNumber: true,
-          breedCode2: true,
-          birthEpoch: true,
-        },
-      })
+    ? await perf.measure("ownedRosterMs", () =>
+        db.dog.findMany({
+          where: {
+            ownerKennelId: currentKennel.id,
+            kennelRunId: currentDogKennelRunId,
+            lifecycleState: "ALIVE",
+            isPlayerVisible: true,
+          },
+          orderBy: [{ birthEpoch: "desc" }],
+          select: {
+            id: true,
+            callName: true,
+            registeredName: true,
+            regNumber: true,
+            breedCode2: true,
+            birthEpoch: true,
+          },
+        })
+      )
     : [];
   const currentRosterIndex = ownedDogRoster.findIndex(
     (rosterDog) => rosterDog.id === profile.header.dogId
@@ -205,6 +212,17 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   ]
     .filter(Boolean)
     .join(" ");
+  perf.log({
+    userContextPresent: true,
+    kennelContextPresent: true,
+    isOwnedDog: profile.viewerContext.isOwnedByCurrentKennel,
+    rosterCount: ownedDogRoster.length,
+    recentResultCount: profile.titlesAndShowCareer.recentShowResults.length,
+    upcomingEntryCount: profile.entries?.nextEntries.length ?? 0,
+    pedigreeAncestorCount: profile.pedigree.ancestors.length,
+    visibleCategoryCount: profile.qualityAndPresentation.visibleCategories.length,
+    payloadSizeBytes: estimateJsonSizeBytes({ profile, ownedDogRoster }),
+  });
 
   return (
     <main className="dog-page min-h-screen px-6 py-8">

@@ -1,5 +1,6 @@
 import { fail, ok } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { createPerfTimer, estimateJsonSizeBytes } from "@/lib/perf";
 import { getSessionUserId } from "@/lib/session";
 import { db } from "@/lib/db";
 import {
@@ -330,21 +331,28 @@ function parseRunFilter(request: Request): string[] | Response {
 }
 
 export async function GET(request: Request) {
+  const perf = createPerfTimer({ route: "/api/dogs/mine" });
   try {
-    const userId = await getSessionUserId();
+    const userId = await perf.measure("sessionMs", () => getSessionUserId());
 
     if (!userId) {
+      perf.log({ userContextPresent: false, kennelContextPresent: false });
       return fail("Unauthorized.", 401);
     }
 
-    const kennel = await getKennelForUser(userId);
+    const kennel = await perf.measure("kennelLookupMs", () =>
+      getKennelForUser(userId)
+    );
 
     if (!kennel) {
+      perf.log({ userContextPresent: true, kennelContextPresent: false });
       return fail("Kennel not found.", 404);
     }
 
     const currentEpoch = getCurrentEpoch();
-    await resolveBreedingProgressForKennel({ kennelId: kennel.id, currentEpoch });
+    await perf.measure("resolveBreedingMs", () =>
+      resolveBreedingProgressForKennel({ kennelId: kennel.id, currentEpoch })
+    );
     const runFilter = parseRunFilter(request);
 
     if (runFilter instanceof Response) {
@@ -352,94 +360,100 @@ export async function GET(request: Request) {
     }
 
     if (runFilter.length > 0) {
-      const matchingRuns = await db.kennelRun.findMany({
-        where: {
-          kennelId: kennel.id,
-          id: {
-            in: runFilter,
+      const matchingRuns = await perf.measure("runFilterValidationMs", () =>
+        db.kennelRun.findMany({
+          where: {
+            kennelId: kennel.id,
+            id: {
+              in: runFilter,
+            },
           },
-        },
-        select: {
-          id: true,
-        },
-      });
+          select: {
+            id: true,
+          },
+        })
+      );
 
       if (matchingRuns.length !== runFilter.length) {
         return fail("One or more Kennel Runs were not found.", 400);
       }
     }
 
-    const dogs: RosterDogRecord[] = await db.dog.findMany({
-      where: {
-        ownerKennelId: kennel.id,
-        lifecycleState: "ALIVE",
-        isPlayerVisible: true,
-        ...(runFilter.length > 0
-          ? {
-              kennelRunId: {
-                in: runFilter,
-              },
-            }
-          : {}),
-      },
-      orderBy: [{ birthEpoch: "desc" }],
-      select: {
-        id: true,
-        callName: true,
-        registeredName: true,
-        regNumber: true,
-        visibleTitlePrefix: true,
-        visibleTitleSuffix: true,
-        breedCode2: true,
-        sex: true,
-        birthEpoch: true,
-        lifecycleState: true,
-        marketState: true,
-        kennelRunId: true,
-        kennelRun: {
-          select: {
-            id: true,
-            name: true,
-          },
+    const dogs: RosterDogRecord[] = await perf.measure("dogQueryMs", () =>
+      db.dog.findMany({
+        where: {
+          ownerKennelId: kennel.id,
+          lifecycleState: "ALIVE",
+          isPlayerVisible: true,
+          ...(runFilter.length > 0
+            ? {
+                kennelRunId: {
+                  in: runFilter,
+                },
+              }
+            : {}),
         },
-        breed: {
-          select: {
-            name: true,
-            groupName: true,
-          },
-        },
-        traitHead: true,
-        traitForequarters: true,
-        traitHindquarters: true,
-        traitGait: true,
-        traitCoat: true,
-        traitSize: true,
-        traitTemperament: true,
-        traitShowShine: true,
-        traitFeet: true,
-        traitTopline: true,
-        healthConditionTruths: {
-          where: {
-            conditionCode: {
-              in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+        orderBy: [{ birthEpoch: "desc" }],
+        select: {
+          id: true,
+          callName: true,
+          registeredName: true,
+          regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
+          breedCode2: true,
+          sex: true,
+          birthEpoch: true,
+          lifecycleState: true,
+          marketState: true,
+          kennelRunId: true,
+          kennelRun: {
+            select: {
+              id: true,
+              name: true,
             },
           },
-          select: {
-            conditionCode: true,
-            geneticLiability: true,
-            environmentModifier: true,
+          breed: {
+            select: {
+              name: true,
+              groupName: true,
+            },
           },
+          traitHead: true,
+          traitForequarters: true,
+          traitHindquarters: true,
+          traitGait: true,
+          traitCoat: true,
+          traitSize: true,
+          traitTemperament: true,
+          traitShowShine: true,
+          traitFeet: true,
+          traitTopline: true,
+          healthConditionTruths: {
+            where: {
+              conditionCode: {
+                in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+              },
+            },
+            select: {
+              conditionCode: true,
+              geneticLiability: true,
+              environmentModifier: true,
+            },
+          },
+          ringObedience: true,
+          muscleTone: true,
+          coatCondition: true,
+          fatiguePoints: true,
         },
-        ringObedience: true,
-        muscleTone: true,
-        coatCondition: true,
-        fatiguePoints: true,
-      },
-    });
+      })
+    );
     const dogIds = dogs.map((dog) => dog.id);
 
     if (dogIds.length > 0) {
-      await ensurePhenotypeHealthTruthsForDogs(db, dogIds);
+      await perf.measure("ensureHealthTruthsMs", () =>
+        ensurePhenotypeHealthTruthsForDogs(db, dogIds)
+      );
     }
 
     const [
@@ -452,7 +466,7 @@ export async function GET(request: Request) {
       groomingStatuses,
       groomingSummary,
     ] = dogIds.length
-      ? await Promise.all([
+      ? await perf.measure("secondaryQueriesMs", () => Promise.all([
           db.dogHealthConditionTruth.findMany({
             where: {
               dogId: {
@@ -570,7 +584,7 @@ export async function GET(request: Request) {
             kennelId: kennel.id,
             currentEpoch,
           }),
-        ])
+        ]))
       : [
           [],
           [],
@@ -625,7 +639,7 @@ export async function GET(request: Request) {
     const healthTestsByDogId = groupHealthTestsByDog(latestHealthTests);
     const activeListingTypesByDogId = groupActiveListingTypesByDog(activeListings);
 
-    return ok({
+    const payload = {
       groomingSummary,
       dogs: dogs.map((dog) => {
         const healthTests = healthTestsByDogId.get(dog.id) ?? [];
@@ -696,7 +710,19 @@ export async function GET(request: Request) {
           ),
         };
       }),
+    };
+    perf.log({
+      userContextPresent: true,
+      kennelContextPresent: true,
+      runFilterCount: runFilter.length,
+      dogCount: payload.dogs.length,
+      activeDamAttemptCount: activeDamAttempts.length,
+      latestWhelpedAttemptCount: latestWhelpedAttempts.length,
+      recentNotPregnantAttemptCount: recentNotPregnantAttempts.length,
+      activeListingCount: activeListings.length,
+      payloadSizeBytes: estimateJsonSizeBytes(payload),
     });
+    return ok(payload);
   } catch (error) {
     console.error("GET /api/dogs/mine failed", error);
     return fail("Unable to load kennel dogs.", 500);

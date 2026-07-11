@@ -4,6 +4,7 @@ import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { createPerfTimer, estimateJsonSizeBytes } from "@/lib/perf";
 import { SHOW_YEAR_HOURS } from "@showring/rules";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +69,7 @@ type AllTimePrestigeTotal = {
 };
 
 export default async function ShowTopTenPage({ searchParams }: PageProps) {
+  const perf = createPerfTimer({ route: "/shows/top-ten" });
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const fallbackYear = Math.floor(getCurrentEpoch() / SHOW_YEAR_HOURS) + 1;
   const selectedYear = parseYear(
@@ -78,7 +80,10 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
   const allTimeBreedQuery = firstQueryValue(
     resolvedSearchParams.allTimeBreed
   )?.toUpperCase();
-  const [years, breedOptions, allTimeBreedOptions] = await Promise.all([
+  const [years, breedOptions, allTimeBreedOptions] = await perf.measure(
+    "topTenOptionsMs",
+    () =>
+      Promise.all([
     db.dogYearlyPrestigeStat.findMany({
       distinct: ["gameYear"],
       orderBy: [{ gameYear: "desc" }],
@@ -131,7 +136,8 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
         },
       },
     }),
-  ]);
+      ])
+  );
   const selectedBreedCode =
     breedOptions.some((option) => option.breedCode2 === breedQuery)
       ? breedQuery ?? null
@@ -160,7 +166,8 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
     breedRows,
     allTimeAllBreedTotals,
     allTimeBreedTotals,
-  ] = await Promise.all([
+  ] = await perf.measure("topTenStandingsMs", () =>
+    Promise.all([
     db.dogYearlyPrestigeStat.findMany({
       where: {
         gameYear: selectedYear,
@@ -267,7 +274,8 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
           take: 10,
         })
       : Promise.resolve([]),
-  ]);
+    ])
+  );
   const selectedBreedName =
     breedOptions.find((option) => option.breedCode2 === selectedBreedCode)?.dog
       .breed.name ??
@@ -278,23 +286,25 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
       [...allTimeAllBreedTotals, ...allTimeBreedTotals].map((row) => row.dogId)
     ),
   ];
-  const allTimeDogs = await db.dog.findMany({
-    where: {
-      id: {
-        in: allTimeDogIds,
+  const allTimeDogs = await perf.measure("topTenDogLookupMs", () =>
+    db.dog.findMany({
+      where: {
+        id: {
+          in: allTimeDogIds,
+        },
+        isPlayerVisible: true,
       },
-      isPlayerVisible: true,
-    },
-    include: {
-      breed: true,
-      ownerKennel: {
-        select: {
-          name: true,
-          slug: true,
+      include: {
+        breed: true,
+        ownerKennel: {
+          select: {
+            name: true,
+            slug: true,
+          },
         },
       },
-    },
-  });
+    })
+  );
   const allTimeDogsById = new Map(allTimeDogs.map((dog) => [dog.id, dog]));
   const buildAllTimeRows = (rows: AllTimePrestigeTotal[]) =>
     rows.flatMap((row) => {
@@ -323,6 +333,26 @@ export default async function ShowTopTenPage({ searchParams }: PageProps) {
     )?.dog.breed.name ??
     allTimeBreedRows[0]?.dog.breed.name ??
     selectedAllTimeBreedCode;
+  perf.log({
+    userContextPresent: false,
+    kennelContextPresent: false,
+    selectedYear,
+    selectedBreedCode,
+    selectedAllTimeBreedCode,
+    yearOptionCount: yearOptions.length,
+    currentYearBreedOptionCount: breedOptions.length,
+    allTimeBreedOptionCount: allTimeBreedOptions.length,
+    allBreedRowCount: allBreedRows.length,
+    breedRowCount: breedRows.length,
+    allTimeDogCount: allTimeDogs.length,
+    payloadSizeBytes: estimateJsonSizeBytes({
+      allBreedRows,
+      breedRows,
+      allTimeAllBreedTotals,
+      allTimeBreedTotals,
+      allTimeDogs,
+    }),
+  });
 
   return (
     <main className="rankings-page mx-auto max-w-7xl px-6 py-8">
