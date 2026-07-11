@@ -51,12 +51,6 @@ assertIncludes(
   "bulk calendar summary reports skipped combinations"
 );
 assertIncludes(
-  planner,
-  "Copy to Manual Selection",
-  "bulk calendar flow preserves the manual selection workflow"
-);
-
-assertIncludes(
   showPage,
   "bulkEligibleSelections={planner.bulkEligibleSelections}",
   "show page passes breed-scoped bulk selections into the planner"
@@ -102,6 +96,11 @@ assertIncludes(
   showEntryRoute,
   "result.skippedSelections",
   "show entry route reports skipped combinations after bulk submission"
+);
+assertNotIncludes(
+  planner,
+  "Copy to Manual Selection",
+  "bulk calendar flow removes the copy-to-manual shortcut"
 );
 
 assertNotIncludes(

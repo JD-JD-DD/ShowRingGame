@@ -202,18 +202,6 @@ export function ShowEntryPlanner({
   );
   const hasBulkSelections = bulkEligibleSelections.length > 0;
 
-  function setAllEligibleSelection(): void {
-    setSelected(() => {
-      const next: Record<string, boolean> = {};
-
-      for (const pair of bulkEligibleSelections) {
-        next[selectionKey(pair.dogId, pair.showDayId)] = true;
-      }
-
-      return next;
-    });
-  }
-
   function handleBulkSubmit(event: FormEvent<HTMLFormElement>) {
     if (submittingRef.current || !hasBulkSelections || !bulkQuote.canAfford) {
       event.preventDefault();
@@ -257,15 +245,15 @@ export function ShowEntryPlanner({
         method="post"
         onSubmit={handleSubmit}
       >
-      <input type="hidden" name="breedCode2" value={breedCode2} />
-      {selectedPairs.map((pair) => (
-        <input
-          key={`${pair.dogId}-${pair.showDayId}`}
-          type="hidden"
-          name="dogDaySelections"
-          value={`${pair.dogId}:${pair.showDayId}`}
-        />
-      ))}
+        <input type="hidden" name="breedCode2" value={breedCode2} />
+        {selectedPairs.map((pair) => (
+          <input
+            key={`${pair.dogId}-${pair.showDayId}`}
+            type="hidden"
+            name="dogDaySelections"
+            value={`${pair.dogId}:${pair.showDayId}`}
+          />
+        ))}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] border-separate border-spacing-y-2 text-sm">
@@ -362,7 +350,7 @@ export function ShowEntryPlanner({
                       type="button"
                       onClick={() => setDogSelection(dog, true)}
                       disabled={isSubmitting || dog.hasPendingEmergencyCare}
-                      className="rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                      className="rounded-xl border border-emerald-300/40 bg-emerald-500/20 px-3 py-2 text-xs font-semibold text-emerald-50 transition hover:border-emerald-200/60 hover:bg-emerald-500/30 disabled:cursor-not-allowed disabled:border-slate-500/40 disabled:bg-slate-700/60 disabled:text-slate-200"
                     >
                       All
                     </button>
@@ -370,7 +358,7 @@ export function ShowEntryPlanner({
                       type="button"
                       onClick={() => setDogSelection(dog, false)}
                       disabled={isSubmitting}
-                      className="theme-secondary-button rounded-xl px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                      className="rounded-xl border border-[var(--dog-border)] bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:border-slate-500/40 disabled:bg-slate-700/60 disabled:text-slate-200"
                     >
                       Clear
                     </button>
@@ -437,7 +425,7 @@ export function ShowEntryPlanner({
         <button
           type="submit"
           disabled={isSubmitting || selectedPairs.length === 0 || !quote.canAfford}
-          className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-[color:var(--dog-card)] disabled:text-[color:var(--dog-copy)]"
+          className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-200"
         >
           {isSubmitting
             ? "Submitting..."
@@ -470,7 +458,7 @@ export function ShowEntryPlanner({
             type="button"
             onClick={() => setShowBulkConfirmation((current) => !current)}
             disabled={isSubmitting || !hasBulkSelections}
-            className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:bg-[color:var(--dog-panel)] disabled:text-[color:var(--dog-copy)]"
+            className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-200"
           >
             Enter All Eligible Dogs
           </button>
@@ -574,14 +562,6 @@ export function ShowEntryPlanner({
             ) : null}
 
             <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={setAllEligibleSelection}
-                disabled={isSubmitting}
-                className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                Copy to Manual Selection
-              </button>
               <form
                 action={`/api/shows/${showId}/enter`}
                 method="post"
@@ -600,7 +580,7 @@ export function ShowEntryPlanner({
                 <button
                   type="submit"
                   disabled={isSubmitting || !bulkQuote.canAfford}
-                  className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-[color:var(--dog-panel)] disabled:text-[color:var(--dog-copy)]"
+                  className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-200"
                 >
                   {isSubmitting ? "Submitting..." : "Confirm All Entries"}
                 </button>
