@@ -5,6 +5,7 @@ import { getSessionUserId } from "@/lib/session";
 import BreedPageClient from "@/components/breeding/BreedPageClient";
 import { BRUCELLOSIS_DISEASE_CODE } from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { formatDogDisplayName } from "@/lib/dogNames";
 import {
   getBreedingEligibilityMessage,
   getIndividualBreedingEligibility,
@@ -79,6 +80,11 @@ type DogCardDto = {
     resultCode: string;
   }>;
   visibleCategories: VisibleCategories;
+};
+
+type PlannerNotice = {
+  message: string;
+  tone: "warning" | "error";
 };
 
 function firstQueryValue(value: string | string[] | undefined): string | null {
@@ -215,14 +221,6 @@ export default async function BreedingPlannerPage({
   const initialStudListingId = experience === "worksheet"
     ? null
     : firstQueryValue(resolvedSearchParams.studListingId);
-
-  if (
-    experience === "breed-dog" &&
-    initialDogId === null &&
-    initialStudListingId === null
-  ) {
-    redirect("/kennel");
-  }
 
   const dogs = await db.dog.findMany({
     where: {
@@ -603,18 +601,40 @@ export default async function BreedingPlannerPage({
       }),
     };
   });
+  let initialNotice: PlannerNotice | null = null;
 
-  if (
-    experience === "breed-dog" &&
-    !dogCards.some(
-      (dog) => dog.id === initialDogId && dog.isEligibleToBreed
-    ) &&
-    !publicStudCards.some(
-      (dog) =>
-        dog.studListingId === initialStudListingId && dog.isEligibleToBreed
-    )
-  ) {
-    redirect("/kennel");
+  if (experience === "breed-dog") {
+    if (initialDogId === null && initialStudListingId === null) {
+      initialNotice = {
+        tone: "warning",
+        message: "Choose a dog or public stud to start a breeding.",
+      };
+    } else if (initialDogId) {
+      const requestedOwnedDog = dogCards.find((dog) => dog.id === initialDogId) ?? null;
+
+      if (requestedOwnedDog && !requestedOwnedDog.isEligibleToBreed) {
+        initialNotice = {
+          tone: "warning",
+          message: `${formatDogDisplayName(requestedOwnedDog)} is not available to breed right now. ${requestedOwnedDog.breedingEligibilityMessage ?? ""}`.trim(),
+        };
+      } else if (!requestedOwnedDog) {
+        initialNotice = {
+          tone: "error",
+          message: "This dog is not available for breeding.",
+        };
+      }
+    } else if (initialStudListingId) {
+      const requestedStud =
+        publicStudCards.find((dog) => dog.studListingId === initialStudListingId) ??
+        null;
+
+      if (!requestedStud) {
+        initialNotice = {
+          tone: "error",
+          message: "This stud is not available for breeding.",
+        };
+      }
+    }
   }
 
   const pedigree = await db.dog.findMany({
@@ -689,6 +709,7 @@ export default async function BreedingPlannerPage({
         currentEpoch={currentEpoch}
         initialDogId={initialDogId}
         initialStudListingId={initialStudListingId}
+        initialNotice={initialNotice}
       />
 
       <div className="mt-8">

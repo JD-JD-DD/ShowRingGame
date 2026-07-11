@@ -96,6 +96,10 @@ type Props = {
   dogs: DogCardDto[];
   initialDogId: string | null;
   initialStudListingId: string | null;
+  initialNotice: {
+    message: string;
+    tone: "warning" | "error";
+  } | null;
 };
 
 type SireSource = "ALL" | "OWNED" | "PUBLIC";
@@ -1639,6 +1643,7 @@ export default function BreedPageClient({
   dogs,
   initialDogId,
   initialStudListingId,
+  initialNotice,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -1682,6 +1687,7 @@ export default function BreedPageClient({
   const [redirecting, setRedirecting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [plannerNotice, setPlannerNotice] = useState(initialNotice);
   const submitInFlightRef = useRef(false);
   const eligibleDogs = useMemo(
     () => dogs.filter((dog) => dog.isEligibleToBreed),
@@ -1798,6 +1804,7 @@ export default function BreedPageClient({
 
   function chooseBreed(nextBreedCode: string) {
     setSuccessMessage("");
+    setPlannerNotice(null);
     setBreedCode2(nextBreedCode);
 
     if (selectedDam?.breedCode2 !== nextBreedCode) setDamId("");
@@ -1809,6 +1816,7 @@ export default function BreedPageClient({
 
   function chooseDam(nextDamId: string) {
     setSuccessMessage("");
+    setPlannerNotice(null);
 
     if (nextDamId !== damId) {
       setSireId("");
@@ -1909,6 +1917,18 @@ export default function BreedPageClient({
 
     return (
       <div>
+        {plannerNotice ? (
+          <div
+            role={plannerNotice.tone === "error" ? "alert" : "status"}
+            className={`mb-5 rounded-2xl border px-4 py-3 text-sm ${
+              plannerNotice.tone === "error"
+                ? "border-red-300/20 bg-red-500/10 text-red-100"
+                : "border-amber-300/20 bg-amber-500/10 text-amber-100"
+            }`}
+          >
+            {plannerNotice.message}
+          </div>
+        ) : null}
         <div className="theme-card mb-5 rounded-2xl px-4 py-3">
           <p className="theme-copy text-sm">
             Choose an eligible mate for the selected dog.
@@ -1978,12 +1998,20 @@ export default function BreedPageClient({
     );
   }
 
-  if (experience === "breed-dog") {
-    return null;
-  }
-
   return (
     <div>
+      {plannerNotice ? (
+        <div
+          role={plannerNotice.tone === "error" ? "alert" : "status"}
+          className={`mb-6 rounded-2xl border px-5 py-4 text-sm font-semibold shadow-[0_12px_32px_rgba(0,0,0,0.2)] ${
+            plannerNotice.tone === "error"
+              ? "border-red-300/35 bg-red-500/10 text-red-100"
+              : "border-amber-300/35 bg-amber-500/10 text-amber-100"
+          }`}
+        >
+          {plannerNotice.message}
+        </div>
+      ) : null}
       {successMessage ? (
         <div className="mb-6 rounded-2xl border border-emerald-300/35 bg-emerald-500/10 px-5 py-4 text-sm font-semibold text-emerald-100 shadow-[0_12px_32px_rgba(0,0,0,0.2)]">
           {successMessage}

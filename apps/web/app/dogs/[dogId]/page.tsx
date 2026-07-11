@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import CancelGroomingListingForm from "@/components/dogs/CancelGroomingListingForm";
+import BreedDogActionButton from "@/components/dogs/BreedDogActionButton";
 import DogProfileKennelRunMove from "@/components/dogs/DogProfileKennelRunMove";
 import DogProfileDashboard from "@/components/dogs/DogProfileDashboard";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
@@ -342,25 +343,11 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
             <div className="flex flex-col gap-4 lg:justify-self-end">
               <div className="grid gap-3 sm:grid-cols-2">
-                {actions.canBreed ? (
-                  <Link
-                    href={`/breed?dogId=${header.dogId}`}
-                    className="rounded-2xl bg-purple-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
-                  >
-                    Breed Dog
-                  </Link>
-                ) : (
-                  <div className="grid gap-2">
-                    <div className="dog-card dog-copy rounded-2xl px-5 py-3 text-center text-sm font-semibold opacity-60">
-                      Breed Dog
-                    </div>
-                    {actions.breedingDisabledReason ? (
-                      <div className="dog-copy max-w-xs text-center text-xs text-purple-100/75">
-                        {actions.breedingDisabledReason}
-                      </div>
-                    ) : null}
-                  </div>
-                )}
+                <BreedDogActionButton
+                  canBreed={actions.canBreed}
+                  breedHref={`/breed?dogId=${header.dogId}`}
+                  unavailableMessage={actions.breedingDisabledReason ?? null}
+                />
 
                 {canEnterShow ? (
                   <Link
