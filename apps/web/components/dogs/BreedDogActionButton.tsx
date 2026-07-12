@@ -16,11 +16,18 @@ export default function BreedDogActionButton({
 }: Props) {
   const router = useRouter();
   const noticeId = useId();
+  const pendingId = useId();
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
+  const [isPending, setIsPending] = useState(false);
 
   function handleActivate() {
+    if (isPending) {
+      return;
+    }
+
     if (canBreed) {
       setNoticeMessage(null);
+      setIsPending(true);
       router.push(breedHref);
       return;
     }
@@ -32,17 +39,29 @@ export default function BreedDogActionButton({
     <div className="grid gap-2">
       <button
         type="button"
-        aria-disabled={!canBreed}
-        aria-describedby={noticeMessage ? noticeId : undefined}
+        aria-busy={canBreed ? isPending : undefined}
+        aria-disabled={!canBreed || isPending}
+        aria-describedby={
+          isPending ? pendingId : noticeMessage ? noticeId : undefined
+        }
         onClick={handleActivate}
         className={
-          canBreed
+          canBreed && !isPending
             ? "rounded-2xl bg-purple-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
             : "dog-card dog-copy rounded-2xl px-5 py-3 text-center text-sm font-semibold opacity-60"
         }
       >
-        Breed Dog
+        {isPending ? "Loading breeding options..." : "Breed Dog"}
       </button>
+      {isPending ? (
+        <div
+          id={pendingId}
+          role="status"
+          className="rounded-2xl border border-sky-300/20 bg-sky-500/10 px-4 py-3 text-center text-xs text-sky-100"
+        >
+          Loading breeding options...
+        </div>
+      ) : null}
       {noticeMessage ? (
         <div
           id={noticeId}

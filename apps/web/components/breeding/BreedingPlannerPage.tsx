@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { createPerfTimer } from "@/lib/perf";
 import { getSessionUserId } from "@/lib/session";
 import BreedPageClient from "@/components/breeding/BreedPageClient";
 import { BRUCELLOSIS_DISEASE_CODE } from "@showring/rules";
@@ -86,6 +87,37 @@ type PlannerNotice = {
   message: string;
   tone: "warning" | "error";
 };
+
+type DirectBreedingRouteContext = {
+  anchorBreedCode2: string;
+  anchorSex: "M" | "F";
+  selectedDogId: string | null;
+  selectedStudListingId: string | null;
+};
+
+async function measureBreedingRouteStage<T>(args: {
+  timer: ReturnType<typeof createPerfTimer>;
+  route: string;
+  operation: string;
+  execution: "sequential" | "concurrent";
+  action: () => Promise<T>;
+  details?: (result: T) => Record<string, unknown>;
+}) {
+  return args.timer.measure(args.operation, async () => {
+    const startedAtMs = Date.now();
+    const result = await args.action();
+
+    console.info("route-perf", {
+      route: args.route,
+      operation: args.operation,
+      execution: args.execution,
+      elapsedMs: Date.now() - startedAtMs,
+      ...(args.details ? args.details(result) : {}),
+    });
+
+    return result;
+  });
+}
 
 function firstQueryValue(value: string | string[] | undefined): string | null {
   if (Array.isArray(value)) return value[0] ?? null;
@@ -193,28 +225,68 @@ export default async function BreedingPlannerPage({
   returnMode,
   searchParams,
 }: BreedingPlannerPageProps) {
-  const userId = await getSessionUserId();
+  const route =
+    experience === "breed-dog" ? "/breed" : "/plan-a-litter";
+  const timer = createPerfTimer({
+    route,
+    userContextPresent: false,
+    kennelContextPresent: false,
+  });
+  const userId = await measureBreedingRouteStage({
+    timer,
+    route,
+    operation: "session_lookup",
+    execution: "sequential",
+    action: () => getSessionUserId(),
+    details: (resolvedUserId) => ({
+      userContextPresent: Boolean(resolvedUserId),
+    }),
+  });
 
   if (!userId) {
     redirect("/login");
   }
 
-  const kennel = await db.kennel.findUnique({
-    where: { userId },
-    select: {
-      id: true,
-      name: true,
-      balance: true,
-    },
-  });
+  const [kennel, resolvedSearchParams] = await Promise.all([
+    measureBreedingRouteStage({
+      timer,
+      route,
+      operation: "kennel_lookup",
+      execution: "concurrent",
+      action: () =>
+        db.kennel.findUnique({
+          where: { userId },
+          select: {
+            id: true,
+            name: true,
+            balance: true,
+          },
+        }),
+      details: (resolvedKennel) => ({
+        kennelContextPresent: Boolean(resolvedKennel),
+      }),
+    }),
+    measureBreedingRouteStage({
+      timer,
+      route,
+      operation: "search_params_resolve",
+      execution: "concurrent",
+      action: async () => (searchParams ? await searchParams : {}),
+    }),
+  ]);
 
   if (!kennel) {
     redirect("/onboarding");
   }
 
   const currentEpoch = getCurrentEpoch();
-  await resolveDogDeaths({ kennelId: kennel.id, currentEpoch });
-  const resolvedSearchParams = searchParams ? await searchParams : {};
+  await measureBreedingRouteStage({
+    timer,
+    route,
+    operation: "lifecycle_resolution",
+    execution: "sequential",
+    action: () => resolveDogDeaths({ kennelId: kennel.id, currentEpoch }),
+  });
   const initialDogId = experience === "worksheet"
     ? null
     : firstQueryValue(resolvedSearchParams.dogId);
@@ -222,384 +294,592 @@ export default async function BreedingPlannerPage({
     ? null
     : firstQueryValue(resolvedSearchParams.studListingId);
 
-  const dogs = await db.dog.findMany({
-    where: {
-      ownerKennelId: kennel.id,
-      lifecycleState: "ALIVE",
-      isPlayerVisible: true,
-    },
-    select: {
-      id: true,
-      callName: true,
-      registeredName: true,
-      regNumber: true,
-      visibleTitlePrefix: true,
-      visibleTitleSuffix: true,
-      coiPercent: true,
-      breedCode2: true,
-      sex: true,
-      birthEpoch: true,
-      lifecycleState: true,
-      traitHead: true,
-      traitForequarters: true,
-      traitHindquarters: true,
-      traitGait: true,
-      traitCoat: true,
-      traitSize: true,
-      traitTemperament: true,
-      traitShowShine: true,
-      traitFeet: true,
-      traitTopline: true,
-      healthConditionTruths: {
-        where: {
-          conditionCode: {
-            in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
-          },
-        },
-        select: {
-          conditionCode: true,
-          geneticLiability: true,
-          environmentModifier: true,
-        },
-      },
-      breed: {
-        select: {
-          name: true,
-          groupName: true,
-        },
-      },
-      ownerKennel: {
-        select: {
-          name: true,
-        },
-      },
-      breedingAttemptsAsDam: {
-        where: {
-          status: {
-            in: ["INITIATED", "PREGNANT"],
-          },
-        },
-        orderBy: [{ createdEpoch: "desc" }],
-        select: { id: true, status: true },
-      },
-      dammedLitters: {
-        orderBy: [{ bornEpoch: "desc" }],
-        take: 1,
-        select: {
-          bornEpoch: true,
-        },
-      },
-      healthTests: {
-        where: {
-          isPublic: true,
-        },
-        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
-        select: {
-          testTypeCode: true,
-          resultCode: true,
-        },
-      },
-      infectiousDiseaseStatuses: {
-        where: {
-          diseaseCode: BRUCELLOSIS_DISEASE_CODE,
-        },
-        select: {
-          diseaseCode: true,
-          status: true,
-        },
-      },
-      infectiousDiseaseTests: {
-        where: {
-          diseaseCode: BRUCELLOSIS_DISEASE_CODE,
-        },
-        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
-        select: {
-          diseaseCode: true,
-          resultCode: true,
-          validUntilEpoch: true,
-        },
-      },
-      listings: {
-        where: {
-          status: "ACTIVE",
-          listingType: {
-            in: [PLAYER_SALE_LISTING_TYPE, PLAYER_STUD_LISTING_TYPE],
-          },
-        },
-        select: {
-          listingType: true,
-        },
-      },
-    },
-    orderBy: [{ breedCode2: "asc" }, { birthEpoch: "asc" }],
-  });
-  const dogHealthConditionTruthsByDogId =
-    await ensureAndLoadBreedingPlannerHealthTruths(
-      dogs.map((dog) => dog.id)
-    );
+  const directRouteContext: DirectBreedingRouteContext | null =
+    experience === "breed-dog" && initialDogId
+      ? await measureBreedingRouteStage({
+          timer,
+          route,
+          operation: "selected_dog_lookup",
+          execution: "sequential",
+          action: () =>
+            db.dog.findFirst({
+              where: {
+                id: initialDogId,
+                ownerKennelId: kennel.id,
+                isPlayerVisible: true,
+              },
+              select: {
+                id: true,
+                breedCode2: true,
+                sex: true,
+              },
+            }),
+          details: (dog) => ({
+            rowCount: dog ? 1 : 0,
+          }),
+        }).then((dog) =>
+          dog
+            ? {
+                anchorBreedCode2: dog.breedCode2,
+                anchorSex: dog.sex,
+                selectedDogId: dog.id,
+                selectedStudListingId: null,
+              }
+            : null
+        )
+      : experience === "breed-dog" && initialStudListingId
+        ? await measureBreedingRouteStage({
+            timer,
+            route,
+            operation: "selected_stud_lookup",
+            execution: "sequential",
+            action: () =>
+              db.dogListing.findFirst({
+                where: {
+                  id: initialStudListingId,
+                  sellerType: "PLAYER",
+                  listingType: PLAYER_STUD_LISTING_TYPE,
+                  status: "ACTIVE",
+                  sellerKennelId: {
+                    not: kennel.id,
+                  },
+                },
+                select: {
+                  id: true,
+                  dog: {
+                    select: {
+                      id: true,
+                      breedCode2: true,
+                      sex: true,
+                    },
+                  },
+                },
+              }),
+            details: (listing) => ({
+              rowCount: listing?.dog ? 1 : 0,
+            }),
+          }).then((listing) =>
+            listing?.dog
+              ? {
+                  anchorBreedCode2: listing.dog.breedCode2,
+                  anchorSex: listing.dog.sex,
+                  selectedDogId: null,
+                  selectedStudListingId: listing.id,
+                }
+              : null
+          )
+        : null;
+  const useOptimizedDirectRoute =
+    experience === "breed-dog" && directRouteContext !== null;
 
-  const dogCards: DogCardDto[] = dogs.map((dog) => {
-    const ageHours = currentEpoch - dog.birthEpoch;
-    const lastLitterEpoch = dog.dammedLitters[0]?.bornEpoch ?? null;
-    const breedingEligibility = getIndividualBreedingEligibility({
-      currentEpoch,
-      birthEpoch: dog.birthEpoch,
-      lifecycleState: dog.lifecycleState,
-      sex: dog.sex,
-      activeBreedingAttemptStatus: dog.breedingAttemptsAsDam[0]?.status ?? null,
-      lastWhelpedEpoch: lastLitterEpoch,
-    });
-    const breedingEligibilityMessage = getBreedingEligibilityMessage(
-      breedingEligibility
-    );
-
-    return {
-      id: dog.id,
-      callName: dog.callName,
-      registeredName: dog.registeredName,
-      regNumber: dog.regNumber,
-      visibleTitlePrefix: dog.visibleTitlePrefix,
-      visibleTitleSuffix: dog.visibleTitleSuffix,
-      breedCode2: dog.breedCode2,
-      breedName: dog.breed.name,
-      breedGroupName: dog.breed.groupName,
-      sex: dog.sex,
-      birthEpoch: dog.birthEpoch,
-      ageHours,
-      lifecycleState: dog.lifecycleState,
-      ownerKennelName: dog.ownerKennel?.name ?? null,
-      isOwnedByCurrentKennel: true,
-      isListedForSale: dog.listings.some(
-        (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
-      ),
-      isListedAtStud: dog.listings.some(
-        (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
-      ),
-      isEligibleToBreed: breedingEligibility.isEligible,
-      inBreedingConflict:
-        breedingEligibility.activeBreedingAttemptStatus !== null ||
-        breedingEligibility.isInPostWhelpCooldown,
-      breedingEligibilityReasonCode: breedingEligibility.reasonCode,
-      breedingEligibilityMessage,
-      breedingEligibleAtEpoch: breedingEligibility.eligibleAtEpoch,
-      breedingRemainingHours: breedingEligibility.remainingHours,
-      breedingCooldownUntilEpoch: breedingEligibility.cooldownUntilEpoch,
-      studListingId: null,
-      studFeeAmount: null,
-      brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
-      requiresBrucellosisNegativeDam: false,
-      requiresDamHealthTestsCompleted: false,
-      requiresDamHealthAllGreen: false,
-      requiresDamHealthGreenOrYellow: false,
-      requiresDamChampionTitle: false,
-      coiPercent: dog.coiPercent,
-      lastLitterEpoch,
-      healthTests: dog.healthTests,
-      visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
-        storedTraits: dog,
-        phenotypeHealthTruths:
-          dogHealthConditionTruthsByDogId.get(dog.id) ??
-          dog.healthConditionTruths,
-        phenotypeHealthResults: dog.healthTests,
-      }),
-    };
-  });
-
-  const activeStudDogIds = await db.dogListing.findMany({
-    where: {
-      sellerType: "PLAYER",
-      listingType: PLAYER_STUD_LISTING_TYPE,
-      status: "ACTIVE",
-      sellerKennelId: {
-        not: kennel.id,
-      },
-    },
-    select: {
-      dogId: true,
-    },
-  });
-
-  await resolveDogDeaths({
-    currentEpoch,
-    dogIds: activeStudDogIds.map((listing) => listing.dogId),
-  });
-
-  const publicStudListings = await db.dogListing.findMany({
-    where: {
-      sellerType: "PLAYER",
-      listingType: PLAYER_STUD_LISTING_TYPE,
-      status: "ACTIVE",
-      sellerKennelId: {
-        not: kennel.id,
-      },
-      dog: {
-        lifecycleState: "ALIVE",
-        isPlayerVisible: true,
-        sex: "M",
-        ownerKennelId: {
-          not: null,
-        },
-      },
-    },
-    orderBy: [
-      { dog: { breedCode2: "asc" } },
-      { askingPrice: "asc" },
-      { listedAtEpoch: "desc" },
-    ],
-    take: 200,
-    select: {
-      id: true,
-      askingPrice: true,
-      requiresBrucellosisNegativeDam: true,
-      requiresDamHealthTestsCompleted: true,
-      requiresDamHealthAllGreen: true,
-      requiresDamHealthGreenOrYellow: true,
-      requiresDamChampionTitle: true,
-      dog: {
-        select: {
-          id: true,
-          callName: true,
-          registeredName: true,
-          regNumber: true,
-          visibleTitlePrefix: true,
-          visibleTitleSuffix: true,
-          coiPercent: true,
-          breedCode2: true,
-          sex: true,
-          birthEpoch: true,
-          lifecycleState: true,
-          traitHead: true,
-          traitForequarters: true,
-          traitHindquarters: true,
-          traitGait: true,
-          traitCoat: true,
-          traitSize: true,
-          traitTemperament: true,
-          traitShowShine: true,
-          traitFeet: true,
-          traitTopline: true,
-          healthConditionTruths: {
-            where: {
-              conditionCode: {
-                in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+  const loadOwnedDogs = () =>
+    measureBreedingRouteStage({
+      timer,
+      route,
+      operation: useOptimizedDirectRoute
+        ? "owned_mate_query"
+        : "owned_dog_query",
+      execution:
+        experience === "breed-dog" ? "concurrent" : "sequential",
+      action: () =>
+        db.dog.findMany({
+          where: useOptimizedDirectRoute
+            ? {
+                ownerKennelId: kennel.id,
+                lifecycleState: "ALIVE",
+                isPlayerVisible: true,
+                breedCode2: directRouteContext.anchorBreedCode2,
+                OR: directRouteContext.selectedDogId
+                  ? [
+                      { id: directRouteContext.selectedDogId },
+                      { sex: directRouteContext.anchorSex === "F" ? "M" : "F" },
+                    ]
+                  : [{ sex: "F" }],
+              }
+            : {
+                ownerKennelId: kennel.id,
+                lifecycleState: "ALIVE",
+                isPlayerVisible: true,
+              },
+          select: {
+            id: true,
+            callName: true,
+            registeredName: true,
+            regNumber: true,
+            visibleTitlePrefix: true,
+            visibleTitleSuffix: true,
+            coiPercent: true,
+            breedCode2: true,
+            sex: true,
+            birthEpoch: true,
+            lifecycleState: true,
+            traitHead: true,
+            traitForequarters: true,
+            traitHindquarters: true,
+            traitGait: true,
+            traitCoat: true,
+            traitSize: true,
+            traitTemperament: true,
+            traitShowShine: true,
+            traitFeet: true,
+            traitTopline: true,
+            healthConditionTruths: {
+              where: {
+                conditionCode: {
+                  in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+                },
+              },
+              select: {
+                conditionCode: true,
+                geneticLiability: true,
+                environmentModifier: true,
               },
             },
-            select: {
-              conditionCode: true,
-              geneticLiability: true,
-              environmentModifier: true,
+            breed: {
+              select: {
+                name: true,
+                groupName: true,
+              },
+            },
+            ownerKennel: {
+              select: {
+                name: true,
+              },
+            },
+            breedingAttemptsAsDam: {
+              where: {
+                status: {
+                  in: ["INITIATED", "PREGNANT"],
+                },
+              },
+              orderBy: [{ createdEpoch: "desc" }],
+              select: { id: true, status: true },
+            },
+            dammedLitters: {
+              orderBy: [{ bornEpoch: "desc" }],
+              take: 1,
+              select: {
+                bornEpoch: true,
+              },
+            },
+            healthTests: {
+              where: {
+                isPublic: true,
+              },
+              orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+              select: {
+                testTypeCode: true,
+                resultCode: true,
+              },
+            },
+            infectiousDiseaseStatuses: {
+              where: {
+                diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+              },
+              select: {
+                diseaseCode: true,
+                status: true,
+              },
+            },
+            infectiousDiseaseTests: {
+              where: {
+                diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+              },
+              orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+              select: {
+                diseaseCode: true,
+                resultCode: true,
+                validUntilEpoch: true,
+              },
+            },
+            listings: {
+              where: {
+                status: "ACTIVE",
+                listingType: {
+                  in: [PLAYER_SALE_LISTING_TYPE, PLAYER_STUD_LISTING_TYPE],
+                },
+              },
+              select: {
+                listingType: true,
+              },
             },
           },
-          breed: {
-            select: {
-              name: true,
-              groupName: true,
-            },
-          },
-          ownerKennel: {
-            select: {
-              name: true,
-            },
-          },
-          healthTests: {
-            where: {
-              isPublic: true,
-            },
-            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
-            select: {
-              testTypeCode: true,
-              resultCode: true,
-            },
-          },
-          infectiousDiseaseStatuses: {
-            where: {
-              diseaseCode: BRUCELLOSIS_DISEASE_CODE,
-            },
-            select: {
-              diseaseCode: true,
-              status: true,
-            },
-          },
-          infectiousDiseaseTests: {
-            where: {
-              diseaseCode: BRUCELLOSIS_DISEASE_CODE,
-            },
-            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
-            select: {
-              diseaseCode: true,
-              resultCode: true,
-              validUntilEpoch: true,
-            },
-          },
-        },
-      },
-    },
-  });
-  const publicStudHealthConditionTruthsByDogId =
-    await ensureAndLoadBreedingPlannerHealthTruths(
-      publicStudListings.map((listing) => listing.dog.id)
-    );
-
-  const publicStudCards: DogCardDto[] = publicStudListings.map((listing) => {
-    const dog = listing.dog;
-    const ageHours = currentEpoch - dog.birthEpoch;
-    const breedingEligibility = getIndividualBreedingEligibility({
-      currentEpoch,
-      birthEpoch: dog.birthEpoch,
-      lifecycleState: dog.lifecycleState,
-      sex: dog.sex,
-    });
-    const breedingEligibilityMessage = getBreedingEligibilityMessage(
-      breedingEligibility
-    );
-
-    return {
-      id: dog.id,
-      callName: dog.callName,
-      registeredName: dog.registeredName,
-      regNumber: dog.regNumber,
-      visibleTitlePrefix: dog.visibleTitlePrefix,
-      visibleTitleSuffix: dog.visibleTitleSuffix,
-      breedCode2: dog.breedCode2,
-      breedName: dog.breed.name,
-      breedGroupName: dog.breed.groupName,
-      sex: dog.sex,
-      birthEpoch: dog.birthEpoch,
-      ageHours,
-      lifecycleState: dog.lifecycleState,
-      ownerKennelName: dog.ownerKennel?.name ?? null,
-      isOwnedByCurrentKennel: false,
-      isListedForSale: false,
-      isListedAtStud: true,
-      isEligibleToBreed: breedingEligibility.isEligible,
-      inBreedingConflict: false,
-      breedingEligibilityReasonCode: breedingEligibility.reasonCode,
-      breedingEligibilityMessage,
-      breedingEligibleAtEpoch: breedingEligibility.eligibleAtEpoch,
-      breedingRemainingHours: breedingEligibility.remainingHours,
-      breedingCooldownUntilEpoch: breedingEligibility.cooldownUntilEpoch,
-      studListingId: listing.id,
-      studFeeAmount: listing.askingPrice,
-      brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
-      requiresBrucellosisNegativeDam:
-        listing.requiresBrucellosisNegativeDam,
-      requiresDamHealthTestsCompleted:
-        listing.requiresDamHealthTestsCompleted,
-      requiresDamHealthAllGreen: listing.requiresDamHealthAllGreen,
-      requiresDamHealthGreenOrYellow:
-        listing.requiresDamHealthGreenOrYellow,
-      requiresDamChampionTitle: listing.requiresDamChampionTitle,
-      coiPercent: dog.coiPercent,
-      lastLitterEpoch: null,
-      healthTests: dog.healthTests,
-      visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
-        storedTraits: dog,
-        phenotypeHealthTruths:
-          publicStudHealthConditionTruthsByDogId.get(dog.id) ??
-          dog.healthConditionTruths,
-        phenotypeHealthResults: dog.healthTests,
+          orderBy: [{ breedCode2: "asc" }, { birthEpoch: "asc" }],
+        }),
+      details: (rows) => ({
+        rowCount: rows.length,
       }),
-    };
+    });
+
+  const loadPublicStudListings = async () => {
+    if (useOptimizedDirectRoute && directRouteContext.anchorSex === "M") {
+      console.info("route-perf", {
+        route,
+        operation: "public_stud_listing_query",
+        execution: "concurrent",
+        elapsedMs: 0,
+        rowCount: 0,
+        skipped: true,
+      });
+      return [];
+    }
+
+    const activeStudDogIds = await measureBreedingRouteStage({
+      timer,
+      route,
+      operation: "active_stud_lookup",
+      execution:
+        experience === "breed-dog" ? "concurrent" : "sequential",
+      action: () =>
+        db.dogListing.findMany({
+          where: {
+            sellerType: "PLAYER",
+            listingType: PLAYER_STUD_LISTING_TYPE,
+            status: "ACTIVE",
+            sellerKennelId: {
+              not: kennel.id,
+            },
+            ...(useOptimizedDirectRoute
+              ? {
+                  dog: {
+                    breedCode2: directRouteContext.anchorBreedCode2,
+                    sex: "M",
+                  },
+                }
+              : {}),
+          },
+          select: {
+            dogId: true,
+          },
+        }),
+      details: (rows) => ({
+        rowCount: rows.length,
+      }),
+    });
+
+    await measureBreedingRouteStage({
+      timer,
+      route,
+      operation: "public_stud_lifecycle_resolution",
+      execution: "sequential",
+      action: () =>
+        resolveDogDeaths({
+          currentEpoch,
+          dogIds: activeStudDogIds.map((listing) => listing.dogId),
+        }),
+      details: () => ({
+        rowCount: activeStudDogIds.length,
+      }),
+    });
+
+    return measureBreedingRouteStage({
+      timer,
+      route,
+      operation: "public_stud_listing_query",
+      execution:
+        experience === "breed-dog" ? "concurrent" : "sequential",
+      action: () =>
+        db.dogListing.findMany({
+          where: {
+            sellerType: "PLAYER",
+            listingType: PLAYER_STUD_LISTING_TYPE,
+            status: "ACTIVE",
+            sellerKennelId: {
+              not: kennel.id,
+            },
+            dog: {
+              lifecycleState: "ALIVE",
+              isPlayerVisible: true,
+              sex: "M",
+              ownerKennelId: {
+                not: null,
+              },
+              ...(useOptimizedDirectRoute
+                ? {
+                    breedCode2: directRouteContext.anchorBreedCode2,
+                  }
+                : {}),
+            },
+          },
+          orderBy: [
+            { dog: { breedCode2: "asc" } },
+            { askingPrice: "asc" },
+            { listedAtEpoch: "desc" },
+          ],
+          take: 200,
+          select: {
+            id: true,
+            askingPrice: true,
+            requiresBrucellosisNegativeDam: true,
+            requiresDamHealthTestsCompleted: true,
+            requiresDamHealthAllGreen: true,
+            requiresDamHealthGreenOrYellow: true,
+            requiresDamChampionTitle: true,
+            dog: {
+              select: {
+                id: true,
+                callName: true,
+                registeredName: true,
+                regNumber: true,
+                visibleTitlePrefix: true,
+                visibleTitleSuffix: true,
+                coiPercent: true,
+                breedCode2: true,
+                sex: true,
+                birthEpoch: true,
+                lifecycleState: true,
+                traitHead: true,
+                traitForequarters: true,
+                traitHindquarters: true,
+                traitGait: true,
+                traitCoat: true,
+                traitSize: true,
+                traitTemperament: true,
+                traitShowShine: true,
+                traitFeet: true,
+                traitTopline: true,
+                healthConditionTruths: {
+                  where: {
+                    conditionCode: {
+                      in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
+                    },
+                  },
+                  select: {
+                    conditionCode: true,
+                    geneticLiability: true,
+                    environmentModifier: true,
+                  },
+                },
+                breed: {
+                  select: {
+                    name: true,
+                    groupName: true,
+                  },
+                },
+                ownerKennel: {
+                  select: {
+                    name: true,
+                  },
+                },
+                healthTests: {
+                  where: {
+                    isPublic: true,
+                  },
+                  orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+                  select: {
+                    testTypeCode: true,
+                    resultCode: true,
+                  },
+                },
+                infectiousDiseaseStatuses: {
+                  where: {
+                    diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+                  },
+                  select: {
+                    diseaseCode: true,
+                    status: true,
+                  },
+                },
+                infectiousDiseaseTests: {
+                  where: {
+                    diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+                  },
+                  orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+                  select: {
+                    diseaseCode: true,
+                    resultCode: true,
+                    validUntilEpoch: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+      details: (rows) => ({
+        rowCount: rows.length,
+      }),
+    });
+  };
+
+  const [dogs, publicStudListings] = await Promise.all([
+    loadOwnedDogs(),
+    loadPublicStudListings(),
+  ]);
+  const [dogHealthConditionTruthsByDogId, publicStudHealthConditionTruthsByDogId] =
+    await Promise.all([
+      measureBreedingRouteStage({
+        timer,
+        route,
+        operation: "owned_health_truth_lookup",
+        execution: "concurrent",
+        action: () =>
+          ensureAndLoadBreedingPlannerHealthTruths(dogs.map((dog) => dog.id)),
+        details: () => ({
+          rowCount: dogs.length,
+        }),
+      }),
+      measureBreedingRouteStage({
+        timer,
+        route,
+        operation: "public_stud_health_truth_lookup",
+        execution: "concurrent",
+        action: () =>
+          ensureAndLoadBreedingPlannerHealthTruths(
+            publicStudListings.map((listing) => listing.dog.id)
+          ),
+        details: () => ({
+          rowCount: publicStudListings.length,
+        }),
+      }),
+    ]);
+
+  const dogCards: DogCardDto[] = await measureBreedingRouteStage({
+    timer,
+    route,
+    operation: "owned_dto_mapping",
+    execution: "sequential",
+    action: async () =>
+      dogs.map((dog) => {
+        const ageHours = currentEpoch - dog.birthEpoch;
+        const lastLitterEpoch = dog.dammedLitters[0]?.bornEpoch ?? null;
+        const breedingEligibility = getIndividualBreedingEligibility({
+          currentEpoch,
+          birthEpoch: dog.birthEpoch,
+          lifecycleState: dog.lifecycleState,
+          sex: dog.sex,
+          activeBreedingAttemptStatus: dog.breedingAttemptsAsDam[0]?.status ?? null,
+          lastWhelpedEpoch: lastLitterEpoch,
+        });
+        const breedingEligibilityMessage = getBreedingEligibilityMessage(
+          breedingEligibility
+        );
+
+        return {
+          id: dog.id,
+          callName: dog.callName,
+          registeredName: dog.registeredName,
+          regNumber: dog.regNumber,
+          visibleTitlePrefix: dog.visibleTitlePrefix,
+          visibleTitleSuffix: dog.visibleTitleSuffix,
+          breedCode2: dog.breedCode2,
+          breedName: dog.breed.name,
+          breedGroupName: dog.breed.groupName,
+          sex: dog.sex,
+          birthEpoch: dog.birthEpoch,
+          ageHours,
+          lifecycleState: dog.lifecycleState,
+          ownerKennelName: dog.ownerKennel?.name ?? null,
+          isOwnedByCurrentKennel: true,
+          isListedForSale: dog.listings.some(
+            (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
+          ),
+          isListedAtStud: dog.listings.some(
+            (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
+          ),
+          isEligibleToBreed: breedingEligibility.isEligible,
+          inBreedingConflict:
+            breedingEligibility.activeBreedingAttemptStatus !== null ||
+            breedingEligibility.isInPostWhelpCooldown,
+          breedingEligibilityReasonCode: breedingEligibility.reasonCode,
+          breedingEligibilityMessage,
+          breedingEligibleAtEpoch: breedingEligibility.eligibleAtEpoch,
+          breedingRemainingHours: breedingEligibility.remainingHours,
+          breedingCooldownUntilEpoch: breedingEligibility.cooldownUntilEpoch,
+          studListingId: null,
+          studFeeAmount: null,
+          brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
+          requiresBrucellosisNegativeDam: false,
+          requiresDamHealthTestsCompleted: false,
+          requiresDamHealthAllGreen: false,
+          requiresDamHealthGreenOrYellow: false,
+          requiresDamChampionTitle: false,
+          coiPercent: dog.coiPercent,
+          lastLitterEpoch,
+          healthTests: dog.healthTests,
+          visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
+            storedTraits: dog,
+            phenotypeHealthTruths:
+              dogHealthConditionTruthsByDogId.get(dog.id) ??
+              dog.healthConditionTruths,
+            phenotypeHealthResults: dog.healthTests,
+          }),
+        };
+      }),
+    details: (rows) => ({
+      rowCount: rows.length,
+    }),
+  });
+
+  const publicStudCards: DogCardDto[] = await measureBreedingRouteStage({
+    timer,
+    route,
+    operation: "public_stud_dto_mapping",
+    execution: "sequential",
+    action: async () =>
+      publicStudListings.map((listing) => {
+        const dog = listing.dog;
+        const ageHours = currentEpoch - dog.birthEpoch;
+        const breedingEligibility = getIndividualBreedingEligibility({
+          currentEpoch,
+          birthEpoch: dog.birthEpoch,
+          lifecycleState: dog.lifecycleState,
+          sex: dog.sex,
+        });
+        const breedingEligibilityMessage = getBreedingEligibilityMessage(
+          breedingEligibility
+        );
+
+        return {
+          id: dog.id,
+          callName: dog.callName,
+          registeredName: dog.registeredName,
+          regNumber: dog.regNumber,
+          visibleTitlePrefix: dog.visibleTitlePrefix,
+          visibleTitleSuffix: dog.visibleTitleSuffix,
+          breedCode2: dog.breedCode2,
+          breedName: dog.breed.name,
+          breedGroupName: dog.breed.groupName,
+          sex: dog.sex,
+          birthEpoch: dog.birthEpoch,
+          ageHours,
+          lifecycleState: dog.lifecycleState,
+          ownerKennelName: dog.ownerKennel?.name ?? null,
+          isOwnedByCurrentKennel: false,
+          isListedForSale: false,
+          isListedAtStud: true,
+          isEligibleToBreed: breedingEligibility.isEligible,
+          inBreedingConflict: false,
+          breedingEligibilityReasonCode: breedingEligibility.reasonCode,
+          breedingEligibilityMessage,
+          breedingEligibleAtEpoch: breedingEligibility.eligibleAtEpoch,
+          breedingRemainingHours: breedingEligibility.remainingHours,
+          breedingCooldownUntilEpoch: breedingEligibility.cooldownUntilEpoch,
+          studListingId: listing.id,
+          studFeeAmount: listing.askingPrice,
+          brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
+          requiresBrucellosisNegativeDam:
+            listing.requiresBrucellosisNegativeDam,
+          requiresDamHealthTestsCompleted:
+            listing.requiresDamHealthTestsCompleted,
+          requiresDamHealthAllGreen: listing.requiresDamHealthAllGreen,
+          requiresDamHealthGreenOrYellow:
+            listing.requiresDamHealthGreenOrYellow,
+          requiresDamChampionTitle: listing.requiresDamChampionTitle,
+          coiPercent: dog.coiPercent,
+          lastLitterEpoch: null,
+          healthTests: dog.healthTests,
+          visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
+            storedTraits: dog,
+            phenotypeHealthTruths:
+              publicStudHealthConditionTruthsByDogId.get(dog.id) ??
+              dog.healthConditionTruths,
+            phenotypeHealthResults: dog.healthTests,
+          }),
+        };
+      }),
+    details: (rows) => ({
+      rowCount: rows.length,
+    }),
   });
   let initialNotice: PlannerNotice | null = null;
 
@@ -637,17 +917,66 @@ export default async function BreedingPlannerPage({
     }
   }
 
-  const pedigree = await db.dog.findMany({
-    select: {
-      id: true,
-      callName: true,
-      registeredName: true,
-      regNumber: true,
-      visibleTitlePrefix: true,
-      visibleTitleSuffix: true,
-      sireId: true,
-      damId: true,
-    },
+  const selectedAnchorCard =
+    (initialDogId
+      ? dogCards.find((dog) => dog.id === initialDogId) ?? null
+      : initialStudListingId
+        ? publicStudCards.find((dog) => dog.studListingId === initialStudListingId) ?? null
+        : null);
+  await measureBreedingRouteStage({
+    timer,
+    route,
+    operation: "selected_dog_eligibility",
+    execution: "sequential",
+    action: async () => selectedAnchorCard,
+    details: (dog) => ({
+      rowCount: dog ? 1 : 0,
+      eligible: dog?.isEligibleToBreed ?? null,
+      reasonCode: dog?.breedingEligibilityReasonCode ?? null,
+    }),
+  });
+
+  const pedigree = useOptimizedDirectRoute
+    ? await measureBreedingRouteStage({
+        timer,
+        route,
+        operation: "pedigree_query",
+        execution: "sequential",
+        action: async () => [],
+        details: () => ({
+          rowCount: 0,
+          skipped: true,
+        }),
+      })
+    : await measureBreedingRouteStage({
+        timer,
+        route,
+        operation: "pedigree_query",
+        execution: "sequential",
+        action: () =>
+          db.dog.findMany({
+            select: {
+              id: true,
+              callName: true,
+              registeredName: true,
+              regNumber: true,
+              visibleTitlePrefix: true,
+              visibleTitleSuffix: true,
+              sireId: true,
+              damId: true,
+            },
+          }),
+        details: (rows) => ({
+          rowCount: rows.length,
+        }),
+      });
+
+  timer.log({
+    experience,
+    directRouteOptimized: useOptimizedDirectRoute,
+    ownedDogRowCount: dogCards.length,
+    publicStudRowCount: publicStudCards.length,
+    pedigreeRowCount: pedigree.length,
   });
 
   return (

@@ -54,8 +54,13 @@ assertIncludes(
 
 assertIncludes(
   breedActionButtonSource,
-  "aria-disabled={!canBreed}",
+  "aria-disabled={!canBreed || isPending}",
   "ineligible Dog Page action stays operable without the native disabled attribute"
+);
+assertIncludes(
+  breedActionButtonSource,
+  "aria-busy={canBreed ? isPending : undefined}",
+  "eligible Dog Page action exposes immediate busy semantics while routing"
 );
 assert.equal(
   /\sdisabled=/.test(breedActionButtonSource),
@@ -71,6 +76,11 @@ assertIncludes(
   breedActionButtonSource,
   'router.push(breedHref)',
   "eligible Dog Page Breed action still navigates to the breeding planner"
+);
+assertIncludes(
+  breedActionButtonSource,
+  'Loading breeding options...',
+  "eligible Dog Page Breed action shows immediate loading feedback"
 );
 assertIncludes(
   breedActionButtonSource,
@@ -136,6 +146,46 @@ assertIncludes(
 );
 assertIncludes(
   plannerPageSource,
+  'experience === "breed-dog"',
+  "direct breeding route remains a distinct experience within the shared page"
+);
+assertIncludes(
+  plannerPageSource,
+  '? "/breed" : "/plan-a-litter"',
+  "direct breeding route emits route-specific timing instrumentation"
+);
+assertIncludes(
+  plannerPageSource,
+  'operation: "selected_dog_lookup"',
+  "direct breeding route times the selected dog lookup stage"
+);
+assertIncludes(
+  plannerPageSource,
+  '"owned_mate_query"',
+  "direct breeding route times the owned mate candidate query stage"
+);
+assertIncludes(
+  plannerPageSource,
+  'operation: "public_stud_listing_query"',
+  "direct breeding route times the public stud listing query stage"
+);
+assertIncludes(
+  plannerPageSource,
+  'operation: "pedigree_query"',
+  "direct breeding route times the pedigree stage"
+);
+assertIncludes(
+  plannerPageSource,
+  "directRouteOptimized",
+  "direct breeding route reports whether the optimized path ran"
+);
+assertIncludes(
+  plannerPageSource,
+  "selectedDogId: dog.id",
+  "direct breeding route keeps the originating owned dog id in the optimized path"
+);
+assertIncludes(
+  plannerPageSource,
   'message: `${formatDogDisplayName(requestedOwnedDog)} is not available to breed right now. ${requestedOwnedDog.breedingEligibilityMessage ?? ""}`.trim()',
   "breed page reuses the specific shared ineligible message"
 );
@@ -177,6 +227,16 @@ assertIncludes(
 );
 assertIncludes(
   plannerClientSource,
+  'const selectingDams = anchorDog.sex === "M";',
+  "male-owned direct breeding still routes into the compatible-dam flow"
+);
+assertIncludes(
+  plannerClientSource,
+  'Only dogs currently eligible for this breeding are shown.',
+  "direct breeding flow still shows only eligible mates"
+);
+assertIncludes(
+  plannerClientSource,
   'role={plannerNotice.tone === "error" ? "alert" : "status"}',
   "breed page notice uses accessible alert/status semantics"
 );
@@ -189,6 +249,20 @@ assertIncludes(
   plannerClientSource,
   "if (!response.ok || !data?.ok) {",
   "breeding planner handles validation failures without redirecting"
+);
+
+const breedLoadingSource = source("apps/web/app/breed/loading.tsx");
+assertIncludes(
+  breedLoadingSource,
+  'Loading breeding options...',
+  "direct breeding route exposes a route-level loading state"
+);
+
+const planALitterPageSource = source("apps/web/app/plan-a-litter/page.tsx");
+assertIncludes(
+  planALitterPageSource,
+  'experience="worksheet"',
+  "Plan A Litter remains on the separate worksheet experience"
 );
 
 console.log("Breeding action feedback checks passed.");
