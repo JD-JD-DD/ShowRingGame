@@ -19,6 +19,7 @@ const navItems = [
 ] as const;
 
 const accountItems = [
+  { label: "Settings", href: "/account" },
   { label: "Region", href: "/travel-map" },
   { label: "Prestige", href: "/kennel/prestige" },
   { label: "In Memoriam", href: "/memorium" },

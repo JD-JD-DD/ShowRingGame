@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
 import { getDistrictPanelStyle } from "@/lib/districtStyles";
@@ -50,10 +50,39 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
       slug: true,
       homeDistrict: true,
       publicSlogan: true,
+      renameHistory: {
+        orderBy: {
+          changedAt: "desc",
+        },
+        take: 1,
+        select: {
+          previousName: true,
+        },
+      },
     },
   });
 
   if (!kennel) {
+    const renamedKennel = await db.kennelRenameHistory.findFirst({
+      where: {
+        previousSlug: slug,
+      },
+      orderBy: {
+        changedAt: "desc",
+      },
+      select: {
+        kennel: {
+          select: {
+            slug: true,
+          },
+        },
+      },
+    });
+
+    if (renamedKennel) {
+      permanentRedirect(`/kennels/${renamedKennel.kennel.slug}`);
+    }
+
     notFound();
   }
 
@@ -156,6 +185,11 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
                 Public Kennel
               </p>
               <h1 className="mt-2 text-4xl font-semibold">{kennel.name}</h1>
+              {kennel.renameHistory[0]?.previousName ? (
+                <p className="mt-2 text-sm text-[var(--dog-copy)]">
+                  Previously known as: {kennel.renameHistory[0].previousName}
+                </p>
+              ) : null}
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--dog-copy)]">
                 {kennel.publicSlogan?.trim() ||
                   "Browse this kennel's active dogs, stud listings, and dogs for sale."}

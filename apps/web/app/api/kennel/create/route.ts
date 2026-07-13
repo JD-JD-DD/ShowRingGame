@@ -3,6 +3,10 @@ import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { createUserAccessAudit } from "@/lib/requestAudit";
 import { getSessionUserId } from "@/lib/session";
+import {
+  generateUniqueKennelSlug,
+  validateKennelName,
+} from "@/server/services/kennel.service";
 import { ensureStarterKennelRuns } from "@/server/services/kennelRun.service";
 
 type KennelCreateTx = {
@@ -13,15 +17,6 @@ type KennelCreateTx = {
 
 const STARTER_FUNDS = 25000;
 const DISTRICT_COUNT = 15;
-
-function makeSlug(input: string): string {
-  return input
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-}
 
 async function chooseHomeDistrict(): Promise<number> {
   const districtCounts = await db.kennel.groupBy({
@@ -85,37 +80,34 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const name = String(body.name ?? "").trim();
+    const name = String(body.name ?? "");
     const publicSlogan =
       typeof body.publicSlogan === "string" && body.publicSlogan.trim()
         ? body.publicSlogan.trim()
         : null;
 
-    if (!name) {
+    if (!String(body.name ?? "").trim()) {
       return NextResponse.json(
         { error: "Kennel name is required." },
         { status: 400 }
       );
     }
 
-    if (name.length > 45) {
+    const validation = validateKennelName(name);
+    if (!validation.ok) {
       return NextResponse.json(
-        { error: "Kennel name must be 45 characters or fewer." },
+        { error: validation.message, code: validation.code },
         { status: 400 }
       );
     }
 
-    const slugBase = makeSlug(name);
-
-    if (!slugBase) {
-      return NextResponse.json(
-        { error: "Kennel name must contain letters or numbers." },
-        { status: 400 }
-      );
-    }
-
-    const existingName = await db.kennel.findUnique({
-      where: { name },
+    const existingName = await db.kennel.findFirst({
+      where: {
+        name: {
+          equals: validation.name,
+          mode: "insensitive",
+        },
+      },
       select: { id: true },
     });
 
@@ -126,20 +118,9 @@ export async function POST(request: Request) {
       );
     }
 
-    let slug = slugBase;
-    let counter = 2;
-
-    while (true) {
-      const existingSlug = await db.kennel.findUnique({
-        where: { slug },
-        select: { id: true },
-      });
-
-      if (!existingSlug) break;
-
-      slug = `${slugBase}-${counter}`;
-      counter += 1;
-    }
+    const slug = await generateUniqueKennelSlug({
+      name: validation.name,
+    });
 
     const homeDistrict = await chooseHomeDistrict();
 
@@ -147,7 +128,7 @@ export async function POST(request: Request) {
       const createdKennel = await tx.kennel.create({
         data: {
           userId,
-          name,
+          name: validation.name,
           slug,
           homeDistrict,
           publicSlogan,

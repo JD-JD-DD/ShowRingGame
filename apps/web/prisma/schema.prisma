@@ -246,6 +246,11 @@ enum KennelModerationStatus {
   CLOSED
 }
 
+enum KennelRenameSource {
+  SELF_SERVICE
+  ADMIN
+}
+
 enum ModerationTargetType {
   USER
   KENNEL
@@ -371,9 +376,28 @@ model Kennel {
   emergencyCareEvents      DogEmergencyCareEvent[]
   serviceProfile           KennelServiceProfile?
   plannerTags              DogPlannerTag[]
+  renameHistory            KennelRenameHistory[]
 
   @@index([userId])
   @@index([homeDistrict])
+}
+
+model KennelRenameHistory {
+  id           String             @id @default(cuid())
+  kennelId     String
+  previousName String
+  previousSlug String
+  newName      String
+  newSlug      String
+  changedAt    DateTime           @default(now())
+  source       KennelRenameSource
+
+  kennel Kennel @relation(fields: [kennelId], references: [id], onDelete: Cascade)
+
+  @@index([kennelId, changedAt])
+  @@index([previousSlug])
+  @@index([newSlug])
+  @@index([source])
 }
 
 model Breed {
