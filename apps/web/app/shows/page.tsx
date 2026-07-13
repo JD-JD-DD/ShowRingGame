@@ -99,11 +99,11 @@ function entryActivityButtonTone(level: EntryActivityLevel): string {
     case "NONE":
       return "theme-secondary-button";
     case "LOW":
-      return "theme-show-entry-action";
+      return "border-[var(--dog-border)] bg-purple-500/15 text-[var(--dog-heading)] hover:bg-purple-500/25";
     case "MODERATE":
-      return "theme-show-entry-action";
+      return "border-purple-200/50 bg-purple-500/35 text-[var(--dog-heading)] hover:bg-purple-500/45";
     case "HEAVY":
-      return "theme-show-entry-action";
+      return "border-fuchsia-200/70 bg-purple-600 text-white shadow-[var(--dog-shadow)] hover:bg-purple-500";
   }
 }
 
@@ -697,7 +697,7 @@ export default async function ShowsPage({
                             {canEnterShow ? (
                               <Link
                                 href={`/shows/${cluster.id}${showDetailQuery}`}
-                                className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${entryActivityButtonTone(entryActivity.level)}`}
+                                className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition ${entryActivityButtonTone(entryActivity.level)}`}
                               >
                                 Enter
                               </Link>

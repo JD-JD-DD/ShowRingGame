@@ -237,7 +237,7 @@ export default async function ShowResultsIndexPage({
           {cluster.status === "OPEN" ? (
             <Link
               href={`/shows/${cluster.id}`}
-              className="theme-show-entry-action rounded-2xl px-5 py-3 text-sm font-semibold"
+              className="rounded-2xl bg-fuchsia-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-600"
             >
               Enter Show
             </Link>

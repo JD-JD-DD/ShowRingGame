@@ -532,29 +532,6 @@ html[data-theme="dark"] :is(.dog-accent-link, .theme-accent-link) {
   color: var(--status-info-text);
 }
 
-.theme-show-entry-action {
-  border: 1px solid var(--action-purple);
-  background: var(--action-purple);
-  color: var(--action-purple-text);
-  box-shadow: 0 8px 20px rgba(126, 34, 206, 0.2);
-  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease, opacity 160ms ease;
-}
-
-.theme-show-entry-action:hover {
-  border-color: var(--action-purple-hover);
-  background: var(--action-purple-hover);
-  transform: translateY(-1px);
-}
-
-.theme-show-entry-action:disabled,
-.theme-show-entry-action[aria-disabled="true"] {
-  border-color: var(--border-default);
-  background: var(--surface-muted);
-  color: var(--text-muted);
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
 .theme-floating-button {
   border: 1px solid var(--border-strong);
   background: color-mix(in srgb, var(--surface-raised) 88%, transparent);
