@@ -79,8 +79,11 @@ export default async function ShowDetailPage({
   params: Promise<{ showId: string }>;
   searchParams: Promise<{
     entryError?: string;
+    entryErrorCode?: string;
+    entryErrorDetails?: string;
     entryMessage?: string;
     dogIds?: string;
+    dogDaySelections?: string;
     breedCode2?: string;
     kennelRunId?: string;
     judged?: string;
@@ -91,8 +94,10 @@ export default async function ShowDetailPage({
   const { showId } = await params;
   const {
     entryError,
+    entryErrorCode,
     entryMessage,
     dogIds,
+    dogDaySelections,
     breedCode2,
     kennelRunId,
     judged,
@@ -107,6 +112,21 @@ export default async function ShowDetailPage({
           .filter(Boolean)
       : []
   );
+  const selectedDogDaySelections =
+    typeof dogDaySelections === "string" && dogDaySelections.trim()
+      ? dogDaySelections
+          .split(",")
+          .map((selection) => selection.trim())
+          .filter(Boolean)
+          .map((selection) => {
+            const [dogId, showDayId] = selection.split(":");
+            return {
+              dogId: dogId ?? "",
+              showDayId: showDayId ?? "",
+            };
+          })
+          .filter((selection) => selection.dogId && selection.showDayId)
+      : [];
   const selectedBreedCode =
     typeof breedCode2 === "string" && breedCode2.trim()
       ? breedCode2.trim().toUpperCase()
@@ -280,6 +300,14 @@ export default async function ShowDetailPage({
         {entryError ? (
           <div className="mt-5 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
             {entryError}
+            {entryErrorCode === "NO_ELIGIBLE_ENTRIES" ||
+            entryErrorCode === "ENTRY_CLOSED" ||
+            entryErrorCode === "INVALID_ENTRY_SCOPE" ? (
+              <div className="mt-2 text-red-50/90">
+                The planner has been refreshed to current server state so you can
+                review updated availability and retry.
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -495,11 +523,12 @@ export default async function ShowDetailPage({
                   travelCostAlreadyPlanned={Boolean(
                     weekendPlanStatus?.primaryClusterId
                   )}
-                  existingDogIdsByBreed={planner.existingDogIdsByBreed}
-                  initiallySelectedDogIds={[...selectedDogIds]}
-                  bulkEligibleSelections={planner.bulkEligibleSelections}
-                  bulkSkippedSelectionCount={planner.bulkSkippedSelectionCount}
-                />
+              existingDogIdsByBreed={planner.existingDogIdsByBreed}
+              initiallySelectedDogIds={[...selectedDogIds]}
+              initiallySelectedSelections={selectedDogDaySelections}
+              bulkEligibleSelections={planner.bulkEligibleSelections}
+              bulkSkippedSelectionCount={planner.bulkSkippedSelectionCount}
+            />
                 {selectedScope.type === "KENNEL_RUN" &&
                 planner.bulkEligibleSelections.length === 0 ? (
                   <div className="theme-card theme-copy mt-6 rounded-2xl p-4 text-sm">

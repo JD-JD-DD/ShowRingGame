@@ -61,6 +61,7 @@ type PlannerProps = {
   travelCostAlreadyPlanned: boolean;
   existingDogIdsByBreed: Record<string, string[]>;
   initiallySelectedDogIds: string[];
+  initiallySelectedSelections: Array<{ dogId: string; showDayId: string }>;
   bulkEligibleSelections: Array<{ dogId: string; showDayId: string }>;
   bulkSkippedSelectionCount: number;
 };
@@ -76,9 +77,29 @@ function selectionKey(dogId: string, showDayId: string): string {
 function getInitialSelection(args: {
   dogs: PlannerDog[];
   initiallySelectedDogIds: string[];
+  initiallySelectedSelections: Array<{ dogId: string; showDayId: string }>;
 }): Record<string, boolean> {
-  const selectedDogIds = new Set(args.initiallySelectedDogIds);
   const selected: Record<string, boolean> = {};
+
+  if (args.initiallySelectedSelections.length > 0) {
+    const eligibleSelectionKeys = new Set(
+      args.dogs.flatMap((dog) =>
+        dog.eligibleShowDayIds.map((showDayId) => selectionKey(dog.dogId, showDayId))
+      )
+    );
+
+    for (const selection of args.initiallySelectedSelections) {
+      const key = selectionKey(selection.dogId, selection.showDayId);
+
+      if (eligibleSelectionKeys.has(key)) {
+        selected[key] = true;
+      }
+    }
+
+    return selected;
+  }
+
+  const selectedDogIds = new Set(args.initiallySelectedDogIds);
 
   if (selectedDogIds.size === 0) {
     return selected;
@@ -109,11 +130,12 @@ export function ShowEntryPlanner({
   travelCostAlreadyPlanned,
   existingDogIdsByBreed,
   initiallySelectedDogIds,
+  initiallySelectedSelections,
   bulkEligibleSelections,
   bulkSkippedSelectionCount,
 }: PlannerProps) {
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
-    getInitialSelection({ dogs, initiallySelectedDogIds })
+    getInitialSelection({ dogs, initiallySelectedDogIds, initiallySelectedSelections })
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBulkConfirmation, setShowBulkConfirmation] = useState(false);

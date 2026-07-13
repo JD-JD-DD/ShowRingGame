@@ -131,10 +131,11 @@ function isUniqueShowEntryError(error: unknown): boolean {
   return typeof target === "string" && target.includes("showDayId");
 }
 
-function duplicateShowEntryError(): Error {
-  return new Error(
-    "One or more selected dogs are already entered for that show day."
-  );
+function duplicateShowEntryError(): ShowEntrySubmissionError {
+  return createShowEntrySubmissionError({
+    code: "ALREADY_ENTERED",
+    message: "One or more dogs are already entered in the selected show day.",
+  });
 }
 
 type ShowBlockForEntry = Prisma.ShowJudgingBlockGetPayload<
@@ -323,8 +324,53 @@ export type BulkShowEntryResultDto = {
   entriesCreated: number;
   dogsEntered: number;
   skippedSelections: number;
+  skippedSelectionReasons: Array<{
+    code: ShowEntryErrorCode;
+    count: number;
+    message: string;
+  }>;
   quote: BulkShowEntryQuoteDto;
 };
+
+export type ShowEntryErrorCode =
+  | "INSUFFICIENT_FUNDS"
+  | "NO_ELIGIBLE_ENTRIES"
+  | "DOG_EMERGENCY_CARE"
+  | "ENTRY_CLOSED"
+  | "ALREADY_ENTERED"
+  | "WEEKEND_CONFLICT"
+  | "INVALID_ENTRY_SCOPE"
+  | "DOG_NOT_OWNED";
+
+export type ShowEntryErrorDetails = {
+  currentBalance?: number;
+  totalRequired?: number;
+  shortfall?: number;
+  affectedDogNames?: string[];
+  requestedSelectionCount?: number;
+};
+
+export class ShowEntrySubmissionError extends Error {
+  code: ShowEntryErrorCode;
+  details?: ShowEntryErrorDetails;
+
+  constructor(args: {
+    code: ShowEntryErrorCode;
+    message: string;
+    details?: ShowEntryErrorDetails;
+  }) {
+    super(args.message);
+    this.name = "ShowEntrySubmissionError";
+    this.code = args.code;
+    this.details = args.details;
+  }
+}
+
+export function isShowEntrySubmissionError(
+  error: unknown
+): error is ShowEntrySubmissionError {
+  return error instanceof ShowEntrySubmissionError;
+}
 
 function getDogDisplayName(dog: ShowEntryDogIdentity): string {
   return formatDogDisplayName(dog);
@@ -334,6 +380,76 @@ function getPendingEmergencyShowEntryMessage(
   dog: ShowEntryDogIdentity
 ): string {
   return `${getDogDisplayName(dog)} has a pending emergency vet visit and cannot be entered until it is resolved.`;
+}
+
+function createShowEntrySubmissionError(args: {
+  code: ShowEntryErrorCode;
+  message: string;
+  details?: ShowEntryErrorDetails;
+}): ShowEntrySubmissionError {
+  return new ShowEntrySubmissionError(args);
+}
+
+function createDogEmergencyCareError(dogs: ShowEntryDogIdentity[]) {
+  const affectedDogNames = dogs.map((dog) => getDogDisplayName(dog));
+
+  if (affectedDogNames.length === 1) {
+    return createShowEntrySubmissionError({
+      code: "DOG_EMERGENCY_CARE",
+      message: `${affectedDogNames[0]} cannot be entered while emergency veterinary care is pending.`,
+      details: {
+        affectedDogNames,
+      },
+    });
+  }
+
+  return createShowEntrySubmissionError({
+    code: "DOG_EMERGENCY_CARE",
+    message:
+      "Several selected dogs cannot be entered while emergency veterinary care is pending.",
+    details: {
+      affectedDogNames,
+    },
+  });
+}
+
+function createInsufficientFundsError(args: {
+  currentBalance: number;
+  totalRequired: number;
+  shortfall: number;
+}) {
+  return createShowEntrySubmissionError({
+    code: "INSUFFICIENT_FUNDS",
+    message: `These entries cost $${args.totalRequired.toLocaleString("en-US")}, but your kennel has $${args.currentBalance.toLocaleString("en-US")}. Remove at least $${args.shortfall.toLocaleString("en-US")} in entries and try again.`,
+    details: {
+      currentBalance: args.currentBalance,
+      totalRequired: args.totalRequired,
+      shortfall: args.shortfall,
+    },
+  });
+}
+
+function getSkippedSelectionMessage(code: ShowEntryErrorCode): string {
+  switch (code) {
+    case "ALREADY_ENTERED":
+      return "already entered";
+    case "DOG_EMERGENCY_CARE":
+      return "emergency care pending";
+    case "ENTRY_CLOSED":
+      return "entry closed";
+    case "WEEKEND_CONFLICT":
+      return "weekend conflict";
+    case "INVALID_ENTRY_SCOPE":
+      return "scope changed";
+    case "DOG_NOT_OWNED":
+      return "ownership changed";
+    case "NO_ELIGIBLE_ENTRIES":
+      return "no longer eligible";
+    case "INSUFFICIENT_FUNDS":
+      return "insufficient funds";
+    default:
+      return "no longer eligible";
+  }
 }
 
 function getConditioningSnapshot(dog: DogForEntry): number {
@@ -1699,11 +1815,19 @@ export async function createShowEntriesForCluster(args: {
   const mode = args.mode ?? "SELECTED";
 
   if (scope.type === "BREED" && !scope.breedCode2) {
-    throw new Error("Choose a breed to enter.");
+    throw createShowEntrySubmissionError({
+      code: "INVALID_ENTRY_SCOPE",
+      message:
+        "The selected breed or kennel run is no longer available. Choose a new entry scope.",
+    });
   }
 
   if (scope.type === "KENNEL_RUN" && !scope.kennelRunId) {
-    throw new Error("Choose a kennel run to enter.");
+    throw createShowEntrySubmissionError({
+      code: "INVALID_ENTRY_SCOPE",
+      message:
+        "The selected breed or kennel run is no longer available. Choose a new entry scope.",
+    });
   }
 
   if (selections.length === 0) {
@@ -1731,11 +1855,7 @@ export async function createShowEntriesForCluster(args: {
   });
 
   if (mode === "SELECTED" && pendingEmergencyDogs.length > 0) {
-    throw new Error(
-      pendingEmergencyDogs
-        .map((dog) => getPendingEmergencyShowEntryMessage(dog))
-        .join(" ")
-    );
+    throw createDogEmergencyCareError(pendingEmergencyDogs);
   }
 
   return db.$transaction(async (tx) => {
@@ -1815,6 +1935,14 @@ export async function createShowEntriesForCluster(args: {
         breedCode2: scope.breedCode2,
         label: breed?.name ?? scope.breedCode2,
       };
+
+      if (!breed) {
+        throw createShowEntrySubmissionError({
+          code: "INVALID_ENTRY_SCOPE",
+          message:
+            "The selected breed or kennel run is no longer available. Choose a new entry scope.",
+        });
+      }
     } else {
       const run = await tx.kennelRun.findFirst({
         where: {
@@ -1828,9 +1956,11 @@ export async function createShowEntriesForCluster(args: {
       });
 
       if (!run) {
-        throw new Error(
-          "This kennel run is no longer available. Choose another run."
-        );
+        throw createShowEntrySubmissionError({
+          code: "INVALID_ENTRY_SCOPE",
+          message:
+            "The selected breed or kennel run is no longer available. Choose a new entry scope.",
+        });
       }
 
       resolvedScope = {
@@ -1893,9 +2023,11 @@ export async function createShowEntriesForCluster(args: {
       });
 
       if (weekendConflict) {
-        throw new Error(
-          `${weekendConflict.dog.regNumber} is already entered in ${weekendConflict.showDay.cluster.name} (${getShowDistrictRegionName(weekendConflict.showDay.cluster.district)}) this weekend.`
-        );
+        throw createShowEntrySubmissionError({
+          code: "WEEKEND_CONFLICT",
+          message:
+            "One or more dogs are already committed to another show during this weekend.",
+        });
       }
     }
 
@@ -1913,6 +2045,15 @@ export async function createShowEntriesForCluster(args: {
 
     const validSelections: BulkShowEntrySelection[] = [];
     let skippedSelections = 0;
+    const skippedSelectionReasonCounts = new Map<ShowEntryErrorCode, number>();
+
+    function skipSelection(code: ShowEntryErrorCode) {
+      skippedSelections += 1;
+      skippedSelectionReasonCounts.set(
+        code,
+        (skippedSelectionReasonCounts.get(code) ?? 0) + 1
+      );
+    }
 
     for (const selection of selections) {
       const dog = dogById.get(selection.dogId);
@@ -1923,7 +2064,10 @@ export async function createShowEntriesForCluster(args: {
       }
 
       if (dog.ownerKennelId !== kennelId) {
-        throw new Error(`You do not own ${dog.regNumber}.`);
+        throw createShowEntrySubmissionError({
+          code: "DOG_NOT_OWNED",
+          message: "One or more selected dogs are no longer owned by your kennel.",
+        });
       }
 
       if (
@@ -1931,78 +2075,108 @@ export async function createShowEntriesForCluster(args: {
         dog.kennelRunId !== resolvedScope.kennelRunId
       ) {
         if (mode === "ALL_ELIGIBLE") {
-          skippedSelections += 1;
+          skipSelection("INVALID_ENTRY_SCOPE");
           continue;
         }
 
-        throw new Error(
-          `${dog.regNumber} is no longer assigned to ${resolvedScope.label}.`
-        );
+        throw createShowEntrySubmissionError({
+          code: "INVALID_ENTRY_SCOPE",
+          message:
+            "One or more selected dogs are no longer assigned to this kennel run.",
+        });
       }
 
       if (mode === "ALL_ELIGIBLE" && weekendConflictDogIds.has(dog.id)) {
-        skippedSelections += 1;
+        skipSelection("WEEKEND_CONFLICT");
         continue;
       }
 
       if (existingEntryKeys.has(`${dog.id}:${showDay.id}`)) {
         if (mode === "ALL_ELIGIBLE") {
-          skippedSelections += 1;
+          skipSelection("ALREADY_ENTERED");
           continue;
         }
 
-        throw new Error(`${dog.regNumber} is already entered on day ${showDay.dayIndex}.`);
+        throw createShowEntrySubmissionError({
+          code: "ALREADY_ENTERED",
+          message: "One or more dogs are already entered in the selected show day.",
+        });
       }
 
       if (pendingEmergencyDogIds.has(dog.id)) {
         if (mode === "ALL_ELIGIBLE") {
-          skippedSelections += 1;
+          skipSelection("DOG_EMERGENCY_CARE");
           continue;
         }
 
-        throw new Error(getPendingEmergencyShowEntryMessage(dog));
+        throw createDogEmergencyCareError([dog]);
       }
 
+      const dayAvailability = getShowDayEntryAvailability({
+        cluster,
+        showDay,
+        currentEpoch,
+      });
+      const scopedBreedCode2 =
+        resolvedScope.type === "BREED"
+          ? resolvedScope.breedCode2
+          : dog.breedCode2;
       const reason = getShowDayEntryEligibilityReason({
         dog,
         cluster,
         showDay,
-        breedCode2:
-          resolvedScope.type === "BREED"
-            ? resolvedScope.breedCode2
-            : dog.breedCode2,
+        breedCode2: scopedBreedCode2,
         currentEpoch,
       });
 
       if (reason) {
+        const errorCode: ShowEntryErrorCode =
+          !dayAvailability.canEnter
+            ? "ENTRY_CLOSED"
+            : resolvedScope.type === "BREED" && dog.breedCode2 !== scopedBreedCode2
+              ? "INVALID_ENTRY_SCOPE"
+              : "NO_ELIGIBLE_ENTRIES";
+
         if (mode === "ALL_ELIGIBLE") {
-          skippedSelections += 1;
+          skipSelection(errorCode);
           continue;
         }
 
-        throw new Error(`${dog.regNumber}: ${reason}`);
+        if (errorCode === "ENTRY_CLOSED") {
+          throw createShowEntrySubmissionError({
+            code: "ENTRY_CLOSED",
+            message:
+              "Entries have closed for one or more selected show days. Refresh the planner to see the current entry status.",
+          });
+        }
+
+        if (errorCode === "INVALID_ENTRY_SCOPE") {
+          throw createShowEntrySubmissionError({
+            code: "INVALID_ENTRY_SCOPE",
+            message:
+              "The selected breed or kennel run is no longer available. Choose a new entry scope.",
+          });
+        }
+
+        throw createShowEntrySubmissionError({
+          code: "NO_ELIGIBLE_ENTRIES",
+          message:
+            "None of the selected entries are still eligible. Refresh the planner and review the disabled reasons.",
+        });
       }
 
       validSelections.push(selection);
     }
 
     if (validSelections.length === 0) {
-      return {
-        showId,
-        scope: resolvedScope,
-        entriesCreated: 0,
-        dogsEntered: 0,
-        skippedSelections,
-        quote: {
-          entryFees: 0,
-          travelCost: 0,
-          handlerFeeType: "RINGSIDE",
-          handlerDogs: 0,
-          handlerFee: 0,
-          totalCost: 0,
-          balanceAfter: kennel.balance,
+      throw createShowEntrySubmissionError({
+        code: "NO_ELIGIBLE_ENTRIES",
+        message:
+          "None of the selected entries are still eligible. Refresh the planner and review the disabled reasons.",
+        details: {
+          requestedSelectionCount: selections.length,
         },
-      };
+      });
     }
 
     const quote = buildBulkEntryQuote({
@@ -2029,7 +2203,11 @@ export async function createShowEntriesForCluster(args: {
     const shortfall = balanceAfter < 0 ? Math.abs(balanceAfter) : 0;
 
     if (shortfall > 0) {
-      throw new Error(`Insufficient funds for show entry. Shortfall: $${shortfall}.`);
+      throw createInsufficientFundsError({
+        currentBalance: kennel.balance,
+        totalRequired: quote.totalCost,
+        shortfall,
+      });
     }
 
     const existingDogIdsByBreed = buildExistingDogIdsByBreed(existingBreedDogEntries);
@@ -2173,6 +2351,13 @@ export async function createShowEntriesForCluster(args: {
       entriesCreated: validSelections.length,
       dogsEntered,
       skippedSelections,
+      skippedSelectionReasons: [...skippedSelectionReasonCounts.entries()].map(
+        ([code, count]) => ({
+          code,
+          count,
+          message: getSkippedSelectionMessage(code),
+        })
+      ),
       quote: {
         ...quote,
       },
