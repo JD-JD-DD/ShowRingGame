@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { LittersListClient } from "@/components/litters/LittersListClient";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -34,7 +35,14 @@ export default async function LittersPage() {
   }
 
   const currentEpoch = getCurrentEpoch();
-  const { litters, activeBreedings } = await listLittersForKennel({
+  const {
+    litters,
+    nextCursor,
+    hasMore,
+    totalCount,
+    totalPuppyCount,
+    activeBreedings,
+  } = await listLittersForKennel({
     kennelId: kennel.id,
     currentEpoch,
   });
@@ -75,15 +83,13 @@ export default async function LittersPage() {
             <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
               Total Litters
             </div>
-            <div className="mt-2 text-3xl font-semibold">{litters.length}</div>
+            <div className="mt-2 text-3xl font-semibold">{totalCount}</div>
           </div>
           <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
             <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
               Puppies Whelped
             </div>
-            <div className="mt-2 text-3xl font-semibold">
-              {litters.reduce((total, litter) => total + litter.pupCount, 0)}
-            </div>
+            <div className="mt-2 text-3xl font-semibold">{totalPuppyCount}</div>
           </div>
           <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-5">
             <div className="text-xs uppercase tracking-wide text-emerald-100">
@@ -159,83 +165,11 @@ export default async function LittersPage() {
             </span>
           </div>
 
-          {litters.length === 0 ? (
-            <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-8 text-center">
-              <h3 className="text-xl font-semibold">No litters yet</h3>
-              <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[var(--dog-copy)]">
-                Once a pregnant dam reaches her due date, the litter engine will
-                create puppies and they will appear here.
-              </p>
-              <Link
-                href="/kennel"
-                className="mt-5 inline-flex rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold transition hover:bg-emerald-500"
-              >
-                Visit My Kennel
-              </Link>
-            </div>
-          ) : (
-            <div className="grid gap-5">
-              {litters.map((litter) => (
-                <Link
-                  key={litter.litterId}
-                  href={`/litters/${litter.litterId}`}
-                  className="group rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)] transition hover:border-emerald-200/35 hover:bg-[var(--dog-card)]"
-                >
-                  <article className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">
-                          {litter.breedName} ({litter.breedCode2})
-                        </span>
-                        <span className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-xs text-[var(--dog-heading)]">
-                          Serial {litter.serial7}
-                        </span>
-                      </div>
-
-                      <h3 className="mt-4 text-2xl font-semibold text-white">
-                        {litter.dam.displayName} x {litter.sire.displayName}
-                      </h3>
-                      <p className="mt-2 text-sm text-[var(--dog-copy)]">
-                        Whelped {formatGameDays(litter.ageHours)} ago by{" "}
-                        {litter.bredByKennelName ?? "Unknown kennel"}
-                      </p>
-
-                      <div className="mt-4 flex flex-wrap gap-3 text-sm text-[var(--dog-copy)]">
-                        <span>Born: {litter.pupCount}</span>
-                        <span>Survived: {litter.survivedCount}</span>
-                        <span>{litter.maleCount} dogs</span>
-                        <span>{litter.femaleCount} bitches</span>
-                        {litter.neonatalLossCount > 0 ? (
-                          <span>
-                            Lost before placement: {litter.neonatalLossCount}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
-                      {litter.puppiesPreview.map((puppy) => (
-                        <div
-                          key={puppy.dogId}
-                          className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3"
-                        >
-                          <div className="text-xs text-[var(--dog-label)]">
-                            Puppy {puppy.litterOrder ?? "-"} {puppy.sex}
-                          </div>
-                          <div className="mt-1 truncate text-sm font-semibold text-white">
-                            {puppy.displayName}
-                          </div>
-                          <div className="mt-1 truncate text-xs text-[var(--dog-copy)]">
-                            {puppy.regNumber}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </article>
-                </Link>
-              ))}
-            </div>
-          )}
+          <LittersListClient
+            initialLitters={litters}
+            initialCursor={nextCursor}
+            initialHasMore={hasMore}
+          />
         </section>
       </div>
     </main>

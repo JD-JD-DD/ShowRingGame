@@ -13,6 +13,9 @@ import {
   type LitterListItemDto,
 } from "@/server/mappers/litter.mapper";
 
+const DEFAULT_LITTER_PAGE_SIZE = 10;
+const MAX_LITTER_PAGE_SIZE = 10;
+
 const litterListSelect = Prisma.validator<Prisma.LitterSelect>()({
   id: true,
   breedCode2: true,
@@ -151,6 +154,23 @@ type PuppyHealthConditionTruth = {
   environmentModifier: number;
 };
 
+export type LitterListCursor = {
+  bornEpoch: number;
+  createdAt: string;
+  litterId: string;
+};
+
+export type LitterListPageResult = {
+  litters: LitterListItemDto[];
+  nextCursor: LitterListCursor | null;
+  hasMore: boolean;
+};
+
+type LitterListSummaryResult = LitterListPageResult & {
+  totalCount: number;
+  totalPuppyCount: number;
+};
+
 function groupHealthConditionTruthsByDog(
   healthConditionTruths: PuppyHealthConditionTruth[]
 ) {
@@ -237,11 +257,151 @@ function visibleToKennelWhere(kennelId: string) {
   };
 }
 
+function clampLitterPageSize(limit?: number): number {
+  return Math.min(
+    Math.max(limit ?? DEFAULT_LITTER_PAGE_SIZE, 1),
+    MAX_LITTER_PAGE_SIZE
+  );
+}
+
+function buildLitterPageWhere(args: {
+  kennelId: string;
+  cursor?: LitterListCursor | null;
+}): Prisma.LitterWhereInput {
+  const { kennelId, cursor } = args;
+  const visibilityWhere = visibleToKennelWhere(kennelId);
+
+  if (!cursor) {
+    return visibilityWhere;
+  }
+
+  const cursorCreatedAt = new Date(cursor.createdAt);
+
+  return {
+    AND: [
+      visibilityWhere,
+      {
+        OR: [
+          {
+            bornEpoch: {
+              lt: cursor.bornEpoch,
+            },
+          },
+          {
+            bornEpoch: cursor.bornEpoch,
+            createdAt: {
+              lt: cursorCreatedAt,
+            },
+          },
+          {
+            bornEpoch: cursor.bornEpoch,
+            createdAt: cursorCreatedAt,
+            id: {
+              lt: cursor.litterId,
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function makeLitterCursor(litter: {
+  id: string;
+  bornEpoch: number;
+  createdAt: Date;
+}): LitterListCursor {
+  return {
+    bornEpoch: litter.bornEpoch,
+    createdAt: litter.createdAt.toISOString(),
+    litterId: litter.id,
+  };
+}
+
+async function loadLitterListPageForKennel(args: {
+  kennelId: string;
+  currentEpoch: number;
+  cursor?: LitterListCursor | null;
+  limit?: number;
+}): Promise<LitterListPageResult> {
+  const { kennelId, currentEpoch, cursor } = args;
+  const pageSize = clampLitterPageSize(args.limit);
+
+  const litters = await db.litter.findMany({
+    where: buildLitterPageWhere({ kennelId, cursor }),
+    orderBy: [
+      { bornEpoch: "desc" },
+      { createdAt: "desc" },
+      { id: "desc" },
+    ],
+    take: pageSize + 1,
+    select: litterListSelect,
+  });
+
+  const hasMore = litters.length > pageSize;
+  const pageLitters = hasMore ? litters.slice(0, pageSize) : litters;
+
+  return {
+    litters: pageLitters.map((litter) => mapLitterListItem(litter, currentEpoch)),
+    nextCursor:
+      hasMore && pageLitters.length > 0
+        ? makeLitterCursor(pageLitters[pageLitters.length - 1])
+        : null,
+    hasMore,
+  };
+}
+
+async function loadLitterListSummaryForKennel(args: {
+  kennelId: string;
+  currentEpoch: number;
+  cursor?: LitterListCursor | null;
+  limit?: number;
+}): Promise<LitterListSummaryResult> {
+  const { kennelId, currentEpoch, cursor, limit } = args;
+
+  const [page, totals] = await Promise.all([
+    loadLitterListPageForKennel({
+      kennelId,
+      currentEpoch,
+      cursor,
+      limit,
+    }),
+    db.litter.aggregate({
+      where: visibleToKennelWhere(kennelId),
+      _count: {
+        _all: true,
+      },
+      _sum: {
+        pupCount: true,
+      },
+    }),
+  ]);
+
+  return {
+    ...page,
+    totalCount: totals._count._all,
+    totalPuppyCount: totals._sum.pupCount ?? 0,
+  };
+}
+
+export async function listLitterPageForKennel(args: {
+  kennelId: string;
+  currentEpoch: number;
+  cursor?: LitterListCursor | null;
+  limit?: number;
+}): Promise<LitterListPageResult> {
+  return loadLitterListPageForKennel(args);
+}
+
 export async function listLittersForKennel(args: {
   kennelId: string;
   currentEpoch: number;
 }): Promise<{
   litters: LitterListItemDto[];
+  nextCursor: LitterListCursor | null;
+  hasMore: boolean;
+  totalCount: number;
+  totalPuppyCount: number;
   activeBreedings: Awaited<
     ReturnType<typeof listBreedingsForKennelAfterProgressResolved>
   >;
@@ -250,17 +410,17 @@ export async function listLittersForKennel(args: {
 
   await resolveBreedingProgressForKennel({ kennelId, currentEpoch });
 
-  const [litters, activeBreedings] = await Promise.all([
-    db.litter.findMany({
-      where: visibleToKennelWhere(kennelId),
-      orderBy: [{ bornEpoch: "desc" }, { createdAt: "desc" }],
-      select: litterListSelect,
+  const [litterSummary, activeBreedings] = await Promise.all([
+    loadLitterListSummaryForKennel({
+      kennelId,
+      currentEpoch,
+      limit: DEFAULT_LITTER_PAGE_SIZE,
     }),
     listBreedingsForKennelAfterProgressResolved({ kennelId, currentEpoch }),
   ]);
 
   return {
-    litters: litters.map((litter) => mapLitterListItem(litter, currentEpoch)),
+    ...litterSummary,
     activeBreedings,
   };
 }
