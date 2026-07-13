@@ -16,6 +16,7 @@ import { getShowDistrictRegionName } from "@showring/rules";
 import {
   getShowEntryPlanner,
   getShowWeekendEntryPlanStatus,
+  listExistingEntriesByShowDay,
   listShowEntryBreedOptions,
   listShowEntryKennelRunOptions,
 } from "@/server/services/showEntry.service";
@@ -70,6 +71,10 @@ function statusTone(status: string): string {
     default:
       return "theme-neutral-badge";
   }
+}
+
+function formatDogCount(count: number): string {
+  return `${count} dog${count === 1 ? "" : "s"}`;
 }
 
 export default async function ShowDetailPage({
@@ -198,6 +203,15 @@ export default async function ShowDetailPage({
         kennelId: kennel.id,
       })
     : null;
+  const existingEntriesByShowDay = kennel
+    ? await listExistingEntriesByShowDay({
+        kennelId: kennel.id,
+        clusterId: cluster.id,
+      })
+    : [];
+  const existingEntriesSummaryByShowDayId = new Map(
+    existingEntriesByShowDay.map((summary) => [summary.showDayId, summary])
+  );
   const stewardingCommitment = kennel
     ? await getClubStewardingCommitmentForShow({
         kennelId: kennel.id,
@@ -395,7 +409,7 @@ export default async function ShowDetailPage({
       </section>
 
       <section className="theme-panel rounded-[28px] p-6">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 xl:grid-cols-2">
           {cluster.showDays.map((day) => {
             const dayDisplayStatus = getShowDayDisplayStatus({
               cluster,
@@ -408,43 +422,89 @@ export default async function ShowDetailPage({
                 day.status === "RESULTS_PUBLISHED" ||
                 day._count.showResults > 0,
             });
+            const existingEntrySummary =
+              existingEntriesSummaryByShowDayId.get(day.id) ?? null;
+            const visibleBreeds = existingEntrySummary?.breeds.slice(0, 4) ?? [];
+            const hiddenBreedCount = Math.max(
+              0,
+              (existingEntrySummary?.breeds.length ?? 0) - visibleBreeds.length
+            );
 
             return (
               <div
                 key={day.id}
-                className="theme-card rounded-2xl p-4"
+                className="grid gap-4 md:grid-cols-2"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="theme-heading text-sm font-semibold">
-                    Day {day.dayIndex}
+                <div className="theme-card rounded-2xl p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="theme-heading text-sm font-semibold">
+                      Day {day.dayIndex}
+                    </div>
+                    <div
+                      className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone(dayDisplayStatus)}`}
+                    >
+                      {dayDisplayStatus}
+                    </div>
                   </div>
-                  <div
-                    className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusTone(dayDisplayStatus)}`}
-                  >
-                    {dayDisplayStatus}
+                  <div className="theme-copy mt-3 text-sm">
+                    {formatShowCalendarLabel(day.scheduledEpoch)}
                   </div>
-                </div>
-                <div className="theme-copy mt-3 text-sm">
-                  {formatShowCalendarLabel(day.scheduledEpoch)}
-                </div>
-                <div className="theme-copy mt-1 text-sm opacity-75">
-                  {formatShowDateTime(day.scheduledEpoch)}
-                </div>
-                <div className="theme-copy mt-2 text-sm">
-                  Judge:{" "}
-                  <Link
-                    href={`/judges/${day.judge.judgeCode}`}
-                    className="theme-heading font-semibold underline-offset-4 hover:underline"
-                  >
-                    {day.judge.name}
-                  </Link>
-                </div>
-                {dayDisplayStatus === "JUDGING" ||
-                dayDisplayStatus === "JUDGED" ? (
-                  <div className="theme-copy mt-2 text-xs opacity-70">
-                    {day._count.showEntries} entered
+                  <div className="theme-copy mt-1 text-sm opacity-75">
+                    {formatShowDateTime(day.scheduledEpoch)}
                   </div>
-                ) : null}
+                  <div className="theme-copy mt-2 text-sm">
+                    Judge:{" "}
+                    <Link
+                      href={`/judges/${day.judge.judgeCode}`}
+                      className="theme-heading font-semibold underline-offset-4 hover:underline"
+                    >
+                      {day.judge.name}
+                    </Link>
+                  </div>
+                  {dayDisplayStatus === "JUDGING" ||
+                  dayDisplayStatus === "JUDGED" ? (
+                    <div className="theme-copy mt-2 text-xs opacity-70">
+                      {day._count.showEntries} entered
+                    </div>
+                  ) : null}
+                </div>
+                <div className="theme-card rounded-2xl px-4 py-3">
+                  <h2 className="theme-heading text-sm font-semibold">
+                    Your Day {day.dayIndex} Entries
+                  </h2>
+                  <div className="theme-copy mt-2 text-sm font-semibold">
+                    {formatDogCount(existingEntrySummary?.totalDogs ?? 0)}
+                  </div>
+                  {existingEntrySummary && existingEntrySummary.breeds.length > 0 ? (
+                    <div className="theme-copy mt-3 space-y-1 text-sm">
+                      {visibleBreeds.map((breed) => (
+                        <div key={breed.breedCode2}>
+                          {breed.breedName} ({breed.dogCount})
+                        </div>
+                      ))}
+                      {hiddenBreedCount > 0 ? (
+                        <details className="group">
+                          <summary className="cursor-pointer list-none rounded-md text-sm font-medium text-slate-100 underline-offset-4 transition hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300">
+                            + {hiddenBreedCount} more breeds
+                          </summary>
+                          <div className="mt-2 space-y-1">
+                            {existingEntrySummary.breeds
+                              .slice(4)
+                              .map((breed) => (
+                                <div key={breed.breedCode2}>
+                                  {breed.breedName} ({breed.dogCount})
+                                </div>
+                              ))}
+                          </div>
+                        </details>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="theme-copy mt-3 text-sm">
+                      No dogs entered yet.
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}

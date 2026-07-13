@@ -296,6 +296,19 @@ export type ShowEntryPlannerDto = {
   bulkSkippedSelectionCount: number;
 };
 
+export type ExistingEntriesByShowDayBreedDto = {
+  breedCode2: string;
+  breedName: string;
+  dogCount: number;
+};
+
+export type ExistingEntriesByShowDayDto = {
+  showDayId: string;
+  dayIndex: number;
+  totalDogs: number;
+  breeds: ExistingEntriesByShowDayBreedDto[];
+};
+
 export type ShowWeekendEntryPlanStatusDto = {
   weekendKey: string;
   primaryClusterId: string | null;
@@ -1461,6 +1474,81 @@ export async function listShowEntryKennelRunOptions(args: {
   await resolveDogDeaths({ kennelId, currentEpoch });
 
   return listKennelRuns({ kennelId });
+}
+
+export async function listExistingEntriesByShowDay(args: {
+  kennelId: string;
+  clusterId: string;
+}): Promise<ExistingEntriesByShowDayDto[]> {
+  const entries = await db.showEntry.findMany({
+    where: {
+      kennelId: args.kennelId,
+      entryStatus: "ENTERED",
+      showDay: {
+        clusterId: args.clusterId,
+      },
+    },
+    select: {
+      dogId: true,
+      showDayId: true,
+      breedCode2: true,
+      showDay: {
+        select: {
+          dayIndex: true,
+        },
+      },
+      breed: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  const summaryByShowDay = new Map<
+    string,
+    {
+      showDayId: string;
+      dayIndex: number;
+      totalDogs: number;
+      breedsByCode: Map<string, ExistingEntriesByShowDayBreedDto>;
+    }
+  >();
+
+  for (const entry of entries) {
+    const summary =
+      summaryByShowDay.get(entry.showDayId) ??
+      {
+        showDayId: entry.showDayId,
+        dayIndex: entry.showDay.dayIndex,
+        totalDogs: 0,
+        breedsByCode: new Map<string, ExistingEntriesByShowDayBreedDto>(),
+      };
+
+    summary.totalDogs += 1;
+
+    const breedSummary =
+      summary.breedsByCode.get(entry.breedCode2) ?? {
+        breedCode2: entry.breedCode2,
+        breedName: entry.breed.name,
+        dogCount: 0,
+      };
+
+    breedSummary.dogCount += 1;
+    summary.breedsByCode.set(entry.breedCode2, breedSummary);
+    summaryByShowDay.set(entry.showDayId, summary);
+  }
+
+  return [...summaryByShowDay.values()]
+    .map((summary) => ({
+      showDayId: summary.showDayId,
+      dayIndex: summary.dayIndex,
+      totalDogs: summary.totalDogs,
+      breeds: [...summary.breedsByCode.values()].sort((a, b) =>
+        a.breedName.localeCompare(b.breedName)
+      ),
+    }))
+    .sort((a, b) => a.dayIndex - b.dayIndex);
 }
 
 export async function getShowEntryPlanner(args: {
