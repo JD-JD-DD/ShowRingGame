@@ -12,14 +12,17 @@ type ParentDogInput = {
   sex: "M" | "F";
 };
 
-type PuppyDogInput = ParentDogInput & {
+type LitterListPuppyPreviewInput = ParentDogInput & {
+  visibilityState: string;
+  litterOrder: number | null;
+};
+
+type PuppyDogInput = LitterListPuppyPreviewInput & {
   birthEpoch: number;
   deathEpoch: number | null;
   lifecycleState: string;
-  visibilityState: string;
   isPlayerVisible: boolean;
   marketState: string;
-  litterOrder: number | null;
   traitHead: number;
   traitForequarters: number;
   traitHindquarters: number;
@@ -41,7 +44,25 @@ type PuppyDogInput = ParentDogInput & {
   }>;
 };
 
-type LitterInput = {
+type LitterListInput = {
+  id: string;
+  breedCode2: string;
+  serial7: string;
+  bornEpoch: number;
+  pupCount: number;
+  createdAt: Date;
+  breed: {
+    name: string;
+  };
+  sire: ParentDogInput;
+  dam: ParentDogInput;
+  bredByKennel: {
+    name: string;
+  } | null;
+  puppies: LitterListPuppyPreviewInput[];
+};
+
+type LitterDetailInput = {
   id: string;
   breedCode2: string;
   serial7: string;
@@ -77,6 +98,10 @@ export type LitterParentDto = {
   sex: "M" | "F";
 };
 
+export type LitterPuppyPreviewDto = LitterParentDto & {
+  litterOrder: number | null;
+};
+
 export type LitterPuppyDto = LitterParentDto & {
   ageHours: number;
   deathEpoch: number | null;
@@ -105,7 +130,7 @@ export type LitterListItemDto = {
   bredByKennelName: string | null;
   sire: LitterParentDto;
   dam: LitterParentDto;
-  puppiesPreview: LitterPuppyDto[];
+  puppiesPreview: LitterPuppyPreviewDto[];
 };
 
 export type LitterDetailDto = LitterListItemDto & {
@@ -156,13 +181,21 @@ function mapPuppy(dog: PuppyDogInput, currentEpoch: number): LitterPuppyDto {
   };
 }
 
+function mapPuppyPreview(dog: LitterListPuppyPreviewInput): LitterPuppyPreviewDto {
+  return {
+    ...mapParent(dog),
+    litterOrder: dog.litterOrder,
+  };
+}
+
 export function mapLitterListItem(
-  litter: LitterInput,
+  litter: LitterListInput,
   currentEpoch: number
 ): LitterListItemDto {
-  const puppies = litter.puppies.map((puppy) => mapPuppy(puppy, currentEpoch));
-  const visiblePuppies = puppies.filter((puppy) => !puppy.isNeonatalLoss);
-  const neonatalLossCount = puppies.length - visiblePuppies.length;
+  const visiblePuppies = litter.puppies.filter(
+    (puppy) => puppy.visibilityState !== "HIDDEN_NEONATAL_LOSS"
+  );
+  const neonatalLossCount = litter.puppies.length - visiblePuppies.length;
 
   return {
     litterId: litter.id,
@@ -174,18 +207,18 @@ export function mapLitterListItem(
     pupCount: litter.pupCount,
     survivedCount: visiblePuppies.length,
     neonatalLossCount,
-    maleCount: puppies.filter((puppy) => puppy.sex === "M").length,
-    femaleCount: puppies.filter((puppy) => puppy.sex === "F").length,
+    maleCount: litter.puppies.filter((puppy) => puppy.sex === "M").length,
+    femaleCount: litter.puppies.filter((puppy) => puppy.sex === "F").length,
     createdAt: litter.createdAt.toISOString(),
     bredByKennelName: litter.bredByKennel?.name ?? null,
     sire: mapParent(litter.sire),
     dam: mapParent(litter.dam),
-    puppiesPreview: visiblePuppies.slice(0, 4),
+    puppiesPreview: visiblePuppies.slice(0, 4).map(mapPuppyPreview),
   };
 }
 
 export function mapLitterDetail(
-  litter: LitterInput,
+  litter: LitterDetailInput,
   currentEpoch: number
 ): LitterDetailDto {
   const listItem = mapLitterListItem(litter, currentEpoch);

@@ -4,6 +4,7 @@ import {
   listBreedingsForKennelAfterProgressResolved,
   resolveBreedingProgressForKennel,
 } from "@/server/services/breeding.service";
+import { DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES } from "@/server/services/dogVisibleCategories.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   mapLitterDetail,
@@ -11,9 +12,8 @@ import {
   type LitterDetailDto,
   type LitterListItemDto,
 } from "@/server/mappers/litter.mapper";
-import { DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES } from "@/server/services/dogVisibleCategories.service";
 
-const litterSelect = Prisma.validator<Prisma.LitterSelect>()({
+const litterListSelect = Prisma.validator<Prisma.LitterSelect>()({
   id: true,
   breedCode2: true,
   serial7: true,
@@ -47,6 +47,29 @@ const litterSelect = Prisma.validator<Prisma.LitterSelect>()({
       sex: true,
     },
   },
+  bredByKennel: {
+    select: {
+      name: true,
+    },
+  },
+  puppies: {
+    orderBy: [{ litterOrder: "asc" }, { regNumber: "asc" }],
+    select: {
+      id: true,
+      callName: true,
+      registeredName: true,
+      regNumber: true,
+      visibleTitlePrefix: true,
+      visibleTitleSuffix: true,
+      sex: true,
+      visibilityState: true,
+      litterOrder: true,
+    },
+  },
+});
+
+const litterDetailSelect = Prisma.validator<Prisma.LitterSelect>()({
+  ...litterListSelect,
   bredByKennel: {
     select: {
       id: true,
@@ -118,7 +141,9 @@ const litterSelect = Prisma.validator<Prisma.LitterSelect>()({
   },
 });
 
-type LitterForMapping = Prisma.LitterGetPayload<{ select: typeof litterSelect }>;
+type LitterDetailForMapping = Prisma.LitterGetPayload<{
+  select: typeof litterDetailSelect;
+}>;
 type PuppyHealthConditionTruth = {
   dogId: string;
   conditionCode: string;
@@ -151,9 +176,9 @@ function groupHealthConditionTruthsByDog(
   return truthsByDogId;
 }
 
-async function withFreshPuppyHealthConditionTruths<T extends LitterForMapping>(
-  litters: T[]
-): Promise<T[]> {
+async function withFreshPuppyHealthConditionTruths(
+  litters: LitterDetailForMapping[]
+): Promise<LitterDetailForMapping[]> {
   const dogIds = [
     ...new Set(litters.flatMap((litter) => litter.puppies.map((puppy) => puppy.id))),
   ];
@@ -229,18 +254,13 @@ export async function listLittersForKennel(args: {
     db.litter.findMany({
       where: visibleToKennelWhere(kennelId),
       orderBy: [{ bornEpoch: "desc" }, { createdAt: "desc" }],
-      select: litterSelect,
+      select: litterListSelect,
     }),
     listBreedingsForKennelAfterProgressResolved({ kennelId, currentEpoch }),
   ]);
 
-  const littersWithFreshHealthTruths =
-    await withFreshPuppyHealthConditionTruths(litters);
-
   return {
-    litters: littersWithFreshHealthTruths.map((litter) =>
-      mapLitterListItem(litter, currentEpoch)
-    ),
+    litters: litters.map((litter) => mapLitterListItem(litter, currentEpoch)),
     activeBreedings,
   };
 }
@@ -259,7 +279,7 @@ export async function getLitterForKennel(args: {
       id: litterId,
       ...visibleToKennelWhere(kennelId),
     },
-    select: litterSelect,
+    select: litterDetailSelect,
   });
 
   if (!litter) {
