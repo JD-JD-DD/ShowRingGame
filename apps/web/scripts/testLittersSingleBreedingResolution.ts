@@ -18,11 +18,35 @@ function assertExcludes(haystack: string, needle: string, label: string): void {
 
 const litterService = source("apps/web/server/services/litter.service.ts");
 const breedingService = source("apps/web/server/services/breeding.service.ts");
+const litterListSection = litterService.slice(
+  litterService.indexOf("export async function listLittersForKennel"),
+  litterService.indexOf("export async function getLitterForKennel")
+);
 
 assertIncludes(
   breedingService,
   "export async function listBreedingsForKennelAfterProgressResolved(",
   "breeding service exposes a narrow post-resolution breeding summary helper"
+);
+assertIncludes(
+  breedingService,
+  "export async function resolveDueBreedingProgressForKennel(",
+  "breeding service exposes the narrow due-breeding-only resolver"
+);
+assertIncludes(
+  breedingService,
+  "return resolveDueBreedingProgress({",
+  "the narrow due-breeding resolver reuses the shared due-progress implementation"
+);
+assertIncludes(
+  breedingService,
+  "const pregnancyOutcome = await resolvePregnancyCheckAttempt({",
+  "shared due-breeding progress still performs pregnancy checks"
+);
+assertIncludes(
+  breedingService,
+  "const whelpOutcome = await resolveWhelpingAttempt({",
+  "shared due-breeding progress still performs due whelping resolution"
 );
 assertIncludes(
   breedingService,
@@ -36,17 +60,27 @@ assertIncludes(
 );
 
 assertIncludes(
-  litterService,
-  "await resolveBreedingProgressForKennel({ kennelId, currentEpoch });",
-  "litter list performs one canonical breeding-progress resolution before loading page data"
+  litterListSection,
+  "await resolveDueBreedingProgressForKennel({ kennelId, currentEpoch });",
+  "litter list resolves due breeding progress before loading page data"
 );
 assertIncludes(
-  litterService,
+  litterListSection,
   "listBreedingsForKennelAfterProgressResolved({ kennelId, currentEpoch })",
   "litter list uses the narrow post-resolution breeding summary helper"
 );
 assertExcludes(
-  litterService,
+  litterListSection,
+  "await resolveBreedingProgressForKennel({ kennelId, currentEpoch });",
+  "litter list no longer runs the broad breeding resolver that includes dog-death maintenance"
+);
+assertExcludes(
+  litterListSection,
+  "resolveDogDeaths({ kennelId, currentEpoch })",
+  "litter list does not invoke kennel-wide dog-death resolution on the initial list path"
+);
+assertExcludes(
+  litterListSection,
   "listBreedingsForKennel({ kennelId, currentEpoch })",
   "litter list no longer calls the default breeding summary path that re-resolves progress"
 );

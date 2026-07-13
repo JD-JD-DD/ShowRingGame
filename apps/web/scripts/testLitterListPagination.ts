@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { PrismaClient } from "@prisma/client";
 
-import { resolveBreedingProgressForKennel } from "../server/services/breeding.service";
+import { resolveDueBreedingProgressForKennel } from "../server/services/breeding.service";
 import {
   listLitterPageForKennel,
   listLittersForKennel,
@@ -74,7 +74,7 @@ async function findKennelWithMultiplePages(): Promise<string> {
 async function main() {
   const kennelId = await findKennelWithMultiplePages();
 
-  await resolveBreedingProgressForKennel({
+  await resolveDueBreedingProgressForKennel({
     kennelId,
     currentEpoch,
   });
@@ -199,6 +199,14 @@ async function main() {
     join(root, "apps/web/components/litters/LittersListClient.tsx"),
     "utf8"
   );
+  const litterServiceSource = readFileSync(
+    join(root, "apps/web/server/services/litter.service.ts"),
+    "utf8"
+  );
+  const litterListSection = litterServiceSource.slice(
+    litterServiceSource.indexOf("export async function listLittersForKennel"),
+    litterServiceSource.indexOf("export async function getLitterForKennel")
+  );
   assert.ok(
     clientSource.includes('{hasMore ? ('),
     "load-more button should only render when more litters remain"
@@ -206,6 +214,23 @@ async function main() {
   assert.ok(
     clientSource.includes("See More Litters"),
     'load-more button should use the complete "See More Litters" label'
+  );
+  assert.ok(
+    litterListSection.includes(
+      "await resolveDueBreedingProgressForKennel({ kennelId, currentEpoch });"
+    ),
+    "initial litter page should resolve due breeding progress before loading the first page"
+  );
+  assert.equal(
+    litterListSection.includes(
+      "await resolveBreedingProgressForKennel({ kennelId, currentEpoch });"
+    ),
+    false,
+    "initial litter page should not use the broad breeding resolver that includes dog-death maintenance"
+  );
+  assert.ok(
+    litterServiceSource.includes("return loadLitterListPageForKennel(args);"),
+    "subsequent paginated litter page loads should remain read-only"
   );
 
   console.log("Litter list pagination checks passed.");

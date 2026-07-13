@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import {
   listBreedingsForKennelAfterProgressResolved,
   resolveBreedingProgressForKennel,
+  resolveDueBreedingProgressForKennel,
 } from "@/server/services/breeding.service";
 import { DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES } from "@/server/services/dogVisibleCategories.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
@@ -408,7 +409,7 @@ export async function listLittersForKennel(args: {
 }> {
   const { kennelId, currentEpoch } = args;
 
-  await resolveBreedingProgressForKennel({ kennelId, currentEpoch });
+  await resolveDueBreedingProgressForKennel({ kennelId, currentEpoch });
 
   const [litterSummary, activeBreedings] = await Promise.all([
     loadLitterListSummaryForKennel({
