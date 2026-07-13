@@ -42,7 +42,7 @@ export default function ThemeToggle() {
       aria-label={`Switch to ${nextTheme} mode`}
       title={`Switch to ${nextTheme} mode`}
     >
-      <span aria-hidden="true">{theme === "light" ? "☾" : "☀"}</span>
+      <span aria-hidden="true">{theme === "light" ? "Moon" : "Sun"}</span>
       <span>{theme === "light" ? "Dark" : "Light"}</span>
     </button>
   );

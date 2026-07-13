@@ -1,49 +1,97 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fbf9ff;
-  --foreground: #24152e;
+  --page-bg: #f7f5f8;
+  --surface: #ffffff;
+  --surface-muted: #f2eef5;
+  --surface-raised: #ffffff;
 
-  --panel: rgba(255, 255, 255, 0.88);
-  --panel-strong: rgba(250, 245, 255, 0.96);
-  --border: rgba(109, 40, 160, 0.2);
+  --text-primary: #24152e;
+  --text-secondary: #62556a;
+  --text-muted: #776c7e;
+
+  --border-default: #d8d0dd;
+  --border-strong: #b9adbf;
+
+  --action-primary: #6d3a78;
+  --action-primary-hover: #572d61;
+  --accent-soft: #e9dff0;
+
+  --status-success-bg: #e2f2ec;
+  --status-success-text: #275c4e;
+  --status-warning-bg: #fff0d8;
+  --status-warning-text: #704a16;
+  --status-danger-bg: #fce8e8;
+  --status-danger-text: #842d32;
+  --status-info-bg: #e6f1fb;
+  --status-info-text: #24527c;
+
+  --focus-ring: #7c4a87;
+  --shadow-soft: 0 18px 48px rgba(67, 24, 92, 0.1);
+  --shadow-raised: 0 20px 55px rgba(67, 24, 92, 0.11);
 
   --purple-main: #7c3aed;
   --purple-bright: #a855f7;
   --purple-soft: #d8b4fe;
 
   --gold-soft: #f4d58d;
-  --text-soft: #5f4b6b;
-  --text-muted: #766581;
-  --dog-panel: rgba(255, 255, 255, 0.9);
-  --dog-card: rgba(246, 240, 252, 0.82);
-  --dog-control: rgba(255, 255, 255, 0.96);
-  --dog-border: rgba(109, 40, 160, 0.18);
-  --dog-border-strong: rgba(109, 40, 160, 0.32);
-  --dog-heading: #2d1839;
-  --dog-copy: #624e6e;
-  --dog-label: #6b287f;
-  --dog-shadow: 0 20px 55px rgba(67, 24, 92, 0.11);
+  --background: var(--page-bg);
+  --foreground: var(--text-primary);
+  --panel: color-mix(in srgb, var(--surface) 90%, transparent);
+  --panel-strong: color-mix(in srgb, var(--surface-raised) 96%, var(--accent-soft) 4%);
+  --border: color-mix(in srgb, var(--border-default) 88%, transparent);
+  --text-soft: var(--text-secondary);
+  --dog-panel: color-mix(in srgb, var(--surface) 94%, transparent);
+  --dog-card: color-mix(in srgb, var(--surface-muted) 78%, var(--surface) 22%);
+  --dog-control: color-mix(in srgb, var(--surface-raised) 96%, var(--surface-muted) 4%);
+  --dog-border: var(--border-default);
+  --dog-border-strong: var(--border-strong);
+  --dog-heading: var(--text-primary);
+  --dog-copy: var(--text-secondary);
+  --dog-label: color-mix(in srgb, var(--action-primary) 82%, var(--text-secondary));
+  --dog-shadow: var(--shadow-raised);
   color-scheme: light;
 }
 
 html[data-theme="dark"] {
-  --background: #120818;
-  --foreground: #f5efff;
+  --page-bg: #120818;
+  --surface: rgba(34, 18, 48, 0.88);
+  --surface-muted: rgba(49, 26, 69, 0.92);
+  --surface-raised: rgba(56, 29, 78, 0.96);
+  --text-primary: #f5efff;
+  --text-secondary: #cfc3df;
+  --text-muted: #a695ba;
+  --border-default: rgba(216, 180, 254, 0.16);
+  --border-strong: rgba(216, 180, 254, 0.34);
+  --action-primary: #8b5cf6;
+  --action-primary-hover: #7c3aed;
+  --accent-soft: rgba(124, 58, 237, 0.18);
+  --status-success-bg: rgba(6, 78, 59, 0.42);
+  --status-success-text: #d1fae5;
+  --status-warning-bg: rgba(120, 53, 15, 0.42);
+  --status-warning-text: #fef3c7;
+  --status-danger-bg: rgba(127, 29, 29, 0.44);
+  --status-danger-text: #fee2e2;
+  --status-info-bg: rgba(30, 64, 175, 0.38);
+  --status-info-text: #dbeafe;
+  --focus-ring: #c084fc;
+  --shadow-soft: 0 18px 48px rgba(0, 0, 0, 0.28);
+  --shadow-raised: 0 20px 55px rgba(0, 0, 0, 0.3);
+  --background: var(--page-bg);
+  --foreground: var(--text-primary);
   --panel: rgba(34, 18, 48, 0.82);
   --panel-strong: rgba(49, 26, 69, 0.92);
   --border: rgba(170, 120, 255, 0.26);
-  --text-soft: #cfc3df;
-  --text-muted: #a695ba;
+  --text-soft: var(--text-secondary);
   --dog-panel: rgba(34, 18, 48, 0.88);
   --dog-card: rgba(15, 7, 21, 0.48);
   --dog-control: rgba(15, 7, 21, 0.72);
-  --dog-border: rgba(216, 180, 254, 0.16);
-  --dog-border-strong: rgba(216, 180, 254, 0.34);
-  --dog-heading: #f5efff;
-  --dog-copy: #cfc3df;
+  --dog-border: var(--border-default);
+  --dog-border-strong: var(--border-strong);
+  --dog-heading: var(--text-primary);
+  --dog-copy: var(--text-secondary);
   --dog-label: #d8b4fe;
-  --dog-shadow: 0 20px 55px rgba(0, 0, 0, 0.3);
+  --dog-shadow: var(--shadow-raised);
   color-scheme: dark;
 }
 
@@ -62,7 +110,7 @@ html {
   background:
     radial-gradient(circle at top left, rgba(124, 58, 237, 0.1), transparent 30%),
     radial-gradient(circle at top right, rgba(168, 85, 247, 0.07), transparent 26%),
-    linear-gradient(180deg, #ffffff 0%, #faf7ff 100%);
+    linear-gradient(180deg, var(--surface) 0%, var(--page-bg) 100%);
   min-height: 100%;
 }
 
@@ -76,7 +124,7 @@ html[data-theme="dark"] {
 body {
   min-height: 100vh;
   background: transparent;
-  color: var(--foreground);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -92,6 +140,11 @@ select {
   font: inherit;
 }
 
+:is(a, button, input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .theme-toggle {
   position: fixed;
   top: 0.75rem;
@@ -101,12 +154,12 @@ select {
   align-items: center;
   gap: 0.4rem;
   min-height: 2.25rem;
-  border: 1px solid rgba(109, 40, 160, 0.22);
+  border: 1px solid var(--border-default);
   border-radius: 999px;
   padding: 0.4rem 0.75rem;
-  background: rgba(255, 255, 255, 0.86);
-  color: #54206f;
-  box-shadow: 0 8px 24px rgba(67, 24, 92, 0.12);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-soft);
   backdrop-filter: blur(12px);
   cursor: pointer;
   font-size: 0.75rem;
@@ -115,14 +168,13 @@ select {
 }
 
 .theme-toggle:hover {
-  border-color: rgba(109, 40, 160, 0.42);
-  background: #fff;
+  border-color: var(--border-strong);
+  background: var(--surface-raised);
   transform: translateY(-1px);
 }
 
 .theme-toggle:focus-visible {
-  outline: 2px solid #8b5cf6;
-  outline-offset: 2px;
+  outline-color: var(--focus-ring);
 }
 
 html[data-theme="dark"] .theme-toggle {
@@ -207,7 +259,7 @@ html[data-theme="dark"] .theme-toggle {
 }
 
 .game-header__status-muted {
-  color: var(--dog-copy);
+  color: var(--text-secondary);
 }
 
 .game-header__inbox:hover,
@@ -217,16 +269,16 @@ html[data-theme="dark"] .theme-toggle {
 }
 
 .game-header__emergency {
-  border: 1px solid rgba(220, 38, 38, 0.42);
-  background: rgba(254, 226, 226, 0.94);
-  color: #991b1b;
+  border: 1px solid color-mix(in srgb, var(--status-danger-text) 26%, transparent);
+  background: color-mix(in srgb, var(--status-danger-bg) 94%, transparent);
+  color: var(--status-danger-text);
   box-shadow: var(--dog-shadow);
 }
 
 .game-header__emergency:hover,
 .game-header__emergency:focus-visible {
-  border-color: rgba(220, 38, 38, 0.68);
-  background: rgba(254, 202, 202, 0.98);
+  border-color: color-mix(in srgb, var(--status-danger-text) 42%, transparent);
+  background: color-mix(in srgb, var(--status-danger-bg) 82%, var(--status-danger-text) 18%);
 }
 
 html[data-theme="dark"] .game-header__brand,
@@ -336,6 +388,21 @@ html:not([data-theme="dark"]) .showring-title-sweep {
   border: 1px solid var(--dog-border);
   background: var(--dog-control);
   color: var(--dog-heading);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+:is(.dog-control, .theme-control)::placeholder {
+  color: var(--text-muted);
+}
+
+:is(.dog-control, .theme-control):focus-visible {
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 18%, transparent);
+}
+
+:is(.dog-control, .theme-control):disabled {
+  background: color-mix(in srgb, var(--surface-muted) 90%, transparent);
+  color: var(--text-muted);
 }
 
 :is(.dog-heading, .theme-heading) {
@@ -371,14 +438,112 @@ html[data-theme="dark"] :is(.dog-accent-link, .theme-accent-link) {
 
 :is(.dog-secondary-button, .theme-secondary-button) {
   border: 1px solid var(--dog-border-strong);
-  background: var(--dog-card);
+  background: color-mix(in srgb, var(--surface) 85%, var(--surface-muted) 15%);
   color: var(--dog-heading);
-  transition: border-color 160ms ease, background 160ms ease;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
 
 :is(.dog-secondary-button, .theme-secondary-button):hover {
-  border-color: var(--purple-bright);
-  background: color-mix(in srgb, var(--dog-card) 78%, var(--purple-main) 22%);
+  border-color: var(--focus-ring);
+  background: color-mix(in srgb, var(--surface-muted) 72%, var(--accent-soft) 28%);
+}
+
+:is(.dog-primary-button, .theme-primary-button) {
+  border: 1px solid var(--action-primary);
+  background: var(--action-primary);
+  color: #fff;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--action-primary) 22%, transparent);
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+:is(.dog-primary-button, .theme-primary-button):hover {
+  border-color: var(--action-primary-hover);
+  background: var(--action-primary-hover);
+  transform: translateY(-1px);
+}
+
+:is(.dog-primary-button, .theme-primary-button):disabled,
+:is(.dog-secondary-button, .theme-secondary-button):disabled {
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.6;
+}
+
+:is(.theme-notice, .dog-notice) {
+  border: 1px solid var(--border-default);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--surface-muted) 72%, var(--surface) 28%);
+  color: var(--text-secondary);
+}
+
+.theme-notice--success {
+  border-color: color-mix(in srgb, var(--status-success-text) 24%, transparent);
+  background: var(--status-success-bg);
+  color: var(--status-success-text);
+}
+
+.theme-notice--warning {
+  border-color: color-mix(in srgb, var(--status-warning-text) 24%, transparent);
+  background: var(--status-warning-bg);
+  color: var(--status-warning-text);
+}
+
+.theme-notice--danger {
+  border-color: color-mix(in srgb, var(--status-danger-text) 24%, transparent);
+  background: var(--status-danger-bg);
+  color: var(--status-danger-text);
+}
+
+.theme-notice--info {
+  border-color: color-mix(in srgb, var(--status-info-text) 24%, transparent);
+  background: var(--status-info-bg);
+  color: var(--status-info-text);
+}
+
+.theme-pill {
+  border: 1px solid var(--dog-border);
+  background: color-mix(in srgb, var(--surface-muted) 88%, var(--surface) 12%);
+  color: var(--dog-label);
+}
+
+.theme-status-success {
+  border-color: color-mix(in srgb, var(--status-success-text) 22%, transparent);
+  background: color-mix(in srgb, var(--status-success-bg) 90%, transparent);
+  color: var(--status-success-text);
+}
+
+.theme-status-warning {
+  border-color: color-mix(in srgb, var(--status-warning-text) 22%, transparent);
+  background: color-mix(in srgb, var(--status-warning-bg) 90%, transparent);
+  color: var(--status-warning-text);
+}
+
+.theme-status-danger {
+  border-color: color-mix(in srgb, var(--status-danger-text) 22%, transparent);
+  background: color-mix(in srgb, var(--status-danger-bg) 90%, transparent);
+  color: var(--status-danger-text);
+}
+
+.theme-status-info {
+  border-color: color-mix(in srgb, var(--status-info-text) 22%, transparent);
+  background: color-mix(in srgb, var(--status-info-bg) 90%, transparent);
+  color: var(--status-info-text);
+}
+
+.theme-floating-button {
+  border: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--surface-raised) 88%, transparent);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(14px);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.theme-floating-button:hover {
+  border-color: var(--focus-ring);
+  background: color-mix(in srgb, var(--surface) 80%, var(--accent-soft) 20%);
+  transform: translateY(-1px);
 }
 
 .dog-section-toggle {

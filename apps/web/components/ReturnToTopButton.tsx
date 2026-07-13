@@ -34,13 +34,13 @@ export default function ReturnToTopButton() {
           behavior: prefersReducedMotion() ? "auto" : "smooth",
         });
       }}
-      className={`fixed bottom-6 right-4 z-50 rounded-full border border-purple-300/25 bg-purple-950/80 px-4 py-2 text-sm font-semibold text-purple-100 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur transition duration-200 hover:bg-purple-800/80 focus:outline-none focus:ring-2 focus:ring-amber-300/70 focus:ring-offset-2 focus:ring-offset-purple-950 motion-reduce:transition-none sm:bottom-8 sm:right-6 ${
+      className={`theme-floating-button fixed bottom-6 right-4 z-50 rounded-full px-4 py-2 text-sm font-semibold motion-reduce:transition-none sm:bottom-8 sm:right-6 ${
         isVisible
           ? "translate-y-0 opacity-100"
           : "pointer-events-none translate-y-3 opacity-0"
       }`}
     >
-      ↑ Top
+      Top
     </button>
   );
 }

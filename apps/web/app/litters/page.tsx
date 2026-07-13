@@ -52,11 +52,11 @@ export default async function LittersPage() {
   );
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-emerald-200/85">
+            <p className="theme-label text-sm uppercase tracking-[0.25em]">
               Breeding Records
             </p>
             <h1 className="mt-2 text-4xl font-semibold tracking-tight">
@@ -71,7 +71,7 @@ export default async function LittersPage() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/kennel"
-              className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+              className="theme-secondary-button rounded-xl px-5 py-3 text-sm font-semibold"
             >
               My Kennel
             </Link>
@@ -79,20 +79,20 @@ export default async function LittersPage() {
         </div>
 
         <section className="mb-8 grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
+          <div className="theme-card rounded-2xl p-5">
             <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
               Total Litters
             </div>
             <div className="mt-2 text-3xl font-semibold">{totalCount}</div>
           </div>
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
+          <div className="theme-card rounded-2xl p-5">
             <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
               Puppies Whelped
             </div>
             <div className="mt-2 text-3xl font-semibold">{totalPuppyCount}</div>
           </div>
-          <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-5">
-            <div className="text-xs uppercase tracking-wide text-emerald-100">
+          <div className="theme-status-success rounded-2xl border p-5">
+            <div className="text-xs uppercase tracking-wide">
               Pregnant Dams
             </div>
             <div className="mt-2 text-3xl font-semibold">
@@ -114,11 +114,11 @@ export default async function LittersPage() {
               {activeBreedings.map((attempt) => (
                 <article
                   key={attempt.id}
-                  className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-panel)] p-5 shadow-[var(--dog-shadow)]"
+                  className="theme-panel rounded-2xl p-5"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <div className="text-xs uppercase tracking-wide text-emerald-100">
+                      <div className="theme-label text-xs uppercase tracking-wide">
                         {statusLabel(attempt.status)}
                       </div>
                       <h3 className="mt-2 text-lg font-semibold">
@@ -128,13 +128,13 @@ export default async function LittersPage() {
                         Breed code {attempt.breedCode2}
                       </p>
                     </div>
-                    <div className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-xs font-medium text-[var(--dog-heading)]">
+                    <div className="theme-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
                       Attempt
                     </div>
                   </div>
 
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
+                    <div className="theme-card rounded-xl p-4">
                       <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
                         Pregnancy Check
                       </div>
@@ -142,7 +142,7 @@ export default async function LittersPage() {
                         {formatGameDays(attempt.hoursUntilPregCheck)}
                       </div>
                     </div>
-                    <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
+                    <div className="theme-card rounded-xl p-4">
                       <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
                         Due
                       </div>

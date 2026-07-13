@@ -265,13 +265,13 @@ export default function MarketPage() {
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/studs"
-                className="rounded-2xl border border-sky-300/25 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+                className="theme-status-info rounded-2xl border px-5 py-3 text-sm font-semibold transition hover:opacity-90"
               >
                 Browse Studs
               </Link>
               <Link
                 href="/kennel"
-                className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
+                className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 Back to My Kennel
               </Link>
@@ -338,7 +338,7 @@ export default function MarketPage() {
 
               <button
                 onClick={handleBrowseDogs}
-                className="rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-500"
+                className="theme-primary-button rounded-xl px-4 py-2.5 text-sm font-semibold"
               >
                 Browse Dogs
               </button>
@@ -354,13 +354,13 @@ export default function MarketPage() {
         </section>
 
         {message ? (
-          <div className="mb-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          <div className="theme-notice theme-notice--success mb-4 px-4 py-3 text-sm">
             {message}
           </div>
         ) : null}
 
         {error ? (
-          <div className="mb-4 rounded-2xl border border-red-300/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+          <div className="theme-notice theme-notice--danger mb-4 px-4 py-3 text-sm">
             {error}
           </div>
         ) : null}
@@ -466,7 +466,7 @@ export default function MarketPage() {
                   <div className="mt-6 flex items-stretch gap-3">
                     <Link
                       href={`/dogs/${dog.dogId}`}
-                      className="flex-[1.45] rounded-2xl bg-purple-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
+                      className="theme-primary-button flex-[1.45] rounded-2xl px-4 py-3 text-center text-sm font-semibold"
                     >
                       View Dog
                     </Link>

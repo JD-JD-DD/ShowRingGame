@@ -44,20 +44,20 @@ function formatShowDate(epoch: number): string {
 function statusTone(status: ShowDisplayStatus): string {
   switch (status) {
     case "JUDGED":
-      return "border-sky-300/25 bg-sky-500/10 text-sky-100";
+      return "theme-status-info";
     case "OPEN":
-      return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+      return "theme-status-success";
     case "PAUSED":
-      return "border-amber-300/25 bg-amber-500/10 text-amber-100";
+      return "theme-status-warning";
     case "SCHEDULED":
       return "theme-neutral-badge";
     case "AWAITING JUDGING":
     case "JUDGING":
-      return "border-amber-300/25 bg-amber-500/10 text-amber-100";
+      return "theme-status-warning";
     case "CLOSED":
       return "theme-neutral-badge opacity-75";
     case "CANCELLED":
-      return "border-red-300/25 bg-red-500/10 text-red-100";
+      return "theme-status-danger";
   }
 }
 
@@ -66,7 +66,7 @@ function derivedStatusTone(
 ): string {
   switch (status) {
     case "CURRENT_WEEK":
-      return "border-fuchsia-300/30 bg-fuchsia-500/10 text-fuchsia-100";
+      return "theme-pill";
     case "JUDGING_OPENS":
       return "theme-neutral-badge";
   }
@@ -99,11 +99,11 @@ function entryActivityButtonTone(level: EntryActivityLevel): string {
     case "NONE":
       return "theme-secondary-button";
     case "LOW":
-      return "border-[var(--dog-border)] bg-purple-500/15 text-[var(--dog-heading)] hover:bg-purple-500/25";
+      return "theme-secondary-button";
     case "MODERATE":
-      return "border-purple-200/50 bg-purple-500/35 text-[var(--dog-heading)] hover:bg-purple-500/45";
+      return "theme-secondary-button border-[color:var(--focus-ring)] bg-[color:var(--accent-soft)]";
     case "HEAVY":
-      return "border-fuchsia-200/70 bg-purple-600 text-white shadow-[var(--dog-shadow)] hover:bg-purple-500";
+      return "theme-primary-button";
   }
 }
 
@@ -421,25 +421,25 @@ export default async function ShowsPage({
         <JumpToCurrentWeekButton />
         <Link
           href="/shows/invitationals"
-          className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
+          className="theme-status-warning rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-90"
         >
           Invitationals
         </Link>
         <Link
           href="/shows/history"
-          className="rounded-xl border border-sky-300/30 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+          className="theme-status-info rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-90"
         >
           Historical Results
         </Link>
         <Link
           href="/shows/top-ten"
-          className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-500/20"
+          className="theme-status-warning rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-90"
         >
           Top Ten Dogs
         </Link>
         <Link
           href="/travel-map"
-          className="rounded-xl border border-sky-300/30 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+          className="theme-status-info rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-90"
         >
           District Map
         </Link>
@@ -458,19 +458,19 @@ export default async function ShowsPage({
       </section>
 
       {selectedDogIdsQuery ? (
-        <div className="mb-4 rounded-2xl border border-[var(--dog-border)] bg-purple-500/10 px-4 py-3 text-sm text-[var(--dog-copy)]">
+        <div className="theme-notice mb-4 px-4 py-3 text-sm">
           Carrying selected kennel dogs into show entry planning.
         </div>
       ) : null}
 
       {generated ? (
-        <div className="mb-4 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+        <div className="theme-notice theme-notice--success mb-4 px-4 py-3 text-sm">
           Shows refreshed.
         </div>
       ) : null}
 
       {generateError ? (
-        <div className="mb-4 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+        <div className="theme-notice theme-notice--danger mb-4 px-4 py-3 text-sm">
           {generateError}
         </div>
       ) : null}

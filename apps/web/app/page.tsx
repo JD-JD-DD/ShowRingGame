@@ -239,9 +239,9 @@ export default async function HomePage() {
     .filter((item) => item !== null);
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="min-h-screen px-6 py-8">
       <div className="mx-auto flex max-w-7xl flex-col">
-        <header className="mb-8 flex flex-col gap-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-5 shadow-[var(--dog-shadow)] backdrop-blur md:flex-row md:items-center md:justify-between">
+        <header className="theme-panel mb-8 flex flex-col gap-6 rounded-[28px] px-6 py-5 backdrop-blur md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <div className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
               <Image
@@ -265,13 +265,13 @@ export default async function HomePage() {
           <nav className="flex flex-wrap items-center gap-3 text-sm">
             <Link
               href="/start-up-guide"
-              className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-2.5 font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+              className="theme-secondary-button rounded-full px-5 py-2.5 font-semibold"
             >
               New? Start Here
             </Link>
             <Link
               href="/kennel"
-              className="rounded-full bg-purple-600 px-5 py-2.5 font-semibold text-white transition hover:bg-purple-500"
+              className="theme-primary-button rounded-full px-5 py-2.5 font-semibold"
             >
               Go to My Kennel
             </Link>
@@ -279,19 +279,19 @@ export default async function HomePage() {
         </header>
 
         <section className="mb-8 grid gap-6 xl:grid-cols-[1.35fr_0.65fr] xl:items-stretch">
-          <section className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
+          <section className="theme-panel rounded-[24px] p-5">
             <div className="mb-4">
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="theme-heading text-2xl font-semibold">
                 Around ShowRing
               </h2>
-              <p className="mt-1 rounded-lg border border-red-300 bg-red-100 px-3 py-2 text-sm text-red-900">
+              <p className="theme-notice theme-notice--danger mt-1 px-3 py-2 text-sm">
                 <span className="font-bold">IMPORTANT:</span> Alpha testing has unlimited funds to encourage large kennels and lots of game play. Go Wild!
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-              <article className="rounded-[22px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
-                <h3 className="text-lg font-semibold text-white">
+              <article className="theme-card rounded-[22px] p-5">
+                <h3 className="theme-heading text-lg font-semibold">
                   Recent Champions
                 </h3>
                 <p className="mt-1 text-sm text-[var(--dog-copy)]">
@@ -311,7 +311,7 @@ export default async function HomePage() {
                       >
                         <Link
                           href={`/dogs/${item.dog.id}`}
-                          className="text-sm font-semibold text-white underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
+                          className="theme-heading text-sm font-semibold underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
                         >
                           {formatDogDisplayName(item.dog)}
                         </Link>
@@ -351,8 +351,8 @@ export default async function HomePage() {
                 )}
               </article>
 
-              <article className="rounded-[22px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
-                <h3 className="text-lg font-semibold text-white">
+              <article className="theme-card rounded-[22px] p-5">
+                <h3 className="theme-heading text-lg font-semibold">
                   Recent Litters
                 </h3>
                 <p className="mt-1 text-sm text-[var(--dog-copy)]">
@@ -370,7 +370,7 @@ export default async function HomePage() {
                         key={litter.id}
                         className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3"
                       >
-                        <div className="text-sm font-semibold text-white">
+                        <div className="theme-heading text-sm font-semibold">
                           {litter.breed.name} litter
                         </div>
                         <div className="mt-1 text-xs text-[var(--dog-copy)]">
@@ -401,9 +401,9 @@ export default async function HomePage() {
           </section>
 
           <div className="flex flex-col gap-6">
-            <section className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
+            <section className="theme-panel rounded-[24px] p-5">
               <div>
-                <h2 className="text-xl font-semibold text-white">
+                <h2 className="theme-heading text-xl font-semibold">
                   Welcome These New Kennels
                 </h2>
                 <p className="mt-1 text-sm text-[var(--dog-copy)]">
@@ -424,7 +424,7 @@ export default async function HomePage() {
                     >
                       <Link
                         href={`/kennels/${kennel.slug}`}
-                        className="truncate text-sm font-semibold text-white underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
+                        className="theme-heading truncate text-sm font-semibold underline-offset-4 transition hover:text-fuchsia-100 hover:underline"
                       >
                         {kennel.name}
                       </Link>
@@ -438,7 +438,7 @@ export default async function HomePage() {
             </section>
 
             <section
-              className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]"
+              className="theme-panel rounded-[24px] p-5"
               aria-label="PayPal button"
             >
               <HomePayPalButton />
@@ -448,7 +448,7 @@ export default async function HomePage() {
 
         <section className="mb-8">
           <div className="mb-4">
-            <h2 className="text-2xl font-semibold text-white">
+            <h2 className="theme-heading text-2xl font-semibold">
               Jump Back In
             </h2>
             <p className="mt-1 text-sm text-[var(--dog-copy)]">
@@ -462,11 +462,11 @@ export default async function HomePage() {
                 key={item.title}
                 className={`rounded-[24px] p-5 shadow-[var(--dog-shadow)] ${
                   item.featured
-                    ? "border border-sky-300/30 bg-sky-500/10"
-                    : "border border-[var(--dog-border)] bg-[var(--dog-card)]"
+                    ? "theme-status-info border"
+                    : "theme-card border"
                 }`}
               >
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="theme-heading text-lg font-semibold">
                   {item.title}
                 </h3>
                 <p className="mt-3 min-h-[5.25rem] text-sm leading-7 text-[var(--dog-copy)]">
@@ -476,8 +476,8 @@ export default async function HomePage() {
                   href={userId ? item.href : "/login"}
                   className={`mt-5 inline-flex rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition ${
                     item.featured
-                      ? "bg-sky-600 hover:bg-sky-500"
-                      : "bg-purple-600 hover:bg-purple-500"
+                      ? "rounded-xl border border-sky-700 bg-sky-700 hover:bg-sky-800"
+                      : "theme-primary-button"
                   }`}
                 >
                   {userId ? item.action : "Log In"}
@@ -487,12 +487,12 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="mb-8 rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
+        <section className="theme-panel mb-8 rounded-[24px] p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-white">Mini FAQ</h2>
+            <h2 className="theme-heading text-xl font-semibold">Mini FAQ</h2>
             <Link
               href="/faq"
-              className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-2 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+              className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
             >
               Full FAQ
             </Link>
@@ -502,9 +502,9 @@ export default async function HomePage() {
             {miniFaq.map((item) => (
               <div
                 key={item.question}
-                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4"
+                className="theme-card rounded-2xl p-4"
               >
-                <h3 className="text-sm font-semibold text-white">
+                <h3 className="theme-heading text-sm font-semibold">
                   {item.question}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
