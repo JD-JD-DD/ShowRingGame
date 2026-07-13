@@ -57,63 +57,56 @@ function getAgeHours(currentEpoch: number, birthEpoch: number): number {
   return Math.max(0, currentEpoch - birthEpoch);
 }
 
-function mapTruths(
-  truths: Array<{
-    conditionCode: string;
-    geneticLiability: number;
-    environmentModifier: number;
-  }>
-): PhenotypeHealthTruth[] {
-  return truths
-    .filter((truth) => isPhenotypeHealthTestCode(truth.conditionCode))
-    .map((truth) => ({
-      conditionCode: truth.conditionCode as PhenotypeHealthTestCode,
+type HealthTruthRow = {
+  dogId: string;
+  conditionCode: string;
+  geneticLiability: number;
+  environmentModifier: number;
+};
+
+type HealthDogRow = {
+  id: string;
+  sireId: string | null;
+  damId: string | null;
+  coiPercent: number | null;
+};
+
+function mapTruthRowsByDog(
+  truths: HealthTruthRow[]
+): Map<string, PhenotypeHealthTruth[]> {
+  const truthsByDogId = new Map<string, PhenotypeHealthTruth[]>();
+
+  for (const truth of truths) {
+    if (!isPhenotypeHealthTestCode(truth.conditionCode)) {
+      continue;
+    }
+
+    const dogTruths = truthsByDogId.get(truth.dogId) ?? [];
+    dogTruths.push({
+      conditionCode: truth.conditionCode,
       geneticLiability: truth.geneticLiability,
       environmentModifier: truth.environmentModifier,
-    }));
+    });
+    truthsByDogId.set(truth.dogId, dogTruths);
+  }
+
+  return truthsByDogId;
 }
 
-async function ensureDogPhenotypeHealthTruths(
+async function loadPhenotypeHealthPedigree(
   client: HealthClient,
-  dogId: string,
-  visitingDogIds: Set<string>,
-  truthsByDogId: Map<string, PhenotypeHealthTruth[]>
-): Promise<PhenotypeHealthTruth[]> {
-  const memoizedTruths = truthsByDogId.get(dogId);
+  dogIds: string[]
+): Promise<Map<string, HealthDogRow>> {
+  const dogsById = new Map<string, HealthDogRow>();
+  let frontierIds = [...new Set(dogIds)].filter(Boolean);
 
-  if (memoizedTruths) {
-    return memoizedTruths;
-  }
-
-  const existingTruths = await client.dogHealthConditionTruth.findMany({
-    where: {
-      dogId,
-      conditionCode: {
-        in: [...PHENOTYPE_HEALTH_TEST_CODES],
+  while (frontierIds.length > 0) {
+    const dogs = await client.dog.findMany({
+      where: {
+        id: {
+          in: frontierIds,
+        },
       },
-    },
-    select: {
-      conditionCode: true,
-      geneticLiability: true,
-      environmentModifier: true,
-    },
-  });
-
-  if (existingTruths.length === PHENOTYPE_HEALTH_TEST_CODES.length) {
-    const mappedTruths = mapTruths(existingTruths);
-    truthsByDogId.set(dogId, mappedTruths);
-    return mappedTruths;
-  }
-
-  if (visitingDogIds.has(dogId)) {
-    throw new Error("Cannot generate health profile for a cyclic pedigree.");
-  }
-
-  visitingDogIds.add(dogId);
-
-  try {
-    const dog = await client.dog.findUnique({
-      where: { id: dogId },
       select: {
         id: true,
         sireId: true,
@@ -122,64 +115,95 @@ async function ensureDogPhenotypeHealthTruths(
       },
     });
 
-    if (!dog) {
-      throw new Error("Dog not found while generating health profile.");
+    const nextFrontierIds = new Set<string>();
+
+    for (const dog of dogs) {
+      dogsById.set(dog.id, dog);
+
+      if (dog.sireId && !dogsById.has(dog.sireId)) {
+        nextFrontierIds.add(dog.sireId);
+      }
+
+      if (dog.damId && !dogsById.has(dog.damId)) {
+        nextFrontierIds.add(dog.damId);
+      }
     }
 
+    frontierIds = [...nextFrontierIds];
+  }
+
+  return dogsById;
+}
+
+function resolvePhenotypeHealthTruthsForDog(args: {
+  dogId: string;
+  dogsById: Map<string, HealthDogRow>;
+  existingTruthsByDogId: Map<string, PhenotypeHealthTruth[]>;
+  resolvedTruthsByDogId: Map<string, PhenotypeHealthTruth[]>;
+  visitingDogIds: Set<string>;
+  pendingWrites: Map<string, PhenotypeHealthTruth[]>;
+}): PhenotypeHealthTruth[] {
+  const memoizedTruths = args.resolvedTruthsByDogId.get(args.dogId);
+
+  if (memoizedTruths) {
+    return memoizedTruths;
+  }
+
+  const existingTruths = args.existingTruthsByDogId.get(args.dogId) ?? [];
+
+  if (existingTruths.length === PHENOTYPE_HEALTH_TEST_CODES.length) {
+    args.resolvedTruthsByDogId.set(args.dogId, existingTruths);
+    return existingTruths;
+  }
+
+  if (args.visitingDogIds.has(args.dogId)) {
+    throw new Error("Cannot generate health profile for a cyclic pedigree.");
+  }
+
+  const dog = args.dogsById.get(args.dogId);
+
+  if (!dog) {
+    throw new Error("Dog not found while generating health profile.");
+  }
+
+  args.visitingDogIds.add(args.dogId);
+
+  try {
     const random01 = createDeterministicPhenotypeHealthRandom(dog.id);
-    let generatedTruths: PhenotypeHealthTruth[];
+    const generatedTruths =
+      dog.sireId && dog.damId
+        ? inheritPhenotypeHealthTruths({
+            sireTruths: resolvePhenotypeHealthTruthsForDog({
+              ...args,
+              dogId: dog.sireId,
+            }),
+            damTruths: resolvePhenotypeHealthTruthsForDog({
+              ...args,
+              dogId: dog.damId,
+            }),
+            coiPercent: dog.coiPercent,
+            random01,
+          })
+        : generateFoundationPhenotypeHealthTruths(random01);
 
-    if (dog.sireId && dog.damId) {
-      const sireTruths = await ensureDogPhenotypeHealthTruths(
-        client,
-        dog.sireId,
-        visitingDogIds,
-        truthsByDogId
-      );
-      const damTruths = await ensureDogPhenotypeHealthTruths(
-        client,
-        dog.damId,
-        visitingDogIds,
-        truthsByDogId
-      );
-
-      generatedTruths = inheritPhenotypeHealthTruths({
-        sireTruths,
-        damTruths,
-        coiPercent: dog.coiPercent,
-        random01,
-      });
-    } else {
-      generatedTruths = generateFoundationPhenotypeHealthTruths(random01);
-    }
-
-    const existingCodes = new Set(
-      existingTruths.map((truth) => truth.conditionCode)
-    );
-
-    await client.dogHealthConditionTruth.createMany({
-      data: generatedTruths
-        .filter((truth) => !existingCodes.has(truth.conditionCode))
-        .map((truth) => ({
-          dogId,
-          conditionCode: truth.conditionCode,
-          geneticLiability: truth.geneticLiability,
-          environmentModifier: truth.environmentModifier,
-        })),
-      skipDuplicates: true,
-    });
-
-    const existingTruthsByCondition = new Map(
-      mapTruths(existingTruths).map((truth) => [truth.conditionCode, truth])
+    const existingTruthByCode = new Map(
+      existingTruths.map((truth) => [truth.conditionCode, truth] as const)
     );
     const completedTruths = generatedTruths.map(
-      (truth) => existingTruthsByCondition.get(truth.conditionCode) ?? truth
+      (truth) => existingTruthByCode.get(truth.conditionCode) ?? truth
+    );
+    const missingTruths = generatedTruths.filter(
+      (truth) => !existingTruthByCode.has(truth.conditionCode)
     );
 
-    truthsByDogId.set(dogId, completedTruths);
+    if (missingTruths.length > 0) {
+      args.pendingWrites.set(args.dogId, missingTruths);
+    }
+
+    args.resolvedTruthsByDogId.set(args.dogId, completedTruths);
     return completedTruths;
   } finally {
-    visitingDogIds.delete(dogId);
+    args.visitingDogIds.delete(args.dogId);
   }
 }
 
@@ -187,16 +211,61 @@ export async function ensurePhenotypeHealthTruthsForDogs(
   client: HealthClient,
   dogIds: string[]
 ): Promise<void> {
-  const truthsByDogId = new Map<string, PhenotypeHealthTruth[]>();
+  const uniqueDogIds = [...new Set(dogIds)].filter(Boolean);
 
-  for (const dogId of [...new Set(dogIds)]) {
-    await ensureDogPhenotypeHealthTruths(
-      client,
-      dogId,
-      new Set<string>(),
-      truthsByDogId
-    );
+  if (uniqueDogIds.length === 0) {
+    return;
   }
+
+  const dogsById = await loadPhenotypeHealthPedigree(client, uniqueDogIds);
+  const existingTruthRows = await client.dogHealthConditionTruth.findMany({
+    where: {
+      dogId: {
+        in: [...dogsById.keys()],
+      },
+      conditionCode: {
+        in: [...PHENOTYPE_HEALTH_TEST_CODES],
+      },
+    },
+    select: {
+      dogId: true,
+      conditionCode: true,
+      geneticLiability: true,
+      environmentModifier: true,
+    },
+  });
+  const existingTruthsByDogId = mapTruthRowsByDog(existingTruthRows);
+  const resolvedTruthsByDogId = new Map<string, PhenotypeHealthTruth[]>();
+  const pendingWrites = new Map<string, PhenotypeHealthTruth[]>();
+
+  for (const dogId of uniqueDogIds) {
+    resolvePhenotypeHealthTruthsForDog({
+      dogId,
+      dogsById,
+      existingTruthsByDogId,
+      resolvedTruthsByDogId,
+      visitingDogIds: new Set<string>(),
+      pendingWrites,
+    });
+  }
+
+  const rowsToCreate = [...pendingWrites.entries()].flatMap(([dogId, truths]) =>
+    truths.map((truth) => ({
+      dogId,
+      conditionCode: truth.conditionCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    }))
+  );
+
+  if (rowsToCreate.length === 0) {
+    return;
+  }
+
+  await client.dogHealthConditionTruth.createMany({
+    data: rowsToCreate,
+    skipDuplicates: true,
+  });
 }
 
 export async function runPhenotypeHealthTestForKennel(args: {

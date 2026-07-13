@@ -101,6 +101,12 @@ const foundationDogService = source(
 const breedingService = source("apps/web/server/services/breeding.service.ts");
 const dogHealth = source("apps/web/lib/dogHealth.ts");
 const healthBackfill = source("apps/web/scripts/backfill-phenotype-health.ts");
+const ensurePhenotypeTruthSection = sectionBetween(
+  healthService,
+  "export async function ensurePhenotypeHealthTruthsForDogs(",
+  "export async function runPhenotypeHealthTestForKennel(",
+  "phenotype health truth batch helper"
+);
 
 const rawTraitFields = [
   "traitHead",
@@ -255,6 +261,21 @@ assertIncludes(
   healthService,
   "await client.dogHealthConditionTruth.createMany({",
   "missing hidden truth rows are created through DogHealthConditionTruth"
+);
+assertIncludes(
+  ensurePhenotypeTruthSection,
+  "const existingTruthRows = await client.dogHealthConditionTruth.findMany({",
+  "hidden truth repair batches existing truth loading across the requested dogs"
+);
+assertIncludes(
+  ensurePhenotypeTruthSection,
+  "const dogsById = await loadPhenotypeHealthPedigree(client, uniqueDogIds);",
+  "hidden truth repair preloads required pedigree inputs in bounded batches"
+);
+assertDoesNotIncludeAny(
+  ensurePhenotypeTruthSection,
+  ["await ensureDogPhenotypeHealthTruths(", "findUnique({\n      where: { id: dogId }"],
+  "hidden truth repair should not retain the legacy per-dog read loop"
 );
 assertIncludes(
   healthService,
