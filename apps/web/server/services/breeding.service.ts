@@ -978,6 +978,16 @@ export async function resolveBreedingProgressForKennel(args: {
   return resolveDueBreedingProgress({ kennelId, currentEpoch });
 }
 
+export async function resolveDueBreedingProgressForKennel(args: {
+  kennelId: string;
+  currentEpoch: number;
+}): Promise<BreedingProgressResolutionSummary> {
+  return resolveDueBreedingProgress({
+    kennelId: args.kennelId,
+    currentEpoch: args.currentEpoch,
+  });
+}
+
 export async function resolveBreedingProgressForOwnedDam(args: {
   kennelId: string;
   dogId: string;

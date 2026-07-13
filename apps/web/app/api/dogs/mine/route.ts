@@ -13,7 +13,7 @@ import {
   getOwnedDogGroomingStatuses,
 } from "@/server/services/grooming.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
-import { resolveBreedingProgressForKennel } from "@/server/services/breeding.service";
+import { resolveDueBreedingProgressForKennel } from "@/server/services/breeding.service";
 import { getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -347,8 +347,11 @@ export async function GET(request: Request) {
     }
 
     const currentEpoch = getCurrentEpoch();
-    await perf.measure("resolveBreedingMs", () =>
-      resolveBreedingProgressForKennel({ kennelId: kennel.id, currentEpoch })
+    await perf.measure("resolveDueBreedingMs", () =>
+      resolveDueBreedingProgressForKennel({
+        kennelId: kennel.id,
+        currentEpoch,
+      })
     );
     const runFilter = parseRunFilter(request);
 
@@ -636,13 +639,14 @@ export async function GET(request: Request) {
     const healthTestsByDogId = groupHealthTestsByDog(latestHealthTests);
     const activeListingTypesByDogId = groupActiveListingTypesByDog(activeListings);
 
-    const payload = {
+    const payload = await perf.measure("dtoMappingMs", async () => ({
       groomingSummary,
       dogs: dogs.map((dog) => {
         const healthTests = healthTestsByDogId.get(dog.id) ?? [];
         const healthConditionTruths =
           healthConditionTruthsByDogId.get(dog.id) ?? dog.healthConditionTruths;
-        const activeListingTypes = activeListingTypesByDogId.get(dog.id) ?? new Set<string>();
+        const activeListingTypes =
+          activeListingTypesByDogId.get(dog.id) ?? new Set<string>();
 
         return {
           dogId: dog.id,
@@ -707,7 +711,11 @@ export async function GET(request: Request) {
           ),
         };
       }),
-    };
+    }));
+    const payloadSizeBytes = await perf.measure(
+      "payloadSerializationMs",
+      async () => estimateJsonSizeBytes(payload)
+    );
     perf.log({
       userContextPresent: true,
       kennelContextPresent: true,
@@ -717,7 +725,7 @@ export async function GET(request: Request) {
       latestWhelpedAttemptCount: latestWhelpedAttempts.length,
       recentNotPregnantAttemptCount: recentNotPregnantAttempts.length,
       activeListingCount: activeListings.length,
-      payloadSizeBytes: estimateJsonSizeBytes(payload),
+      payloadSizeBytes,
     });
     return ok(payload);
   } catch (error) {

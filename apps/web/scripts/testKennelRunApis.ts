@@ -65,7 +65,70 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
   const dogs = seed.dogs;
   let nextRunId = 1;
 
-  const client: any = {
+  const client: {
+    kennelRun: {
+      upsert(args: {
+        where: { kennelId_name: { kennelId: string; name: string } };
+        update: Pick<FakeRun, "sortOrder" | "isSystem">;
+        create: Pick<FakeRun, "kennelId" | "name" | "sortOrder" | "isSystem">;
+        select?: Record<string, boolean>;
+      }): Promise<FakeRun>;
+      findMany(args: {
+        where: {
+          kennelId?: string | { in: string[] };
+          id?: { in: string[] };
+          name?: string | { in: string[] };
+          isSystem?: boolean;
+        };
+        orderBy?: Array<Record<string, string>>;
+      }): Promise<FakeRun[]>;
+      findFirst(args: {
+        where: {
+          kennelId?: string;
+          name?: string;
+          id?: { not?: string };
+        };
+        orderBy?: Record<string, string>;
+        select?: Record<string, boolean>;
+      }): Promise<Partial<FakeRun> | null>;
+      findUnique(args: {
+        where: { id: string };
+        select?: Record<string, boolean>;
+      }): Promise<FakeRun | null>;
+      create(args: {
+        data: Pick<FakeRun, "kennelId" | "name" | "sortOrder" | "isSystem">;
+        select?: Record<string, boolean>;
+      }): Promise<FakeRun>;
+      update(args: {
+        where: { id: string };
+        data: Partial<Pick<FakeRun, "name" | "sortOrder">>;
+        select?: Record<string, boolean>;
+      }): Promise<FakeRun>;
+      delete(args: { where: { id: string } }): Promise<FakeRun>;
+    };
+    dog: {
+      findMany(args: {
+        where: {
+          ownerKennelId?: string;
+          lifecycleState?: string;
+          isPlayerVisible?: boolean;
+          kennelRunId?: { in: string[] };
+          id?: { in: string[] };
+        };
+        select?: Record<string, boolean>;
+      }): Promise<Array<Pick<FakeDog, "id" | "kennelRunId">>>;
+      updateMany(args: {
+        where: {
+          id?: { in: string[] };
+          ownerKennelId?: string;
+          lifecycleState?: string;
+          isPlayerVisible?: boolean;
+        };
+        data: Partial<Pick<FakeDog, "kennelRunId">>;
+      }): Promise<{ count: number }>;
+    };
+    $transaction<T>(action: (tx: typeof client) => Promise<T>): Promise<T>;
+  } = {
     kennelRun: {
       async upsert(args: {
         where: { kennelId_name: { kennelId: string; name: string } };
@@ -472,6 +535,16 @@ async function main() {
   assertIncludes(mineRoute, 'url.searchParams.get("runId")', "mine API supports one run filter");
   assertIncludes(mineRoute, 'url.searchParams.get("runIds")', "mine API supports multiple run filter");
   assertIncludes(mineRoute, "Use either runId or runIds", "mine API rejects mixed filters");
+  assertIncludes(
+    mineRoute,
+    "resolveDueBreedingProgressForKennel",
+    "mine API keeps only the narrow due-breeding fallback on roster reads"
+  );
+  assertExcludes(
+    mineRoute,
+    "resolveDogDeaths(",
+    "mine API no longer performs whole-kennel death maintenance during ordinary roster reads"
+  );
   assertIncludes(mineRoute, "kennelRunId: dog.kennelRunId", "mine API returns kennelRunId");
   assertIncludes(mineRoute, "currentRun:", "mine API returns current run details");
   assertExcludes(mineRoute, "areaIds", "mine API no longer returns legacy areaIds");

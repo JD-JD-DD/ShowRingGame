@@ -2,7 +2,7 @@ import { fail, ok } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
-import { resolveBreedingProgressForKennel } from "@/server/services/breeding.service";
+import { resolveDueBreedingProgressForKennel } from "@/server/services/breeding.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { getProgramPlannerData } from "@/server/services/programPlanner.service";
 
@@ -22,7 +22,10 @@ export async function GET(request: Request) {
 
     const currentEpoch = getCurrentEpoch();
     await resolveDogDeaths({ kennelId: kennel.id, currentEpoch });
-    await resolveBreedingProgressForKennel({ kennelId: kennel.id, currentEpoch });
+    await resolveDueBreedingProgressForKennel({
+      kennelId: kennel.id,
+      currentEpoch,
+    });
 
     const { searchParams } = new URL(request.url);
     const breedCode2 = searchParams.get("breedCode2")?.trim() || null;

@@ -14,6 +14,7 @@
     "test:dog-profile-kennel-run-move": "tsx scripts/testDogProfileKennelRunMove.ts",
     "test:dog-show-record-title-points": "tsx scripts/testDogShowRecordTitlePoints.ts",
     "test:dog-titles": "tsx scripts/testDogTitles.ts",
+    "test:kennel-roster-maintenance": "tsx scripts/testKennelRosterMaintenancePath.ts",
     "test:phenotype-health-truth-batching": "tsx scripts/testPhenotypeHealthTruthBatching.ts",
     "test:kennel-run-apis": "tsx scripts/testKennelRunApis.ts",
     "test:kennel-inbox-notices": "tsx scripts/testKennelInboxNotices.ts",
