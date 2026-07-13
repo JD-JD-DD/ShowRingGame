@@ -453,7 +453,7 @@ export default async function ShowsPage({
           Week 52 is reserved for the invitational show.
         </p>
         <div className="theme-card theme-copy mt-3 rounded-xl px-3 py-2 text-xs">
-          Entry activity is shown by availability, schedule, and the Enter action.
+          Entry activity is shown by Enter button color intensity.
         </div>
       </section>
 
@@ -588,13 +588,13 @@ export default async function ShowsPage({
                 id={isCurrentWeekAnchor ? "current-week" : undefined}
                 className={
                   isCurrentWeek
-                    ? "scroll-mt-6 rounded-2xl border border-[var(--action-purple)] bg-[var(--surface)] p-4 shadow-[var(--dog-shadow)]"
+                    ? "scroll-mt-6 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[var(--dog-shadow)]"
                     : "theme-card scroll-mt-6 rounded-2xl p-4"
                 }
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <div className="theme-label flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em]">
+                    <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-amber-100/80">
                       <span>
                         Week {template.weekInYear} - Slot{" "}
                         {template.slotIndex + 1}
@@ -610,7 +610,7 @@ export default async function ShowsPage({
                     <h2 className="theme-heading mt-1 text-lg font-semibold">
                       {template.name}
                     </h2>
-                    <div className="theme-copy mt-2 text-sm">
+                    <div className="mt-2 text-sm text-amber-100/75">
                       {formatShowDayNames(template.showDayNames)} -{" "}
                       {getShowDistrictRegionName(template.district)}
                     </div>
@@ -719,13 +719,13 @@ export default async function ShowsPage({
             }
             className={
               currentCalendarPosition.weekInYear === 52
-                ? "scroll-mt-6 rounded-2xl border border-[var(--action-purple)] bg-[var(--surface)] p-4 shadow-[var(--dog-shadow)]"
-                : "scroll-mt-6 rounded-2xl border border-[var(--status-warning-bg)] bg-[var(--surface)] p-4"
+                ? "scroll-mt-6 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[var(--dog-shadow)]"
+                : "scroll-mt-6 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4"
             }
           >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <div className="theme-label flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em]">
+                <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-amber-100/80">
                   <span>Week 52</span>
                   {currentCalendarPosition.weekInYear === 52 ? (
                     <span
@@ -738,7 +738,7 @@ export default async function ShowsPage({
                 <h2 className="theme-heading mt-1 text-lg font-semibold">
                   Invitational Show
                 </h2>
-                <div className="theme-copy mt-2 text-sm">
+                <div className="mt-2 text-sm text-amber-100/75">
                   The Top Ten dogs in every breed are invited after Week 51
                   judging. No regular district shows are scheduled this week.
                 </div>
@@ -773,7 +773,7 @@ export default async function ShowsPage({
                         <span className="theme-heading font-semibold">
                           Year {cluster.year}
                         </span>
-                        <span className="ml-2 text-[var(--text-secondary)]">
+                        <span className="ml-2 text-amber-100/70">
                           {formatShowDate(cluster.startEpoch)}
                         </span>
                         <span
@@ -782,7 +782,7 @@ export default async function ShowsPage({
                           {playerStatus}
                         </span>
                         {countdowns.rowMetaLabel ? (
-                          <span className="ml-2 text-[11px] text-[var(--text-secondary)]">
+                          <span className="ml-2 text-[11px] text-amber-100/70">
                             {countdowns.rowMetaLabel}
                           </span>
                         ) : null}
@@ -796,12 +796,12 @@ export default async function ShowsPage({
                             STEWARDING
                           </span>
                         ) : null}
-                        <span className="ml-2 text-[var(--text-secondary)]">
+                        <span className="ml-2 text-amber-100/80">
                           {entryCount} invitation
                           {entryCount === 1 ? "" : "s"}
                         </span>
                         {resultCount > 0 ? (
-                          <span className="ml-2 text-[var(--status-info-bg)]">
+                          <span className="ml-2 text-sky-100">
                             {resultCount} result
                             {resultCount === 1 ? "" : "s"}
                           </span>
