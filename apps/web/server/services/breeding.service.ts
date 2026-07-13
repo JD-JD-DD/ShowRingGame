@@ -1020,14 +1020,16 @@ export async function resolveDueBreedingProgressBatch(args: {
   });
 }
 
-export async function listBreedingsForKennel(args: {
+type ListBreedingsForKennelArgs = {
   kennelId: string;
   currentEpoch: number;
   dogId?: string;
-}) {
-  const { kennelId, currentEpoch, dogId } = args;
+};
 
-  await resolveBreedingProgressForKennel({ kennelId, currentEpoch });
+async function listBreedingsForKennelSummaries(
+  args: ListBreedingsForKennelArgs
+) {
+  const { kennelId, currentEpoch, dogId } = args;
 
   const attempts = await db.breedingAttempt.findMany({
     where: {
@@ -1096,6 +1098,20 @@ export async function listBreedingsForKennel(args: {
     hoursUntilDue:
       attempt.dueEpoch !== null ? Math.max(0, attempt.dueEpoch - currentEpoch) : null,
   }));
+}
+
+export async function listBreedingsForKennelAfterProgressResolved(
+  args: ListBreedingsForKennelArgs
+) {
+  return listBreedingsForKennelSummaries(args);
+}
+
+export async function listBreedingsForKennel(args: ListBreedingsForKennelArgs) {
+  const { kennelId, currentEpoch } = args;
+
+  await resolveBreedingProgressForKennel({ kennelId, currentEpoch });
+
+  return listBreedingsForKennelSummaries(args);
 }
 
 export async function createBreedingAttemptForKennel(args: {

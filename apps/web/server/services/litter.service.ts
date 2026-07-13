@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import {
-  listBreedingsForKennel,
+  listBreedingsForKennelAfterProgressResolved,
   resolveBreedingProgressForKennel,
 } from "@/server/services/breeding.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
@@ -217,7 +217,9 @@ export async function listLittersForKennel(args: {
   currentEpoch: number;
 }): Promise<{
   litters: LitterListItemDto[];
-  activeBreedings: Awaited<ReturnType<typeof listBreedingsForKennel>>;
+  activeBreedings: Awaited<
+    ReturnType<typeof listBreedingsForKennelAfterProgressResolved>
+  >;
 }> {
   const { kennelId, currentEpoch } = args;
 
@@ -229,7 +231,7 @@ export async function listLittersForKennel(args: {
       orderBy: [{ bornEpoch: "desc" }, { createdAt: "desc" }],
       select: litterSelect,
     }),
-    listBreedingsForKennel({ kennelId, currentEpoch }),
+    listBreedingsForKennelAfterProgressResolved({ kennelId, currentEpoch }),
   ]);
 
   const littersWithFreshHealthTruths =
