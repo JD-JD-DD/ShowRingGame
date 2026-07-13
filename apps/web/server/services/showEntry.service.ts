@@ -10,6 +10,7 @@ import {
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
 import { listKennelRuns } from "@/server/services/kennelRunManagement.service";
+import { UNCATEGORIZED_KENNEL_RUN_NAME } from "@/server/services/kennelRun.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
 import { assertCanCreateOwnerHandledEntriesForCluster } from "@/server/services/kennelService.service";
@@ -248,6 +249,35 @@ export type ShowEntryBreedOptionDto = {
 };
 
 export type ShowEntryKennelRunOptionDto = {
+  id: string;
+  name: string;
+  dogCount: number;
+  isSystem: boolean;
+};
+
+type ShowEntryOptionDog = Pick<
+  DogForEntry,
+  | "id"
+  | "breedCode2"
+  | "kennelRunId"
+  | "ownerKennelId"
+  | "lifecycleState"
+  | "marketState"
+  | "birthEpoch"
+  | "breedingAttemptsAsDam"
+  | "emergencyCareEvents"
+>;
+
+type ShowEntryAvailabilityOptionSnapshot = {
+  dogId: string;
+  breedCode2: string;
+  kennelRunId: string | null;
+  hasPendingEmergencyCare: boolean;
+  eligibleShowDayIds: string[];
+  isCurrentlyAvailable: boolean;
+};
+
+type ShowEntryKennelRunOptionLike = {
   id: string;
   name: string;
   dogCount: number;
@@ -728,6 +758,86 @@ export function canEnterShowDay(
   }
 
   return { ok: true };
+}
+
+export function buildShowEntryAvailabilityOptionSnapshots(args: {
+  dogs: ShowEntryOptionDog[];
+  cluster: {
+    id: string;
+    startEpoch: number;
+    entryOpenEpoch: number;
+    entryCloseEpoch: number;
+    status: string;
+    showDays: Array<{
+      id: string;
+      status: string;
+      scheduledEpoch: number;
+    }>;
+  };
+  weekendConflictDogIds: Set<string>;
+  currentEpoch: number;
+}): ShowEntryAvailabilityOptionSnapshot[] {
+  const { dogs, cluster, weekendConflictDogIds, currentEpoch } = args;
+
+  return dogs.map((dog) => {
+    const hasPendingEmergencyCare = dog.emergencyCareEvents.length > 0;
+    const eligibleShowDayIds = cluster.showDays
+      .filter((showDay) => {
+        const reason = getShowDayEntryEligibilityReason({
+          dog,
+          cluster,
+          showDay,
+          breedCode2: dog.breedCode2,
+          currentEpoch,
+        });
+
+        return reason == null;
+      })
+      .map((showDay) => showDay.id);
+
+    return {
+      dogId: dog.id,
+      breedCode2: dog.breedCode2,
+      kennelRunId: dog.kennelRunId,
+      hasPendingEmergencyCare,
+      eligibleShowDayIds,
+      isCurrentlyAvailable:
+        !weekendConflictDogIds.has(dog.id) &&
+        (hasPendingEmergencyCare || eligibleShowDayIds.length > 0),
+    };
+  });
+}
+
+export function buildShowEntryKennelRunOptionsFromSnapshots(args: {
+  runs: ShowEntryKennelRunOptionLike[];
+  availabilitySnapshots: ShowEntryAvailabilityOptionSnapshot[];
+  uncategorizedRunId?: string;
+}): ShowEntryKennelRunOptionDto[] {
+  const availableDogCountByRunId = new Map<string, number>();
+
+  for (const snapshot of args.availabilitySnapshots) {
+    if (!snapshot.isCurrentlyAvailable) {
+      continue;
+    }
+
+    const runId = snapshot.kennelRunId ?? args.uncategorizedRunId;
+
+    if (!runId) {
+      continue;
+    }
+
+    availableDogCountByRunId.set(
+      runId,
+      (availableDogCountByRunId.get(runId) ?? 0) + 1
+    );
+  }
+
+  return args.runs
+    .map((run) => ({
+      ...run,
+      dogCount: availableDogCountByRunId.get(run.id) ?? 0,
+    }))
+    .filter((run) => run.dogCount > 0);
 }
 
 function buildExistingDogIdsByBreed(
@@ -1423,38 +1533,32 @@ export async function listShowEntryBreedOptions(args: {
     cluster,
     excludeClusterId: cluster.id,
   });
+  const availabilitySnapshots = buildShowEntryAvailabilityOptionSnapshots({
+    dogs,
+    cluster,
+    weekendConflictDogIds,
+    currentEpoch,
+  });
+  const dogById = new Map(dogs.map((dog) => [dog.id, dog]));
   const optionByBreed = new Map<string, ShowEntryBreedOptionDto>();
 
-  for (const dog of dogs) {
-    if (weekendConflictDogIds.has(dog.id)) {
+  for (const snapshot of availabilitySnapshots) {
+    if (!snapshot.isCurrentlyAvailable) {
       continue;
     }
 
-    const hasPendingEmergencyCare = dog.emergencyCareEvents.length > 0;
-    const hasEligibleDay =
-      hasPendingEmergencyCare ||
-      cluster.showDays.some((showDay) => {
-        const reason = getShowDayEntryEligibilityReason({
-          dog,
-          cluster,
-          showDay,
-          breedCode2: dog.breedCode2,
-          currentEpoch,
-        });
-
-        return reason == null;
-      });
-
-    if (!hasEligibleDay) {
-      continue;
-    }
-
-    const existing = optionByBreed.get(dog.breedCode2);
+    const existing = optionByBreed.get(snapshot.breedCode2);
 
     if (existing) {
       existing.eligibleDogCount += 1;
     } else {
-      optionByBreed.set(dog.breedCode2, {
+      const dog = dogById.get(snapshot.dogId);
+
+      if (!dog) {
+        continue;
+      }
+
+      optionByBreed.set(snapshot.breedCode2, {
         code2: dog.breed.code2,
         name: dog.breed.name,
         groupName: dog.breed.groupName,
@@ -1467,13 +1571,107 @@ export async function listShowEntryBreedOptions(args: {
 }
 
 export async function listShowEntryKennelRunOptions(args: {
+  showId: string;
   kennelId: string;
   currentEpoch: number;
 }): Promise<ShowEntryKennelRunOptionDto[]> {
-  const { kennelId, currentEpoch } = args;
+  const { showId, kennelId, currentEpoch } = args;
   await resolveDogDeaths({ kennelId, currentEpoch });
 
-  return listKennelRuns({ kennelId });
+  const cluster = await db.showCluster.findUnique({
+    where: { id: showId },
+    include: {
+      showDays: {
+        orderBy: [{ dayIndex: "asc" }],
+        select: {
+          id: true,
+          status: true,
+          scheduledEpoch: true,
+        },
+      },
+    },
+  });
+
+  if (!cluster) {
+    return [];
+  }
+
+  const [runs, dogs] = await Promise.all([
+    listKennelRuns({ kennelId }),
+    db.dog.findMany({
+      where: {
+        ownerKennelId: kennelId,
+        lifecycleState: "ALIVE",
+        isPlayerVisible: true,
+      },
+      orderBy: [{ breedCode2: "asc" }, { registeredName: "asc" }, { regNumber: "asc" }],
+      include: {
+        breed: { select: { code2: true, name: true, groupName: true } },
+        breedingAttemptsAsDam: {
+          where: {
+            OR: [
+              { status: "PREGNANT" },
+              { status: "WHELPED", whelpedEpoch: { not: null } },
+            ],
+          },
+          orderBy: {
+            whelpedEpoch: "desc",
+          },
+          select: {
+            status: true,
+            whelpedEpoch: true,
+          },
+        },
+        healthTests: {
+          where: {
+            isPublic: true,
+          },
+          orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+          select: {
+            testTypeCode: true,
+            resultCode: true,
+          },
+        },
+        listings: {
+          where: {
+            status: "ACTIVE",
+            listingType: {
+              in: [PLAYER_SALE_LISTING_TYPE, PLAYER_STUD_LISTING_TYPE],
+            },
+          },
+          select: {
+            listingType: true,
+          },
+        },
+        emergencyCareEvents: {
+          where: { status: "PENDING" },
+          select: { id: true },
+          take: 1,
+        },
+      },
+    }),
+  ]);
+  const weekendConflictDogIds = await getDogIdsWithSameWeekendEntries({
+    client: db,
+    dogIds: dogs.map((dog) => dog.id),
+    cluster,
+    excludeClusterId: cluster.id,
+  });
+  const availabilitySnapshots = buildShowEntryAvailabilityOptionSnapshots({
+    dogs,
+    cluster,
+    weekendConflictDogIds,
+    currentEpoch,
+  });
+  const uncategorizedRun = runs.find(
+    (run) => run.name === UNCATEGORIZED_KENNEL_RUN_NAME && run.isSystem
+  );
+
+  return buildShowEntryKennelRunOptionsFromSnapshots({
+    runs,
+    availabilitySnapshots,
+    uncategorizedRunId: uncategorizedRun?.id,
+  });
 }
 
 export async function listExistingEntriesByShowDay(args: {

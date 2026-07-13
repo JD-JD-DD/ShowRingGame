@@ -238,6 +238,7 @@ export default async function ShowDetailPage({
   const kennelRunOptions =
     kennel && clusterAvailability.canEnter && !isStewardingThisShow
       ? await listShowEntryKennelRunOptions({
+          showId: cluster.id,
           kennelId: kennel.id,
           currentEpoch,
         })
