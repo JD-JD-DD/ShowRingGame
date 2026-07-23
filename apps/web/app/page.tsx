@@ -241,8 +241,8 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen px-6 py-8">
       <div className="mx-auto flex max-w-7xl flex-col">
-        <header className="theme-panel mb-8 flex flex-col gap-6 rounded-[28px] px-6 py-5 backdrop-blur md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
+        <header className="theme-panel mb-8 grid gap-6 rounded-[28px] px-6 py-5 backdrop-blur lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center">
+          <div className="flex justify-center lg:justify-start">
             <div className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
               <Image
                 src="/logo.png"
@@ -252,18 +252,19 @@ export default async function HomePage() {
                 priority
               />
             </div>
-            <div className="hidden flex-1 items-center justify-center md:flex">
-              <h1
-                className="showring-title-sweep text-4xl font-black tracking-wide lg:text-5xl"
-                data-text="The Show Ring Game"
-              >
-                The Show Ring Game
-              </h1>
-            </div>
           </div>
 
-          <nav className="flex flex-col items-start gap-3 text-sm md:items-end">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="text-center">
+            <h1
+              className="showring-title-sweep text-3xl font-black tracking-wide sm:text-4xl xl:text-5xl"
+              data-text="The Show Ring Game"
+            >
+              The Show Ring Game
+            </h1>
+          </div>
+
+          <nav className="grid justify-center gap-x-3 gap-y-3 text-sm sm:grid-cols-[auto_auto] sm:items-center lg:justify-end">
+            <div className="order-2 flex flex-col gap-3">
               <Link
                 href="/start-up-guide"
                 className="theme-secondary-button rounded-full px-5 py-2.5 font-semibold"
@@ -278,7 +279,7 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            <div className="flex flex-col gap-1.5">
+            <div className="order-1 flex flex-col items-center gap-1.5 sm:items-start">
               <span className="text-xs font-semibold text-[var(--dog-copy)]">
                 Join the community
               </span>
@@ -287,6 +288,8 @@ export default async function HomePage() {
                   href="https://www.facebook.com/groups/1804836923805526"
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Join the ShowRing Game Facebook group"
+                  title="Join the ShowRing Game Facebook group"
                   className="inline-flex items-center gap-1.5 rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1.5 text-xs font-semibold text-[var(--dog-heading)] transition hover:border-[var(--dog-border-strong)] hover:bg-purple-500/10"
                 >
                   <svg
@@ -301,6 +304,8 @@ export default async function HomePage() {
                   href="https://discord.gg/qFFDmWY6WN"
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Join the ShowRing Game Discord server"
+                  title="Join the ShowRing Game Discord server"
                   className="inline-flex items-center gap-1.5 rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1.5 text-xs font-semibold text-[var(--dog-heading)] transition hover:border-[var(--dog-border-strong)] hover:bg-purple-500/10"
                 >
                   <svg
