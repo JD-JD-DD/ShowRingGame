@@ -80,18 +80,6 @@ export default async function KennelPage() {
               </span>
             </span>
           </Link>
-          <Link href="/kennel/program-planner" className="premium-planner-link">
-            <span className="premium-planner-link__spark" aria-hidden="true">
-            </span>
-            <span>
-              <span className="block text-[0.58rem] font-bold uppercase tracking-[0.2em] text-fuchsia-100/85">
-                Kennel Strategy Tool
-              </span>
-              <span className="mt-0.5 block text-sm font-bold tracking-wide text-white">
-                Program Planner
-              </span>
-            </span>
-          </Link>
         </div>
       </section>
 
