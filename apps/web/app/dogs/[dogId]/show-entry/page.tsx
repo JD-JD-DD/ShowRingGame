@@ -8,6 +8,10 @@ import {
   type DogShowEntryPlannerDogDto,
 } from "@/server/services/dogShowEntryPlanner.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
+import {
+  isShowEntryMaintenanceActive,
+  SHOW_ENTRY_MAINTENANCE_MESSAGE,
+} from "@/server/services/showEntryMaintenance.service";
 
 import { DogShowEntryPlannerClient } from "./DogShowEntryPlannerClient";
 
@@ -175,7 +179,13 @@ export default async function DogShowEntryPage({ params }: PageProps) {
     <main className="dog-page min-h-screen px-6 py-8">
       <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
         <DogSnapshot dog={planner.dog} />
-        <DogShowEntryPlannerClient planner={planner} />
+        {isShowEntryMaintenanceActive() ? (
+          <section className="theme-card theme-copy rounded-2xl p-5 text-sm leading-6">
+            {SHOW_ENTRY_MAINTENANCE_MESSAGE}
+          </section>
+        ) : (
+          <DogShowEntryPlannerClient planner={planner} />
+        )}
       </div>
     </main>
   );

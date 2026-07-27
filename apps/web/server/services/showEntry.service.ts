@@ -22,6 +22,11 @@ import {
   assertYear13RegularShowEntryNotPaused,
 } from "@/server/services/showScheduleMigration.service";
 import {
+  assertShowEntryMaintenanceAllowsSubmission,
+  isShowEntryMaintenanceActive,
+  SHOW_ENTRY_MAINTENANCE_MESSAGE,
+} from "@/server/services/showEntryMaintenance.service";
+import {
   DAM_SHOW_POST_WHELP_COOLDOWN_HOURS,
   ENTRY_FEE_PER_SHOW,
   SHOW_WEEK_HOURS,
@@ -376,6 +381,7 @@ export type BulkShowEntryResultDto = {
 };
 
 export type ShowEntryErrorCode =
+  | "ENTRY_MAINTENANCE"
   | "INSUFFICIENT_FUNDS"
   | "NO_ELIGIBLE_ENTRIES"
   | "DOG_EMERGENCY_CARE"
@@ -474,6 +480,8 @@ function createInsufficientFundsError(args: {
 
 function getSkippedSelectionMessage(code: ShowEntryErrorCode): string {
   switch (code) {
+    case "ENTRY_MAINTENANCE":
+      return "entry maintenance active";
     case "ALREADY_ENTERED":
       return "already entered";
     case "DOG_EMERGENCY_CARE":
@@ -1174,6 +1182,8 @@ export async function createShowEntry(args: {
   handlerUsed?: boolean;
 }): Promise<CreatedShowEntryDto> {
   const { dogId, judgingBlockId, currentEpoch, ownerKennelId, handlerUsed } = args;
+
+  assertShowEntryMaintenanceAllowsSubmission();
 
   await resolveDogDeaths({
     currentEpoch,
@@ -2094,6 +2104,12 @@ export async function createShowEntriesForCluster(args: {
   mode?: "SELECTED" | "ALL_ELIGIBLE";
 }): Promise<BulkShowEntryResultDto> {
   const { showId, kennelId, currentEpoch } = args;
+  if (isShowEntryMaintenanceActive()) {
+    throw createShowEntrySubmissionError({
+      code: "ENTRY_MAINTENANCE",
+      message: SHOW_ENTRY_MAINTENANCE_MESSAGE,
+    });
+  }
   await resolveDogDeaths({ kennelId, currentEpoch });
 
   const scope = normalizePlannerScope(args.scope);

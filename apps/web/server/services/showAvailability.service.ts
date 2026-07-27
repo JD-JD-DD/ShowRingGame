@@ -2,6 +2,10 @@ import {
   isYear13RegularShowPaused,
   YEAR_13_REGULAR_SHOW_PAUSE_MESSAGE,
 } from "@/server/services/showScheduleMigration.service";
+import {
+  isShowEntryMaintenanceActive,
+  SHOW_ENTRY_MAINTENANCE_MESSAGE,
+} from "@/server/services/showEntryMaintenance.service";
 
 export type ShowEntryStatus =
   | "NOT_OPEN"
@@ -64,7 +68,9 @@ function statusMessage(status: ShowEntryStatus): string {
     case "OPEN":
       return "Entries are open for this show.";
     case "PAUSED":
-      return YEAR_13_REGULAR_SHOW_PAUSE_MESSAGE;
+      return isShowEntryMaintenanceActive()
+        ? SHOW_ENTRY_MAINTENANCE_MESSAGE
+        : YEAR_13_REGULAR_SHOW_PAUSE_MESSAGE;
     case "CLOSED":
       return "Entries have closed for this show.";
     case "JUDGING":
@@ -109,6 +115,10 @@ export function getShowEntryAvailability(args: {
 
   if (hasJudgingActivity) {
     return availability({ entryStatus: "JUDGING", cluster });
+  }
+
+  if (isShowEntryMaintenanceActive()) {
+    return availability({ entryStatus: "PAUSED", cluster });
   }
 
   if (isYear13RegularShowPaused(cluster)) {
