@@ -61,14 +61,14 @@ type BlockLike = {
   };
 };
 
-function statusMessage(status: ShowEntryStatus): string {
+function statusMessage(status: ShowEntryStatus, cluster: ClusterLike): string {
   switch (status) {
     case "NOT_OPEN":
       return "Entries are not open for this show.";
     case "OPEN":
       return "Entries are open for this show.";
     case "PAUSED":
-      return isShowEntryMaintenanceActive()
+      return isShowEntryMaintenanceActive(cluster)
         ? SHOW_ENTRY_MAINTENANCE_MESSAGE
         : YEAR_13_REGULAR_SHOW_PAUSE_MESSAGE;
     case "CLOSED":
@@ -91,7 +91,7 @@ function availability(args: {
     canEnter: args.entryStatus === "OPEN",
     entryOpenEpoch: args.cluster.entryOpenEpoch,
     entryCloseEpoch: args.cluster.entryCloseEpoch,
-    message: statusMessage(args.entryStatus),
+    message: statusMessage(args.entryStatus, args.cluster),
   };
 }
 
@@ -117,7 +117,7 @@ export function getShowEntryAvailability(args: {
     return availability({ entryStatus: "JUDGING", cluster });
   }
 
-  if (isShowEntryMaintenanceActive()) {
+  if (isShowEntryMaintenanceActive(cluster)) {
     return availability({ entryStatus: "PAUSED", cluster });
   }
 

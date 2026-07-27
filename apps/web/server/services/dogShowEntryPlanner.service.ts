@@ -733,7 +733,9 @@ export async function getDogShowEntryPlanner({
       });
       let disabledReason = eligibility.ok ? null : eligibility.reason ?? null;
 
-      if (alreadyEntered) {
+      if (!availability.canEnter) {
+        disabledReason = availability.message;
+      } else if (alreadyEntered) {
         disabledReason = "This dog is already entered on this show day.";
       } else if (isStewardingThisShow) {
         disabledReason =
@@ -747,6 +749,7 @@ export async function getDogShowEntryPlanner({
 
       const eligible = eligibility.ok;
       const canSelect =
+        availability.canEnter &&
         eligible &&
         !alreadyEntered &&
         !isStewardingThisShow &&

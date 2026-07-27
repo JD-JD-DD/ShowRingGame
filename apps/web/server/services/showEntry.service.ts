@@ -22,7 +22,6 @@ import {
   assertYear13RegularShowEntryNotPaused,
 } from "@/server/services/showScheduleMigration.service";
 import {
-  assertShowEntryMaintenanceAllowsSubmission,
   isShowEntryMaintenanceActive,
   SHOW_ENTRY_MAINTENANCE_MESSAGE,
 } from "@/server/services/showEntryMaintenance.service";
@@ -1183,8 +1182,6 @@ export async function createShowEntry(args: {
 }): Promise<CreatedShowEntryDto> {
   const { dogId, judgingBlockId, currentEpoch, ownerKennelId, handlerUsed } = args;
 
-  assertShowEntryMaintenanceAllowsSubmission();
-
   await resolveDogDeaths({
     currentEpoch,
     ...(ownerKennelId ? { kennelId: ownerKennelId } : { dogIds: [dogId] }),
@@ -1208,6 +1205,10 @@ export async function createShowEntry(args: {
 
     if (!block) {
       throw new Error("Judging block not found.");
+    }
+
+    if (isShowEntryMaintenanceActive(block.showDay.cluster)) {
+      throw new Error(SHOW_ENTRY_MAINTENANCE_MESSAGE);
     }
 
     if (ownerKennelId && dog.ownerKennelId !== ownerKennelId) {
@@ -2104,12 +2105,6 @@ export async function createShowEntriesForCluster(args: {
   mode?: "SELECTED" | "ALL_ELIGIBLE";
 }): Promise<BulkShowEntryResultDto> {
   const { showId, kennelId, currentEpoch } = args;
-  if (isShowEntryMaintenanceActive()) {
-    throw createShowEntrySubmissionError({
-      code: "ENTRY_MAINTENANCE",
-      message: SHOW_ENTRY_MAINTENANCE_MESSAGE,
-    });
-  }
   await resolveDogDeaths({ kennelId, currentEpoch });
 
   const scope = normalizePlannerScope(args.scope);
@@ -2179,6 +2174,13 @@ export async function createShowEntriesForCluster(args: {
 
     if (!cluster) {
       throw new Error("Show cluster not found.");
+    }
+
+    if (isShowEntryMaintenanceActive(cluster)) {
+      throw createShowEntrySubmissionError({
+        code: "ENTRY_MAINTENANCE",
+        message: SHOW_ENTRY_MAINTENANCE_MESSAGE,
+      });
     }
 
     assertYear13RegularShowEntryNotPaused(cluster);
