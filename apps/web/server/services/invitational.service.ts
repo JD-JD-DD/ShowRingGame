@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getWeek51RegularClusterIdsForYear } from "@/server/services/annualShowSchedule.service";
 import { seedJudgePanelFromCsv } from "@/server/services/judgePanel.service";
+import { planWeekJudgeAssignments } from "@/server/services/judgeAssignmentPlanner.service";
 import type {
   BreedingAttemptStatus,
   DogLifecycleState,
@@ -204,7 +205,7 @@ async function ensureInvitationalShowForYear(args: {
     db.judge.findMany({
       where: { isActive: true },
       orderBy: [{ judgeCode: "asc" }, { name: "asc" }],
-      select: { id: true },
+      select: { id: true, judgeCode: true, name: true },
     }),
     db.dogYearlyPrestigeStat.findMany({
       where: {
@@ -246,6 +247,27 @@ async function ensureInvitationalShowForYear(args: {
   if (judges.length === 0) {
     throw new Error("No active judges are available for the invitational.");
   }
+
+  const invitationalPlan = planWeekJudgeAssignments({
+    year,
+    weekInYear: INVITATIONAL_WEEK_IN_YEAR,
+    judges,
+    clusters: [
+      {
+        id: clusterId,
+        stableIdentity: clusterId,
+        district: INVITATIONAL_HOST_DISTRICT,
+        showDays: [
+          {
+            id: "pending-invitational-show-day",
+            dayIndex: INVITATIONAL_DAY_INDEX,
+            scheduledEpoch: getInvitationalStartEpoch(year),
+          },
+        ],
+      },
+    ],
+  })[0]!;
+  const invitationalDayPlan = invitationalPlan.days[0]!;
 
   const releasedBreedCodes = new Set(breeds.map((breed) => breed.code2));
   const topTenByBreed = new Map<string, typeof prestigeStats>();
@@ -297,10 +319,17 @@ async function ensureInvitationalShowForYear(args: {
         clusterId,
         scheduledEpoch: invitationalStartEpoch,
         dayIndex: INVITATIONAL_DAY_INDEX,
-        judgeId: judges[year % judges.length].id,
+        judgeId: invitationalDayPlan.bisJudgeId,
         status: "ENTRY_LOCKED",
       },
       select: { id: true },
+    });
+    await tx.showDayGroupJudgeAssignment.createMany({
+      data: invitationalDayPlan.assignments.map((assignment) => ({
+        showDayId: showDay.id,
+        groupCode: assignment.groupCode,
+        judgeId: assignment.judgeId,
+      })),
     });
     const judgingBlockIdByBreed = new Map<string, string>();
     const invitationEntries: Prisma.ShowEntryCreateManyInput[] = [];

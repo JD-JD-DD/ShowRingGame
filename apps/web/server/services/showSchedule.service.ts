@@ -10,6 +10,7 @@ import {
   isYear13GeneratedRegularShowClusterId,
   isYear13RegularShowPaused,
 } from "@/server/services/showScheduleMigration.service";
+import { ensureWeekJudgeAssignmentPlans } from "@/server/services/judgeAssignmentPlanner.service";
 import {
   CURRENT_BREED_RELEASE,
   SHOW_ENTRY_CLOSE_OFFSET_HOURS,
@@ -600,8 +601,6 @@ async function repairGeneratedClusterStructure(args: {
 
     for (const [dayOffset, scheduledEpoch] of args.showDayEpochs.entries()) {
       const dayIndex = dayOffset + 1;
-      const fallbackJudge =
-        args.judges[(args.cluster.weekIndex + dayIndex) % args.judges.length];
       const dayStatus = getShowDayStatus({
         currentEpoch: args.currentEpoch,
         entryOpenEpoch,
@@ -622,7 +621,7 @@ async function repairGeneratedClusterStructure(args: {
         },
         data: {
           scheduledEpoch,
-          judgeId: fallbackJudge.id,
+          judgeId: args.judges[0]!.id,
           status: dayStatus,
         },
         select: {
@@ -816,6 +815,13 @@ export async function ensureGeneratedShowSchedule(args?: {
 
   let showDayCount = 0;
   let judgingBlockCount = 0;
+  const generatedClustersForJudgePlanning: Array<{
+    id: string;
+    year: number;
+    weekInYear: number;
+    stableIdentity: string;
+    district: number;
+  }> = [];
 
   for (const cluster of clusters) {
     const clusterId = getGeneratedClusterId(cluster);
@@ -966,7 +972,6 @@ export async function ensureGeneratedShowSchedule(args?: {
         entryCloseEpoch: cluster.entryCloseEpoch,
         scheduledEpoch,
       });
-      const fallbackJudge = judges[(cluster.weekIndex + dayIndex) % judges.length];
       const existingDay = await db.showDay.findUnique({
         where: {
           clusterId_dayIndex: {
@@ -984,7 +989,6 @@ export async function ensureGeneratedShowSchedule(args?: {
             where: { id: existingDay.id },
             data: {
               scheduledEpoch,
-              judgeId: fallbackJudge.id,
               status: dayStatus,
             },
             select: { id: true },
@@ -997,7 +1001,7 @@ export async function ensureGeneratedShowSchedule(args?: {
             clusterId,
             scheduledEpoch,
             dayIndex,
-            judgeId: fallbackJudge.id,
+            judgeId: judges[0]!.id,
             status: dayStatus,
           },
           select: { id: true },
@@ -1030,6 +1034,31 @@ export async function ensureGeneratedShowSchedule(args?: {
         judges,
       });
     }
+
+    generatedClustersForJudgePlanning.push({
+      id: clusterId,
+      year: cluster.year,
+      weekInYear: cluster.weekInYear,
+      stableIdentity: cluster.templateId,
+      district: cluster.district,
+    });
+  }
+
+  const clustersByWeek = new Map<string, typeof generatedClustersForJudgePlanning>();
+  for (const cluster of generatedClustersForJudgePlanning) {
+    const key = `${cluster.year}:${cluster.weekInYear}`;
+    const weekClusters = clustersByWeek.get(key) ?? [];
+    weekClusters.push(cluster);
+    clustersByWeek.set(key, weekClusters);
+  }
+  for (const weekClusters of clustersByWeek.values()) {
+    if (weekClusters.length !== 3) continue;
+    await ensureWeekJudgeAssignmentPlans({
+      year: weekClusters[0]!.year,
+      weekInYear: weekClusters[0]!.weekInYear,
+      clusters: weekClusters.map(({ id, stableIdentity, district }) => ({ id, stableIdentity, district })),
+      judges,
+    });
   }
 
   return {
