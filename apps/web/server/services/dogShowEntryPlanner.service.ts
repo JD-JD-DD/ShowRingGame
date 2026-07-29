@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { CANONICAL_SHOW_GROUP_CODES, getCanonicalShowGroupLabel } from "@showring/rules";
 
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -60,6 +61,7 @@ type PlannerCluster = Prisma.ShowClusterGetPayload<{
       orderBy: [{ dayIndex: "asc" }];
       include: {
         judge: { select: { name: true } };
+        groupJudgeAssignments: { include: { judge: { select: { judgeCode: true; name: true } } } };
         _count: { select: { showResults: true } };
       };
     };
@@ -120,6 +122,7 @@ export type DogShowEntryPlannerDayDto = {
   scheduledEpoch: number;
   label: string;
   judgeName: string;
+  judgePanel: import("@/components/shows/ShowDayJudgePanel").ShowDayJudgePanelDto;
   status: string;
   eligible: boolean;
   disabledReason: string | null;
@@ -549,6 +552,7 @@ export async function getDogShowEntryPlanner({
         orderBy: [{ dayIndex: "asc" }],
         include: {
           judge: { select: { name: true } },
+          groupJudgeAssignments: { include: { judge: { select: { judgeCode: true, name: true } } } },
           _count: { select: { showResults: true } },
         },
       },
@@ -755,6 +759,12 @@ export async function getDogShowEntryPlanner({
         !isStewardingThisShow &&
         !hasPendingEmergencyCare &&
         !sameWeekendConflict;
+      const byGroup = new Map(showDay.groupJudgeAssignments.map((assignment) => [assignment.groupCode, assignment]));
+      const completePanel = CANONICAL_SHOW_GROUP_CODES.every((groupCode) => byGroup.has(groupCode));
+      const bisAssignment = showDay.groupJudgeAssignments.find((assignment) => assignment.judgeId === showDay.judgeId);
+      const judgePanel = completePanel && bisAssignment
+        ? { unavailable: false, assignments: CANONICAL_SHOW_GROUP_CODES.map((groupCode) => { const assignment = byGroup.get(groupCode)!; return { groupCode, groupLabel: getCanonicalShowGroupLabel(groupCode), judgeName: assignment.judge.name, judgeProfileUrl: `/judges/${assignment.judge.judgeCode}`, isBestInShowJudge: assignment.judgeId === showDay.judgeId }; }), bestInShowJudge: { judgeName: bisAssignment.judge.name, judgeProfileUrl: `/judges/${bisAssignment.judge.judgeCode}` } }
+        : { unavailable: true, assignments: [], bestInShowJudge: null };
 
       return {
         showDayId: showDay.id,
@@ -762,6 +772,7 @@ export async function getDogShowEntryPlanner({
         scheduledEpoch: showDay.scheduledEpoch,
         label: formatShowCalendarLabel(showDay.scheduledEpoch),
         judgeName: showDay.judge.name,
+        judgePanel,
         status: showDay.status,
         eligible,
         disabledReason,

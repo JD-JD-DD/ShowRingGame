@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ShowDayJudgePanel } from "@/components/shows/ShowDayJudgePanel";
 
 import type {
   DogShowEntryPlannerClusterDto,
@@ -299,7 +300,7 @@ function DaySelector({
             </div>
             <div className="theme-copy mt-0.5 text-xs">{day.label}</div>
             <div className="theme-copy mt-0.5 text-xs">
-              Judge: {day.judgeName}
+              <ShowDayJudgePanel panel={day.judgePanel} />
             </div>
           </div>
         </div>

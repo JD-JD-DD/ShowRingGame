@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { ShowDayJudgePanel } from "@/components/shows/ShowDayJudgePanel";
+import { CANONICAL_SHOW_GROUP_CODES, getCanonicalShowGroupLabel } from "@showring/rules";
 import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
@@ -151,6 +153,7 @@ export default async function ShowDetailPage({
         orderBy: [{ dayIndex: "asc" }],
         include: {
           judge: { select: { judgeCode: true, name: true } },
+          groupJudgeAssignments: { include: { judge: { select: { judgeCode: true, name: true } } } },
           _count: {
             select: {
               showResults: true,
@@ -453,15 +456,12 @@ export default async function ShowDetailPage({
                   <div className="theme-copy mt-1 text-sm opacity-75">
                     {formatShowDateTime(day.scheduledEpoch)}
                   </div>
-                  <div className="theme-copy mt-2 text-sm">
-                    Judge:{" "}
-                    <Link
-                      href={`/judges/${day.judge.judgeCode}`}
-                      className="theme-heading font-semibold underline-offset-4 hover:underline"
-                    >
-                      {day.judge.name}
-                    </Link>
-                  </div>
+                  {(() => {
+                    const byGroup = new Map(day.groupJudgeAssignments.map((assignment) => [assignment.groupCode, assignment]));
+                    const bisAssignment = day.groupJudgeAssignments.find((assignment) => assignment.judgeId === day.judgeId);
+                    const complete = CANONICAL_SHOW_GROUP_CODES.every((groupCode) => byGroup.has(groupCode));
+                    return <div className="mt-3"><ShowDayJudgePanel panel={complete && bisAssignment ? { unavailable: false, assignments: CANONICAL_SHOW_GROUP_CODES.map((groupCode) => { const assignment = byGroup.get(groupCode)!; return { groupCode, groupLabel: getCanonicalShowGroupLabel(groupCode), judgeName: assignment.judge.name, judgeProfileUrl: `/judges/${assignment.judge.judgeCode}`, isBestInShowJudge: assignment.judgeId === day.judgeId }; }), bestInShowJudge: { judgeName: bisAssignment.judge.name, judgeProfileUrl: `/judges/${bisAssignment.judge.judgeCode}` } } : { unavailable: true, assignments: [], bestInShowJudge: null }} /></div>;
+                  })()}
                   {dayDisplayStatus === "JUDGING" ||
                   dayDisplayStatus === "JUDGED" ? (
                     <div className="theme-copy mt-2 text-xs opacity-70">
