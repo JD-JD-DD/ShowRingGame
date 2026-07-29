@@ -177,7 +177,7 @@ export async function ensureWeekJudgeAssignmentPlans(args: {
   weekInYear: number;
   clusters: Array<{ id: string; stableIdentity: string; district: number }>;
   judges: PlannerJudge[];
-}): Promise<void> {
+}): Promise<{ createdPlanCount: number; repairedPlanCount: number; unchangedPlanCount: number }> {
   const clusterIds = args.clusters.map((cluster) => cluster.id);
   const clusters = await db.showCluster.findMany({
     where: { id: { in: clusterIds } },
@@ -197,11 +197,11 @@ export async function ensureWeekJudgeAssignmentPlans(args: {
     },
   });
   if (clusters.length !== args.clusters.length || clusters.some((cluster) => cluster.showDays.length === 0)) {
-    return;
+    return { createdPlanCount: 0, repairedPlanCount: 0, unchangedPlanCount: 0 };
   }
   const planStates = clusters.map(getJudgeAssignmentPlanState);
   if (planStates.every((state) => state === "complete")) {
-    return;
+    return { createdPlanCount: 0, repairedPlanCount: 0, unchangedPlanCount: clusters.length };
   }
   if (planStates.includes("protected")) {
     throw new Error("Cannot reconstruct a partial group judge plan for judged or published ShowDays.");
@@ -255,4 +255,7 @@ export async function ensureWeekJudgeAssignmentPlans(args: {
       }
     }
   });
+  return planStates.every((state) => state === "empty")
+    ? { createdPlanCount: clusters.length, repairedPlanCount: 0, unchangedPlanCount: 0 }
+    : { createdPlanCount: 0, repairedPlanCount: clusters.length, unchangedPlanCount: 0 };
 }

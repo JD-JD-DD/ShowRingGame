@@ -165,6 +165,9 @@ export async function GET(request: Request) {
     mismatchCountBefore,
     mismatchCountAfter,
     repairedMismatchCount: Math.max(0, mismatchCountBefore - mismatchCountAfter),
+    assignmentPlansCreated: schedule.assignmentPlansCreated,
+    assignmentPlansRepaired: schedule.assignmentPlansRepaired,
+    assignmentPlansUnchanged: schedule.assignmentPlansUnchanged,
     durationMs: Date.now() - jobStartedAtMs,
     phaseDurationsMs,
   };

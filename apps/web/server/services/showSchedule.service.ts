@@ -283,6 +283,9 @@ export async function repairFutureShowEntryWindows(args?: {
   let clusterCount = 0;
   let showDayCount = 0;
   let judgingBlockCount = 0;
+  let assignmentPlansCreated = 0;
+  let assignmentPlansRepaired = 0;
+  let assignmentPlansUnchanged = 0;
 
   for (const cluster of clusters) {
     const entryOpenEpoch = getSeedEntryOpenEpoch(cluster.startEpoch);
@@ -765,6 +768,9 @@ export async function ensureGeneratedShowSchedule(args?: {
   clusterCount: number;
   showDayCount: number;
   judgingBlockCount: number;
+  assignmentPlansCreated: number;
+  assignmentPlansRepaired: number;
+  assignmentPlansUnchanged: number;
   generatedThroughEpoch: number;
 }> {
   await seedJudgePanelFromCsv();
@@ -815,6 +821,9 @@ export async function ensureGeneratedShowSchedule(args?: {
 
   let showDayCount = 0;
   let judgingBlockCount = 0;
+  let assignmentPlansCreated = 0;
+  let assignmentPlansRepaired = 0;
+  let assignmentPlansUnchanged = 0;
   const generatedClustersForJudgePlanning: Array<{
     id: string;
     year: number;
@@ -1053,18 +1062,24 @@ export async function ensureGeneratedShowSchedule(args?: {
   }
   for (const weekClusters of clustersByWeek.values()) {
     if (weekClusters.length !== 3) continue;
-    await ensureWeekJudgeAssignmentPlans({
+    const planResult = await ensureWeekJudgeAssignmentPlans({
       year: weekClusters[0]!.year,
       weekInYear: weekClusters[0]!.weekInYear,
       clusters: weekClusters.map(({ id, stableIdentity, district }) => ({ id, stableIdentity, district })),
       judges,
     });
+    assignmentPlansCreated += planResult.createdPlanCount;
+    assignmentPlansRepaired += planResult.repairedPlanCount;
+    assignmentPlansUnchanged += planResult.unchangedPlanCount;
   }
 
   return {
     clusterCount: clusters.length,
     showDayCount,
     judgingBlockCount,
+    assignmentPlansCreated,
+    assignmentPlansRepaired,
+    assignmentPlansUnchanged,
     generatedThroughEpoch: clusters.reduce(
       (latestEpoch, cluster) => Math.max(latestEpoch, cluster.endEpoch),
       currentEpoch

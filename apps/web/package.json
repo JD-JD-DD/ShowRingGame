@@ -36,6 +36,7 @@
     "test:ribbon-room-page": "tsx scripts/testRibbonRoomPage.tsx",
     "test:grand-champion-promotion": "tsx scripts/testGrandChampionPromotion.ts",
     "test:show-countdowns": "tsx scripts/testShowCountdowns.ts",
+    "verify:judge-assignments": "tsx scripts/verifyJudgeAssignmentsReadOnly.ts",
     "backfill:phenotype-health": "tsx scripts/backfill-phenotype-health.ts",
     "backfill:kennel-runs": "tsx scripts/backfillKennelRuns.ts",
     "reset:kennel-runs-to-uncategorized": "tsx scripts/resetKennelRunsToUncategorized.ts",
