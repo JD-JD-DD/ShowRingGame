@@ -37,6 +37,7 @@
     "test:grand-champion-promotion": "tsx scripts/testGrandChampionPromotion.ts",
     "test:show-countdowns": "tsx scripts/testShowCountdowns.ts",
     "verify:judge-assignments": "tsx scripts/verifyJudgeAssignmentsReadOnly.ts",
+    "test:maintain-show-schedule-auth": "tsx scripts/testMaintainShowScheduleAuthorization.ts",
     "backfill:phenotype-health": "tsx scripts/backfill-phenotype-health.ts",
     "backfill:kennel-runs": "tsx scripts/backfillKennelRuns.ts",
     "reset:kennel-runs-to-uncategorized": "tsx scripts/resetKennelRunsToUncategorized.ts",

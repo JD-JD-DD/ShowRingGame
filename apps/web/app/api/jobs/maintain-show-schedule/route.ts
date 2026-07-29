@@ -1,11 +1,13 @@
 import { fail, ok } from "@/lib/http";
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { isAuthorizedJobRequest } from "@/lib/jobAuthorization";
 import { ensureGeneratedShowSchedule } from "@/server/services/showSchedule.service";
 import { SHOW_INSTANCE_GENERATION_HORIZON_HOURS } from "@showring/rules";
 import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const DB_PREFLIGHT_ATTEMPTS = 4;
 const DB_PREFLIGHT_DELAY_MS = 2000;
@@ -116,13 +118,20 @@ export async function GET(request: Request) {
         (phaseDurationsMs[phaseName] ?? 0) + Date.now() - startedAtMs;
     }
   };
-  const secret = process.env.SHOWRING_JOBS_SECRET;
+  const cronSecret = process.env.CRON_SECRET;
+  const manualSecret = process.env.SHOWRING_JOBS_SECRET;
 
-  if (!secret && process.env.NODE_ENV === "production") {
-    return fail("SHOWRING_JOBS_SECRET is required in production.", 500);
+  if (!cronSecret && !manualSecret && process.env.NODE_ENV === "production") {
+    return fail("A job authorization secret is required in production.", 500);
   }
 
-  if (secret && request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (
+    !isAuthorizedJobRequest({
+      authorization: request.headers.get("authorization"),
+      cronSecret,
+      manualSecret,
+    })
+  ) {
     return fail("Unauthorized.", 401);
   }
 

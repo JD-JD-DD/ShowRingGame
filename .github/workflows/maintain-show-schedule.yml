@@ -1,8 +1,6 @@
 name: Maintain show schedule
 
 on:
-  schedule:
-    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 concurrency:
@@ -13,7 +11,8 @@ jobs:
   maintain:
     runs-on: ubuntu-latest
     steps:
-      - name: Maintain generated show schedule
+      # Vercel Cron is the recurring production scheduler. This is a manual fallback.
+      - name: Manually maintain generated show schedule
         env:
           SHOWRING_JOBS_BASE_URL: ${{ secrets.SHOWRING_JOBS_BASE_URL }}
           SHOWRING_JOBS_SECRET: ${{ secrets.SHOWRING_JOBS_SECRET }}
