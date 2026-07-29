@@ -1,4 +1,5 @@
 import {
+  getJudgeAssignmentPlanState,
   planWeekJudgeAssignments,
   type PlannerJudge,
 } from "../server/services/judgeAssignmentPlanner.service";
@@ -63,5 +64,21 @@ const invitationalPlan = planWeekJudgeAssignments({
 assert(invitationalPlan.length === 1, "Week 52 permits one cluster");
 assert(invitationalPlan[0]!.days[0]!.assignments.length === 8, "Week 52 eight groups");
 assert(invitationalPlan[0]!.panelJudgeIds.includes(invitationalPlan[0]!.days[0]!.bisJudgeId), "Week 52 BIS belongs to panel");
+
+const completeDay = {
+  status: "SCHEDULED",
+  judgeId: "judge-1",
+  groupJudgeAssignments: CANONICAL_SHOW_GROUP_CODES.map((groupCode, index) => ({
+    groupCode,
+    judgeId: `judge-${index + 1}`,
+  })),
+};
+assert(getJudgeAssignmentPlanState({ showDays: [{ ...completeDay }] }) === "complete", "complete plan state");
+assert(getJudgeAssignmentPlanState({ showDays: [{ ...completeDay, groupJudgeAssignments: [] }] }) === "empty", "empty plan state");
+assert(getJudgeAssignmentPlanState({ showDays: [{ ...completeDay, groupJudgeAssignments: completeDay.groupJudgeAssignments.slice(1) }] }) === "partial", "missing group plan state");
+assert(getJudgeAssignmentPlanState({ showDays: [{ ...completeDay, groupJudgeAssignments: completeDay.groupJudgeAssignments.map((assignment) => ({ ...assignment, judgeId: "judge-1" })) }] }) === "partial", "repeated judge plan state");
+assert(getJudgeAssignmentPlanState({ showDays: [{ ...completeDay, judgeId: "outside-panel" }] }) === "partial", "BIS outside panel state");
+assert(getJudgeAssignmentPlanState({ showDays: [{ ...completeDay }, { ...completeDay, judgeId: "judge-9", groupJudgeAssignments: completeDay.groupJudgeAssignments.map((assignment, index) => ({ ...assignment, judgeId: `judge-${index + 9}` })) }] }) === "partial", "inconsistent cluster panel state");
+assert(getJudgeAssignmentPlanState({ showDays: [{ ...completeDay, status: "JUDGING", groupJudgeAssignments: [] }] }) === "protected", "judged partial plan state");
 assert(JSON.stringify(plans) === JSON.stringify(planWeekJudgeAssignments({ year: 16, weekInYear: 1, clusters, judges })), "deterministic plan");
 console.log("Judge assignment planner checks passed.");

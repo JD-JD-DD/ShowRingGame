@@ -125,13 +125,20 @@ export function planWeekJudgeAssignments(args: {
   return plans;
 }
 
-function isCompletePlan(cluster: {
+export type JudgeAssignmentPlanState = "empty" | "complete" | "partial" | "protected";
+
+type PersistedPlanCluster = {
   showDays: Array<{
+    status: string;
     judgeId: string;
     groupJudgeAssignments: Array<{ groupCode: CanonicalShowGroupCode; judgeId: string }>;
   }>;
-}): boolean {
-  return cluster.showDays.every((showDay) => {
+};
+
+export function getJudgeAssignmentPlanState(
+  cluster: PersistedPlanCluster
+): JudgeAssignmentPlanState {
+  const completeDays = cluster.showDays.every((showDay) => {
     const assignments = showDay.groupJudgeAssignments;
     return (
       assignments.length === CANONICAL_SHOW_GROUP_CODES.length &&
@@ -142,6 +149,27 @@ function isCompletePlan(cluster: {
       assignments.some((assignment) => assignment.judgeId === showDay.judgeId)
     );
   });
+  const panelSignature = (showDay: PersistedPlanCluster["showDays"][number]) =>
+    showDay.groupJudgeAssignments
+      .map((assignment) => assignment.judgeId)
+      .sort()
+      .join(",");
+  const complete =
+    completeDays &&
+    new Set(cluster.showDays.map(panelSignature)).size === 1;
+  if (complete) return "complete";
+  if (
+    cluster.showDays.some(
+      (showDay) =>
+        showDay.status === "JUDGING" || showDay.status === "RESULTS_PUBLISHED"
+    )
+  ) {
+    return "protected";
+  }
+  if (cluster.showDays.every((showDay) => showDay.groupJudgeAssignments.length === 0)) {
+    return "empty";
+  }
+  return "partial";
 }
 
 export async function ensureWeekJudgeAssignmentPlans(args: {
@@ -171,17 +199,11 @@ export async function ensureWeekJudgeAssignmentPlans(args: {
   if (clusters.length !== args.clusters.length || clusters.some((cluster) => cluster.showDays.length === 0)) {
     return;
   }
-  if (clusters.every(isCompletePlan)) {
+  const planStates = clusters.map(getJudgeAssignmentPlanState);
+  if (planStates.every((state) => state === "complete")) {
     return;
   }
-  if (
-    clusters.some((cluster) =>
-      cluster.showDays.some(
-        (showDay) =>
-          showDay.status === "JUDGING" || showDay.status === "RESULTS_PUBLISHED"
-      )
-    )
-  ) {
+  if (planStates.includes("protected")) {
     throw new Error("Cannot reconstruct a partial group judge plan for judged or published ShowDays.");
   }
 
