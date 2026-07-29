@@ -85,6 +85,17 @@ enum ShowJudgingBlockStatus {
   CANCELLED
 }
 
+enum ShowGroupCode {
+  SPORTING
+  HOUND
+  WORKING
+  TERRIER
+  TOY
+  NON_SPORTING
+  HERDING
+  MISCELLANEOUS
+}
+
 enum ShowEntryStatus {
   ENTERED
   WITHDRAWN
@@ -603,10 +614,11 @@ model Judge {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  showDays          ShowDay[]
-  showResults       ShowResult[]
-  showAwards        ShowAward[]
-  showJudgingBlocks ShowJudgingBlock[]
+  showDays                     ShowDay[]
+  showResults                  ShowResult[]
+  showAwards                   ShowAward[]
+  showJudgingBlocks            ShowJudgingBlock[]
+  showDayGroupJudgeAssignments ShowDayGroupJudgeAssignment[]
 
   @@index([isActive])
   @@index([homeDistrict])
@@ -726,14 +738,35 @@ model ShowDay {
   showResults                   ShowResult[]
   showAwards                    ShowAward[]
   grandChampionCredits          DogGrandChampionCredit[]
-  grandCompletedTitleProgresses DogTitleProgress[]       @relation("DogGrandCompletedAtShowDay")
+  grandCompletedTitleProgresses DogTitleProgress[]            @relation("DogGrandCompletedAtShowDay")
   prestigeCredits               DogShowPrestigeCredit[]
   judgingBlocks                 ShowJudgingBlock[]
+  groupJudgeAssignments         ShowDayGroupJudgeAssignment[]
 
   @@unique([clusterId, dayIndex])
   @@index([judgeId])
   @@index([scheduledEpoch])
   @@index([status])
+}
+
+/// The authoritative scheduled judge for one canonical group on one ShowDay.
+/// These assignments exist independently of entries, including zero-entry groups.
+/// ShowDay.judgeId remains the current day-level judge and will become the designated
+/// BIS judge in a later stage. That judge must eventually be one of these eight
+/// group judges, but this migration neither populates nor enforces that invariant.
+model ShowDayGroupJudgeAssignment {
+  id        String        @id @default(cuid())
+  showDayId String
+  groupCode ShowGroupCode
+  judgeId   String
+  createdAt DateTime      @default(now())
+
+  showDay ShowDay @relation(fields: [showDayId], references: [id])
+  judge   Judge   @relation(fields: [judgeId], references: [id])
+
+  @@unique([showDayId, groupCode])
+  @@index([showDayId])
+  @@index([judgeId])
 }
 
 model ShowJudgingBlock {
@@ -1082,7 +1115,7 @@ model DogConditionEvent {
   conditionAfter       Float
   groomingWeek         Int
   occurredAtEpoch      Int
-  decayKey            String?               @unique
+  decayKey             String?               @unique
   note                 String?
   createdAt            DateTime              @default(now())
 
