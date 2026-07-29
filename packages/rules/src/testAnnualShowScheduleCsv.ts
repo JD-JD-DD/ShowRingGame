@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import path from "node:path";
 
 import {
@@ -54,6 +55,31 @@ const validation = validateAnnualShowScheduleRows(rows);
 const regularRows = validation.regularRows;
 const reservedRows = validation.reservedRows;
 
+const immutableIdentityFingerprint = crypto
+  .createHash("sha256")
+  .update(
+    JSON.stringify(
+      rows.map((row, index) => [
+        index,
+        row.weekInYear,
+        row.slotIndex,
+        row.templateId,
+        row.district,
+        row.showName,
+        row.isRegularCircuit,
+        row.isInvitationalReserved,
+        row.notes,
+      ])
+    )
+  )
+  .digest("hex");
+
+assertEqual(
+  immutableIdentityFingerprint,
+  "82c24d2e79e4e70d1836a8c67a660189c112a2afb3f60531d47d8bf569f706cd",
+  "immutable CSV identity fingerprint"
+);
+
 assertEqual(rows.length, 154, "total CSV row count");
 assertEqual(regularRows.length, 153, "regular annual row count");
 assertEqual(reservedRows.length, 1, "reserved marker row count");
@@ -63,6 +89,34 @@ assertEqual(
   30,
   "FOUR_DAY regular row count"
 );
+assertEqual(
+  regularRows.filter((row) => row.clusterType === "TWO_DAY").length,
+  123,
+  "TWO_DAY regular row count"
+);
+
+const fourDayCountsByWeek = new Map<number, number>();
+
+for (const row of regularRows) {
+  if (row.clusterType === "FOUR_DAY") {
+    fourDayCountsByWeek.set(
+      row.weekInYear,
+      (fourDayCountsByWeek.get(row.weekInYear) ?? 0) + 1
+    );
+  }
+}
+
+assertEqual(
+  [...fourDayCountsByWeek.values()].filter((count) => count === 1).length,
+  30,
+  "weeks with one FOUR_DAY row"
+);
+assertEqual(
+  [...fourDayCountsByWeek.values()].some((count) => count > 1),
+  false,
+  "weeks with multiple FOUR_DAY rows"
+);
+assertEqual(51 - fourDayCountsByWeek.size, 21, "weeks with zero FOUR_DAY rows");
 
 const expectedWeeks = new Map([
   [1, "1,6,11"],

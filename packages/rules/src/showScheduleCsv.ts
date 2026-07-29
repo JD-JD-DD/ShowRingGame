@@ -301,6 +301,14 @@ export function validateAnnualShowScheduleRows(
       }
 
       const expectedOffsetCount = row.clusterType === "FOUR_DAY" ? 4 : 2;
+      const expectedShowDayOffsets = row.clusterType === "FOUR_DAY"
+        ? [4, 5, 6, 7]
+        : [5, 6];
+      const expectedShowDayNames = row.clusterType === "FOUR_DAY"
+        ? ["Friday", "Saturday", "Sunday", "Monday"]
+        : ["Saturday", "Sunday"];
+      const expectedStartDayOffset = row.clusterType === "FOUR_DAY" ? 4 : 5;
+      const expectedEndDayOffset = row.clusterType === "FOUR_DAY" ? 7 : 6;
 
       if (row.showDayOffsets.length !== expectedOffsetCount) {
         addError(
@@ -316,6 +324,21 @@ export function validateAnnualShowScheduleRows(
           row,
           `${row.clusterType} rows must have ${expectedOffsetCount} showDayNames.`
         );
+      }
+
+      if (row.showDayOffsets.join(",") !== expectedShowDayOffsets.join(",")) {
+        addError(errors, row, `${row.clusterType} rows must use canonical showDayOffsets.`);
+      }
+
+      if (row.showDayNames.join(",") !== expectedShowDayNames.join(",")) {
+        addError(errors, row, `${row.clusterType} rows must use canonical showDayNames.`);
+      }
+
+      if (
+        row.startDayOffset !== expectedStartDayOffset ||
+        row.endDayOffset !== expectedEndDayOffset
+      ) {
+        addError(errors, row, `${row.clusterType} rows must use canonical start and end day offsets.`);
       }
     }
   }
@@ -394,9 +417,43 @@ export function validateAnnualShowScheduleRows(
   }
 
   const fourDayRows = regularRows.filter((row) => row.clusterType === "FOUR_DAY");
+  const twoDayRows = regularRows.filter((row) => row.clusterType === "TWO_DAY");
 
   if (fourDayRows.length !== 30) {
     errors.push(`FOUR_DAY regular row count must be 30, got ${fourDayRows.length}.`);
+  }
+
+  if (twoDayRows.length !== 123) {
+    errors.push(`TWO_DAY regular row count must be 123, got ${twoDayRows.length}.`);
+  }
+
+  let weeksWithOneFourDay = 0;
+  let weeksWithNoFourDays = 0;
+
+  for (let week = 1; week <= 51; week += 1) {
+    const fourDaysForWeek = regularRows.filter(
+      (row) => row.weekInYear === week && row.clusterType === "FOUR_DAY"
+    ).length;
+
+    if (fourDaysForWeek > 1) {
+      errors.push(`Week ${week} cannot contain more than one FOUR_DAY row.`);
+    }
+
+    if (fourDaysForWeek === 1) {
+      weeksWithOneFourDay += 1;
+    }
+
+    if (fourDaysForWeek === 0) {
+      weeksWithNoFourDays += 1;
+    }
+  }
+
+  if (weeksWithOneFourDay !== 30) {
+    errors.push(`30 weeks must contain exactly one FOUR_DAY row, got ${weeksWithOneFourDay}.`);
+  }
+
+  if (weeksWithNoFourDays !== 21) {
+    errors.push(`21 weeks must contain zero FOUR_DAY rows, got ${weeksWithNoFourDays}.`);
   }
 
   assertNoErrors(errors);
