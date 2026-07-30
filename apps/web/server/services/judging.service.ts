@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { resolveScheduledGroupJudgeForBreed } from "@/server/services/showDayGroupJudgeAssignment.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
@@ -1294,10 +1295,12 @@ async function ensureShowDayBreedBlock(args: {
         showDayId,
         breedCode2,
       },
-      select: { id: true },
+      select: { id: true, judgeId: true },
     });
 
     if (existingBlock) {
+      const scheduled = await resolveScheduledGroupJudgeForBreed({ tx, showDayId, breedCode2 });
+      if (existingBlock.judgeId !== scheduled.judgeId) throw new Error(`Breed block judge mismatch for showDay=${showDayId}, breed=${breedCode2}, group=${scheduled.groupCode}.`);
       await tx.showEntry.updateMany({
         where: {
           showDayId,
@@ -1342,10 +1345,11 @@ async function ensureShowDayBreedBlock(args: {
         : currentEpoch >= showDay.scheduledEpoch
           ? "ENTRY_OPEN"
           : "SCHEDULED";
+    const scheduled = await resolveScheduledGroupJudgeForBreed({ tx, showDayId, breedCode2 });
     const createdBlock = await tx.showJudgingBlock.create({
       data: {
         showDayId,
-        judgeId: showDay.judgeId,
+        judgeId: scheduled.judgeId,
         breedCode2,
         ringNumber: 1,
         ringName: "Breed Judging",

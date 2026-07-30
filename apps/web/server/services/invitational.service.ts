@@ -3,6 +3,7 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { getWeek51RegularClusterIdsForYear } from "@/server/services/annualShowSchedule.service";
 import { seedJudgePanelFromCsv } from "@/server/services/judgePanel.service";
 import { planWeekJudgeAssignments } from "@/server/services/judgeAssignmentPlanner.service";
+import { resolveScheduledGroupJudgeForBreed } from "@/server/services/showDayGroupJudgeAssignment.service";
 import type {
   BreedingAttemptStatus,
   DogLifecycleState,
@@ -340,11 +341,15 @@ async function ensureInvitationalShowForYear(args: {
       const ringNumber = ringNumberByGroup.get(groupName) ?? groupNames.length + 1;
       const blockOrder = (blockOrderByRing.get(ringNumber) ?? 0) + 1;
       blockOrderByRing.set(ringNumber, blockOrder);
-      const judge = judges[(year + ringNumber + blockOrder) % judges.length];
+      const judge = await resolveScheduledGroupJudgeForBreed({
+        tx,
+        showDayId: showDay.id,
+        breedCode2: breed.code2,
+      });
       const judgingBlock = await tx.showJudgingBlock.create({
         data: {
           showDayId: showDay.id,
-          judgeId: judge.id,
+          judgeId: judge.judgeId,
           breedCode2: breed.code2,
           ringNumber,
           ringName: getRingName(groupName),

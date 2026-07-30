@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { resolveScheduledGroupJudgeForBreed } from "@/server/services/showDayGroupJudgeAssignment.service";
 import {
   getPhenotypeHealthBadgeStatus,
   hasAllGreenPhenotypeHealthTests,
@@ -2053,7 +2054,6 @@ async function ensureBreedBlockForEntry(args: {
   tx: Prisma.TransactionClient;
   showDay: {
     id: string;
-    judgeId: string;
     scheduledEpoch: number;
     status: string;
   };
@@ -2065,12 +2065,16 @@ async function ensureBreedBlockForEntry(args: {
       showDayId: showDay.id,
       breedCode2,
     },
-    select: { id: true },
+    select: { id: true, judgeId: true },
   });
 
   if (existingBlock) {
+    const scheduled = await resolveScheduledGroupJudgeForBreed({ tx, showDayId: showDay.id, breedCode2 });
+    if (existingBlock.judgeId !== scheduled.judgeId) throw new Error(`Breed block judge mismatch for showDay=${showDay.id}, breed=${breedCode2}, group=${scheduled.groupCode}.`);
     return existingBlock.id;
   }
+
+  const scheduled = await resolveScheduledGroupJudgeForBreed({ tx, showDayId: showDay.id, breedCode2 });
 
   const lastBlock = await tx.showJudgingBlock.findFirst({
     where: { showDayId: showDay.id },
@@ -2081,7 +2085,7 @@ async function ensureBreedBlockForEntry(args: {
   const createdBlock = await tx.showJudgingBlock.create({
     data: {
       showDayId: showDay.id,
-      judgeId: showDay.judgeId,
+      judgeId: scheduled.judgeId,
       breedCode2,
       ringNumber: 1,
       ringName: "Breed Judging",
