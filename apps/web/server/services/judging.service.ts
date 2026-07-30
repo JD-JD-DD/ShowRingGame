@@ -22,6 +22,8 @@ import {
   MIN_SHOW_AGE_HOURS,
   type Dog as EngineDog,
   type Judge as EngineJudge,
+  type CanonicalShowGroupCode,
+  resolveBreedGroupNameToCanonicalShowGroupCode,
 } from "@showring/rules";
 import {
   Prisma,
@@ -1628,13 +1630,15 @@ async function createGroupAwardsForShowDay(args: {
       tx,
       bobAwards.map((award) => award.dogId)
     );
-    const awardsByGroup = new Map<string, typeof bobAwards>();
+    const awardsByGroup = new Map<CanonicalShowGroupCode, typeof bobAwards>();
 
     for (const award of bobAwards) {
-      const groupName = normalizeGroupName(award.dog.breed.groupName);
-      const groupAwards = awardsByGroup.get(groupName) ?? [];
+      const groupCode = resolveBreedGroupNameToCanonicalShowGroupCode(
+        award.dog.breed.groupName
+      );
+      const groupAwards = awardsByGroup.get(groupCode) ?? [];
       groupAwards.push(award);
-      awardsByGroup.set(groupName, groupAwards);
+      awardsByGroup.set(groupCode, groupAwards);
     }
 
     const awardsToCreate: Prisma.ShowAwardCreateManyInput[] = [];
@@ -1649,7 +1653,17 @@ async function createGroupAwardsForShowDay(args: {
       dogIds: bobAwards.map((award) => award.dogId),
     });
 
-    for (const groupAwards of awardsByGroup.values()) {
+    for (const [groupCode, groupAwards] of awardsByGroup) {
+      const groupAssignment = await tx.showDayGroupJudgeAssignment.findUnique({
+        where: { showDayId_groupCode: { showDayId: args.showDayId, groupCode } },
+        select: { judgeId: true },
+      });
+      const groupJudge = groupAssignment
+        ? await tx.judge.findUnique({ where: { id: groupAssignment.judgeId } })
+        : null;
+      if (!groupAssignment || !groupJudge) {
+        throw new Error(`Scheduled group judge assignment is missing for showDay=${args.showDayId}, group=${groupCode}.`);
+      }
       const awardByEntryId = new Map(
         groupAwards.map((award) => [award.showEntryId, award])
       );
@@ -1657,7 +1671,7 @@ async function createGroupAwardsForShowDay(args: {
         groupAwards.map((award) => award.showEntry.kennelId)
       ).size;
       const judgedGroupAwards = judgeGroup({
-        judge: args.judge,
+        judge: toEngineJudge(groupJudge),
         showEpoch: showDayTiming.scheduledEpoch,
         entries: groupAwards.map((award) => ({
           showEntryId: award.showEntryId,
@@ -1702,7 +1716,7 @@ async function createGroupAwardsForShowDay(args: {
           judgingBlockId: null,
           dogId: sourceAward.dogId,
           breedCode2: sourceAward.breedCode2,
-          judgeId: args.judgeId,
+          judgeId: groupAssignment.judgeId,
           awardCode: judgedAward.awardCode,
           awardGroup: judgedAward.awardGroup,
           sex: judgedAward.sex,
