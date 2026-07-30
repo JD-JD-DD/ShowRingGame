@@ -6,3 +6,4 @@ coverage
 *.log
 .next
 apps/web/exports/
+apps/web/artifacts/
