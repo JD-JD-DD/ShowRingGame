@@ -14,7 +14,10 @@ import {
   type TitlePointsDisplay,
 } from "@/lib/titlePoints";
 import type { ShowEntryAbsenceReason } from "@prisma/client";
-import { getShowDistrictRegionName } from "@showring/rules";
+import {
+  getShowDistrictRegionName,
+  resolveBreedGroupNameToCanonicalShowGroupCode,
+} from "@showring/rules";
 
 function formatShowDate(epoch: number): string {
   return epochToDate(epoch).toLocaleDateString("en-US", {
@@ -25,26 +28,32 @@ function formatShowDate(epoch: number): string {
   });
 }
 
-function buildShowHeaderDetails(entry: {
-  showDay: {
-    dayIndex: number | null;
-    scheduledEpoch: number;
-    cluster: {
-      district: number | null;
-    };
-  };
-}): string[] {
-  const details = [`Date ${formatShowDate(entry.showDay.scheduledEpoch)}`];
+function formatJudgeProfileUrl(judgeCode: string | null | undefined): string | null {
+  return judgeCode ? `/judges/${judgeCode}` : null;
+}
 
-  if (entry.showDay.dayIndex != null) {
-    details.push(`Day ${entry.showDay.dayIndex}`);
+function renderJudgeName(args: {
+  judgeName: string | null;
+  judgeCode?: string | null;
+}) {
+  if (!args.judgeName) {
+    return <span>Judge unavailable</span>;
   }
 
-  if (entry.showDay.cluster.district != null) {
-    details.push(getShowDistrictRegionName(entry.showDay.cluster.district));
+  const href = formatJudgeProfileUrl(args.judgeCode);
+
+  if (!href) {
+    return <span>{args.judgeName}</span>;
   }
 
-  return details;
+  return (
+    <Link
+      href={href}
+      className="underline-offset-4 hover:underline"
+    >
+      {args.judgeName}
+    </Link>
+  );
 }
 
 type MyShowResultEntry = {
@@ -63,6 +72,56 @@ type MyShowResultEntry = {
       } | null;
     }>;
   } | null;
+};
+
+type MyResultsEntryRecord = MyShowResultEntry & {
+  id: string;
+  dog: {
+    id: string;
+    callName: string | null;
+    registeredName: string | null;
+    regNumber: string;
+    visibleTitlePrefix: string | null;
+    visibleTitleSuffix: string | null;
+  };
+  breed: {
+    name: string;
+    code2: string;
+    groupName: string | null;
+  };
+  showDay: {
+    dayIndex: number | null;
+    scheduledEpoch: number;
+    judge: {
+      name: string;
+      judgeCode: string;
+    } | null;
+    groupJudgeAssignments: Array<{
+      groupCode: string;
+      judgeId: string;
+      judge: {
+        name: string;
+        judgeCode: string;
+      };
+    }>;
+    cluster: {
+      id: string;
+      name: string;
+      district: number | null;
+    };
+  };
+};
+
+type MyResultsBreedSection = {
+  breedCode2: string;
+  breedName: string;
+  scheduledEpoch: number;
+  dayIndex: number | null;
+  groupJudgeName: string | null;
+  groupJudgeCode: string | null;
+  bisJudgeName: string | null;
+  bisJudgeCode: string | null;
+  rows: MyResultsEntryRecord[];
 };
 
 function getAbsenceReasonMessage(entry: MyShowResultEntry): string | null {
@@ -126,7 +185,7 @@ export default async function MyShowResultsPage() {
     redirect("/onboarding");
   }
 
-  const entries = await db.showEntry.findMany({
+  const entries: MyResultsEntryRecord[] = await db.showEntry.findMany({
     where: {
       kennelId: kennel.id,
       OR: [
@@ -165,11 +224,29 @@ export default async function MyShowResultsPage() {
           visibleTitleSuffix: true,
         },
       },
-      breed: { select: { name: true, code2: true } },
+      breed: { select: { name: true, code2: true, groupName: true } },
       showDay: {
         select: {
           dayIndex: true,
           scheduledEpoch: true,
+          judge: {
+            select: {
+              name: true,
+              judgeCode: true,
+            },
+          },
+          groupJudgeAssignments: {
+            select: {
+              groupCode: true,
+              judgeId: true,
+              judge: {
+                select: {
+                  name: true,
+                  judgeCode: true,
+                },
+              },
+            },
+          },
           cluster: {
             select: {
               id: true,
@@ -201,6 +278,83 @@ export default async function MyShowResultsPage() {
       },
     },
   });
+
+  const showGroups = new Map<
+    string,
+    {
+      clusterId: string;
+      showName: string;
+      district: number | null;
+      breedSections: MyResultsBreedSection[];
+      breedEntriesByCode: Map<string, MyResultsBreedSection>;
+    }
+  >();
+
+  for (const entry of entries) {
+    const showKey = entry.showDay.cluster.id;
+    const existingShowGroup = showGroups.get(showKey);
+    const showGroup =
+      existingShowGroup ??
+      {
+        clusterId: entry.showDay.cluster.id,
+        showName: entry.showDay.cluster.name,
+        district: entry.showDay.cluster.district,
+        breedSections: [] as MyResultsBreedSection[],
+        breedEntriesByCode: new Map(),
+      };
+
+    let groupJudgeName: string | null = null;
+    let groupJudgeCode: string | null = null;
+
+    try {
+      const groupCode = resolveBreedGroupNameToCanonicalShowGroupCode(
+        entry.breed.groupName
+      );
+      const assignment = entry.showDay.groupJudgeAssignments.find(
+        (candidate) => candidate.groupCode === groupCode
+      );
+      groupJudgeName = assignment?.judge.name ?? null;
+      groupJudgeCode = assignment?.judge.judgeCode ?? null;
+    } catch {
+      groupJudgeName = null;
+      groupJudgeCode = null;
+    }
+
+    const existingBreedSection = showGroup.breedEntriesByCode.get(
+      entry.breed.code2
+    );
+    const breedSection =
+      existingBreedSection ??
+      {
+        breedCode2: entry.breed.code2,
+        breedName: entry.breed.name,
+        scheduledEpoch: entry.showDay.scheduledEpoch,
+        dayIndex: entry.showDay.dayIndex,
+        groupJudgeName,
+        groupJudgeCode,
+        bisJudgeName: entry.showDay.judge?.name ?? null,
+        bisJudgeCode: entry.showDay.judge?.judgeCode ?? null,
+        rows: [] as MyResultsEntryRecord[],
+      };
+
+    breedSection.rows.push(entry);
+
+    if (!existingBreedSection) {
+      showGroup.breedEntriesByCode.set(entry.breed.code2, breedSection);
+      showGroup.breedSections.push(breedSection);
+    }
+
+    if (!existingShowGroup) {
+      showGroups.set(showKey, showGroup);
+    }
+  }
+
+  const groupedShows = [...showGroups.values()].map((showGroup) => ({
+    ...showGroup,
+    breedSections: [...showGroup.breedSections].sort((a, b) =>
+      a.breedName.localeCompare(b.breedName)
+    ),
+  }));
 
   return (
     <main className="results-page mx-auto max-w-7xl px-6 py-8">
@@ -251,86 +405,134 @@ export default async function MyShowResultsPage() {
                 </tr>
               </thead>
               <tbody>
-                {entries.map((entry, index) => {
-                  const previousEntry = index > 0 ? entries[index - 1] : null;
-                  const startsNewShowGroup =
-                    previousEntry?.showDay.cluster.id !== entry.showDay.cluster.id;
-                  const titlePointsAwarded = formatTitlePointsDisplay(
-                    getTitlePointsDisplay(entry)
-                  );
-                  const absenceReasonMessage = getAbsenceReasonMessage(entry);
-                  const showHeaderDetails = buildShowHeaderDetails(entry);
-
-                  return (
-                    <Fragment key={entry.id}>
-                      {startsNewShowGroup ? (
+                {groupedShows.map((showGroup, showIndex) => (
+                  <Fragment key={showGroup.clusterId}>
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className={`px-0 ${showIndex === 0 ? "pt-0" : "pt-4"}`}
+                      >
+                        <div
+                          className={`border-t border-white/10 ${
+                            showIndex === 0 ? "pt-0" : "pt-3"
+                          }`}
+                        >
+                          <h2 className="theme-heading text-sm font-semibold sm:text-base">
+                            {showGroup.showName}
+                          </h2>
+                          <p className="theme-copy mt-1 text-xs sm:text-sm">
+                            {showGroup.district != null
+                              ? getShowDistrictRegionName(showGroup.district)
+                              : "District unavailable"}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                    {showGroup.breedSections.map((breedSection) => (
+                      <Fragment
+                        key={`${showGroup.clusterId}-${breedSection.breedCode2}`}
+                      >
                         <tr>
-                          <td
-                            colSpan={6}
-                            className={`px-0 ${index === 0 ? "pt-0" : "pt-4"}`}
-                          >
-                            <div className={`border-t border-white/10 ${index === 0 ? "pt-0" : "pt-3"}`}>
-                              <h2 className="theme-heading text-sm font-semibold sm:text-base">
-                                {entry.showDay.cluster.name}
-                              </h2>
+                          <td colSpan={6} className="px-0 pt-3">
+                            <div className="mx-1 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                              <div className="theme-heading text-sm font-semibold">
+                                {breedSection.breedName} ({breedSection.breedCode2})
+                              </div>
                               <p className="theme-copy mt-1 text-xs sm:text-sm">
-                                {showHeaderDetails.join(" | ")}
+                                {[
+                                  `Date ${formatShowDate(
+                                    breedSection.scheduledEpoch
+                                  )}`,
+                                  breedSection.dayIndex != null
+                                    ? `Day ${breedSection.dayIndex}`
+                                    : null,
+                                  "Group Judge:",
+                                  null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" | ")}
+                                {" "}
+                                {renderJudgeName({
+                                  judgeName: breedSection.groupJudgeName,
+                                  judgeCode: breedSection.groupJudgeCode,
+                                })}
+                                {" | "}BIS Judge:{" "}
+                                {renderJudgeName({
+                                  judgeName: breedSection.bisJudgeName,
+                                  judgeCode: breedSection.bisJudgeCode,
+                                })}
                               </p>
                             </div>
                           </td>
                         </tr>
-                      ) : null}
-                      <tr className="theme-card">
-                        <td className="rounded-l-2xl px-3 py-3">
-                          <Link
-                            href={`/dogs/${entry.dog.id}`}
-                            className="theme-heading font-semibold underline-offset-4 hover:underline"
-                          >
-                            {formatDogDisplayName(entry.dog)}
-                          </Link>
-                          <div className="theme-copy text-xs">
-                            {entry.dog.regNumber}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3">
-                          <Link
-                            href={`/shows/${entry.showDay.cluster.id}/results`}
-                            className="theme-heading font-semibold underline-offset-4 hover:underline"
-                          >
-                            {entry.showDay.cluster.name}
-                          </Link>
-                          <div className="theme-copy text-xs">
-                            {getShowDistrictRegionName(
-                              entry.showDay.cluster.district
-                            )}
-                          </div>
-                        </td>
-                        <td className="theme-copy px-3 py-3">
-                          {formatShowDate(entry.showDay.scheduledEpoch)}
-                          <div className="theme-copy text-xs">
-                            Day {entry.showDay.dayIndex}
-                          </div>
-                        </td>
-                        <td className="theme-copy px-3 py-3">
-                          {entry.breed.name} ({entry.breed.code2})
-                        </td>
-                        <td className="theme-heading px-3 py-3 font-semibold">
-                          {formatResult(entry)}
-                          {absenceReasonMessage ? (
-                            <div className="theme-copy mt-1 text-xs font-normal">
-                              {absenceReasonMessage}
-                            </div>
-                          ) : null}
-                        </td>
-                        <td className="theme-heading rounded-r-2xl px-3 py-3 font-semibold">
-                          {titlePointsAwarded ?? (
-                            <span className="theme-copy opacity-50">&mdash;</span>
-                          )}
-                        </td>
-                      </tr>
-                    </Fragment>
-                  );
-                })}
+                        {breedSection.rows.map((entry) => {
+                          const titlePointsAwarded = formatTitlePointsDisplay(
+                            getTitlePointsDisplay(entry)
+                          );
+                          const absenceReasonMessage =
+                            getAbsenceReasonMessage(entry);
+
+                          return (
+                            <tr key={entry.id} className="theme-card">
+                              <td className="rounded-l-2xl px-3 py-3">
+                                <Link
+                                  href={`/dogs/${entry.dog.id}`}
+                                  className="theme-heading font-semibold underline-offset-4 hover:underline"
+                                >
+                                  {formatDogDisplayName(entry.dog)}
+                                </Link>
+                                <div className="theme-copy text-xs">
+                                  {entry.dog.regNumber}
+                                </div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <Link
+                                  href={`/shows/${entry.showDay.cluster.id}/results`}
+                                  className="theme-heading font-semibold underline-offset-4 hover:underline"
+                                >
+                                  {entry.showDay.cluster.name}
+                                </Link>
+                                <div className="theme-copy text-xs">
+                                  {entry.showDay.cluster.district != null
+                                    ? getShowDistrictRegionName(
+                                        entry.showDay.cluster.district
+                                      )
+                                    : "District unavailable"}
+                                </div>
+                              </td>
+                              <td className="theme-copy px-3 py-3">
+                                {formatShowDate(entry.showDay.scheduledEpoch)}
+                                <div className="theme-copy text-xs">
+                                  {entry.showDay.dayIndex != null
+                                    ? `Day ${entry.showDay.dayIndex}`
+                                    : "Day unavailable"}
+                                </div>
+                              </td>
+                              <td className="theme-copy px-3 py-3">
+                                {entry.breed.name} ({entry.breed.code2})
+                              </td>
+                              <td className="theme-heading px-3 py-3 font-semibold">
+                                {formatResult(entry)}
+                                {absenceReasonMessage ? (
+                                  <div className="theme-copy mt-1 text-xs font-normal">
+                                    {absenceReasonMessage}
+                                  </div>
+                                ) : null}
+                              </td>
+                              <td className="theme-heading rounded-r-2xl px-3 py-3 font-semibold">
+                                {titlePointsAwarded ?? (
+                                  <span className="theme-copy opacity-50">
+                                    &mdash;
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </Fragment>
+                    ))}
+                  </Fragment>
+                ))}
               </tbody>
             </table>
           </div>
