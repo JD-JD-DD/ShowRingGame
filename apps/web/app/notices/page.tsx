@@ -67,6 +67,12 @@ function getNoticeHref(notice: KennelNotice): string | null {
   if (notice.type === "INVITATIONAL_INVITE" && notice.linkedShowId) {
     return `/shows/${notice.linkedShowId}`;
   }
+  if (
+    notice.type === "INVITATIONAL_RESULTS_PUBLISHED" &&
+    notice.linkedShowId
+  ) {
+    return `/shows/${notice.linkedShowId}/results`;
+  }
   if (notice.linkedDogId) return `/dogs/${notice.linkedDogId}`;
   if (notice.linkedShowId) return `/shows/${notice.linkedShowId}`;
   if (notice.linkedListingId) return "/market";

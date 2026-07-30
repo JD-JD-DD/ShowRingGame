@@ -6,7 +6,9 @@ import {
   resolveScheduledGroupJudgeForBreed,
 } from "@/server/services/showDayGroupJudgeAssignment.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
+import { getInvitationalClusterId } from "@/server/services/invitational.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
+import { createInvitationalResultsPublishedNotices } from "@/server/services/kennelNotice.service";
 import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
 import {
   promoteGrandChampionTitleForDog,
@@ -386,7 +388,11 @@ async function ensureAndLoadBestInShowJudgingHealthTruths(
 }
 
 function awardsChampionshipPoints(clusterId: string): boolean {
-  return !clusterId.startsWith("invitational-year-");
+  return !isInvitationalClusterId(clusterId);
+}
+
+function isInvitationalClusterId(clusterId: string): boolean {
+  return clusterId.startsWith(getInvitationalClusterId(0).slice(0, -1));
 }
 
 async function showDayAwardsChampionshipPoints(args: {
@@ -841,7 +847,7 @@ async function repairPublishedBlockState(args: {
 async function maybeCompleteCluster(
   tx: Prisma.TransactionClient,
   clusterId: string
-): Promise<void> {
+): Promise<boolean> {
   const remainingDays = await tx.showDay.count({
     where: {
       clusterId,
@@ -856,7 +862,11 @@ async function maybeCompleteCluster(
       where: { id: clusterId },
       data: { status: "COMPLETE" },
     });
+
+    return true;
   }
+
+  return false;
 }
 
 async function maybePublishShowDay(args: {
@@ -2214,7 +2224,7 @@ export async function finalizeReadyShowDayResults(args: {
     })
   );
 
-  await runShowDayFinalizationPhase("publishStatus", () =>
+  const publishStatus = await runShowDayFinalizationPhase("publishStatus", () =>
     db.$transaction(async (tx) => {
       const publishableShowDay = await tx.showDay.findUnique({
         where: { id: args.showDayId },
@@ -2253,11 +2263,41 @@ export async function finalizeReadyShowDayResults(args: {
         },
       });
 
-      await maybeCompleteCluster(tx, publishableShowDay.clusterId);
+      const clusterCompleted = await maybeCompleteCluster(
+        tx,
+        publishableShowDay.clusterId
+      );
+
+      return {
+        clusterCompleted,
+      };
     }, {
       timeout: SHOW_DAY_FINALIZATION_TIMEOUT_MS,
     })
   );
+
+  if (publishStatus.clusterCompleted) {
+    const invitationalClusterId = getInvitationalClusterId(showDay.cluster.year);
+
+    if (
+      isInvitationalClusterId(showDay.cluster.id) &&
+      showDay.cluster.id === invitationalClusterId
+    ) {
+      try {
+        await createInvitationalResultsPublishedNotices({
+          clusterId: showDay.cluster.id,
+          clusterName: showDay.cluster.name,
+          invitationalYear: showDay.cluster.year,
+          currentEpoch: args.currentEpoch,
+        });
+      } catch (error) {
+        console.error(
+          "Unable to create invitational results published notices:",
+          error
+        );
+      }
+    }
+  }
 
   return {
     showDayId: args.showDayId,

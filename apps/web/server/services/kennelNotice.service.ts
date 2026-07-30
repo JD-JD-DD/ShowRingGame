@@ -3,6 +3,7 @@ import { KennelNoticeType, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
 type DbClient = typeof db | Prisma.TransactionClient;
+const INVITATIONAL_RESULTS_NOTICE_BATCH_SIZE = 500;
 
 export type KennelNoticeLinkArgs = {
   linkedDogId?: string | null;
@@ -173,5 +174,98 @@ export async function deleteReadKennelInboxNotices(args: {
 
   return {
     deletedCount: result.count,
+  };
+}
+
+function getInvitationalResultsNoticeSourceKey(args: {
+  clusterId: string;
+  kennelId: string;
+}) {
+  return `invitational-results:${args.clusterId}:${args.kennelId}`;
+}
+
+export async function createInvitationalResultsPublishedNotices(args: {
+  client?: DbClient;
+  clusterId: string;
+  clusterName: string;
+  invitationalYear: number;
+  currentEpoch: number;
+}) {
+  const client = args.client ?? db;
+  const recipientKennels = await client.kennel.findMany({
+    where: {
+      isNpc: false,
+      userId: { not: null },
+      moderationStatus: "ACTIVE",
+      user: {
+        is: {
+          moderationStatus: "ACTIVE",
+        },
+      },
+    },
+    orderBy: {
+      id: "asc",
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (recipientKennels.length === 0) {
+    return {
+      recipientCount: 0,
+      createdCount: 0,
+      batchCount: 0,
+    };
+  }
+
+  const title = "Invitational Results Are Available";
+  const body = `The Year ${args.invitationalYear} Invitational has finished judging. View the complete results.`;
+  const resultsPath = `/shows/${args.clusterId}/results`;
+  const noticeRows: Prisma.KennelNoticeCreateManyInput[] = recipientKennels.map(
+    (kennel) => ({
+      kennelId: kennel.id,
+      sourceKey: getInvitationalResultsNoticeSourceKey({
+        clusterId: args.clusterId,
+        kennelId: kennel.id,
+      }),
+      type: "INVITATIONAL_RESULTS_PUBLISHED",
+      title,
+      body,
+      createdAtEpoch: args.currentEpoch,
+      linkedShowId: args.clusterId,
+      metadataJson: {
+        gameYear: args.invitationalYear,
+        resultsPath,
+        clusterName: args.clusterName,
+      },
+    })
+  );
+
+  let createdCount = 0;
+  let batchCount = 0;
+
+  for (
+    let index = 0;
+    index < noticeRows.length;
+    index += INVITATIONAL_RESULTS_NOTICE_BATCH_SIZE
+  ) {
+    const batch = noticeRows.slice(
+      index,
+      index + INVITATIONAL_RESULTS_NOTICE_BATCH_SIZE
+    );
+    const result = await client.kennelNotice.createMany({
+      data: batch,
+      skipDuplicates: true,
+    });
+
+    createdCount += result.count;
+    batchCount += 1;
+  }
+
+  return {
+    recipientCount: recipientKennels.length,
+    createdCount,
+    batchCount,
   };
 }
