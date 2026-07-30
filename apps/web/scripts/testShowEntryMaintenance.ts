@@ -20,7 +20,8 @@ const showPage = source("apps/web/app/shows/[showId]/page.tsx");
 const dogPage = source("apps/web/app/dogs/[dogId]/show-entry/page.tsx");
 const dogPlanner = source("apps/web/server/services/dogShowEntryPlanner.service.ts");
 
-assertIncludes(maintenance, "SHOW_ENTRY_MAINTENANCE_ACTIVE = true", "maintenance switch is active");
+assertIncludes(maintenance, "SHOW_ENTRY_MAINTENANCE_ACTIVE = false", "maintenance switch is inactive");
+assertIncludes(maintenance, "SHOW_ENTRY_MAINTENANCE_ACTIVE &&", "maintenance switch retains its emergency pause gate");
 assertIncludes(maintenance, "SHOW_ENTRY_MAINTENANCE_START_YEAR = 15", "maintenance starts in Year 15, Week 1");
 assertIncludes(maintenance, "Existing entries and show results are not affected.", "maintenance message protects existing data");
 assertIncludes(availability, "isShowEntryMaintenanceActive(cluster)", "availability pauses only affected clusters before entry workflows begin");

@@ -1,6 +1,6 @@
 // Temporary operational switch. Set this to false after the calendar and
 // judge-assignment repairs are complete to restore Year 15+ player entry.
-export const SHOW_ENTRY_MAINTENANCE_ACTIVE = true;
+export const SHOW_ENTRY_MAINTENANCE_ACTIVE = false;
 export const SHOW_ENTRY_MAINTENANCE_START_YEAR = 15;
 
 export const SHOW_ENTRY_MAINTENANCE_MESSAGE =
