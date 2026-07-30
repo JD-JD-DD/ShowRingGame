@@ -332,6 +332,11 @@ export type DogProfilePedigreeDogDto = {
   displayName: string;
   relationship: string;
   profileUrl: string;
+  registrationNumber: string;
+  sex: "M" | "F";
+  storedCoiPercent: number | null;
+  progenyCount: number;
+  healthTestsSummary: string;
   healthStatusMarkers: {
     badgeStatus: "green" | "yellow" | "red" | null;
     hasFullClearance: boolean;
@@ -753,6 +758,11 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
         displayName: dog.displayName,
         relationship: dog.relationship,
         profileUrl: dog.profileUrl,
+        registrationNumber: dog.registrationNumber,
+        sex: dog.sex,
+        storedCoiPercent: dog.storedCoiPercent,
+        progenyCount: dog.progenyCount,
+        healthTestsSummary: dog.healthTestsSummary,
         healthStatusMarkers: {
           badgeStatus: dog.healthStatusMarkers.badgeStatus,
           hasFullClearance: dog.healthStatusMarkers.hasFullClearance,

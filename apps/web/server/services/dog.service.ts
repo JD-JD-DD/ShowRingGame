@@ -745,11 +745,13 @@ async function loadFourGenerationPedigree(args: {
         callName: true,
         registeredName: true,
         regNumber: true,
+        sex: true,
         breedCode2: true,
         visibleTitlePrefix: true,
         visibleTitleSuffix: true,
         sireId: true,
         damId: true,
+        coiPercent: true,
         healthTests: {
           where: {
             isPublic: true,
@@ -813,6 +815,11 @@ async function loadFourGenerationPedigree(args: {
         displayName: formatDogDisplayName(dog),
         relationship: item.relationshipParts.join("'s "),
         profileUrl: `/dogs/${dog.id}`,
+        registrationNumber: dog.regNumber,
+        sex: dog.sex,
+        storedCoiPercent: dog.coiPercent,
+        progenyCount: 0,
+        healthTestsSummary: `Health tests: ${latestHealthTests.length}/${PHENOTYPE_HEALTH_TEST_CODES.length}`,
         healthStatusMarkers: {
           badgeStatus: getPhenotypeHealthBadgeStatus(
             latestHealthTests,
@@ -846,6 +853,37 @@ async function loadFourGenerationPedigree(args: {
     }
 
     pending = next;
+  }
+
+  const ancestorIds = [...new Set(ancestors.map((ancestor) => ancestor.dogId))];
+  if (ancestorIds.length > 0) {
+    const offspring = await db.dog.findMany({
+      where: {
+        OR: [
+          { sireId: { in: ancestorIds } },
+          { damId: { in: ancestorIds } },
+        ],
+      },
+      select: { sireId: true, damId: true },
+    });
+    const progenyCountByParentId = new Map<string, number>();
+
+    for (const offspringDog of offspring) {
+      for (const parentId of new Set(
+        [offspringDog.sireId, offspringDog.damId].filter(
+          (parentId): parentId is string => parentId !== null && ancestorIds.includes(parentId)
+        )
+      )) {
+        progenyCountByParentId.set(
+          parentId,
+          (progenyCountByParentId.get(parentId) ?? 0) + 1
+        );
+      }
+    }
+
+    for (const ancestor of ancestors) {
+      ancestor.progenyCount = progenyCountByParentId.get(ancestor.dogId) ?? 0;
+    }
   }
 
   return ancestors;

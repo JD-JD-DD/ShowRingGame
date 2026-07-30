@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import DogPedigreeGrid from "@/components/dogs/DogPedigreeGrid";
+import DogFullPedigreeTree from "@/components/dogs/DogFullPedigreeTree";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getDogProfile } from "@/server/services/dog.service";
@@ -41,7 +41,7 @@ export default async function DogPedigreePage({ params }: PageProps) {
               <span key={label} className="dog-neutral-badge rounded-full px-3 py-1 text-xs font-semibold">{label}</span>
             ))}
           </div>
-          <DogPedigreeGrid ancestors={profile.pedigree.ancestors} />
+          <DogFullPedigreeTree ancestors={profile.pedigree.ancestors} />
         </section>
       </div>
     </main>
