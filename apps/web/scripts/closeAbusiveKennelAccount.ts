@@ -7,6 +7,10 @@ import { db } from "@/lib/db";
 import { closeUserAccountForKennel } from "@/server/services/accountClosure.service";
 
 const TARGET_SLUG = "fuck-gnerative-ai-an-actual-artist";
+const TARGET_KENNEL_ID = "cmqiyzhii003vl804hx9ttxu6";
+const TARGET_USER_ID = "cmqiyz0t3003rl804lo84b5qf";
+const REPLACEMENT_NAME = "Closed Kennel";
+const REPLACEMENT_SLUG = `closed-kennel-${TARGET_KENNEL_ID}`;
 const REASON = "Administrative account removal for abusive public kennel content.";
 
 function loadEnv(): void {
@@ -25,7 +29,7 @@ function hasExactConfirmation(): boolean {
 async function main(): Promise<void> {
   loadEnv();
   const kennelMatches = await db.kennel.findMany({
-    where: { slug: { equals: TARGET_SLUG } },
+    where: { id: TARGET_KENNEL_ID },
     select: {
       id: true,
       name: true,
@@ -44,20 +48,36 @@ async function main(): Promise<void> {
     },
   });
 
-  if (kennelMatches.length !== 1 || !kennelMatches[0]?.userId || !kennelMatches[0].user) {
-    throw new Error(`Expected exactly one player kennel for exact slug; found ${kennelMatches.length}.`);
+  if (kennelMatches.length !== 1 || kennelMatches[0]?.userId !== TARGET_USER_ID || !kennelMatches[0].user) {
+    throw new Error(`Expected exactly one target kennel and user; found ${kennelMatches.length}.`);
   }
 
   const kennel = kennelMatches[0]!;
   const user = kennel.user!;
-  const [accessAuditCount, userAuditCount, kennelAuditCount, dogCount, showResultCount, ledgerCount] = await Promise.all([
+  const [accessAuditCount, userAuditCount, kennelAuditCount, maskingAudits, dogCount, showResultCount, ledgerCount, breedingAttemptCount, litterCount, awardCount] = await Promise.all([
     db.userAccessAudit.count({ where: { userId: user.id, kennelId: kennel.id, action: "ADMIN_ACCOUNT_CLOSED" } }),
     db.moderationAudit.count({ where: { targetType: "USER", targetId: user.id, action: "USER_BANNED", reason: REASON } }),
     db.moderationAudit.count({ where: { targetType: "KENNEL", targetId: kennel.id, action: "KENNEL_CLOSED", reason: REASON } }),
+    db.moderationAudit.findMany({ where: { targetType: "KENNEL", targetId: kennel.id, action: "KENNEL_IDENTITY_MASKED" }, select: { metadataJson: true } }),
     db.dog.count({ where: { OR: [{ ownerKennelId: kennel.id }, { breederKennelId: kennel.id }] } }),
     db.showResult.count({ where: { dog: { OR: [{ ownerKennelId: kennel.id }, { breederKennelId: kennel.id }] } } }),
     db.ledgerTransaction.count({ where: { kennelId: kennel.id } }),
+    db.breedingAttempt.count({ where: { OR: [{ createdByKennelId: kennel.id }, { sire: { ownerKennelId: kennel.id } }, { dam: { ownerKennelId: kennel.id } }] } }),
+    db.litter.count({ where: { bredByKennelId: kennel.id } }),
+    db.showAward.count({ where: { showEntry: { kennelId: kennel.id } } }),
   ]);
+  const maskingAuditMetadata = maskingAudits[0]?.metadataJson;
+  const maskingAuditMetadataVerified = Boolean(
+    maskingAuditMetadata &&
+    typeof maskingAuditMetadata === "object" &&
+    !Array.isArray(maskingAuditMetadata) &&
+    (maskingAuditMetadata as Record<string, unknown>).originalKennelName &&
+    (maskingAuditMetadata as Record<string, unknown>).originalKennelSlug &&
+    (maskingAuditMetadata as Record<string, unknown>).replacementKennelName === REPLACEMENT_NAME &&
+    (maskingAuditMetadata as Record<string, unknown>).replacementKennelSlug === REPLACEMENT_SLUG &&
+    (maskingAuditMetadata as Record<string, unknown>).userId === TARGET_USER_ID &&
+    (maskingAuditMetadata as Record<string, unknown>).kennelId === TARGET_KENNEL_ID
+  );
   console.log(JSON.stringify({
     kennelId: kennel.id,
     kennelName: kennel.name,
@@ -68,8 +88,11 @@ async function main(): Promise<void> {
     userModerationReason: user.moderationReason,
     kennelModerationStatus: kennel.moderationStatus,
     kennelModerationReason: kennel.moderationReason,
-    closureAuditCounts: { accessAuditCount, userAuditCount, kennelAuditCount },
-    historicalRecordCounts: { dogCount, showResultCount, ledgerCount },
+    proposedKennelName: REPLACEMENT_NAME,
+    proposedKennelSlug: REPLACEMENT_SLUG,
+    closureAuditCounts: { accessAuditCount, userAuditCount, kennelAuditCount, maskingAuditCount: maskingAudits.length },
+    maskingAuditMetadataVerified,
+    historicalRecordCounts: { dogCount, showResultCount, ledgerCount, breedingAttemptCount, litterCount, awardCount },
   }, null, 2));
 
   if (!hasExactConfirmation()) {
@@ -83,7 +106,7 @@ async function main(): Promise<void> {
     reason: REASON,
     moderatedBy: "production-admin-cli",
   });
-  console.log(result.alreadyClosed ? "Account already closed; no audit records created." : "Account and kennel closed; audit records created.");
+  console.log(result.maskingChanged ? "Account closure masking applied." : "Account already closed and already masked; no mutation required.");
 }
 
 void main()

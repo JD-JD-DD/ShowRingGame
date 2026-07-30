@@ -40,8 +40,9 @@ function statusTone(status: string): string {
 
 function showEntryKennelName(entry: {
   enteredKennelName: string | null;
-  kennel: { name: string };
+  kennel: { name: string; moderationStatus: "ACTIVE" | "CLOSED" };
 }): string {
+  if (entry.kennel.moderationStatus === "CLOSED") return entry.kennel.name;
   return entry.enteredKennelName?.trim() || entry.kennel.name;
 }
 
@@ -103,7 +104,7 @@ export default async function ShowResultsIndexPage({
               },
               showEntry: {
                 include: {
-                  kennel: { select: { name: true, slug: true } },
+                  kennel: { select: { name: true, slug: true, moderationStatus: true } },
                 },
               },
             },

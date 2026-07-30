@@ -87,6 +87,7 @@ function bestInShowWinner(cluster: {
         kennel: {
           name: string;
           slug: string;
+          moderationStatus: "ACTIVE" | "CLOSED";
         };
       };
     }>;
@@ -148,6 +149,7 @@ export default async function InvitationalsPage() {
                     select: {
                       name: true,
                       slug: true,
+                      moderationStatus: true,
                     },
                   },
                 },
@@ -223,9 +225,11 @@ export default async function InvitationalsPage() {
               entryCount,
               resultCount,
             });
-            const kennelName =
-              winner?.showEntry.enteredKennelName?.trim() ||
-              winner?.showEntry.kennel.name;
+            const kennelName = winner
+              ? winner.showEntry.kennel.moderationStatus === "CLOSED"
+                ? winner.showEntry.kennel.name
+                : winner.showEntry.enteredKennelName?.trim() || winner.showEntry.kennel.name
+              : null;
 
             return (
               <Link

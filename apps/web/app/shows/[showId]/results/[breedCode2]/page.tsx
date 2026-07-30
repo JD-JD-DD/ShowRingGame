@@ -85,6 +85,7 @@ type ResultRow = {
     kennel: {
       name: string;
       slug: string;
+      moderationStatus: "ACTIVE" | "CLOSED";
     };
   };
   showAwards: Array<{
@@ -115,6 +116,7 @@ type EntryRow = {
   kennel: {
     name: string;
     slug: string;
+    moderationStatus: "ACTIVE" | "CLOSED";
   };
   showResult: {
     id: string;
@@ -132,6 +134,7 @@ type EntryRow = {
 };
 
 function showEntryKennelName(entry: ResultRow["showEntry"]): string {
+  if (entry.kennel.moderationStatus === "CLOSED") return entry.kennel.name;
   return entry.enteredKennelName?.trim() || entry.kennel.name;
 }
 
@@ -264,7 +267,7 @@ function AllEntriesTable({ entries }: { entries: EntryRow[] }) {
           <tbody>
             {sortedEntries.map((entry) => {
               const awards = sortAwards(entry.showResult?.showAwards ?? []);
-              const kennelName = entry.enteredKennelName?.trim() || entry.kennel.name;
+              const kennelName = showEntryKennelName(entry);
 
               return (
                 <tr
@@ -382,7 +385,7 @@ export default async function BreedResultsPage({
                       sex: true,
                     },
                   },
-                  kennel: { select: { name: true, slug: true } },
+                  kennel: { select: { name: true, slug: true, moderationStatus: true } },
                   showResult: {
                     include: {
                       showAwards: {
@@ -415,7 +418,7 @@ export default async function BreedResultsPage({
                   },
                   showEntry: {
                     include: {
-                      kennel: { select: { name: true, slug: true } },
+                      kennel: { select: { name: true, slug: true, moderationStatus: true } },
                     },
                   },
                   showAwards: {
