@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import {
+  isProtectedLegacyYear14OrdinaryShowDay,
+  requireProtectedLegacyYear14FinalizationJudge,
   requirePersistedCompleteShowDayJudgePanelForBis,
   resolveScheduledGroupJudgeForBreed,
 } from "@/server/services/showDayGroupJudgeAssignment.service";
@@ -1551,12 +1553,27 @@ async function createGroupAwardsForShowDay(args: {
       where: { id: args.showDayId },
       select: {
         scheduledEpoch: true,
+        judgeId: true,
+        cluster: { select: { id: true, year: true } },
+        _count: { select: { groupJudgeAssignments: true } },
       },
     });
 
     if (!showDayTiming) {
       throw new Error("Show day not found.");
     }
+    const legacyFinalizationJudge = isProtectedLegacyYear14OrdinaryShowDay({
+      cluster: showDayTiming.cluster,
+      assignmentCount: showDayTiming._count.groupJudgeAssignments,
+    })
+      ? requireProtectedLegacyYear14FinalizationJudge({
+          cluster: showDayTiming.cluster,
+          showDayId: args.showDayId,
+          assignmentCount: showDayTiming._count.groupJudgeAssignments,
+          judgeId: showDayTiming.judgeId,
+          judge: await tx.judge.findUnique({ where: { id: showDayTiming.judgeId } }),
+        })
+      : null;
 
     const bobAwards = await tx.showAward.findMany({
       where: {
@@ -1657,14 +1674,9 @@ async function createGroupAwardsForShowDay(args: {
     });
 
     for (const [groupCode, groupAwards] of awardsByGroup) {
-      const groupAssignment = await tx.showDayGroupJudgeAssignment.findUnique({
-        where: { showDayId_groupCode: { showDayId: args.showDayId, groupCode } },
-        select: { judgeId: true },
-      });
-      const groupJudge = groupAssignment
-        ? await tx.judge.findUnique({ where: { id: groupAssignment.judgeId } })
-        : null;
-      if (!groupAssignment || !groupJudge) {
+      const groupAssignment = legacyFinalizationJudge ? null : await tx.showDayGroupJudgeAssignment.findUnique({ where: { showDayId_groupCode: { showDayId: args.showDayId, groupCode } }, select: { judgeId: true } });
+      const groupJudge = legacyFinalizationJudge ?? (groupAssignment ? await tx.judge.findUnique({ where: { id: groupAssignment.judgeId } }) : null);
+      if (!groupJudge || (!legacyFinalizationJudge && !groupAssignment)) {
         throw new Error(`Scheduled group judge assignment is missing for showDay=${args.showDayId}, group=${groupCode}.`);
       }
       const awardByEntryId = new Map(
@@ -1719,7 +1731,7 @@ async function createGroupAwardsForShowDay(args: {
           judgingBlockId: null,
           dogId: sourceAward.dogId,
           breedCode2: sourceAward.breedCode2,
-          judgeId: groupAssignment.judgeId,
+          judgeId: legacyFinalizationJudge?.id ?? groupAssignment!.judgeId,
           awardCode: judgedAward.awardCode,
           awardGroup: judgedAward.awardGroup,
           sex: judgedAward.sex,
@@ -1768,6 +1780,8 @@ async function createBestInShowAwardsForShowDay(args: {
       select: {
         scheduledEpoch: true,
         judgeId: true,
+        cluster: { select: { id: true, year: true } },
+        _count: { select: { groupJudgeAssignments: true } },
       },
     });
 
@@ -1775,12 +1789,12 @@ async function createBestInShowAwardsForShowDay(args: {
       throw new Error("Show day not found.");
     }
 
-    const { bisJudgeId } = await requirePersistedCompleteShowDayJudgePanelForBis({
-      tx,
-      showDayId: args.showDayId,
-      bisJudgeId: showDayTiming.judgeId,
-    });
-    const bisJudge = await tx.judge.findUnique({ where: { id: bisJudgeId } });
+    const legacyBisJudge = isProtectedLegacyYear14OrdinaryShowDay({ cluster: showDayTiming.cluster, assignmentCount: showDayTiming._count.groupJudgeAssignments })
+      ? requireProtectedLegacyYear14FinalizationJudge({ cluster: showDayTiming.cluster, showDayId: args.showDayId, assignmentCount: showDayTiming._count.groupJudgeAssignments, judgeId: showDayTiming.judgeId, judge: await tx.judge.findUnique({ where: { id: showDayTiming.judgeId } }) })
+      : null;
+    const strictBisJudge = legacyBisJudge ? null : await requirePersistedCompleteShowDayJudgePanelForBis({ tx, showDayId: args.showDayId, bisJudgeId: showDayTiming.judgeId });
+    const bisJudgeId = legacyBisJudge?.id ?? strictBisJudge!.bisJudgeId;
+    const bisJudge = legacyBisJudge ?? await tx.judge.findUnique({ where: { id: bisJudgeId } });
     if (!bisJudge) {
       throw new Error(`Scheduled BIS judge is missing for showDay=${args.showDayId}, judgeId=${bisJudgeId}.`);
     }

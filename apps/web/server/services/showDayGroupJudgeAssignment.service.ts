@@ -9,6 +9,35 @@ type ShowDayGroupJudgeAssignmentRow = {
   judgeId: string;
 };
 
+// Temporary compatibility scope for protected ordinary Year 14 shows only. Never
+// apply this to Year 15 or Invitational shows; remove it after all matching shows
+// are complete and published.
+export function isProtectedLegacyYear14OrdinaryCluster(cluster: { id: string; year: number }): boolean {
+  return cluster.year === 14 && cluster.id.startsWith("generated-year-14-fixed-") && !cluster.id.startsWith("invitational-year-");
+}
+
+export function isProtectedLegacyYear14OrdinaryShowDay(args: {
+  cluster: { id: string; year: number };
+  assignmentCount: number;
+}): boolean {
+  return isProtectedLegacyYear14OrdinaryCluster(args.cluster) && args.assignmentCount === 0;
+}
+
+export function requireProtectedLegacyYear14FinalizationJudge<T extends { id: string; isActive: boolean }>(args: {
+  cluster: { id: string; year: number; week?: number };
+  showDayId: string;
+  assignmentCount: number;
+  judgeId: string | null;
+  judge: T | null;
+}): T {
+  const context = `cluster=${args.cluster.id}, showDay=${args.showDayId}, year=${args.cluster.year}, week=${args.cluster.week ?? "unknown"}, assignmentCount=${args.assignmentCount}, judgeId=${args.judgeId ?? "null"}`;
+  if (!isProtectedLegacyYear14OrdinaryShowDay({ cluster: args.cluster, assignmentCount: args.assignmentCount })) throw new Error(`Invalid protected legacy Year 14 finalization scope: ${context}.`);
+  if (!args.judgeId) throw new Error(`Protected legacy Year 14 finalization judge is missing: ${context}.`);
+  if (!args.judge || args.judge.id !== args.judgeId) throw new Error(`Protected legacy Year 14 finalization judge was not found: ${context}.`);
+  if (!args.judge.isActive) throw new Error(`Protected legacy Year 14 finalization judge is inactive: ${context}.`);
+  return args.judge;
+}
+
 export function requireCompleteShowDayJudgePanelForBis(args: {
   showDayId: string;
   bisJudgeId: string | null | undefined;
