@@ -49,6 +49,7 @@ export default async function AllKennelsPage() {
     FROM "Kennel" kennel
     LEFT JOIN "User" "user" ON "user"."id" = kennel."userId"
     WHERE kennel."isNpc" = false
+      AND kennel."moderationStatus" = 'ACTIVE'
     ORDER BY kennel."name" ASC
   `;
 

@@ -50,6 +50,7 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
       slug: true,
       homeDistrict: true,
       publicSlogan: true,
+      moderationStatus: true,
       renameHistory: {
         orderBy: {
           changedAt: "desc",
@@ -62,7 +63,7 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
     },
   });
 
-  if (!kennel) {
+  if (!kennel || kennel.moderationStatus === "CLOSED") {
     const renamedKennel = await db.kennelRenameHistory.findFirst({
       where: {
         previousSlug: slug,

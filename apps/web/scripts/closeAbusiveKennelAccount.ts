@@ -1,0 +1,96 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+
+import { config } from "dotenv";
+
+import { db } from "@/lib/db";
+import { closeUserAccountForKennel } from "@/server/services/accountClosure.service";
+
+const TARGET_SLUG = "fuck-gnerative-ai-an-actual-artist";
+const REASON = "Administrative account removal for abusive public kennel content.";
+
+function loadEnv(): void {
+  for (const root of [process.cwd(), resolve(process.cwd(), "..", "..")]) {
+    for (const fileName of [".env.local", ".env"]) {
+      const envPath = resolve(root, fileName);
+      if (existsSync(envPath)) config({ path: envPath, override: false });
+    }
+  }
+}
+
+function hasExactConfirmation(): boolean {
+  return process.argv.slice(2).includes(`--confirm-slug=${TARGET_SLUG}`);
+}
+
+async function main(): Promise<void> {
+  loadEnv();
+  const kennelMatches = await db.kennel.findMany({
+    where: { slug: { equals: TARGET_SLUG } },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      userId: true,
+      moderationStatus: true,
+      moderationReason: true,
+      user: {
+        select: {
+          id: true,
+          email: true,
+          moderationStatus: true,
+          moderationReason: true,
+        },
+      },
+    },
+  });
+
+  if (kennelMatches.length !== 1 || !kennelMatches[0]?.userId || !kennelMatches[0].user) {
+    throw new Error(`Expected exactly one player kennel for exact slug; found ${kennelMatches.length}.`);
+  }
+
+  const kennel = kennelMatches[0]!;
+  const user = kennel.user!;
+  const [accessAuditCount, userAuditCount, kennelAuditCount, dogCount, showResultCount, ledgerCount] = await Promise.all([
+    db.userAccessAudit.count({ where: { userId: user.id, kennelId: kennel.id, action: "ADMIN_ACCOUNT_CLOSED" } }),
+    db.moderationAudit.count({ where: { targetType: "USER", targetId: user.id, action: "USER_BANNED", reason: REASON } }),
+    db.moderationAudit.count({ where: { targetType: "KENNEL", targetId: kennel.id, action: "KENNEL_CLOSED", reason: REASON } }),
+    db.dog.count({ where: { OR: [{ ownerKennelId: kennel.id }, { breederKennelId: kennel.id }] } }),
+    db.showResult.count({ where: { dog: { OR: [{ ownerKennelId: kennel.id }, { breederKennelId: kennel.id }] } } }),
+    db.ledgerTransaction.count({ where: { kennelId: kennel.id } }),
+  ]);
+  console.log(JSON.stringify({
+    kennelId: kennel.id,
+    kennelName: kennel.name,
+    kennelSlug: kennel.slug,
+    userId: user.id,
+    email: user.email,
+    userModerationStatus: user.moderationStatus,
+    userModerationReason: user.moderationReason,
+    kennelModerationStatus: kennel.moderationStatus,
+    kennelModerationReason: kennel.moderationReason,
+    closureAuditCounts: { accessAuditCount, userAuditCount, kennelAuditCount },
+    historicalRecordCounts: { dogCount, showResultCount, ledgerCount },
+  }, null, 2));
+
+  if (!hasExactConfirmation()) {
+    console.log(`Dry run only. Refusing mutation without --confirm-slug=${TARGET_SLUG}`);
+    return;
+  }
+
+  const result = await closeUserAccountForKennel({
+    kennelId: kennel.id,
+    userId: user.id,
+    reason: REASON,
+    moderatedBy: "production-admin-cli",
+  });
+  console.log(result.alreadyClosed ? "Account already closed; no audit records created." : "Account and kennel closed; audit records created.");
+}
+
+void main()
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await db.$disconnect();
+  });

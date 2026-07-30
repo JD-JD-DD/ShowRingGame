@@ -49,6 +49,7 @@
     "password-reset-link": "tsx scripts/create-password-reset-link.ts",
     "audit:kennel-access": "tsx scripts/compareKennelAccessAudit.ts",
     "moderation:close-kennel": "tsx scripts/closeKennel.ts",
+    "moderation:close-abusive-kennel-account": "tsx scripts/closeAbusiveKennelAccount.ts",
     "moderation:ban-user": "tsx scripts/banUser.ts",
     "moderation:ban-ip": "tsx scripts/banIp.ts",
     "moderation:reopen-kennel": "tsx scripts/reopenKennel.ts",
