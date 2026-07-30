@@ -1,10 +1,20 @@
 import { db } from "@/lib/db";
+import { getCurrentEpoch } from "@/lib/gameClock";
+import {
+  PLAYER_SALE_LISTING_TYPE,
+  PLAYER_STUD_LISTING_TYPE,
+} from "@/server/services/market.service";
 
 export type CloseUserAccountResult = {
   alreadyClosed: boolean;
   auditCreated: boolean;
   maskingChanged: boolean;
   maskingAuditCreated: boolean;
+  dogTransitionCount: number;
+  saleListingClosureCount: number;
+  studListingClosureCount: number;
+  futureShowEntryNeutralizedCount: number;
+  dogRemovalAuditCreated: boolean;
 };
 
 /** Permanently closes a resolved player account without deleting game history. */
@@ -37,11 +47,8 @@ export async function closeUserAccountForKennel(args: {
       select: { id: true },
     });
 
-    if (alreadyClosed && alreadyMasked) {
-      return { alreadyClosed: true, auditCreated: false, maskingChanged: false, maskingAuditCreated: false };
-    }
-
     const now = new Date();
+    const currentEpoch = getCurrentEpoch();
     if (!alreadyClosed) {
       await tx.user.update({ where: { id: user.id }, data: { moderationStatus: "BANNED", moderationReason: args.reason, moderatedAt: now, moderatedBy: args.moderatedBy } });
       await tx.userAccessAudit.create({ data: { userId: user.id, kennelId: kennel.id, action: "ADMIN_ACCOUNT_CLOSED", path: "admin-cli" } });
@@ -74,6 +81,85 @@ export async function closeUserAccountForKennel(args: {
       }
     }
 
-    return { alreadyClosed, auditCreated: !alreadyClosed, maskingChanged: !alreadyMasked, maskingAuditCreated: !alreadyMasked && !existingMaskingAudit };
+    const ownedDogs = await tx.dog.findMany({
+      where: { ownerKennelId: kennel.id },
+      select: { id: true, lifecycleState: true },
+    });
+    const ownedDogIds = ownedDogs.map((dog) => dog.id);
+    const activeDogIds = ownedDogs
+      .filter((dog) => dog.lifecycleState === "ALIVE")
+      .map((dog) => dog.id);
+    const existingDogRemovalAudit = await tx.moderationAudit.findFirst({
+      where: { targetType: "KENNEL", targetId: kennel.id, action: "CLOSED_KENNEL_DOGS_RETIRED" },
+      select: { id: true },
+    });
+    const [saleListings, studListings, futureEntries] = await Promise.all([
+      tx.dogListing.findMany({
+        where: { dogId: { in: ownedDogIds }, sellerKennelId: kennel.id, sellerType: "PLAYER", listingType: PLAYER_SALE_LISTING_TYPE, status: "ACTIVE" },
+        select: { id: true },
+      }),
+      tx.dogListing.findMany({
+        where: { dogId: { in: ownedDogIds }, sellerKennelId: kennel.id, sellerType: "PLAYER", listingType: PLAYER_STUD_LISTING_TYPE, status: "ACTIVE" },
+        select: { id: true },
+      }),
+      tx.showEntry.findMany({
+        where: { dogId: { in: ownedDogIds }, entryStatus: "ENTERED", showResult: null, showDay: { scheduledEpoch: { gte: currentEpoch } } },
+        select: { id: true },
+      }),
+    ]);
+
+    if (saleListings.length + studListings.length > 0) {
+      await tx.dogListing.updateMany({
+        where: { id: { in: [...saleListings, ...studListings].map((listing) => listing.id) } },
+        data: { status: "CANCELLED" },
+      });
+    }
+    if (futureEntries.length > 0) {
+      await tx.showEntry.updateMany({
+        where: { id: { in: futureEntries.map((entry) => entry.id) } },
+        data: { entryStatus: "INELIGIBLE", absenceReason: null },
+      });
+    }
+    if (activeDogIds.length > 0) {
+      await tx.dog.updateMany({
+        where: { id: { in: activeDogIds }, ownerKennelId: kennel.id, lifecycleState: "ALIVE" },
+        data: { lifecycleState: "RETIRED", marketState: "NOT_FOR_SALE", kennelRunId: null },
+      });
+    }
+    const dogRemovalChanged = activeDogIds.length + saleListings.length + studListings.length + futureEntries.length > 0;
+    if (dogRemovalChanged && !existingDogRemovalAudit) {
+      await tx.moderationAudit.create({ data: {
+        targetType: "KENNEL",
+        targetId: kennel.id,
+        action: "CLOSED_KENNEL_DOGS_RETIRED",
+        reason: args.reason,
+        metadataJson: {
+          kennelId: kennel.id,
+          userId: user.id,
+          affectedDogIds: ownedDogIds,
+          affectedDogCount: ownedDogIds.length,
+          dogTransitionCount: activeDogIds.length,
+          activeSaleListingsClosed: saleListings.length,
+          activeStudListingsClosed: studListings.length,
+          futureShowEntriesNeutralized: futureEntries.length,
+          lifecycleStateApplied: "RETIRED",
+          closureReason: args.reason,
+          actionTimestamp: now.toISOString(),
+        },
+        moderatorLabel: args.moderatedBy,
+      } });
+    }
+
+    return {
+      alreadyClosed,
+      auditCreated: !alreadyClosed,
+      maskingChanged: !alreadyMasked,
+      maskingAuditCreated: !alreadyMasked && !existingMaskingAudit,
+      dogTransitionCount: activeDogIds.length,
+      saleListingClosureCount: saleListings.length,
+      studListingClosureCount: studListings.length,
+      futureShowEntryNeutralizedCount: futureEntries.length,
+      dogRemovalAuditCreated: dogRemovalChanged && !existingDogRemovalAudit,
+    };
   });
 }

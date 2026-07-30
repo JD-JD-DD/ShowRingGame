@@ -17,7 +17,11 @@ assert.match(closureSource, /const replacementSlug = `closed-kennel-\$\{kennel\.
 assert.match(closureSource, /action: "KENNEL_IDENTITY_MASKED"/);
 assert.match(closureSource, /originalKennelName: kennel\.name/);
 assert.match(closureSource, /originalKennelSlug: kennel\.slug/);
-assert.match(closureSource, /if \(alreadyClosed && alreadyMasked\)/);
+assert.match(closureSource, /if \(!alreadyMasked\)/);
+assert.match(closureSource, /ownerKennelId: kennel\.id/);
+assert.match(closureSource, /lifecycleState: "RETIRED"/);
+assert.match(closureSource, /action: "CLOSED_KENNEL_DOGS_RETIRED"/);
+assert.match(closureSource, /entryStatus: "INELIGIBLE"/);
 assert.match(resultsIndexSource, /entry\.kennel\.moderationStatus === "CLOSED"/);
 assert.match(breedResultsSource, /entry\.kennel\.moderationStatus === "CLOSED"/);
 assert.match(showHistorySource, /winner\.showEntry\.kennel\.moderationStatus === "CLOSED"/);

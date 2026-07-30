@@ -54,12 +54,20 @@ async function main(): Promise<void> {
 
   const kennel = kennelMatches[0]!;
   const user = kennel.user!;
-  const [accessAuditCount, userAuditCount, kennelAuditCount, maskingAudits, dogCount, showResultCount, ledgerCount, breedingAttemptCount, litterCount, awardCount] = await Promise.all([
+  const currentEpoch = (await import("@/lib/gameClock")).getCurrentEpoch();
+  const [accessAuditCount, userAuditCount, kennelAuditCount, maskingAudits, dogRemovalAudits, ownedDogCount, activeOwnedDogCount, dogCount, activeSaleListingCount, activeStudListingCount, futureEntryCount, transferredDogCount, showResultCount, ledgerCount, breedingAttemptCount, litterCount, awardCount] = await Promise.all([
     db.userAccessAudit.count({ where: { userId: user.id, kennelId: kennel.id, action: "ADMIN_ACCOUNT_CLOSED" } }),
     db.moderationAudit.count({ where: { targetType: "USER", targetId: user.id, action: "USER_BANNED", reason: REASON } }),
     db.moderationAudit.count({ where: { targetType: "KENNEL", targetId: kennel.id, action: "KENNEL_CLOSED", reason: REASON } }),
     db.moderationAudit.findMany({ where: { targetType: "KENNEL", targetId: kennel.id, action: "KENNEL_IDENTITY_MASKED" }, select: { metadataJson: true } }),
+    db.moderationAudit.findMany({ where: { targetType: "KENNEL", targetId: kennel.id, action: "CLOSED_KENNEL_DOGS_RETIRED" }, select: { metadataJson: true } }),
+    db.dog.count({ where: { ownerKennelId: kennel.id } }),
+    db.dog.count({ where: { ownerKennelId: kennel.id, lifecycleState: "ALIVE" } }),
     db.dog.count({ where: { OR: [{ ownerKennelId: kennel.id }, { breederKennelId: kennel.id }] } }),
+    db.dogListing.count({ where: { sellerKennelId: kennel.id, sellerType: "PLAYER", listingType: "PLAYER_PUBLIC", status: "ACTIVE", dog: { ownerKennelId: kennel.id } } }),
+    db.dogListing.count({ where: { sellerKennelId: kennel.id, sellerType: "PLAYER", listingType: "PLAYER_STUD", status: "ACTIVE", dog: { ownerKennelId: kennel.id } } }),
+    db.showEntry.count({ where: { dog: { ownerKennelId: kennel.id }, entryStatus: "ENTERED", showResult: null, showDay: { scheduledEpoch: { gte: currentEpoch } } } }),
+    db.dog.count({ where: { breederKennelId: kennel.id, ownerKennelId: { not: kennel.id } } }),
     db.showResult.count({ where: { dog: { OR: [{ ownerKennelId: kennel.id }, { breederKennelId: kennel.id }] } } }),
     db.ledgerTransaction.count({ where: { kennelId: kennel.id } }),
     db.breedingAttempt.count({ where: { OR: [{ createdByKennelId: kennel.id }, { sire: { ownerKennelId: kennel.id } }, { dam: { ownerKennelId: kennel.id } }] } }),
@@ -78,6 +86,13 @@ async function main(): Promise<void> {
     (maskingAuditMetadata as Record<string, unknown>).userId === TARGET_USER_ID &&
     (maskingAuditMetadata as Record<string, unknown>).kennelId === TARGET_KENNEL_ID
   );
+  const dogRemovalMetadata = dogRemovalAudits[0]?.metadataJson;
+  const dogRemovalAuditMetadataVerified = Boolean(
+    dogRemovalMetadata && typeof dogRemovalMetadata === "object" && !Array.isArray(dogRemovalMetadata) &&
+    (dogRemovalMetadata as Record<string, unknown>).kennelId === TARGET_KENNEL_ID &&
+    (dogRemovalMetadata as Record<string, unknown>).userId === TARGET_USER_ID &&
+    (dogRemovalMetadata as Record<string, unknown>).lifecycleStateApplied === "RETIRED"
+  );
   console.log(JSON.stringify({
     kennelId: kennel.id,
     kennelName: kennel.name,
@@ -90,8 +105,10 @@ async function main(): Promise<void> {
     kennelModerationReason: kennel.moderationReason,
     proposedKennelName: REPLACEMENT_NAME,
     proposedKennelSlug: REPLACEMENT_SLUG,
-    closureAuditCounts: { accessAuditCount, userAuditCount, kennelAuditCount, maskingAuditCount: maskingAudits.length },
+    closureAuditCounts: { accessAuditCount, userAuditCount, kennelAuditCount, maskingAuditCount: maskingAudits.length, dogRemovalAuditCount: dogRemovalAudits.length },
     maskingAuditMetadataVerified,
+    dogRemovalAuditMetadataVerified,
+    activePlayCounts: { ownedDogCount, activeOwnedDogCount, activeSaleListingCount, activeStudListingCount, futureEntryCount, transferredDogCount },
     historicalRecordCounts: { dogCount, showResultCount, ledgerCount, breedingAttemptCount, litterCount, awardCount },
   }, null, 2));
 
@@ -106,7 +123,7 @@ async function main(): Promise<void> {
     reason: REASON,
     moderatedBy: "production-admin-cli",
   });
-  console.log(result.maskingChanged ? "Account closure masking applied." : "Account already closed and already masked; no mutation required.");
+  console.log(JSON.stringify(result));
 }
 
 void main()
