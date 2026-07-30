@@ -1,5 +1,8 @@
 import { db } from "@/lib/db";
-import { resolveScheduledGroupJudgeForBreed } from "@/server/services/showDayGroupJudgeAssignment.service";
+import {
+  requirePersistedCompleteShowDayJudgePanelForBis,
+  resolveScheduledGroupJudgeForBreed,
+} from "@/server/services/showDayGroupJudgeAssignment.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
@@ -1746,8 +1749,6 @@ async function createGroupAwardsForShowDay(args: {
 
 async function createBestInShowAwardsForShowDay(args: {
   showDayId: string;
-  judgeId: string;
-  judge: EngineJudge;
   currentEpoch: number;
 }): Promise<number> {
   return db.$transaction(async (tx) => {
@@ -1766,11 +1767,22 @@ async function createBestInShowAwardsForShowDay(args: {
       where: { id: args.showDayId },
       select: {
         scheduledEpoch: true,
+        judgeId: true,
       },
     });
 
     if (!showDayTiming) {
       throw new Error("Show day not found.");
+    }
+
+    const { bisJudgeId } = await requirePersistedCompleteShowDayJudgePanelForBis({
+      tx,
+      showDayId: args.showDayId,
+      bisJudgeId: showDayTiming.judgeId,
+    });
+    const bisJudge = await tx.judge.findUnique({ where: { id: bisJudgeId } });
+    if (!bisJudge) {
+      throw new Error(`Scheduled BIS judge is missing for showDay=${args.showDayId}, judgeId=${bisJudgeId}.`);
     }
 
     const groupOneAwards = await tx.showAward.findMany({
@@ -1856,7 +1868,7 @@ async function createBestInShowAwardsForShowDay(args: {
       groupOneAwards.map((award) => award.showEntry.kennelId)
     ).size;
     const judgedBestInShowAwards = judgeBestInShow({
-      judge: args.judge,
+      judge: toEngineJudge(bisJudge),
       showEpoch: showDayTiming.scheduledEpoch,
       entries: groupOneAwards.map((award) => ({
         showEntryId: award.showEntryId,
@@ -1912,7 +1924,7 @@ async function createBestInShowAwardsForShowDay(args: {
         judgingBlockId: null,
         dogId: sourceAward.dogId,
         breedCode2: sourceAward.breedCode2,
-        judgeId: args.judgeId,
+        judgeId: bisJudgeId,
         awardCode: judgedAward.awardCode,
         awardGroup: judgedAward.awardGroup,
         sex: judgedAward.sex,
@@ -2155,8 +2167,6 @@ export async function finalizeReadyShowDayResults(args: {
     () =>
       createBestInShowAwardsForShowDay({
         showDayId: args.showDayId,
-        judgeId: showDay.judgeId,
-        judge: engineJudge,
         currentEpoch: args.currentEpoch,
       })
   );

@@ -1,5 +1,65 @@
 import { Prisma } from "@prisma/client";
-import { resolveBreedGroupNameToCanonicalShowGroupCode } from "@showring/rules";
+import {
+  CANONICAL_SHOW_GROUP_CODES,
+  resolveBreedGroupNameToCanonicalShowGroupCode,
+} from "@showring/rules";
+
+type ShowDayGroupJudgeAssignmentRow = {
+  groupCode: string;
+  judgeId: string;
+};
+
+export function requireCompleteShowDayJudgePanelForBis(args: {
+  showDayId: string;
+  bisJudgeId: string | null | undefined;
+  assignments: ShowDayGroupJudgeAssignmentRow[];
+  clusterId?: string;
+  year?: number;
+}): { bisJudgeId: string } {
+  const canonicalGroups = new Set<string>(CANONICAL_SHOW_GROUP_CODES);
+  const presentGroups = new Set(args.assignments.map((assignment) => assignment.groupCode));
+  const judgeIds = new Set(args.assignments.map((assignment) => assignment.judgeId));
+  const hasAllCanonicalGroups =
+    presentGroups.size === CANONICAL_SHOW_GROUP_CODES.length &&
+    CANONICAL_SHOW_GROUP_CODES.every((groupCode) => presentGroups.has(groupCode));
+  const bisJudgeInPanel = Boolean(args.bisJudgeId && judgeIds.has(args.bisJudgeId));
+
+  if (
+    args.assignments.length !== CANONICAL_SHOW_GROUP_CODES.length ||
+    !hasAllCanonicalGroups ||
+    judgeIds.size !== CANONICAL_SHOW_GROUP_CODES.length ||
+    !bisJudgeInPanel
+  ) {
+    throw new Error(
+      `Invalid scheduled BIS judge panel for showDay=${args.showDayId}, cluster=${args.clusterId ?? "unknown"}, year=${args.year ?? "unknown"}; assignmentCount=${args.assignments.length}; canonicalGroupsPresent=${[...presentGroups].filter((groupCode) => canonicalGroups.has(groupCode)).sort().join(",")}; distinctJudgeCount=${judgeIds.size}; bisJudgeId=${args.bisJudgeId ?? "null"}; bisJudgeInPanel=${bisJudgeInPanel}.`
+    );
+  }
+
+  return { bisJudgeId: args.bisJudgeId! };
+}
+
+export async function requirePersistedCompleteShowDayJudgePanelForBis(args: {
+  tx: Prisma.TransactionClient;
+  showDayId: string;
+  bisJudgeId: string | null | undefined;
+}): Promise<{ bisJudgeId: string }> {
+  const showDay = await args.tx.showDay.findUnique({
+    where: { id: args.showDayId },
+    select: { clusterId: true, cluster: { select: { year: true } } },
+  });
+  const assignments = await args.tx.showDayGroupJudgeAssignment.findMany({
+    where: { showDayId: args.showDayId },
+    select: { groupCode: true, judgeId: true },
+  });
+
+  return requireCompleteShowDayJudgePanelForBis({
+    showDayId: args.showDayId,
+    bisJudgeId: args.bisJudgeId,
+    assignments,
+    clusterId: showDay?.clusterId,
+    year: showDay?.cluster.year,
+  });
+}
 
 export async function resolveScheduledGroupJudgeForBreed(args: { tx: Prisma.TransactionClient; showDayId: string; breedCode2: string }): Promise<{ judgeId: string; groupCode: string }> {
   const breed = await args.tx.breed.findUnique({ where: { code2: args.breedCode2 }, select: { groupName: true } });
