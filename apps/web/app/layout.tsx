@@ -4,6 +4,7 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import GameHeader from "@/components/layout/GameHeader";
+import GameHeaderVisibility from "@/components/layout/GameHeaderVisibility";
 import ReturnToTopButton from "@/components/ReturnToTopButton";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -43,7 +44,9 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <ThemeToggle />
-        <GameHeader />
+        <GameHeaderVisibility>
+          <GameHeader />
+        </GameHeaderVisibility>
         {children}
         <ReturnToTopButton />
         <Analytics />
