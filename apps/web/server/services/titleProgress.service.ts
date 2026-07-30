@@ -3,7 +3,10 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { isChampionOfRecordTitleCode } from "@/lib/dogTitles";
-import { createKennelNotice } from "@/server/services/kennelNotice.service";
+import {
+  createDogTitleNotice,
+  getDogTitleNoticeSourceKey,
+} from "@/server/services/kennelNotice.service";
 import { recalculateProducerMeritForDogs } from "@/server/services/producerMerit.service";
 
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
@@ -314,27 +317,42 @@ export async function recalculateDogTitleProgress(args: {
     });
 
     if (becameChampion && dog) {
+      const currentEpoch = Math.max(
+        ...awards.map((award) => award.showDay.scheduledEpoch),
+        0
+      );
+
       await recalculateProducerMeritForDogs({
         tx,
         dogIds: [dog.sireId, dog.damId],
+        currentEpoch,
       });
     }
 
     if (dog?.ownerKennelId && becameChampion) {
-      await createKennelNotice({
+      const dogDisplayName = formatDogDisplayName({
+        ...dog,
+        visibleTitlePrefix: nextCurrentTitleCode,
+      });
+
+      await createDogTitleNotice({
         client: tx,
         kennelId: dog.ownerKennelId,
-        type: "NEW_CHAMPION",
+        dogId: dog.id,
+        dogDisplayName,
+        noticeType: "NEW_CHAMPION",
+        titleCode: CHAMPION_TITLE_CODE,
+        sourceKey: getDogTitleNoticeSourceKey({
+          dogId: dog.id,
+          titleCode: CHAMPION_TITLE_CODE,
+          kennelId: dog.ownerKennelId,
+        }),
         title: "New champion",
-        body: `${formatDogDisplayName({
-          ...dog,
-          visibleTitlePrefix: nextCurrentTitleCode,
-        })} has finished their championship.`,
+        body: `${dogDisplayName} has finished their championship.`,
         currentEpoch: Math.max(
           ...awards.map((award) => award.showDay.scheduledEpoch),
           0
         ),
-        linkedDogId: dog.id,
       });
     }
   }
@@ -444,14 +462,24 @@ export async function promoteGrandChampionTitleForDog(args: {
         titleCode: nextTitleCode,
       });
 
-      await createKennelNotice({
+      await createDogTitleNotice({
         client: args.tx,
         kennelId: dog.ownerKennelId,
-        type: "NEW_GRAND_CHAMPION",
+        dogId: dog.id,
+        dogDisplayName: formatDogDisplayName({
+          ...dog,
+          visibleTitlePrefix: nextTitleCode,
+        }),
+        noticeType: "NEW_GRAND_CHAMPION",
+        titleCode: nextTitleCode,
+        sourceKey: getDogTitleNoticeSourceKey({
+          dogId: dog.id,
+          titleCode: nextTitleCode,
+          kennelId: dog.ownerKennelId,
+        }),
         title: noticeText.title,
         body: noticeText.body,
         currentEpoch: args.currentEpoch,
-        linkedDogId: dog.id,
         metadataJson: {
           titleCode: nextTitleCode,
           previousTitleCode,

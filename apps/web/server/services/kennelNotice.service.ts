@@ -177,6 +177,67 @@ export async function deleteReadKennelInboxNotices(args: {
   };
 }
 
+export function getDogTitleNoticeSourceKey(args: {
+  dogId: string;
+  titleCode: string;
+  kennelId: string;
+}) {
+  return `dog-title:${args.dogId}:${args.titleCode}:${args.kennelId}`;
+}
+
+export async function createDogTitleNotice(args: {
+  client?: DbClient;
+  kennelId: string | null | undefined;
+  dogId: string;
+  dogDisplayName: string;
+  noticeType: KennelNoticeType;
+  titleCode: string;
+  titleLabel?: string | null;
+  sourceKey: string;
+  title: string;
+  body: string;
+  currentEpoch: number;
+  metadataJson?: Prisma.InputJsonValue | null;
+}) {
+  if (!args.kennelId) {
+    return null;
+  }
+
+  const client = args.client ?? db;
+  const eligibleOwnerKennel = await client.kennel.findFirst({
+    where: {
+      id: args.kennelId,
+      isNpc: false,
+      userId: { not: null },
+      moderationStatus: "ACTIVE",
+      user: {
+        is: {
+          moderationStatus: "ACTIVE",
+        },
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!eligibleOwnerKennel) {
+    return null;
+  }
+
+  return createKennelNotice({
+    client,
+    kennelId: eligibleOwnerKennel.id,
+    sourceKey: args.sourceKey,
+    type: args.noticeType,
+    title: args.title,
+    body: args.body,
+    currentEpoch: args.currentEpoch,
+    linkedDogId: args.dogId,
+    metadataJson: args.metadataJson,
+  });
+}
+
 function getInvitationalResultsNoticeSourceKey(args: {
   clusterId: string;
   kennelId: string;
@@ -268,4 +329,40 @@ export async function createInvitationalResultsPublishedNotices(args: {
     createdCount,
     batchCount,
   };
+}
+
+export async function createDogProgenyTitleEarnedNotice(args: {
+  client?: DbClient;
+  kennelId: string | null | undefined;
+  dogId: string;
+  dogDisplayName: string;
+  titleCode: string;
+  titleLabel: string;
+  currentEpoch: number;
+}) {
+  if (!args.kennelId) {
+    return null;
+  }
+
+  return createDogTitleNotice({
+    client: args.client,
+    kennelId: args.kennelId,
+    dogId: args.dogId,
+    dogDisplayName: args.dogDisplayName,
+    noticeType: "DOG_PROGENY_TITLE_EARNED" as KennelNoticeType,
+    titleCode: args.titleCode,
+    titleLabel: args.titleLabel,
+    sourceKey: getDogTitleNoticeSourceKey({
+      dogId: args.dogId,
+      titleCode: args.titleCode,
+      kennelId: args.kennelId,
+    }),
+    title: `New ${args.titleCode} title`,
+    body: `${args.dogDisplayName} has earned the ${args.titleLabel} title.`,
+    currentEpoch: args.currentEpoch,
+    metadataJson: {
+      titleCode: args.titleCode,
+      titleLabel: args.titleLabel,
+    },
+  });
 }

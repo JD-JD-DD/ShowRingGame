@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { CONFORMATION_CHAMPION_OF_RECORD_TITLE_CODES } from "@/lib/dogTitles";
+import { formatDogDisplayName } from "@/lib/dogNames";
+import { createDogProgenyTitleEarnedNotice } from "@/server/services/kennelNotice.service";
 
 type TransactionClient = Prisma.TransactionClient;
 type DbClient = typeof db | TransactionClient;
@@ -84,6 +86,45 @@ function labelForSex(tier: ProducerMeritTier, sex: DogSex): string {
   return sex === "M" ? tier.maleLabel : tier.femaleLabel;
 }
 
+export function listEarnedProducerMeritTitles(args: {
+  sex: DogSex;
+  championOffspringCount: number;
+}): Array<{
+  titleCode: string;
+  titleLabel: string;
+}> {
+  return [...PRODUCER_MERIT_TIERS]
+    .reverse()
+    .filter(
+      (tier) => args.championOffspringCount >= thresholdForSex(tier, args.sex)
+    )
+    .map((tier) => ({
+      titleCode: suffixForSex(tier, args.sex),
+      titleLabel: labelForSex(tier, args.sex),
+    }));
+}
+
+export function listNewlyEarnedProducerMeritTitles(args: {
+  sex: DogSex;
+  previousChampionOffspringCount: number;
+  nextChampionOffspringCount: number;
+}): Array<{
+  titleCode: string;
+  titleLabel: string;
+}> {
+  const previouslyEarnedTitleCodes = new Set(
+    listEarnedProducerMeritTitles({
+      sex: args.sex,
+      championOffspringCount: args.previousChampionOffspringCount,
+    }).map((title) => title.titleCode)
+  );
+
+  return listEarnedProducerMeritTitles({
+    sex: args.sex,
+    championOffspringCount: args.nextChampionOffspringCount,
+  }).filter((title) => !previouslyEarnedTitleCodes.has(title.titleCode));
+}
+
 function composeVisibleTitleSuffix(args: {
   currentVisibleTitleSuffix: string | null;
   producerMeritSuffix: string | null;
@@ -144,13 +185,20 @@ export async function countChampionOffspringForDog(args: {
 export async function recalculateProducerMeritForDog(args: {
   tx: DbClient;
   dogId: string;
+  currentEpoch: number;
 }): Promise<ProducerMeritSummary | null> {
   const dog = await args.tx.dog.findUnique({
     where: { id: args.dogId },
     select: {
       id: true,
+      ownerKennelId: true,
+      registeredName: true,
+      callName: true,
+      regNumber: true,
+      visibleTitlePrefix: true,
       sex: true,
       visibleTitleSuffix: true,
+      championOffspringCount: true,
     },
   });
 
@@ -162,6 +210,11 @@ export async function recalculateProducerMeritForDog(args: {
   const merit = deriveProducerMeritForDog({
     sex: dog.sex,
     championOffspringCount,
+  });
+  const newlyEarnedTitles = listNewlyEarnedProducerMeritTitles({
+    sex: dog.sex,
+    previousChampionOffspringCount: dog.championOffspringCount,
+    nextChampionOffspringCount: merit.championOffspringCount,
   });
 
   await args.tx.$executeRaw`
@@ -178,12 +231,34 @@ export async function recalculateProducerMeritForDog(args: {
     WHERE "id" = ${dog.id}
   `;
 
+  for (const title of newlyEarnedTitles) {
+    await createDogProgenyTitleEarnedNotice({
+      client: args.tx,
+      kennelId: dog.ownerKennelId,
+      dogId: dog.id,
+      dogDisplayName: formatDogDisplayName({
+        registeredName: dog.registeredName,
+        callName: dog.callName,
+        regNumber: dog.regNumber,
+        visibleTitlePrefix: dog.visibleTitlePrefix,
+        visibleTitleSuffix: composeVisibleTitleSuffix({
+          currentVisibleTitleSuffix: dog.visibleTitleSuffix,
+          producerMeritSuffix: title.titleCode,
+        }),
+      }),
+      titleCode: title.titleCode,
+      titleLabel: title.titleLabel,
+      currentEpoch: args.currentEpoch,
+    });
+  }
+
   return merit;
 }
 
 export async function recalculateProducerMeritForDogs(args: {
   tx: DbClient;
   dogIds: Array<string | null | undefined>;
+  currentEpoch: number;
 }) {
   const dogIds = [...new Set(args.dogIds.filter(Boolean))] as string[];
 
@@ -191,6 +266,7 @@ export async function recalculateProducerMeritForDogs(args: {
     await recalculateProducerMeritForDog({
       tx: args.tx,
       dogId,
+      currentEpoch: args.currentEpoch,
     });
   }
 }
