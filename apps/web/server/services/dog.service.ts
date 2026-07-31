@@ -1265,14 +1265,21 @@ export async function getDogProfile(args: {
   const isAlive = dog.lifecycleState === DogLifecycleState.ALIVE;
   const isOwnedByCurrentKennel =
     viewerKennelId !== null && dog.ownerKennelId === viewerKennelId;
-  const pendingReproductiveEmergency =
+  const reproductiveEmergency =
     isOwnedByCurrentKennel && REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE
       ? await db.reproductiveEmergencyEvent.findFirst({
-          where: { damId: dog.id, status: "PENDING" },
-          orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAtEpoch: "asc" }],
+          where: { damId: dog.id },
+          orderBy: [{ createdAtEpoch: "desc" }],
           select: {
             id: true,
+            status: true,
             intendedPuppyCount: true,
+            survivingPuppyCount: true,
+            damOutcome: true,
+            puppyOutcome: true,
+            reproductiveConsequence: true,
+            recoveryUntilEpoch: true,
+            litterId: true,
             treatmentCost: true,
             responseDeadlineEpoch: true,
           },
@@ -1969,15 +1976,22 @@ export async function getDogProfile(args: {
           ),
         }
       : null,
-    reproductiveEmergency: pendingReproductiveEmergency
+    reproductiveEmergency: reproductiveEmergency
       ? {
-          eventId: pendingReproductiveEmergency.id,
-          intendedPuppyCount: pendingReproductiveEmergency.intendedPuppyCount,
+          eventId: reproductiveEmergency.id,
+          status: reproductiveEmergency.status,
+          intendedPuppyCount: reproductiveEmergency.intendedPuppyCount,
+          survivingPuppyCount: reproductiveEmergency.survivingPuppyCount,
+          damOutcome: reproductiveEmergency.damOutcome,
+          puppyOutcome: reproductiveEmergency.puppyOutcome,
+          reproductiveConsequence: reproductiveEmergency.reproductiveConsequence,
+          recoveryUntilEpoch: reproductiveEmergency.recoveryUntilEpoch,
+          litterId: reproductiveEmergency.litterId,
           treatmentCostLabel: formatMoneyLabel(
-            pendingReproductiveEmergency.treatmentCost
+            reproductiveEmergency.treatmentCost
           ),
           deadlineLabel: formatGameDateLabel(
-            pendingReproductiveEmergency.responseDeadlineEpoch
+            reproductiveEmergency.responseDeadlineEpoch
           ),
         }
       : null,

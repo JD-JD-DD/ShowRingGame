@@ -76,7 +76,14 @@ export type DogProfileEmergencyCareDto = {
 
 export type DogProfileReproductiveEmergencyDto = {
   eventId: string;
+  status: "PENDING" | "TREATMENT_AUTHORIZED" | "RESOLVED_TREATED" | "RESOLVED_UNTREATED";
   intendedPuppyCount: number;
+  survivingPuppyCount: number | null;
+  damOutcome: "SURVIVED" | "DIED" | null;
+  puppyOutcome: "ALL_SURVIVED" | "PARTIAL_SURVIVAL" | "NONE_SURVIVED" | null;
+  reproductiveConsequence: "NONE" | "EXTENDED_RECOVERY" | "PERMANENT_BREEDING_RESTRICTION" | null;
+  recoveryUntilEpoch: number | null;
+  litterId: string | null;
   treatmentCostLabel: string;
   deadlineLabel: string;
 };
@@ -841,7 +848,14 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
     reproductiveEmergency: input.reproductiveEmergency
       ? {
           eventId: input.reproductiveEmergency.eventId,
+          status: input.reproductiveEmergency.status,
           intendedPuppyCount: input.reproductiveEmergency.intendedPuppyCount,
+          survivingPuppyCount: input.reproductiveEmergency.survivingPuppyCount,
+          damOutcome: input.reproductiveEmergency.damOutcome,
+          puppyOutcome: input.reproductiveEmergency.puppyOutcome,
+          reproductiveConsequence: input.reproductiveEmergency.reproductiveConsequence,
+          recoveryUntilEpoch: input.reproductiveEmergency.recoveryUntilEpoch,
+          litterId: input.reproductiveEmergency.litterId,
           treatmentCostLabel: input.reproductiveEmergency.treatmentCostLabel,
           deadlineLabel: input.reproductiveEmergency.deadlineLabel,
         }

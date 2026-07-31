@@ -31,6 +31,7 @@
     "test:breeding-eligibility-reasons": "tsx scripts/testBreedingEligibilityReasons.ts",
     "test:breeding-action-feedback": "tsx scripts/testBreedingActionFeedback.ts",
     "test:reproductive-emergency-trigger": "tsx scripts/testReproductiveEmergencyTrigger.ts",
+    "test:reproductive-emergency-resolution": "tsx scripts/testReproductiveEmergencyResolution.ts",
     "test:pending-veterinary-care": "tsx scripts/testPendingVeterinaryCare.ts",
     "test:judging-automatic-absence": "tsx scripts/testJudgingAutomaticAbsence.ts",
     "test:show-entry-absence-reasons": "tsx scripts/testShowEntryAbsenceReasons.ts",

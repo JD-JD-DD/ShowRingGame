@@ -1,6 +1,7 @@
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { fail, ok } from "@/lib/http";
 import { processExpiredEmergencyCareEvents } from "@/server/services/emergencyVetCare.service";
+import { processAuthorizedReproductiveEmergencyEvents, processExpiredReproductiveEmergencyEvents } from "@/server/services/reproductiveEmergencyResolution.service";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +37,18 @@ export async function POST(request: Request) {
       currentEpoch,
       limit: parseBatchSize(searchParams.get("limit") ?? undefined),
     });
+    const reproductiveResult = await processExpiredReproductiveEmergencyEvents({
+      currentEpoch,
+      limit: parseBatchSize(searchParams.get("limit") ?? undefined),
+    });
+    const authorizedReproductiveResult = await processAuthorizedReproductiveEmergencyEvents({
+      currentEpoch,
+      limit: parseBatchSize(searchParams.get("limit") ?? undefined),
+    });
     const summary = {
       ...result,
+      reproductive: reproductiveResult,
+      authorizedReproductive: authorizedReproductiveResult,
       currentEpoch,
       durationMs: Date.now() - startedAtMs,
     };

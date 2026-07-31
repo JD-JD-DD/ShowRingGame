@@ -12,6 +12,7 @@ import { BRUCELLOSIS_TEST_FEE } from "@showring/rules";
 import CollapsibleDogSection from "./CollapsibleDogSection";
 import DogPedigreeGrid from "./DogPedigreeGrid";
 import EmergencyVetCarePanel from "./EmergencyVetCarePanel";
+import ReproductiveEmergencyPanel from "./ReproductiveEmergencyPanel";
 import DogPrivateNotesEditor from "./DogPrivateNotesEditor";
 import HealthTestingPanel from "./HealthTestingPanel";
 import TraitLine from "../ui/TraitLine";
@@ -162,20 +163,7 @@ export default function DogProfileDashboard(props: Props) {
         />
       ) : null}
       {viewerContext.canManage && profile.reproductiveEmergency ? (
-        <section
-          id="whelping-emergency"
-          className={`${PANEL_CLASS} order-0 border border-red-500/30 bg-red-500/10 lg:col-span-6`}
-          aria-labelledby="whelping-emergency-heading"
-        >
-          <p className="dog-label text-xs uppercase tracking-wide text-red-700 dark:text-red-200">Pending care</p>
-          <h2 id="whelping-emergency-heading" className="dog-heading mt-1 text-2xl font-bold">Whelping Emergency</h2>
-          <p className="dog-copy mt-3 text-sm leading-6">This dam is receiving emergency care for a whelping complication. Litter resolution is paused. Care authorization is not available yet.</p>
-          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-            <div><dt className="font-semibold">Intended puppies</dt><dd>{profile.reproductiveEmergency.intendedPuppyCount}</dd></div>
-            <div><dt className="font-semibold">Treatment cost</dt><dd>{profile.reproductiveEmergency.treatmentCostLabel}</dd></div>
-            <div><dt className="font-semibold">Care deadline</dt><dd>{profile.reproductiveEmergency.deadlineLabel}</dd></div>
-          </dl>
-        </section>
+        <ReproductiveEmergencyPanel dogName={header.displayName} emergency={profile.reproductiveEmergency} className={`${PANEL_CLASS} order-0 lg:col-span-6`} />
       ) : null}
 
       <CollapsibleDogSection

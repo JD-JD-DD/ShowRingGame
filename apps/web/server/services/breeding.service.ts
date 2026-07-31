@@ -22,7 +22,6 @@ import {
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
-import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 import {
   getValidNegativeBrucellosisTest,
   infectPuppiesFromDamBrucellosis,
@@ -165,7 +164,10 @@ type WhelpingResolutionOutcome =
   | "REPRODUCTIVE_EMERGENCY"
   | "SKIPPED";
 
-export { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE };
+// Kept here as the canonical whelping switch; other read paths import the same
+// disabled-by-default expression from reproductiveEmergency.config.
+export const REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE =
+  process.env.REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE === "true";
 
 export type BreedingProgressResolutionSummary = {
   checkedCount: number;
@@ -217,7 +219,7 @@ function seeded01(seed: string): number {
   return (hash >>> 0) / 0x100000000;
 }
 
-function buildPuppySexes(seed: string, pupCount: number): Array<"M" | "F"> {
+export function buildPuppySexes(seed: string, pupCount: number): Array<"M" | "F"> {
   return Array.from({ length: pupCount }, (_, index) =>
     seeded01(`${seed}:sex:${index}`) < 0.5 ? "M" : "F"
   );
@@ -231,7 +233,7 @@ function requireRngSeed(seed: number | null): number {
   return seed;
 }
 
-function mapTraits(dog: AttemptForResolution["sire"]) {
+export function mapBreedingTraits(dog: AttemptForResolution["sire"]) {
   return {
     head: dog.traitHead,
     forequarters: dog.traitForequarters,
@@ -246,7 +248,7 @@ function mapTraits(dog: AttemptForResolution["sire"]) {
   };
 }
 
-async function loadPedigreeForCoi(
+export async function loadPedigreeForCoi(
   client: Prisma.TransactionClient,
   parentIds: string[]
 ) {
@@ -847,8 +849,8 @@ async function resolveWhelpingAttempt(args: {
       pupCount,
       puppyDogIds,
       puppySexes,
-      sireTraits: mapTraits(fresh.sire),
-      damTraits: mapTraits(fresh.dam),
+      sireTraits: mapBreedingTraits(fresh.sire),
+      damTraits: mapBreedingTraits(fresh.dam),
       coiPercent: pairingCoi.coiPercent,
       coiGenerationDepth: pairingCoi.generationDepth,
       random01: () => {
