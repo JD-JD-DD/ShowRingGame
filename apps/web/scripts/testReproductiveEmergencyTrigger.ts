@@ -79,19 +79,6 @@ const eventCreationStart = breedingService.indexOf(
 assert.ok(eventCreationStart > emergencyBranchStart, "event creation is inside trigger branch");
 assert.ok(eventCreationStart < puppyCreationStart, "event is created before puppy IDs");
 
-const oldMortalityStart = breedingService.indexOf(
-  "const damDiedAtWhelp ="
-);
-const oldMortalityFlagGuard = breedingService.lastIndexOf(
-  "if (!REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE)",
-  oldMortalityStart
-);
-assert.ok(oldMortalityFlagGuard >= 0, "old mortality is guarded by disabled flag path");
-assert.ok(
-  oldMortalityFlagGuard < oldMortalityStart,
-  "active flag path never runs old dam mortality"
-);
-
 assertIncludes(
   breedingService,
   'status: "PREGNANT",\n        dueEpoch:',

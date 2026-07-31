@@ -45,7 +45,6 @@ import {
   REPRODUCTIVE_EMERGENCY_RULESET_VERSION,
   REPRODUCTIVE_EMERGENCY_TREATMENT_COST,
   WHELPING_COOLDOWN_HOURS,
-  WHELPING_DAM_DEATH_RATE,
   shouldTriggerReproductiveEmergency,
 } from "@showring/rules";
 import type { Prisma } from "@prisma/client";
@@ -951,24 +950,6 @@ async function resolveWhelpingAttempt(args: {
         linkedLitterId: outcome.litter.litterId,
         linkedDogId: outcome.litter.damId,
       });
-    }
-
-    if (!REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) {
-      const damDiedAtWhelp =
-        seeded01(`${rngSeed}:whelp:dam-mortality`) <
-        WHELPING_DAM_DEATH_RATE;
-
-      if (damDiedAtWhelp) {
-        await markDogDeceased({
-          client: tx,
-          dogId: fresh.dam.id,
-          regNumber: fresh.dam.regNumber,
-          ownerKennelId: fresh.dam.ownerKennelId,
-          displayName: formatDogDisplayName(fresh.dam),
-          deathEpoch: currentEpoch,
-          cause: "WHELPING_DAM",
-        });
-      }
     }
 
     return "WHELPED";

@@ -34,6 +34,8 @@
     "test:reproductive-emergency-resolution": "tsx scripts/testReproductiveEmergencyResolution.ts",
     "test:reproductive-emergency-eligibility": "tsx scripts/testReproductiveEmergencyEligibility.ts",
     "test:reproductive-emergency-presentation": "tsx scripts/testReproductiveEmergencyPresentation.ts",
+    "diagnose:reproductive-emergencies": "tsx scripts/diagnoseReproductiveEmergencies.ts",
+    "test:retired-fatal-whelp": "tsx scripts/testRetiredFatalWhelp.ts",
     "test:pending-veterinary-care": "tsx scripts/testPendingVeterinaryCare.ts",
     "test:judging-automatic-absence": "tsx scripts/testJudgingAutomaticAbsence.ts",
     "test:show-entry-absence-reasons": "tsx scripts/testShowEntryAbsenceReasons.ts",
