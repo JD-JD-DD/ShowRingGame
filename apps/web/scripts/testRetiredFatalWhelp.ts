@@ -9,5 +9,5 @@ const constants = source("packages/rules/constants/lifecycle.constants.ts");
 for (const forbidden of ["WHELPING_DAM" + "_DEATH_RATE", "whelp:dam-" + "mortality", "damDied" + "AtWhelp"]) {
   assert.equal(breeding.includes(forbidden) || constants.includes(forbidden), false, `${forbidden} must be retired`);
 }
-assert.ok(breeding.includes("if (REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE)"));
+assert.ok(breeding.includes("shouldTriggerReproductiveEmergency({"));
 console.log("Legacy fatal-whelp mechanic retirement checks passed.");

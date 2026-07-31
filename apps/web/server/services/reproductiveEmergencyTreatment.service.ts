@@ -1,15 +1,10 @@
 import { db } from "@/lib/db";
-import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 
 export async function authorizeReproductiveEmergencyTreatment(args: {
   eventId: string;
   kennelId: string;
   currentEpoch: number;
 }) {
-  if (!REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) {
-    throw new Error("Reproductive emergency treatment is not available.");
-  }
-
   return db.$transaction(async (tx) => {
     const event = await tx.reproductiveEmergencyEvent.findUnique({
       where: { id: args.eventId },

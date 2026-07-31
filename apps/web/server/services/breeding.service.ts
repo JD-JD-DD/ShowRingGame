@@ -164,10 +164,6 @@ type WhelpingResolutionOutcome =
   | "REPRODUCTIVE_EMERGENCY"
   | "SKIPPED";
 
-// Kept here as the canonical whelping switch; other read paths import the same
-// disabled-by-default expression from reproductiveEmergency.config.
-export const REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE =
-  process.env.REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE === "true";
 
 export type BreedingProgressResolutionSummary = {
   checkedCount: number;
@@ -711,7 +707,7 @@ async function resolveWhelpingAttempt(args: {
       return "SKIPPED";
     }
 
-    if (REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) {
+    {
       const existingEmergency = await tx.reproductiveEmergencyEvent.findUnique({
         where: {
           breedingAttemptId: fresh.id,
@@ -734,7 +730,7 @@ async function resolveWhelpingAttempt(args: {
       return value;
     });
 
-    if (REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) {
+    {
       const trigger = shouldTriggerReproductiveEmergency({
         rngSeed,
         rulesetVersion: REPRODUCTIVE_EMERGENCY_RULESET_VERSION,

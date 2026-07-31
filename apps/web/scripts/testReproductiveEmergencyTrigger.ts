@@ -18,8 +18,8 @@ function assertIncludes(value: string, expected: string, label: string) {
 
 assertIncludes(
   breedingService,
-  'process.env.REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE === "true"',
-  "reproductive emergency trigger flag defaults to false"
+  "const trigger = shouldTriggerReproductiveEmergency({",
+  "reproductive emergency trigger is canonical"
 );
 assertIncludes(
   breedingService,
@@ -68,7 +68,7 @@ assertIncludes(
 );
 
 const emergencyBranchStart = breedingService.indexOf(
-  "if (REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) {\n      const trigger"
+  "const trigger = shouldTriggerReproductiveEmergency({"
 );
 const puppyCreationStart = breedingService.indexOf("const puppyDogIds = Array.from");
 assert.ok(emergencyBranchStart >= 0, "trigger branch exists");

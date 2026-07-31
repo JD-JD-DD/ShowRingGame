@@ -14,7 +14,6 @@ import { listKennelRuns } from "@/server/services/kennelRunManagement.service";
 import { UNCATEGORIZED_KENNEL_RUN_NAME } from "@/server/services/kennelRun.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
-import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 import { assertCanCreateOwnerHandledEntriesForCluster } from "@/server/services/kennelService.service";
 import {
   getShowBlockEntryAvailability,
@@ -2141,14 +2140,10 @@ export async function createShowEntriesForCluster(args: {
     where: {
       id: { in: dogIds },
       ownerKennelId: kennelId,
-      ...(REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE
-        ? {
-            OR: [
-              { emergencyCareEvents: { some: { status: "PENDING" } } },
-              { reproductiveEmergencies: { some: { status: "PENDING" } } },
-            ],
-          }
-        : { emergencyCareEvents: { some: { status: "PENDING" } } }),
+      OR: [
+        { emergencyCareEvents: { some: { status: "PENDING" } } },
+        { reproductiveEmergencies: { some: { status: { in: ["PENDING", "TREATMENT_AUTHORIZED"] } } } },
+      ],
     },
     select: {
       id: true,

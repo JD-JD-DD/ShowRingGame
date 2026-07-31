@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { peekSessionUserId } from "@/lib/session";
-import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 
 export default async function EmergencyCareLink() {
   const userId = await peekSessionUserId();
@@ -36,14 +35,12 @@ export default async function EmergencyCareLink() {
       responseDeadlineEpoch: true,
     },
   });
-  const reproductiveEmergencies = REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE
-    ? await db.reproductiveEmergencyEvent.findMany({
+  const reproductiveEmergencies = await db.reproductiveEmergencyEvent.findMany({
         where: { status: { in: ["PENDING", "TREATMENT_AUTHORIZED"] }, dam: { ownerKennelId: kennel.id } },
         orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAtEpoch: "asc" }],
         take: 2,
         select: { id: true, damId: true, createdAtEpoch: true, responseDeadlineEpoch: true },
-      })
-    : [];
+      });
   const pendingEmergencies = [
     ...ordinaryEmergencies.map((event) => ({
       id: event.id, dogId: event.dogId, createdAtEpoch: event.createdAtEpoch,

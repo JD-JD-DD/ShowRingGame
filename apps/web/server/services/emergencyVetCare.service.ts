@@ -8,7 +8,6 @@ import {
 } from "@prisma/client";
 
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 
 const BASIS_POINTS = 10_000;
 
@@ -360,22 +359,6 @@ export async function getPendingVeterinaryCareForDog(
     where: { dogId, status: "PENDING" },
     orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAtEpoch: "asc" }],
   });
-
-  if (!REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) {
-    return ordinary
-      ? {
-          hasPendingCare: true,
-          careType: "ACCIDENT_ILLNESS",
-          eventId: ordinary.id,
-          dogId: ordinary.dogId,
-          status: "PENDING",
-          createdAtEpoch: ordinary.createdAtEpoch,
-          responseDeadlineEpoch: ordinary.responseDeadlineEpoch,
-          treatmentCost: ordinary.treatmentCost,
-          destinationHref: `/dogs/${ordinary.dogId}`,
-        }
-      : { hasPendingCare: false };
-  }
 
   const reproductive = await client.reproductiveEmergencyEvent.findFirst({
     where: { damId: dogId, status: { in: ["PENDING", "TREATMENT_AUTHORIZED"] } },

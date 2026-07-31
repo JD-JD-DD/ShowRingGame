@@ -8,7 +8,6 @@ import { infectPuppiesFromDamBrucellosis } from "@/server/services/infectiousDis
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
 import { markDogDeceased } from "@/server/services/lifecycle.service";
-import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 import { calculatePedigreeCoi, resolveReproductiveEmergencyOutcome, resolveWhelp } from "@showring/rules";
 
 export type ReproductiveEmergencyResolutionMode = "TREATED" | "UNTREATED_EXPIRED";
@@ -26,7 +25,6 @@ function outcomeNotice(args: { name: string; treated: boolean; intended: number;
 }
 
 export async function resolveReproductiveEmergencyEvent(args: { eventId: string; currentEpoch: number; resolutionMode: ReproductiveEmergencyResolutionMode }) {
-  if (!REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) throw new Error("Reproductive emergency resolution is not available.");
   return db.$transaction(async (tx) => {
     const event = await tx.reproductiveEmergencyEvent.findUnique({ where: { id: args.eventId }, include: { breedingAttempt: { include: { sire: true, dam: true } }, dam: true } });
     if (!event) throw new Error("Reproductive emergency event not found.");
@@ -68,7 +66,6 @@ export async function resolveReproductiveEmergencyEvent(args: { eventId: string;
 }
 
 export async function processExpiredReproductiveEmergencyEvents(args: { currentEpoch: number; limit?: number }) {
-  if (!REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) return { processedCount: 0, resolvedCount: 0 };
   const events = await db.reproductiveEmergencyEvent.findMany({ where: { status: "PENDING", responseDeadlineEpoch: { lt: args.currentEpoch } }, orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAt: "asc" }], take: Math.min(Math.max(args.limit ?? 100, 1), 500), select: { id: true } });
   let resolvedCount = 0;
   for (const event of events) { const result = await resolveReproductiveEmergencyEvent({ eventId: event.id, currentEpoch: args.currentEpoch, resolutionMode: "UNTREATED_EXPIRED" }); if (!result.alreadyResolved) resolvedCount += 1; }
@@ -76,7 +73,6 @@ export async function processExpiredReproductiveEmergencyEvents(args: { currentE
 }
 
 export async function processAuthorizedReproductiveEmergencyEvents(args: { currentEpoch: number; limit?: number }) {
-  if (!REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) return { processedCount: 0, resolvedCount: 0 };
   const events = await db.reproductiveEmergencyEvent.findMany({ where: { status: "TREATMENT_AUTHORIZED" }, orderBy: [{ treatmentAuthorizedEpoch: "asc" }, { createdAt: "asc" }], take: Math.min(Math.max(args.limit ?? 100, 1), 500), select: { id: true } });
   let resolvedCount = 0;
   for (const event of events) { const result = await resolveReproductiveEmergencyEvent({ eventId: event.id, currentEpoch: args.currentEpoch, resolutionMode: "TREATED" }); if (!result.alreadyResolved) resolvedCount += 1; }

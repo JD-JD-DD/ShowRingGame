@@ -35,7 +35,6 @@ import {
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { resolveBreedingProgressForOwnedDam } from "@/server/services/breeding.service";
-import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -1266,7 +1265,7 @@ export async function getDogProfile(args: {
   const isOwnedByCurrentKennel =
     viewerKennelId !== null && dog.ownerKennelId === viewerKennelId;
   const reproductiveEmergency =
-    isOwnedByCurrentKennel && REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE
+    isOwnedByCurrentKennel
       ? await db.reproductiveEmergencyEvent.findFirst({
           where: { damId: dog.id },
           orderBy: [{ createdAtEpoch: "desc" }],
@@ -1286,7 +1285,7 @@ export async function getDogProfile(args: {
         })
       : null;
   const resolvedReproductiveEmergencies =
-    REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE
+    isOwnedByCurrentKennel
       ? await db.reproductiveEmergencyEvent.findMany({
           where: { damId: dog.id, status: { in: ["RESOLVED_TREATED", "RESOLVED_UNTREATED"] } },
           select: { id: true, status: true, resolvedEpoch: true, reproductiveConsequence: true },
