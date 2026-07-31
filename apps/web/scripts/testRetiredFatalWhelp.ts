@@ -4,8 +4,8 @@ import { join } from "node:path";
 
 const root = process.cwd();
 const source = (path: string) => readFileSync(join(root, path), "utf8");
-const breeding = source("server/services/breeding.service.ts");
-const constants = source("../../packages/rules/constants/lifecycle.constants.ts");
+const breeding = source("apps/web/server/services/breeding.service.ts");
+const constants = source("packages/rules/constants/lifecycle.constants.ts");
 for (const forbidden of ["WHELPING_DAM" + "_DEATH_RATE", "whelp:dam-" + "mortality", "damDied" + "AtWhelp"]) {
   assert.equal(breeding.includes(forbidden) || constants.includes(forbidden), false, `${forbidden} must be retired`);
 }

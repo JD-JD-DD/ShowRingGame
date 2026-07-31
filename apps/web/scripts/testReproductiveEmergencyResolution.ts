@@ -17,7 +17,7 @@ assert.match(resolver, /markDogDeceased/);
 assert.match(resolver, /processExpiredReproductiveEmergencyEvents/);
 assert.match(panel, /authorize-treatment/);
 assert.match(panel, /Treatment improves survival chances but does not guarantee survival/);
-assert.match(panel, /Emergency treatment authorized\. Outcome resolution is pending\./);
+assert.match(panel, /Emergency treatment has been authorized\. The dam and litter outcome is still being resolved\./);
 assert.match(treatment, /ledgerTransactionId: null/);
 assert.match(treatment, /balance < event\.treatmentCost/);
 
