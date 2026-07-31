@@ -8,6 +8,7 @@ import {
 } from "@prisma/client";
 
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 
 const BASIS_POINTS = 10_000;
 
@@ -319,6 +320,111 @@ export async function assertDogHasNoPendingEmergencyCare(
 
   if (pendingEmergency) {
     throw new Error("This dog has a pending emergency vet-care event.");
+  }
+}
+
+export type PendingVeterinaryCare =
+  | {
+      hasPendingCare: true;
+      careType: "ACCIDENT_ILLNESS";
+      eventId: string;
+      dogId: string;
+      status: "PENDING" | "TREATMENT_AUTHORIZED";
+      createdAtEpoch: number;
+      responseDeadlineEpoch: number;
+      treatmentCost: number;
+      destinationHref: string;
+    }
+  | {
+      hasPendingCare: true;
+      careType: "REPRODUCTIVE_EMERGENCY";
+      eventId: string;
+      dogId: string;
+      status: "PENDING" | "TREATMENT_AUTHORIZED";
+      createdAtEpoch: number;
+      responseDeadlineEpoch: number;
+      treatmentCost: number;
+      destinationHref: string;
+      breedingAttemptId: string;
+      intendedPuppyCount: number;
+    }
+  | { hasPendingCare: false };
+
+type PendingVeterinaryCareClient = typeof db | Prisma.TransactionClient;
+
+export async function getPendingVeterinaryCareForDog(
+  dogId: string,
+  client: PendingVeterinaryCareClient = db
+): Promise<PendingVeterinaryCare> {
+  const ordinary = await client.dogEmergencyCareEvent.findFirst({
+    where: { dogId, status: "PENDING" },
+    orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAtEpoch: "asc" }],
+  });
+
+  if (!REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) {
+    return ordinary
+      ? {
+          hasPendingCare: true,
+          careType: "ACCIDENT_ILLNESS",
+          eventId: ordinary.id,
+          dogId: ordinary.dogId,
+          status: "PENDING",
+          createdAtEpoch: ordinary.createdAtEpoch,
+          responseDeadlineEpoch: ordinary.responseDeadlineEpoch,
+          treatmentCost: ordinary.treatmentCost,
+          destinationHref: `/dogs/${ordinary.dogId}`,
+        }
+      : { hasPendingCare: false };
+  }
+
+  const reproductive = await client.reproductiveEmergencyEvent.findFirst({
+    where: { damId: dogId, status: { in: ["PENDING", "TREATMENT_AUTHORIZED"] } },
+    orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAtEpoch: "asc" }],
+  });
+  const candidates: PendingVeterinaryCare[] = [];
+  if (ordinary) {
+    candidates.push({
+      hasPendingCare: true, careType: "ACCIDENT_ILLNESS", eventId: ordinary.id,
+      dogId: ordinary.dogId, status: "PENDING", createdAtEpoch: ordinary.createdAtEpoch,
+      responseDeadlineEpoch: ordinary.responseDeadlineEpoch, treatmentCost: ordinary.treatmentCost,
+      destinationHref: `/dogs/${ordinary.dogId}`,
+    });
+  }
+  if (reproductive) {
+    candidates.push({
+      hasPendingCare: true, careType: "REPRODUCTIVE_EMERGENCY", eventId: reproductive.id,
+      dogId: reproductive.damId,
+      status:
+        reproductive.status === "PENDING" ? "PENDING" : "TREATMENT_AUTHORIZED",
+      createdAtEpoch: reproductive.createdAtEpoch,
+      responseDeadlineEpoch: reproductive.responseDeadlineEpoch, treatmentCost: reproductive.treatmentCost,
+      destinationHref: `/dogs/${reproductive.damId}#whelping-emergency`,
+      breedingAttemptId: reproductive.breedingAttemptId,
+      intendedPuppyCount: reproductive.intendedPuppyCount,
+    });
+  }
+  candidates.sort((left, right) =>
+    left.hasPendingCare && right.hasPendingCare
+      ? left.responseDeadlineEpoch - right.responseDeadlineEpoch ||
+        left.createdAtEpoch - right.createdAtEpoch || left.eventId.localeCompare(right.eventId)
+      : 0
+  );
+  return candidates[0] ?? { hasPendingCare: false };
+}
+
+export async function hasPendingVeterinaryCareForDog(
+  dogId: string,
+  client: PendingVeterinaryCareClient = db
+): Promise<boolean> {
+  return (await getPendingVeterinaryCareForDog(dogId, client)).hasPendingCare;
+}
+
+export async function assertDogHasNoPendingVeterinaryCare(
+  dogId: string,
+  client: PendingVeterinaryCareClient = db
+): Promise<void> {
+  if (await hasPendingVeterinaryCareForDog(dogId, client)) {
+    throw new Error("This dog is awaiting emergency veterinary care.");
   }
 }
 

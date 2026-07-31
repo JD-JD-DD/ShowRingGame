@@ -511,6 +511,7 @@ export const exampleDogProfile: DogProfileDto = {
   entries: null,
   privatePlanning: null,
   emergencyCare: null,
+  reproductiveEmergency: null,
   actions: {
     canName: false,
     canBreed: false,

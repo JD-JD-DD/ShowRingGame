@@ -13,7 +13,8 @@ import {
 import { listKennelRuns } from "@/server/services/kennelRunManagement.service";
 import { UNCATEGORIZED_KENNEL_RUN_NAME } from "@/server/services/kennelRun.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
-import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
+import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
+import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 import { assertCanCreateOwnerHandledEntriesForCluster } from "@/server/services/kennelService.service";
 import {
   getShowBlockEntryAvailability,
@@ -1056,7 +1057,7 @@ async function createShowEntryWithTx(args: {
     throw new Error("Dog is not owned by a kennel.");
   }
 
-  await assertDogHasNoPendingEmergencyCare(dog.id, tx);
+  await assertDogHasNoPendingVeterinaryCare(dog.id, tx);
 
   const duplicateEntry = await tx.showEntry.findUnique({
     where: {
@@ -2140,9 +2141,14 @@ export async function createShowEntriesForCluster(args: {
     where: {
       id: { in: dogIds },
       ownerKennelId: kennelId,
-      emergencyCareEvents: {
-        some: { status: "PENDING" },
-      },
+      ...(REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE
+        ? {
+            OR: [
+              { emergencyCareEvents: { some: { status: "PENDING" } } },
+              { reproductiveEmergencies: { some: { status: "PENDING" } } },
+            ],
+          }
+        : { emergencyCareEvents: { some: { status: "PENDING" } } }),
     },
     select: {
       id: true,

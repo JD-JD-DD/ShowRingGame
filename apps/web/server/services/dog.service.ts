@@ -35,6 +35,7 @@ import {
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { resolveBreedingProgressForOwnedDam } from "@/server/services/breeding.service";
+import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -1264,6 +1265,19 @@ export async function getDogProfile(args: {
   const isAlive = dog.lifecycleState === DogLifecycleState.ALIVE;
   const isOwnedByCurrentKennel =
     viewerKennelId !== null && dog.ownerKennelId === viewerKennelId;
+  const pendingReproductiveEmergency =
+    isOwnedByCurrentKennel && REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE
+      ? await db.reproductiveEmergencyEvent.findFirst({
+          where: { damId: dog.id, status: "PENDING" },
+          orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAtEpoch: "asc" }],
+          select: {
+            id: true,
+            intendedPuppyCount: true,
+            treatmentCost: true,
+            responseDeadlineEpoch: true,
+          },
+        })
+      : null;
   const pendingEmergencyCare = isOwnedByCurrentKennel
     ? dog.emergencyCareEvents[0] ?? null
     : null;
@@ -1952,6 +1966,18 @@ export async function getDogProfile(args: {
           survivalChanceBps: pendingEmergencyCare.survivalChanceBps,
           survivalChanceLabel: formatBasisPointsPercentLabel(
             pendingEmergencyCare.survivalChanceBps
+          ),
+        }
+      : null,
+    reproductiveEmergency: pendingReproductiveEmergency
+      ? {
+          eventId: pendingReproductiveEmergency.id,
+          intendedPuppyCount: pendingReproductiveEmergency.intendedPuppyCount,
+          treatmentCostLabel: formatMoneyLabel(
+            pendingReproductiveEmergency.treatmentCost
+          ),
+          deadlineLabel: formatGameDateLabel(
+            pendingReproductiveEmergency.responseDeadlineEpoch
           ),
         }
       : null,

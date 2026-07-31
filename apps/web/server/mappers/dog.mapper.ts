@@ -74,6 +74,13 @@ export type DogProfileEmergencyCareDto = {
   survivalChanceLabel: string;
 };
 
+export type DogProfileReproductiveEmergencyDto = {
+  eventId: string;
+  intendedPuppyCount: number;
+  treatmentCostLabel: string;
+  deadlineLabel: string;
+};
+
 export type DogProfileSnapshotDto = {
   owner: DogProfileKennelDisplayDto | null;
   breeder: DogProfileKennelDisplayDto | null;
@@ -442,6 +449,7 @@ export type DogProfileDto = {
   entries: DogProfileEntriesDto | null;
   privatePlanning: DogProfilePrivatePlanningDto;
   emergencyCare: DogProfileEmergencyCareDto | null;
+  reproductiveEmergency: DogProfileReproductiveEmergencyDto | null;
   actions: DogProfileActionsDto;
   viewerContext: DogProfileViewerContextDto;
 };
@@ -828,6 +836,14 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
           treatmentCostLabel: input.emergencyCare.treatmentCostLabel,
           survivalChanceBps: input.emergencyCare.survivalChanceBps,
           survivalChanceLabel: input.emergencyCare.survivalChanceLabel,
+        }
+      : null,
+    reproductiveEmergency: input.reproductiveEmergency
+      ? {
+          eventId: input.reproductiveEmergency.eventId,
+          intendedPuppyCount: input.reproductiveEmergency.intendedPuppyCount,
+          treatmentCostLabel: input.reproductiveEmergency.treatmentCostLabel,
+          deadlineLabel: input.reproductiveEmergency.deadlineLabel,
         }
       : null,
     actions: {

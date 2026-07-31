@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { db } from "@/lib/db";
 import { peekSessionUserId } from "@/lib/session";
+import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 
 export default async function EmergencyCareLink() {
   const userId = await peekSessionUserId();
@@ -19,7 +20,7 @@ export default async function EmergencyCareLink() {
     return null;
   }
 
-  const pendingEmergencies = await db.dogEmergencyCareEvent.findMany({
+  const ordinaryEmergencies = await db.dogEmergencyCareEvent.findMany({
     where: {
       status: "PENDING",
       dog: {
@@ -29,9 +30,33 @@ export default async function EmergencyCareLink() {
     orderBy: [{ createdAtEpoch: "asc" }, { createdAt: "asc" }],
     take: 2,
     select: {
+      id: true,
       dogId: true,
+      createdAtEpoch: true,
+      responseDeadlineEpoch: true,
     },
   });
+  const reproductiveEmergencies = REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE
+    ? await db.reproductiveEmergencyEvent.findMany({
+        where: { status: { in: ["PENDING", "TREATMENT_AUTHORIZED"] }, dam: { ownerKennelId: kennel.id } },
+        orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAtEpoch: "asc" }],
+        take: 2,
+        select: { id: true, damId: true, createdAtEpoch: true, responseDeadlineEpoch: true },
+      })
+    : [];
+  const pendingEmergencies = [
+    ...ordinaryEmergencies.map((event) => ({
+      id: event.id, dogId: event.dogId, createdAtEpoch: event.createdAtEpoch,
+      responseDeadlineEpoch: event.responseDeadlineEpoch, href: `/dogs/${event.dogId}`,
+    })),
+    ...reproductiveEmergencies.map((event) => ({
+      id: event.id, dogId: event.damId, createdAtEpoch: event.createdAtEpoch,
+      responseDeadlineEpoch: event.responseDeadlineEpoch, href: `/dogs/${event.damId}#whelping-emergency`,
+    })),
+  ].sort((left, right) =>
+    left.responseDeadlineEpoch - right.responseDeadlineEpoch ||
+    left.createdAtEpoch - right.createdAtEpoch || left.id.localeCompare(right.id)
+  );
 
   if (pendingEmergencies.length === 0) {
     return null;
@@ -40,7 +65,7 @@ export default async function EmergencyCareLink() {
   // TODO: Link multiple pending emergencies to a dedicated emergency list page.
   return (
     <Link
-      href={`/dogs/${pendingEmergencies[0].dogId}`}
+      href={pendingEmergencies[0].href}
       className="game-header__emergency fixed right-4 top-[7.55rem] z-50 rounded-2xl px-3 py-1.5 text-right text-[11px] font-bold leading-4 backdrop-blur"
     >
       Emergency

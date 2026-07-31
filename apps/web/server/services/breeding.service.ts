@@ -10,7 +10,7 @@ import {
   createKennelNotice,
   createReproductiveEmergencyNotice,
 } from "@/server/services/kennelNotice.service";
-import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
+import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
@@ -22,6 +22,7 @@ import {
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
+import { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE } from "@/server/services/reproductiveEmergency.config";
 import {
   getValidNegativeBrucellosisTest,
   infectPuppiesFromDamBrucellosis,
@@ -164,8 +165,7 @@ type WhelpingResolutionOutcome =
   | "REPRODUCTIVE_EMERGENCY"
   | "SKIPPED";
 
-export const REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE =
-  process.env.REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE === "true";
+export { REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE };
 
 export type BreedingProgressResolutionSummary = {
   checkedCount: number;
@@ -1369,8 +1369,8 @@ export async function createBreedingAttemptForKennel(args: {
     let studSellerBalanceAfter: number | null = null;
     let requiresBrucellosisNegativeDam = false;
 
-    await assertDogHasNoPendingEmergencyCare(dam.id, tx);
-    await assertDogHasNoPendingEmergencyCare(sire.id, tx);
+    await assertDogHasNoPendingVeterinaryCare(dam.id, tx);
+    await assertDogHasNoPendingVeterinaryCare(sire.id, tx);
 
     if (usesPublicStud) {
       const studListing = await tx.dogListing.findFirst({

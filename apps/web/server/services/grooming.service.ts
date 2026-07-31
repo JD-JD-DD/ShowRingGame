@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
+import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import {
   deriveThyroidGroomingModifiers,
@@ -694,7 +694,7 @@ export async function selfGroomDog(args: {
       throw new Error("Only living dogs can be groomed.");
     }
 
-    await assertDogHasNoPendingEmergencyCare(dog.id, tx);
+    await assertDogHasNoPendingVeterinaryCare(dog.id, tx);
 
     if (
       !isDogEligibleForGrooming({
@@ -827,7 +827,7 @@ export async function listDogForOutsideGrooming(args: {
       throw new Error("Only living dogs can be offered for grooming.");
     }
 
-    await assertDogHasNoPendingEmergencyCare(dog.id, tx);
+    await assertDogHasNoPendingVeterinaryCare(dog.id, tx);
 
     if (
       !isDogEligibleForGrooming({
@@ -1112,7 +1112,7 @@ export async function acceptGroomingJob(args: {
       throw new Error("This dog is no longer eligible for grooming.");
     }
 
-    await assertDogHasNoPendingEmergencyCare(listing.dog.id, tx);
+    await assertDogHasNoPendingVeterinaryCare(listing.dog.id, tx);
 
     if (
       !isDogEligibleForGrooming({

@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
+import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
@@ -356,7 +356,7 @@ export async function listDogForSale(args: {
       throw new Error("Only active dogs can be offered for sale.");
     }
 
-    await assertDogHasNoPendingEmergencyCare(dog.id, tx);
+    await assertDogHasNoPendingVeterinaryCare(dog.id, tx);
 
     if (!canSellPuppy(currentEpoch, dog.birthEpoch, dog.lifecycleState)) {
       throw new Error("Dogs cannot be offered for sale until 8 weeks of game age.");
@@ -485,7 +485,7 @@ export async function buyPlayerDogListing(args: {
       throw new Error("This dog is no longer available for sale.");
     }
 
-    await assertDogHasNoPendingEmergencyCare(listing.dog.id, tx);
+    await assertDogHasNoPendingVeterinaryCare(listing.dog.id, tx);
 
     const [buyer, seller] = await Promise.all([
       tx.kennel.findUnique({
@@ -750,7 +750,7 @@ export async function listDogAtStud(args: {
       throw new Error("Only active dogs can be offered at stud.");
     }
 
-    await assertDogHasNoPendingEmergencyCare(dog.id, tx);
+    await assertDogHasNoPendingVeterinaryCare(dog.id, tx);
 
     if (dog.sex !== "M") {
       throw new Error("Only male dogs can be offered at stud.");
