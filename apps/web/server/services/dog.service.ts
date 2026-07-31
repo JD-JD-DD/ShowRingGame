@@ -1285,6 +1285,13 @@ export async function getDogProfile(args: {
           },
         })
       : null;
+  const resolvedReproductiveEmergencies =
+    REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE
+      ? await db.reproductiveEmergencyEvent.findMany({
+          where: { damId: dog.id, status: { in: ["RESOLVED_TREATED", "RESOLVED_UNTREATED"] } },
+          select: { id: true, status: true, resolvedEpoch: true, reproductiveConsequence: true },
+        })
+      : [];
   const pendingEmergencyCare = isOwnedByCurrentKennel
     ? dog.emergencyCareEvents[0] ?? null
     : null;
@@ -1315,6 +1322,7 @@ export async function getDogProfile(args: {
       dog.breedingAttemptsAsDam.find(
         (attempt) => attempt.status === "WHELPED" && attempt.whelpedEpoch != null
       )?.whelpedEpoch ?? null,
+    resolvedReproductiveEmergencies,
   });
   const breedingEligible = breedingEligibility.isEligible;
   const breedingEligibilityMessage = getBreedingEligibilityMessage(

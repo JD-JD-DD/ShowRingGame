@@ -8,6 +8,13 @@ import {
 } from "@showring/rules";
 import { formatRealDurationHoursLong } from "../../lib/gameTimeFormat";
 
+export type ResolvedReproductiveEmergencyEligibilityEvent = {
+  id: string;
+  status: string;
+  resolvedEpoch: number | null;
+  reproductiveConsequence: string | null;
+};
+
 export type BreedingEligibilityReasonCode =
   | "ELIGIBLE"
   | "NOT_ALIVE"
@@ -16,7 +23,10 @@ export type BreedingEligibilityReasonCode =
   | "PENDING_PREGNANCY_CONFIRMATION"
   | "PREGNANT"
   | "REPRODUCTIVE_EMERGENCY"
-  | "POST_WHELP_COOLDOWN";
+  | "POST_WHELP_COOLDOWN"
+  | "REPRODUCTIVE_RECOVERY"
+  | "REPRODUCTIVE_EXTENDED_RECOVERY"
+  | "PERMANENT_REPRODUCTIVE_RESTRICTION";
 
 export type IndividualBreedingEligibilityInput = {
   currentEpoch: number;
@@ -25,6 +35,7 @@ export type IndividualBreedingEligibilityInput = {
   sex: Sex;
   activeBreedingAttemptStatus?: string | null;
   lastWhelpedEpoch?: number | null;
+  resolvedReproductiveEmergencies?: ResolvedReproductiveEmergencyEligibilityEvent[];
 };
 
 export type IndividualBreedingEligibilityResult = {
@@ -52,10 +63,20 @@ export function getIndividualBreedingEligibility(
       args.activeBreedingAttemptStatus === "REPRODUCTIVE_EMERGENCY")
       ? args.activeBreedingAttemptStatus
       : null;
-  const cooldownUntilEpoch =
+  const terminalEvents = (args.resolvedReproductiveEmergencies ?? [])
+    .filter((event) => event.resolvedEpoch != null)
+    .sort((a, b) => (b.resolvedEpoch! - a.resolvedEpoch!) || b.id.localeCompare(a.id));
+  const permanentEvent = terminalEvents.find(
+    (event) => event.reproductiveConsequence === "PERMANENT_BREEDING_RESTRICTION"
+  );
+  const latestEvent = terminalEvents[0] ?? null;
+  const reproductiveRecoveryUntil = latestEvent?.resolvedEpoch != null && latestEvent.reproductiveConsequence !== "PERMANENT_BREEDING_RESTRICTION"
+    ? latestEvent.resolvedEpoch + (latestEvent.reproductiveConsequence === "EXTENDED_RECOVERY" ? 365 : WHELPING_COOLDOWN_HOURS)
+    : null;
+  const cooldownUntilEpoch = reproductiveRecoveryUntil ?? (
     args.sex === "F" && args.lastWhelpedEpoch != null
       ? args.lastWhelpedEpoch + WHELPING_COOLDOWN_HOURS
-      : null;
+      : null);
   const isInPostWhelpCooldown =
     cooldownUntilEpoch != null && args.currentEpoch < cooldownUntilEpoch;
   const ageHours = Math.max(0, args.currentEpoch - args.birthEpoch);
@@ -72,6 +93,14 @@ export function getIndividualBreedingEligibility(
     reasonCode = "PREGNANT";
   } else if (activeBreedingAttemptStatus === "REPRODUCTIVE_EMERGENCY") {
     reasonCode = "REPRODUCTIVE_EMERGENCY";
+  } else if (permanentEvent) {
+    reasonCode = "PERMANENT_REPRODUCTIVE_RESTRICTION";
+  } else if (isInPostWhelpCooldown && reproductiveRecoveryUntil != null) {
+    reasonCode = latestEvent?.reproductiveConsequence === "EXTENDED_RECOVERY"
+      ? "REPRODUCTIVE_EXTENDED_RECOVERY"
+      : "REPRODUCTIVE_RECOVERY";
+    eligibleAtEpoch = reproductiveRecoveryUntil;
+    remainingHours = Math.max(0, reproductiveRecoveryUntil - args.currentEpoch);
   } else if (isInPostWhelpCooldown && cooldownUntilEpoch != null) {
     reasonCode = "POST_WHELP_COOLDOWN";
     eligibleAtEpoch = cooldownUntilEpoch;
@@ -130,7 +159,13 @@ export function getBreedingEligibilityMessage(
     case "PREGNANT":
       return "This bitch is pregnant.";
     case "REPRODUCTIVE_EMERGENCY":
-      return "This bitch has an unresolved reproductive emergency.";
+      return "This dam is receiving emergency care for a whelping complication.";
+    case "REPRODUCTIVE_RECOVERY":
+      return `She is recovering after whelping and may be bred again after game time in ${formatRealDurationHoursLong(result.remainingHours)}.`;
+    case "REPRODUCTIVE_EXTENDED_RECOVERY":
+      return `She is recovering from whelping complications and may be bred again after game time in ${formatRealDurationHoursLong(result.remainingHours)}.`;
+    case "PERMANENT_REPRODUCTIVE_RESTRICTION":
+      return "Veterinary complications mean she cannot safely carry another litter and may not be bred again.";
     case "POST_WHELP_COOLDOWN":
       return `This bitch is resting after a litter. Available to breed in ${formatRealDurationHoursLong(
         result.remainingHours

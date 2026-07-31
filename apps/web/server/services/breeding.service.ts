@@ -11,6 +11,7 @@ import {
   createReproductiveEmergencyNotice,
 } from "@/server/services/kennelNotice.service";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
+import { getBreedingEligibilityMessage, getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
@@ -1331,6 +1332,11 @@ export async function createBreedingAttemptForKennel(args: {
     throw new Error("That dam already has an active breeding in progress.");
   }
 
+  const resolvedReproductiveEmergencies = await db.reproductiveEmergencyEvent.findMany({
+    where: { damId: dam.id, status: { in: ["RESOLVED_TREATED", "RESOLVED_UNTREATED"] } },
+    select: { id: true, status: true, resolvedEpoch: true, reproductiveConsequence: true },
+  });
+
   const latestWhelpedAttempt = await db.breedingAttempt.findFirst({
     where: {
       damId: dam.id,
@@ -1350,12 +1356,8 @@ export async function createBreedingAttemptForKennel(args: {
     latestWhelpedAttempt?.whelpedEpoch == null
       ? null
       : latestWhelpedAttempt.whelpedEpoch + WHELPING_COOLDOWN_HOURS;
-
-  if (damCooldownUntil !== null && currentEpoch < damCooldownUntil) {
-    throw new Error(
-      `${displayDogName(dam)} is in post-whelp cooldown for ${damCooldownUntil - currentEpoch} more day(s).`
-    );
-  }
+  const damEligibility = getIndividualBreedingEligibility({ currentEpoch, birthEpoch: dam.birthEpoch, lifecycleState: "ALIVE", sex: dam.sex, lastWhelpedEpoch: latestWhelpedAttempt?.whelpedEpoch ?? null, resolvedReproductiveEmergencies });
+  if (!damEligibility.isEligible) throw new Error(getBreedingEligibilityMessage(damEligibility) ?? `${displayDogName(dam)} is not breeding eligible.`);
 
   const rngSeed = Math.floor(Math.random() * 1_000_000);
   let timingNoiseIndex = 0;
