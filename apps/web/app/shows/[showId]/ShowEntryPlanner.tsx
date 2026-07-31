@@ -139,6 +139,7 @@ export function ShowEntryPlanner({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBulkConfirmation, setShowBulkConfirmation] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState<Record<string, boolean>>({});
   const submittingRef = useRef(false);
 
   const selectedPairs = useMemo(
@@ -219,19 +220,59 @@ export function ShowEntryPlanner({
     return buildQuote(selectedPairs);
   }, [buildQuote, selectedPairs]);
 
-  const bulkQuote = useMemo(() => buildQuote(bulkEligibleSelections), [
+  const bulkEligibleSelectionKeys = useMemo(
+    () =>
+      new Set(
+        bulkEligibleSelections
+          .filter((pair) =>
+            dogs.some(
+              (dog) =>
+                dog.dogId === pair.dogId &&
+                dog.eligibleShowDayIds.includes(pair.showDayId)
+            )
+          )
+          .map((pair) => selectionKey(pair.dogId, pair.showDayId))
+      ),
+    [bulkEligibleSelections, dogs]
+  );
+  const bulkSelectedPairs = useMemo(
+    () =>
+      Object.entries(bulkSelected)
+        .filter(([key, isSelected]) => isSelected && bulkEligibleSelectionKeys.has(key))
+        .map(([key]) => {
+          const [dogId, showDayId] = key.split(":");
+          return { dogId, showDayId };
+        })
+        .filter((pair) => pair.dogId && pair.showDayId),
+    [bulkEligibleSelectionKeys, bulkSelected]
+  );
+  const bulkQuote = useMemo(() => buildQuote(bulkSelectedPairs), [
     buildQuote,
-    bulkEligibleSelections,
+    bulkSelectedPairs,
   ]);
   const bulkEligibleDogCount = useMemo(
-    () => new Set(bulkEligibleSelections.map((pair) => pair.dogId)).size,
-    [bulkEligibleSelections]
+    () => new Set(bulkSelectedPairs.map((pair) => pair.dogId)).size,
+    [bulkSelectedPairs]
   );
   const bulkEligibleShowDayCount = useMemo(
-    () => new Set(bulkEligibleSelections.map((pair) => pair.showDayId)).size,
-    [bulkEligibleSelections]
+    () => new Set(bulkSelectedPairs.map((pair) => pair.showDayId)).size,
+    [bulkSelectedPairs]
   );
-  const hasBulkSelections = bulkEligibleSelections.length > 0;
+  const bulkConfirmationDogs = useMemo(
+    () =>
+      dogs.filter((dog) =>
+        [...bulkEligibleSelectionKeys].some((key) => key.startsWith(`${dog.dogId}:`))
+      ),
+    [bulkEligibleSelectionKeys, dogs]
+  );
+  const bulkConfirmationDays = useMemo(
+    () =>
+      days.filter((day) =>
+        [...bulkEligibleSelectionKeys].some((key) => key.endsWith(`:${day.showDayId}`))
+      ),
+    [bulkEligibleSelectionKeys, days]
+  );
+  const hasBulkSelections = bulkEligibleSelectionKeys.size > 0;
   const bulkActionLabel =
     scope.type === "BREED"
       ? `Enter All Eligible ${scope.label}`
@@ -241,8 +282,24 @@ export function ShowEntryPlanner({
       ? `No new eligible dog/day combinations are available for ${scope.label} in the current cluster.`
       : "No dogs in this kennel run are currently eligible for an open show day.";
 
+  function openBulkConfirmation() {
+    setBulkSelected(
+      Object.fromEntries([...bulkEligibleSelectionKeys].map((key) => [key, true]))
+    );
+    setShowBulkConfirmation(true);
+  }
+
+  function cancelBulkConfirmation() {
+    setShowBulkConfirmation(false);
+    setBulkSelected({});
+  }
+
   function handleBulkSubmit(event: FormEvent<HTMLFormElement>) {
-    if (submittingRef.current || !hasBulkSelections || !bulkQuote.canAfford) {
+    if (
+      submittingRef.current ||
+      bulkSelectedPairs.length === 0 ||
+      !bulkQuote.canAfford
+    ) {
       event.preventDefault();
       return;
     }
@@ -507,7 +564,7 @@ export function ShowEntryPlanner({
           </div>
           <button
             type="button"
-            onClick={() => setShowBulkConfirmation((current) => !current)}
+            onClick={openBulkConfirmation}
             disabled={isSubmitting || !hasBulkSelections}
             className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-200"
           >
@@ -525,6 +582,68 @@ export function ShowEntryPlanner({
           <div className="mt-5 rounded-2xl border border-emerald-300/20 bg-emerald-500/8 p-4">
             <div className="theme-heading text-base font-semibold">
               Bulk Entry Confirmation
+            </div>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[560px] border-separate border-spacing-y-2 text-sm">
+                <thead>
+                  <tr className="theme-label text-left text-xs uppercase tracking-[0.16em]">
+                    <th className="px-3 py-2">Dog</th>
+                    <th className="px-3 py-2">Breed</th>
+                    {bulkConfirmationDays.map((day) => (
+                      <th
+                        key={day.showDayId}
+                        className="w-28 px-3 py-2 text-center"
+                      >
+                        <div>Day {day.dayIndex}</div>
+                        <div className="theme-copy mt-1 normal-case tracking-normal">
+                          {day.label}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {bulkConfirmationDogs.map((dog) => (
+                    <tr key={dog.dogId} className="theme-card">
+                      <td className="rounded-l-2xl px-3 py-3">
+                        <div className="theme-heading font-semibold">
+                          {dog.displayName}
+                        </div>
+                        <div className="theme-copy text-xs">{dog.regNumber}</div>
+                      </td>
+                      <td className="theme-copy px-3 py-3">
+                        {dog.breedName || dog.breedCode2}
+                      </td>
+                      {bulkConfirmationDays.map((day) => {
+                        const key = selectionKey(dog.dogId, day.showDayId);
+                        const wasEligible = bulkEligibleSelectionKeys.has(key);
+
+                        return (
+                          <td key={day.showDayId} className="px-3 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={wasEligible && Boolean(bulkSelected[key])}
+                              disabled={isSubmitting || !wasEligible}
+                              onChange={(event) =>
+                                setBulkSelected((current) => ({
+                                  ...current,
+                                  [key]: event.target.checked,
+                                }))
+                              }
+                              className="h-5 w-5 accent-emerald-500 disabled:cursor-not-allowed disabled:opacity-30"
+                              aria-label={
+                                wasEligible
+                                  ? `Enter ${dog.displayName} on day ${day.dayIndex}`
+                                  : `${dog.displayName} was not eligible on day ${day.dayIndex}`
+                              }
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
             <div className="theme-copy mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
               <div>
@@ -548,7 +667,7 @@ export function ShowEntryPlanner({
                   Total Entries
                 </div>
                 <div className="theme-heading mt-1 font-semibold">
-                  {bulkEligibleSelections.length}
+                  {bulkSelectedPairs.length}
                 </div>
               </div>
               <div>
@@ -611,6 +730,12 @@ export function ShowEntryPlanner({
               </div>
             ) : null}
 
+            {bulkSelectedPairs.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-50">
+                Select at least one dog and show day before confirming.
+              </div>
+            ) : null}
+
             <div className="mt-4 flex flex-wrap gap-3">
               <form
                 action={`/api/shows/${showId}/enter`}
@@ -624,7 +749,7 @@ export function ShowEntryPlanner({
                   <input type="hidden" name="kennelRunId" value={scope.kennelRunId} />
                 )}
                 <input type="hidden" name="entryMode" value="ALL_ELIGIBLE" />
-                {bulkEligibleSelections.map((pair) => (
+                {bulkSelectedPairs.map((pair) => (
                   <input
                     key={`bulk-${pair.dogId}-${pair.showDayId}`}
                     type="hidden"
@@ -634,12 +759,24 @@ export function ShowEntryPlanner({
                 ))}
                 <button
                   type="submit"
-                  disabled={isSubmitting || !bulkQuote.canAfford}
+                  disabled={
+                    isSubmitting ||
+                    bulkSelectedPairs.length === 0 ||
+                    !bulkQuote.canAfford
+                  }
                   className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-200"
                 >
                   {isSubmitting ? "Submitting..." : "Confirm All Entries"}
                 </button>
               </form>
+              <button
+                type="button"
+                onClick={cancelBulkConfirmation}
+                disabled={isSubmitting}
+                className="rounded-xl border border-[var(--dog-border)] bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:border-slate-500/40 disabled:bg-slate-700 disabled:text-slate-200"
+              >
+                Cancel Bulk Entry
+              </button>
             </div>
           </div>
         ) : null}

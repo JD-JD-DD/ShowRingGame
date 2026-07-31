@@ -14,8 +14,10 @@ export type BreedingAttemptStatus =
   | "INITIATED"
   | "CHECKED_NOT_PREGNANT"
   | "PREGNANT"
+  | "REPRODUCTIVE_EMERGENCY"
   | "WHELPED"
-  | "FAILED";
+  | "FAILED"
+  | "CANCELLED";
 
 export type PregnancyState = "NOT_PREGNANT" | "PREGNANT" | "POST_WHELP";
 
@@ -259,8 +261,10 @@ export function resolvePregnancyCheck(
   if (
     attempt.status === "CHECKED_NOT_PREGNANT" ||
     attempt.status === "PREGNANT" ||
+    attempt.status === "REPRODUCTIVE_EMERGENCY" ||
     attempt.status === "WHELPED" ||
-    attempt.status === "FAILED"
+    attempt.status === "FAILED" ||
+    attempt.status === "CANCELLED"
   ) {
     return attempt;
   }

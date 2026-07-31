@@ -57,8 +57,38 @@ assertIncludes(
 );
 assertIncludes(
   planner,
-  "bulkEligibleSelections.length",
-  "bulk calendar summary counts total entries from canonical eligible selections"
+  "const [bulkSelected, setBulkSelected]",
+  "bulk calendar keeps editable confirmation selections separate from the manual planner"
+);
+assertIncludes(
+  planner,
+  "const bulkSelectedPairs = useMemo",
+  "bulk calendar recalculates the canonical quote from the edited confirmation subset"
+);
+assertIncludes(
+  planner,
+  "bulkEligibleSelectionKeys.has(key)",
+  "bulk confirmation only enables combinations that were originally eligible"
+);
+assertIncludes(
+  planner,
+  "openBulkConfirmation",
+  "bulk trigger initializes the temporary confirmation selection"
+);
+assertIncludes(
+  planner,
+  "Cancel Bulk Entry",
+  "bulk confirmation provides a cancel action that discards temporary selections"
+);
+assertIncludes(
+  planner,
+  "Select at least one dog and show day before confirming.",
+  "bulk confirmation explains why an empty edited selection cannot be submitted"
+);
+assertIncludes(
+  planner,
+  "{bulkSelectedPairs.map((pair) => (",
+  "bulk submission posts only the edited confirmation subset"
 );
 assertIncludes(
   planner,

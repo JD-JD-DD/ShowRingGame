@@ -54,6 +54,7 @@ enum BreedingAttemptStatus {
   INITIATED
   CHECKED_NOT_PREGNANT
   PREGNANT
+  REPRODUCTIVE_EMERGENCY
   WHELPED
   FAILED
   CANCELLED
@@ -241,6 +242,34 @@ enum DogEmergencyTreatmentOutcome {
   DIED_DESPITE_TREATMENT
 }
 
+enum ReproductiveEmergencyType {
+  WHELPING_COMPLICATION
+}
+
+enum ReproductiveEmergencyStatus {
+  PENDING
+  TREATMENT_AUTHORIZED
+  RESOLVED_TREATED
+  RESOLVED_UNTREATED
+}
+
+enum ReproductiveDamOutcome {
+  SURVIVED
+  DIED
+}
+
+enum ReproductivePuppyOutcome {
+  ALL_SURVIVED
+  PARTIAL_SURVIVAL
+  NONE_SURVIVED
+}
+
+enum ReproductiveConsequence {
+  NONE
+  EXTENDED_RECOVERY
+  PERMANENT_BREEDING_RESTRICTION
+}
+
 enum ProducerMeritLevel {
   NONE
   MERIT
@@ -388,6 +417,7 @@ model Kennel {
   conditionEventsActed     DogConditionEvent[]     @relation("DogConditionEventActorKennel")
   conditionEventsOwned     DogConditionEvent[]     @relation("DogConditionEventOwnerKennel")
   emergencyCareEvents      DogEmergencyCareEvent[]
+  reproductiveEmergencies  ReproductiveEmergencyEvent[] @relation("ReproductiveEmergencyKennel")
   serviceProfile           KennelServiceProfile?
   plannerTags              DogPlannerTag[]
   renameHistory            KennelRenameHistory[]
@@ -504,6 +534,7 @@ model Dog {
 
   breedingAttemptsAsSire BreedingAttempt[] @relation("BreedingSire")
   breedingAttemptsAsDam  BreedingAttempt[] @relation("BreedingDam")
+  reproductiveEmergencies ReproductiveEmergencyEvent[] @relation("ReproductiveEmergencyDam")
 
   siredLitters  Litter[] @relation("LitterSire")
   dammedLitters Litter[] @relation("LitterDam")
@@ -650,6 +681,7 @@ model BreedingAttempt {
   createdByKennel        Kennel?                       @relation("BreedingCreatedByKennel", fields: [createdByKennelId], references: [id])
   litter                 Litter?                       @relation("BreedingAttemptLitter", fields: [litterId], references: [id])
   infectiousDiseaseTests InfectiousDiseaseTestRecord[]
+  reproductiveEmergency  ReproductiveEmergencyEvent?
 
   @@index([sireId])
   @@index([damId])
@@ -674,6 +706,7 @@ model Litter {
   dam             Dog              @relation("LitterDam", fields: [damId], references: [id])
   bredByKennel    Kennel?          @relation("LitterBredByKennel", fields: [bredByKennelId], references: [id])
   breedingAttempt BreedingAttempt? @relation("BreedingAttemptLitter")
+  reproductiveEmergency ReproductiveEmergencyEvent?
 
   puppies Dog[]
 
@@ -1022,6 +1055,7 @@ model LedgerTransaction {
   showEntry          ShowEntry?             @relation(fields: [showEntryId], references: [id])
   counterpartyKennel Kennel?                @relation("CounterpartyKennelLedger", fields: [counterpartyKennelId], references: [id])
   emergencyCareEvent DogEmergencyCareEvent?
+  reproductiveEmergency ReproductiveEmergencyEvent?
 
   @@index([kennelId])
   @@index([dogId])
@@ -1164,6 +1198,49 @@ model DogEmergencyCareEvent {
   ledgerTransaction LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id])
 
   @@index([dogId])
+  @@index([kennelIdAtEvent])
+  @@index([status])
+  @@index([responseDeadlineEpoch])
+}
+
+model ReproductiveEmergencyEvent {
+  id                         String                   @id @default(cuid())
+  breedingAttemptId          String                   @unique
+  damId                      String
+  kennelIdAtEvent            String?
+  litterId                   String?                  @unique
+  ledgerTransactionId        String?                  @unique
+  type                       ReproductiveEmergencyType
+  status                     ReproductiveEmergencyStatus @default(PENDING)
+  sourceKey                  String                   @unique
+  createdAtEpoch             Int
+  responseDeadlineEpoch      Int
+  treatmentAuthorizedEpoch   Int?
+  resolvedEpoch              Int?
+  treatmentCost              Int
+  intendedPuppyCount         Int
+  survivingPuppyCount        Int?
+  damOutcome                 ReproductiveDamOutcome?
+  puppyOutcome               ReproductivePuppyOutcome?
+  reproductiveConsequence    ReproductiveConsequence?
+  recoveryUntilEpoch         Int?
+  rulesetVersion             String
+  rngSeed                    Int
+  triggerRoll                Int
+  damOutcomeRoll             Int?
+  puppyOutcomeRoll           Int?
+  reproductiveConsequenceRoll Int?
+  outcomeMetadataJson        Json?
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
+
+  breedingAttempt  BreedingAttempt    @relation(fields: [breedingAttemptId], references: [id])
+  dam              Dog                @relation("ReproductiveEmergencyDam", fields: [damId], references: [id])
+  kennelAtEvent    Kennel?            @relation("ReproductiveEmergencyKennel", fields: [kennelIdAtEvent], references: [id])
+  litter           Litter?            @relation(fields: [litterId], references: [id])
+  ledgerTransaction LedgerTransaction? @relation(fields: [ledgerTransactionId], references: [id])
+
+  @@index([damId])
   @@index([kennelIdAtEvent])
   @@index([status])
   @@index([responseDeadlineEpoch])

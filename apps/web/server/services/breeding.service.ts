@@ -101,6 +101,7 @@ type AttemptForResolution = {
     | "INITIATED"
     | "CHECKED_NOT_PREGNANT"
     | "PREGNANT"
+    | "REPRODUCTIVE_EMERGENCY"
     | "WHELPED"
     | "FAILED"
     | "CANCELLED";
