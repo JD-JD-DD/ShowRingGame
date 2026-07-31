@@ -370,7 +370,7 @@ export async function listDogForSale(args: {
       where: {
         damId: dog.id,
         status: {
-          in: ["INITIATED", "PREGNANT"],
+          in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"],
         },
       },
       select: {

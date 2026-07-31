@@ -453,6 +453,8 @@ function formatBreedingAttemptStatus(status: string): string {
       return "Did not take";
     case "PREGNANT":
       return "Pregnant";
+    case "REPRODUCTIVE_EMERGENCY":
+      return "Reproductive emergency pending";
     case "WHELPED":
       return "Litter born";
     case "FAILED":
@@ -506,6 +508,14 @@ function buildFemaleReproductiveSnapshotStatus(args: {
           : `Whelping due in ${formatGameCountdownHours(
               activeBreedingAttempt.dueEpoch - currentEpoch
             )}`,
+    };
+  }
+
+  if (activeBreedingAttempt?.status === "REPRODUCTIVE_EMERGENCY") {
+    return {
+      key: "EMERGENCY",
+      label: "Reproductive Emergency",
+      detail: "Whelping is paused pending emergency veterinary care.",
     };
   }
 
@@ -1270,7 +1280,9 @@ export async function getDogProfile(args: {
     isAlive && ageHours >= MIN_SHOW_AGE_HOURS && ageHours <= MAX_SHOW_AGE_HOURS;
   const activeBreedingAttempt =
     dog.breedingAttemptsAsDam.find((attempt) =>
-      ["INITIATED", "PREGNANT"].includes(attempt.status)
+      ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"].includes(
+        attempt.status
+      )
     ) ?? null;
   const breedingEligibility = getIndividualBreedingEligibility({
     currentEpoch,

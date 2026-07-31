@@ -52,8 +52,13 @@ export type DogProfileHealthSummaryDto = {
 };
 
 export type FemaleReproductiveSnapshotStatusDto = {
-  key: "OPEN" | "BRED" | "PREGNANT" | "REST";
-  label: "Open" | "Bred" | "Pregnant" | "Post-whelp Rest";
+  key: "OPEN" | "BRED" | "PREGNANT" | "EMERGENCY" | "REST";
+  label:
+    | "Open"
+    | "Bred"
+    | "Pregnant"
+    | "Reproductive Emergency"
+    | "Post-whelp Rest";
   detail: string | null;
 } | null;
 

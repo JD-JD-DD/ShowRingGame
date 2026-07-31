@@ -78,6 +78,35 @@ export async function createKennelNotice(args: {
   }
 }
 
+export function getReproductiveEmergencyNoticeSourceKey(
+  breedingAttemptId: string
+): string {
+  return `REPRODUCTIVE_EMERGENCY_NOTICE:${breedingAttemptId}`;
+}
+
+export async function createReproductiveEmergencyNotice(args: {
+  client: DbClient;
+  kennelId: string | null | undefined;
+  breedingAttemptId: string;
+  damId: string;
+  currentEpoch: number;
+}) {
+  return createKennelNotice({
+    client: args.client,
+    kennelId: args.kennelId,
+    sourceKey: getReproductiveEmergencyNoticeSourceKey(args.breedingAttemptId),
+    type: "KENNEL_SERVICE",
+    title: "Emergency veterinary care required",
+    body: "Your dam has a serious whelping complication. Litter resolution is paused while emergency veterinary care is required.",
+    currentEpoch: args.currentEpoch,
+    linkedDogId: args.damId,
+    metadataJson: {
+      noticeKind: "REPRODUCTIVE_EMERGENCY",
+      breedingAttemptId: args.breedingAttemptId,
+    },
+  });
+}
+
 export async function getUnreadKennelNoticeCount(kennelId: string) {
   return db.kennelNotice.count({
     where: {

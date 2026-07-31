@@ -349,7 +349,7 @@ export async function markDogDeceased(args: {
     where: {
       damId: dogId,
       status: {
-        in: ["INITIATED", "PREGNANT"],
+        in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"],
       },
     },
     data: {

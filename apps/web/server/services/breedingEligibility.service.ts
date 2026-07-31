@@ -15,6 +15,7 @@ export type BreedingEligibilityReasonCode =
   | "OVER_MAXIMUM_DAM_AGE"
   | "PENDING_PREGNANCY_CONFIRMATION"
   | "PREGNANT"
+  | "REPRODUCTIVE_EMERGENCY"
   | "POST_WHELP_COOLDOWN";
 
 export type IndividualBreedingEligibilityInput = {
@@ -34,7 +35,11 @@ export type IndividualBreedingEligibilityResult = {
   remainingHours: number;
   isInPostWhelpCooldown: boolean;
   cooldownUntilEpoch: number | null;
-  activeBreedingAttemptStatus: "INITIATED" | "PREGNANT" | null;
+  activeBreedingAttemptStatus:
+    | "INITIATED"
+    | "PREGNANT"
+    | "REPRODUCTIVE_EMERGENCY"
+    | null;
 };
 
 export function getIndividualBreedingEligibility(
@@ -43,7 +48,8 @@ export function getIndividualBreedingEligibility(
   const activeBreedingAttemptStatus =
     args.sex === "F" &&
     (args.activeBreedingAttemptStatus === "INITIATED" ||
-      args.activeBreedingAttemptStatus === "PREGNANT")
+      args.activeBreedingAttemptStatus === "PREGNANT" ||
+      args.activeBreedingAttemptStatus === "REPRODUCTIVE_EMERGENCY")
       ? args.activeBreedingAttemptStatus
       : null;
   const cooldownUntilEpoch =
@@ -64,6 +70,8 @@ export function getIndividualBreedingEligibility(
     reasonCode = "PENDING_PREGNANCY_CONFIRMATION";
   } else if (activeBreedingAttemptStatus === "PREGNANT") {
     reasonCode = "PREGNANT";
+  } else if (activeBreedingAttemptStatus === "REPRODUCTIVE_EMERGENCY") {
+    reasonCode = "REPRODUCTIVE_EMERGENCY";
   } else if (isInPostWhelpCooldown && cooldownUntilEpoch != null) {
     reasonCode = "POST_WHELP_COOLDOWN";
     eligibleAtEpoch = cooldownUntilEpoch;
@@ -121,6 +129,8 @@ export function getBreedingEligibilityMessage(
       return "Pregnancy confirmation is pending.";
     case "PREGNANT":
       return "This bitch is pregnant.";
+    case "REPRODUCTIVE_EMERGENCY":
+      return "This bitch has an unresolved reproductive emergency.";
     case "POST_WHELP_COOLDOWN":
       return `This bitch is resting after a litter. Available to breed in ${formatRealDurationHoursLong(
         result.remainingHours

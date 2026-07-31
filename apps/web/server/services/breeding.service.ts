@@ -6,7 +6,10 @@ import {
   hasAllGreenRequiredPhenotypeHealthTests,
   hasCompletedRequiredPhenotypeHealthTests,
 } from "@/lib/dogHealth";
-import { createKennelNotice } from "@/server/services/kennelNotice.service";
+import {
+  createKennelNotice,
+  createReproductiveEmergencyNotice,
+} from "@/server/services/kennelNotice.service";
 import { assertDogHasNoPendingEmergencyCare } from "@/server/services/emergencyVetCare.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
@@ -37,8 +40,12 @@ import {
   rollLitterSize,
   resolvePregnancyCheck,
   resolveWhelp,
+  REPRODUCTIVE_EMERGENCY_RESPONSE_WINDOW_HOURS,
+  REPRODUCTIVE_EMERGENCY_RULESET_VERSION,
+  REPRODUCTIVE_EMERGENCY_TREATMENT_COST,
   WHELPING_COOLDOWN_HOURS,
   WHELPING_DAM_DEATH_RATE,
+  shouldTriggerReproductiveEmergency,
 } from "@showring/rules";
 import type { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
@@ -152,7 +159,13 @@ type PregnancyCheckResolutionOutcome =
       dueEpoch: null;
     };
 
-type WhelpingResolutionOutcome = "WHELPED" | "SKIPPED";
+type WhelpingResolutionOutcome =
+  | "WHELPED"
+  | "REPRODUCTIVE_EMERGENCY"
+  | "SKIPPED";
+
+export const REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE =
+  process.env.REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE === "true";
 
 export type BreedingProgressResolutionSummary = {
   checkedCount: number;
@@ -172,6 +185,19 @@ function createBreedingProgressResolutionSummary(): BreedingProgressResolutionSu
     skippedCount: 0,
     failedCount: 0,
   };
+}
+
+function getReproductiveEmergencySourceKey(breedingAttemptId: string): string {
+  return `REPRODUCTIVE_EMERGENCY:${breedingAttemptId}`;
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "P2002"
+  );
 }
 
 function seeded01(seed: string): number {
@@ -683,6 +709,21 @@ async function resolveWhelpingAttempt(args: {
       return "SKIPPED";
     }
 
+    if (REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) {
+      const existingEmergency = await tx.reproductiveEmergencyEvent.findUnique({
+        where: {
+          breedingAttemptId: fresh.id,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (existingEmergency) {
+        return "SKIPPED";
+      }
+    }
+
     const rngSeed = requireRngSeed(fresh.rngSeed);
     let pupCountNoiseIndex = 0;
     const pupCount = rollLitterSize(() => {
@@ -690,6 +731,88 @@ async function resolveWhelpingAttempt(args: {
       pupCountNoiseIndex += 1;
       return value;
     });
+
+    if (REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) {
+      const trigger = shouldTriggerReproductiveEmergency({
+        rngSeed,
+        rulesetVersion: REPRODUCTIVE_EMERGENCY_RULESET_VERSION,
+      });
+
+      if (trigger.triggered) {
+        try {
+          const emergency = await tx.reproductiveEmergencyEvent.create({
+            data: {
+              breedingAttemptId: fresh.id,
+              damId: fresh.damId,
+              kennelIdAtEvent: fresh.createdByKennelId,
+              type: "WHELPING_COMPLICATION",
+              status: "PENDING",
+              sourceKey: getReproductiveEmergencySourceKey(fresh.id),
+              createdAtEpoch: currentEpoch,
+              responseDeadlineEpoch:
+                currentEpoch + REPRODUCTIVE_EMERGENCY_RESPONSE_WINDOW_HOURS,
+              treatmentCost: REPRODUCTIVE_EMERGENCY_TREATMENT_COST,
+              intendedPuppyCount: pupCount,
+              rulesetVersion: trigger.rulesetVersion,
+              rngSeed,
+              triggerRoll: trigger.triggerRoll,
+              outcomeMetadataJson: {
+                triggerRate: trigger.triggerRate,
+                triggerRoll: trigger.triggerRoll,
+                rulesetVersion: trigger.rulesetVersion,
+                intendedPuppyCount: pupCount,
+              },
+            },
+          });
+          const transition = await tx.breedingAttempt.updateMany({
+            where: {
+              id: fresh.id,
+              status: "PREGNANT",
+              isPregnant: true,
+              whelpedEpoch: null,
+              litterId: null,
+            },
+            data: {
+              status: "REPRODUCTIVE_EMERGENCY",
+            },
+          });
+
+          if (transition.count !== 1) {
+            throw new Error(
+              "Breeding attempt changed before reproductive emergency transition."
+            );
+          }
+
+          await createReproductiveEmergencyNotice({
+            client: tx,
+            kennelId: fresh.createdByKennelId,
+            breedingAttemptId: fresh.id,
+            damId: fresh.damId,
+            currentEpoch,
+          });
+
+          console.info("reproductive emergency created", {
+            reproductiveEmergencyEventId: emergency.id,
+            breedingAttemptId: fresh.id,
+            damId: fresh.damId,
+            intendedPuppyCount: pupCount,
+            triggerRoll: trigger.triggerRoll,
+            triggerRate: trigger.triggerRate,
+            rulesetVersion: trigger.rulesetVersion,
+            responseDeadlineEpoch: emergency.responseDeadlineEpoch,
+          });
+
+          return "REPRODUCTIVE_EMERGENCY";
+        } catch (error) {
+          if (isUniqueConstraintError(error)) {
+            return "SKIPPED";
+          }
+
+          throw error;
+        }
+      }
+    }
+
     const puppyDogIds = Array.from({ length: pupCount }, () => randomUUID());
     const puppySexes = buildPuppySexes(String(rngSeed), pupCount);
     const pedigree = await loadPedigreeForCoi(tx, [
@@ -827,20 +950,22 @@ async function resolveWhelpingAttempt(args: {
       });
     }
 
-    const damDiedAtWhelp =
-      seeded01(`${rngSeed}:whelp:dam-mortality`) <
-      WHELPING_DAM_DEATH_RATE;
+    if (!REPRODUCTIVE_EMERGENCY_TRIGGER_ACTIVE) {
+      const damDiedAtWhelp =
+        seeded01(`${rngSeed}:whelp:dam-mortality`) <
+        WHELPING_DAM_DEATH_RATE;
 
-    if (damDiedAtWhelp) {
-      await markDogDeceased({
-        client: tx,
-        dogId: fresh.dam.id,
-        regNumber: fresh.dam.regNumber,
-        ownerKennelId: fresh.dam.ownerKennelId,
-        displayName: formatDogDisplayName(fresh.dam),
-        deathEpoch: currentEpoch,
-        cause: "WHELPING_DAM",
-      });
+      if (damDiedAtWhelp) {
+        await markDogDeceased({
+          client: tx,
+          dogId: fresh.dam.id,
+          regNumber: fresh.dam.regNumber,
+          ownerKennelId: fresh.dam.ownerKennelId,
+          displayName: formatDogDisplayName(fresh.dam),
+          deathEpoch: currentEpoch,
+          cause: "WHELPING_DAM",
+        });
+      }
     }
 
     return "WHELPED";
@@ -1036,7 +1161,7 @@ async function listBreedingsForKennelSummaries(
     where: {
       createdByKennelId: kennelId,
       status: {
-        in: ["INITIATED", "PREGNANT"],
+        in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"],
       },
       ...(dogId
         ? {
@@ -1192,7 +1317,7 @@ export async function createBreedingAttemptForKennel(args: {
     where: {
       damId: dam.id,
       status: {
-        in: ["INITIATED", "PREGNANT"],
+        in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"],
       },
     },
     select: {

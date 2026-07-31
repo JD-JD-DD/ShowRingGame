@@ -380,7 +380,9 @@ function canBreedDog(dog: PlannerDogRecord, ageHours: number, currentEpoch: numb
     sex: dog.sex,
     activeBreedingAttemptStatus:
       dog.breedingAttemptsAsDam.find((attempt) =>
-        ["INITIATED", "PREGNANT"].includes(attempt.status)
+        ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"].includes(
+          attempt.status
+        )
       )?.status ?? null,
     lastWhelpedEpoch: dog.dammedLitters[0]?.bornEpoch ?? null,
   }).isEligible;
@@ -1206,7 +1208,9 @@ export async function getProgramPlannerData(args: {
       sex: dog.sex,
       activeBreedingAttemptStatus:
         dog.breedingAttemptsAsDam.find((attempt) =>
-          ["INITIATED", "PREGNANT"].includes(attempt.status)
+          ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"].includes(
+            attempt.status
+          )
         )?.status ?? null,
       lastWhelpedEpoch: dog.dammedLitters[0]?.bornEpoch ?? null,
     });
