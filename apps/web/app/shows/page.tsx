@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ShowCountdownText } from "@/components/shows/ShowCountdownText";
 import { db } from "@/lib/db";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
+import { formatUtcDateTime } from "@/lib/gameTimeFormat";
 import { estimateJsonSizeBytes } from "@/lib/perf";
 import { buildShowCountdowns } from "@/lib/showCountdowns";
 import { getSessionUserId } from "@/lib/session";
@@ -516,6 +517,7 @@ export default async function ShowsPage({
                             fallbackLabel={display.countdowns.entryClose.shortValue}
                             prefix="closes in "
                           />
+                          {display.countdowns.entryClose.targetEpoch !== null ? <div className="theme-copy mt-1 text-[10px]">{formatUtcDateTime(display.countdowns.entryClose.targetEpoch)}</div> : null}
                         </div>
                       </div>
                     </Link>
@@ -555,6 +557,7 @@ export default async function ShowsPage({
                             fallbackLabel={display.countdowns.judging.shortValue}
                             prefix="judges in "
                           />
+                          {display.countdowns.judging.targetEpoch !== null ? <div className="theme-copy mt-1 text-[10px]">{formatUtcDateTime(display.countdowns.judging.targetEpoch)}</div> : null}
                         </div>
                       </div>
                     </Link>

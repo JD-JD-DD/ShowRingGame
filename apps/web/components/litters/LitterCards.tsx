@@ -1,12 +1,7 @@
 import Link from "next/link";
 
 import type { LitterListItemDto } from "@/server/mappers/litter.mapper";
-
-function formatGameDays(hours: number): string {
-  if (hours <= 0) return "Ready";
-  if (hours === 1) return "1 day";
-  return `${hours} days`;
-}
+import { formatGameAge } from "@/lib/gameTimeFormat";
 
 export function EmptyLittersState() {
   return (
@@ -50,7 +45,7 @@ export function LitterCards({ litters }: { litters: LitterListItemDto[] }) {
                 {litter.dam.displayName} x {litter.sire.displayName}
               </h3>
               <p className="mt-2 text-sm text-[var(--dog-copy)]">
-                Whelped {formatGameDays(litter.ageHours)} ago by{" "}
+                Litter age: {formatGameAge(litter.ageHours)}. Bred by{" "}
                 {litter.bredByKennelName ?? "Unknown kennel"}
               </p>
 

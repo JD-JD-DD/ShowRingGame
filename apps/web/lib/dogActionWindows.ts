@@ -6,7 +6,7 @@ import {
   MIN_SHOW_AGE_HOURS,
 } from "@showring/rules";
 
-import { formatGameCountdownHours } from "@/lib/gameTimeFormat";
+import { formatRealDurationHoursLong } from "@/lib/gameTimeFormat";
 
 export type DogActionWindowTone =
   | "ready"
@@ -88,7 +88,7 @@ function buildShowWindow(input: BuildDogActionWindowsInput): DogActionWindowCard
   if (input.ageHours < MIN_SHOW_AGE_HOURS) {
     return {
       label: "Show Window",
-      value: `Show eligible in ${formatGameCountdownHours(
+      value: `Show eligible in ${formatRealDurationHoursLong(
         MIN_SHOW_AGE_HOURS - input.ageHours
       )}.`,
       tone: "pending",
@@ -132,7 +132,7 @@ function buildBreedingWindow(
   if (input.ageHours < MIN_BREED_AGE_HOURS) {
     return {
       label: "Breeding Window",
-      value: `Breeding eligible in ${formatGameCountdownHours(
+      value: `Breeding eligible in ${formatRealDurationHoursLong(
         MIN_BREED_AGE_HOURS - input.ageHours
       )}.`,
       tone: "pending",
@@ -181,7 +181,7 @@ function buildGroomingWindow(
   if (input.ageHours < MIN_GROOMING_AGE_HOURS) {
     return {
       label: "Grooming Window",
-      value: `Grooming available in ${formatGameCountdownHours(
+      value: `Grooming available again in ${formatRealDurationHoursLong(
         MIN_GROOMING_AGE_HOURS - input.ageHours
       )}.`,
       tone: "pending",
@@ -207,7 +207,7 @@ function buildGroomingWindow(
   if (resetRemaining !== null) {
     return {
       label: "Grooming Window",
-      value: `Grooming refills in ${formatGameCountdownHours(
+      value: `Grooming available again in ${formatRealDurationHoursLong(
         resetRemaining
       )}.`,
       tone: "pending",
@@ -245,7 +245,7 @@ function buildNextMilestone(
   ) {
     return {
       label: "Next Milestone",
-      value: `Pregnancy check in ${formatGameCountdownHours(
+      value: `Pregnancy confirmation in ${formatRealDurationHoursLong(
         pregCheckRemaining
       )}.`,
       tone: "pending",
@@ -258,7 +258,7 @@ function buildNextMilestone(
   ) {
     return {
       label: "Next Milestone",
-      value: `Due to whelp in ${formatGameCountdownHours(dueRemaining)}.`,
+      value: `Due in ${formatRealDurationHoursLong(dueRemaining)}.`,
       tone: "pending",
     };
   }
@@ -274,7 +274,7 @@ function buildNextMilestone(
   if (input.ageHours < MIN_GROOMING_AGE_HOURS) {
     return {
       label: "Next Milestone",
-      value: `Grooming unlocks in ${formatGameCountdownHours(
+      value: `Grooming available again in ${formatRealDurationHoursLong(
         MIN_GROOMING_AGE_HOURS - input.ageHours
       )}.`,
       tone: "pending",
@@ -284,7 +284,7 @@ function buildNextMilestone(
   if (input.ageHours < MIN_SHOW_AGE_HOURS) {
     return {
       label: "Next Milestone",
-      value: `Show age in ${formatGameCountdownHours(
+      value: `Show eligible in ${formatRealDurationHoursLong(
         MIN_SHOW_AGE_HOURS - input.ageHours
       )}.`,
       tone: "pending",
@@ -294,7 +294,7 @@ function buildNextMilestone(
   if (input.ageHours < MIN_BREED_AGE_HOURS) {
     return {
       label: "Next Milestone",
-      value: `Breeding age in ${formatGameCountdownHours(
+      value: `Breeding eligible in ${formatRealDurationHoursLong(
         MIN_BREED_AGE_HOURS - input.ageHours
       )}.`,
       tone: "pending",
@@ -304,7 +304,7 @@ function buildNextMilestone(
   if (input.sex === "F" && input.ageHours < DAM_MAX_BREED_AGE_HOURS) {
     return {
       label: "Next Milestone",
-      value: `Dam window ends in ${formatGameCountdownHours(
+      value: `Dam breeding window ends in ${formatRealDurationHoursLong(
         DAM_MAX_BREED_AGE_HOURS - input.ageHours
       )}.`,
       tone: "pending",
@@ -314,7 +314,7 @@ function buildNextMilestone(
   if (input.ageHours < MAX_SHOW_AGE_HOURS) {
     return {
       label: "Next Milestone",
-      value: `Show career ends in ${formatGameCountdownHours(
+      value: `Show career ends in ${formatRealDurationHoursLong(
         MAX_SHOW_AGE_HOURS - input.ageHours
       )}.`,
       tone: "pending",
@@ -324,7 +324,7 @@ function buildNextMilestone(
   if (groomingResetRemaining !== null) {
     return {
       label: "Next Milestone",
-      value: `Grooming refills in ${formatGameCountdownHours(
+      value: `Grooming available again in ${formatRealDurationHoursLong(
         groomingResetRemaining
       )}.`,
       tone: "pending",

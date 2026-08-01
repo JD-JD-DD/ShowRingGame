@@ -2,7 +2,7 @@
  * Game clock helper
  *
  * The simulation runs on integer epoch hours.
- * 1 game hour = 1 real day.
+ * One simulation epoch advances every real hour (one real hour represents one game day).
  *
  * Epoch 0 = the moment the game world was launched.
  */
@@ -23,7 +23,7 @@ export function getCurrentEpoch(): number {
 
 /**
  * Converts epoch hours back into real time
- * (useful for debugging or admin tools)
+ * (also used by player-facing UTC timestamp formatters)
  */
 export function epochToDate(epoch: number): Date {
   return new Date(GAME_EPOCH_START + epoch * 60 * 60 * 1000);

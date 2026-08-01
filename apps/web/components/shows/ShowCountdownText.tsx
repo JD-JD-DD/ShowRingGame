@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { epochToDate } from "@/lib/gameClock";
-import { formatRealCountdownMs } from "@/lib/gameTimeFormat";
+import { formatRealDuration } from "@/lib/gameTimeFormat";
 
 const UPDATE_INTERVAL_MS = 60 * 1000;
 
@@ -55,7 +55,7 @@ export function ShowCountdownText({
       return "Now";
     }
 
-    return `${prefix}${formatRealCountdownMs(msRemaining)}${suffix}`;
+    return `${prefix}${formatRealDuration(msRemaining)}${suffix}`;
   }, [
     fallbackLabel,
     initialCurrentEpoch,
@@ -65,5 +65,5 @@ export function ShowCountdownText({
     targetEpoch,
   ]);
 
-  return <>{label}</>;
+  return <span role="status" aria-live="polite">{label}</span>;
 }

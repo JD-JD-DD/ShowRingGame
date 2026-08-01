@@ -4,7 +4,8 @@ import { CANONICAL_SHOW_GROUP_CODES, getCanonicalShowGroupLabel } from "@showrin
 import { notFound } from "next/navigation";
 
 import { db } from "@/lib/db";
-import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
+import { getCurrentEpoch } from "@/lib/gameClock";
+import { formatGameAge, formatUtcDateTime } from "@/lib/gameTimeFormat";
 import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -26,29 +27,8 @@ import {
 import { ShowEntryPlanner } from "./ShowEntryPlanner";
 import { ShowEntryPlannerScopeForm } from "./ShowEntryPlannerScopeForm";
 
-function formatShowDateTime(epoch: number): string {
-  return epochToDate(epoch).toLocaleString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  });
-}
-
-function formatAge(ageHours: number): string {
-  const weeks = Math.floor(ageHours / 7);
-  const years = Math.floor(weeks / 52);
-
-  if (years >= 1) {
-    const remainingWeeks = weeks % 52;
-    return remainingWeeks > 0 ? `${years}y ${remainingWeeks}w` : `${years}y`;
-  }
-
-  return `${weeks}w`;
-}
+const formatShowDateTime = formatUtcDateTime;
+const formatAge = formatGameAge;
 
 function statusTone(status: string): string {
   switch (status) {

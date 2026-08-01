@@ -161,13 +161,13 @@ export function getBreedingEligibilityMessage(
     case "REPRODUCTIVE_EMERGENCY":
       return "This dam is receiving emergency care for a whelping complication.";
     case "REPRODUCTIVE_RECOVERY":
-      return `She is recovering after whelping and may be bred again after game time in ${formatRealDurationHoursLong(result.remainingHours)}.`;
+      return `May breed again in ${formatRealDurationHoursLong(result.remainingHours)}.`;
     case "REPRODUCTIVE_EXTENDED_RECOVERY":
-      return `She is recovering from whelping complications and may be bred again after game time in ${formatRealDurationHoursLong(result.remainingHours)}.`;
+      return `May breed again in ${formatRealDurationHoursLong(result.remainingHours)} after recovery from whelping complications.`;
     case "PERMANENT_REPRODUCTIVE_RESTRICTION":
       return "Veterinary complications mean she cannot safely carry another litter and may not be bred again.";
     case "POST_WHELP_COOLDOWN":
-      return `This bitch is resting after a litter. Available to breed in ${formatRealDurationHoursLong(
+      return `Post-whelp recovery. May breed again in ${formatRealDurationHoursLong(
         result.remainingHours
       )}.`;
     default:

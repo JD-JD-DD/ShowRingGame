@@ -23,7 +23,7 @@ import {
   type DogProfileVisibleCategoryDto,
 } from "@/server/mappers/dog.mapper";
 import { epochToDate } from "@/lib/gameClock";
-import { formatGameCountdownHours } from "@/lib/gameTimeFormat";
+import { formatRealDurationHoursLong, formatUtcDateTime } from "@/lib/gameTimeFormat";
 import {
   getKennelGroomingSummary,
   getOwnedDogGroomingStatuses,
@@ -393,7 +393,7 @@ function getHealthImpactStatement(args: {
 }
 
 function formatGameDateLabel(epoch: number): string {
-  return epochToDate(epoch).toISOString().slice(0, 10);
+  return formatUtcDateTime(epoch);
 }
 
 function isGrandChampionTitleCode(titleCode: string | null): boolean {
@@ -492,7 +492,7 @@ function buildFemaleReproductiveSnapshotStatus(args: {
       detail:
         activeBreedingAttempt.pregCheckEpoch === null
           ? null
-          : `Pregnancy check due in ${formatGameCountdownHours(
+          : `Pregnancy confirmation in ${formatRealDurationHoursLong(
               activeBreedingAttempt.pregCheckEpoch - currentEpoch
             )}`,
     };
@@ -505,7 +505,7 @@ function buildFemaleReproductiveSnapshotStatus(args: {
       detail:
         activeBreedingAttempt.dueEpoch === null
           ? null
-          : `Whelping due in ${formatGameCountdownHours(
+          : `Due in ${formatRealDurationHoursLong(
               activeBreedingAttempt.dueEpoch - currentEpoch
             )}`,
     };
@@ -1970,9 +1970,7 @@ export async function getDogProfile(args: {
           status: "PENDING",
           createdAtEpoch: pendingEmergencyCare.createdAtEpoch,
           responseDeadlineEpoch: pendingEmergencyCare.responseDeadlineEpoch,
-          deadlineLabel: formatGameDateLabel(
-            pendingEmergencyCare.responseDeadlineEpoch
-          ),
+          deadlineLabel: `Response required by ${formatGameDateLabel(pendingEmergencyCare.responseDeadlineEpoch)}`,
           treatmentCost: pendingEmergencyCare.treatmentCost,
           treatmentCostLabel: formatMoneyLabel(
             pendingEmergencyCare.treatmentCost
@@ -1997,9 +1995,7 @@ export async function getDogProfile(args: {
           treatmentCostLabel: formatMoneyLabel(
             reproductiveEmergency.treatmentCost
           ),
-          deadlineLabel: formatGameDateLabel(
-            reproductiveEmergency.responseDeadlineEpoch
-          ),
+          deadlineLabel: `Response required by ${formatGameDateLabel(reproductiveEmergency.responseDeadlineEpoch)}`,
         }
       : null,
     actions: {

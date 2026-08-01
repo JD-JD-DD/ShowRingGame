@@ -7,6 +7,7 @@ assert.equal(partial.treatmentLabel, "Emergency treatment was authorized.");
 assert.equal(partial.damOutcomeLabel, "Dam survived");
 assert.equal(partial.puppyOutcome, "3 of 5 puppies survived the whelping emergency.");
 assert.match(partial.consequenceMessage ?? "", /extended recovery/);
+assert.match(partial.recoveryUntilLabel ?? "", /UTC$/, "recovery completion uses UTC, not a raw epoch");
 assert.equal(partial.litterHref, "/litters/litter-1");
 const none = getReproductiveEmergencyPresentation({ ...base, status: "RESOLVED_UNTREATED", survivingPuppyCount: 0, damOutcome: "DIED", reproductiveConsequence: "NONE", recoveryUntilEpoch: null, litterId: null });
 assert.match(none.treatmentLabel, /deadline passed/);

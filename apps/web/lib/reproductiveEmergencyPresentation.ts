@@ -17,11 +17,11 @@ export function getReproductiveEmergencyPresentation(event: ReproductiveEmergenc
       : `${survived} of ${event.intendedPuppyCount} puppies survived the whelping emergency.`;
   const consequence = event.damOutcome === "DIED" ? null
     : event.reproductiveConsequence === "EXTENDED_RECOVERY"
-      ? "She requires an extended recovery and may be bred again after the listed game time."
+      ? "She requires an extended recovery before she may be bred again."
       : event.reproductiveConsequence === "PERMANENT_BREEDING_RESTRICTION"
         ? "Veterinary complications mean she cannot safely carry another litter and may not be bred again."
         : event.reproductiveConsequence === "NONE"
-          ? "She has no lasting reproductive restriction and may be bred again after the normal 270-hour recovery period."
+          ? "She has no lasting reproductive restriction and will complete the normal post-whelp recovery."
           : null;
   return {
     statusLabel: event.status === "PENDING" ? "Pending care" : event.status === "TREATMENT_AUTHORIZED" ? "Emergency treatment authorized" : "Resolved",
@@ -29,7 +29,8 @@ export function getReproductiveEmergencyPresentation(event: ReproductiveEmergenc
     damOutcomeLabel: event.damOutcome === "SURVIVED" ? "Dam survived" : event.damOutcome === "DIED" ? "Dam died" : null,
     puppyOutcome,
     consequenceMessage: consequence,
-    recoveryUntilEpoch: event.recoveryUntilEpoch,
+    recoveryUntilLabel: event.recoveryUntilEpoch === null ? null : formatUtcDateTime(event.recoveryUntilEpoch),
     litterHref: event.litterId ? `/litters/${event.litterId}` : null,
   };
 }
+import { formatUtcDateTime } from "@/lib/gameTimeFormat";

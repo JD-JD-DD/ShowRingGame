@@ -61,7 +61,7 @@ assert.ok(
   "puppy under show age has a show-age countdown"
 );
 assert.ok(
-  puppy.nextMilestone.value.startsWith("Show age in "),
+  puppy.nextMilestone.value.startsWith("Show eligible in "),
   "puppy next milestone prioritizes show age"
 );
 
@@ -93,7 +93,7 @@ assert.equal(
   "adult female can be breeding eligible now"
 );
 assert.ok(
-  adultFemale.nextMilestone.value.startsWith("Dam window ends in "),
+  adultFemale.nextMilestone.value.startsWith("Dam breeding window ends in "),
   "adult female next milestone can show dam cutoff"
 );
 
@@ -162,7 +162,7 @@ const pendingPregnancyCheck = buildDogActionWindows(
 );
 
 assert.ok(
-  pendingPregnancyCheck.nextMilestone.value.startsWith("Pregnancy check in "),
+  pendingPregnancyCheck.nextMilestone.value.startsWith("Pregnancy confirmation in "),
   "pending pregnancy check wins next milestone priority"
 );
 
@@ -177,7 +177,7 @@ const pregnantDue = buildDogActionWindows(
 );
 
 assert.ok(
-  pregnantDue.nextMilestone.value.startsWith("Due to whelp in "),
+  pregnantDue.nextMilestone.value.startsWith("Due in "),
   "pregnant dog shows due-to-whelp milestone"
 );
 

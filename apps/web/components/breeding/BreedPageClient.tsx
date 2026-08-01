@@ -15,7 +15,7 @@ import {
 } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
-import { epochToDate } from "@/lib/gameClock";
+import { formatGameAge, formatUtcDateTime } from "@/lib/gameTimeFormat";
 import {
   BREEDING_FEE,
   BRUCELLOSIS_TEST_FEE,
@@ -122,25 +122,8 @@ function dogDisplayName(dog: DogCardDto) {
   return formatDogDisplayName(dog);
 }
 
-function ageLabel(ageHours: number) {
-  const years = Math.floor(ageHours / 365);
-  const days = ageHours % 365;
-
-  if (years <= 0) return `${days} days`;
-  return days > 0 ? `${years}y ${days}d` : `${years}y`;
-}
-
 function formatMoney(amount: number) {
   return `$${amount.toLocaleString()}`;
-}
-
-function formatGameDate(epoch: number) {
-  return epochToDate(epoch).toLocaleDateString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
 }
 
 function brucellosisStatusLabel(dog: DogCardDto | null) {
@@ -148,7 +131,7 @@ function brucellosisStatusLabel(dog: DogCardDto | null) {
 
   return dog.brucellosisValidUntilEpoch === null
     ? "No valid negative test"
-    : `Negative through ${formatGameDate(dog.brucellosisValidUntilEpoch)}`;
+    : `Negative through ${formatUtcDateTime(dog.brucellosisValidUntilEpoch)}`;
 }
 
 function requiresDamBrucellosisTest(
@@ -353,8 +336,8 @@ function damCooldownSummary(dog: DogCardDto, currentEpoch: number) {
   const cooldownUntil = dog.breedingCooldownUntilEpoch;
 
   return cooldownUntil <= currentEpoch
-    ? `Cooldown complete since ${formatGameDate(cooldownUntil)}`
-    : `Cooldown until ${formatGameDate(cooldownUntil)}`;
+    ? `Cooldown complete since ${formatUtcDateTime(cooldownUntil)}`
+    : `Cooldown until ${formatUtcDateTime(cooldownUntil)}`;
 }
 
 function healthWarnings(dog: DogCardDto) {
@@ -687,7 +670,7 @@ function DogOptionCard({
       </div>
 
       <div className="mt-3 grid gap-1 text-xs text-purple-100/70 sm:grid-cols-2">
-        <span>Age: {ageLabel(dog.ageHours)}</span>
+        <span>Age: {formatGameAge(dog.ageHours)}</span>
         <span className={coiTone(dog.coiPercent)}>
           Dog COI: {dog.coiPercent === null ? "Pending" : `${dog.coiPercent.toFixed(2)}%`}
         </span>
@@ -709,7 +692,7 @@ function DogOptionCard({
           </span>
         ) : null}
         {dog.sex === "F" && dog.lastLitterEpoch !== null ? (
-          <span>Last litter: {formatGameDate(dog.lastLitterEpoch)}</span>
+          <span>Last litter: {formatUtcDateTime(dog.lastLitterEpoch)}</span>
         ) : null}
         {cooldownSummary ? <span>{cooldownSummary}</span> : null}
       </div>
@@ -813,7 +796,7 @@ function FreeAnchorCard({ dog }: { dog: DogCardDto }) {
       <div className="mt-1 text-xs text-purple-100/55">{dog.regNumber}</div>
       <div className="mt-3 grid gap-1 text-xs text-purple-100/70">
         <span>{dog.breedName}</span>
-        <span>Age: {ageLabel(dog.ageHours)}</span>
+        <span>Age: {formatGameAge(dog.ageHours)}</span>
         {!dog.isOwnedByCurrentKennel ? (
           <>
             <span>Owner: {dog.ownerKennelName ?? "Player Kennel"}</span>
@@ -871,7 +854,7 @@ function FreeMateCard({
         </span>
       </div>
       <div className="mt-3 grid gap-1 text-xs text-purple-100/70 sm:grid-cols-2">
-        <span>Age: {ageLabel(dog.ageHours)}</span>
+        <span>Age: {formatGameAge(dog.ageHours)}</span>
         {outsideKennel ? (
           <span>Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</span>
         ) : null}
@@ -1376,11 +1359,11 @@ function PairingAnalysis({
               <span>{formatMoney(kennelBalance - totalCost)}</span>
             </div>
             <div className="border-t border-white/10 pt-2">
-              Estimated pregnancy check: {formatGameDate(pregCheckEpoch)}
+              Pregnancy check expected: {formatUtcDateTime(pregCheckEpoch)}
             </div>
-            <div>Estimated litter due: {formatGameDate(expectedLitterEpoch)}</div>
+            <div>Expected litter due: {formatUtcDateTime(expectedLitterEpoch)}</div>
             <div>
-              Dam may breed again after: {formatGameDate(projectedCooldownUntil)}
+              Post-whelp recovery completes: {formatUtcDateTime(projectedCooldownUntil)}
             </div>
           </div>
 

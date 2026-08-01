@@ -3,16 +3,10 @@ import { redirect } from "next/navigation";
 
 import { LittersListClient } from "@/components/litters/LittersListClient";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { formatRealDurationHoursLong } from "@/lib/gameTimeFormat";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { listLittersForKennel } from "@/server/services/litter.service";
-
-function formatGameDays(hours: number | null): string {
-  if (hours === null) return "Pending";
-  if (hours <= 0) return "Ready";
-  if (hours === 1) return "1 day";
-  return `${hours} days`;
-}
 
 function statusLabel(status: string): string {
   return status
@@ -139,7 +133,7 @@ export default async function LittersPage() {
                         Pregnancy Check
                       </div>
                       <div className="mt-1 text-sm font-semibold">
-                        {formatGameDays(attempt.hoursUntilPregCheck)}
+                        {attempt.hoursUntilPregCheck === null ? "Pending" : `In ${formatRealDurationHoursLong(attempt.hoursUntilPregCheck)}`}
                       </div>
                     </div>
                     <div className="theme-card rounded-xl p-4">
@@ -147,7 +141,7 @@ export default async function LittersPage() {
                         Due
                       </div>
                       <div className="mt-1 text-sm font-semibold">
-                        {formatGameDays(attempt.hoursUntilDue)}
+                        {attempt.hoursUntilDue === null ? "Pending" : `Due in ${formatRealDurationHoursLong(attempt.hoursUntilDue)}`}
                       </div>
                     </div>
                   </div>
@@ -160,9 +154,6 @@ export default async function LittersPage() {
         <section>
           <div className="mb-4 flex items-center justify-between gap-4">
             <h2 className="text-2xl font-semibold">Whelped Litters</h2>
-            <span className="text-sm text-[var(--dog-copy)]">
-              Epoch {currentEpoch}
-            </span>
           </div>
 
           <LittersListClient

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { formatGameAge } from "@/lib/gameTimeFormat";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { getLitterForKennel } from "@/server/services/litter.service";
@@ -12,13 +13,6 @@ type PageProps = {
     litterId: string;
   }>;
 };
-
-function formatGameDays(hours: number | null): string {
-  if (hours === null) return "Pending";
-  if (hours <= 0) return "Today";
-  if (hours === 1) return "1 day";
-  return `${hours} days`;
-}
 
 const VISIBLE_CATEGORY_LABELS: Record<string, string> = {
   typeExpression: "Type & Expression",
@@ -103,7 +97,7 @@ export default async function LitterDetailPage({ params }: PageProps) {
               </h1>
             <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
               {litter.breedName} ({litter.breedCode2}) litter {litter.serial7},
-              whelped {formatGameDays(litter.ageHours)} ago.
+              Litter age: {formatGameAge(litter.ageHours ?? 0)}.
             </p>
             {litter.neonatalLossCount > 0 ? (
               <p className="mt-3 text-sm leading-6 text-rose-100/80">
