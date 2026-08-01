@@ -20,7 +20,13 @@ assertIncludes(planner, "tx.showDayGroupJudgeAssignment.createMany", "group assi
 assertIncludes(planner, "data: { judgeId: day.bisJudgeId }", "BIS persistence");
 assertIncludes(invitational, "planWeekJudgeAssignments({", "Week 52 planner boundary");
 assertIncludes(invitational, "await tx.showDayGroupJudgeAssignment.createMany", "Week 52 assignment persistence");
+assertIncludes(invitational, "resolveBreedGroupNameToCanonicalShowGroupCode", "Week 52 breeds use planned group judges");
+assertIncludes(invitational, "tx.showJudgingBlock.createMany", "Week 52 blocks are created in bulk");
+assertIncludes(invitational, "const judgeIdByBreedCode", "Week 52 judge assignments are prepared before the transaction");
 assertIncludes(invitational, "await db.$transaction", "Week 52 transaction");
+if (invitational.includes("resolveScheduledGroupJudgeForBreed")) {
+  throw new Error("Week 52 creation must not perform per-breed database lookups in its transaction");
+}
 if (planner.includes("ShowJudgingBlock") || planner.includes("showJudgingBlock")) {
   throw new Error("planner must not create or use ShowJudgingBlock records");
 }

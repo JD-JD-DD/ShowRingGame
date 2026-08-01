@@ -3,7 +3,6 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { getWeek51RegularClusterIdsForYear } from "@/server/services/annualShowSchedule.service";
 import { seedJudgePanelFromCsv } from "@/server/services/judgePanel.service";
 import { planWeekJudgeAssignments } from "@/server/services/judgeAssignmentPlanner.service";
-import { resolveScheduledGroupJudgeForBreed } from "@/server/services/showDayGroupJudgeAssignment.service";
 import type {
   BreedingAttemptStatus,
   DogLifecycleState,
@@ -12,6 +11,7 @@ import type {
 import {
   canEnterShows,
   CURRENT_BREED_RELEASE,
+  resolveBreedGroupNameToCanonicalShowGroupCode,
   SHOW_DAY_SAT,
   SHOW_WEEK_HOURS,
   SHOW_YEAR_HOURS,
@@ -269,6 +269,28 @@ async function ensureInvitationalShowForYear(args: {
     ],
   })[0]!;
   const invitationalDayPlan = invitationalPlan.days[0]!;
+  const judgeIdByGroupCode = new Map(
+    invitationalDayPlan.assignments.map((assignment) => [
+      assignment.groupCode,
+      assignment.judgeId,
+    ])
+  );
+  const judgeIdByBreedCode = new Map(
+    breeds.map((breed) => {
+      const groupCode = resolveBreedGroupNameToCanonicalShowGroupCode(
+        breed.groupName
+      );
+      const judgeId = judgeIdByGroupCode.get(groupCode);
+
+      if (!judgeId) {
+        throw new Error(
+          `Missing planned invitational judge for breed=${breed.code2}, group=${groupCode}.`
+        );
+      }
+
+      return [breed.code2, judgeId];
+    })
+  );
 
   const releasedBreedCodes = new Set(breeds.map((breed) => breed.code2));
   const topTenByBreed = new Map<string, typeof prestigeStats>();
@@ -333,6 +355,7 @@ async function ensureInvitationalShowForYear(args: {
       })),
     });
     const judgingBlockIdByBreed = new Map<string, string>();
+    const judgingBlocks: Prisma.ShowJudgingBlockCreateManyInput[] = [];
     const invitationEntries: Prisma.ShowEntryCreateManyInput[] = [];
     const invitationNotices: Prisma.KennelNoticeCreateManyInput[] = [];
 
@@ -341,29 +364,29 @@ async function ensureInvitationalShowForYear(args: {
       const ringNumber = ringNumberByGroup.get(groupName) ?? groupNames.length + 1;
       const blockOrder = (blockOrderByRing.get(ringNumber) ?? 0) + 1;
       blockOrderByRing.set(ringNumber, blockOrder);
-      const judge = await resolveScheduledGroupJudgeForBreed({
-        tx,
-        showDayId: showDay.id,
-        breedCode2: breed.code2,
-      });
-      const judgingBlock = await tx.showJudgingBlock.create({
-        data: {
-          showDayId: showDay.id,
-          judgeId: judge.judgeId,
-          breedCode2: breed.code2,
-          ringNumber,
-          ringName: getRingName(groupName),
-          startEpoch: invitationalStartEpoch,
-          classType: "INVITATIONAL",
-          blockOrder,
-          entryCountHint: topTenByBreed.get(breed.code2)?.length ?? 0,
-          status: "ENTRY_LOCKED",
-        },
-        select: { id: true },
-      });
+      const judgeId = judgeIdByBreedCode.get(breed.code2);
+      if (!judgeId) {
+        throw new Error(`Missing planned invitational judge for breed=${breed.code2}.`);
+      }
+      const judgingBlockId = `invitational-${year}-${breed.code2}`;
 
-      judgingBlockIdByBreed.set(breed.code2, judgingBlock.id);
+      judgingBlocks.push({
+        id: judgingBlockId,
+        showDayId: showDay.id,
+        judgeId,
+        breedCode2: breed.code2,
+        ringNumber,
+        ringName: getRingName(groupName),
+        startEpoch: invitationalStartEpoch,
+        classType: "INVITATIONAL",
+        blockOrder,
+        entryCountHint: topTenByBreed.get(breed.code2)?.length ?? 0,
+        status: "ENTRY_LOCKED",
+      });
+      judgingBlockIdByBreed.set(breed.code2, judgingBlockId);
     }
+
+    await tx.showJudgingBlock.createMany({ data: judgingBlocks });
 
     for (const [breedCode2, rankedDogs] of topTenByBreed) {
       const judgingBlockId = judgingBlockIdByBreed.get(breedCode2);
