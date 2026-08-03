@@ -49,6 +49,7 @@ export async function POST(request: Request) {
       ...result,
       reproductive: reproductiveResult,
       authorizedReproductive: authorizedReproductiveResult,
+      treatedReproductive: authorizedReproductiveResult,
       currentEpoch,
       durationMs: Date.now() - startedAtMs,
     };

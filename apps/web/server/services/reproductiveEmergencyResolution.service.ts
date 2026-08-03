@@ -72,9 +72,140 @@ export async function processExpiredReproductiveEmergencyEvents(args: { currentE
   return { processedCount: events.length, resolvedCount };
 }
 
+type AuthorizedReproductiveEmergencySelection = {
+  id: string;
+  breedingAttemptId: string;
+  status: string;
+  breedingAttempt: { status: string };
+};
+
+type TreatedResolutionTerminalState = {
+  eventStatus: string;
+  breedingAttemptStatus: string;
+  litterId: string | null;
+  resolvedEpoch: number | null;
+};
+
+type TreatedResolutionSuccess = TreatedResolutionTerminalState & {
+  eventId: string;
+  breedingAttemptId: string;
+};
+
+type TreatedResolutionFailure = {
+  eventId: string;
+  breedingAttemptId: string;
+  eventStatus: string;
+  breedingAttemptStatus: string;
+  errorName: string;
+  errorMessage: string;
+  prismaCode: string | null;
+  stack: string | null;
+};
+
+function getTreatedResolutionFailure(args: {
+  event: AuthorizedReproductiveEmergencySelection;
+  error: unknown;
+}): TreatedResolutionFailure {
+  const errorObject =
+    typeof args.error === "object" && args.error !== null ? args.error : null;
+  const errorName = args.error instanceof Error ? args.error.name : "UnknownError";
+  const errorMessage =
+    args.error instanceof Error ? args.error.message : String(args.error);
+  const prismaCode =
+    errorObject && "code" in errorObject && typeof errorObject.code === "string"
+      ? errorObject.code
+      : null;
+  const stack =
+    args.error instanceof Error && args.error.stack
+      ? args.error.stack.split("\n").slice(0, 4).join("\n")
+      : null;
+
+  return {
+    eventId: args.event.id,
+    breedingAttemptId: args.event.breedingAttemptId,
+    eventStatus: args.event.status,
+    breedingAttemptStatus: args.event.breedingAttempt.status,
+    errorName,
+    errorMessage,
+    prismaCode,
+    stack,
+  };
+}
+
+export async function processSelectedAuthorizedReproductiveEmergencyEvents(args: {
+  events: AuthorizedReproductiveEmergencySelection[];
+  resolveEvent: (eventId: string) => Promise<void>;
+  getTerminalState: (eventId: string) => Promise<TreatedResolutionTerminalState | null>;
+}) {
+  const resolvedEventIds: string[] = [];
+  const resolvedEvents: TreatedResolutionSuccess[] = [];
+  const failedEvents: TreatedResolutionFailure[] = [];
+
+  for (const event of args.events) {
+    try {
+      await args.resolveEvent(event.id);
+      const terminal = await args.getTerminalState(event.id);
+      if (!terminal) throw new Error("Resolved reproductive emergency event could not be reloaded.");
+
+      const success = {
+        eventId: event.id,
+        breedingAttemptId: event.breedingAttemptId,
+        eventStatus: terminal.eventStatus,
+        breedingAttemptStatus: terminal.breedingAttemptStatus,
+        litterId: terminal.litterId,
+        resolvedEpoch: terminal.resolvedEpoch,
+      };
+      resolvedEventIds.push(event.id);
+      resolvedEvents.push(success);
+      console.info("[reproductive-emergency-resolution-succeeded]", success);
+    } catch (error) {
+      const failure = getTreatedResolutionFailure({ event, error });
+      failedEvents.push(failure);
+      console.error("[reproductive-emergency-resolution-failed]", failure);
+    }
+  }
+
+  return {
+    processedCount: args.events.length,
+    selectedCount: args.events.length,
+    resolvedCount: resolvedEventIds.length,
+    failedCount: failedEvents.length,
+    resolvedEventIds,
+    resolvedEvents,
+    failedEvents,
+  };
+}
+
 export async function processAuthorizedReproductiveEmergencyEvents(args: { currentEpoch: number; limit?: number }) {
-  const events = await db.reproductiveEmergencyEvent.findMany({ where: { status: "TREATMENT_AUTHORIZED" }, orderBy: [{ treatmentAuthorizedEpoch: "asc" }, { createdAt: "asc" }], take: Math.min(Math.max(args.limit ?? 100, 1), 500), select: { id: true } });
-  let resolvedCount = 0;
-  for (const event of events) { const result = await resolveReproductiveEmergencyEvent({ eventId: event.id, currentEpoch: args.currentEpoch, resolutionMode: "TREATED" }); if (!result.alreadyResolved) resolvedCount += 1; }
-  return { processedCount: events.length, resolvedCount };
+  const events = await db.reproductiveEmergencyEvent.findMany({ where: { status: "TREATMENT_AUTHORIZED" }, orderBy: [{ treatmentAuthorizedEpoch: "asc" }, { createdAt: "asc" }], take: Math.min(Math.max(args.limit ?? 100, 1), 500), select: { id: true, breedingAttemptId: true, status: true, breedingAttempt: { select: { status: true } } } });
+
+  return processSelectedAuthorizedReproductiveEmergencyEvents({
+    events,
+    resolveEvent: async (eventId) => {
+      await resolveReproductiveEmergencyEvent({
+        eventId,
+        currentEpoch: args.currentEpoch,
+        resolutionMode: "TREATED",
+      });
+    },
+    getTerminalState: async (eventId) => {
+      const event = await db.reproductiveEmergencyEvent.findUnique({
+        where: { id: eventId },
+        select: {
+          status: true,
+          litterId: true,
+          resolvedEpoch: true,
+          breedingAttempt: { select: { status: true } },
+        },
+      });
+      return event
+        ? {
+            eventStatus: event.status,
+            breedingAttemptStatus: event.breedingAttempt.status,
+            litterId: event.litterId,
+            resolvedEpoch: event.resolvedEpoch,
+          }
+        : null;
+    },
+  });
 }
