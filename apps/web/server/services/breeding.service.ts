@@ -23,6 +23,7 @@ import {
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
+import { createLitterWithCollisionRetry } from "@/server/services/litterPersistence.service";
 import {
   getValidNegativeBrucellosisTest,
   infectPuppiesFromDamBrucellosis,
@@ -856,8 +857,9 @@ async function resolveWhelpingAttempt(args: {
       },
     });
 
-    await tx.litter.create({
-      data: {
+    const persistedLitter = await createLitterWithCollisionRetry({
+      client: tx,
+      litter: {
         id: outcome.litter.litterId,
         bredByKennelId: fresh.createdByKennelId,
         sireId: outcome.litter.sireId,
@@ -867,6 +869,7 @@ async function resolveWhelpingAttempt(args: {
         bornEpoch: outcome.litter.bornEpoch,
         pupCount: outcome.litter.pupCount,
       },
+      puppies: outcome.puppies,
     });
 
     const puppyKennelRunId = fresh.createdByKennelId
@@ -880,7 +883,7 @@ async function resolveWhelpingAttempt(args: {
       : null;
 
     await tx.dog.createMany({
-      data: outcome.puppies.map((puppy) => ({
+      data: persistedLitter.puppies.map((puppy) => ({
         id: puppy.dogId,
         ownerKennelId: fresh.createdByKennelId,
         kennelRunId: puppyKennelRunId,
@@ -941,7 +944,7 @@ async function resolveWhelpingAttempt(args: {
         kennelId: fresh.createdByKennelId,
         type: "LITTER_BORN",
         title: "Litter born",
-        body: `Litter ${outcome.litter.serial7} has been born with ${outcome.litter.pupCount} puppies.`,
+        body: `Litter ${persistedLitter.serial7} has been born with ${outcome.litter.pupCount} puppies.`,
         currentEpoch,
         linkedLitterId: outcome.litter.litterId,
         linkedDogId: outcome.litter.damId,

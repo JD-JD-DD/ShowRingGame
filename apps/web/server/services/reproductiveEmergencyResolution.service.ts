@@ -7,6 +7,7 @@ import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest
 import { infectPuppiesFromDamBrucellosis } from "@/server/services/infectiousDisease.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
+import { createLitterWithCollisionRetry } from "@/server/services/litterPersistence.service";
 import { markDogDeceased } from "@/server/services/lifecycle.service";
 import { calculatePedigreeCoi, resolveReproductiveEmergencyOutcome, resolveWhelp } from "@showring/rules";
 
@@ -47,9 +48,13 @@ export async function resolveReproductiveEmergencyEvent(args: { eventId: string;
       litterId = randomUUID();
       const puppyIds = Array.from({ length: outcome.survivingPuppyCount }, () => randomUUID());
       const resolved = resolveWhelp({ attempt: { ...attempt, attemptId: attempt.id, status: "PREGNANT", pregCheckEpoch: attempt.pregCheckEpoch ?? attempt.createdEpoch, dueEpoch: attempt.dueEpoch ?? args.currentEpoch, checkedEpoch: attempt.checkedEpoch ?? attempt.createdEpoch, isPregnant: true, whelpedEpoch: null, litterId: null, rngSeed: attempt.rngSeed ?? event.rngSeed }, currentEpoch: args.currentEpoch, litterId, pupCount: outcome.survivingPuppyCount, puppyDogIds: puppyIds, puppySexes: buildPuppySexes(`${event.rngSeed}:reproductive-emergency`, outcome.survivingPuppyCount), sireTraits: mapBreedingTraits(attempt.sire), damTraits: mapBreedingTraits(attempt.dam), coiPercent: coi.coiPercent, coiGenerationDepth: coi.generationDepth, random01: () => 0.5 });
-      await tx.litter.create({ data: { id: litterId, bredByKennelId: attempt.createdByKennelId, sireId: attempt.sireId, damId: attempt.damId, breedCode2: attempt.breedCode2, serial7: resolved.litter.serial7, bornEpoch: args.currentEpoch, pupCount: outcome.survivingPuppyCount } });
+      const persistedLitter = await createLitterWithCollisionRetry({
+        client: tx,
+        litter: { id: litterId, bredByKennelId: attempt.createdByKennelId, sireId: attempt.sireId, damId: attempt.damId, breedCode2: attempt.breedCode2, serial7: resolved.litter.serial7, bornEpoch: args.currentEpoch, pupCount: outcome.survivingPuppyCount },
+        puppies: resolved.puppies,
+      });
       const kennelRunId = attempt.createdByKennelId ? attempt.dam.kennelRunId ?? (await ensureUncategorizedKennelRun({ kennelId: attempt.createdByKennelId, client: tx })).id : null;
-      await tx.dog.createMany({ data: resolved.puppies.map((puppy) => ({ id: puppy.dogId, ownerKennelId: attempt.createdByKennelId, breederKennelId: attempt.createdByKennelId, kennelRunId, callName: null, registeredName: null, regNumber: puppy.regNumber, breedCode2: puppy.breedCode2, sex: puppy.sex, birthEpoch: puppy.birthEpoch, lifecycleState: "ALIVE", marketState: "NOT_FOR_SALE", originType: "PLAYER_BRED", isFoundation: false, sireId: puppy.sireId, damId: puppy.damId, litterId, litterOrder: puppy.litterOrder, coiPercent: coi.coiPercent, coiGenerationDepth: coi.generationDepth, traitHead: puppy.traits.head, traitForequarters: puppy.traits.forequarters, traitHindquarters: puppy.traits.hindquarters, traitGait: puppy.traits.gait, traitCoat: puppy.traits.coat, traitSize: puppy.traits.size, traitTemperament: puppy.traits.temperament, traitShowShine: puppy.traits.show_shine, traitFeet: puppy.traits.feet, traitTopline: puppy.traits.topline })) });
+      await tx.dog.createMany({ data: persistedLitter.puppies.map((puppy) => ({ id: puppy.dogId, ownerKennelId: attempt.createdByKennelId, breederKennelId: attempt.createdByKennelId, kennelRunId, callName: null, registeredName: null, regNumber: puppy.regNumber, breedCode2: puppy.breedCode2, sex: puppy.sex, birthEpoch: puppy.birthEpoch, lifecycleState: "ALIVE", marketState: "NOT_FOR_SALE", originType: "PLAYER_BRED", isFoundation: false, sireId: puppy.sireId, damId: puppy.damId, litterId, litterOrder: puppy.litterOrder, coiPercent: coi.coiPercent, coiGenerationDepth: coi.generationDepth, traitHead: puppy.traits.head, traitForequarters: puppy.traits.forequarters, traitHindquarters: puppy.traits.hindquarters, traitGait: puppy.traits.gait, traitCoat: puppy.traits.coat, traitSize: puppy.traits.size, traitTemperament: puppy.traits.temperament, traitShowShine: puppy.traits.show_shine, traitFeet: puppy.traits.feet, traitTopline: puppy.traits.topline })) });
       await ensurePhenotypeHealthTruthsForDogs(tx, puppyIds);
       await infectPuppiesFromDamBrucellosis(tx, { damId: attempt.damId, puppyDogIds: puppyIds, currentEpoch: args.currentEpoch, breedingAttemptId: attempt.id });
     }
