@@ -8,6 +8,7 @@ import {
 } from "@prisma/client";
 
 import { formatDogDisplayName } from "@/lib/dogNames";
+export { PENDING_VETERINARY_CARE_BREEDING_MESSAGE } from "@/lib/breedingAvailability";
 
 const BASIS_POINTS = 10_000;
 
@@ -348,9 +349,6 @@ export type PendingVeterinaryCare =
       intendedPuppyCount: number;
     }
   | { hasPendingCare: false };
-
-export const PENDING_VETERINARY_CARE_BREEDING_MESSAGE =
-  "This dog has pending veterinary care and cannot be used for breeding.";
 
 export function hasPendingVeterinaryCareFromRecords(args: {
   emergencyCareEvents: Array<{ status: string }>;

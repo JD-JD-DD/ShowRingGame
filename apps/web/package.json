@@ -32,6 +32,7 @@
     "test:breeding-action-feedback": "tsx scripts/testBreedingActionFeedback.ts",
     "test:public-stud-discovery": "tsx scripts/testPublicStudDiscovery.ts",
     "test:public-stud-pending-care": "tsx scripts/testPublicStudPendingCare.ts",
+    "test:breeding-page-client-runtime": "tsx scripts/testBreedingPageClientRuntime.ts",
     "test:reproductive-emergency-trigger": "tsx scripts/testReproductiveEmergencyTrigger.ts",
     "test:reproductive-emergency-resolution": "tsx scripts/testReproductiveEmergencyResolution.ts",
     "test:reproductive-emergency-eligibility": "tsx scripts/testReproductiveEmergencyEligibility.ts",

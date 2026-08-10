@@ -16,7 +16,7 @@ import {
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import { formatGameAge, formatUtcDateTime } from "@/lib/gameTimeFormat";
-import { PENDING_VETERINARY_CARE_BREEDING_MESSAGE } from "@/server/services/emergencyVetCare.service";
+import { PENDING_VETERINARY_CARE_BREEDING_MESSAGE } from "@/lib/breedingAvailability";
 import {
   BREEDING_FEE,
   BRUCELLOSIS_TEST_FEE,

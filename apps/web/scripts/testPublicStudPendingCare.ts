@@ -7,6 +7,7 @@ const source = (relativePath: string) =>
   readFileSync(join(repoRoot, relativePath), "utf8");
 
 const careService = source("apps/web/server/services/emergencyVetCare.service.ts");
+const breedingAvailability = source("apps/web/lib/breedingAvailability.ts");
 const studsPage = source("apps/web/app/studs/page.tsx");
 const plannerPage = source("apps/web/components/breeding/BreedingPlannerPage.tsx");
 const plannerClient = source("apps/web/components/breeding/BreedPageClient.tsx");
@@ -16,8 +17,9 @@ const message =
   "This dog has pending veterinary care and cannot be used for breeding.";
 
 assert.ok(
-  careService.includes(`PENDING_VETERINARY_CARE_BREEDING_MESSAGE =\n  "${message}"`),
-  "pending-care copy is shared with the canonical veterinary-care service"
+  breedingAvailability.includes(`PENDING_VETERINARY_CARE_BREEDING_MESSAGE =\n  "${message}"`) &&
+    careService.includes('export { PENDING_VETERINARY_CARE_BREEDING_MESSAGE } from "@/lib/breedingAvailability"'),
+  "pending-care copy is shared through a client-safe module"
 );
 for (const [label, page] of [
   ["studs page", studsPage],
