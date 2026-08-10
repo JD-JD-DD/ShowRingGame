@@ -514,7 +514,11 @@ export default async function BreedingPlannerPage({
     });
 
   const loadPublicStudListings = async () => {
-    if (useOptimizedDirectRoute && directRouteContext.anchorSex === "M") {
+    if (
+      useOptimizedDirectRoute &&
+      directRouteContext.selectedDogId &&
+      directRouteContext.anchorSex === "M"
+    ) {
       console.info("route-perf", {
         route,
         operation: "public_stud_listing_query",

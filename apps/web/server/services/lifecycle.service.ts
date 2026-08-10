@@ -11,7 +11,6 @@ import {
   deriveCardiacLongevityModifiers,
   NEONATAL_PUPPY_DEATH_RATE,
   NEONATAL_PUPPY_DEATH_WINDOW_HOURS,
-  PUPPY_SALE_MIN_AGE_HOURS,
   projectedDeathEpoch,
 } from "@showring/rules";
 import { Prisma } from "@prisma/client";
@@ -288,16 +287,9 @@ export async function markDogDeceased(args: {
     displayName,
     deathEpoch,
     cause,
-    birthEpoch,
-    originType,
     litterId,
   } = args;
-  const isNeonatalLoss =
-    cause === "NEONATAL_PUPPY" ||
-    (originType === "PLAYER_BRED" &&
-      Boolean(litterId) &&
-      typeof birthEpoch === "number" &&
-      deathEpoch - birthEpoch < PUPPY_SALE_MIN_AGE_HOURS);
+  const isNeonatalLoss = cause === "NEONATAL_PUPPY";
   const update = await client.dog.updateMany({
     where: {
       id: dogId,
