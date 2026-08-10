@@ -12,6 +12,7 @@ import {
   getIndividualBreedingEligibility,
   type BreedingEligibilityReasonCode,
 } from "@/server/services/breedingEligibility.service";
+import { hasPendingVeterinaryCareFromRecords } from "@/server/services/emergencyVetCare.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -60,6 +61,7 @@ type DogCardDto = {
   isListedForSale: boolean;
   isListedAtStud: boolean;
   isEligibleToBreed: boolean;
+  hasPendingVeterinaryCare: boolean;
   inBreedingConflict: boolean;
   breedingEligibilityReasonCode: BreedingEligibilityReasonCode;
   breedingEligibilityMessage: string | null;
@@ -669,6 +671,16 @@ export default async function BreedingPlannerPage({
                     validUntilEpoch: true,
                   },
                 },
+                emergencyCareEvents: {
+                  where: { status: "PENDING" },
+                  take: 1,
+                  select: { status: true },
+                },
+                reproductiveEmergencies: {
+                  where: { status: { in: ["PENDING", "TREATMENT_AUTHORIZED"] } },
+                  take: 1,
+                  select: { status: true },
+                },
               },
             },
           },
@@ -755,6 +767,7 @@ export default async function BreedingPlannerPage({
             (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
           ),
           isEligibleToBreed: breedingEligibility.isEligible,
+          hasPendingVeterinaryCare: false,
           inBreedingConflict:
             breedingEligibility.activeBreedingAttemptStatus !== null ||
             breedingEligibility.isInPostWhelpCooldown,
@@ -806,6 +819,10 @@ export default async function BreedingPlannerPage({
         const breedingEligibilityMessage = getBreedingEligibilityMessage(
           breedingEligibility
         );
+        const hasPendingVeterinaryCare = hasPendingVeterinaryCareFromRecords({
+          emergencyCareEvents: dog.emergencyCareEvents,
+          reproductiveEmergencies: dog.reproductiveEmergencies,
+        });
 
         return {
           id: dog.id,
@@ -826,6 +843,7 @@ export default async function BreedingPlannerPage({
           isListedForSale: false,
           isListedAtStud: true,
           isEligibleToBreed: breedingEligibility.isEligible,
+          hasPendingVeterinaryCare,
           inBreedingConflict: false,
           breedingEligibilityReasonCode: breedingEligibility.reasonCode,
           breedingEligibilityMessage,
@@ -1010,7 +1028,9 @@ export default async function BreedingPlannerPage({
         kennelName={kennel.name}
         kennelBalance={kennel.balance}
         dogs={[...dogCards, ...publicStudCards].filter(
-          (dog) => dog.isEligibleToBreed
+          (dog) =>
+            dog.isEligibleToBreed ||
+            (Boolean(dog.studListingId) && dog.hasPendingVeterinaryCare)
         )}
         pedigree={pedigree}
         currentEpoch={currentEpoch}

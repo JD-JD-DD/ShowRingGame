@@ -7,6 +7,10 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
+import {
+  hasPendingVeterinaryCareFromRecords,
+  PENDING_VETERINARY_CARE_BREEDING_MESSAGE,
+} from "@/server/services/emergencyVetCare.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
@@ -286,6 +290,16 @@ export default async function StudsPage({ searchParams }: PageProps) {
               validUntilEpoch: true,
             },
           },
+          emergencyCareEvents: {
+            where: { status: "PENDING" },
+            take: 1,
+            select: { status: true },
+          },
+          reproductiveEmergencies: {
+            where: { status: { in: ["PENDING", "TREATMENT_AUTHORIZED"] } },
+            take: 1,
+            select: { status: true },
+          },
         },
       },
     },
@@ -417,6 +431,10 @@ export default async function StudsPage({ searchParams }: PageProps) {
                 dog,
                 currentEpoch
               );
+              const hasPendingVeterinaryCare = hasPendingVeterinaryCareFromRecords({
+                emergencyCareEvents: dog.emergencyCareEvents,
+                reproductiveEmergencies: dog.reproductiveEmergencies,
+              });
               const visibleCategories = deriveCurrentVisibleCategoriesForDogDisplay({
                 storedTraits: dog,
                 phenotypeHealthTruths:
@@ -525,11 +543,20 @@ export default async function StudsPage({ searchParams }: PageProps) {
                     </div>
 
                     <div className="mt-6 flex items-stretch gap-3">
+                      {hasPendingVeterinaryCare ? (
+                        <div className="flex-1 rounded-2xl border border-rose-300/35 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-100">
+                          {PENDING_VETERINARY_CARE_BREEDING_MESSAGE}
+                        </div>
+                      ) : null}
                       <Link
                         href={`/breed?studListingId=${listing.id}`}
-                        className="flex-1 rounded-2xl bg-sky-600 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-sky-500"
+                        className={`flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold text-white transition ${
+                          hasPendingVeterinaryCare
+                            ? "bg-slate-600 hover:bg-slate-500"
+                            : "bg-sky-600 hover:bg-sky-500"
+                        }`}
                       >
-                        Use At Stud
+                        {hasPendingVeterinaryCare ? "Review Availability" : "Use At Stud"}
                       </Link>
 
                       <Link

@@ -349,6 +349,21 @@ export type PendingVeterinaryCare =
     }
   | { hasPendingCare: false };
 
+export const PENDING_VETERINARY_CARE_BREEDING_MESSAGE =
+  "This dog has pending veterinary care and cannot be used for breeding.";
+
+export function hasPendingVeterinaryCareFromRecords(args: {
+  emergencyCareEvents: Array<{ status: string }>;
+  reproductiveEmergencies: Array<{ status: string }>;
+}): boolean {
+  return (
+    args.emergencyCareEvents.some((event) => event.status === "PENDING") ||
+    args.reproductiveEmergencies.some((event) =>
+      ["PENDING", "TREATMENT_AUTHORIZED"].includes(event.status)
+    )
+  );
+}
+
 type PendingVeterinaryCareClient = typeof db | Prisma.TransactionClient;
 
 export async function getPendingVeterinaryCareForDog(

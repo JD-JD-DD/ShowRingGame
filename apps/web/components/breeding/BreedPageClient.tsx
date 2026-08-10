@@ -16,6 +16,7 @@ import {
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import { formatGameAge, formatUtcDateTime } from "@/lib/gameTimeFormat";
+import { PENDING_VETERINARY_CARE_BREEDING_MESSAGE } from "@/server/services/emergencyVetCare.service";
 import {
   BREEDING_FEE,
   BRUCELLOSIS_TEST_FEE,
@@ -65,6 +66,7 @@ type DogCardDto = {
   isListedForSale: boolean;
   isListedAtStud: boolean;
   isEligibleToBreed: boolean;
+  hasPendingVeterinaryCare: boolean;
   inBreedingConflict: boolean;
   breedingEligibilityReasonCode: string;
   breedingEligibilityMessage: string | null;
@@ -404,6 +406,9 @@ function compactHealthSignals(dog: DogCardDto) {
 
 function reasonDogUnavailable(dog: DogCardDto, currentEpoch: number) {
   void currentEpoch;
+  if (dog.hasPendingVeterinaryCare) {
+    return PENDING_VETERINARY_CARE_BREEDING_MESSAGE;
+  }
   if (dog.breedingEligibilityMessage) {
     return dog.breedingEligibilityMessage;
   }
@@ -911,6 +916,7 @@ function FreeBreedingSummary({
   const canSubmit =
     sire !== null &&
     dam !== null &&
+    !sire.hasPendingVeterinaryCare &&
     kennelBalance >= totalCost &&
     !submitting &&
     !redirecting;
@@ -931,6 +937,11 @@ function FreeBreedingSummary({
             {dam ? dogDisplayName(dam) : "Select a dam"}
           </div>
         </div>
+        {sire?.hasPendingVeterinaryCare ? (
+          <div className="rounded-xl border border-rose-300/25 bg-rose-500/10 p-3 text-sm font-semibold text-rose-100">
+            {PENDING_VETERINARY_CARE_BREEDING_MESSAGE}
+          </div>
+        ) : null}
         <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-purple-100/75">
           <div className="flex justify-between gap-3">
             <span>Breeding fee</span><span>{formatMoney(BREEDING_FEE)}</span>
@@ -1013,6 +1024,11 @@ function FreeBreedingSummary({
         {successMessage ? (
           <div className="rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
             {successMessage}
+          </div>
+        ) : null}
+        {sire?.hasPendingVeterinaryCare ? (
+          <div className="mt-4 rounded-xl border border-rose-300/25 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-100">
+            {PENDING_VETERINARY_CARE_BREEDING_MESSAGE}
           </div>
         ) : null}
         <button
@@ -1542,12 +1558,23 @@ function PairingAnalysis({
           </div>
         ) : null}
 
+        {sire.hasPendingVeterinaryCare ? (
+          <div className="mt-4 rounded-xl border border-rose-300/25 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-100">
+            {PENDING_VETERINARY_CARE_BREEDING_MESSAGE}
+          </div>
+        ) : null}
+
         {/* Keep the actual breeding submit at the end of the worksheet so the
             user reaches it only after the full review pass above. */}
         <button
           type="button"
           onClick={onSubmit}
-          disabled={submitting || redirecting || kennelBalance < totalCost}
+          disabled={
+            submitting ||
+            redirecting ||
+            kennelBalance < totalCost ||
+            sire.hasPendingVeterinaryCare
+          }
           className="mt-5 w-full rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
         >
           {redirecting
@@ -1644,8 +1671,7 @@ export default function BreedPageClient({
     null;
   const initialStud =
     dogs.find(
-      (dog) =>
-        dog.studListingId === initialStudListingId && dog.isEligibleToBreed
+      (dog) => dog.studListingId === initialStudListingId
     ) ?? null;
   const anchorDog = initialDog ?? initialStud;
   const initialBreedCode =
@@ -1675,7 +1701,20 @@ export default function BreedPageClient({
   const [plannerNotice, setPlannerNotice] = useState(initialNotice);
   const submitInFlightRef = useRef(false);
   const eligibleDogs = useMemo(
-    () => dogs.filter((dog) => dog.isEligibleToBreed),
+    () =>
+      dogs.filter(
+        (dog) => dog.isEligibleToBreed && !dog.hasPendingVeterinaryCare
+      ),
+    [dogs]
+  );
+  const temporarilyUnavailablePublicStuds = useMemo(
+    () =>
+      dogs.filter(
+        (dog) =>
+          Boolean(dog.studListingId) &&
+          dog.isEligibleToBreed &&
+          dog.hasPendingVeterinaryCare
+      ),
     [dogs]
   );
 
@@ -1699,7 +1738,10 @@ export default function BreedPageClient({
   }, [eligibleDogs]);
 
   const selectedDam = eligibleDogs.find((dog) => dog.id === damId) ?? null;
-  const selectedSire = eligibleDogs.find((dog) => dog.id === sireId) ?? null;
+  const selectedSire =
+    [...eligibleDogs, ...temporarilyUnavailablePublicStuds].find(
+      (dog) => dog.id === sireId
+    ) ?? null;
   const dams = useMemo(
     () =>
       eligibleDogs
@@ -1713,7 +1755,7 @@ export default function BreedPageClient({
     [breedCode2, eligibleDogs]
   );
   const sires = useMemo(() => {
-    const candidates = eligibleDogs.filter(
+    const candidates = [...eligibleDogs, ...temporarilyUnavailablePublicStuds].filter(
       (dog) =>
         dog.sex === "M" &&
         dog.breedCode2 === breedCode2 &&
@@ -1757,7 +1799,7 @@ export default function BreedPageClient({
         sireRecommendationScore(a, selectedDam, pedigree)
       );
     });
-  }, [breedCode2, eligibleDogs, pedigree, selectedDam, sireSort, sireSource]);
+  }, [breedCode2, eligibleDogs, pedigree, selectedDam, sireSort, sireSource, temporarilyUnavailablePublicStuds]);
   const freeMates = useMemo(() => {
     if (!anchorDog) return [];
 
