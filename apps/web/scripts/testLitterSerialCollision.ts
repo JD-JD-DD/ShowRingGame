@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { createLitterWithCollisionRetry } from "../server/services/litterPersistence.service";
+import {
+  createLitterWithCollisionRetry,
+  RetriableLitterSerialCollisionError,
+} from "../server/services/litterPersistence.service";
 
 const createdLitters: Array<{ breedCode2: string; serial7: string }> = [
   { breedCode2: "BC", serial7: "5000000" },
@@ -9,6 +12,12 @@ const createdLitters: Array<{ breedCode2: string; serial7: string }> = [
 let createAttempts = 0;
 const fakeClient = {
   litter: {
+    findUnique: async ({ where }: { where: { breedCode2_serial7: { breedCode2: string; serial7: string } } }) =>
+      createdLitters.find(
+        (litter) =>
+          litter.breedCode2 === where.breedCode2_serial7.breedCode2 &&
+          litter.serial7 === where.breedCode2_serial7.serial7
+      ) ?? null,
     create: async ({ data }: { data: { breedCode2: string; serial7: string } }) => {
       createAttempts += 1;
       if (
@@ -49,7 +58,7 @@ async function main() {
     nextSerial7: () => "5000001",
   });
 
-  assert.equal(createAttempts, 2);
+  assert.equal(createAttempts, 1);
   assert.equal(persisted.serial7, "5000001");
   assert.deepEqual(createdLitters.map(({ breedCode2, serial7 }) => ({ breedCode2, serial7 })), [
     { breedCode2: "BC", serial7: "5000000" },
@@ -64,6 +73,44 @@ async function main() {
   );
   assert.equal(puppies[0]?.regNumber, "BC500000001");
   assert.equal(puppies[1]?.regNumber, "BC500000002");
+
+  let raceFindUniqueCalls = 0;
+  let raceCreateCalls = 0;
+  const racingClient = {
+    litter: {
+      findUnique: async () => {
+        raceFindUniqueCalls += 1;
+        return null;
+      },
+      create: async () => {
+        raceCreateCalls += 1;
+        throw { code: "P2002", meta: { target: ["breedCode2", "serial7"] } };
+      },
+    },
+  };
+  await assert.rejects(
+    createLitterWithCollisionRetry({
+      client: racingClient as never,
+      litter: { id: "race-litter", bredByKennelId: "kennel", sireId: "sire", damId: "dam", breedCode2: "BC", serial7: "6000000", bornEpoch: 6000, pupCount: 2 },
+      puppies,
+    }),
+    RetriableLitterSerialCollisionError
+  );
+  assert.equal(raceFindUniqueCalls, 1);
+  assert.equal(raceCreateCalls, 1);
+
+  const freshTransactionClient = {
+    litter: {
+      findUnique: async () => null,
+      create: async () => undefined,
+    },
+  };
+  const freshRetry = await createLitterWithCollisionRetry({
+    client: freshTransactionClient as never,
+    litter: { id: "race-litter", bredByKennelId: "kennel", sireId: "sire", damId: "dam", breedCode2: "BC", serial7: "6000000", bornEpoch: 6000, pupCount: 2 },
+    puppies,
+  });
+  assert.equal(freshRetry.serial7, "6000000");
 
   const breedingService = readFileSync("apps/web/server/services/breeding.service.ts", "utf8");
   const emergencyResolver = readFileSync("apps/web/server/services/reproductiveEmergencyResolution.service.ts", "utf8");

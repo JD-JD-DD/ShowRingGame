@@ -46,6 +46,14 @@ function generateReplacementSerial7(): string {
   return String(randomInt(10_000_000)).padStart(7, "0");
 }
 
+export class RetriableLitterSerialCollisionError extends Error {
+  constructor(cause?: unknown) {
+    super("Litter serial collided after preflight; retry in a fresh transaction.");
+    this.name = "RetriableLitterSerialCollisionError";
+    this.cause = cause;
+  }
+}
+
 function rebuildPuppyRegistrations<Puppy extends PuppyWithRegistration>(args: {
   puppies: Puppy[];
   breedCode2: string;
@@ -73,6 +81,26 @@ export async function createLitterWithCollisionRetry<
   let serial7 = args.litter.serial7;
 
   for (let attempt = 1; attempt <= MAX_LITTER_SERIAL_ATTEMPTS; attempt += 1) {
+    const existingLitter = await args.client.litter.findUnique({
+      where: {
+        breedCode2_serial7: {
+          breedCode2: args.litter.breedCode2,
+          serial7,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (existingLitter) {
+      if (attempt === MAX_LITTER_SERIAL_ATTEMPTS) {
+        throw new Error(
+          `Unable to allocate a unique litter serial after ${MAX_LITTER_SERIAL_ATTEMPTS} attempts.`
+        );
+      }
+      serial7 = (args.nextSerial7 ?? generateReplacementSerial7)();
+      continue;
+    }
+
     const puppies = rebuildPuppyRegistrations({
       puppies: args.puppies,
       breedCode2: args.litter.breedCode2,
@@ -90,13 +118,10 @@ export async function createLitterWithCollisionRetry<
         puppies,
       };
     } catch (error) {
-      if (!isLitterSerialCollision(error)) throw error;
-      if (attempt === MAX_LITTER_SERIAL_ATTEMPTS) {
-        throw new Error(
-          `Unable to allocate a unique litter serial after ${MAX_LITTER_SERIAL_ATTEMPTS} attempts.`
-        );
+      if (isLitterSerialCollision(error)) {
+        throw new RetriableLitterSerialCollisionError(error);
       }
-      serial7 = (args.nextSerial7 ?? generateReplacementSerial7)();
+      throw error;
     }
   }
 
