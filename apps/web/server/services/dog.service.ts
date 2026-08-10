@@ -33,7 +33,6 @@ import {
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
 } from "@/server/services/dogVisibleCategories.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
-import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { resolveBreedingProgressForOwnedDam } from "@/server/services/breeding.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -956,10 +955,6 @@ export async function getDogProfile(args: {
       phases[phase] = (phases[phase] ?? 0) + (Date.now() - phaseStartedAtMs);
     }
   };
-
-  await measure("resolveDogDeathsMs", () =>
-    resolveDogDeaths({ currentEpoch, dogIds: [dogId] })
-  );
 
   if (viewerKennelId) {
     await measure("resolveBreedingProgressMs", () =>

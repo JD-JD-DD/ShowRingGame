@@ -5,7 +5,6 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
-import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 
 function formatDate(epoch: number): string {
   return epochToDate(epoch).toLocaleDateString("en-US", {
@@ -37,8 +36,6 @@ export default async function MemoriumPage() {
   }
 
   const currentEpoch = getCurrentEpoch();
-  await resolveDogDeaths({ kennelId: kennel.id, currentEpoch });
-
   const dogs = await db.dog.findMany({
     where: {
       ownerKennelId: kennel.id,

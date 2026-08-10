@@ -7,7 +7,6 @@ import {
 } from "@/server/services/showDayGroupJudgeAssignment.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { getInvitationalClusterId } from "@/server/services/invitational.service";
-import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { createInvitationalResultsPublishedNotices } from "@/server/services/kennelNotice.service";
 import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
 import {
@@ -920,25 +919,6 @@ export async function judgeShowBlock(args: {
   currentEpoch: number;
 }): Promise<JudgeShowBlockDto> {
   const { judgingBlockId, currentEpoch } = args;
-  const blockTiming = await db.showJudgingBlock.findUnique({
-    where: { id: judgingBlockId },
-    select: {
-      startEpoch: true,
-      showEntries: {
-        select: {
-          dogId: true,
-        },
-      },
-    },
-  });
-
-  if (blockTiming && currentEpoch >= blockTiming.startEpoch) {
-    await resolveDogDeaths({
-      currentEpoch: blockTiming.startEpoch,
-      dogIds: blockTiming.showEntries.map((entry) => entry.dogId),
-    });
-  }
-
   return db.$transaction(async (tx) => {
     const block = await tx.showJudgingBlock.findUnique({
       where: { id: judgingBlockId },

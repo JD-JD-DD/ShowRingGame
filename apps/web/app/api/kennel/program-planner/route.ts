@@ -3,7 +3,6 @@ import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { resolveDueBreedingProgressForKennel } from "@/server/services/breeding.service";
-import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { getProgramPlannerData } from "@/server/services/programPlanner.service";
 
 export async function GET(request: Request) {
@@ -21,7 +20,6 @@ export async function GET(request: Request) {
     }
 
     const currentEpoch = getCurrentEpoch();
-    await resolveDogDeaths({ kennelId: kennel.id, currentEpoch });
     await resolveDueBreedingProgressForKennel({
       kennelId: kennel.id,
       currentEpoch,

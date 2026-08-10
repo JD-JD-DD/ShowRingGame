@@ -3,7 +3,6 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
-import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
@@ -166,21 +165,6 @@ export async function listMarketDogs(args: {
 }): Promise<MarketDogDto[]> {
   const { breedCode2, currentEpoch, currentKennelId } = args;
   const dogBreedFilter = breedCode2 ? { breedCode2 } : {};
-  const activeListedDogs = await db.dogListing.findMany({
-    where: {
-      status: "ACTIVE",
-      dog: dogBreedFilter,
-    },
-    select: {
-      dogId: true,
-    },
-  });
-
-  await resolveDogDeaths({
-    currentEpoch,
-    dogIds: activeListedDogs.map((listing) => listing.dogId),
-  });
-
   const listings = await db.dogListing.findMany({
     where: {
       status: "ACTIVE",
@@ -329,8 +313,6 @@ export async function listDogForSale(args: {
   const { dogId, sellerKennelId, currentEpoch, askingPrice } = args;
 
   assertWholeDollarAmount(askingPrice, "Sale price");
-  await resolveDogDeaths({ currentEpoch, dogIds: [dogId] });
-
   return db.$transaction(async (tx) => {
     const dog = await tx.dog.findUnique({
       where: { id: dogId },
@@ -436,10 +418,6 @@ export async function buyPlayerDogListing(args: {
     where: { id: listingId },
     select: { dogId: true },
   });
-
-  if (listingDog) {
-    await resolveDogDeaths({ currentEpoch, dogIds: [listingDog.dogId] });
-  }
 
   return db.$transaction(async (tx) => {
     const listing = await tx.dogListing.findFirst({
@@ -722,8 +700,6 @@ export async function listDogAtStud(args: {
   } = args;
 
   assertWholeDollarAmount(studFeeAmount, "Stud fee");
-  await resolveDogDeaths({ currentEpoch, dogIds: [dogId] });
-
   return db.$transaction(async (tx) => {
     const dog = await tx.dog.findUnique({
       where: { id: dogId },

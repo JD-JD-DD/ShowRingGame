@@ -7,7 +7,6 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
-import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
@@ -179,25 +178,6 @@ export default async function StudsPage({ searchParams }: PageProps) {
       name: true,
       groupName: true,
     },
-  });
-
-  const activeStudDogIds = await db.dogListing.findMany({
-    where: {
-      sellerType: "PLAYER",
-      listingType: PLAYER_STUD_LISTING_TYPE,
-      status: "ACTIVE",
-      sellerKennelId: {
-        not: kennel.id,
-      },
-    },
-    select: {
-      dogId: true,
-    },
-  });
-
-  await resolveDogDeaths({
-    currentEpoch,
-    dogIds: activeStudDogIds.map((listing) => listing.dogId),
   });
 
   const listings = await db.dogListing.findMany({

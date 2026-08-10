@@ -6,7 +6,6 @@ import { getDistrictPanelStyle } from "@/lib/districtStyles";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
-import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { getKennelPrestigeSummary } from "@/server/services/kennelPrestige.service";
 import { getShowDistrictRegion } from "@showring/rules";
 import {
@@ -91,8 +90,6 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
     ? getShowDistrictRegion(kennel.homeDistrict)
     : null;
   const prestige = await getKennelPrestigeSummary(kennel.id);
-
-  await resolveDogDeaths({ kennelId: kennel.id, currentEpoch });
 
   const [dogs, activeListings] = await Promise.all([
     db.dog.findMany({

@@ -2,7 +2,6 @@ import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import {
   listBreedingsForKennelAfterProgressResolved,
-  resolveBreedingProgressForKennel,
   resolveDueBreedingProgressForKennel,
 } from "@/server/services/breeding.service";
 import { DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES } from "@/server/services/dogVisibleCategories.service";
@@ -433,7 +432,7 @@ export async function getLitterForKennel(args: {
 }): Promise<LitterDetailDto | null> {
   const { kennelId, litterId, currentEpoch } = args;
 
-  await resolveBreedingProgressForKennel({ kennelId, currentEpoch });
+  await resolveDueBreedingProgressForKennel({ kennelId, currentEpoch });
 
   const litter = await db.litter.findFirst({
     where: {

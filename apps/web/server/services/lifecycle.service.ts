@@ -388,12 +388,24 @@ async function resolveDogDeathsWithClient(args: {
   currentEpoch: number;
   kennelId?: string;
   dogIds?: string[];
-}): Promise<{ deceasedDogIds: string[]; deceasedDogs: ResolvedDogDeath[] }> {
+}): Promise<{
+  deceasedDogIds: string[];
+  deceasedDogs: ResolvedDogDeath[];
+  candidatesEvaluated: number;
+  dueCandidates: number;
+  processedCandidates: number;
+}> {
   const { client } = args;
   const dogIds = args.dogIds?.filter(Boolean);
 
   if (args.dogIds && (!dogIds || dogIds.length === 0)) {
-    return { deceasedDogIds: [], deceasedDogs: [] };
+    return {
+      deceasedDogIds: [],
+      deceasedDogs: [],
+      candidatesEvaluated: 0,
+      dueCandidates: 0,
+      processedCandidates: 0,
+    };
   }
 
   const candidates: DeathCandidate[] = await client.dog.findMany({
@@ -448,7 +460,7 @@ async function resolveDogDeathsWithClient(args: {
     dogIds && dogIds.length > 0
       ? Number.POSITIVE_INFINITY
       : MAX_DEATHS_PER_RESOLUTION;
-  const dueDeaths = candidates
+  const dueCandidates = candidates
     .map((dog) => ({
       dog,
       projected: getProjectedDogDeath(dog),
@@ -458,8 +470,8 @@ async function resolveDogDeathsWithClient(args: {
       (left, right) =>
         left.projected.deathEpoch - right.projected.deathEpoch ||
         left.dog.regNumber.localeCompare(right.dog.regNumber)
-    )
-    .slice(0, maxDeathsThisRun);
+    );
+  const dueDeaths = dueCandidates.slice(0, maxDeathsThisRun);
 
   for (const { dog, projected } of dueDeaths) {
     const { deathEpoch, cause } = projected;
@@ -552,7 +564,13 @@ async function resolveDogDeathsWithClient(args: {
     }
   }
 
-  return { deceasedDogIds, deceasedDogs };
+  return {
+    deceasedDogIds,
+    deceasedDogs,
+    candidatesEvaluated: candidates.length,
+    dueCandidates: dueCandidates.length,
+    processedCandidates: dueDeaths.length,
+  };
 }
 
 export async function resolveDogDeaths(args: {
@@ -560,7 +578,13 @@ export async function resolveDogDeaths(args: {
   kennelId?: string;
   dogIds?: string[];
   tx?: Prisma.TransactionClient;
-}): Promise<{ deceasedDogIds: string[]; deceasedDogs: ResolvedDogDeath[] }> {
+}): Promise<{
+  deceasedDogIds: string[];
+  deceasedDogs: ResolvedDogDeath[];
+  candidatesEvaluated: number;
+  dueCandidates: number;
+  processedCandidates: number;
+}> {
   if (args.tx) {
     return resolveDogDeathsWithClient({
       client: args.tx,

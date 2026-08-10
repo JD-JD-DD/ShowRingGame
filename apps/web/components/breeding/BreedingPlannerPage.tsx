@@ -12,7 +12,6 @@ import {
   getIndividualBreedingEligibility,
   type BreedingEligibilityReasonCode,
 } from "@/server/services/breedingEligibility.service";
-import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -29,6 +28,7 @@ type BreedingPlannerPageProps = {
   searchParams?: Promise<{
     dogId?: string | string[];
     studListingId?: string | string[];
+    breedCode2?: string | string[];
   }>;
 };
 
@@ -280,19 +280,17 @@ export default async function BreedingPlannerPage({
   }
 
   const currentEpoch = getCurrentEpoch();
-  await measureBreedingRouteStage({
-    timer,
-    route,
-    operation: "lifecycle_resolution",
-    execution: "sequential",
-    action: () => resolveDogDeaths({ kennelId: kennel.id, currentEpoch }),
-  });
   const initialDogId = experience === "worksheet"
     ? null
     : firstQueryValue(resolvedSearchParams.dogId);
   const initialStudListingId = experience === "worksheet"
     ? null
     : firstQueryValue(resolvedSearchParams.studListingId);
+  const initialBreedCode2 =
+    experience === "worksheet"
+      ? firstQueryValue(resolvedSearchParams.breedCode2)?.trim().toUpperCase() ||
+        null
+      : null;
 
   const directRouteContext: DirectBreedingRouteContext | null =
     experience === "breed-dog" && initialDogId
@@ -342,6 +340,10 @@ export default async function BreedingPlannerPage({
                   status: "ACTIVE",
                   sellerKennelId: {
                     not: kennel.id,
+                  },
+                  dog: {
+                    lifecycleState: "ALIVE",
+                    sex: "M",
                   },
                 },
                 select: {
@@ -524,53 +526,26 @@ export default async function BreedingPlannerPage({
       return [];
     }
 
-    const activeStudDogIds = await measureBreedingRouteStage({
-      timer,
-      route,
-      operation: "active_stud_lookup",
-      execution:
-        experience === "breed-dog" ? "concurrent" : "sequential",
-      action: () =>
-        db.dogListing.findMany({
-          where: {
-            sellerType: "PLAYER",
-            listingType: PLAYER_STUD_LISTING_TYPE,
-            status: "ACTIVE",
-            sellerKennelId: {
-              not: kennel.id,
-            },
-            ...(useOptimizedDirectRoute
-              ? {
-                  dog: {
-                    breedCode2: directRouteContext.anchorBreedCode2,
-                    sex: "M",
-                  },
-                }
-              : {}),
-          },
-          select: {
-            dogId: true,
-          },
-        }),
-      details: (rows) => ({
-        rowCount: rows.length,
-      }),
-    });
+    const publicStudBreedCode2 =
+      directRouteContext?.selectedStudListingId
+        ? directRouteContext.anchorBreedCode2
+        : initialBreedCode2;
+    const isDirectStudSelection = Boolean(
+      directRouteContext?.selectedStudListingId
+    );
 
-    await measureBreedingRouteStage({
-      timer,
-      route,
-      operation: "public_stud_lifecycle_resolution",
-      execution: "sequential",
-      action: () =>
-        resolveDogDeaths({
-          currentEpoch,
-          dogIds: activeStudDogIds.map((listing) => listing.dogId),
-        }),
-      details: () => ({
-        rowCount: activeStudDogIds.length,
-      }),
-    });
+    if (!publicStudBreedCode2) {
+      console.info("route-perf", {
+        route,
+        operation: "public_stud_listing_query",
+        execution: "sequential",
+        elapsedMs: 0,
+        rowCount: 0,
+        skipped: true,
+        reason: "breed_context_required",
+      });
+      return [];
+    }
 
     return measureBreedingRouteStage({
       timer,
@@ -587,6 +562,9 @@ export default async function BreedingPlannerPage({
             sellerKennelId: {
               not: kennel.id,
             },
+            ...(isDirectStudSelection
+              ? { id: directRouteContext!.selectedStudListingId! }
+              : {}),
             dog: {
               lifecycleState: "ALIVE",
               isPlayerVisible: true,
@@ -594,11 +572,7 @@ export default async function BreedingPlannerPage({
               ownerKennelId: {
                 not: null,
               },
-              ...(useOptimizedDirectRoute
-                ? {
-                    breedCode2: directRouteContext.anchorBreedCode2,
-                  }
-                : {}),
+              breedCode2: publicStudBreedCode2,
             },
           },
           orderBy: [
@@ -606,7 +580,7 @@ export default async function BreedingPlannerPage({
             { askingPrice: "asc" },
             { listedAtEpoch: "desc" },
           ],
-          take: 200,
+          take: isDirectStudSelection ? 1 : 200,
           select: {
             id: true,
             askingPrice: true,
@@ -1025,7 +999,7 @@ export default async function BreedingPlannerPage({
       </div>
 
       <BreedPageClient
-        key={initialDogId ?? initialStudListingId ?? experience}
+        key={initialDogId ?? initialStudListingId ?? initialBreedCode2 ?? experience}
         experience={experience}
         returnMode={returnMode}
         kennelId={kennel.id}
@@ -1036,6 +1010,7 @@ export default async function BreedingPlannerPage({
         )}
         pedigree={pedigree}
         currentEpoch={currentEpoch}
+        initialBreedCode2={initialBreedCode2}
         initialDogId={initialDogId}
         initialStudListingId={initialStudListingId}
         initialNotice={initialNotice}

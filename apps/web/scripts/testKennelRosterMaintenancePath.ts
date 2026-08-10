@@ -20,6 +20,7 @@ const mineRoute = source("apps/web/app/api/dogs/mine/route.ts");
 const breedingService = source("apps/web/server/services/breeding.service.ts");
 const dogProfileService = source("apps/web/server/services/dog.service.ts");
 const cronRoute = source("apps/web/app/api/cron/resolve-breeding-progress/route.ts");
+const mortalityCronRoute = source("apps/web/app/api/cron/resolve-dog-mortality/route.ts");
 const plannerRoute = source("apps/web/app/api/kennel/program-planner/route.ts");
 const lifecycleService = source("apps/web/server/services/lifecycle.service.ts");
 const vercelConfig = source("apps/web/vercel.json");
@@ -32,10 +33,10 @@ assertIncludes(
   "export async function resolveDueBreedingProgressForKennel(",
   "breeding service exposes a kennel-scoped due-breeding resolver without the full maintenance bundle"
 );
-assertIncludes(
+assertExcludes(
   breedingService,
-  "await resolveDogDeaths({ kennelId, currentEpoch });",
-  "full kennel breeding resolver still preserves death resolution for authoritative non-roster callers"
+  "resolveDogDeaths(",
+  "breeding maintenance no longer advances generic mortality"
 );
 assertIncludes(
   breedingService,
@@ -99,10 +100,10 @@ assertIncludes(
   "kennel roster measures payload serialization separately"
 );
 
-assertIncludes(
+assertExcludes(
   dogProfileService,
-  'resolveDogDeaths({ currentEpoch, dogIds: [dogId] })',
-  "dog page remains an authoritative narrow death-resolution fallback"
+  "resolveDogDeaths(",
+  "dog profile reads persisted lifecycle state without resolving mortality"
 );
 assertIncludes(
   dogProfileService,
@@ -114,10 +115,10 @@ assertIncludes(
   'await measure("resolveBreedingProgressMs"',
   "dog page continues to time the owned-dam breeding fallback"
 );
-assertIncludes(
+assertExcludes(
   plannerRoute,
-  "await resolveDogDeaths({ kennelId: kennel.id, currentEpoch });",
-  "program planner keeps its explicit kennel death-resolution trigger"
+  "resolveDogDeaths(",
+  "program planner reads persisted lifecycle state without resolving mortality"
 );
 assertIncludes(
   plannerRoute,
@@ -144,6 +145,26 @@ assertIncludes(
   vercelConfig,
   '"path": "/api/cron/resolve-breeding-progress"',
   "Vercel cron still schedules breeding progress resolution"
+);
+assertIncludes(
+  vercelConfig,
+  '"path": "/api/cron/resolve-dog-mortality"',
+  "Vercel schedules the dedicated global mortality cron"
+);
+assertIncludes(
+  vercelConfig,
+  '"schedule": "* * * * *"',
+  "mortality cron runs every minute so each whole game-hour boundary is processed promptly"
+);
+assertIncludes(
+  mortalityCronRoute,
+  "const currentEpoch = getCurrentEpoch();",
+  "mortality cron obtains the authoritative server epoch"
+);
+assertIncludes(
+  mortalityCronRoute,
+  "resolveDogDeaths({ currentEpoch })",
+  "mortality cron invokes the global canonical resolver"
 );
 assertIncludes(
   vercelConfig,

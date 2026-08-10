@@ -92,6 +92,7 @@ type Props = {
   kennelName: string;
   kennelBalance: number;
   currentEpoch: number;
+  initialBreedCode2: string | null;
   pedigree: PlannerPedigreeDog[];
   dogs: DogCardDto[];
   initialDogId: string | null;
@@ -625,6 +626,7 @@ function TraitNumberGrid({
 function DogOptionCard({
   dog,
   currentEpoch,
+  initialBreedCode2,
   selected,
   pairingDam,
   pedigree,
@@ -1648,7 +1650,7 @@ export default function BreedPageClient({
   const anchorDog = initialDog ?? initialStud;
   const initialBreedCode =
     experience === "worksheet"
-      ? ""
+      ? initialBreedCode2 ?? ""
       : initialDog?.breedCode2 ?? initialStud?.breedCode2 ?? "";
   const [breedCode2, setBreedCode2] = useState(initialBreedCode);
   const [damId, setDamId] = useState(
@@ -1795,6 +1797,14 @@ export default function BreedPageClient({
     setShortlistedSireIds([]);
     setTestDamBrucellosis(false);
     setTestSireBrucellosis(false);
+
+    if (experience === "worksheet") {
+      router.replace(
+        nextBreedCode
+          ? `${pathname}?breedCode2=${encodeURIComponent(nextBreedCode)}`
+          : pathname
+      );
+    }
   }
 
   function chooseDam(nextDamId: string) {

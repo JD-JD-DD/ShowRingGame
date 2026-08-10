@@ -16,10 +16,7 @@ import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
 } from "@/server/services/dogVisibleCategories.service";
-import {
-  markDogDeceased,
-  resolveDogDeaths,
-} from "@/server/services/lifecycle.service";
+import { markDogDeceased } from "@/server/services/lifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
@@ -1082,8 +1079,6 @@ export async function resolveBreedingProgressForKennel(args: {
 }): Promise<BreedingProgressResolutionSummary> {
   const { kennelId, currentEpoch } = args;
 
-  await resolveDogDeaths({ kennelId, currentEpoch });
-
   return resolveDueBreedingProgress({ kennelId, currentEpoch });
 }
 
@@ -1239,9 +1234,6 @@ export async function createBreedingAttemptForKennel(args: {
     studListingId,
     currentEpoch,
   } = args;
-
-  await resolveDogDeaths({ kennelId, currentEpoch });
-  await resolveDogDeaths({ currentEpoch, dogIds: [primaryDogId, mateDogId] });
 
   const [primaryDog, mateDog] = await Promise.all([
     getDogForBreeding(primaryDogId),

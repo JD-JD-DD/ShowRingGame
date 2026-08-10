@@ -12,7 +12,6 @@ import {
 } from "@/server/services/market.service";
 import { listKennelRuns } from "@/server/services/kennelRunManagement.service";
 import { UNCATEGORIZED_KENNEL_RUN_NAME } from "@/server/services/kennelRun.service";
-import { resolveDogDeaths } from "@/server/services/lifecycle.service";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
 import { assertCanCreateOwnerHandledEntriesForCluster } from "@/server/services/kennelService.service";
 import {
@@ -1183,11 +1182,6 @@ export async function createShowEntry(args: {
 }): Promise<CreatedShowEntryDto> {
   const { dogId, judgingBlockId, currentEpoch, ownerKennelId, handlerUsed } = args;
 
-  await resolveDogDeaths({
-    currentEpoch,
-    ...(ownerKennelId ? { kennelId: ownerKennelId } : { dogIds: [dogId] }),
-  });
-
   return db.$transaction(async (tx) => {
     const [dog, block] = await Promise.all([
       tx.dog.findUnique({
@@ -1310,8 +1304,6 @@ export async function listEligibleDogsByShowBlock(args: {
   currentEpoch: number;
 }): Promise<EligibleDogsByBlockDto> {
   const { showId, kennelId, currentEpoch } = args;
-  await resolveDogDeaths({ kennelId, currentEpoch });
-
   const blocks = await db.showJudgingBlock.findMany({
     where: {
       showDay: {
@@ -1401,8 +1393,6 @@ export async function listEligibleDogsForShowBlock(args: {
   currentEpoch: number;
 }): Promise<EligibleShowDogDto[]> {
   const { judgingBlockId, kennelId, currentEpoch } = args;
-  await resolveDogDeaths({ kennelId, currentEpoch });
-
   const block = await db.showJudgingBlock.findUnique({
     where: { id: judgingBlockId },
     ...showBlockForEntryArgs,
@@ -1467,8 +1457,6 @@ export async function listShowEntryBreedOptions(args: {
   currentEpoch: number;
 }): Promise<ShowEntryBreedOptionDto[]> {
   const { showId, kennelId, currentEpoch } = args;
-  await resolveDogDeaths({ kennelId, currentEpoch });
-
   const cluster = await db.showCluster.findUnique({
     where: { id: showId },
     include: {
@@ -1588,8 +1576,6 @@ export async function listShowEntryKennelRunOptions(args: {
   currentEpoch: number;
 }): Promise<ShowEntryKennelRunOptionDto[]> {
   const { showId, kennelId, currentEpoch } = args;
-  await resolveDogDeaths({ kennelId, currentEpoch });
-
   const cluster = await db.showCluster.findUnique({
     where: { id: showId },
     include: {
@@ -1770,8 +1756,6 @@ export async function getShowEntryPlanner(args: {
 }): Promise<ShowEntryPlannerDto> {
   const { showId, kennelId, currentEpoch, selectedDogIds } = args;
   const scope = normalizePlannerScope(args.scope);
-  await resolveDogDeaths({ kennelId, currentEpoch });
-
   const cluster = await db.showCluster.findUnique({
     where: { id: showId },
     include: {
@@ -2109,8 +2093,6 @@ export async function createShowEntriesForCluster(args: {
   mode?: "SELECTED" | "ALL_ELIGIBLE";
 }): Promise<BulkShowEntryResultDto> {
   const { showId, kennelId, currentEpoch } = args;
-  await resolveDogDeaths({ kennelId, currentEpoch });
-
   const scope = normalizePlannerScope(args.scope);
   const selections = uniqueSelections(args.selections);
   const mode = args.mode ?? "SELECTED";
