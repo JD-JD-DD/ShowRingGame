@@ -19,7 +19,7 @@ function parseBatchSize(value: string | undefined): number {
   return Math.min(parsed, MAX_EXPIRATION_BATCH_SIZE);
 }
 
-export async function POST(request: Request) {
+async function runJob(request: Request) {
   const startedAtMs = Date.now();
   const cronSecret = process.env.CRON_SECRET;
   const manualSecret = process.env.SHOWRING_JOBS_SECRET;
@@ -75,4 +75,12 @@ export async function POST(request: Request) {
       500
     );
   }
+}
+
+export async function POST(request: Request) {
+  return runJob(request);
+}
+
+export async function GET(request: Request) {
+  return runJob(request);
 }
