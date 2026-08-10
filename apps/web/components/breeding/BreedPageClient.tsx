@@ -626,7 +626,6 @@ function TraitNumberGrid({
 function DogOptionCard({
   dog,
   currentEpoch,
-  initialBreedCode2,
   selected,
   pairingDam,
   pedigree,
@@ -1624,6 +1623,7 @@ export default function BreedPageClient({
   kennelName,
   kennelBalance,
   currentEpoch,
+  initialBreedCode2,
   pedigree,
   dogs,
   initialDogId,
