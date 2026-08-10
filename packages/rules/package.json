@@ -12,6 +12,7 @@
     "audit:health": "tsx src/auditHealthDistribution.ts",
     "test:coi": "tsx src/testCoi.ts",
     "test:health": "tsx src/testHealth.ts",
+    "test:litter-construction": "tsx src/testLitterConstruction.ts",
     "test:reproductive-emergency": "tsx src/testReproductiveEmergency.ts",
     "test:presentation": "tsx src/testPresentationModifiers.ts",
     "test:select-awards": "tsx src/testSelectAwards.ts",

@@ -17,6 +17,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/jobs/process-emergency-vet-care",
+      "schedule": "17 * * * *"
+    },
+    {
       "path": "/api/jobs/maintain-show-schedule",
       "schedule": "*/30 * * * *"
     }

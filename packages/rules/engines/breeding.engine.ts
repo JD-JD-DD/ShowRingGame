@@ -89,6 +89,7 @@ export type ResolveWhelpInput = {
   damTraits: DogTraits;
   coiPercent: number;
   coiGenerationDepth: number;
+  allowSinglePuppy?: boolean;
   random01?: () => number;
 };
 
@@ -326,6 +327,7 @@ const { litter, puppies } = createLitter({
   damTraits: input.damTraits,
   coiPercent: input.coiPercent,
   coiGenerationDepth: input.coiGenerationDepth,
+  allowSinglePuppy: input.allowSinglePuppy,
   random01,
 });
 

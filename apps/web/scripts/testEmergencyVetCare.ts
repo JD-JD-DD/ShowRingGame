@@ -400,7 +400,17 @@ assertIncludes(
 assertIncludes(
   expirationJobRoute,
   "SHOWRING_JOBS_SECRET",
-  "expiration job uses the existing job secret convention"
+  "expiration job retains the manual job secret convention"
+);
+assertIncludes(
+  expirationJobRoute,
+  "CRON_SECRET",
+  "expiration job accepts the Vercel Cron secret"
+);
+assertIncludes(
+  expirationJobRoute,
+  "isAuthorizedJobRequest",
+  "expiration job uses the shared cron/manual authorization helper"
 );
 assertIncludes(
   expirationJobRoute,

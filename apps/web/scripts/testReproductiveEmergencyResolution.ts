@@ -12,6 +12,8 @@ assert.match(resolver, /args\.currentEpoch <= event\.responseDeadlineEpoch/);
 assert.match(resolver, /resolveReproductiveEmergencyOutcome/);
 assert.match(resolver, /status: treated \? "RESOLVED_TREATED" : "RESOLVED_UNTREATED"/);
 assert.match(resolver, /pupCount: outcome\.survivingPuppyCount/);
+assert.match(resolver, /allowSinglePuppy: true/);
+assert.match(resolver, /if \(outcome\.survivingPuppyCount > 0\)/);
 assert.match(resolver, /getReproductiveEmergencyOutcomeNoticeSourceKey/);
 assert.match(resolver, /markDogDeceased/);
 assert.match(resolver, /processExpiredReproductiveEmergencyEvents/);

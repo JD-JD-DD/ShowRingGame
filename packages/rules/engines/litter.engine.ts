@@ -39,6 +39,7 @@ export type CreateLitterInput = {
   damTraits: DogTraits;
   coiPercent: number;
   coiGenerationDepth: number;
+  allowSinglePuppy?: boolean;
   random01?: () => number;
 };
 
@@ -141,9 +142,10 @@ export function createLitter(input: CreateLitterInput): LitterWithDogs {
     throw new Error("breedCode2 must be two uppercase letters.");
   }
 
-  if (input.pupCount < MIN_LITTER_SIZE || input.pupCount > MAX_LITTER_SIZE) {
+  const minimumPupCount = input.allowSinglePuppy ? 1 : MIN_LITTER_SIZE;
+  if (input.pupCount < minimumPupCount || input.pupCount > MAX_LITTER_SIZE) {
     throw new Error(
-      `pupCount must be between ${MIN_LITTER_SIZE} and ${MAX_LITTER_SIZE}.`
+      `pupCount must be between ${minimumPupCount} and ${MAX_LITTER_SIZE}.`
     );
   }
 
