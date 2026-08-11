@@ -13,11 +13,12 @@ type ParentDogInput = {
 };
 
 type LitterListPuppyPreviewInput = ParentDogInput & {
-  visibilityState: string;
+  visibilityState?: string;
   litterOrder: number | null;
 };
 
-type PuppyDogInput = LitterListPuppyPreviewInput & {
+type PuppyDogInput = Omit<LitterListPuppyPreviewInput, "visibilityState"> & {
+  visibilityState: string;
   birthEpoch: number;
   deathEpoch: number | null;
   lifecycleState: string;
@@ -60,6 +61,14 @@ type LitterListInput = {
     name: string;
   } | null;
   puppies: LitterListPuppyPreviewInput[];
+  puppySummary?: LitterPuppySummary;
+};
+
+export type LitterPuppySummary = {
+  survivedCount: number;
+  neonatalLossCount: number;
+  maleCount: number;
+  femaleCount: number;
 };
 
 type LitterDetailInput = {
@@ -192,10 +201,21 @@ export function mapLitterListItem(
   litter: LitterListInput,
   currentEpoch: number
 ): LitterListItemDto {
-  const visiblePuppies = litter.puppies.filter(
-    (puppy) => puppy.visibilityState !== "HIDDEN_NEONATAL_LOSS"
-  );
-  const neonatalLossCount = litter.puppies.length - visiblePuppies.length;
+  const puppySummary = litter.puppySummary ?? {
+    survivedCount: litter.puppies.filter(
+      (puppy) => puppy.visibilityState !== "HIDDEN_NEONATAL_LOSS"
+    ).length,
+    neonatalLossCount: litter.puppies.filter(
+      (puppy) => puppy.visibilityState === "HIDDEN_NEONATAL_LOSS"
+    ).length,
+    maleCount: litter.puppies.filter((puppy) => puppy.sex === "M").length,
+    femaleCount: litter.puppies.filter((puppy) => puppy.sex === "F").length,
+  };
+  const previewPuppies = litter.puppySummary
+    ? litter.puppies
+    : litter.puppies.filter(
+        (puppy) => puppy.visibilityState !== "HIDDEN_NEONATAL_LOSS"
+      );
 
   return {
     litterId: litter.id,
@@ -205,15 +225,15 @@ export function mapLitterListItem(
     bornEpoch: litter.bornEpoch,
     ageHours: Math.max(0, currentEpoch - litter.bornEpoch),
     pupCount: litter.pupCount,
-    survivedCount: visiblePuppies.length,
-    neonatalLossCount,
-    maleCount: litter.puppies.filter((puppy) => puppy.sex === "M").length,
-    femaleCount: litter.puppies.filter((puppy) => puppy.sex === "F").length,
+    survivedCount: puppySummary.survivedCount,
+    neonatalLossCount: puppySummary.neonatalLossCount,
+    maleCount: puppySummary.maleCount,
+    femaleCount: puppySummary.femaleCount,
     createdAt: litter.createdAt.toISOString(),
     bredByKennelName: litter.bredByKennel?.name ?? null,
     sire: mapParent(litter.sire),
     dam: mapParent(litter.dam),
-    puppiesPreview: visiblePuppies.slice(0, 4).map(mapPuppyPreview),
+    puppiesPreview: previewPuppies.slice(0, 4).map(mapPuppyPreview),
   };
 }
 

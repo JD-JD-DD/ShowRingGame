@@ -10,6 +10,7 @@ import {
   mapLitterListItem,
   type LitterDetailDto,
   type LitterListItemDto,
+  type LitterPuppySummary,
 } from "@/server/mappers/litter.mapper";
 
 const DEFAULT_LITTER_PAGE_SIZE = 10;
@@ -55,7 +56,13 @@ const litterListSelect = Prisma.validator<Prisma.LitterSelect>()({
     },
   },
   puppies: {
+    where: {
+      visibilityState: {
+        not: "HIDDEN_NEONATAL_LOSS",
+      },
+    },
     orderBy: [{ litterOrder: "asc" }, { regNumber: "asc" }],
+    take: 4,
     select: {
       id: true,
       callName: true,
@@ -64,7 +71,6 @@ const litterListSelect = Prisma.validator<Prisma.LitterSelect>()({
       visibleTitlePrefix: true,
       visibleTitleSuffix: true,
       sex: true,
-      visibilityState: true,
       litterOrder: true,
     },
   },
@@ -303,6 +309,61 @@ function makeLitterCursor(litter: {
   };
 }
 
+async function loadLitterPuppySummaries(litterIds: string[]) {
+  const summaries = new Map<string, LitterPuppySummary>(
+    litterIds.map((litterId) => [
+      litterId,
+      {
+        survivedCount: 0,
+        neonatalLossCount: 0,
+        maleCount: 0,
+        femaleCount: 0,
+      },
+    ])
+  );
+
+  if (litterIds.length === 0) {
+    return summaries;
+  }
+
+  const counts = await db.dog.groupBy({
+    by: ["litterId", "sex", "visibilityState"],
+    where: {
+      litterId: {
+        in: litterIds,
+      },
+    },
+    _count: {
+      _all: true,
+    },
+  });
+
+  for (const count of counts) {
+    if (!count.litterId) {
+      continue;
+    }
+
+    const summary = summaries.get(count.litterId);
+    if (!summary) {
+      continue;
+    }
+
+    if (count.visibilityState === "HIDDEN_NEONATAL_LOSS") {
+      summary.neonatalLossCount += count._count._all;
+    } else {
+      summary.survivedCount += count._count._all;
+    }
+
+    if (count.sex === "M") {
+      summary.maleCount += count._count._all;
+    } else {
+      summary.femaleCount += count._count._all;
+    }
+  }
+
+  return summaries;
+}
+
 async function loadLitterListPageForKennel(args: {
   kennelId: string;
   currentEpoch: number;
@@ -325,9 +386,20 @@ async function loadLitterListPageForKennel(args: {
 
   const hasMore = litters.length > pageSize;
   const pageLitters = hasMore ? litters.slice(0, pageSize) : litters;
+  const puppySummaries = await loadLitterPuppySummaries(
+    pageLitters.map((litter) => litter.id)
+  );
 
   return {
-    litters: pageLitters.map((litter) => mapLitterListItem(litter, currentEpoch)),
+    litters: pageLitters.map((litter) =>
+      mapLitterListItem(
+        {
+          ...litter,
+          puppySummary: puppySummaries.get(litter.id),
+        },
+        currentEpoch
+      )
+    ),
     nextCursor:
       hasMore && pageLitters.length > 0
         ? makeLitterCursor(pageLitters[pageLitters.length - 1])
