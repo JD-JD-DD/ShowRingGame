@@ -41,6 +41,14 @@ function statusMessage(message: string | null, isError = false) {
   );
 }
 
+function withKennelRunContext(action: string, kennelRunId?: string | null) {
+  if (!kennelRunId) return action;
+
+  const url = new URL(action, "http://dog-page.local");
+  url.searchParams.set("kennelRunId", kennelRunId);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 function healthStatusLabel(profile: DogProfileDto): string {
   const summary = profile.snapshot.healthTestingSummary;
   if (summary.completedCount === 0) return "Not tested";
@@ -110,7 +118,26 @@ function formatBreedingSafetyCost(amount: number): string {
 }
 
 export default function DogProfileDashboard(props: Props) {
-  const { profile } = props;
+  const profile =
+    props.kennelRunId && props.profile.entries
+      ? {
+          ...props.profile,
+          entries: {
+            ...props.profile.entries,
+            nextEntries: props.profile.entries.nextEntries.map((entry) =>
+              entry.pullEntryActionUrl
+                ? {
+                    ...entry,
+                    pullEntryActionUrl: withKennelRunContext(
+                      entry.pullEntryActionUrl,
+                      props.kennelRunId
+                    ),
+                  }
+                : entry
+            ),
+          },
+        }
+      : props.profile;
   const { header, snapshot, viewerContext } = profile;
   const healthControls = profile.healthTesting.ownerControls;
   const saleListing = profile.breedingAndProduction.activeSaleListing;
@@ -346,7 +373,10 @@ export default function DogProfileDashboard(props: Props) {
                   </div>
                   {viewerContext.canManage ? (
                     <form
-                      action={`/api/dogs/${header.dogId}/brucellosis-screening`}
+                      action={withKennelRunContext(
+                        `/api/dogs/${header.dogId}/brucellosis-screening`,
+                        props.kennelRunId
+                      )}
                       method="post"
                       className="mt-3"
                     >
@@ -400,7 +430,7 @@ export default function DogProfileDashboard(props: Props) {
 
       {viewerContext.canViewPrivatePlanning && profile.privatePlanning ? <CollapsibleDogSection title="Private Planner" description="Owner-only notes and program tags." className={`${PANEL_CLASS} order-8 lg:col-span-2 lg:order-8`} contentClassName="mt-4 space-y-4" titleClassName="text-xl">
         {profile.privatePlanning.programPlannerTags.map((tag) => <div key={`${tag.tagTypeLabel}-${tag.updatedAt}`} className={`${CARD_CLASS} dog-copy text-sm`}><div className="flex justify-between gap-2"><span className="dog-heading font-semibold">{tag.tagTypeLabel}</span><span className="dog-label text-xs">{tag.goalLabel}</span></div><div className="mt-2 whitespace-pre-wrap">{tag.note ?? "No planner note saved."}</div></div>)}
-        {profile.privatePlanning.canEditNotes ? <DogPrivateNotesEditor action={`/api/dogs/${header.dogId}/notes`} initialNotes={profile.privatePlanning.notes ?? ""} notesError={props.notesError} notesMessage={props.notesMessage} /> : null}
+        {profile.privatePlanning.canEditNotes ? <DogPrivateNotesEditor action={withKennelRunContext(`/api/dogs/${header.dogId}/notes`, props.kennelRunId)} initialNotes={profile.privatePlanning.notes ?? ""} notesError={props.notesError} notesMessage={props.notesMessage} /> : null}
       </CollapsibleDogSection> : null}
     </section>
   );

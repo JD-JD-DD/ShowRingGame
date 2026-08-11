@@ -217,6 +217,9 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const saleListing = profile.breedingAndProduction.activeSaleListing;
   const studListing = profile.breedingAndProduction.activeStudListing;
   const grooming = profile.groomingDetails;
+  const dogPageMutationContext = navigationKennelRunId
+    ? `?kennelRunId=${encodeURIComponent(navigationKennelRunId)}`
+    : "";
   const dogPageReturnTo = `/dogs/${header.dogId}${navigationKennelRunId ? `?kennelRunId=${encodeURIComponent(navigationKennelRunId)}` : ""}`;
   const headerDisplayName = [
     header.visibleTitlePrefix,
@@ -437,7 +440,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
                 {actions.canOfferForSale ? (
                   <OfferDogForSaleForm
-                    action={`/api/dogs/${header.dogId}/list-for-sale`}
+                    action={`/api/dogs/${header.dogId}/list-for-sale${dogPageMutationContext}`}
                   />
                 ) : (actions.canEditSaleListing ||
                     actions.canCancelSaleListing) && saleListing ? (
@@ -445,8 +448,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     dogId={header.dogId}
                     listingId={saleListing.listingId}
                     currentPrice={saleListing.askingPrice}
-                    updateAction={`/api/market-dogs/${saleListing.listingId}/update-price`}
-                    cancelAction={`/api/market-dogs/${saleListing.listingId}/cancel`}
+                    updateAction={`/api/market-dogs/${saleListing.listingId}/update-price${dogPageMutationContext}`}
+                    cancelAction={`/api/market-dogs/${saleListing.listingId}/cancel${dogPageMutationContext}`}
                   />
                 ) : null}
 
@@ -499,7 +502,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
                 {actions.canOfferAtStud ? (
                   <OfferDogAtStudForm
-                    action={`/api/dogs/${header.dogId}/list-at-stud`}
+                    action={`/api/dogs/${header.dogId}/list-at-stud${dogPageMutationContext}`}
                   />
                 ) : (actions.canEditStudFee ||
                     actions.canCancelStudListing) && studListing ? (
@@ -507,8 +510,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     dogId={header.dogId}
                     listingId={studListing.listingId}
                     currentPrice={studListing.studFee}
-                    updateAction={`/api/stud-listings/${studListing.listingId}/update-price`}
-                    cancelAction={`/api/stud-listings/${studListing.listingId}/cancel`}
+                    updateAction={`/api/stud-listings/${studListing.listingId}/update-price${dogPageMutationContext}`}
+                    cancelAction={`/api/stud-listings/${studListing.listingId}/cancel${dogPageMutationContext}`}
                   />
                 ) : null}
               </div>
