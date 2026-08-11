@@ -60,6 +60,7 @@ type PlannerProps = {
   showRole: "PRIMARY" | "SECONDARY";
   travelCostAlreadyPlanned: boolean;
   existingDogIdsByBreed: Record<string, string[]>;
+  existingDogIdsByShowDayAndBreed: Record<string, Record<string, string[]>>;
   initiallySelectedDogIds: string[];
   initiallySelectedSelections: Array<{ dogId: string; showDayId: string }>;
   bulkEligibleSelections: Array<{ dogId: string; showDayId: string }>;
@@ -129,6 +130,7 @@ export function ShowEntryPlanner({
   showRole,
   travelCostAlreadyPlanned,
   existingDogIdsByBreed,
+  existingDogIdsByShowDayAndBreed,
   initiallySelectedDogIds,
   initiallySelectedSelections,
   bulkEligibleSelections,
@@ -156,7 +158,7 @@ export function ShowEntryPlanner({
 
   const buildQuote = useMemo(
     () => (pairs: Array<{ dogId: string; showDayId: string }>) => {
-      const selectedDaysByDogId = new Map<string, number[]>();
+      const selectedDaysByDogId = new Map<string, string[]>();
 
       for (const pair of pairs) {
         const day = days.find(
@@ -168,7 +170,7 @@ export function ShowEntryPlanner({
         }
 
         const selectedDays = selectedDaysByDogId.get(pair.dogId) ?? [];
-        selectedDays.push(day.dayIndex);
+        selectedDays.push(pair.showDayId);
         selectedDaysByDogId.set(pair.dogId, selectedDays);
       }
 
@@ -178,6 +180,7 @@ export function ShowEntryPlanner({
         ledgerBalance: kennelBalance,
         showRole,
         existingDogIdsByBreed,
+        existingDogIdsByShowDayAndBreed,
         dogs: dogs.map((dog) => ({
           dogId: dog.dogId,
           dogName: dog.displayName,
@@ -209,6 +212,7 @@ export function ShowEntryPlanner({
       days,
       dogs,
       existingDogIdsByBreed,
+      existingDogIdsByShowDayAndBreed,
       homeDistrict,
       kennelBalance,
       showRole,

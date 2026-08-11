@@ -565,6 +565,9 @@ export default async function ShowDetailPage({
                     weekendPlanStatus?.primaryClusterId
                   )}
               existingDogIdsByBreed={planner.existingDogIdsByBreed}
+              existingDogIdsByShowDayAndBreed={
+                planner.existingDogIdsByShowDayAndBreed
+              }
               initiallySelectedDogIds={[...selectedDogIds]}
               initiallySelectedSelections={selectedDogDaySelections}
               bulkEligibleSelections={planner.bulkEligibleSelections}

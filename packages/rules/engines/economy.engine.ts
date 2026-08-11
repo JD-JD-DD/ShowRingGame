@@ -225,8 +225,13 @@ export type ClusterEntryDogSelection = {
   breed: string;
   sex: "Dog" | "Bitch";
   points?: number; // only relevant if not yet a champion
-  selectedShowDays: number[];
+  selectedShowDays: Array<string | number>;
 };
+
+export type ExistingDogIdsByShowDayAndBreed = Record<
+  string,
+  Record<string, string[]>
+>;
 
 /**
  * Full quote request built from the player's current UI selections.
@@ -236,6 +241,8 @@ export type ClusterEntryQuoteInput = {
   clusterDistrict: number;
   ledgerBalance: number;
   dogs: ClusterEntryDogSelection[];
+  existingDogIdsByShowDayAndBreed?: ExistingDogIdsByShowDayAndBreed;
+  /** @deprecated Use existingDogIdsByShowDayAndBreed for day-scoped handler quotes. */
   existingDogIdsByBreed?: Record<string, string[]>;
   showRole?: "PRIMARY" | "SECONDARY";
 };
@@ -278,11 +285,53 @@ function getUniqueEnteredDogIdsByBreed(
   return dogIdsByBreed;
 }
 
+function getUniqueEnteredDogIdsByShowDayAndBreed(
+  dogs: ClusterEntryDogSelection[]
+): Map<string, Map<string, Set<string>>> {
+  const dogIdsByShowDayAndBreed = new Map<string, Map<string, Set<string>>>();
+
+  for (const dog of dogs) {
+    for (const showDayId of new Set(dog.selectedShowDays.map(String))) {
+      const dogIdsByBreed =
+        dogIdsByShowDayAndBreed.get(showDayId) ?? new Map<string, Set<string>>();
+      const dogIds = dogIdsByBreed.get(dog.breed) ?? new Set<string>();
+      dogIds.add(dog.dogId);
+      dogIdsByBreed.set(dog.breed, dogIds);
+      dogIdsByShowDayAndBreed.set(showDayId, dogIdsByBreed);
+    }
+  }
+
+  return dogIdsByShowDayAndBreed;
+}
+
 function getExistingDogIdsForBreed(
-  existingDogIdsByBreed: Record<string, string[]> | undefined,
+  input: ClusterEntryQuoteInput,
   breed: string
 ): Set<string> {
-  return new Set(existingDogIdsByBreed?.[breed] ?? []);
+  const dogIds = new Set(input.existingDogIdsByBreed?.[breed] ?? []);
+
+  for (const dogIdsByBreed of Object.values(
+    input.existingDogIdsByShowDayAndBreed ?? {}
+  )) {
+    for (const dogId of dogIdsByBreed[breed] ?? []) {
+      dogIds.add(dogId);
+    }
+  }
+
+  return dogIds;
+}
+
+function getExistingDogIdsForShowDayAndBreed(args: {
+  input: ClusterEntryQuoteInput;
+  showDayId: string;
+  breed: string;
+}): Set<string> {
+  const dayScoped =
+    args.input.existingDogIdsByShowDayAndBreed?.[args.showDayId]?.[
+      args.breed
+    ];
+
+  return new Set(dayScoped ?? args.input.existingDogIdsByBreed?.[args.breed] ?? []);
 }
 
 function getNewSelectedDogCount(args: {
@@ -300,30 +349,36 @@ function getNewSelectedDogCount(args: {
   return newDogCount;
 }
 
-function getRingsideHandlerDogs(input: ClusterEntryQuoteInput): number {
-  const selectedDogIdsByBreed = getUniqueEnteredDogIdsByBreed(input.dogs);
-  let handlerDogs = 0;
+function getHandlersRequired(dogCount: number): number {
+  const handlerCoveredDogs = Math.max(
+    0,
+    dogCount - OWNER_HANDLED_DOG_LIMIT_PER_BREED
+  );
 
-  for (const [breed, selectedDogIds] of selectedDogIdsByBreed.entries()) {
-    const existingDogIds = getExistingDogIdsForBreed(
-      input.existingDogIdsByBreed,
-      breed
-    );
-    const newDogCount = getNewSelectedDogCount({ selectedDogIds, existingDogIds });
+  return Math.ceil(handlerCoveredDogs / OWNER_HANDLED_DOG_LIMIT_PER_BREED);
+}
 
-    const existingHandlerDogs = Math.max(
-      0,
-      existingDogIds.size - OWNER_HANDLED_DOG_LIMIT_PER_BREED
-    );
-    const totalHandlerDogs = Math.max(
-      0,
-      existingDogIds.size + newDogCount - OWNER_HANDLED_DOG_LIMIT_PER_BREED
-    );
+function getRingsideHandlersRequired(input: ClusterEntryQuoteInput): number {
+  const selectedDogIdsByShowDayAndBreed =
+    getUniqueEnteredDogIdsByShowDayAndBreed(input.dogs);
+  let handlersRequired = 0;
 
-    handlerDogs += totalHandlerDogs - existingHandlerDogs;
+  for (const [showDayId, selectedDogIdsByBreed] of selectedDogIdsByShowDayAndBreed) {
+    for (const [breed, selectedDogIds] of selectedDogIdsByBreed) {
+      const existingDogIds = getExistingDogIdsForShowDayAndBreed({
+        input,
+        showDayId,
+        breed,
+      });
+      const finalDogIds = new Set([...existingDogIds, ...selectedDogIds]);
+
+      handlersRequired +=
+        getHandlersRequired(finalDogIds.size) -
+        getHandlersRequired(existingDogIds.size);
+    }
   }
 
-  return handlerDogs;
+  return handlersRequired;
 }
 
 function getTravelingHandlerDogs(input: ClusterEntryQuoteInput): number {
@@ -332,7 +387,7 @@ function getTravelingHandlerDogs(input: ClusterEntryQuoteInput): number {
 
   for (const [breed, selectedDogIds] of selectedDogIdsByBreed.entries()) {
     const existingDogIds = getExistingDogIdsForBreed(
-      input.existingDogIdsByBreed,
+      input,
       breed
     );
 
@@ -406,7 +461,7 @@ export function getClusterEntryQuote(
   const handlerDogs =
     showRole === "SECONDARY"
       ? getTravelingHandlerDogs(input)
-      : getRingsideHandlerDogs(input);
+      : getRingsideHandlersRequired(input);
   const handlerFee =
     handlerDogs *
     (showRole === "SECONDARY" ? TRAVELING_HANDLER_FEE : RINGSIDE_HANDLER_FEE);

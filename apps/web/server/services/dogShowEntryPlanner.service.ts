@@ -374,10 +374,10 @@ function buildQuotePreview(args: {
   homeDistrict: number;
   weekendPlanExists: boolean;
   showRole: "PRIMARY" | "SECONDARY";
-  existingDogIdsForBreed: string[];
-  selectedDayIndices: number[];
+  existingDogIdsByShowDayAndBreed: Record<string, Record<string, string[]>>;
+  selectedShowDayIds: string[];
 }): DogShowEntryQuotePreviewDto {
-  if (args.selectedDayIndices.length === 0) {
+  if (args.selectedShowDayIds.length === 0) {
     return buildZeroQuotePreview();
   }
 
@@ -386,16 +386,14 @@ function buildQuotePreview(args: {
     clusterDistrict: args.cluster.district,
     ledgerBalance: args.kennelBalance,
     showRole: args.showRole,
-    existingDogIdsByBreed: {
-      [args.dog.breedCode2]: args.existingDogIdsForBreed,
-    },
+    existingDogIdsByShowDayAndBreed: args.existingDogIdsByShowDayAndBreed,
     dogs: [
       {
         dogId: args.dog.id,
         dogName: formatDogDisplayName(args.dog),
         breed: args.dog.breedCode2,
         sex: args.dog.sex === "M" ? "Dog" : "Bitch",
-        selectedShowDays: args.selectedDayIndices,
+        selectedShowDays: args.selectedShowDayIds,
       },
     ],
   });
@@ -407,7 +405,7 @@ function buildQuotePreview(args: {
 
   return {
     previewKind: "ALL_SELECTABLE_DAYS",
-    selectedDayCount: args.selectedDayIndices.length,
+    selectedDayCount: args.selectedShowDayIds.length,
     entryFees: baseQuote.entryFees,
     travelCost,
     handlerFeeType: baseQuote.handlerFeeType,
@@ -640,7 +638,7 @@ export async function getDogShowEntryPlanner({
   const existingEntriesByDayId = new Map<string, ExistingEntry>();
   const dogEnteredClusterIds = new Set<string>();
   const representedClusterIds = new Set<string>();
-  const existingBreedDogIdsByClusterId = new Map<string, Set<string>>();
+  const existingBreedDogIdsByShowDayId = new Map<string, Set<string>>();
   const weekendPlanByKey = new Map(
     weekendPlans.map((plan) => [plan.weekendKey, plan])
   );
@@ -661,10 +659,10 @@ export async function getDogShowEntryPlanner({
     }
 
     if (entry.kennelId === kennelId && entry.breedCode2 === dog.breedCode2) {
-      const dogIds =
-        existingBreedDogIdsByClusterId.get(clusterId) ?? new Set<string>();
-      dogIds.add(entry.dogId);
-      existingBreedDogIdsByClusterId.set(clusterId, dogIds);
+      const dayDogIds =
+        existingBreedDogIdsByShowDayId.get(entry.showDayId) ?? new Set<string>();
+      dayDogIds.add(entry.dogId);
+      existingBreedDogIdsByShowDayId.set(entry.showDayId, dayDogIds);
     }
   }
 
@@ -790,9 +788,9 @@ export async function getDogShowEntryPlanner({
       dogAlreadyEnteredInCluster,
       kennelRepresentedInCluster,
     });
-    const selectedDayIndices = days
+    const selectedShowDayIds = days
       .filter((day) => day.canSelect)
-      .map((day) => day.dayIndex);
+      .map((day) => day.showDayId);
     const quotePreview = buildQuotePreview({
       dog,
       cluster,
@@ -800,10 +798,18 @@ export async function getDogShowEntryPlanner({
       homeDistrict: kennel.homeDistrict ?? cluster.district,
       weekendPlanExists: Boolean(weekendPlan),
       showRole,
-      existingDogIdsForBreed: [
-        ...(existingBreedDogIdsByClusterId.get(cluster.id) ?? new Set<string>()),
-      ],
-      selectedDayIndices,
+      existingDogIdsByShowDayAndBreed: Object.fromEntries(
+        cluster.showDays.map((showDay) => [
+          showDay.id,
+          {
+            [dog.breedCode2]: [
+              ...(existingBreedDogIdsByShowDayId.get(showDay.id) ??
+                new Set<string>()),
+            ],
+          },
+        ])
+      ),
+      selectedShowDayIds,
     });
 
     return {

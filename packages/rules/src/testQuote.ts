@@ -150,8 +150,8 @@ assertEqual(fourDogsOneBreed.handlerDogs, 1, "4 dogs in one breed");
 assertEqual(threeDogsTwoBreeds.handlerDogs, 0, "3 dogs in each of two breeds");
 assertEqual(
   addThreeAfterThreeExisting.handlerDogs,
-  3,
-  "3 new dogs after 3 existing"
+  1,
+  "3 new dogs after 3 existing require one handler"
 );
 assertEqual(
   addDayForExistingDogs.handlerDogs,
@@ -169,6 +169,59 @@ assertEqual(
   0,
   "secondary existing dog additional days"
 );
+
+function handlerQuote(args: {
+  existing?: Record<string, Record<string, string[]>>;
+  dogs: Array<{ dogId: string; breed: string; showDayIds: string[] }>;
+}) {
+  return getClusterEntryQuote({
+    homeDistrict: 3,
+    clusterDistrict: 3,
+    ledgerBalance: 10_000,
+    existingDogIdsByShowDayAndBreed: args.existing,
+    dogs: args.dogs.map((dog) => ({
+      dogId: dog.dogId,
+      dogName: dog.dogId,
+      breed: dog.breed,
+      sex: "Dog" as const,
+      selectedShowDays: dog.showDayIds,
+    })),
+  });
+}
+
+function dogs(breed: string, count: number, showDayIds: string[]) {
+  return Array.from({ length: count }, (_, index) => ({
+    dogId: `${breed}-${index + 1}`,
+    breed,
+    showDayIds,
+  }));
+}
+
+assertEqual(handlerQuote({ dogs: dogs("A", 3, ["fri"]) }).handlerFee, 0, "A: three dogs need no handler");
+assertEqual(handlerQuote({ dogs: dogs("A", 4, ["fri"]) }).handlerFee, 100, "B: four dogs need one handler");
+assertEqual(handlerQuote({ dogs: dogs("A", 6, ["fri"]) }).handlerFee, 100, "C: six dogs share one handler");
+assertEqual(handlerQuote({ dogs: dogs("A", 7, ["fri"]) }).handlerFee, 200, "D: seven dogs need two handlers");
+assertEqual(handlerQuote({ dogs: dogs("A", 3, ["fri"]) }).handlerDogs, 0, "A: handler count is zero");
+assertEqual(handlerQuote({ dogs: dogs("A", 4, ["fri"]) }).handlerDogs, 1, "B: handler count is one");
+assertEqual(handlerQuote({ dogs: dogs("A", 6, ["fri"]) }).handlerDogs, 1, "C: handler count is one");
+assertEqual(handlerQuote({ dogs: dogs("A", 7, ["fri"]) }).handlerDogs, 2, "D: handler count is two");
+assertEqual(handlerQuote({ dogs: [...dogs("A", 3, ["fri"]), ...dogs("B", 2, ["fri"]), ...dogs("C", 3, ["fri"])] }).handlerFee, 0, "E: breed allowances stay independent");
+assertEqual(handlerQuote({ dogs: [...dogs("A", 3, ["fri"]), ...dogs("B", 2, ["fri"]), ...dogs("C", 4, ["fri"])] }).handlerFee, 100, "F: only the fourth C dog requires a handler");
+assertEqual(handlerQuote({ dogs: [...dogs("A", 4, ["fri"]), ...dogs("B", 3, ["sat"])] }).handlerFee, 100, "G: Friday and Saturday stay independent");
+assertEqual(handlerQuote({ dogs: [...dogs("A", 4, ["fri"]), ...dogs("A", 4, ["sat"])] }).handlerFee, 200, "H: each day requires its own handler");
+assertEqual(handlerQuote({ dogs: [...dogs("A", 4, ["fri"]), ...dogs("B", 4, ["fri"])] }).handlerFee, 200, "I: each breed requires its own handler");
+assertEqual(handlerQuote({ existing: { fri: { A: ["A-1", "A-2", "A-3"] } }, dogs: [{ dogId: "A-4", breed: "A", showDayIds: ["fri"] }] }).handlerFee, 100, "J: the fourth incremental dog adds one handler");
+assertEqual(handlerQuote({ existing: { fri: { A: ["A-1", "A-2"] } }, dogs: ["A-3", "A-4", "A-5"].map((dogId) => ({ dogId, breed: "A", showDayIds: ["fri"] })) }).handlerFee, 100, "K: five final dogs still require one handler");
+assertEqual(handlerQuote({ dogs: dogs("A", 3, ["fri", "sat"]) }).handlerFee, 0, "L: the same dogs are counted independently per day");
+
+const transitionFees = [
+  handlerQuote({ dogs: dogs("A", 3, ["fri"]) }).handlerFee,
+  handlerQuote({ existing: { fri: { A: dogs("A", 3, ["fri"]).map((dog) => dog.dogId) } }, dogs: [{ dogId: "A-4", breed: "A", showDayIds: ["fri"] }] }).handlerFee,
+  handlerQuote({ existing: { fri: { A: dogs("A", 4, ["fri"]).map((dog) => dog.dogId) } }, dogs: dogs("A", 1, ["fri"]).map((dog) => ({ ...dog, dogId: "A-5" })) }).handlerFee,
+  handlerQuote({ existing: { fri: { A: dogs("A", 5, ["fri"]).map((dog) => dog.dogId) } }, dogs: [{ ...dogs("A", 1, ["fri"])[0], dogId: "A-6" }] }).handlerFee,
+  handlerQuote({ existing: { fri: { A: dogs("A", 6, ["fri"]).map((dog) => dog.dogId) } }, dogs: [{ ...dogs("A", 1, ["fri"])[0], dogId: "A-7" }] }).handlerFee,
+];
+assertEqual(transitionFees.reduce((sum, fee) => sum + fee, 0), 200, "incremental threshold fees match seven dogs entered together");
 assertEqual(getPuppyRehomePayoutForAgeHours(55), 0, "puppy re-home before 8 weeks");
 assertEqual(getPuppyRehomePayoutForAgeHours(56), 100, "puppy re-home at 8 weeks");
 assertEqual(

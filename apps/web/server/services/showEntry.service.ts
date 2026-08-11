@@ -326,6 +326,7 @@ export type ShowEntryPlannerDto = {
   dogs: ShowEntryPlannerDogDto[];
   sourceDogCount: number;
   existingDogIdsByBreed: Record<string, string[]>;
+  existingDogIdsByShowDayAndBreed: Record<string, Record<string, string[]>>;
   bulkEligibleSelections: BulkShowEntrySelection[];
   bulkSkippedSelectionCount: number;
 };
@@ -869,6 +870,33 @@ function buildExistingDogIdsByBreed(
   );
 }
 
+function buildExistingDogIdsByShowDayAndBreed(
+  entries: Array<{ dogId: string; showDayId: string; breedCode2: string }>
+): Record<string, Record<string, string[]>> {
+  const byShowDayAndBreed = new Map<string, Map<string, Set<string>>>();
+
+  for (const entry of entries) {
+    const byBreed =
+      byShowDayAndBreed.get(entry.showDayId) ?? new Map<string, Set<string>>();
+    const dogIds = byBreed.get(entry.breedCode2) ?? new Set<string>();
+    dogIds.add(entry.dogId);
+    byBreed.set(entry.breedCode2, dogIds);
+    byShowDayAndBreed.set(entry.showDayId, byBreed);
+  }
+
+  return Object.fromEntries(
+    [...byShowDayAndBreed.entries()].map(([showDayId, byBreed]) => [
+      showDayId,
+      Object.fromEntries(
+        [...byBreed.entries()].map(([breedCode2, dogIds]) => [
+          breedCode2,
+          [...dogIds],
+        ])
+      ),
+    ])
+  );
+}
+
 function buildBulkEntryQuote(args: {
   kennelBalance: number;
   homeDistrict: number;
@@ -876,6 +904,7 @@ function buildBulkEntryQuote(args: {
   showRole: "PRIMARY" | "SECONDARY";
   shouldChargeTravel: boolean;
   existingDogIdsByBreed: Record<string, string[]>;
+  existingDogIdsByShowDayAndBreed: Record<string, Record<string, string[]>>;
   dogs: Array<{
     dogId: string;
     dogName: string;
@@ -885,7 +914,7 @@ function buildBulkEntryQuote(args: {
   selections: BulkShowEntrySelection[];
   dayById: Map<string, { dayIndex: number }>;
 }): BulkShowEntryQuoteDto {
-  const selectedDaysByDogId = new Map<string, number[]>();
+  const selectedDaysByDogId = new Map<string, string[]>();
 
   for (const selection of args.selections) {
     const day = args.dayById.get(selection.showDayId);
@@ -895,7 +924,7 @@ function buildBulkEntryQuote(args: {
     }
 
     const selectedDays = selectedDaysByDogId.get(selection.dogId) ?? [];
-    selectedDays.push(day.dayIndex);
+    selectedDays.push(selection.showDayId);
     selectedDaysByDogId.set(selection.dogId, selectedDays);
   }
 
@@ -905,6 +934,7 @@ function buildBulkEntryQuote(args: {
     ledgerBalance: args.kennelBalance,
     showRole: args.showRole,
     existingDogIdsByBreed: args.existingDogIdsByBreed,
+    existingDogIdsByShowDayAndBreed: args.existingDogIdsByShowDayAndBreed,
     dogs: args.dogs.map((dog) => ({
       dogId: dog.dogId,
       dogName: dog.dogName,
@@ -1795,6 +1825,7 @@ export async function getShowEntryPlanner(args: {
       dogs: [],
       sourceDogCount: 0,
       existingDogIdsByBreed: {},
+      existingDogIdsByShowDayAndBreed: {},
       bulkEligibleSelections: [],
       bulkSkippedSelectionCount: 0,
     };
@@ -1848,6 +1879,7 @@ export async function getShowEntryPlanner(args: {
         dogs: [],
         sourceDogCount: 0,
         existingDogIdsByBreed: {},
+        existingDogIdsByShowDayAndBreed: {},
         bulkEligibleSelections: [],
         bulkSkippedSelectionCount: 0,
       };
@@ -1902,6 +1934,7 @@ export async function getShowEntryPlanner(args: {
     },
     select: {
       dogId: true,
+      showDayId: true,
       breedCode2: true,
     },
   });
@@ -1968,6 +2001,8 @@ export async function getShowEntryPlanner(args: {
     days,
     sourceDogCount,
     existingDogIdsByBreed: buildExistingDogIdsByBreed(existingBreedDogEntries),
+    existingDogIdsByShowDayAndBreed:
+      buildExistingDogIdsByShowDayAndBreed(existingBreedDogEntries),
     bulkEligibleSelections,
     bulkSkippedSelectionCount,
     dogs: dogs
@@ -2345,6 +2380,7 @@ export async function createShowEntriesForCluster(args: {
       },
       select: {
         dogId: true,
+        showDayId: true,
         breedCode2: true,
       },
     });
@@ -2530,6 +2566,8 @@ export async function createShowEntriesForCluster(args: {
       showRole,
       shouldChargeTravel: weekendPlan == null,
       existingDogIdsByBreed: buildExistingDogIdsByBreed(existingBreedDogEntries),
+      existingDogIdsByShowDayAndBreed:
+        buildExistingDogIdsByShowDayAndBreed(existingBreedDogEntries),
       dogs: dogs.map((dog) => ({
         dogId: dog.id,
         dogName: getDogDisplayName(dog),
@@ -2681,7 +2719,7 @@ export async function createShowEntriesForCluster(args: {
         memo:
           quote.handlerFeeType === "TRAVELING"
             ? `Traveling handler fee for ${quote.handlerDogs} dog(s) at ${cluster.name}.`
-            : `Ringside handler fee for ${quote.handlerDogs} dog(s) at ${cluster.name}.`,
+            : `Ringside handler fee for ${quote.handlerDogs} handler(s) at ${cluster.name}.`,
       });
     }
 
