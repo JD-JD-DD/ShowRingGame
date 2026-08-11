@@ -329,7 +329,7 @@ export type PendingVeterinaryCare =
       careType: "ACCIDENT_ILLNESS";
       eventId: string;
       dogId: string;
-      status: "PENDING" | "TREATMENT_AUTHORIZED";
+      status: "PENDING" | "TREATMENT_AUTHORIZED" | "TREATMENT_DECLINED";
       createdAtEpoch: number;
       responseDeadlineEpoch: number;
       treatmentCost: number;
@@ -340,7 +340,7 @@ export type PendingVeterinaryCare =
       careType: "REPRODUCTIVE_EMERGENCY";
       eventId: string;
       dogId: string;
-      status: "PENDING" | "TREATMENT_AUTHORIZED";
+      status: "PENDING" | "TREATMENT_AUTHORIZED" | "TREATMENT_DECLINED";
       createdAtEpoch: number;
       responseDeadlineEpoch: number;
       treatmentCost: number;
@@ -374,7 +374,7 @@ export async function getPendingVeterinaryCareForDog(
   });
 
   const reproductive = await client.reproductiveEmergencyEvent.findFirst({
-    where: { damId: dogId, status: { in: ["PENDING", "TREATMENT_AUTHORIZED"] } },
+    where: { damId: dogId, status: { in: ["PENDING", "TREATMENT_AUTHORIZED", "TREATMENT_DECLINED"] } },
     orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAtEpoch: "asc" }],
   });
   const candidates: PendingVeterinaryCare[] = [];
@@ -391,7 +391,11 @@ export async function getPendingVeterinaryCareForDog(
       hasPendingCare: true, careType: "REPRODUCTIVE_EMERGENCY", eventId: reproductive.id,
       dogId: reproductive.damId,
       status:
-        reproductive.status === "PENDING" ? "PENDING" : "TREATMENT_AUTHORIZED",
+        reproductive.status === "PENDING"
+          ? "PENDING"
+          : reproductive.status === "TREATMENT_DECLINED"
+            ? "TREATMENT_DECLINED"
+            : "TREATMENT_AUTHORIZED",
       createdAtEpoch: reproductive.createdAtEpoch,
       responseDeadlineEpoch: reproductive.responseDeadlineEpoch, treatmentCost: reproductive.treatmentCost,
       destinationHref: `/dogs/${reproductive.damId}#whelping-emergency`,

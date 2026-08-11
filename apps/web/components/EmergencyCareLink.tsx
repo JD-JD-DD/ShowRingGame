@@ -36,7 +36,7 @@ export default async function EmergencyCareLink() {
     },
   });
   const reproductiveEmergencies = await db.reproductiveEmergencyEvent.findMany({
-        where: { status: { in: ["PENDING", "TREATMENT_AUTHORIZED"] }, dam: { ownerKennelId: kennel.id } },
+        where: { status: { in: ["PENDING", "TREATMENT_AUTHORIZED", "TREATMENT_DECLINED"] }, dam: { ownerKennelId: kennel.id } },
         orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAtEpoch: "asc" }],
         take: 2,
         select: { id: true, damId: true, createdAtEpoch: true, responseDeadlineEpoch: true },

@@ -249,6 +249,7 @@ enum ReproductiveEmergencyType {
 enum ReproductiveEmergencyStatus {
   PENDING
   TREATMENT_AUTHORIZED
+  TREATMENT_DECLINED
   RESOLVED_TREATED
   RESOLVED_UNTREATED
 }

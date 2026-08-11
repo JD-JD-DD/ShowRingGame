@@ -80,3 +80,59 @@ export async function authorizeReproductiveEmergencyTreatment(args: {
     return { eventId: event.id, ledgerTransactionId: ledger.id, balanceAfter, treatmentAuthorizedEpoch: args.currentEpoch };
   });
 }
+
+export async function declineReproductiveEmergencyTreatment(args: {
+  eventId: string;
+  kennelId: string;
+  currentEpoch: number;
+}) {
+  return db.$transaction(async (tx) => {
+    const event = await tx.reproductiveEmergencyEvent.findUnique({
+      where: { id: args.eventId },
+      include: {
+        dam: { select: { ownerKennelId: true, lifecycleState: true } },
+        breedingAttempt: { select: { status: true } },
+      },
+    });
+    if (!event) throw new Error("Reproductive emergency event not found.");
+    if (event.status !== "PENDING") {
+      throw new Error("Emergency treatment has already been decided or resolved.");
+    }
+    if (event.ledgerTransactionId || event.treatmentAuthorizedEpoch) {
+      throw new Error("Emergency treatment has already been paid or authorized.");
+    }
+    if (args.currentEpoch > event.responseDeadlineEpoch) {
+      throw new Error("The treatment window has expired.");
+    }
+    if (event.dam.lifecycleState !== "ALIVE") {
+      throw new Error("Only a living dam can have emergency treatment decided.");
+    }
+    if (
+      event.dam.ownerKennelId !== args.kennelId ||
+      event.kennelIdAtEvent !== args.kennelId
+    ) {
+      throw new Error("The dam ownership no longer matches this emergency care event.");
+    }
+    if (event.breedingAttempt.status !== "REPRODUCTIVE_EMERGENCY") {
+      throw new Error("This breeding attempt is not awaiting reproductive emergency care.");
+    }
+    const lock = await tx.reproductiveEmergencyEvent.updateMany({
+      where: {
+        id: event.id,
+        status: "PENDING",
+        ledgerTransactionId: null,
+        treatmentAuthorizedEpoch: null,
+        responseDeadlineEpoch: { gte: args.currentEpoch },
+      },
+      data: { status: "TREATMENT_DECLINED" },
+    });
+    if (lock.count !== 1) throw new Error("Emergency treatment has already been decided.");
+    console.info("reproductive emergency treatment declined", {
+      reproductiveEmergencyEventId: event.id,
+      breedingAttemptId: event.breedingAttemptId,
+      damId: event.damId,
+      kennelId: args.kennelId,
+    });
+    return { eventId: event.id };
+  });
+}

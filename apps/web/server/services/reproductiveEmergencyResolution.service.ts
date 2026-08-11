@@ -11,7 +11,8 @@ import { createLitterWithCollisionRetry } from "@/server/services/litterPersiste
 import { markDogDeceased } from "@/server/services/lifecycle.service";
 import { calculatePedigreeCoi, resolveReproductiveEmergencyOutcome, resolveWhelp } from "@showring/rules";
 
-export type ReproductiveEmergencyResolutionMode = "TREATED" | "UNTREATED_EXPIRED";
+export type ReproductiveEmergencyResolutionMode = "TREATED" | "UNTREATED";
+export type ReproductiveEmergencyUntreatedReason = "PLAYER_DECLINED" | "RESPONSE_EXPIRED";
 
 export function getReproductiveEmergencyOutcomeNoticeSourceKey(eventId: string) {
   return `REPRODUCTIVE_EMERGENCY_OUTCOME:${eventId}`;
@@ -25,7 +26,7 @@ function outcomeNotice(args: { name: string; treated: boolean; intended: number;
   return `${care} ${args.name} survived the whelping emergency. ${pups}${consequence}`;
 }
 
-export async function resolveReproductiveEmergencyEvent(args: { eventId: string; currentEpoch: number; resolutionMode: ReproductiveEmergencyResolutionMode }) {
+export async function resolveReproductiveEmergencyEvent(args: { eventId: string; currentEpoch: number; resolutionMode: ReproductiveEmergencyResolutionMode; untreatedReason?: ReproductiveEmergencyUntreatedReason }) {
   return db.$transaction(async (tx) => {
     const event = await tx.reproductiveEmergencyEvent.findUnique({ where: { id: args.eventId }, include: { breedingAttempt: { include: { sire: true, dam: true } }, dam: true } });
     if (!event) throw new Error("Reproductive emergency event not found.");
@@ -34,8 +35,14 @@ export async function resolveReproductiveEmergencyEvent(args: { eventId: string;
     if (event.breedingAttempt.status !== "REPRODUCTIVE_EMERGENCY") throw new Error("Breeding attempt is not awaiting reproductive emergency resolution.");
     if (treated) {
       if (event.status !== "TREATMENT_AUTHORIZED" || !event.ledgerTransactionId || !event.treatmentAuthorizedEpoch) throw new Error("Treated resolution requires authorized treatment and its payment linkage.");
-    } else if (event.status !== "PENDING" || event.ledgerTransactionId || event.treatmentAuthorizedEpoch || args.currentEpoch <= event.responseDeadlineEpoch) {
-      throw new Error("Untreated resolution requires an expired unpaid pending emergency.");
+    } else if (
+      event.ledgerTransactionId ||
+      event.treatmentAuthorizedEpoch ||
+      (args.untreatedReason === "PLAYER_DECLINED" && event.status !== "TREATMENT_DECLINED") ||
+      (args.untreatedReason === "RESPONSE_EXPIRED" && (event.status !== "PENDING" || args.currentEpoch <= event.responseDeadlineEpoch)) ||
+      !args.untreatedReason
+    ) {
+      throw new Error("Untreated resolution requires a declined emergency or an expired unpaid pending emergency.");
     }
     const lock = await tx.reproductiveEmergencyEvent.updateMany({ where: { id: event.id, status: event.status }, data: { status: treated ? "RESOLVED_TREATED" : "RESOLVED_UNTREATED", resolvedEpoch: args.currentEpoch } });
     if (lock.count !== 1) throw new Error("Reproductive emergency is being resolved by another request.");
@@ -62,7 +69,7 @@ export async function resolveReproductiveEmergencyEvent(args: { eventId: string;
     await tx.breedingAttempt.update({ where: { id: event.breedingAttemptId }, data: { status: terminalStatus, whelpedEpoch: litterId ? args.currentEpoch : null, litterId } });
     const consequence = outcome.damOutcome === "DIED" ? "NONE" : outcome.reproductiveConsequence;
     const recoveryUntilEpoch = consequence === "EXTENDED_RECOVERY" ? args.currentEpoch + outcome.recoveryHours : null;
-    await tx.reproductiveEmergencyEvent.update({ where: { id: event.id }, data: { litterId, survivingPuppyCount: outcome.survivingPuppyCount, damOutcome: outcome.damOutcome, puppyOutcome: outcome.puppyOutcome, reproductiveConsequence: consequence, recoveryUntilEpoch, damOutcomeRoll: outcome.rolls.damSurvivalRoll, puppyOutcomeRoll: outcome.rolls.puppyOutcomeRoll, reproductiveConsequenceRoll: outcome.rolls.reproductiveConsequenceRoll, outcomeMetadataJson: { ...outcome, resolutionMode: args.resolutionMode } } });
+    await tx.reproductiveEmergencyEvent.update({ where: { id: event.id }, data: { litterId, survivingPuppyCount: outcome.survivingPuppyCount, damOutcome: outcome.damOutcome, puppyOutcome: outcome.puppyOutcome, reproductiveConsequence: consequence, recoveryUntilEpoch, damOutcomeRoll: outcome.rolls.damSurvivalRoll, puppyOutcomeRoll: outcome.rolls.puppyOutcomeRoll, reproductiveConsequenceRoll: outcome.rolls.reproductiveConsequenceRoll, outcomeMetadataJson: { ...outcome, resolutionMode: args.resolutionMode, untreatedReason: args.untreatedReason ?? null } } });
     if (outcome.damOutcome === "DIED") await markDogDeceased({ client: tx, dogId: event.dam.id, regNumber: event.dam.regNumber, ownerKennelId: event.dam.ownerKennelId, displayName: formatDogDisplayName(event.dam), deathEpoch: args.currentEpoch, cause: "WHELPING_DAM" });
     await createKennelNotice({ client: tx, kennelId: event.kennelIdAtEvent, sourceKey: getReproductiveEmergencyOutcomeNoticeSourceKey(event.id), type: "KENNEL_SERVICE", title: "Whelping emergency resolved", body: outcomeNotice({ name: formatDogDisplayName(event.dam), treated, intended: event.intendedPuppyCount, survived: outcome.survivingPuppyCount, damOutcome: outcome.damOutcome, consequence }), currentEpoch: args.currentEpoch, linkedDogId: event.damId, linkedLitterId: litterId, metadataJson: { reproductiveEmergencyEventId: event.id, resolutionMode: args.resolutionMode } });
     console.info("reproductive emergency resolved", { eventId: event.id, breedingAttemptId: event.breedingAttemptId, damId: event.damId, treated, intendedPuppyCount: event.intendedPuppyCount, survivingPuppyCount: outcome.survivingPuppyCount, damOutcome: outcome.damOutcome, puppyOutcome: outcome.puppyOutcome, reproductiveConsequence: consequence, litterId, resolvedEpoch: args.currentEpoch, rulesetVersion: event.rulesetVersion });
@@ -71,9 +78,9 @@ export async function resolveReproductiveEmergencyEvent(args: { eventId: string;
 }
 
 export async function processExpiredReproductiveEmergencyEvents(args: { currentEpoch: number; limit?: number }) {
-  const events = await db.reproductiveEmergencyEvent.findMany({ where: { status: "PENDING", responseDeadlineEpoch: { lt: args.currentEpoch } }, orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAt: "asc" }], take: Math.min(Math.max(args.limit ?? 100, 1), 500), select: { id: true } });
+  const events = await db.reproductiveEmergencyEvent.findMany({ where: { OR: [{ status: "TREATMENT_DECLINED" }, { status: "PENDING", responseDeadlineEpoch: { lt: args.currentEpoch } }] }, orderBy: [{ responseDeadlineEpoch: "asc" }, { createdAt: "asc" }], take: Math.min(Math.max(args.limit ?? 100, 1), 500), select: { id: true, status: true } });
   let resolvedCount = 0;
-  for (const event of events) { const result = await resolveReproductiveEmergencyEvent({ eventId: event.id, currentEpoch: args.currentEpoch, resolutionMode: "UNTREATED_EXPIRED" }); if (!result.alreadyResolved) resolvedCount += 1; }
+  for (const event of events) { const result = await resolveReproductiveEmergencyEvent({ eventId: event.id, currentEpoch: args.currentEpoch, resolutionMode: "UNTREATED", untreatedReason: event.status === "TREATMENT_DECLINED" ? "PLAYER_DECLINED" : "RESPONSE_EXPIRED" }); if (!result.alreadyResolved) resolvedCount += 1; }
   return { processedCount: events.length, resolvedCount };
 }
 

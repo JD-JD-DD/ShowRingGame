@@ -1,5 +1,5 @@
 export type ReproductiveEmergencyPresentationInput = {
-  status: "PENDING" | "TREATMENT_AUTHORIZED" | "RESOLVED_TREATED" | "RESOLVED_UNTREATED";
+  status: "PENDING" | "TREATMENT_AUTHORIZED" | "TREATMENT_DECLINED" | "RESOLVED_TREATED" | "RESOLVED_UNTREATED";
   intendedPuppyCount: number;
   survivingPuppyCount: number | null;
   damOutcome: "SURVIVED" | "DIED" | null;
