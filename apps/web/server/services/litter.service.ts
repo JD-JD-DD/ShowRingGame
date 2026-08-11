@@ -239,21 +239,7 @@ async function withFreshPuppyHealthConditionTruths(
 
 function visibleToKennelWhere(kennelId: string) {
   return {
-    OR: [
-      { bredByKennelId: kennelId },
-      {
-        sire: {
-          ownerKennelId: kennelId,
-        },
-      },
-      {
-        puppies: {
-          some: {
-            ownerKennelId: kennelId,
-          },
-        },
-      },
-    ],
+    bredByKennelId: kennelId,
   };
 }
 

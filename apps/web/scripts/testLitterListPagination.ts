@@ -17,21 +17,7 @@ const root = join(fileURLToPath(new URL("..", import.meta.url)), "..", "..");
 
 function visibleToKennelWhere(kennelId: string) {
   return {
-    OR: [
-      { bredByKennelId: kennelId },
-      {
-        sire: {
-          ownerKennelId: kennelId,
-        },
-      },
-      {
-        puppies: {
-          some: {
-            ownerKennelId: kennelId,
-          },
-        },
-      },
-    ],
+    bredByKennelId: kennelId,
   };
 }
 
