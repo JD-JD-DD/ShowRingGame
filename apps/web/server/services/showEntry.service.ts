@@ -385,6 +385,7 @@ export type ShowEntryErrorCode =
   | "NO_ELIGIBLE_ENTRIES"
   | "DOG_EMERGENCY_CARE"
   | "ENTRY_CLOSED"
+  | "JUDGING_BLOCK_LOCKED"
   | "ALREADY_ENTERED"
   | "WEEKEND_CONFLICT"
   | "INVALID_ENTRY_SCOPE"
@@ -487,6 +488,8 @@ function getSkippedSelectionMessage(code: ShowEntryErrorCode): string {
       return "emergency care pending";
     case "ENTRY_CLOSED":
       return "entry closed";
+    case "JUDGING_BLOCK_LOCKED":
+      return "judging block is no longer editable";
     case "WEEKEND_CONFLICT":
       return "weekend conflict";
     case "INVALID_ENTRY_SCOPE":
@@ -943,6 +946,20 @@ function normalizePlannerScope(
 
 function getSelectionBlockKey(showDayId: string, breedCode2: string): string {
   return `${showDayId}:${breedCode2}`;
+}
+
+export function canReconcileExistingBreedBlock(args: {
+  status: string;
+  publishedAtEpoch: number | null;
+  showResultCount: number;
+  showAwardCount: number;
+}): boolean {
+  return (
+    (args.status === "SCHEDULED" || args.status === "ENTRY_OPEN") &&
+    args.publishedAtEpoch == null &&
+    args.showResultCount === 0 &&
+    args.showAwardCount === 0
+  );
 }
 
 function uniqueSelections(
@@ -2049,12 +2066,48 @@ async function ensureBreedBlockForEntry(args: {
       showDayId: showDay.id,
       breedCode2,
     },
-    select: { id: true, judgeId: true },
+    select: {
+      id: true,
+      judgeId: true,
+      status: true,
+      publishedAtEpoch: true,
+      _count: {
+        select: {
+          showResults: true,
+          showAwards: true,
+        },
+      },
+    },
   });
 
   if (existingBlock) {
-    const scheduled = await resolveScheduledGroupJudgeForBreed({ tx, showDayId: showDay.id, breedCode2 });
-    if (existingBlock.judgeId !== scheduled.judgeId) throw new Error(`Breed block judge mismatch for showDay=${showDay.id}, breed=${breedCode2}, group=${scheduled.groupCode}.`);
+    const scheduled = await resolveScheduledGroupJudgeForBreed({
+      tx,
+      showDayId: showDay.id,
+      breedCode2,
+    });
+    if (existingBlock.judgeId !== scheduled.judgeId) {
+      const isMutable = canReconcileExistingBreedBlock({
+        status: existingBlock.status,
+        publishedAtEpoch: existingBlock.publishedAtEpoch,
+        showResultCount: existingBlock._count.showResults,
+        showAwardCount: existingBlock._count.showAwards,
+      });
+
+      if (!isMutable) {
+        throw createShowEntrySubmissionError({
+          code: "JUDGING_BLOCK_LOCKED",
+          message:
+            "One or more selected entries use a judging block that can no longer be updated. Refresh the planner and choose another available show day.",
+        });
+      }
+
+      await tx.showJudgingBlock.update({
+        where: { id: existingBlock.id },
+        data: { judgeId: scheduled.judgeId },
+        select: { id: true },
+      });
+    }
     return existingBlock.id;
   }
 
