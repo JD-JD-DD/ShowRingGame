@@ -36,6 +36,17 @@ assertAttribution(["A1", "A2", "A3"], expectedFor(["A1", "A2", "A3"]), "F: Breed
 assertAttribution(["B4", "B3", "B2", "B1"], expectedFor(["B1", "B2", "B3", "B4"]), "F: Breed B has its own handler-covered entry");
 assertAttribution(["A4", "A3", "A2", "A1"], expectedFor(["A1", "A2", "A3", "A4"]), "G/H: each show-day group is independently attributable");
 
+for (let count = 1; count <= 12; count += 1) {
+  const dogIds = Array.from({ length: count }, (_, index) =>
+    String(index + 1).padStart(2, "0")
+  ).reverse();
+  assertAttribution(
+    dogIds,
+    expectedFor(dogIds),
+    `threshold ${count}: exactly the first three deterministic dogs are owner handled`
+  );
+}
+
 const finalFive = expectedFor(["A", "B", "C", "D", "E"]);
 assert.deepEqual(handlerUsed(["E", "D", "C", "B", "A"]), finalFive, "I/J: incremental final population is deterministic");
 assert.deepEqual(handlerUsed(["A", "B", "C", "D", "E", "F"]), expectedFor(["A", "B", "C", "D", "E", "F"]), "K: dogs four through six are handler covered");

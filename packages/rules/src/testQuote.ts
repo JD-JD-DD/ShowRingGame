@@ -214,6 +214,71 @@ assertEqual(handlerQuote({ existing: { fri: { A: ["A-1", "A-2", "A-3"] } }, dogs
 assertEqual(handlerQuote({ existing: { fri: { A: ["A-1", "A-2"] } }, dogs: ["A-3", "A-4", "A-5"].map((dogId) => ({ dogId, breed: "A", showDayIds: ["fri"] })) }).handlerFee, 100, "K: five final dogs still require one handler");
 assertEqual(handlerQuote({ dogs: dogs("A", 3, ["fri", "sat"]) }).handlerFee, 0, "L: the same dogs are counted independently per day");
 
+for (let count = 1; count <= 12; count += 1) {
+  const expectedHandlers = Math.ceil(Math.max(0, count - 3) / 3);
+  const thresholdQuote = handlerQuote({ dogs: dogs("A", count, ["fri"]) });
+
+  assertEqual(
+    thresholdQuote.handlerDogs,
+    expectedHandlers,
+    `threshold ${count}: handler capacity is bracketed per breed and day`
+  );
+  assertEqual(
+    thresholdQuote.handlerFee,
+    expectedHandlers * 100,
+    `threshold ${count}: handler fee is charged per handler`
+  );
+}
+
+const mixedBreedQuote = handlerQuote({
+  dogs: [
+    ...dogs("A", 4, ["fri"]),
+    ...dogs("B", 2, ["fri"]),
+    ...dogs("C", 7, ["fri"]),
+  ],
+});
+assertEqual(mixedBreedQuote.handlerDogs, 3, "mixed breeds: 4A, 2B, and 7C require three handlers");
+assertEqual(mixedBreedQuote.handlerFee, 300, "mixed breeds: handler fee is $300");
+
+const multiDayMixedBreedQuote = handlerQuote({
+  dogs: [
+    ...dogs("A", 3, ["fri", "sat"]),
+    { dogId: "A-4", breed: "A", showDayIds: ["fri"] },
+    ...dogs("B", 3, ["fri", "sat"]),
+    { dogId: "B-4", breed: "B", showDayIds: ["sat"] },
+  ],
+});
+assertEqual(multiDayMixedBreedQuote.handlerDogs, 2, "mixed days: Friday and Saturday brackets remain independent");
+assertEqual(multiDayMixedBreedQuote.handlerFee, 200, "mixed days: handler fee is $200");
+
+function incrementalHandlerFee(batchSizes: number[]): number {
+  const existing: string[] = [];
+  let total = 0;
+
+  for (const batchSize of batchSizes) {
+    const nextDogs = Array.from({ length: batchSize }, (_, index) => ({
+      dogId: `A-${existing.length + index + 1}`,
+      breed: "A",
+      showDayIds: ["fri"],
+    }));
+    total += handlerQuote({
+      existing: existing.length > 0 ? { fri: { A: [...existing] } } : undefined,
+      dogs: nextDogs,
+    }).handlerFee;
+    existing.push(...nextDogs.map((dog) => dog.dogId));
+  }
+
+  return total;
+}
+
+for (const batches of [[7], [3, 4], [2, 3, 2], [1, 1, 1, 1, 1, 1, 1], [4, 3]]) {
+  assertEqual(
+    incrementalHandlerFee(batches),
+    200,
+    `seven dogs through ${batches.join("+")} charges the same total handler fee`
+  );
+}
+
 const transitionFees = [
   handlerQuote({ dogs: dogs("A", 3, ["fri"]) }).handlerFee,
   handlerQuote({ existing: { fri: { A: dogs("A", 3, ["fri"]).map((dog) => dog.dogId) } }, dogs: [{ dogId: "A-4", breed: "A", showDayIds: ["fri"] }] }).handlerFee,
