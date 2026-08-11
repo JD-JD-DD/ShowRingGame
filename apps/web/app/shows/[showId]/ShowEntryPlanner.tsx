@@ -75,6 +75,39 @@ function selectionKey(dogId: string, showDayId: string): string {
   return `${dogId}:${showDayId}`;
 }
 
+export function getBulkDogSelectionState(args: {
+  dogId: string;
+  eligibleSelectionKeys: Set<string>;
+  selected: Record<string, boolean>;
+}) {
+  const eligibleKeys = [...args.eligibleSelectionKeys].filter(
+    (key) => key.split(":", 1)[0] === args.dogId
+  );
+  const selectedDayCount = eligibleKeys.filter((key) => args.selected[key]).length;
+
+  return {
+    eligibleKeys,
+    eligibleDayCount: eligibleKeys.length,
+    selectedDayCount,
+    isFullySelected: selectedDayCount === eligibleKeys.length,
+    isPartiallySelected: selectedDayCount > 0 && selectedDayCount < eligibleKeys.length,
+  };
+}
+
+export function setBulkDogSelection(args: {
+  current: Record<string, boolean>;
+  eligibleKeys: string[];
+  isSelected: boolean;
+}): Record<string, boolean> {
+  const next = { ...args.current };
+
+  for (const key of args.eligibleKeys) {
+    next[key] = args.isSelected;
+  }
+
+  return next;
+}
+
 function getInitialSelection(args: {
   dogs: PlannerDog[];
   initiallySelectedDogIds: string[];
@@ -593,6 +626,7 @@ export function ShowEntryPlanner({
                   <tr className="theme-label text-left text-xs uppercase tracking-[0.16em]">
                     <th className="px-3 py-2">Dog</th>
                     <th className="px-3 py-2">Breed</th>
+                    <th className="px-3 py-2">Selection</th>
                     {bulkConfirmationDays.map((day) => (
                       <th
                         key={day.showDayId}
@@ -607,7 +641,15 @@ export function ShowEntryPlanner({
                   </tr>
                 </thead>
                 <tbody>
-                  {bulkConfirmationDogs.map((dog) => (
+                  {bulkConfirmationDogs.map((dog) => {
+                    const dogSelection = getBulkDogSelectionState({
+                      dogId: dog.dogId,
+                      eligibleSelectionKeys: bulkEligibleSelectionKeys,
+                      selected: bulkSelected,
+                    });
+                    const nextDogSelection = !dogSelection.isFullySelected;
+
+                    return (
                     <tr key={dog.dogId} className="theme-card">
                       <td className="rounded-l-2xl px-3 py-3">
                         <div className="theme-heading font-semibold">
@@ -617,6 +659,29 @@ export function ShowEntryPlanner({
                       </td>
                       <td className="theme-copy px-3 py-3">
                         {dog.breedName || dog.breedCode2}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="theme-copy text-xs">
+                          Selected for {dogSelection.selectedDayCount} of {dogSelection.eligibleDayCount} days
+                        </div>
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() =>
+                            setBulkSelected((current) =>
+                              setBulkDogSelection({
+                                current,
+                                eligibleKeys: dogSelection.eligibleKeys,
+                                isSelected: nextDogSelection,
+                              })
+                            )
+                          }
+                          className="mt-2 rounded-lg border border-[var(--dog-border)] px-2 py-1 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {dogSelection.isFullySelected
+                            ? "Deselect dog"
+                            : "Select all eligible days"}
+                        </button>
                       </td>
                       {bulkConfirmationDays.map((day) => {
                         const key = selectionKey(dog.dogId, day.showDayId);
@@ -645,7 +710,8 @@ export function ShowEntryPlanner({
                         );
                       })}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
