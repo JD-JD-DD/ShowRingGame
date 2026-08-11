@@ -202,29 +202,19 @@ html[data-theme="dark"] {
 }
 
 html {
-  background:
-    radial-gradient(circle at top left, rgba(124, 58, 237, 0.1), transparent 30%),
-    radial-gradient(circle at top right, rgba(168, 85, 247, 0.07), transparent 26%),
-    linear-gradient(180deg, var(--surface) 0%, var(--page-bg) 100%);
+  background: var(--color-page);
   min-height: 100%;
-}
-
-html[data-theme="dark"] {
-  background:
-    radial-gradient(circle at top left, rgba(124, 58, 237, 0.22), transparent 28%),
-    radial-gradient(circle at top right, rgba(168, 85, 247, 0.16), transparent 24%),
-    linear-gradient(180deg, #14091d 0%, #0f0715 100%);
 }
 
 body {
   min-height: 100vh;
-  background: transparent;
-  color: var(--text-primary);
+  background: var(--color-page);
+  color: var(--color-text);
   font-family: Arial, Helvetica, sans-serif;
 }
 
 a {
-  color: inherit;
+  color: var(--color-link);
   text-decoration: none;
 }
 
@@ -236,7 +226,7 @@ select {
 }
 
 :is(a, button, input, textarea, select, summary):focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 
@@ -249,11 +239,11 @@ select {
   align-items: center;
   gap: 0.4rem;
   min-height: 2.25rem;
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--color-border);
   border-radius: 999px;
   padding: 0.4rem 0.75rem;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  color: var(--text-primary);
+  background: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
+  color: var(--color-text);
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(12px);
   cursor: pointer;
@@ -263,27 +253,20 @@ select {
 }
 
 .theme-toggle:hover {
-  border-color: var(--border-strong);
-  background: var(--surface-raised);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised);
   transform: translateY(-1px);
 }
 
 .theme-toggle:focus-visible {
-  outline-color: var(--focus-ring);
-}
-
-html[data-theme="dark"] .theme-toggle {
-  border-color: rgba(216, 180, 254, 0.25);
-  background: rgba(18, 8, 24, 0.72);
-  color: #f3e8ff;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  outline-color: var(--color-focus);
 }
 
 .game-header {
-  border-bottom: 1px solid var(--dog-border);
-  background: color-mix(in srgb, var(--dog-panel) 88%, transparent);
-  box-shadow: var(--dog-shadow);
-  color: var(--dog-heading);
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
+  box-shadow: var(--shadow-raised);
+  color: var(--color-text);
 }
 
 .game-header__inner {
@@ -291,89 +274,89 @@ html[data-theme="dark"] .theme-toggle {
 }
 
 .game-header__brand {
-  border: 1px solid var(--dog-border-strong);
-  background: color-mix(in srgb, var(--dog-card) 78%, var(--purple-main) 22%);
-  color: var(--dog-heading);
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-surface-raised) 78%, var(--color-primary) 22%);
+  color: var(--color-text);
 }
 
 .game-header__link,
 .game-header__account-button {
-  border: 1px solid var(--dog-border);
-  background: color-mix(in srgb, var(--dog-card) 88%, transparent);
-  color: var(--dog-heading);
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  color: var(--color-text);
 }
 
 .game-header__link:hover,
 .game-header__account-button:hover,
 .game-header__link:focus-visible,
 .game-header__account-button:focus-visible {
-  border-color: var(--dog-border-strong);
-  background: color-mix(in srgb, var(--dog-card) 72%, var(--purple-main) 28%);
-  color: var(--dog-heading);
+  border-color: var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-surface-raised) 72%, var(--color-primary) 28%);
+  color: var(--color-text);
 }
 
 .game-header__link--active,
 .game-header__account-button--active {
-  border-color: color-mix(in srgb, var(--purple-main) 64%, var(--dog-border));
-  background: color-mix(in srgb, var(--dog-card) 46%, var(--purple-main) 54%);
-  color: #fff;
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--purple-main) 22%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 64%, var(--color-border));
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 
 .game-header__menu {
-  border: 1px solid var(--dog-border-strong);
-  background: color-mix(in srgb, var(--dog-panel) 94%, transparent);
-  box-shadow: var(--dog-shadow);
-  color: var(--dog-heading);
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-surface-raised) 94%, transparent);
+  box-shadow: var(--shadow-raised);
+  color: var(--color-text);
 }
 
 .game-header__menu-item {
-  color: var(--dog-heading);
+  color: var(--color-text);
 }
 
 .game-header__menu-item:hover,
 .game-header__menu-item:focus-visible {
-  background: color-mix(in srgb, var(--dog-card) 70%, var(--purple-main) 30%);
+  background: color-mix(in srgb, var(--color-surface-raised) 70%, var(--color-primary) 30%);
 }
 
 .game-header__menu-item--active {
-  background: color-mix(in srgb, var(--dog-card) 50%, var(--purple-main) 50%);
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
 }
 
 .game-header__menu-divider {
-  border-color: var(--dog-border);
+  border-color: var(--color-border);
 }
 
 .game-header__status,
 .game-header__inbox {
-  border: 1px solid var(--dog-border-strong);
-  background: color-mix(in srgb, var(--dog-panel) 86%, transparent);
-  color: var(--dog-heading);
-  box-shadow: var(--dog-shadow);
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-surface-raised) 86%, transparent);
+  color: var(--color-text);
+  box-shadow: var(--shadow-raised);
 }
 
 .game-header__status-muted {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .game-header__inbox:hover,
 .game-header__inbox:focus-visible {
-  border-color: var(--purple-bright);
-  background: color-mix(in srgb, var(--dog-panel) 70%, var(--purple-main) 30%);
+  border-color: var(--color-focus);
+  background: color-mix(in srgb, var(--color-surface-raised) 70%, var(--color-primary) 30%);
 }
 
 .game-header__emergency {
-  border: 1px solid color-mix(in srgb, var(--status-danger-text) 26%, transparent);
-  background: color-mix(in srgb, var(--status-danger-bg) 94%, transparent);
-  color: var(--status-danger-text);
-  box-shadow: var(--dog-shadow);
+  border: 1px solid color-mix(in srgb, var(--color-danger-text) 26%, transparent);
+  background: var(--color-danger-surface);
+  color: var(--color-danger-text);
+  box-shadow: var(--shadow-raised);
 }
 
 .game-header__emergency:hover,
 .game-header__emergency:focus-visible {
-  border-color: color-mix(in srgb, var(--status-danger-text) 42%, transparent);
-  background: color-mix(in srgb, var(--status-danger-bg) 82%, var(--status-danger-text) 18%);
+  border-color: color-mix(in srgb, var(--color-danger-text) 42%, transparent);
+  background: color-mix(in srgb, var(--color-danger-surface) 82%, var(--color-danger) 18%);
 }
 
 html[data-theme="dark"] .game-header__brand,
@@ -383,12 +366,6 @@ html[data-theme="dark"] .game-header__menu,
 html[data-theme="dark"] .game-header__status,
 html[data-theme="dark"] .game-header__inbox {
   backdrop-filter: blur(14px);
-}
-
-html[data-theme="dark"] .game-header__emergency {
-  border-color: rgba(252, 165, 165, 0.38);
-  background: rgba(69, 10, 10, 0.82);
-  color: #fee2e2;
 }
 
 @media (max-width: 720px) {
@@ -454,71 +431,67 @@ html:not([data-theme="dark"]) .showring-title-sweep {
 /* Semantic Dog-page surfaces replace the page's former mix of opaque gradients,
    pale translucent panels, and black inset cards. */
 :is(.dog-page, .shows-page, .kennel-page, .community-page, .market-page, .ledger-page, .results-page, .breeding-page, .planner-page, .rankings-page, .travel-page, .login-page, .guide-page) {
-  color: var(--foreground);
+  color: var(--color-text);
 }
 
 :is(.dog-panel, .theme-panel) {
-  border: 1px solid var(--dog-border);
-  background: var(--dog-panel);
-  box-shadow: var(--dog-shadow);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-raised);
 }
 
 :is(.dog-card, .theme-card) {
-  border: 1px solid var(--dog-border);
-  background: var(--dog-card);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 :is(.dog-card-interactive, .theme-card-interactive) {
-  border: 1px solid var(--dog-border);
-  background: var(--dog-card);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   transition: border-color 160ms ease, background 160ms ease;
 }
 
 :is(.dog-card-interactive, .theme-card-interactive):hover {
-  border-color: var(--dog-border-strong);
-  background: color-mix(in srgb, var(--dog-card) 82%, var(--purple-main) 18%);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised);
 }
 
 :is(.dog-control, .theme-control) {
-  border: 1px solid var(--dog-border);
-  background: var(--dog-control);
-  color: var(--dog-heading);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-inset);
+  color: var(--color-text);
   transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 :is(.dog-control, .theme-control)::placeholder {
-  color: var(--text-muted);
+  color: var(--color-text-muted);
 }
 
 :is(.dog-control, .theme-control):focus-visible {
-  border-color: var(--focus-ring);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 18%, transparent);
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus) 18%, transparent);
 }
 
 :is(.dog-control, .theme-control):disabled {
-  background: color-mix(in srgb, var(--surface-muted) 90%, transparent);
-  color: var(--text-muted);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-disabled);
 }
 
 :is(.dog-heading, .theme-heading) {
-  color: var(--dog-heading);
+  color: var(--color-text);
 }
 
 :is(.dog-copy, .theme-copy) {
-  color: var(--dog-copy);
+  color: var(--color-text-secondary);
 }
 
 :is(.dog-label, .theme-label) {
-  color: var(--dog-label);
+  color: var(--color-text-muted);
 }
 
 :is(.dog-accent-link, .theme-accent-link) {
-  color: var(--purple-main);
+  color: var(--color-link);
   text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
-}
-
-html[data-theme="dark"] :is(.dog-accent-link, .theme-accent-link) {
-  color: var(--purple-soft);
 }
 
 :is(.dog-accent-link, .theme-accent-link):hover {
@@ -526,36 +499,41 @@ html[data-theme="dark"] :is(.dog-accent-link, .theme-accent-link) {
 }
 
 :is(.dog-neutral-badge, .theme-neutral-badge) {
-  border: 1px solid var(--dog-border);
-  background: var(--dog-card);
-  color: var(--dog-heading);
+  border: 1px solid var(--color-border);
+  background: var(--color-neutral-surface);
+  color: var(--color-neutral-text);
 }
 
 :is(.dog-secondary-button, .theme-secondary-button) {
-  border: 1px solid var(--dog-border-strong);
-  background: color-mix(in srgb, var(--surface) 85%, var(--surface-muted) 15%);
-  color: var(--dog-heading);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-secondary);
+  color: var(--color-secondary-foreground);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-text-inverse) 35%, transparent);
   transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
 }
 
 :is(.dog-secondary-button, .theme-secondary-button):hover {
-  border-color: var(--focus-ring);
-  background: color-mix(in srgb, var(--surface-muted) 72%, var(--accent-soft) 28%);
+  border-color: var(--color-focus);
+  background: var(--color-secondary-hover);
 }
 
 :is(.dog-primary-button, .theme-primary-button) {
-  border: 1px solid var(--action-primary);
-  background: var(--action-primary);
-  color: #fff;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--action-primary) 22%, transparent);
+  border: 1px solid var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-primary) 22%, transparent);
   transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
 :is(.dog-primary-button, .theme-primary-button):hover {
-  border-color: var(--action-primary-hover);
-  background: var(--action-primary-hover);
+  border-color: var(--color-primary-hover);
+  background: var(--color-primary-hover);
   transform: translateY(-1px);
+}
+
+:is(.dog-primary-button, .theme-primary-button):active {
+  border-color: var(--color-primary-active);
+  background: var(--color-primary-active);
 }
 
 :is(.dog-primary-button, .theme-primary-button):disabled,
@@ -566,93 +544,105 @@ html[data-theme="dark"] :is(.dog-accent-link, .theme-accent-link) {
 }
 
 :is(.theme-notice, .dog-notice) {
-  border: 1px solid var(--border-default);
+  border: 1px solid var(--color-border);
   border-radius: 1rem;
-  background: color-mix(in srgb, var(--surface-muted) 72%, var(--surface) 28%);
-  color: var(--text-secondary);
+  background: var(--color-neutral-surface);
+  color: var(--color-neutral-text);
 }
 
 .theme-notice--success {
-  border-color: color-mix(in srgb, var(--status-success-text) 24%, transparent);
-  background: var(--status-success-bg);
-  color: var(--status-success-text);
+  border-color: color-mix(in srgb, var(--color-success) 36%, transparent);
+  background: var(--color-success-surface);
+  color: var(--color-success-text);
 }
 
 .theme-notice--warning {
-  border-color: color-mix(in srgb, var(--status-warning-text) 24%, transparent);
-  background: var(--status-warning-bg);
-  color: var(--status-warning-text);
+  border-color: color-mix(in srgb, var(--color-warning) 36%, transparent);
+  background: var(--color-warning-surface);
+  color: var(--color-warning-text);
 }
 
 .theme-notice--danger {
-  border-color: color-mix(in srgb, var(--status-danger-text) 24%, transparent);
-  background: var(--status-danger-bg);
-  color: var(--status-danger-text);
+  border-color: color-mix(in srgb, var(--color-danger) 36%, transparent);
+  background: var(--color-danger-surface);
+  color: var(--color-danger-text);
 }
 
 .theme-notice--info {
-  border-color: color-mix(in srgb, var(--status-info-text) 24%, transparent);
-  background: var(--status-info-bg);
-  color: var(--status-info-text);
+  border-color: color-mix(in srgb, var(--color-info) 36%, transparent);
+  background: var(--color-info-surface);
+  color: var(--color-info-text);
+}
+
+.theme-notice--neutral {
+  border-color: color-mix(in srgb, var(--color-neutral) 36%, transparent);
+  background: var(--color-neutral-surface);
+  color: var(--color-neutral-text);
 }
 
 .theme-pill {
-  border: 1px solid var(--dog-border);
-  background: color-mix(in srgb, var(--surface-muted) 88%, var(--surface) 12%);
-  color: var(--dog-label);
+  border: 1px solid var(--color-border);
+  background: var(--color-neutral-surface);
+  color: var(--color-neutral-text);
 }
 
 .theme-status-success {
-  border-color: color-mix(in srgb, var(--status-success-text) 22%, transparent);
-  background: color-mix(in srgb, var(--status-success-bg) 90%, transparent);
-  color: var(--status-success-text);
+  border-color: color-mix(in srgb, var(--color-success) 36%, transparent);
+  background: var(--color-success-surface);
+  color: var(--color-success-text);
 }
 
 .theme-status-warning {
-  border-color: color-mix(in srgb, var(--status-warning-text) 22%, transparent);
-  background: color-mix(in srgb, var(--status-warning-bg) 90%, transparent);
-  color: var(--status-warning-text);
+  border-color: color-mix(in srgb, var(--color-warning) 36%, transparent);
+  background: var(--color-warning-surface);
+  color: var(--color-warning-text);
 }
 
 .theme-status-danger {
-  border-color: color-mix(in srgb, var(--status-danger-text) 22%, transparent);
-  background: color-mix(in srgb, var(--status-danger-bg) 90%, transparent);
-  color: var(--status-danger-text);
+  border-color: color-mix(in srgb, var(--color-danger) 36%, transparent);
+  background: var(--color-danger-surface);
+  color: var(--color-danger-text);
 }
 
 .theme-status-info {
-  border-color: color-mix(in srgb, var(--status-info-text) 22%, transparent);
-  background: color-mix(in srgb, var(--status-info-bg) 90%, transparent);
-  color: var(--status-info-text);
+  border-color: color-mix(in srgb, var(--color-info) 36%, transparent);
+  background: var(--color-info-surface);
+  color: var(--color-info-text);
+}
+
+.theme-status-neutral {
+  border-color: color-mix(in srgb, var(--color-neutral) 36%, transparent);
+  background: var(--color-neutral-surface);
+  color: var(--color-neutral-text);
 }
 
 .theme-floating-button {
-  border: 1px solid var(--border-strong);
-  background: color-mix(in srgb, var(--surface-raised) 88%, transparent);
-  color: var(--text-primary);
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
+  color: var(--color-text);
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(14px);
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
 .theme-floating-button:hover {
-  border-color: var(--focus-ring);
-  background: color-mix(in srgb, var(--surface) 80%, var(--accent-soft) 20%);
+  border-color: var(--color-focus);
+  background: var(--color-surface-raised);
   transform: translateY(-1px);
 }
 
 .dog-section-toggle {
-  border: 1px solid var(--dog-border-strong);
-  background: color-mix(in srgb, var(--dog-card) 78%, var(--purple-main) 22%);
-  color: var(--dog-heading);
+  border: 1px solid var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-surface) 78%, var(--color-accent) 22%);
+  color: var(--color-accent-foreground);
 }
 
 .dog-trait-track {
-  background: var(--dog-border-strong);
+  background: var(--color-border-strong);
 }
 
 .dog-trait-marker {
-  box-shadow: 0 0 0 1px var(--dog-border-strong);
+  box-shadow: 0 0 0 1px var(--color-border-strong);
 }
 
 /* Keep older nested Dog-page fragments on the same semantic surfaces while
