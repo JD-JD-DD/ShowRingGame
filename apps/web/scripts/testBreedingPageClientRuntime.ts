@@ -19,6 +19,16 @@ assert.equal(
   false,
   "the client does not import the Prisma/database-backed veterinary-care service"
 );
+assert.equal(
+  client.includes("useState(initialDogs)") || client.includes("useState(publicStudCards)"),
+  false,
+  "the mounted client does not retain an initial copy of server-owned dog or public-stud data"
+);
+assert.match(
+  client,
+  /const eligibleDogs = useMemo\([\s\S]*\[dogs\]/,
+  "derived selectable dogs recompute from refreshed server props without a remount"
+);
 
 for (const expected of [
   "hasPendingVeterinaryCare: false,",

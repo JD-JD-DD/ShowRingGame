@@ -1841,6 +1841,7 @@ export default function BreedPageClient({
       searchParams.delete("breedCode2");
     }
     router.replace(`${pathname}?${searchParams.toString()}`);
+    router.refresh();
   }
 
   function chooseBreed(nextBreedCode: string) {

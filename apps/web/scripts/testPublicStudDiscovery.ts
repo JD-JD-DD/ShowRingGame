@@ -162,5 +162,10 @@ assert.match(
   /new URLSearchParams\(window\.location\.search\)/,
   "breed synchronization preserves unrelated planner query parameters"
 );
+assert.match(
+  plannerClientSource,
+  /router\.replace\(`\$\{pathname\}\?\$\{searchParams\.toString\(\)\}`\);\s*router\.refresh\(\);/,
+  "a changed breed context forces the mounted worksheet to receive refreshed server public studs"
+);
 
 console.log("Public stud discovery regression checks passed.");
