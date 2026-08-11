@@ -1083,15 +1083,15 @@ export default function KennelDogsPanel() {
         </div>
 
         {groomingSummary ? (
-          <div className="inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full border border-purple-300/35 bg-purple-100/60 px-3 py-1 text-xs text-purple-900 dark:border-purple-300/20 dark:bg-purple-950/30 dark:text-purple-100 lg:mt-1 lg:shrink-0 lg:self-start">
+          <div className="theme-neutral-badge inline-flex max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full px-3 py-1 text-xs lg:mt-1 lg:shrink-0 lg:self-start">
             <span className="font-semibold">Grooming:</span>
             <span>
               Remaining{" "}
-              <span className="font-semibold text-[var(--dog-heading)]">
+              <span className="font-semibold text-[var(--color-text)]">
                 {groomingSummary.groomingActionsRemainingThisWeek}
               </span>
             </span>
-            <span aria-hidden="true" className="text-purple-500/70">
+            <span aria-hidden="true" className="text-[var(--color-text-muted)]">
               &middot;
             </span>
             <span>
@@ -1100,21 +1100,21 @@ export default function KennelDogsPanel() {
                 resetEpoch={groomingSummary.nextGroomingResetEpoch}
               />
             </span>
-            <span aria-hidden="true" className="text-purple-500/70">
+            <span aria-hidden="true" className="text-[var(--color-text-muted)]">
               &middot;
             </span>
             <span>
               Level{" "}
-              <span className="font-semibold text-[var(--dog-heading)]">
+              <span className="font-semibold text-[var(--color-text)]">
                 {groomingSummary.groomingLevel}
               </span>
             </span>
-            <span aria-hidden="true" className="text-purple-500/70">
+            <span aria-hidden="true" className="text-[var(--color-text-muted)]">
               &middot;
             </span>
             <span>
               XP{" "}
-              <span className="font-semibold text-[var(--dog-heading)]">
+              <span className="font-semibold text-[var(--color-text)]">
                 {groomingSummary.groomingXp}
               </span>
             </span>
@@ -1125,7 +1125,7 @@ export default function KennelDogsPanel() {
       <div className="grid gap-5 xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)_minmax(220px,260px)] xl:items-start">
         <aside className="theme-card order-1 rounded-2xl p-4 xl:order-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-100">
+            <div className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
               Kennel Runs
             </div>
             <button
@@ -1146,7 +1146,7 @@ export default function KennelDogsPanel() {
 
           {showCreateRunForm ? (
             <form
-              className="mt-2 rounded-lg border border-sky-300/20 bg-sky-500/10 p-3"
+              className="theme-status-info mt-2 rounded-lg p-3"
               onSubmit={(event) => {
                 event.preventDefault();
                 void createRun();
@@ -1512,7 +1512,7 @@ export default function KennelDogsPanel() {
                     <button
                       type="button"
                       onClick={() => setShowColumnChooser(false)}
-                      className="rounded-md bg-purple-600 px-2.5 py-1.5 text-[0.68rem] font-semibold text-white transition hover:bg-purple-500"
+                      className="theme-primary-button rounded-md px-2.5 py-1.5 text-[0.68rem] font-semibold"
                     >
                       Done
                     </button>
@@ -1545,7 +1545,7 @@ export default function KennelDogsPanel() {
             type="button"
             onClick={toggleVisibleSelection}
             disabled={displayedDogs.length === 0}
-            className="rounded-xl border border-purple-300/25 bg-purple-500/10 px-4 py-2 text-sm font-semibold text-purple-100 transition hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
           >
             {allFilteredDogsSelected ? "Deselect Visible" : "Select All Visible"}
           </button>
@@ -1562,7 +1562,7 @@ export default function KennelDogsPanel() {
 
       {selectedDogIds.length > 0 ? (
         <div className="theme-card mb-4 rounded-2xl p-4">
-          <div className="rounded-xl border border-fuchsia-300/20 bg-fuchsia-500/10 p-3">
+          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <div className="theme-heading text-sm font-semibold">
@@ -1739,7 +1739,7 @@ export default function KennelDogsPanel() {
                   <button
                     type="button"
                     onClick={toggleVisibleSelection}
-                    className="text-purple-200/80 transition hover:text-white"
+                    className="text-[var(--color-text-secondary)] transition hover:text-[var(--color-text)]"
                   >
                     Select
                   </button>
@@ -1815,7 +1815,7 @@ export default function KennelDogsPanel() {
                 return (
                   <Fragment key={dog.dogId}>
                   <tr
-                    className="theme-card-interactive transition focus:outline-none focus:ring-2 focus:ring-purple-300/45"
+                    className="theme-card-interactive transition focus:outline-none focus:ring-2 focus:ring-[var(--color-focus)]"
                   >
                     <td className="rounded-l-2xl px-2 py-2">
                       <input
@@ -1836,7 +1836,7 @@ export default function KennelDogsPanel() {
                         aria-label={`View ${dog.callName ?? dog.regNumber}`}
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={(event) => event.stopPropagation()}
-                        className="inline-flex rounded-lg border border-purple-300/25 bg-purple-500/10 px-2 py-1 text-[0.68rem] font-semibold text-purple-100 transition hover:bg-purple-500/20 focus:outline-none focus:ring-2 focus:ring-purple-300/45"
+                        className="theme-secondary-button inline-flex rounded-lg px-2 py-1 text-[0.68rem] font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--color-focus)]"
                       >
                         Open
                       </Link>
