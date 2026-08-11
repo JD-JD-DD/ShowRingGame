@@ -1,42 +1,84 @@
 @import "tailwindcss";
 
 :root {
-  --page-bg: #f7f5f8;
-  --surface: #ffffff;
-  --surface-muted: #f2eef5;
-  --surface-raised: #ffffff;
+  /* Canonical semantic tokens — Day palette. */
+  --color-page: #f7f5f0;
+  --color-surface: #ffffff;
+  --color-surface-raised: #fbfaf7;
+  --color-surface-subtle: #efebe4;
+  --color-surface-inset: #e8e3db;
 
-  --text-primary: #24152e;
-  --text-secondary: #62556a;
-  --text-muted: #776c7e;
+  --color-text: #24211f;
+  --color-text-secondary: #494440;
+  --color-text-muted: #625d57;
+  --color-text-disabled: #918a82;
+  --color-text-inverse: #ffffff;
+  --color-link: #713247;
 
-  --border-default: #d8d0dd;
-  --border-strong: #b9adbf;
+  --color-border: #ddd8cf;
+  --color-border-subtle: #e8e3db;
+  --color-border-strong: #beb7ad;
+  --color-focus: #713247;
 
-  --action-primary: #6d3a78;
-  --action-primary-hover: #572d61;
-  --accent-soft: #e9dff0;
+  --color-primary: #713247;
+  --color-primary-hover: #572536;
+  --color-primary-active: #45202c;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #efebe4;
+  --color-secondary-hover: #e3ddd3;
+  --color-secondary-foreground: #24211f;
 
-  --status-success-bg: #e2f2ec;
-  --status-success-text: #275c4e;
-  --status-warning-bg: #fff0d8;
-  --status-warning-text: #704a16;
-  --status-danger-bg: #fce8e8;
-  --status-danger-text: #842d32;
-  --status-info-bg: #e6f1fb;
-  --status-info-text: #24527c;
+  --color-accent: #a77a2d;
+  --color-accent-foreground: #24211f;
 
-  --focus-ring: #7c4a87;
-  --shadow-soft: 0 18px 48px rgba(67, 24, 92, 0.1);
-  --shadow-raised: 0 20px 55px rgba(67, 24, 92, 0.11);
+  --color-success: #3e6b4f;
+  --color-success-surface: #e7f0e9;
+  --color-success-text: #31573f;
+  --color-warning: #8c6418;
+  --color-warning-surface: #f7edd3;
+  --color-warning-text: #745113;
+  --color-danger: #a33a3a;
+  --color-danger-surface: #f5e2e1;
+  --color-danger-text: #842f2f;
+  --color-info: #3f637a;
+  --color-info-surface: #e5edf2;
+  --color-info-text: #34566b;
+  --color-neutral: #6c665f;
+  --color-neutral-surface: #eeeae4;
+  --color-neutral-text: #4f4a45;
 
-  --purple-main: #7c3aed;
-  --purple-bright: #a855f7;
-  --purple-soft: #d8b4fe;
+  --color-overlay: rgba(36, 33, 31, 0.48);
+  --shadow-soft: 0 18px 48px rgba(36, 33, 31, 0.1);
+  --shadow-raised: 0 20px 55px rgba(36, 33, 31, 0.11);
 
-  --gold-soft: #f4d58d;
-  --background: var(--page-bg);
-  --foreground: var(--text-primary);
+  /* Compatibility aliases — retain until component migration is complete. */
+  --page-bg: var(--color-page);
+  --surface: var(--color-surface);
+  --surface-muted: var(--color-surface-subtle);
+  --surface-raised: var(--color-surface-raised);
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --border-default: var(--color-border);
+  --border-strong: var(--color-border-strong);
+  --action-primary: var(--color-primary);
+  --action-primary-hover: var(--color-primary-hover);
+  --accent-soft: var(--color-secondary);
+  --status-success-bg: var(--color-success-surface);
+  --status-success-text: var(--color-success-text);
+  --status-warning-bg: var(--color-warning-surface);
+  --status-warning-text: var(--color-warning-text);
+  --status-danger-bg: var(--color-danger-surface);
+  --status-danger-text: var(--color-danger-text);
+  --status-info-bg: var(--color-info-surface);
+  --status-info-text: var(--color-info-text);
+  --focus-ring: var(--color-focus);
+  --purple-main: var(--color-primary);
+  --purple-bright: var(--color-focus);
+  --purple-soft: var(--color-link);
+  --gold-soft: var(--color-accent);
+  --background: var(--color-page);
+  --foreground: var(--color-text);
   --panel: color-mix(in srgb, var(--surface) 90%, transparent);
   --panel-strong: color-mix(in srgb, var(--surface-raised) 96%, var(--accent-soft) 4%);
   --border: color-mix(in srgb, var(--border-default) 88%, transparent);
@@ -54,50 +96,103 @@
 }
 
 html[data-theme="dark"] {
-  --page-bg: #120818;
-  --surface: rgba(34, 18, 48, 0.88);
-  --surface-muted: rgba(49, 26, 69, 0.92);
-  --surface-raised: rgba(56, 29, 78, 0.96);
-  --text-primary: #f5efff;
-  --text-secondary: #cfc3df;
-  --text-muted: #a695ba;
-  --border-default: rgba(216, 180, 254, 0.16);
-  --border-strong: rgba(216, 180, 254, 0.34);
-  --action-primary: #8b5cf6;
-  --action-primary-hover: #7c3aed;
-  --accent-soft: rgba(124, 58, 237, 0.18);
-  --status-success-bg: rgba(6, 78, 59, 0.42);
-  --status-success-text: #d1fae5;
-  --status-warning-bg: rgba(120, 53, 15, 0.42);
-  --status-warning-text: #fef3c7;
-  --status-danger-bg: rgba(127, 29, 29, 0.44);
-  --status-danger-text: #fee2e2;
-  --status-info-bg: rgba(30, 64, 175, 0.38);
-  --status-info-text: #dbeafe;
-  --focus-ring: #c084fc;
+  /* Canonical semantic tokens — Night palette. */
+  --color-page: #171514;
+  --color-surface: #211e1c;
+  --color-surface-raised: #2a2623;
+  --color-surface-subtle: #332e2a;
+  --color-surface-inset: #141211;
+
+  --color-text: #f3f0eb;
+  --color-text-secondary: #d0c9c1;
+  --color-text-muted: #aaa198;
+  --color-text-disabled: #746d67;
+  --color-text-inverse: #171514;
+  --color-link: #d58aa2;
+
+  --color-border: #47413c;
+  --color-border-subtle: #393430;
+  --color-border-strong: #665e57;
+  --color-focus: #d58aa2;
+
+  --color-primary: #b96b85;
+  --color-primary-hover: #cd8199;
+  --color-primary-active: #a65a74;
+  --color-primary-foreground: #171514;
+  --color-secondary: #332e2a;
+  --color-secondary-hover: #403a35;
+  --color-secondary-foreground: #f3f0eb;
+
+  --color-accent: #d2a95b;
+  --color-accent-foreground: #171514;
+
+  --color-success: #70b184;
+  --color-success-surface: #203126;
+  --color-success-text: #9ad0aa;
+  --color-warning: #e0b354;
+  --color-warning-surface: #3a301d;
+  --color-warning-text: #f0ca79;
+  --color-danger: #e27b78;
+  --color-danger-surface: #3a2221;
+  --color-danger-text: #f1a09d;
+  --color-info: #78a8c5;
+  --color-info-surface: #22313a;
+  --color-info-text: #a3c8db;
+  --color-neutral: #a59d95;
+  --color-neutral-surface: #2d2926;
+  --color-neutral-text: #cbc4bd;
+
+  --color-overlay: rgba(0, 0, 0, 0.64);
   --shadow-soft: 0 18px 48px rgba(0, 0, 0, 0.28);
   --shadow-raised: 0 20px 55px rgba(0, 0, 0, 0.3);
-  --background: var(--page-bg);
-  --foreground: var(--text-primary);
-  --panel: rgba(34, 18, 48, 0.82);
-  --panel-strong: rgba(49, 26, 69, 0.92);
-  --border: rgba(170, 120, 255, 0.26);
-  --text-soft: var(--text-secondary);
-  --dog-panel: rgba(34, 18, 48, 0.88);
-  --dog-card: rgba(15, 7, 21, 0.48);
-  --dog-control: rgba(15, 7, 21, 0.72);
-  --dog-border: var(--border-default);
-  --dog-border-strong: var(--border-strong);
-  --dog-heading: var(--text-primary);
-  --dog-copy: var(--text-secondary);
-  --dog-label: #d8b4fe;
+
+  /* Compatibility aliases — retain until component migration is complete. */
+  --page-bg: var(--color-page);
+  --surface: var(--color-surface);
+  --surface-muted: var(--color-surface-subtle);
+  --surface-raised: var(--color-surface-raised);
+  --text-primary: var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --border-default: var(--color-border);
+  --border-strong: var(--color-border-strong);
+  --action-primary: var(--color-primary);
+  --action-primary-hover: var(--color-primary-hover);
+  --accent-soft: var(--color-secondary);
+  --status-success-bg: var(--color-success-surface);
+  --status-success-text: var(--color-success-text);
+  --status-warning-bg: var(--color-warning-surface);
+  --status-warning-text: var(--color-warning-text);
+  --status-danger-bg: var(--color-danger-surface);
+  --status-danger-text: var(--color-danger-text);
+  --status-info-bg: var(--color-info-surface);
+  --status-info-text: var(--color-info-text);
+  --focus-ring: var(--color-focus);
+  --purple-main: var(--color-primary);
+  --purple-bright: var(--color-focus);
+  --purple-soft: var(--color-link);
+  --gold-soft: var(--color-accent);
+  --background: var(--color-page);
+  --foreground: var(--color-text);
+  --panel: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  --panel-strong: var(--color-surface-subtle);
+  --border: var(--color-border);
+  --text-soft: var(--color-text-secondary);
+  --dog-panel: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  --dog-card: color-mix(in srgb, var(--color-surface-inset) 48%, transparent);
+  --dog-control: color-mix(in srgb, var(--color-surface-inset) 72%, transparent);
+  --dog-border: var(--color-border);
+  --dog-border-strong: var(--color-border-strong);
+  --dog-heading: var(--color-text);
+  --dog-copy: var(--color-text-secondary);
+  --dog-label: var(--color-link);
   --dog-shadow: var(--shadow-raised);
   color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--color-page);
+  --color-foreground: var(--color-text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
