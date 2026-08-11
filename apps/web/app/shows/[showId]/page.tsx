@@ -511,8 +511,11 @@ export default async function ShowDetailPage({
         ) : (
           <div className="mt-6">
             <ShowEntryPlannerScopeForm
-              showId={cluster.id}
-              dogIds={typeof dogIds === "string" ? dogIds : ""}
+               showId={cluster.id}
+               dogIds={typeof dogIds === "string" ? dogIds : ""}
+               dogDaySelections={
+                 typeof dogDaySelections === "string" ? dogDaySelections : ""
+               }
               breedOptions={breedOptions}
               kennelRunOptions={kennelRunOptions}
               selectedBreedCode={selectedBreed?.code2 ?? ""}

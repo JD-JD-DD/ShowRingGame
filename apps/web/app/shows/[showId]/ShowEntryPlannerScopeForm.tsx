@@ -16,15 +16,37 @@ type KennelRunOption = {
 type ShowEntryPlannerScopeFormProps = {
   showId: string;
   dogIds?: string;
+  dogDaySelections?: string;
   breedOptions: Array<BreedSelectOption & { eligibleDogCount: number }>;
   kennelRunOptions: KennelRunOption[];
   selectedBreedCode: string;
   selectedKennelRunId: string;
 };
 
+export function shouldPreserveRetrySelections(args: {
+  initialBreedCode: string;
+  initialKennelRunId: string;
+  breedCode: string;
+  kennelRunId: string;
+}): boolean {
+  if (args.breedCode) {
+    return (
+      Boolean(args.initialBreedCode) &&
+      args.breedCode === args.initialBreedCode &&
+      !args.kennelRunId
+    );
+  }
+
+  return (
+    Boolean(args.initialKennelRunId) &&
+    args.kennelRunId === args.initialKennelRunId
+  );
+}
+
 export function ShowEntryPlannerScopeForm({
   showId,
   dogIds,
+  dogDaySelections,
   breedOptions,
   kennelRunOptions,
   selectedBreedCode,
@@ -32,6 +54,12 @@ export function ShowEntryPlannerScopeForm({
 }: ShowEntryPlannerScopeFormProps) {
   const [breedCode2, setBreedCode2] = useState(selectedBreedCode);
   const [kennelRunId, setKennelRunId] = useState(selectedKennelRunId);
+  const preserveRetrySelections = shouldPreserveRetrySelections({
+    initialBreedCode: selectedBreedCode,
+    initialKennelRunId: selectedKennelRunId,
+    breedCode: breedCode2,
+    kennelRunId,
+  });
 
   return (
     <form
@@ -39,7 +67,16 @@ export function ShowEntryPlannerScopeForm({
       method="get"
       className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_minmax(220px,1fr)_auto]"
     >
-      {dogIds?.trim() ? <input type="hidden" name="dogIds" value={dogIds} /> : null}
+      {preserveRetrySelections && dogIds?.trim() ? (
+        <input type="hidden" name="dogIds" value={dogIds} />
+      ) : null}
+      {preserveRetrySelections && dogDaySelections?.trim() ? (
+        <input
+          type="hidden"
+          name="dogDaySelections"
+          value={dogDaySelections}
+        />
+      ) : null}
       <label className="theme-label grid gap-2 text-sm">
         Breed
         <select
