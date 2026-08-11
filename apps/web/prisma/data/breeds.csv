@@ -129,7 +129,7 @@ Flat-Coated Retriever,FR,Sporting,TRUE,7
 German Wirehaired Pointer,GW,Sporting,TRUE,7
 Basenji,BJ,Hound,TRUE,7
 Black and Tan Coonhound,BT,Hound,TRUE,7
-Keeshond,KH,Working,TRUE,7
+Keeshond,KH,Non-Sporting,TRUE,7
 Chinook,CN,Working,TRUE,7
 Phalene,PL,Toy,TRUE,7
 Russian Toy,RS,Toy,TRUE,7
@@ -262,3 +262,4 @@ Lancashire Heeler,LH,Herding,TRUE,18
 Berger Picard,PJ,Herding,TRUE,18
 Barbet,TG,Sporting,TRUE,18
 Hovawart,HO,Miscellaneous,TRUE,18
+Nenets Herding Laika,LN,Herding,TRUE,19
