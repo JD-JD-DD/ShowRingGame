@@ -62,18 +62,18 @@ export default function EmergencyVetCarePanel({
 
   return (
     <section
-      className={`${className ?? ""} border border-red-500/30 bg-red-500/10`}
+      className={`${className ?? ""} border border-[var(--color-danger)] bg-[var(--color-danger-surface)] text-[var(--color-danger-text)]`}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="dog-label text-xs uppercase tracking-wide text-red-700 dark:text-red-200">
+          <p className="dog-label text-xs uppercase tracking-wide text-[var(--color-danger-text)]">
             Pending decision
           </p>
           <h2 className="dog-heading mt-1 text-2xl font-bold">
             Emergency Vet Care Required
           </h2>
         </div>
-        <div className="rounded-2xl border border-red-400/30 bg-white/70 px-4 py-2 text-sm font-bold text-red-800 shadow-sm dark:bg-black/20 dark:text-red-100">
+        <div className="rounded-2xl border border-[var(--color-danger)] bg-[var(--color-surface)] px-4 py-2 text-sm font-bold text-[var(--color-danger-text)] shadow-sm">
           Deadline: {emergency.deadlineLabel}
         </div>
       </div>
@@ -88,13 +88,13 @@ export default function EmergencyVetCarePanel({
       </p>
 
       {error ? (
-        <div className="mt-4 rounded-2xl border border-red-400/30 bg-red-500/15 px-4 py-3 text-sm font-semibold text-red-800 dark:text-red-100">
+        <div className="mt-4 rounded-2xl border border-[var(--color-danger)] bg-[var(--color-danger-surface)] px-4 py-3 text-sm font-semibold text-[var(--color-danger-text)]">
           {error}
         </div>
       ) : null}
 
       {confirmationMode ? (
-        <div className="mt-5 rounded-2xl border border-red-400/30 bg-white/75 p-4 dark:bg-black/20">
+        <div className="mt-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
           <h3 className="dog-heading text-lg font-semibold">
             {confirmationMode === "treat"
               ? "Authorize Treatment"
@@ -110,7 +110,7 @@ export default function EmergencyVetCarePanel({
               type="button"
               onClick={() => submitEmergencyAction(confirmationMode)}
               disabled={isSubmitting}
-              className="rounded-xl bg-red-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl bg-[var(--color-danger)] px-4 py-2 text-sm font-bold text-[var(--color-text-inverse)] shadow-sm transition hover:bg-[var(--color-danger-text)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting
                 ? "Submitting..."
@@ -136,14 +136,14 @@ export default function EmergencyVetCarePanel({
           <button
             type="button"
             onClick={() => setConfirmationMode("treat")}
-            className="rounded-xl bg-red-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-red-800"
+            className="rounded-xl bg-[var(--color-danger)] px-4 py-2 text-sm font-bold text-[var(--color-text-inverse)] shadow-sm transition hover:bg-[var(--color-danger-text)]"
           >
             Authorize Treatment
           </button>
           <button
             type="button"
             onClick={() => setConfirmationMode("decline")}
-            className="rounded-xl border border-red-500/40 bg-white/75 px-4 py-2 text-sm font-bold text-red-800 transition hover:bg-red-50 dark:bg-black/20 dark:text-red-100 dark:hover:bg-red-950/40"
+            className="rounded-xl border border-[var(--color-danger)] bg-[var(--color-surface)] px-4 py-2 text-sm font-bold text-[var(--color-danger-text)] transition hover:bg-[var(--color-danger-surface)]"
           >
             Decline Care
           </button>

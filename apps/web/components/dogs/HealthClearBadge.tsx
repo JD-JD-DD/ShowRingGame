@@ -17,15 +17,15 @@ const DOT_SIZE_STYLES = {
 };
 
 const STATUS_STYLES: Record<PhenotypeHealthBadgeStatus, string> = {
-  green: "border-emerald-300/60 bg-emerald-500/20 text-emerald-200",
-  yellow: "border-amber-300/60 bg-amber-500/20 text-amber-100",
-  red: "border-red-300/70 bg-red-500/20 text-red-100",
+  green: "theme-status-success",
+  yellow: "theme-status-warning",
+  red: "theme-status-danger",
 };
 
 const DOT_STYLES: Record<PhenotypeHealthBadgeStatus, string> = {
-  green: "bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.45)]",
-  yellow: "bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.45)]",
-  red: "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.45)]",
+  green: "bg-[var(--color-success)]",
+  yellow: "bg-[var(--color-warning)]",
+  red: "bg-[var(--color-danger)]",
 };
 
 const STATUS_LABELS: Record<PhenotypeHealthBadgeStatus, string> = {
@@ -50,7 +50,7 @@ export default function HealthClearBadge({
       aria-label={label}
       className={`inline-flex shrink-0 items-center justify-center rounded-full border font-extrabold ${
         status === "green" && fullClearance
-          ? "border-white bg-emerald-500 text-white shadow-[0_0_0_2px_rgba(16,185,129,0.45),0_0_14px_rgba(255,255,255,0.28)]"
+          ? "border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-text-inverse)] shadow-[var(--shadow-soft)]"
           : STATUS_STYLES[status]
       } ${SIZE_STYLES[size]}`}
     >
