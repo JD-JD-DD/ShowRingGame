@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 
 export function buildDogPageUrl(request: Request, dogId: string) {
-  return new URL(`/dogs/${dogId}`, request.url);
+  const url = new URL(`/dogs/${dogId}`, request.url);
+  const kennelRunId = new URL(request.url).searchParams.get("kennelRunId");
+
+  if (kennelRunId) {
+    url.searchParams.set("kennelRunId", kennelRunId);
+  }
+
+  return url;
 }
 
 export function redirectToDogPageWithField(

@@ -265,7 +265,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
               {actions.canName ? (
                 <RegisterDogNameForm
-                  action={`/api/dogs/${header.dogId}/rename`}
+                  action={`/api/dogs/${header.dogId}/rename${validatedKennelRunId ? `?kennelRunId=${encodeURIComponent(validatedKennelRunId)}` : ""}`}
                   nameError={nameError}
                 />
               ) : null}
