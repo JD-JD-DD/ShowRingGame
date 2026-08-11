@@ -59,10 +59,10 @@ assertIncludes(
   "default breeding summary loads still preserve canonical progress resolution for unrelated callers"
 );
 
-assertIncludes(
+assertExcludes(
   litterListSection,
-  "await resolveDueBreedingProgressForKennel({ kennelId, currentEpoch });",
-  "litter list resolves due breeding progress before loading page data"
+  "resolveDueBreedingProgressForKennel",
+  "litter list reads persisted breeding state without resolving progression"
 );
 assertIncludes(
   litterListSection,
@@ -83,6 +83,15 @@ assertExcludes(
   litterListSection,
   "listBreedingsForKennel({ kennelId, currentEpoch })",
   "litter list no longer calls the default breeding summary path that re-resolves progress"
+);
+
+const litterDetailSection = litterService.slice(
+  litterService.indexOf("export async function getLitterForKennel")
+);
+assertExcludes(
+  litterDetailSection,
+  "resolveDueBreedingProgressForKennel",
+  "litter detail reads persisted litter state without resolving progression"
 );
 
 console.log("Litter single breeding resolution source checks passed.");

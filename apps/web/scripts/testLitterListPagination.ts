@@ -5,7 +5,6 @@ import { join } from "node:path";
 
 import { PrismaClient } from "@prisma/client";
 
-import { resolveDueBreedingProgressForKennel } from "../server/services/breeding.service";
 import {
   listLitterPageForKennel,
   listLittersForKennel,
@@ -59,11 +58,6 @@ async function findKennelWithMultiplePages(): Promise<string> {
 
 async function main() {
   const kennelId = await findKennelWithMultiplePages();
-
-  await resolveDueBreedingProgressForKennel({
-    kennelId,
-    currentEpoch,
-  });
 
   const baselineLitters = await db.litter.findMany({
     where: visibleToKennelWhere(kennelId),
@@ -201,11 +195,10 @@ async function main() {
     clientSource.includes("See More Litters"),
     'load-more button should use the complete "See More Litters" label'
   );
-  assert.ok(
-    litterListSection.includes(
-      "await resolveDueBreedingProgressForKennel({ kennelId, currentEpoch });"
-    ),
-    "initial litter page should resolve due breeding progress before loading the first page"
+  assert.equal(
+    litterListSection.includes("resolveDueBreedingProgressForKennel"),
+    false,
+    "initial litter page should remain read-only with respect to breeding progression"
   );
   assert.equal(
     litterListSection.includes(
