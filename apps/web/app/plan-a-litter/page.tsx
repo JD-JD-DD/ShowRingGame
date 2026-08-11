@@ -1,10 +1,17 @@
 import BreedingPlannerPage from "@/components/breeding/BreedingPlannerPage";
 
-export default function PlanALitterPage() {
+type PageProps = {
+  searchParams?: Promise<{
+    breedCode2?: string | string[];
+  }>;
+};
+
+export default function PlanALitterPage({ searchParams }: PageProps) {
   return (
     <BreedingPlannerPage
       experience="worksheet"
       returnMode="stayOnPlanner"
+      searchParams={searchParams}
     />
   );
 }

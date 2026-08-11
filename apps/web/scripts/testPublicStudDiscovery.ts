@@ -11,6 +11,10 @@ const plannerClientSource = readFileSync(
   join(repoRoot, "apps/web/components/breeding/BreedPageClient.tsx"),
   "utf8"
 );
+const planALitterRouteSource = readFileSync(
+  join(repoRoot, "apps/web/app/plan-a-litter/page.tsx"),
+  "utf8"
+);
 
 function section(start: string, end: string) {
   const startIndex = source.indexOf(start);
@@ -166,6 +170,64 @@ assert.match(
   plannerClientSource,
   /router\.replace\(`\$\{pathname\}\?\$\{searchParams\.toString\(\)\}`\);\s*router\.refresh\(\);/,
   "a changed breed context forces the mounted worksheet to receive refreshed server public studs"
+);
+assert.match(
+  planALitterRouteSource,
+  /function PlanALitterPage\(\{ searchParams \}: PageProps\)[\s\S]*searchParams=\{searchParams\}/,
+  "the worksheet route forwards its Next searchParams promise to the server planner"
+);
+
+type PlannerCard = {
+  id: string;
+  breedCode2: string;
+  sex: "M" | "F";
+  isOwnedByCurrentKennel: boolean;
+  isEligibleToBreed: boolean;
+  hasPendingVeterinaryCare: boolean;
+  studListingId: string | null;
+  coiPercent: number | null;
+};
+
+const nlDam: PlannerCard = {
+  id: "owned-nl-dam",
+  breedCode2: "NL",
+  sex: "F",
+  isOwnedByCurrentKennel: true,
+  isEligibleToBreed: true,
+  hasPendingVeterinaryCare: false,
+  studListingId: null,
+  coiPercent: null,
+};
+const productionShapeOutsideStud: PlannerCard = {
+  id: "outside-nl-stud",
+  breedCode2: "NL",
+  sex: "M",
+  isOwnedByCurrentKennel: false,
+  isEligibleToBreed: true,
+  hasPendingVeterinaryCare: false,
+  studListingId: "active-nl-player-stud",
+  coiPercent: null,
+};
+const mergedDogs = [nlDam, productionShapeOutsideStud].filter(
+  (dog) =>
+    dog.isEligibleToBreed ||
+    (Boolean(dog.studListingId) && dog.hasPendingVeterinaryCare)
+);
+const visibleOutsideSires = mergedDogs
+  .filter((dog) => dog.isEligibleToBreed && !dog.hasPendingVeterinaryCare)
+  .filter(
+    (dog) =>
+      dog.sex === "M" &&
+      dog.breedCode2 === nlDam.breedCode2 &&
+      Boolean(dog.studListingId) &&
+      !dog.isOwnedByCurrentKennel
+  )
+  .sort((a, b) => (a.coiPercent ?? 0) - (b.coiPercent ?? 0));
+
+assert.deepEqual(
+  visibleOutsideSires.map((dog) => dog.id),
+  ["outside-nl-stud"],
+  "an eligible external NL PLAYER_STUD with pending/null COI remains visible under Outside Studs and Lowest Litter COI"
 );
 
 console.log("Public stud discovery regression checks passed.");
