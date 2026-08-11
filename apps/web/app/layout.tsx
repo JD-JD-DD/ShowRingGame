@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+// import { SpeedInsights } from "@vercel/speed-insights/next"; // Disabled to avoid ongoing Vercel usage costs; may be re-enabled later.
 import GameHeader from "@/components/layout/GameHeader";
 import GameHeaderVisibility from "@/components/layout/GameHeaderVisibility";
 import ReturnToTopButton from "@/components/ReturnToTopButton";
@@ -50,7 +50,7 @@ export default function RootLayout({
         {children}
         <ReturnToTopButton />
         <Analytics />
-        <SpeedInsights />
+        {/* <SpeedInsights /> */}
       </body>
     </html>
   );
