@@ -17,7 +17,7 @@ type HealthTestPanelRow = {
 };
 
 type HealthTestingPanelProps = {
-  dogId: string;
+  action: string;
   rows: HealthTestPanelRow[];
   canOrderHealthTests: boolean;
   kennelBalance: number;
@@ -34,7 +34,7 @@ function formatMoney(amount: number): string {
 }
 
 export default function HealthTestingPanel({
-  dogId,
+  action,
   rows,
   canOrderHealthTests,
   kennelBalance,
@@ -67,7 +67,7 @@ export default function HealthTestingPanel({
   }
 
   return (
-    <form action={`/api/dogs/${dogId}/health-tests`} method="post" className="dog-card overflow-hidden rounded-2xl">
+    <form action={action} method="post" className="dog-card overflow-hidden rounded-2xl">
       {validSelectedCodes.map((code) => (
         <input key={code} type="hidden" name="testTypeCodes" value={code} />
       ))}

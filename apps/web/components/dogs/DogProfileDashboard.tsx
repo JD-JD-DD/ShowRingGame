@@ -23,6 +23,7 @@ const CARD_CLASS = "dog-card rounded-2xl px-4 py-3";
 type Props = {
   profile: DogProfileDto;
   currentEpoch: number;
+  kennelRunId?: string | null;
   healthMessage: string | null;
   healthError: string | null;
   notesMessage: string | null;
@@ -304,7 +305,7 @@ export default function DogProfileDashboard(props: Props) {
       >
         {statusMessage(props.healthMessage)}
         {statusMessage(props.healthError, true)}
-        <HealthTestingPanel dogId={header.dogId} kennelBalance={healthControls?.kennelBalance ?? 0} canOrderHealthTests={Boolean(healthControls?.checkoutNeeded)} rows={profile.healthTesting.tests.map((test) => ({ testTypeCode: test.testCode, label: test.displayName, fee: test.cost, isAvailable: test.isCurrentlyAvailable, availabilityLabel: test.minimumAgeLabel, result: test.isComplete ? { label: test.resultLabel ?? "Complete", testedLabel: test.testedDateLabel ?? "Test date unavailable", severity: test.severityKey ?? "yellow", impactStatement: test.healthImpactStatement } : null }))} />
+        <HealthTestingPanel action={`/api/dogs/${header.dogId}/health-tests${props.kennelRunId ? `?kennelRunId=${encodeURIComponent(props.kennelRunId)}` : ""}`} kennelBalance={healthControls?.kennelBalance ?? 0} canOrderHealthTests={Boolean(healthControls?.checkoutNeeded)} rows={profile.healthTesting.tests.map((test) => ({ testTypeCode: test.testCode, label: test.displayName, fee: test.cost, isAvailable: test.isCurrentlyAvailable, availabilityLabel: test.minimumAgeLabel, result: test.isComplete ? { label: test.resultLabel ?? "Complete", testedLabel: test.testedDateLabel ?? "Test date unavailable", severity: test.severityKey ?? "yellow", impactStatement: test.healthImpactStatement } : null }))} />
         {profile.healthTesting.breedingSafetyScreening.length > 0 ? (
           <div className="rounded-2xl border border-sky-300/25 bg-sky-500/10 p-4">
             <div className="dog-heading text-sm font-semibold">

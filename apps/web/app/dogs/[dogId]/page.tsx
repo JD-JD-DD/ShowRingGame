@@ -165,6 +165,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const currentRosterIndex = ownedDogRoster.findIndex(
     (rosterDog) => rosterDog.id === profile.header.dogId
   );
+  const navigationKennelRunId =
+    validatedKennelRunId && currentRosterIndex >= 0
+      ? validatedKennelRunId
+      : null;
   const toRosterNavigationDog = (
     rosterDog: (typeof ownedDogRoster)[number]
   ): RosterNavigationDog => ({
@@ -174,7 +178,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     breedCode2: rosterDog.breedCode2,
   });
   const dogRosterNavigation =
-    validatedKennelRunId &&
+    navigationKennelRunId &&
     ownedDogRoster.length > 1 &&
     currentRosterIndex >= 0
       ? {
@@ -186,7 +190,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             currentRosterIndex < ownedDogRoster.length - 1
               ? toRosterNavigationDog(ownedDogRoster[currentRosterIndex + 1])
               : null,
-          kennelRunId: validatedKennelRunId,
+          kennelRunId: navigationKennelRunId,
           currentIndex: currentRosterIndex,
           totalDogs: ownedDogRoster.length,
         }
@@ -213,7 +217,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const saleListing = profile.breedingAndProduction.activeSaleListing;
   const studListing = profile.breedingAndProduction.activeStudListing;
   const grooming = profile.groomingDetails;
-  const dogPageReturnTo = `/dogs/${header.dogId}`;
+  const dogPageReturnTo = `/dogs/${header.dogId}${navigationKennelRunId ? `?kennelRunId=${encodeURIComponent(navigationKennelRunId)}` : ""}`;
   const headerDisplayName = [
     header.visibleTitlePrefix,
     header.registeredName ?? header.callName ?? header.displayName,
@@ -517,6 +521,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         <DogProfileDashboard
           profile={profile}
           currentEpoch={currentEpoch}
+          kennelRunId={navigationKennelRunId}
           healthMessage={healthMessage}
           healthError={healthError}
           notesMessage={notesMessage}
