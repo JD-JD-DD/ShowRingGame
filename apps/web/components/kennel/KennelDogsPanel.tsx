@@ -1765,7 +1765,10 @@ export default function KennelDogsPanel() {
 
             <tbody>
               {displayedDogs.map((dog) => {
-                const dogHref = `/dogs/${dog.dogId}`;
+                const dogHref =
+                  dog.kennelRunId && dog.currentRun?.id === dog.kennelRunId
+                  ? `/dogs/${dog.dogId}?kennelRunId=${encodeURIComponent(dog.kennelRunId)}`
+                  : `/dogs/${dog.dogId}`;
                 const groomingBusy = groomingActionDogId === dog.dogId;
                 const hasOpenGroomingListing = Boolean(
                   dog.groomingStatus.openListingId

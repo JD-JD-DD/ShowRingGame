@@ -32,6 +32,7 @@ type DogSearchParams = {
     notesMessage?: string | string[];
     showError?: string | string[];
     showMessage?: string | string[];
+    kennelRunId?: string | string[];
 };
 
 type PageProps = {
@@ -133,17 +134,23 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
   if (!profile) notFound();
 
-  const currentDogKennelRunId = profile.currentRun?.runId ?? null;
-  const ownedDogRoster = profile.viewerContext.isOwnedByCurrentKennel
+  const requestedKennelRunId = firstQueryValue(resolvedSearchParams.kennelRunId);
+  const validatedKennelRunId =
+    requestedKennelRunId &&
+    profile.viewerContext.isOwnedByCurrentKennel &&
+    profile.currentRun?.runId === requestedKennelRunId
+      ? requestedKennelRunId
+      : null;
+  const ownedDogRoster = validatedKennelRunId
     ? await perf.measure("ownedRosterMs", () =>
         db.dog.findMany({
           where: {
             ownerKennelId: currentKennel.id,
-            kennelRunId: currentDogKennelRunId,
+            kennelRunId: validatedKennelRunId,
             lifecycleState: "ALIVE",
             isPlayerVisible: true,
           },
-          orderBy: [{ birthEpoch: "desc" }],
+          orderBy: [{ birthEpoch: "asc" }, { regNumber: "asc" }],
           select: {
             id: true,
             callName: true,
@@ -167,7 +174,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     breedCode2: rosterDog.breedCode2,
   });
   const dogRosterNavigation =
-    profile.viewerContext.isOwnedByCurrentKennel &&
+    validatedKennelRunId &&
     ownedDogRoster.length > 1 &&
     currentRosterIndex >= 0
       ? {
@@ -179,6 +186,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
             currentRosterIndex < ownedDogRoster.length - 1
               ? toRosterNavigationDog(ownedDogRoster[currentRosterIndex + 1])
               : null,
+          kennelRunId: validatedKennelRunId,
           currentIndex: currentRosterIndex,
           totalDogs: ownedDogRoster.length,
         }
@@ -291,7 +299,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
                     {dogRosterNavigation.previousDog ? (
                       <Link
-                        href={`/dogs/${dogRosterNavigation.previousDog.id}`}
+                        href={`/dogs/${dogRosterNavigation.previousDog.id}?kennelRunId=${encodeURIComponent(dogRosterNavigation.kennelRunId)}`}
                         className="flex min-h-12 flex-col justify-center rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-sm font-semibold text-purple-50 transition hover:bg-white/10"
                       >
                         <span>&larr; Previous Dog</span>
@@ -315,7 +323,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
                     {dogRosterNavigation.nextDog ? (
                       <Link
-                        href={`/dogs/${dogRosterNavigation.nextDog.id}`}
+                        href={`/dogs/${dogRosterNavigation.nextDog.id}?kennelRunId=${encodeURIComponent(dogRosterNavigation.kennelRunId)}`}
                         className="flex min-h-12 flex-col justify-center rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-left text-sm font-semibold text-purple-50 transition hover:bg-white/10 sm:text-right"
                       >
                         <span>Next Dog &rarr;</span>
