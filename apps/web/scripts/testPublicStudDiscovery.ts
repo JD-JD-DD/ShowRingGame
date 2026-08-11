@@ -7,6 +7,10 @@ const source = readFileSync(
   join(repoRoot, "apps/web/components/breeding/BreedingPlannerPage.tsx"),
   "utf8"
 );
+const plannerClientSource = readFileSync(
+  join(repoRoot, "apps/web/components/breeding/BreedPageClient.tsx"),
+  "utf8"
+);
 
 function section(start: string, end: string) {
   const startIndex = source.indexOf(start);
@@ -122,6 +126,41 @@ assert.match(
   source,
   /reason: "breed_context_required"/,
   "the worksheet does not fall back to an unbounded public-stud load without breed context"
+);
+
+function synchronizeDamBreed(url: string, breedCode2: string) {
+  const nextUrl = new URL(url);
+  if (nextUrl.searchParams.get("breedCode2") !== breedCode2) {
+    nextUrl.searchParams.set("breedCode2", breedCode2);
+  }
+  return nextUrl.toString();
+}
+
+const noBreedUrl = "https://example.test/plan-a-litter?plannerView=outside";
+assert.equal(
+  synchronizeDamBreed(noBreedUrl, "NL"),
+  "https://example.test/plan-a-litter?plannerView=outside&breedCode2=NL",
+  "selecting an NL dam from the no-breed route supplies the server discovery context"
+);
+assert.equal(
+  synchronizeDamBreed("https://example.test/plan-a-litter?breedCode2=NL", "NL"),
+  "https://example.test/plan-a-litter?breedCode2=NL",
+  "selecting a dam matching the URL breed does not churn the route"
+);
+assert.equal(
+  synchronizeDamBreed("https://example.test/plan-a-litter?breedCode2=AA", "NL"),
+  "https://example.test/plan-a-litter?breedCode2=NL",
+  "changing dam breeds replaces the active public-stud result context"
+);
+assert.match(
+  plannerClientSource,
+  /function chooseDam\(nextDamId: string\)[\s\S]*synchronizeWorksheetBreedCode2\(nextDam\.breedCode2\)/,
+  "dam selection synchronizes its canonical breed into the existing route mechanism"
+);
+assert.match(
+  plannerClientSource,
+  /new URLSearchParams\(window\.location\.search\)/,
+  "breed synchronization preserves unrelated planner query parameters"
 );
 
 console.log("Public stud discovery regression checks passed.");

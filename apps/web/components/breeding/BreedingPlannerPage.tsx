@@ -1021,7 +1021,7 @@ export default async function BreedingPlannerPage({
       </div>
 
       <BreedPageClient
-        key={initialDogId ?? initialStudListingId ?? initialBreedCode2 ?? experience}
+        key={initialDogId ?? initialStudListingId ?? experience}
         experience={experience}
         returnMode={returnMode}
         kennelId={kennel.id}

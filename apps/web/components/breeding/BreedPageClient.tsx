@@ -1829,6 +1829,20 @@ export default function BreedPageClient({
     .map((id) => eligibleDogs.find((dog) => dog.id === id))
     .filter((dog): dog is DogCardDto => Boolean(dog));
 
+  function synchronizeWorksheetBreedCode2(nextBreedCode: string) {
+    if (experience !== "worksheet") return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("breedCode2") === nextBreedCode) return;
+
+    if (nextBreedCode) {
+      searchParams.set("breedCode2", nextBreedCode);
+    } else {
+      searchParams.delete("breedCode2");
+    }
+    router.replace(`${pathname}?${searchParams.toString()}`);
+  }
+
   function chooseBreed(nextBreedCode: string) {
     setSuccessMessage("");
     setPlannerNotice(null);
@@ -1840,18 +1854,18 @@ export default function BreedPageClient({
     setTestDamBrucellosis(false);
     setTestSireBrucellosis(false);
 
-    if (experience === "worksheet") {
-      router.replace(
-        nextBreedCode
-          ? `${pathname}?breedCode2=${encodeURIComponent(nextBreedCode)}`
-          : pathname
-      );
-    }
+    synchronizeWorksheetBreedCode2(nextBreedCode);
   }
 
   function chooseDam(nextDamId: string) {
     setSuccessMessage("");
     setPlannerNotice(null);
+
+    const nextDam = eligibleDogs.find((dog) => dog.id === nextDamId) ?? null;
+
+    if (nextDam && nextDam.breedCode2 !== breedCode2) {
+      setBreedCode2(nextDam.breedCode2);
+    }
 
     if (nextDamId !== damId) {
       setSireId("");
@@ -1861,6 +1875,7 @@ export default function BreedPageClient({
     }
 
     setDamId(nextDamId);
+    if (nextDam) synchronizeWorksheetBreedCode2(nextDam.breedCode2);
   }
 
   function toggleShortlist(sireIdToToggle: string) {
