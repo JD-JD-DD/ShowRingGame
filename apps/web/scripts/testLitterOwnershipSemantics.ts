@@ -75,8 +75,13 @@ assert.equal(isVisibleToKennel(betaLitterWithAlphaDam, alpha), false, "D: dam ow
 
 assert.match(
   litterServiceSource,
-  /db\.litter\.aggregate\(\{\s*where: visibleToKennelWhere\(kennelId\)/,
-  "totals should use canonical breeder ownership"
+  /const archiveWhere = buildLitterArchiveWhere\(\{ kennelId, filters \}\)/,
+  "filtered totals should use the shared breeder-scoped archive predicate"
+);
+assert.match(
+  litterServiceSource,
+  /db\.litter\.aggregate\(\{\s*where: archiveWhere/,
+  "filtered totals should use canonical breeder ownership"
 );
 assert.match(
   litterServiceSource,

@@ -6,7 +6,11 @@ import { getCurrentEpoch } from "@/lib/gameClock";
 import { formatRealDurationHoursLong } from "@/lib/gameTimeFormat";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
-import { listLittersForKennel } from "@/server/services/litter.service";
+import {
+  getLitterManagementOptions,
+  listLittersForKennel,
+  parseLitterArchiveFilters,
+} from "@/server/services/litter.service";
 
 function statusLabel(status: string): string {
   return status
@@ -38,7 +42,11 @@ function breedingProgressLabel(attempt: {
 const focusLinkClass =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200";
 
-export default async function LittersPage() {
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function LittersPage({ searchParams }: PageProps) {
   const userId = await getSessionUserId();
 
   if (!userId) {
@@ -52,17 +60,21 @@ export default async function LittersPage() {
   }
 
   const currentEpoch = getCurrentEpoch();
+  const filters = parseLitterArchiveFilters(await searchParams);
   const {
     litters,
     nextCursor,
     hasMore,
     totalCount,
     totalPuppyCount,
+    historicalTotalCount,
     activeBreedings,
   } = await listLittersForKennel({
     kennelId: kennel.id,
     currentEpoch,
+    filters,
   });
+  const managementOptions = await getLitterManagementOptions({ kennelId: kennel.id });
 
   const pregnantBreedings = activeBreedings.filter(
     (attempt) => attempt.status === "PREGNANT"
@@ -98,9 +110,16 @@ export default async function LittersPage() {
         <section className="mb-8 grid gap-4 md:grid-cols-3">
           <div className="theme-card rounded-2xl p-5">
             <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
-              Total Litters
+              {filters.search || filters.breedCode2 || filters.gameYear || filters.sort !== "newest"
+                ? "Matching Litters"
+                : "Total Litters"}
             </div>
             <div className="mt-2 text-3xl font-semibold">{totalCount}</div>
+            {totalCount !== historicalTotalCount ? (
+              <div className="mt-1 text-xs text-[var(--dog-copy)]">
+                {historicalTotalCount} total historical litters
+              </div>
+            ) : null}
           </div>
           <div className="theme-card rounded-2xl p-5">
             <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
@@ -199,9 +218,13 @@ export default async function LittersPage() {
           </div>
 
           <LittersListClient
+            key={JSON.stringify(filters)}
             initialLitters={litters}
             initialCursor={nextCursor}
             initialHasMore={hasMore}
+            filters={filters}
+            managementOptions={managementOptions}
+            hasHistoricalLitters={historicalTotalCount > 0}
           />
         </section>
       </div>

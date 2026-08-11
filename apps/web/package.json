@@ -42,6 +42,7 @@
     "test:litter-read-only-progression": "tsx scripts/testLitterReadOnlyProgression.ts",
     "test:litter-list-summary-read-model": "tsx scripts/testLitterListSummaryReadModel.ts",
     "test:litter-navigation-progression": "tsx scripts/testLitterNavigationProgression.ts",
+    "test:litter-large-program-management": "tsx scripts/testLitterLargeProgramManagement.ts",
     "diagnose:reproductive-emergencies": "tsx scripts/diagnoseReproductiveEmergencies.ts",
     "test:retired-fatal-whelp": "tsx scripts/testRetiredFatalWhelp.ts",
     "test:pending-veterinary-care": "tsx scripts/testPendingVeterinaryCare.ts",

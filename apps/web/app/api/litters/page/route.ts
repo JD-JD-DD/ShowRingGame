@@ -4,6 +4,7 @@ import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import {
   listLitterPageForKennel,
+  parseLitterArchiveFilters,
   type LitterListCursor,
 } from "@/server/services/litter.service";
 
@@ -41,11 +42,17 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const cursor = parseCursor(body.cursor);
+    const filters = parseLitterArchiveFilters(
+      body.filters && typeof body.filters === "object"
+        ? (body.filters as Record<string, unknown>)
+        : undefined
+    );
     const currentEpoch = getCurrentEpoch();
     const page = await listLitterPageForKennel({
       kennelId: kennel.id,
       currentEpoch,
       cursor,
+      filters,
       limit: 10,
     });
 

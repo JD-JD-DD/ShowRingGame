@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { EmptyLittersState, LitterCards } from "@/components/litters/LitterCards";
 import type { LitterListItemDto } from "@/server/mappers/litter.mapper";
-import type { LitterListCursor } from "@/server/services/litter.service";
+import type {
+  LitterArchiveFilters,
+  LitterListCursor,
+  LitterManagementOptions,
+} from "@/server/services/litter.service";
 
 type LitterPageResponse = {
   ok: boolean;
@@ -17,11 +22,19 @@ type LitterPageResponse = {
 const DEFAULT_LOAD_ERROR =
   "We couldn't load more litters right now. Please try again.";
 
+const focusControlClass =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200";
+
 export function LittersListClient(props: {
   initialLitters: LitterListItemDto[];
   initialCursor: LitterListCursor | null;
   initialHasMore: boolean;
+  filters: LitterArchiveFilters;
+  managementOptions: LitterManagementOptions;
+  hasHistoricalLitters: boolean;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [litters, setLitters] = useState(props.initialLitters);
   const [nextCursor, setNextCursor] = useState<LitterListCursor | null>(
     props.initialCursor
@@ -46,6 +59,7 @@ export function LittersListClient(props: {
         },
         body: JSON.stringify({
           cursor: nextCursor,
+          filters: props.filters,
         }),
       });
       const payload = (await response.json()) as LitterPageResponse;
@@ -70,8 +84,99 @@ export function LittersListClient(props: {
     }
   }
 
+  function applyFilters(formData: FormData) {
+    const params = new URLSearchParams();
+    const search = String(formData.get("search") ?? "").trim();
+    const breedCode2 = String(formData.get("breedCode2") ?? "");
+    const year = String(formData.get("year") ?? "");
+    const sort = String(formData.get("sort") ?? "newest");
+
+    if (search) params.set("search", search);
+    if (breedCode2) params.set("breedCode2", breedCode2);
+    if (year) params.set("year", year);
+    if (sort === "oldest") params.set("sort", sort);
+    router.push(`${pathname}${params.size > 0 ? `?${params.toString()}` : ""}`);
+  }
+
+  const hasActiveFilters =
+    props.filters.search.length > 0 ||
+    props.filters.breedCode2 !== null ||
+    props.filters.gameYear !== null ||
+    props.filters.sort !== "newest";
+
   return (
     <div className="grid gap-5">
+      <form
+        className="theme-panel grid gap-3 rounded-2xl p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto_auto] lg:items-end"
+        action={applyFilters}
+      >
+        <label className="grid gap-1 text-sm font-medium text-[var(--dog-heading)]">
+          Search litters
+          <input
+            name="search"
+            type="search"
+            defaultValue={props.filters.search}
+            placeholder="Parents, puppies, or litter serial"
+            className={`rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm ${focusControlClass}`}
+          />
+        </label>
+        <label className="grid gap-1 text-sm font-medium text-[var(--dog-heading)]">
+          Breed
+          <select
+            name="breedCode2"
+            defaultValue={props.filters.breedCode2 ?? ""}
+            className={`rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm ${focusControlClass}`}
+          >
+            <option value="">All breeds</option>
+            {props.managementOptions.breeds.map((breed) => (
+              <option key={breed.code2} value={breed.code2}>
+                {breed.name} ({breed.code2})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm font-medium text-[var(--dog-heading)]">
+          Year
+          <select
+            name="year"
+            defaultValue={props.filters.gameYear?.toString() ?? ""}
+            className={`rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm ${focusControlClass}`}
+          >
+            <option value="">All years</option>
+            {props.managementOptions.years.map((year) => (
+              <option key={year} value={year}>
+                Year {year}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm font-medium text-[var(--dog-heading)]">
+          Sort
+          <select
+            name="sort"
+            defaultValue={props.filters.sort}
+            className={`rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm ${focusControlClass}`}
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        </label>
+        <button
+          type="submit"
+          className={`rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 ${focusControlClass}`}
+        >
+          Apply
+        </button>
+        {hasActiveFilters ? (
+          <button
+            type="button"
+            onClick={() => router.push(pathname)}
+            className={`rounded-xl border border-[var(--dog-border)] px-4 py-2 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)] ${focusControlClass}`}
+          >
+            Clear filters
+          </button>
+        ) : null}
+      </form>
       <p aria-live="polite" className="sr-only">
         {isLoadingMore
           ? "Loading more litters."
@@ -82,7 +187,22 @@ export function LittersListClient(props: {
               : "All litters loaded."}
       </p>
 
-      {litters.length === 0 ? <EmptyLittersState /> : <LitterCards litters={litters} />}
+      {litters.length === 0 ? (
+        props.hasHistoricalLitters ? (
+          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-8 text-center">
+            <h3 className="text-xl font-semibold">No litters match these filters</h3>
+            <button
+              type="button"
+              onClick={() => router.push(pathname)}
+              className={`mt-5 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 ${focusControlClass}`}
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <EmptyLittersState />
+        )
+      ) : <LitterCards litters={litters} />}
 
       {errorMessage ? (
         <p

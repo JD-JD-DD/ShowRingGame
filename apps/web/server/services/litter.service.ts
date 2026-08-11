@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { SHOW_YEAR_HOURS } from "@showring/rules";
 import {
   listBreedingsForKennelAfterProgressResolved,
 } from "@/server/services/breeding.service";
@@ -165,6 +166,40 @@ export type LitterListCursor = {
   litterId: string;
 };
 
+export type LitterArchiveFilters = {
+  search: string;
+  breedCode2: string | null;
+  gameYear: number | null;
+  sort: "newest" | "oldest";
+};
+
+export type LitterManagementOptions = {
+  breeds: Array<{ code2: string; name: string }>;
+  years: number[];
+};
+
+const DEFAULT_LITTER_ARCHIVE_FILTERS: LitterArchiveFilters = {
+  search: "",
+  breedCode2: null,
+  gameYear: null,
+  sort: "newest",
+};
+
+export function parseLitterArchiveFilters(
+  input: Record<string, unknown> | null | undefined
+): LitterArchiveFilters {
+  const search = typeof input?.search === "string" ? input.search.trim().slice(0, 120) : "";
+  const breedCandidate = typeof input?.breedCode2 === "string" ? input.breedCode2.trim().toUpperCase() : "";
+  const yearCandidate = typeof input?.year === "string" || typeof input?.year === "number" ? Number(input.year) : NaN;
+
+  return {
+    search,
+    breedCode2: /^[A-Z0-9]{2,12}$/.test(breedCandidate) ? breedCandidate : null,
+    gameYear: Number.isInteger(yearCandidate) && yearCandidate >= 1 && yearCandidate <= 10_000 ? yearCandidate : null,
+    sort: input?.sort === "oldest" ? "oldest" : DEFAULT_LITTER_ARCHIVE_FILTERS.sort,
+  };
+}
+
 export type LitterListPageResult = {
   litters: LitterListItemDto[];
   nextCursor: LitterListCursor | null;
@@ -248,6 +283,93 @@ function visibleToKennelWhere(kennelId: string) {
   };
 }
 
+export async function getLitterManagementOptions(args: {
+  kennelId: string;
+}): Promise<LitterManagementOptions> {
+  const where = visibleToKennelWhere(args.kennelId);
+  const [breedRows, yearRange] = await Promise.all([
+    db.litter.findMany({
+      where,
+      distinct: ["breedCode2"],
+      select: {
+        breedCode2: true,
+        breed: { select: { name: true } },
+      },
+    }),
+    db.litter.aggregate({
+      where,
+      _min: { bornEpoch: true },
+      _max: { bornEpoch: true },
+    }),
+  ]);
+  const firstYear = yearRange._min.bornEpoch === null ? null : Math.floor(yearRange._min.bornEpoch / SHOW_YEAR_HOURS) + 1;
+  const lastYear = yearRange._max.bornEpoch === null ? null : Math.floor(yearRange._max.bornEpoch / SHOW_YEAR_HOURS) + 1;
+
+  return {
+    breeds: breedRows
+      .map((row) => ({ code2: row.breedCode2, name: row.breed.name }))
+      .sort((left, right) => left.name.localeCompare(right.name)),
+    years:
+      firstYear === null || lastYear === null
+        ? []
+        : Array.from({ length: lastYear - firstYear + 1 }, (_, index) => lastYear - index),
+  };
+}
+
+function buildLitterArchiveWhere(args: {
+  kennelId: string;
+  filters: LitterArchiveFilters;
+}): Prisma.LitterWhereInput {
+  const { kennelId, filters } = args;
+  const search = filters.search;
+  const searchWhere: Prisma.LitterWhereInput | null = search
+    ? {
+        OR: [
+          { serial7: { contains: search, mode: "insensitive" } },
+          {
+            sire: {
+              OR: [
+                { callName: { contains: search, mode: "insensitive" } },
+                { registeredName: { contains: search, mode: "insensitive" } },
+                { regNumber: { contains: search, mode: "insensitive" } },
+              ],
+            },
+          },
+          {
+            dam: {
+              OR: [
+                { callName: { contains: search, mode: "insensitive" } },
+                { registeredName: { contains: search, mode: "insensitive" } },
+                { regNumber: { contains: search, mode: "insensitive" } },
+              ],
+            },
+          },
+          {
+            puppies: {
+              some: {
+                OR: [
+                  { callName: { contains: search, mode: "insensitive" } },
+                  { registeredName: { contains: search, mode: "insensitive" } },
+                  { regNumber: { contains: search, mode: "insensitive" } },
+                ],
+              },
+            },
+          },
+        ],
+      }
+    : null;
+  const yearStart = filters.gameYear === null ? null : (filters.gameYear - 1) * SHOW_YEAR_HOURS;
+
+  return {
+    AND: [
+      visibleToKennelWhere(kennelId),
+      ...(filters.breedCode2 ? [{ breedCode2: filters.breedCode2 }] : []),
+      ...(yearStart === null ? [] : [{ bornEpoch: { gte: yearStart, lt: yearStart + SHOW_YEAR_HOURS } }]),
+      ...(searchWhere ? [searchWhere] : []),
+    ],
+  };
+}
+
 function clampLitterPageSize(limit?: number): number {
   return Math.min(
     Math.max(limit ?? DEFAULT_LITTER_PAGE_SIZE, 1),
@@ -257,38 +379,39 @@ function clampLitterPageSize(limit?: number): number {
 
 function buildLitterPageWhere(args: {
   kennelId: string;
+  filters: LitterArchiveFilters;
   cursor?: LitterListCursor | null;
 }): Prisma.LitterWhereInput {
-  const { kennelId, cursor } = args;
-  const visibilityWhere = visibleToKennelWhere(kennelId);
+  const { kennelId, filters, cursor } = args;
+  const archiveWhere = buildLitterArchiveWhere({ kennelId, filters });
 
   if (!cursor) {
-    return visibilityWhere;
+    return archiveWhere;
   }
 
   const cursorCreatedAt = new Date(cursor.createdAt);
 
   return {
     AND: [
-      visibilityWhere,
+      archiveWhere,
       {
         OR: [
           {
             bornEpoch: {
-              lt: cursor.bornEpoch,
+              [filters.sort === "newest" ? "lt" : "gt"]: cursor.bornEpoch,
             },
           },
           {
             bornEpoch: cursor.bornEpoch,
             createdAt: {
-              lt: cursorCreatedAt,
+              [filters.sort === "newest" ? "lt" : "gt"]: cursorCreatedAt,
             },
           },
           {
             bornEpoch: cursor.bornEpoch,
             createdAt: cursorCreatedAt,
             id: {
-              lt: cursor.litterId,
+              [filters.sort === "newest" ? "lt" : "gt"]: cursor.litterId,
             },
           },
         ],
@@ -367,18 +490,19 @@ async function loadLitterPuppySummaries(litterIds: string[]) {
 async function loadLitterListPageForKennel(args: {
   kennelId: string;
   currentEpoch: number;
+  filters?: LitterArchiveFilters;
   cursor?: LitterListCursor | null;
   limit?: number;
 }): Promise<LitterListPageResult> {
-  const { kennelId, currentEpoch, cursor } = args;
+  const { kennelId, currentEpoch, cursor, filters = DEFAULT_LITTER_ARCHIVE_FILTERS } = args;
   const pageSize = clampLitterPageSize(args.limit);
 
   const litters = await db.litter.findMany({
-    where: buildLitterPageWhere({ kennelId, cursor }),
+    where: buildLitterPageWhere({ kennelId, filters, cursor }),
     orderBy: [
-      { bornEpoch: "desc" },
-      { createdAt: "desc" },
-      { id: "desc" },
+      { bornEpoch: filters.sort === "newest" ? "desc" : "asc" },
+      { createdAt: filters.sort === "newest" ? "desc" : "asc" },
+      { id: filters.sort === "newest" ? "desc" : "asc" },
     ],
     take: pageSize + 1,
     select: litterListSelect,
@@ -411,20 +535,23 @@ async function loadLitterListPageForKennel(args: {
 async function loadLitterListSummaryForKennel(args: {
   kennelId: string;
   currentEpoch: number;
+  filters?: LitterArchiveFilters;
   cursor?: LitterListCursor | null;
   limit?: number;
 }): Promise<LitterListSummaryResult> {
-  const { kennelId, currentEpoch, cursor, limit } = args;
+  const { kennelId, currentEpoch, cursor, limit, filters = DEFAULT_LITTER_ARCHIVE_FILTERS } = args;
+  const archiveWhere = buildLitterArchiveWhere({ kennelId, filters });
 
   const [page, totals] = await Promise.all([
     loadLitterListPageForKennel({
       kennelId,
       currentEpoch,
+      filters,
       cursor,
       limit,
     }),
     db.litter.aggregate({
-      where: visibleToKennelWhere(kennelId),
+      where: archiveWhere,
       _count: {
         _all: true,
       },
@@ -444,6 +571,7 @@ async function loadLitterListSummaryForKennel(args: {
 export async function listLitterPageForKennel(args: {
   kennelId: string;
   currentEpoch: number;
+  filters?: LitterArchiveFilters;
   cursor?: LitterListCursor | null;
   limit?: number;
 }): Promise<LitterListPageResult> {
@@ -453,29 +581,34 @@ export async function listLitterPageForKennel(args: {
 export async function listLittersForKennel(args: {
   kennelId: string;
   currentEpoch: number;
+  filters?: LitterArchiveFilters;
 }): Promise<{
   litters: LitterListItemDto[];
   nextCursor: LitterListCursor | null;
   hasMore: boolean;
   totalCount: number;
   totalPuppyCount: number;
+  historicalTotalCount: number;
   activeBreedings: Awaited<
     ReturnType<typeof listBreedingsForKennelAfterProgressResolved>
   >;
 }> {
-  const { kennelId, currentEpoch } = args;
+  const { kennelId, currentEpoch, filters = DEFAULT_LITTER_ARCHIVE_FILTERS } = args;
 
-  const [litterSummary, activeBreedings] = await Promise.all([
+  const [litterSummary, activeBreedings, historicalTotalCount] = await Promise.all([
     loadLitterListSummaryForKennel({
       kennelId,
       currentEpoch,
+      filters,
       limit: DEFAULT_LITTER_PAGE_SIZE,
     }),
     listBreedingsForKennelAfterProgressResolved({ kennelId, currentEpoch }),
+    db.litter.count({ where: visibleToKennelWhere(kennelId) }),
   ]);
 
   return {
     ...litterSummary,
+    historicalTotalCount,
     activeBreedings,
   };
 }
