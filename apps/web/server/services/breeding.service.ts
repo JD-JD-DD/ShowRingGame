@@ -1179,6 +1179,11 @@ async function listBreedingsForKennelSummaries(
           visibleTitleSuffix: true,
         },
       },
+      reproductiveEmergency: {
+        select: {
+          status: true,
+        },
+      },
     },
   });
 
@@ -1193,6 +1198,7 @@ async function listBreedingsForKennelSummaries(
     checkedEpoch: attempt.checkedEpoch,
     isPregnant: attempt.isPregnant,
     status: attempt.status,
+    reproductiveEmergencyStatus: attempt.reproductiveEmergency?.status ?? null,
     sireName: displayDogName(attempt.sire),
     damName: displayDogName(attempt.dam),
     hoursUntilPregCheck:

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { formatGameAge } from "@/lib/gameTimeFormat";
+import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { getLitterForKennel } from "@/server/services/litter.service";
@@ -13,6 +14,9 @@ type PageProps = {
     litterId: string;
   }>;
 };
+
+const focusLinkClass =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200";
 
 const VISIBLE_CATEGORY_LABELS: Record<string, string> = {
   typeExpression: "Type & Expression",
@@ -93,11 +97,23 @@ export default async function LitterDetailPage({ params }: PageProps) {
                 Litter Record
               </p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-                {litter.dam.displayName} x {litter.sire.displayName}
+                <Link
+                  href={`/dogs/${litter.dam.dogId}`}
+                  className={`hover:underline ${focusLinkClass}`}
+                >
+                  {litter.dam.displayName}
+                </Link>{" "}
+                x{" "}
+                <Link
+                  href={`/dogs/${litter.sire.dogId}`}
+                  className={`hover:underline ${focusLinkClass}`}
+                >
+                  {litter.sire.displayName}
+                </Link>
               </h1>
             <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
               {litter.breedName} ({litter.breedCode2}) litter {litter.serial7},
-              Litter age: {formatGameAge(litter.ageHours ?? 0)}.
+              Whelped: {formatShowCalendarLabel(litter.bornEpoch)}. Litter age: {formatGameAge(litter.ageHours ?? 0)}.
             </p>
             {litter.neonatalLossCount > 0 ? (
               <p className="mt-3 text-sm leading-6 text-rose-100/80">
@@ -154,7 +170,7 @@ export default async function LitterDetailPage({ params }: PageProps) {
             </div>
             <Link
               href={`/dogs/${litter.sire.dogId}`}
-              className="mt-2 block text-lg font-semibold hover:underline"
+              className={`mt-2 block text-lg font-semibold hover:underline ${focusLinkClass}`}
             >
               {litter.sire.displayName}
             </Link>
@@ -169,7 +185,7 @@ export default async function LitterDetailPage({ params }: PageProps) {
             </div>
             <Link
               href={`/dogs/${litter.dam.dogId}`}
-              className="mt-2 block text-lg font-semibold hover:underline"
+              className={`mt-2 block text-lg font-semibold hover:underline ${focusLinkClass}`}
             >
               {litter.dam.displayName}
             </Link>
@@ -188,7 +204,17 @@ export default async function LitterDetailPage({ params }: PageProps) {
                 : "Recorded"}
             </div>
             <div className="mt-1 text-sm text-[var(--dog-copy)]">
-              Bred by {litter.bredByKennel?.name ?? "Unknown kennel"}
+              Bred by{" "}
+              {litter.bredByKennel ? (
+                <Link
+                  href={`/kennels/${litter.bredByKennel.slug}`}
+                  className={`font-semibold hover:underline ${focusLinkClass}`}
+                >
+                  {litter.bredByKennel.name}
+                </Link>
+              ) : (
+                "Unknown kennel"
+              )}
             </div>
           </div>
         </section>
@@ -197,7 +223,7 @@ export default async function LitterDetailPage({ params }: PageProps) {
           <div className="mb-4 flex items-center justify-between gap-4">
             <h2 className="text-2xl font-semibold">Puppies</h2>
             <span className="text-sm text-[var(--dog-copy)]">
-              Born epoch {litter.bornEpoch}
+              Whelped {formatShowCalendarLabel(litter.bornEpoch)}
             </span>
           </div>
 
@@ -224,7 +250,7 @@ export default async function LitterDetailPage({ params }: PageProps) {
                       ) : (
                         <Link
                           href={`/dogs/${puppy.dogId}`}
-                          className="mt-2 block text-xl font-semibold hover:underline"
+                          className={`mt-2 block text-xl font-semibold hover:underline ${focusLinkClass}`}
                         >
                           {puppy.displayName}
                         </Link>

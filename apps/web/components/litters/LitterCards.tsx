@@ -2,6 +2,10 @@ import Link from "next/link";
 
 import type { LitterListItemDto } from "@/server/mappers/litter.mapper";
 import { formatGameAge } from "@/lib/gameTimeFormat";
+import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
+
+const focusLinkClass =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200";
 
 export function EmptyLittersState() {
   return (
@@ -25,12 +29,11 @@ export function LitterCards({ litters }: { litters: LitterListItemDto[] }) {
   return (
     <div className="grid gap-5">
       {litters.map((litter) => (
-        <Link
+        <article
           key={litter.litterId}
-          href={`/litters/${litter.litterId}`}
-          className="group rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)] transition hover:border-emerald-200/35 hover:bg-[var(--dog-card)]"
+          className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)] transition hover:border-emerald-200/35 hover:bg-[var(--dog-card)]"
         >
-          <article className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+          <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">
@@ -42,10 +45,16 @@ export function LitterCards({ litters }: { litters: LitterListItemDto[] }) {
               </div>
 
               <h3 className="mt-4 text-2xl font-semibold text-white">
-                {litter.dam.displayName} x {litter.sire.displayName}
+                <Link href={`/dogs/${litter.dam.dogId}`} className={`hover:underline ${focusLinkClass}`}>
+                  {litter.dam.displayName}
+                </Link>{" "}
+                x{" "}
+                <Link href={`/dogs/${litter.sire.dogId}`} className={`hover:underline ${focusLinkClass}`}>
+                  {litter.sire.displayName}
+                </Link>
               </h3>
               <p className="mt-2 text-sm text-[var(--dog-copy)]">
-                Litter age: {formatGameAge(litter.ageHours)}. Bred by{" "}
+                Whelped: {formatShowCalendarLabel(litter.bornEpoch)}. Litter age: {formatGameAge(litter.ageHours)}. Bred by{" "}
                 {litter.bredByKennelName ?? "Unknown kennel"}
               </p>
 
@@ -62,9 +71,11 @@ export function LitterCards({ litters }: { litters: LitterListItemDto[] }) {
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
               {litter.puppiesPreview.map((puppy) => (
-                <div
+                <Link
                   key={puppy.dogId}
-                  className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3"
+                  href={`/dogs/${puppy.dogId}`}
+                  aria-label={`View ${puppy.displayName}`}
+                  className={`rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3 transition hover:border-emerald-200/35 ${focusLinkClass}`}
                 >
                   <div className="text-xs text-[var(--dog-label)]">
                     Puppy {puppy.litterOrder ?? "-"} {puppy.sex}
@@ -75,11 +86,17 @@ export function LitterCards({ litters }: { litters: LitterListItemDto[] }) {
                   <div className="mt-1 truncate text-xs text-[var(--dog-copy)]">
                     {puppy.regNumber}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
-          </article>
-        </Link>
+          </div>
+          <Link
+            href={`/litters/${litter.litterId}`}
+            className={`mt-5 inline-flex text-sm font-semibold text-emerald-100 underline underline-offset-4 ${focusLinkClass}`}
+          >
+            View litter record
+          </Link>
+        </article>
       ))}
     </div>
   );

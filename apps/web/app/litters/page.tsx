@@ -15,6 +15,29 @@ function statusLabel(status: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function breedingProgressLabel(attempt: {
+  status: string;
+  reproductiveEmergencyStatus: string | null;
+}): string {
+  if (attempt.status === "INITIATED") return "Pregnancy not yet confirmed";
+  if (attempt.status === "PREGNANT") return "Pregnancy confirmed";
+  if (attempt.status === "REPRODUCTIVE_EMERGENCY") {
+    if (attempt.reproductiveEmergencyStatus === "PENDING") {
+      return "Reproductive emergency — care decision required";
+    }
+    if (attempt.reproductiveEmergencyStatus === "TREATMENT_AUTHORIZED") {
+      return "Reproductive emergency — treatment in progress";
+    }
+    if (attempt.reproductiveEmergencyStatus === "TREATMENT_DECLINED") {
+      return "Reproductive emergency — outcome pending";
+    }
+  }
+  return statusLabel(attempt.status);
+}
+
+const focusLinkClass =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200";
+
 export default async function LittersPage() {
   const userId = await getSessionUserId();
 
@@ -113,10 +136,16 @@ export default async function LittersPage() {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="theme-label text-xs uppercase tracking-wide">
-                        {statusLabel(attempt.status)}
+                        {breedingProgressLabel(attempt)}
                       </div>
                       <h3 className="mt-2 text-lg font-semibold">
-                        {attempt.damName} x {attempt.sireName}
+                        <Link href={`/dogs/${attempt.damId}`} className={`hover:underline ${focusLinkClass}`}>
+                          {attempt.damName}
+                        </Link>{" "}
+                        x{" "}
+                        <Link href={`/dogs/${attempt.sireId}`} className={`hover:underline ${focusLinkClass}`}>
+                          {attempt.sireName}
+                        </Link>
                       </h3>
                       <p className="mt-1 text-sm text-[var(--dog-copy)]">
                         Breed code {attempt.breedCode2}
@@ -133,7 +162,9 @@ export default async function LittersPage() {
                         Pregnancy Check
                       </div>
                       <div className="mt-1 text-sm font-semibold">
-                        {attempt.hoursUntilPregCheck === null ? "Pending" : `In ${formatRealDurationHoursLong(attempt.hoursUntilPregCheck)}`}
+                        {attempt.hoursUntilPregCheck === null
+                          ? "Not scheduled"
+                          : `Pregnancy check in ${formatRealDurationHoursLong(attempt.hoursUntilPregCheck)}`}
                       </div>
                     </div>
                     <div className="theme-card rounded-xl p-4">
@@ -141,10 +172,21 @@ export default async function LittersPage() {
                         Due
                       </div>
                       <div className="mt-1 text-sm font-semibold">
-                        {attempt.hoursUntilDue === null ? "Pending" : `Due in ${formatRealDurationHoursLong(attempt.hoursUntilDue)}`}
+                        {attempt.hoursUntilDue === null
+                          ? "Not scheduled"
+                          : `Due in ${formatRealDurationHoursLong(attempt.hoursUntilDue)}`}
                       </div>
                     </div>
                   </div>
+                  {attempt.status === "REPRODUCTIVE_EMERGENCY" &&
+                  attempt.reproductiveEmergencyStatus === "PENDING" ? (
+                    <Link
+                      href={`/dogs/${attempt.damId}#whelping-emergency`}
+                      className={`mt-5 inline-flex rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-500 ${focusLinkClass}`}
+                    >
+                      Review emergency care
+                    </Link>
+                  ) : null}
                 </article>
               ))}
             </div>
