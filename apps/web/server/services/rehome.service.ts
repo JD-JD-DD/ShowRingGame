@@ -91,6 +91,24 @@ export async function rehomeOwnedDogs(args: {
       await assertDogHasNoPendingVeterinaryCare(dogId, tx);
     }
 
+    const activeDamBreeding = await tx.breedingAttempt.findFirst({
+      where: {
+        damId: { in: dogIds },
+        status: {
+          in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"],
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (activeDamBreeding) {
+      throw new RehomeError(
+        "Pregnant bitches and bitches awaiting pregnancy checks cannot be re-homed yet."
+      );
+    }
+
     const cancelledListings = await tx.dogListing.updateMany({
       where: {
         dogId: { in: dogIds },
