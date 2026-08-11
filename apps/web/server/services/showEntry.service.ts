@@ -387,6 +387,7 @@ export type ShowEntryErrorCode =
   | "DOG_EMERGENCY_CARE"
   | "ENTRY_CLOSED"
   | "JUDGING_BLOCK_LOCKED"
+  | "HANDLER_ATTRIBUTION_LOCKED"
   | "ALREADY_ENTERED"
   | "WEEKEND_CONFLICT"
   | "INVALID_ENTRY_SCOPE"
@@ -491,6 +492,8 @@ function getSkippedSelectionMessage(code: ShowEntryErrorCode): string {
       return "entry closed";
     case "JUDGING_BLOCK_LOCKED":
       return "judging block is no longer editable";
+    case "HANDLER_ATTRIBUTION_LOCKED":
+      return "handler attribution is no longer editable";
     case "WEEKEND_CONFLICT":
       return "weekend conflict";
     case "INVALID_ENTRY_SCOPE":
@@ -989,6 +992,36 @@ export function canReconcileExistingBreedBlock(args: {
     args.publishedAtEpoch == null &&
     args.showResultCount === 0 &&
     args.showAwardCount === 0
+  );
+}
+
+export function getDeterministicHandlerUsedByDogId(
+  dogIds: Iterable<string>
+): Map<string, boolean> {
+  const uniqueDogIds = [...new Set(dogIds)].sort((a, b) => a.localeCompare(b));
+
+  return new Map(
+    uniqueDogIds.map((dogId, index) => [dogId, index >= 3])
+  );
+}
+
+export function canReattributeExistingShowEntry(args: {
+  entryStatus: string;
+  showDayStatus: string;
+  showDayPublishedAtEpoch: number | null;
+  showDayResultCount: number;
+  showDayAwardCount: number;
+  entryHasResult: boolean;
+  entryAwardCount: number;
+}): boolean {
+  return (
+    args.entryStatus === "ENTERED" &&
+    (args.showDayStatus === "SCHEDULED" || args.showDayStatus === "ENTRY_OPEN") &&
+    args.showDayPublishedAtEpoch == null &&
+    args.showDayResultCount === 0 &&
+    args.showDayAwardCount === 0 &&
+    !args.entryHasResult &&
+    args.entryAwardCount === 0
   );
 }
 
@@ -2592,7 +2625,106 @@ export async function createShowEntriesForCluster(args: {
       });
     }
 
-    const existingDogIdsByBreed = buildExistingDogIdsByBreed(existingBreedDogEntries);
+    const affectedHandlerGroupKeys = new Set<string>();
+    const proposedDogIdsByHandlerGroupKey = new Map<string, Set<string>>();
+
+    for (const selection of validSelections) {
+      const dog = dogById.get(selection.dogId);
+
+      if (!dog) {
+        continue;
+      }
+
+      const groupKey = getSelectionBlockKey(selection.showDayId, dog.breedCode2);
+      affectedHandlerGroupKeys.add(groupKey);
+      const dogIds = proposedDogIdsByHandlerGroupKey.get(groupKey) ?? new Set<string>();
+      dogIds.add(dog.id);
+      proposedDogIdsByHandlerGroupKey.set(groupKey, dogIds);
+    }
+
+    const existingEntriesForHandlerAttribution = await tx.showEntry.findMany({
+      where: {
+        kennelId,
+        showDayId: { in: [...new Set(validSelections.map((selection) => selection.showDayId))] },
+      },
+      select: {
+        id: true,
+        dogId: true,
+        showDayId: true,
+        breedCode2: true,
+        handlerUsed: true,
+        entryStatus: true,
+        showResult: { select: { id: true } },
+        _count: { select: { showAwards: true } },
+        showDay: {
+          select: {
+            status: true,
+            publishedAtEpoch: true,
+            _count: { select: { showResults: true, showAwards: true } },
+          },
+        },
+      },
+    });
+    const existingEntriesByHandlerGroupKey = new Map<
+      string,
+      typeof existingEntriesForHandlerAttribution
+    >();
+
+    for (const entry of existingEntriesForHandlerAttribution) {
+      const groupKey = getSelectionBlockKey(entry.showDayId, entry.breedCode2);
+
+      if (!affectedHandlerGroupKeys.has(groupKey)) {
+        continue;
+      }
+
+      const entries = existingEntriesByHandlerGroupKey.get(groupKey) ?? [];
+      entries.push(entry);
+      existingEntriesByHandlerGroupKey.set(groupKey, entries);
+    }
+
+    const handlerUsedByDogIdByGroupKey = new Map<string, Map<string, boolean>>();
+
+    for (const groupKey of affectedHandlerGroupKeys) {
+      const existingEntries = existingEntriesByHandlerGroupKey.get(groupKey) ?? [];
+      const handlerUsedByDogId = getDeterministicHandlerUsedByDogId([
+        ...existingEntries.map((entry) => entry.dogId),
+        ...(proposedDogIdsByHandlerGroupKey.get(groupKey) ?? new Set<string>()),
+      ]);
+      handlerUsedByDogIdByGroupKey.set(groupKey, handlerUsedByDogId);
+
+      for (const entry of existingEntries) {
+        const handlerUsed = handlerUsedByDogId.get(entry.dogId) ?? false;
+
+        if (entry.handlerUsed === handlerUsed) {
+          continue;
+        }
+
+        if (
+          !canReattributeExistingShowEntry({
+            entryStatus: entry.entryStatus,
+            showDayStatus: entry.showDay.status,
+            showDayPublishedAtEpoch: entry.showDay.publishedAtEpoch,
+            showDayResultCount: entry.showDay._count.showResults,
+            showDayAwardCount: entry.showDay._count.showAwards,
+            entryHasResult: entry.showResult != null,
+            entryAwardCount: entry._count.showAwards,
+          })
+        ) {
+          throw createShowEntrySubmissionError({
+            code: "HANDLER_ATTRIBUTION_LOCKED",
+            message:
+              "One or more existing entries cannot be safely re-attributed to the current handler plan.",
+          });
+        }
+
+        await tx.showEntry.update({
+          where: { id: entry.id },
+          data: { handlerUsed },
+          select: { id: true },
+        });
+      }
+    }
+
     const blockIdByDayId = new Map<string, string>();
 
     for (const selection of validSelections) {
@@ -2660,8 +2792,9 @@ export async function createShowEntriesForCluster(args: {
             enteredAtEpoch: currentEpoch,
             feeCharged: ENTRY_FEE_PER_SHOW,
             handlerUsed:
-              quote.handlerFee > 0 &&
-              !(existingDogIdsByBreed[dog.breedCode2] ?? []).includes(dog.id),
+              handlerUsedByDogIdByGroupKey
+                .get(getSelectionBlockKey(selection.showDayId, dog.breedCode2))
+                ?.get(dog.id) ?? false,
             conditioningSnapshot: getConditioningSnapshot(dog),
             fatigueSnapshot: dog.fatiguePoints,
           };
