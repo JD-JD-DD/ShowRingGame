@@ -35,7 +35,7 @@ type Props = {
 function statusMessage(message: string | null, isError = false) {
   if (!message) return null;
   return (
-    <div className={`rounded-2xl border px-4 py-3 text-sm ${isError ? "border-red-400/25 bg-red-500/10 text-red-700 dark:text-red-200" : "border-emerald-400/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200"}`}>
+    <div className={`rounded-2xl border px-4 py-3 text-sm ${isError ? "theme-notice theme-notice--danger" : "theme-notice theme-notice--success"}`}>
       {message}
     </div>
   );
@@ -67,16 +67,16 @@ function grandMilestoneDetail(label: string | null): string {
 function actionWindowToneClass(tone: DogActionWindowTone): string {
   switch (tone) {
     case "ready":
-      return "border-emerald-300/25 bg-emerald-500/10";
+      return "theme-status-success";
     case "complete":
-      return "border-sky-300/25 bg-sky-500/10";
+      return "theme-status-info";
     case "closed":
     case "unavailable":
-      return "border-white/10 bg-white/[0.03] opacity-75";
+      return "border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] opacity-75";
     case "pending":
-      return "border-purple-300/20 bg-purple-500/10";
+      return "theme-neutral-badge";
     default:
-      return "border-[var(--dog-border)] bg-purple-500/5";
+      return "border-[var(--color-border)] bg-[var(--color-surface)]";
   }
 }
 
@@ -103,14 +103,14 @@ function breedingSafetyStatusClass(
   screening: BreedingSafetyScreening
 ): string {
   if (screening.isPositiveOrInfected) {
-    return "border-red-300/30 bg-red-500/10 text-red-700 dark:text-red-200";
+    return "theme-status-danger";
   }
 
   if (screening.isCurrentNegative) {
-    return "border-emerald-300/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200";
+    return "theme-status-success";
   }
 
-  return "border-amber-300/30 bg-amber-500/10 text-amber-700 dark:text-amber-200";
+  return "theme-status-warning";
 }
 
 function formatBreedingSafetyCost(amount: number): string {
@@ -334,13 +334,13 @@ export default function DogProfileDashboard(props: Props) {
         {statusMessage(props.healthError, true)}
         <HealthTestingPanel action={`/api/dogs/${header.dogId}/health-tests${props.kennelRunId ? `?kennelRunId=${encodeURIComponent(props.kennelRunId)}` : ""}`} kennelBalance={healthControls?.kennelBalance ?? 0} canOrderHealthTests={Boolean(healthControls?.checkoutNeeded)} rows={profile.healthTesting.tests.map((test) => ({ testTypeCode: test.testCode, label: test.displayName, fee: test.cost, isAvailable: test.isCurrentlyAvailable, availabilityLabel: test.minimumAgeLabel, result: test.isComplete ? { label: test.resultLabel ?? "Complete", testedLabel: test.testedDateLabel ?? "Test date unavailable", severity: test.severityKey ?? "yellow", impactStatement: test.healthImpactStatement } : null }))} />
         {profile.healthTesting.breedingSafetyScreening.length > 0 ? (
-          <div className="rounded-2xl border border-sky-300/25 bg-sky-500/10 p-4">
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
             <div className="dog-heading text-sm font-semibold">
               Breeding Safety Screening
             </div>
             <div className="mt-3 grid gap-3">
               {profile.healthTesting.breedingSafetyScreening.map((screening) => (
-                <div key={screening.screeningCode} className="rounded-xl border border-sky-300/20 bg-black/5 p-3 dark:bg-black/20">
+                <div key={screening.screeningCode} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-inset)] p-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <div className="dog-heading text-sm font-semibold">
@@ -382,14 +382,14 @@ export default function DogProfileDashboard(props: Props) {
                     >
                       <button
                         type="submit"
-                        className="w-full rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-sky-500"
+                        className="theme-primary-button w-full rounded-xl px-4 py-2 text-xs font-semibold"
                       >
                         <span>
                           {screening.isCurrentNegative
                             ? "Repeat Screening"
                             : "Run Brucellosis Screening"}
                         </span>
-                        <span className="ml-2 text-sky-100/85">
+                        <span className="ml-2 text-[var(--color-primary-foreground)]">
                           {formatBreedingSafetyCost(BRUCELLOSIS_TEST_FEE)}
                         </span>
                       </button>

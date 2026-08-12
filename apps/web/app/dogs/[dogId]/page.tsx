@@ -79,15 +79,15 @@ function formatSignedCondition(value: number): string {
 function badgeClass(tone: string): string {
   switch (tone) {
     case "green":
-      return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+      return "theme-status-success";
     case "yellow":
-      return "border-amber-300/25 bg-amber-500/10 text-amber-100";
+      return "theme-status-warning";
     case "red":
-      return "border-red-300/25 bg-red-500/10 text-red-100";
+      return "theme-status-danger";
     case "blue":
-      return "border-sky-300/25 bg-sky-500/10 text-sky-100";
+      return "theme-status-info";
     default:
-      return "border-[var(--dog-border)] bg-purple-500/10 text-[var(--dog-heading)]";
+      return "theme-neutral-badge";
   }
 }
 
@@ -98,8 +98,8 @@ function statusMessage(message: string | null, isError = false) {
     <div
       className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
         isError
-          ? "border-red-300/20 bg-red-500/10 text-red-100"
-          : "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
+          ? "theme-notice theme-notice--danger"
+          : "theme-notice theme-notice--success"
       }`}
     >
       {message}
@@ -246,7 +246,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
         <section className="dog-panel mb-8 rounded-[28px] px-6 py-6 backdrop-blur">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_540px]">
             <div className="max-w-4xl">
-              <div className="mb-3 inline-flex rounded-full border border-[var(--dog-border)] bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+              <div className="theme-neutral-badge mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em]">
                 Show Profile
               </div>
               <div className="text-sm font-medium text-[var(--dog-label)]">
@@ -301,21 +301,21 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               {dogRosterNavigation ? (
                 <nav
                   aria-label="Kennel run dog navigation"
-                  className="mt-4 max-w-3xl rounded-2xl border border-purple-300/25 bg-white/5 p-2"
+                  className="theme-card mt-4 max-w-3xl rounded-2xl p-2"
                 >
                   <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
                     {dogRosterNavigation.previousDog ? (
                       <Link
                         href={`/dogs/${dogRosterNavigation.previousDog.id}?kennelRunId=${encodeURIComponent(dogRosterNavigation.kennelRunId)}`}
-                        className="flex min-h-12 flex-col justify-center rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-sm font-semibold text-purple-50 transition hover:bg-white/10"
+                        className="theme-card-interactive flex min-h-12 flex-col justify-center rounded-xl px-3 py-2 text-sm font-semibold"
                       >
                         <span>&larr; Previous Dog</span>
-                        <span className="mt-0.5 truncate text-xs font-medium text-purple-100/70">
+                        <span className="theme-copy mt-0.5 truncate text-xs font-medium">
                           Previous: {dogRosterNavigation.previousDog.displayName}
                         </span>
                       </Link>
                     ) : (
-                      <span className="flex min-h-12 flex-col justify-center rounded-xl border border-purple-300/10 bg-black/20 px-3 py-2 text-sm font-semibold text-purple-100/40">
+                      <span className="flex min-h-12 flex-col justify-center rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 py-2 text-sm font-semibold text-[var(--color-text-disabled)]">
                         <span>&larr; Previous Dog</span>
                         <span className="mt-0.5 text-xs font-medium">
                           Previous: None
@@ -323,7 +323,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                       </span>
                     )}
 
-                    <div className="flex min-h-12 items-center justify-center rounded-xl border border-purple-300/20 bg-black/20 px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-purple-100/75">
+                    <div className="flex min-h-12 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-inset)] px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">
                       Dog {dogRosterNavigation.currentIndex + 1} of{" "}
                       {dogRosterNavigation.totalDogs}
                     </div>
@@ -331,15 +331,15 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     {dogRosterNavigation.nextDog ? (
                       <Link
                         href={`/dogs/${dogRosterNavigation.nextDog.id}?kennelRunId=${encodeURIComponent(dogRosterNavigation.kennelRunId)}`}
-                        className="flex min-h-12 flex-col justify-center rounded-xl border border-purple-300/25 bg-white/5 px-3 py-2 text-left text-sm font-semibold text-purple-50 transition hover:bg-white/10 sm:text-right"
+                        className="theme-card-interactive flex min-h-12 flex-col justify-center rounded-xl px-3 py-2 text-left text-sm font-semibold sm:text-right"
                       >
                         <span>Next Dog &rarr;</span>
-                        <span className="mt-0.5 truncate text-xs font-medium text-purple-100/70">
+                        <span className="theme-copy mt-0.5 truncate text-xs font-medium">
                           Next: {dogRosterNavigation.nextDog.displayName}
                         </span>
                       </Link>
                     ) : (
-                      <span className="flex min-h-12 flex-col justify-center rounded-xl border border-purple-300/10 bg-black/20 px-3 py-2 text-left text-sm font-semibold text-purple-100/40 sm:text-right">
+                      <span className="flex min-h-12 flex-col justify-center rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 py-2 text-left text-sm font-semibold text-[var(--color-text-disabled)] sm:text-right">
                         <span>Next Dog &rarr;</span>
                         <span className="mt-0.5 text-xs font-medium">
                           Next: None
@@ -367,7 +367,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 {canEnterShow ? (
                   <Link
                     href={`/dogs/${header.dogId}/show-entry`}
-                    className="rounded-2xl bg-purple-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
+                    className="theme-primary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"
                   >
                     Show Entry
                   </Link>
@@ -379,7 +379,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
                 {viewerContext.canManage && grooming ? (
                   <details className="group">
-                    <summary className="list-none rounded-2xl bg-amber-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-amber-500 [&::-webkit-details-marker]:hidden">
+                    <summary className="theme-primary-button list-none rounded-2xl px-5 py-3 text-center text-sm font-semibold [&::-webkit-details-marker]:hidden">
                       Groom Dog
                     </summary>
                     <div className="dog-card mt-3 rounded-2xl p-4">
@@ -415,7 +415,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                               <button
                                 type="submit"
                                 disabled={!grooming.canGroom}
-                                className="w-full rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-45"
+                                className="theme-primary-button w-full rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                               >
                                 Confirm Groom Dog
                               </button>
@@ -426,7 +426,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                               <ConfirmSubmitButton
                                 message={`Offer ${header.displayName} for outside grooming?`}
                                 disabled={!grooming.canOfferOutsideGrooming}
-                                className="w-full rounded-xl border border-sky-300/25 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                                className="theme-secondary-button w-full rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                               >
                                 Offer for Outside Grooming
                               </ConfirmSubmitButton>
@@ -471,7 +471,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
               <Link
                 href={`/dogs/${header.dogId}/ribbon-room`}
-                className="w-full rounded-2xl border border-[var(--dog-border)] bg-white/5 px-5 py-3 text-center text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-white/10"
+                className="theme-secondary-button w-full rounded-2xl px-5 py-3 text-center text-sm font-semibold"
               >
                 Ribbon Room
               </Link>
@@ -484,7 +484,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   >
                     <button
                       type="submit"
-                      className="w-full rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500"
+                      className="theme-primary-button w-full rounded-2xl px-5 py-3 text-sm font-semibold"
                     >
                       Buy for {formatMoney(saleListing.askingPrice)}
                     </button>
@@ -494,7 +494,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 {actions.canUseActiveStudListing && studListing ? (
                   <Link
                     href={`/breed?studListingId=${studListing.listingId}`}
-                    className="rounded-2xl bg-sky-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-sky-500"
+                    className="theme-primary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"
                   >
                     Use At Stud for {formatMoney(studListing.studFee)}
                   </Link>
