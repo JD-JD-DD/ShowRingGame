@@ -169,7 +169,6 @@ export default async function KennelServicesPage({ searchParams }: PageProps) {
       <ServicesHeader
         title="Work Board"
         description="Earn practical kennel income through dog-world service work."
-        balance={kennel.balance}
       />
 
       <ServiceMessages message={message} error={error} />

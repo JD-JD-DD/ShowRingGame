@@ -249,18 +249,6 @@ export default async function ShowResultsIndexPage({
           >
             Show Detail
           </Link>
-          <Link
-            href="/shows"
-            className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-          >
-            All Shows
-          </Link>
-          <Link
-            href="/kennel"
-            className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-          >
-            My Kennel
-          </Link>
         </div>
       </section>
 

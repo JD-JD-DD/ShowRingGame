@@ -1,4 +1,4 @@
-import ConfirmSubmitButton from "@/components/ui/ConfirmSubmitButton";
+import GroomingJobAcceptanceForm from "@/components/kennel/GroomingJobAcceptanceForm";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import {
   getKennelGroomingSummary,
@@ -45,8 +45,6 @@ export default async function GroomingServicesPage({
       <ServicesHeader
         title="Grooming Assistance"
         description="Accept outside grooming jobs from other kennels, improve dogs' coat condition, earn income, and build grooming experience."
-        balance={kennel.balance}
-        showWorkBoardLink
       />
 
       <ServiceMessages message={message} error={error} />
@@ -191,31 +189,11 @@ export default async function GroomingServicesPage({
                   </div>
                 </div>
 
-                <form
+                <GroomingJobAcceptanceForm
                   action={`/api/services/grooming/listings/${job.listingId}/accept`}
-                  method="post"
-                  className="mt-4"
-                >
-                  <input
-                    type="hidden"
-                    name="returnTo"
-                    value="/kennel/services/grooming"
-                  />
-                  <ConfirmSubmitButton
-                    message={`Accept grooming job for ${job.dogDisplayName}?`}
-                    disabled={noGroomingActionsRemaining}
-                    title={
-                      noGroomingActionsRemaining
-                        ? "No grooming actions remaining this week."
-                        : undefined
-                    }
-                    className="theme-primary-button w-full rounded-xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
-                  >
-                    {noGroomingActionsRemaining
-                      ? "No Grooming Left"
-                      : "Accept Grooming Job"}
-                  </ConfirmSubmitButton>
-                </form>
+                  dogDisplayName={job.dogDisplayName}
+                  disabled={noGroomingActionsRemaining}
+                />
               </article>
             ))}
           </div>

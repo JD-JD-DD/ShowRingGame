@@ -32,8 +32,6 @@ export default async function StewardingServicesPage({
       <ServicesHeader
         title="Club Stewarding"
         description="Claim stewarding assignments at local show weekends. Stewarding pays kennel income, but makes that show or cluster your primary show commitment."
-        balance={kennel.balance}
-        showWorkBoardLink
       />
 
       <ServiceMessages message={message} error={error} />

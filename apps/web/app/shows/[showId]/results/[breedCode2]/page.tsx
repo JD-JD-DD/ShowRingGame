@@ -494,23 +494,17 @@ export default async function BreedResultsPage({
               Enter Show
             </Link>
           ) : null}
-          <Link
-            href={`/shows/${cluster.id}/results`}
-            className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-          >
-            Breed List
+            <Link
+              href={`/shows/${cluster.id}/results`}
+              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
+            >
+              Full Show Results
           </Link>
           <Link
             href={`/shows/${cluster.id}`}
             className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
           >
             Show Detail
-          </Link>
-          <Link
-            href="/shows"
-            className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-          >
-            All Shows
           </Link>
         </div>
       </section>

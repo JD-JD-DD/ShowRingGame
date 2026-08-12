@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
@@ -64,16 +63,12 @@ export async function getKennelServicesContext() {
 export function ServicesHeader({
   title,
   description,
-  balance,
-  showWorkBoardLink = false,
 }: {
   title: string;
   description: string;
-  balance: number;
-  showWorkBoardLink?: boolean;
 }) {
   return (
-    <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+    <header className="mb-8">
       <div>
         <p className="theme-label text-sm uppercase tracking-[0.25em]">
           Kennel Services
@@ -82,31 +77,6 @@ export function ServicesHeader({
         <p className="theme-copy mt-3 max-w-3xl text-sm leading-7">
           {description}
         </p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        {showWorkBoardLink ? (
-          <Link
-            href="/kennel/services"
-            className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-          >
-            Back to Work Board
-          </Link>
-        ) : null}
-        <Link
-          href="/kennel"
-          className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-        >
-          Back to My Kennel
-        </Link>
-        <div className="theme-card rounded-2xl px-5 py-4">
-          <div className="theme-label text-xs uppercase tracking-wide">
-            Balance
-          </div>
-          <div className="theme-heading mt-1 text-xl font-semibold">
-            {formatMoney(balance)}
-          </div>
-        </div>
       </div>
     </header>
   );

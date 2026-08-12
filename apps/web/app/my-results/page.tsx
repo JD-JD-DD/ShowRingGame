@@ -369,21 +369,7 @@ export default async function MyShowResultsPage() {
               {kennel.name}.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/shows"
-              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-            >
-              Show Calendar
-            </Link>
-            <Link
-              href="/kennel"
-              className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-            >
-              My Kennel
-            </Link>
           </div>
-        </div>
       </section>
 
       <section className="theme-panel rounded-[28px] p-6">
