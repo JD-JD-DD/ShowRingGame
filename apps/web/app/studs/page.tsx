@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
+import {
+  BreedSelectOptions,
+  compareBreedGroupNames,
+  normalizeBreedGroupName,
+} from "@/components/breeds/BreedSelectOptions";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
@@ -26,6 +30,8 @@ import {
 type PageProps = {
   searchParams?: Promise<{
     breedCode2?: string | string[];
+    group?: string | string[];
+    name?: string | string[];
   }>;
 };
 
@@ -165,8 +171,10 @@ export default async function StudsPage({ searchParams }: PageProps) {
   }
 
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const selectedBreedCode2 =
+  const requestedBreedCode2 =
     firstQueryValue(resolvedSearchParams.breedCode2)?.trim().toUpperCase() ?? "";
+  const selectedGroup = firstQueryValue(resolvedSearchParams.group)?.trim() ?? "";
+  const nameSearch = firstQueryValue(resolvedSearchParams.name)?.trim() ?? "";
   const currentEpoch = getCurrentEpoch();
 
   const breeds = await db.breed.findMany({
@@ -184,7 +192,25 @@ export default async function StudsPage({ searchParams }: PageProps) {
     },
   });
 
-  const listings = await db.dogListing.findMany({
+  const groupOptions = Array.from(
+    new Set(breeds.map((breed) => normalizeBreedGroupName(breed.groupName)))
+  ).sort(compareBreedGroupNames);
+  const groupBreeds = selectedGroup
+    ? breeds.filter(
+        (breed) => normalizeBreedGroupName(breed.groupName) === selectedGroup
+      )
+    : breeds;
+  const selectedBreedCode2 = groupBreeds.some(
+    (breed) => breed.code2 === requestedBreedCode2
+  )
+    ? requestedBreedCode2
+    : "";
+  const hasDiscoveryCriteria = Boolean(
+    selectedGroup || nameSearch || selectedBreedCode2
+  );
+
+  const listings = hasDiscoveryCriteria
+    ? await db.dogListing.findMany({
     where: {
       sellerType: "PLAYER",
       listingType: PLAYER_STUD_LISTING_TYPE,
@@ -193,7 +219,24 @@ export default async function StudsPage({ searchParams }: PageProps) {
         not: kennel.id,
       },
       dog: {
-        ...(selectedBreedCode2 ? { breedCode2: selectedBreedCode2 } : {}),
+        ...(selectedBreedCode2
+          ? { breedCode2: selectedBreedCode2 }
+          : selectedGroup
+            ? { breedCode2: { in: groupBreeds.map((breed) => breed.code2) } }
+            : {}),
+        ...(nameSearch
+          ? {
+              OR: [
+                { callName: { contains: nameSearch, mode: "insensitive" } },
+                {
+                  registeredName: {
+                    contains: nameSearch,
+                    mode: "insensitive",
+                  },
+                },
+              ],
+            }
+          : {}),
         lifecycleState: "ALIVE",
         isPlayerVisible: true,
         sex: "M",
@@ -210,6 +253,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
       { askingPrice: "asc" },
       { listedAtEpoch: "desc" },
     ],
+    take: 60,
     select: {
       id: true,
       askingPrice: true,
@@ -303,7 +347,8 @@ export default async function StudsPage({ searchParams }: PageProps) {
         },
       },
     },
-  });
+  })
+    : [];
   const dogIds = listings.map((listing) => listing.dog.id);
 
   if (dogIds.length > 0) {
@@ -335,28 +380,17 @@ export default async function StudsPage({ searchParams }: PageProps) {
     <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
         <section className="theme-panel mb-8 rounded-[28px] px-6 py-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="theme-label text-sm uppercase tracking-[0.22em]">
-                Public Studs
-              </p>
-              <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
-                Browse Dogs At Stud
-              </h1>
-              <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
-                Find eligible male dogs offered by other kennels, compare visible
-                trait categories, and start a breeding with a selected public stud.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/kennel"
-                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-              >
-                My Kennel
-              </Link>
-            </div>
+          <div>
+            <p className="theme-label text-sm uppercase tracking-[0.22em]">
+              Public Studs
+            </p>
+            <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
+              Browse Dogs At Stud
+            </h1>
+            <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
+              Find eligible male dogs offered by other kennels, compare visible
+              trait categories, and start a breeding with a selected public stud.
+            </p>
           </div>
 
           <div className="theme-card theme-copy mt-5 inline-flex rounded-2xl px-4 py-2 text-sm">
@@ -365,7 +399,46 @@ export default async function StudsPage({ searchParams }: PageProps) {
         </section>
 
         <section className="theme-panel mb-8 rounded-[28px] px-6 py-6">
-          <form className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
+          <h2 className="theme-heading mb-4 text-lg font-semibold">Find a Stud</h2>
+          <form className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_auto_auto] lg:items-end">
+            <div>
+              <label
+                htmlFor="group"
+                className="theme-label mb-1 block text-xs uppercase tracking-wide"
+              >
+                Group
+              </label>
+              <select
+                id="group"
+                name="group"
+                defaultValue={selectedGroup}
+                className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none"
+              >
+                <option value="">Select a group</option>
+                {groupOptions.map((group) => (
+                  <option key={group} value={group}>
+                    {group}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="name"
+                className="theme-label mb-1 block text-xs uppercase tracking-wide"
+              >
+                Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                defaultValue={nameSearch}
+                placeholder="Type a dog name..."
+                className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none"
+              />
+            </div>
+
             <div>
               <label
                 htmlFor="breedCode2"
@@ -379,8 +452,8 @@ export default async function StudsPage({ searchParams }: PageProps) {
                 defaultValue={selectedBreedCode2}
                 className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none"
               >
-                <option value="">All breeds</option>
-                <BreedSelectOptions options={breeds} />
+                <option value="">Select a breed</option>
+                <BreedSelectOptions options={groupBreeds} />
               </select>
             </div>
 
@@ -388,7 +461,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
               type="submit"
               className="theme-primary-button rounded-xl px-5 py-2.5 text-sm font-semibold"
             >
-              Filter
+              Find Studs
             </button>
 
             <Link
@@ -400,7 +473,11 @@ export default async function StudsPage({ searchParams }: PageProps) {
           </form>
         </section>
 
-        {listings.length === 0 ? (
+        {!hasDiscoveryCriteria ? (
+          <section className="theme-panel theme-copy rounded-[28px] p-8 text-sm">
+            Choose a group, enter a name, or select a breed to find a stud.
+          </section>
+        ) : listings.length === 0 ? (
           <section className="theme-panel theme-copy rounded-[28px] p-8 text-sm">
             No public studs match the current filter.
           </section>
