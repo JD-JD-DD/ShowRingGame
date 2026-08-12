@@ -24,17 +24,17 @@ function statusTone(status: string): string {
   switch (status) {
     case "RESULTS_PUBLISHED":
     case "COMPLETE":
-      return "border-sky-300/25 bg-sky-500/10 text-sky-100";
+      return "theme-status-info";
     case "JUDGING":
     case "ENTRY_LOCKED":
-      return "border-amber-300/25 bg-amber-500/10 text-amber-100";
+      return "theme-status-warning";
     case "OPEN":
     case "ENTRY_OPEN":
-      return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+      return "theme-status-success";
     case "CANCELLED":
-      return "border-red-300/25 bg-red-500/10 text-red-100";
+      return "theme-status-danger";
     default:
-      return "border-[var(--dog-border)] bg-[var(--dog-card)] text-[var(--dog-heading)]";
+      return "theme-status-neutral";
   }
 }
 
@@ -189,14 +189,14 @@ export default async function ShowResultsIndexPage({
 
   return (
     <main className="results-page mx-auto max-w-6xl px-6 py-8">
-      <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-8 text-center shadow-[var(--dog-shadow)]">
-        <p className="text-sm uppercase tracking-[0.22em] text-[var(--dog-label)]">
+      <section className="theme-panel rounded-[28px] px-6 py-8 text-center">
+        <p className="theme-label text-sm uppercase tracking-[0.22em]">
           Show Results
         </p>
         <h1 className="theme-heading mt-3 text-4xl font-bold tracking-tight">
           {cluster.name}
         </h1>
-        <p className="mt-4 text-2xl font-semibold text-[var(--dog-heading)]">
+        <p className="theme-heading mt-4 text-2xl font-semibold">
           {formatShowCalendarLabel(cluster.startEpoch)}
         </p>
 
@@ -206,30 +206,30 @@ export default async function ShowResultsIndexPage({
           >
             {cluster.status}
           </div>
-          <div className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-[var(--dog-copy)]">
+          <div className="theme-neutral-badge rounded-full px-3 py-1">
             {getShowDistrictRegionName(cluster.district)}
           </div>
           {canShowEntryCount ? (
-            <div className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-[var(--dog-copy)]">
+            <div className="theme-neutral-badge rounded-full px-3 py-1">
               Entries: {entryCount}
             </div>
           ) : null}
           {resultCount > 0 ? (
-            <div className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-[var(--dog-copy)]">
+            <div className="theme-neutral-badge rounded-full px-3 py-1">
               Results: {resultCount}
             </div>
           ) : null}
         </div>
 
         {judged ? (
-          <div className="mx-auto mt-5 max-w-xl rounded-2xl border border-sky-300/25 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+          <div className="theme-status-info mx-auto mt-5 max-w-xl rounded-2xl px-4 py-3 text-sm">
             Judging complete
             {judgedEntries ? ` for ${judgedEntries} entered dog(s).` : "."}
           </div>
         ) : null}
 
         {judgeError ? (
-          <div className="mx-auto mt-5 max-w-xl rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+          <div className="theme-status-danger mx-auto mt-5 max-w-xl rounded-2xl px-4 py-3 text-sm">
             {judgeError}
           </div>
         ) : null}
@@ -238,26 +238,26 @@ export default async function ShowResultsIndexPage({
           {cluster.status === "OPEN" ? (
             <Link
               href={`/shows/${cluster.id}`}
-              className="rounded-2xl bg-fuchsia-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-600"
+              className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               Enter Show
             </Link>
           ) : null}
           <Link
             href={`/shows/${cluster.id}`}
-            className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+            className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
           >
             Show Detail
           </Link>
           <Link
             href="/shows"
-            className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+            className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
           >
             All Shows
           </Link>
           <Link
             href="/kennel"
-            className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
+            className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
           >
             My Kennel
           </Link>
@@ -265,7 +265,7 @@ export default async function ShowResultsIndexPage({
       </section>
 
       {cluster.showDays.some((day) => day.showAwards.length > 0) ? (
-        <section className="mt-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
+        <section className="theme-panel mt-6 rounded-[28px] p-6">
           <h2 className="theme-heading text-xl font-semibold">
             Group & Best In Show
           </h2>
@@ -294,9 +294,9 @@ export default async function ShowResultsIndexPage({
                 return (
                   <div
                     key={day.id}
-                    className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5"
+                    className="theme-card rounded-2xl p-5"
                   >
-                    <h3 className="text-lg font-semibold text-[var(--dog-heading)]">
+                    <h3 className="theme-heading text-lg font-semibold">
                       {formatShowCalendarLabel(day.scheduledEpoch)}
                     </h3>
 
@@ -310,12 +310,12 @@ export default async function ShowResultsIndexPage({
                             <Link
                               key={award.id}
                               href={`/dogs/${award.dog.id}`}
-                              className="rounded-xl border border-sky-300/20 bg-sky-500/10 px-4 py-3 text-sm transition hover:border-sky-300/40"
+                              className="theme-card-interactive rounded-xl px-4 py-3 text-sm"
                             >
                               <div className="theme-heading font-semibold">
                                 {award.awardCode} - {formatDogDisplayName(award.dog)}
                               </div>
-                              <div className="mt-1 text-xs text-[var(--dog-copy)]">
+                              <div className="theme-copy mt-1 text-xs">
                                 {award.breed.name} ({award.breed.code2}) -{" "}
                                 {showEntryKennelName(award.showEntry)}
                               </div>
@@ -334,9 +334,9 @@ export default async function ShowResultsIndexPage({
                           .map(([groupName, awards]) => (
                             <div
                               key={`${day.id}-${groupName}`}
-                              className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4"
+                              className="theme-card rounded-xl p-4"
                             >
-                              <h4 className="text-sm font-semibold text-[var(--dog-heading)]">
+                              <h4 className="theme-heading text-sm font-semibold">
                                 {groupName}
                               </h4>
                               <div className="mt-3 grid gap-2">
@@ -346,13 +346,13 @@ export default async function ShowResultsIndexPage({
                                     <Link
                                       key={award.id}
                                       href={`/dogs/${award.dog.id}`}
-                                      className="rounded-lg border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm transition hover:border-[var(--dog-border)] hover:bg-[var(--dog-card)]"
+                                      className="theme-card-interactive rounded-lg px-3 py-2 text-sm"
                                     >
                                       <div className="theme-heading font-semibold">
                                         {award.awardCode} -{" "}
                                         {formatDogDisplayName(award.dog)}
                                       </div>
-                                      <div className="mt-1 text-xs text-[var(--dog-copy)]">
+                                      <div className="theme-copy mt-1 text-xs">
                                         {award.breed.name} -{" "}
                                         {showEntryKennelName(award.showEntry)}
                                       </div>
@@ -370,18 +370,18 @@ export default async function ShowResultsIndexPage({
         </section>
       ) : null}
 
-      <section className="mt-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
+      <section className="theme-panel mt-6 rounded-[28px] p-6">
         <h2 className="theme-heading text-xl font-semibold">Breeds & Classes</h2>
 
         {groupedBreeds.size === 0 ? (
-          <p className="mt-4 text-sm text-[var(--dog-copy)]">
+          <p className="theme-copy mt-4 text-sm">
             No breed results are available for this show yet.
           </p>
         ) : (
           <div className="mt-5 space-y-7">
             {[...groupedBreeds.entries()].map(([groupName, breeds]) => (
               <div key={groupName}>
-                <h3 className="text-lg font-semibold text-[var(--dog-heading)]">
+                <h3 className="theme-heading text-lg font-semibold">
                   {groupName}
                 </h3>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -389,11 +389,11 @@ export default async function ShowResultsIndexPage({
                     <Link
                       key={breed.code2}
                       href={`/shows/${cluster.id}/results/${breed.code2}`}
-                      className="theme-accent-link rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-sm font-semibold transition hover:border-sky-300/40 hover:bg-sky-500/10"
+                      className="theme-card-interactive theme-accent-link rounded-xl px-4 py-3 text-sm font-semibold"
                     >
                       <span>{breed.name}</span>
                       {breed.resultCount > 0 ? (
-                        <span className="ml-2 text-xs font-normal text-[var(--dog-copy)]">
+                        <span className="theme-copy ml-2 text-xs font-normal">
                           {breed.resultCount} result
                           {breed.resultCount === 1 ? "" : "s"}
                         </span>
