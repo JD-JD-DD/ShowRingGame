@@ -59,7 +59,7 @@ export default async function CommunityCategoryPage({
               <p className="theme-label text-sm uppercase tracking-[0.25em]">Community</p>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <h1 className="theme-heading text-3xl font-semibold">{category.name}</h1>
-                {!category.isActive ? <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold uppercase text-amber-100">Inactive</span> : null}
+                {!category.isActive ? <span className="theme-status-warning rounded-full px-3 py-1 text-xs font-semibold uppercase">Inactive</span> : null}
               </div>
               <p className="theme-copy mt-3 max-w-3xl text-sm leading-7">{category.description}</p>
             </div>
@@ -67,7 +67,7 @@ export default async function CommunityCategoryPage({
           </div>
         </header>
 
-        {error ? <p className="mb-6 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</p> : null}
+        {error ? <p className="theme-status-danger mb-6 rounded-2xl px-4 py-3 text-sm">{error}</p> : null}
 
         <section className="theme-panel mb-8 rounded-[24px] p-5">
           <h2 className="theme-heading text-xl font-semibold">Start a topic</h2>
@@ -76,7 +76,7 @@ export default async function CommunityCategoryPage({
               <input type="hidden" name="categorySlug" value={category.slug} />
               <input name="title" type="text" maxLength={90} required placeholder="Topic title" className="theme-control rounded-2xl px-4 py-3 outline-none" />
               <textarea name="body" required maxLength={5000} rows={5} placeholder="What would you like to share?" className="theme-control rounded-2xl px-4 py-3 leading-7 outline-none" />
-              <div><button className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white hover:bg-purple-500">Post topic</button></div>
+              <div><button className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold">Post topic</button></div>
             </form>
           ) : (
             <p className="theme-copy mt-3 text-sm leading-7">
@@ -90,7 +90,7 @@ export default async function CommunityCategoryPage({
         </section>
 
         <section>
-          <h2 className="mb-4 text-xl font-semibold">Topics</h2>
+          <h2 className="theme-heading mb-4 text-xl font-semibold">Topics</h2>
           <div className="grid gap-4">
             {topics.map((topic) => (
               <article key={topic.id} className="theme-card rounded-[24px] p-5">
