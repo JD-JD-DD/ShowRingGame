@@ -550,7 +550,7 @@ export default async function ShowsPage({
                             {getShowDistrictRegionName(cluster.district)}
                           </div>
                         </div>
-                        <div className="shrink-0 text-right text-xs font-semibold text-[var(--color-info-text)]">
+                        <div className="shrink-0 text-right text-xs font-semibold text-[var(--color-text)]">
                           <ShowCountdownText
                             targetEpoch={display.countdowns.judging.targetEpoch}
                             initialCurrentEpoch={currentEpoch}

@@ -332,18 +332,18 @@ export default async function StudsPage({ searchParams }: PageProps) {
     groupHealthConditionTruthsByDog(healthConditionTruths);
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
-        <section className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-6 shadow-[var(--dog-shadow)]">
+        <section className="theme-panel mb-8 rounded-[28px] px-6 py-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.22em] text-sky-200/85">
+              <p className="theme-label text-sm uppercase tracking-[0.22em]">
                 Public Studs
               </p>
-              <h1 className="mt-2 text-4xl font-bold tracking-tight text-white">
+              <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
                 Browse Dogs At Stud
               </h1>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--dog-copy)]">
+              <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
                 Find eligible male dogs offered by other kennels, compare visible
                 trait categories, and start a breeding with a selected public stud.
               </p>
@@ -352,24 +352,24 @@ export default async function StudsPage({ searchParams }: PageProps) {
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/kennel"
-                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 My Kennel
               </Link>
             </div>
           </div>
 
-          <div className="mt-5 inline-flex rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-2 text-sm text-[var(--dog-copy)]">
+          <div className="theme-card theme-copy mt-5 inline-flex rounded-2xl px-4 py-2 text-sm">
             {kennel.name} balance: {formatMoney(kennel.balance)}
           </div>
         </section>
 
-        <section className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-6 shadow-[var(--dog-shadow)]">
+        <section className="theme-panel mb-8 rounded-[28px] px-6 py-6">
           <form className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-end">
             <div>
               <label
                 htmlFor="breedCode2"
-                className="mb-1 block text-xs uppercase tracking-wide text-[var(--dog-copy)]"
+                className="theme-label mb-1 block text-xs uppercase tracking-wide"
               >
                 Breed
               </label>
@@ -377,7 +377,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                 id="breedCode2"
                 name="breedCode2"
                 defaultValue={selectedBreedCode2}
-                className="w-full rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm text-white outline-none"
+                className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none"
               >
                 <option value="">All breeds</option>
                 <BreedSelectOptions options={breeds} />
@@ -386,14 +386,14 @@ export default async function StudsPage({ searchParams }: PageProps) {
 
             <button
               type="submit"
-              className="rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-500"
+              className="theme-primary-button rounded-xl px-5 py-2.5 text-sm font-semibold"
             >
               Filter
             </button>
 
             <Link
               href="/studs"
-              className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-2.5 text-center text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+              className="theme-secondary-button rounded-xl px-5 py-2.5 text-center text-sm font-semibold"
             >
               Clear
             </Link>
@@ -401,7 +401,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
         </section>
 
         {listings.length === 0 ? (
-          <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-8 text-sm text-[var(--dog-copy)] shadow-[var(--dog-shadow)]">
+          <section className="theme-panel theme-copy rounded-[28px] p-8 text-sm">
             No public studs match the current filter.
           </section>
         ) : (
@@ -446,30 +446,30 @@ export default async function StudsPage({ searchParams }: PageProps) {
               return (
                 <article
                   key={listing.id}
-                  className="overflow-hidden rounded-[24px] border border-sky-300/25 bg-[var(--dog-panel)] shadow-[var(--dog-shadow)]"
+                  className="theme-panel overflow-hidden rounded-[24px]"
                 >
-                  <div className="border-b border-sky-200/10 bg-sky-500/10 px-6 py-5">
+                  <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-6 py-5">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <div className="text-sm font-medium text-sky-100">
+                        <div className="theme-copy text-sm font-medium">
                           {dog.breed.name}{" "}
-                          <span className="text-[var(--dog-copy)]">
+                          <span className="theme-copy">
                             ({dog.breedCode2})
                           </span>
                         </div>
-                        <h2 className="mt-2 text-2xl font-bold text-white">
+                        <h2 className="theme-heading mt-2 text-2xl font-bold">
                           {formatDogDisplayName(dog)}
                         </h2>
-                        <div className="mt-2 text-sm text-[var(--dog-copy)]">
+                        <div className="theme-copy mt-2 text-sm">
                           {dog.regNumber}
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-sky-300/25 bg-sky-500/10 px-4 py-2 text-right">
-                        <div className="text-xs uppercase tracking-wide text-sky-100/80">
+                      <div className="theme-status-info rounded-2xl px-4 py-2 text-right">
+                        <div className="text-xs uppercase tracking-wide">
                           Stud Fee
                         </div>
-                        <div className="mt-1 text-xl font-bold text-white">
+                        <div className="mt-1 text-xl font-bold">
                           {formatMoney(listing.askingPrice)}
                         </div>
                       </div>
@@ -478,28 +478,28 @@ export default async function StudsPage({ searchParams }: PageProps) {
 
                   <div className="px-6 py-5">
                     <div className="mb-5 grid grid-cols-2 gap-3 text-sm">
-                      <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                      <div className="theme-card rounded-2xl px-4 py-3">
+                        <div className="theme-label text-xs uppercase tracking-wide">
                           Owner
                         </div>
-                        <div className="mt-1 font-medium text-white">
+                        <div className="theme-heading mt-1 font-medium">
                           {dog.ownerKennel?.name ?? "Player Kennel"}
                         </div>
                       </div>
 
-                      <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                      <div className="theme-card rounded-2xl px-4 py-3">
+                        <div className="theme-label text-xs uppercase tracking-wide">
                           Age
                         </div>
-                        <div className="mt-1 font-medium text-white">
+                        <div className="theme-heading mt-1 font-medium">
                           {ageLabel(Math.max(0, currentEpoch - dog.birthEpoch))}
                         </div>
                       </div>
-                      <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                      <div className="theme-card rounded-2xl px-4 py-3">
+                        <div className="theme-label text-xs uppercase tracking-wide">
                           Brucellosis
                         </div>
-                        <div className="mt-1 font-medium text-white">
+                        <div className="theme-heading mt-1 font-medium">
                           {brucellosisValidUntil === null
                             ? "No valid negative test"
                             : `Negative through ${formatGameDate(
@@ -507,11 +507,11 @@ export default async function StudsPage({ searchParams }: PageProps) {
                               )}`}
                         </div>
                       </div>
-                      <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                      <div className="theme-card rounded-2xl px-4 py-3">
+                        <div className="theme-label text-xs uppercase tracking-wide">
                           Bitch Requirements
                         </div>
-                        <div className="mt-1 font-medium text-white">
+                        <div className="theme-heading mt-1 font-medium">
                           {requirements.length > 0
                             ? requirements.join(", ")
                             : "No minimums set"}
@@ -520,7 +520,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                     </div>
 
                     <div>
-                      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-sky-100/80">
+                      <h3 className="theme-label mb-3 text-sm font-semibold uppercase tracking-wide">
                         Visible Categories
                       </h3>
 
@@ -544,16 +544,16 @@ export default async function StudsPage({ searchParams }: PageProps) {
 
                     <div className="mt-6 flex items-stretch gap-3">
                       {hasPendingVeterinaryCare ? (
-                        <div className="flex-1 rounded-2xl border border-rose-300/35 bg-rose-500/10 px-4 py-3 text-center text-sm font-semibold text-rose-100">
+                        <div className="theme-status-danger flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold">
                           {PENDING_VETERINARY_CARE_BREEDING_MESSAGE}
                         </div>
                       ) : null}
                       <Link
                         href={`/breed?studListingId=${listing.id}`}
-                        className={`flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold text-white transition ${
+                        className={`flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold ${
                           hasPendingVeterinaryCare
-                            ? "bg-slate-600 hover:bg-slate-500"
-                            : "bg-sky-600 hover:bg-sky-500"
+                            ? "theme-secondary-button"
+                            : "theme-primary-button"
                         }`}
                       >
                         {hasPendingVeterinaryCare ? "Review Availability" : "Use At Stud"}
@@ -561,7 +561,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
 
                       <Link
                         href={`/dogs/${dog.id}`}
-                        className="flex-1 rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-center text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+                        className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
                       >
                         View Dog
                       </Link>
