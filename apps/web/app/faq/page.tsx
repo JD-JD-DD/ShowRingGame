@@ -214,18 +214,18 @@ const beginnerTips = [
 
 export default function FAQPage() {
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-6xl">
-        <header className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-6 shadow-[var(--dog-shadow)] backdrop-blur">
+        <header className="theme-panel mb-8 rounded-[28px] px-6 py-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.22em] text-[var(--dog-label)]">
+              <p className="theme-label text-sm uppercase tracking-[0.22em]">
                 Player Guide
               </p>
-              <h1 className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
+              <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
                 Frequently Asked Questions
               </h1>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--dog-copy)] sm:text-base">
+              <p className="theme-copy mt-4 max-w-3xl text-sm leading-7 sm:text-base">
                 A beginner-friendly guide to kennels, dog traits, breeding,
                 shows, time, and the economy in ShowRing.
               </p>
@@ -234,13 +234,13 @@ export default function FAQPage() {
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/"
-                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 Home
               </Link>
               <Link
                 href="/market"
-                className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
+                className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 Browse Market
               </Link>
@@ -248,15 +248,15 @@ export default function FAQPage() {
           </div>
         </header>
 
-        <section className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
-          <h2 className="text-xl font-semibold text-white">
+        <section className="theme-panel mb-8 rounded-[28px] p-6">
+          <h2 className="theme-heading text-xl font-semibold">
             Quick Beginner Tips
           </h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {beginnerTips.map((tip) => (
               <div
                 key={tip}
-                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-sm leading-6 text-[var(--dog-copy)]"
+                className="theme-card theme-copy rounded-2xl px-4 py-3 text-sm leading-6"
               >
                 {tip}
               </div>
@@ -275,21 +275,21 @@ export default function FAQPage() {
                     ? "kennel-prestige"
                     : undefined
               }
-              className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 shadow-[var(--dog-shadow)]"
+              className="theme-panel rounded-[28px] p-6"
             >
-              <h2 className="text-2xl font-semibold text-white">
+              <h2 className="theme-heading text-2xl font-semibold">
                 {section.title}
               </h2>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 {section.items.map((item) => (
                   <article
                     key={item.question}
-                    className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4"
+                    className="theme-card rounded-2xl p-4"
                   >
-                    <h3 className="text-base font-semibold text-white">
+                    <h3 className="theme-heading text-base font-semibold">
                       {item.question}
                     </h3>
-                    <p className="mt-2 text-sm leading-7 text-[var(--dog-copy)]">
+                    <p className="theme-copy mt-2 text-sm leading-7">
                       {item.answer}
                     </p>
                   </article>
@@ -299,8 +299,8 @@ export default function FAQPage() {
           ))}
         </div>
 
-        <section className="mt-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 text-sm leading-7 text-[var(--dog-copy)] shadow-[var(--dog-shadow)]">
-          <h2 className="text-xl font-semibold text-white">Final Advice</h2>
+        <section className="theme-panel theme-copy mt-8 rounded-[28px] p-6 text-sm leading-7">
+          <h2 className="theme-heading text-xl font-semibold">Final Advice</h2>
           <p className="mt-3">
             No dog is perfect. No bloodline stays dominant forever. The best
             kennels are built through smart decisions, patience, careful
