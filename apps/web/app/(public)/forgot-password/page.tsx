@@ -44,9 +44,9 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="min-h-screen px-6 py-8">
       <div className="mx-auto flex max-w-3xl flex-col">
-        <header className="mb-8 flex flex-col gap-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-5 shadow-[var(--dog-shadow)] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <header className="theme-panel mb-8 flex flex-col gap-6 rounded-[28px] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
             <Image
               src="/logo.png"
@@ -59,28 +59,28 @@ export default function ForgotPasswordPage() {
 
           <Link
             href="/login"
-            className="w-fit rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-2.5 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+            className="theme-secondary-button w-fit rounded-full px-5 py-2.5 text-sm font-semibold"
           >
             Back to Login
           </Link>
         </header>
 
-        <section className="rounded-[32px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-7 shadow-[var(--dog-shadow)] sm:p-8">
-          <div className="mb-4 inline-flex rounded-full border border-[var(--dog-border)] bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+        <section className="theme-panel rounded-[32px] p-7 sm:p-8">
+          <div className="theme-neutral-badge mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em]">
             Account Recovery
           </div>
 
-          <h1 className="text-3xl font-bold text-white sm:text-4xl">
+          <h1 className="theme-heading text-3xl font-bold sm:text-4xl">
             Reset your password.
           </h1>
-          <p className="mt-3 text-sm leading-6 text-[var(--dog-copy)] sm:text-base">
+          <p className="theme-copy mt-3 text-sm leading-6 sm:text-base">
             Enter the email address for your account. If it matches an account,
             we will send a reset link that expires in 60 minutes.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-7 grid gap-4">
             <label className="grid gap-2">
-              <span className="text-sm font-semibold text-[var(--dog-heading)]">
+              <span className="theme-heading text-sm font-semibold">
                 Email
               </span>
               <input
@@ -89,22 +89,22 @@ export default function ForgotPasswordPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 required
                 autoComplete="email"
-                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-control)] px-4 py-3 text-white outline-none transition placeholder:text-[var(--dog-copy)] focus:border-[var(--dog-border)] focus:bg-[var(--dog-control)]"
+                className="theme-control rounded-2xl px-4 py-3 outline-none"
               />
             </label>
 
             {message ? (
-              <div className="rounded-2xl border border-emerald-300/30 bg-emerald-950/35 px-4 py-3 text-sm font-semibold text-emerald-100">
+              <div className="theme-status-success rounded-2xl px-4 py-3 text-sm font-semibold">
                 {message}
               </div>
             ) : null}
 
             {localResetUrl ? (
-              <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-sm leading-6 text-[var(--dog-copy)]">
+              <div className="theme-card theme-copy rounded-2xl px-4 py-3 text-sm leading-6">
                 Local testing link:{" "}
                 <Link
                   href={localResetUrl}
-                  className="font-semibold text-[var(--dog-heading)] underline decoration-purple-300/60 underline-offset-4"
+                  className="theme-accent-link font-semibold"
                 >
                   reset password
                 </Link>
@@ -112,7 +112,7 @@ export default function ForgotPasswordPage() {
             ) : null}
 
             {error ? (
-              <div className="rounded-2xl border border-red-300/30 bg-red-950/35 px-4 py-3 text-sm font-semibold text-red-100">
+              <div className="theme-status-danger rounded-2xl px-4 py-3 text-sm font-semibold">
                 {error}
               </div>
             ) : null}
@@ -120,7 +120,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="mt-2 rounded-2xl bg-purple-600 px-5 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className="theme-primary-button mt-2 rounded-2xl px-5 py-3 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? "Requesting Link..." : "Send Reset Link"}
             </button>

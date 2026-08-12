@@ -71,9 +71,9 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="min-h-screen px-6 py-8">
       <div className="mx-auto flex max-w-7xl flex-col">
-        <header className="mb-8 flex flex-col gap-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-5 shadow-[var(--dog-shadow)] backdrop-blur md:flex-row md:items-center md:justify-between">
+        <header className="theme-panel mb-8 flex flex-col gap-6 rounded-[28px] px-6 py-5 md:flex-row md:items-center md:justify-between">
           <Link href="/" className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
             <Image
               src="/logo.png"
@@ -87,31 +87,31 @@ export default function SignupPage() {
           <nav className="flex flex-wrap items-center gap-3 text-sm">
             <Link
               href="/login"
-              className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-2.5 font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+              className="theme-secondary-button rounded-full px-5 py-2.5 font-semibold"
             >
               Log In
             </Link>
             <Link
               href="/"
-              className="rounded-full bg-purple-600 px-5 py-2.5 font-semibold text-white transition hover:bg-purple-500"
+              className="theme-primary-button rounded-full px-5 py-2.5 font-semibold"
             >
               Home
             </Link>
           </nav>
         </header>
 
-        <section className="rounded-[32px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-7 shadow-[var(--dog-shadow)] sm:p-8">
+        <section className="theme-panel rounded-[32px] p-7 sm:p-8">
           <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
             <div>
-              <div className="mb-4 inline-flex rounded-full border border-[var(--dog-border)] bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+              <div className="theme-neutral-badge mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em]">
                 New Kennel
               </div>
 
-              <h1 className="max-w-3xl text-4xl font-bold text-white sm:text-5xl lg:text-6xl">
+              <h1 className="theme-heading max-w-3xl text-4xl font-bold sm:text-5xl lg:text-6xl">
                 Start a kennel with dogs worth studying.
               </h1>
 
-              <p className="mt-5 max-w-2xl text-base leading-7 text-[var(--dog-copy)] sm:text-lg sm:leading-8">
+              <p className="theme-copy mt-5 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8">
                 ShowRing Game is a dog show and breeder simulation built around
                 thoughtful pairings, directional visible categories, show
                 strategy, and the slow satisfaction of improving a line.
@@ -121,12 +121,12 @@ export default function SignupPage() {
                 {signupHighlights.map((item) => (
                   <div
                     key={item.title}
-                    className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4"
+                    className="theme-card rounded-2xl p-4"
                   >
-                    <h2 className="text-sm font-semibold text-white">
+                    <h2 className="theme-heading text-sm font-semibold">
                       {item.title}
                     </h2>
-                    <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
+                    <p className="theme-copy mt-2 text-sm leading-6">
                       {item.body}
                     </p>
                   </div>
@@ -134,15 +134,15 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 sm:p-6">
-              <h2 className="text-2xl font-semibold text-white">
+            <div className="theme-card rounded-[24px] p-5 sm:p-6">
+              <h2 className="theme-heading text-2xl font-semibold">
                 Create Account
               </h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
+              <p className="theme-copy mt-2 text-sm leading-6">
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="font-semibold text-[var(--dog-heading)] underline decoration-purple-300/60 underline-offset-4"
+                  className="theme-accent-link font-semibold"
                 >
                   Log in
                 </Link>
@@ -151,7 +151,7 @@ export default function SignupPage() {
 
               <form onSubmit={handleSubmit} className="mt-6 grid gap-4">
                 <label className="grid gap-2">
-                  <span className="text-sm font-semibold text-[var(--dog-heading)]">
+                  <span className="theme-heading text-sm font-semibold">
                     Email
                   </span>
                   <input
@@ -159,27 +159,27 @@ export default function SignupPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-control)] px-4 py-3 text-white outline-none transition placeholder:text-[var(--dog-copy)] focus:border-[var(--dog-border)] focus:bg-[var(--dog-control)]"
+                    className="theme-control rounded-2xl px-4 py-3 outline-none"
                     autoComplete="email"
                   />
                 </label>
 
                 <label className="grid gap-2">
-                  <span className="text-sm font-semibold text-[var(--dog-heading)]">
+                  <span className="theme-heading text-sm font-semibold">
                     Display Name
                   </span>
                   <input
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-control)] px-4 py-3 text-white outline-none transition placeholder:text-[var(--dog-copy)] focus:border-[var(--dog-border)] focus:bg-[var(--dog-control)]"
+                    className="theme-control rounded-2xl px-4 py-3 outline-none"
                     placeholder="Optional"
                     autoComplete="nickname"
                   />
                 </label>
 
                 <label className="grid gap-2">
-                  <span className="text-sm font-semibold text-[var(--dog-heading)]">
+                  <span className="theme-heading text-sm font-semibold">
                     Password
                   </span>
                   <input
@@ -187,13 +187,13 @@ export default function SignupPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-control)] px-4 py-3 text-white outline-none transition placeholder:text-[var(--dog-copy)] focus:border-[var(--dog-border)] focus:bg-[var(--dog-control)]"
+                    className="theme-control rounded-2xl px-4 py-3 outline-none"
                     autoComplete="new-password"
                   />
                 </label>
 
                 <label className="grid gap-2">
-                  <span className="text-sm font-semibold text-[var(--dog-heading)]">
+                  <span className="theme-heading text-sm font-semibold">
                     Confirm Password
                   </span>
                   <input
@@ -201,13 +201,13 @@ export default function SignupPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-control)] px-4 py-3 text-white outline-none transition placeholder:text-[var(--dog-copy)] focus:border-[var(--dog-border)] focus:bg-[var(--dog-control)]"
+                    className="theme-control rounded-2xl px-4 py-3 outline-none"
                     autoComplete="new-password"
                   />
                 </label>
 
                 {error ? (
-                  <div className="rounded-2xl border border-red-300/30 bg-red-950/35 px-4 py-3 text-sm font-semibold text-red-100">
+                  <div className="theme-status-danger rounded-2xl px-4 py-3 text-sm font-semibold">
                     {error}
                   </div>
                 ) : null}
@@ -215,13 +215,13 @@ export default function SignupPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="mt-2 rounded-2xl bg-purple-600 px-5 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="theme-primary-button mt-2 rounded-2xl px-5 py-3 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSubmitting ? "Creating Account..." : "Create Account"}
                 </button>
               </form>
 
-              <div className="mt-5 rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-sm leading-6 text-[var(--dog-copy)]">
+              <div className="theme-card theme-copy mt-5 rounded-2xl px-4 py-3 text-sm leading-6">
                 After signup, you will create your kennel and choose where your
                 first breeding program begins.
               </div>

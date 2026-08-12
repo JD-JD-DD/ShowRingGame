@@ -15,9 +15,9 @@ export default async function ResetPasswordPage({
   const token = firstQueryValue(query.token);
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="min-h-screen px-6 py-8">
       <div className="mx-auto flex max-w-3xl flex-col">
-        <header className="mb-8 flex flex-col gap-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-5 shadow-[var(--dog-shadow)] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <header className="theme-panel mb-8 flex flex-col gap-6 rounded-[28px] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="relative h-16 w-[250px] sm:h-20 sm:w-[320px]">
             <Image
               src="/logo.png"
@@ -30,21 +30,21 @@ export default async function ResetPasswordPage({
 
           <Link
             href="/login"
-            className="w-fit rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-2.5 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+            className="theme-secondary-button w-fit rounded-full px-5 py-2.5 text-sm font-semibold"
           >
             Back to Login
           </Link>
         </header>
 
-        <section className="rounded-[32px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-7 shadow-[var(--dog-shadow)] sm:p-8">
-          <div className="mb-4 inline-flex rounded-full border border-[var(--dog-border)] bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+        <section className="theme-panel rounded-[32px] p-7 sm:p-8">
+          <div className="theme-neutral-badge mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em]">
             Account Recovery
           </div>
 
-          <h1 className="text-3xl font-bold text-white sm:text-4xl">
+          <h1 className="theme-heading text-3xl font-bold sm:text-4xl">
             Choose a new password.
           </h1>
-          <p className="mb-7 mt-3 text-sm leading-6 text-[var(--dog-copy)] sm:text-base">
+          <p className="theme-copy mb-7 mt-3 text-sm leading-6 sm:text-base">
             Your new password must be at least 8 characters long.
           </p>
 

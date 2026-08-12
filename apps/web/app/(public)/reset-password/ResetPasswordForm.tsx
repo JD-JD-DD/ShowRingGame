@@ -49,7 +49,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   if (!token) {
     return (
-      <div className="rounded-2xl border border-red-300/30 bg-red-950/35 px-4 py-3 text-sm font-semibold text-red-100">
+      <div className="theme-status-danger rounded-2xl px-4 py-3 text-sm font-semibold">
         This password reset link is invalid or has expired.{" "}
         <Link
           href="/forgot-password"
@@ -64,12 +64,12 @@ export function ResetPasswordForm({ token }: { token: string }) {
   if (message) {
     return (
       <div className="grid gap-4">
-        <div className="rounded-2xl border border-emerald-300/30 bg-emerald-950/35 px-4 py-3 text-sm font-semibold text-emerald-100">
+        <div className="theme-status-success rounded-2xl px-4 py-3 text-sm font-semibold">
           {message}
         </div>
         <Link
           href="/login"
-          className="rounded-2xl bg-purple-600 px-5 py-3 text-center font-semibold text-white transition hover:bg-purple-500"
+          className="theme-primary-button rounded-2xl px-5 py-3 text-center font-semibold"
         >
           Log In
         </Link>
@@ -80,7 +80,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
   return (
     <form onSubmit={handleSubmit} className="grid gap-4">
       <label className="grid gap-2">
-        <span className="text-sm font-semibold text-purple-100">
+        <span className="theme-heading text-sm font-semibold">
           New Password
         </span>
         <input
@@ -90,12 +90,12 @@ export function ResetPasswordForm({ token }: { token: string }) {
           required
           minLength={8}
           autoComplete="new-password"
-          className="rounded-2xl border border-purple-300/20 bg-[#15091f] px-4 py-3 text-white outline-none transition placeholder:text-purple-100/35 focus:border-purple-300/55 focus:bg-[#1b0d27]"
+          className="theme-control rounded-2xl px-4 py-3 outline-none"
         />
       </label>
 
       <label className="grid gap-2">
-        <span className="text-sm font-semibold text-purple-100">
+        <span className="theme-heading text-sm font-semibold">
           Confirm New Password
         </span>
         <input
@@ -105,12 +105,12 @@ export function ResetPasswordForm({ token }: { token: string }) {
           required
           minLength={8}
           autoComplete="new-password"
-          className="rounded-2xl border border-purple-300/20 bg-[#15091f] px-4 py-3 text-white outline-none transition placeholder:text-purple-100/35 focus:border-purple-300/55 focus:bg-[#1b0d27]"
+          className="theme-control rounded-2xl px-4 py-3 outline-none"
         />
       </label>
 
       {error ? (
-        <div className="rounded-2xl border border-red-300/30 bg-red-950/35 px-4 py-3 text-sm font-semibold text-red-100">
+        <div className="theme-status-danger rounded-2xl px-4 py-3 text-sm font-semibold">
           {error}
         </div>
       ) : null}
@@ -118,7 +118,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-2 rounded-2xl bg-purple-600 px-5 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
+        className="theme-primary-button mt-2 rounded-2xl px-5 py-3 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Updating Password..." : "Reset Password"}
       </button>

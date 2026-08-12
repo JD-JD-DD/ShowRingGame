@@ -79,7 +79,7 @@ export default function LoginPage() {
             </Link>
             <Link
               href="/"
-              className="rounded-full bg-purple-600 px-5 py-2.5 font-semibold text-white transition hover:bg-purple-500"
+              className="theme-primary-button rounded-full px-5 py-2.5 font-semibold"
             >
               Home
             </Link>
@@ -122,7 +122,7 @@ export default function LoginPage() {
                 </p>
                 <Link
                   href="/signup"
-                  className="mt-3 inline-flex w-full justify-center rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
+                  className="theme-primary-button mt-3 inline-flex w-full justify-center rounded-2xl px-5 py-3 text-sm font-semibold"
                 >
                   Create your kennel account
                 </Link>
@@ -164,7 +164,7 @@ export default function LoginPage() {
                 </label>
 
                 {error ? (
-                  <div className="rounded-2xl border border-red-300/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-100">
+                  <div className="theme-status-danger rounded-2xl px-4 py-3 text-sm font-semibold">
                     {error}
                   </div>
                 ) : null}
@@ -172,7 +172,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="mt-2 rounded-2xl bg-purple-600 px-5 py-3 font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="theme-primary-button mt-2 rounded-2xl px-5 py-3 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSubmitting ? "Signing In..." : "Login"}
                 </button>
