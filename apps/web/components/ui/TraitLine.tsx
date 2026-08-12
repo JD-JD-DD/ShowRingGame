@@ -17,9 +17,9 @@ function getDeviationColor(value: number, ideal: number): string {
   const distance = Math.abs(value - ideal);
 
   if (distance <= 0.5) return "#23f707"; // bright green = ideal
-  if (distance <= 2) return "#9df707";   // bright yellow-green
+  if (distance <= 2) return "#a8f707";   // bright lime
   if (distance <= 4) return "#faf605";   // bright yellow
-  if (distance <= 6) return "#ff8c00";   // bright orange
+  if (distance <= 6) return "#ff8a00";   // bright orange
   return "#f70707";                      // bright red
 }
 

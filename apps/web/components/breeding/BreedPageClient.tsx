@@ -114,13 +114,6 @@ const HEALTH_TONES: Record<PhenotypeHealthSeverity, string> = {
   red: "border-red-400/45 bg-red-500/15 font-bold text-red-200",
 };
 
-const TRAIT_NUMBER_TONES = {
-  strong: "border-emerald-300/35 bg-emerald-500/10 text-emerald-100",
-  steady: "border-sky-300/30 bg-sky-500/10 text-sky-100",
-  watch: "border-amber-300/35 bg-amber-500/10 text-amber-100",
-  hardWatch: "border-red-400/35 bg-red-500/10 text-red-100",
-};
-
 function dogDisplayName(dog: DogCardDto) {
   return formatDogDisplayName(dog);
 }
@@ -306,10 +299,11 @@ function damMeetsStudRequirements(dam: DogCardDto | null, stud: DogCardDto) {
 function traitNumberTone(value: number) {
   const distance = Math.abs(value - 10);
 
-  if (distance <= 1.5) return TRAIT_NUMBER_TONES.strong;
-  if (distance <= 2.75) return TRAIT_NUMBER_TONES.steady;
-  if (distance <= 4) return TRAIT_NUMBER_TONES.watch;
-  return TRAIT_NUMBER_TONES.hardWatch;
+  if (distance <= 0.5) return "border-[#23f707] bg-[var(--color-surface)] text-[var(--color-text)]";
+  if (distance <= 2) return "border-[#a8f707] bg-[var(--color-surface)] text-[var(--color-text)]";
+  if (distance <= 4) return "border-[#faf605] bg-[var(--color-surface)] text-[var(--color-text)]";
+  if (distance <= 6) return "border-[#ff8a00] bg-[var(--color-surface)] text-[var(--color-text)]";
+  return "border-[#f70707] bg-[var(--color-surface)] text-[var(--color-text)]";
 }
 
 function visibleTraitNotes(dog: DogCardDto) {
