@@ -2,54 +2,54 @@
 
 :root {
   /* Canonical semantic tokens — Day palette. */
-  --color-page: #f7f5f0;
-  --color-surface: #ffffff;
-  --color-surface-raised: #fbfaf7;
-  --color-surface-subtle: #efebe4;
-  --color-surface-inset: #e8e3db;
+  --color-page: #ffffff;
+  --color-surface: #f2f2f2;
+  --color-surface-raised: #ffffff;
+  --color-surface-subtle: #e6e6e6;
+  --color-surface-inset: #d9d9d9;
 
-  --color-text: #24211f;
-  --color-text-secondary: #494440;
-  --color-text-muted: #625d57;
-  --color-text-disabled: #918a82;
+  --color-text: #000000;
+  --color-text-secondary: #222222;
+  --color-text-muted: #4d4d4d;
+  --color-text-disabled: #707070;
   --color-text-inverse: #ffffff;
-  --color-link: #713247;
+  --color-link: #0057ff;
 
-  --color-border: #ddd8cf;
-  --color-border-subtle: #e8e3db;
-  --color-border-strong: #beb7ad;
-  --color-focus: #713247;
+  --color-border: #666666;
+  --color-border-subtle: #999999;
+  --color-border-strong: #000000;
+  --color-focus: #0057ff;
 
-  --color-primary: #713247;
-  --color-primary-hover: #572536;
-  --color-primary-active: #45202c;
+  --color-primary: #0057ff;
+  --color-primary-hover: #003fcc;
+  --color-primary-active: #002e99;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #efebe4;
-  --color-secondary-hover: #e3ddd3;
-  --color-secondary-foreground: #24211f;
+  --color-secondary: #e6e6e6;
+  --color-secondary-hover: #cccccc;
+  --color-secondary-foreground: #000000;
 
-  --color-accent: #a77a2d;
-  --color-accent-foreground: #24211f;
+  --color-accent: #ffd800;
+  --color-accent-foreground: #000000;
 
-  --color-success: #3e6b4f;
-  --color-success-surface: #e7f0e9;
-  --color-success-text: #31573f;
-  --color-warning: #8c6418;
-  --color-warning-surface: #f7edd3;
-  --color-warning-text: #745113;
-  --color-danger: #a33a3a;
-  --color-danger-surface: #f5e2e1;
-  --color-danger-text: #842f2f;
-  --color-info: #3f637a;
-  --color-info-surface: #e5edf2;
-  --color-info-text: #34566b;
-  --color-neutral: #6c665f;
-  --color-neutral-surface: #eeeae4;
-  --color-neutral-text: #4f4a45;
+  --color-success: #007a2f;
+  --color-success-surface: #d8ffe5;
+  --color-success-text: #005a23;
+  --color-warning: #9a7600;
+  --color-warning-surface: #fff8c7;
+  --color-warning-text: #635000;
+  --color-danger: #c00000;
+  --color-danger-surface: #ffe0e0;
+  --color-danger-text: #8a0000;
+  --color-info: #0057c7;
+  --color-info-surface: #dcebff;
+  --color-info-text: #003d8f;
+  --color-neutral: #555555;
+  --color-neutral-surface: #eeeeee;
+  --color-neutral-text: #222222;
 
-  --color-overlay: rgba(36, 33, 31, 0.48);
-  --shadow-soft: 0 18px 48px rgba(36, 33, 31, 0.1);
-  --shadow-raised: 0 20px 55px rgba(36, 33, 31, 0.11);
+  --color-overlay: rgba(0, 0, 0, 0.48);
+  --shadow-soft: 0 18px 48px rgba(0, 0, 0, 0.1);
+  --shadow-raised: 0 20px 55px rgba(0, 0, 0, 0.11);
 
   /* Compatibility aliases — retain until component migration is complete. */
   --page-bg: var(--color-page);
@@ -97,50 +97,50 @@
 
 html[data-theme="dark"] {
   /* Canonical semantic tokens — Night palette. */
-  --color-page: #171514;
-  --color-surface: #211e1c;
-  --color-surface-raised: #2a2623;
-  --color-surface-subtle: #332e2a;
-  --color-surface-inset: #141211;
+  --color-page: #000000;
+  --color-surface: #1a1a1a;
+  --color-surface-raised: #262626;
+  --color-surface-subtle: #333333;
+  --color-surface-inset: #0d0d0d;
 
-  --color-text: #f3f0eb;
-  --color-text-secondary: #d0c9c1;
-  --color-text-muted: #aaa198;
-  --color-text-disabled: #746d67;
-  --color-text-inverse: #171514;
-  --color-link: #d58aa2;
+  --color-text: #ffffff;
+  --color-text-secondary: #e6e6e6;
+  --color-text-muted: #bfbfbf;
+  --color-text-disabled: #8c8c8c;
+  --color-text-inverse: #000000;
+  --color-link: #66a0ff;
 
-  --color-border: #47413c;
-  --color-border-subtle: #393430;
-  --color-border-strong: #665e57;
-  --color-focus: #d58aa2;
+  --color-border: #999999;
+  --color-border-subtle: #666666;
+  --color-border-strong: #ffffff;
+  --color-focus: #ffe600;
 
-  --color-primary: #b96b85;
-  --color-primary-hover: #cd8199;
-  --color-primary-active: #a65a74;
-  --color-primary-foreground: #171514;
-  --color-secondary: #332e2a;
-  --color-secondary-hover: #403a35;
-  --color-secondary-foreground: #f3f0eb;
+  --color-primary: #2f7bff;
+  --color-primary-hover: #66a0ff;
+  --color-primary-active: #0057ff;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #333333;
+  --color-secondary-hover: #4d4d4d;
+  --color-secondary-foreground: #ffffff;
 
-  --color-accent: #d2a95b;
-  --color-accent-foreground: #171514;
+  --color-accent: #ffe600;
+  --color-accent-foreground: #000000;
 
-  --color-success: #70b184;
-  --color-success-surface: #203126;
-  --color-success-text: #9ad0aa;
-  --color-warning: #e0b354;
-  --color-warning-surface: #3a301d;
-  --color-warning-text: #f0ca79;
-  --color-danger: #e27b78;
-  --color-danger-surface: #3a2221;
-  --color-danger-text: #f1a09d;
-  --color-info: #78a8c5;
-  --color-info-surface: #22313a;
-  --color-info-text: #a3c8db;
-  --color-neutral: #a59d95;
-  --color-neutral-surface: #2d2926;
-  --color-neutral-text: #cbc4bd;
+  --color-success: #00e05a;
+  --color-success-surface: #003d18;
+  --color-success-text: #7cffac;
+  --color-warning: #ffe600;
+  --color-warning-surface: #3d3600;
+  --color-warning-text: #fff28a;
+  --color-danger: #ff3b30;
+  --color-danger-surface: #470000;
+  --color-danger-text: #ffb3ad;
+  --color-info: #4b9bff;
+  --color-info-surface: #001f4d;
+  --color-info-text: #a9ccff;
+  --color-neutral: #bfbfbf;
+  --color-neutral-surface: #262626;
+  --color-neutral-text: #e6e6e6;
 
   --color-overlay: rgba(0, 0, 0, 0.64);
   --shadow-soft: 0 18px 48px rgba(0, 0, 0, 0.28);
