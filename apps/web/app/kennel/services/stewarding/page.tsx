@@ -28,7 +28,7 @@ export default async function StewardingServicesPage({
   });
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-8 text-white">
+    <main className="mx-auto max-w-7xl px-6 py-8">
       <ServicesHeader
         title="Club Stewarding"
         description="Claim stewarding assignments at local show weekends. Stewarding pays kennel income, but makes that show or cluster your primary show commitment."
@@ -38,17 +38,17 @@ export default async function StewardingServicesPage({
 
       <ServiceMessages message={message} error={error} />
 
-      <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
+      <section className="theme-panel rounded-[28px] p-5">
         <div className="mb-5">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100/80">
+            <p className="theme-label text-xs font-semibold uppercase tracking-[0.2em]">
               Club Stewarding
             </p>
-            <h2 className="mt-2 text-2xl font-semibold">
+            <h2 className="theme-heading mt-2 text-2xl font-semibold">
               Available Assignments
             </h2>
           </div>
-          <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-50">
+          <div className="theme-status-warning mt-4 rounded-2xl px-4 py-3 text-sm leading-6">
             Taking a stewarding assignment makes that show/cluster your primary
             show commitment for the weekend. You cannot enter dogs in that show.
             Secondary shows in the same weekend may still be entered with
@@ -57,7 +57,7 @@ export default async function StewardingServicesPage({
         </div>
 
         {opportunities.length === 0 ? (
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 text-sm text-[var(--dog-copy)]">
+          <div className="theme-card theme-copy rounded-2xl p-6 text-sm">
             No stewarding assignments are available right now.
           </div>
         ) : (
@@ -65,44 +65,44 @@ export default async function StewardingServicesPage({
             {opportunities.map((opportunity) => (
               <article
                 key={opportunity.showClusterId}
-                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5"
+                className="theme-card rounded-2xl p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">
+                    <h3 className="theme-heading text-lg font-semibold">
                       {opportunity.name}
                     </h3>
-                    <p className="mt-1 text-sm text-[var(--dog-copy)]">
+                    <p className="theme-copy mt-1 text-sm">
                       {opportunity.districtName} District
                     </p>
                   </div>
-                  <div className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-100">
+                  <div className="theme-neutral-badge rounded-full px-3 py-1 text-sm font-semibold">
                     {formatMoney(opportunity.payoutAmount)}
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 text-sm text-[var(--dog-copy)] sm:grid-cols-4">
-                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                <div className="theme-copy mt-4 grid gap-3 text-sm sm:grid-cols-4">
+                  <div className="theme-card rounded-xl p-3">
+                    <div className="theme-label text-xs uppercase tracking-wide">
                       Dates
                     </div>
-                    <div className="mt-1 font-semibold text-white">
+                    <div className="theme-heading mt-1 font-semibold">
                       {formatDate(opportunity.startEpoch)}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                  <div className="theme-card rounded-xl p-3">
+                    <div className="theme-label text-xs uppercase tracking-wide">
                       Days
                     </div>
-                    <div className="mt-1 font-semibold text-white">
+                    <div className="theme-heading mt-1 font-semibold">
                       {opportunity.dayCount}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                  <div className="theme-card rounded-xl p-3">
+                    <div className="theme-label text-xs uppercase tracking-wide">
                       Status
                     </div>
-                    <div className="mt-1 font-semibold text-white">
+                    <div className="theme-heading mt-1 font-semibold">
                       {opportunity.alreadyStewarded
                         ? "Claimed"
                         : opportunity.availableSpaces > 0
@@ -110,24 +110,24 @@ export default async function StewardingServicesPage({
                           : "Full"}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                  <div className="theme-card rounded-xl p-3">
+                    <div className="theme-label text-xs uppercase tracking-wide">
                       Spaces
                     </div>
-                    <div className="mt-1 font-semibold text-white">
+                    <div className="theme-heading mt-1 font-semibold">
                       {opportunity.availableSpaces} / {opportunity.totalSpaces}
                     </div>
                   </div>
                 </div>
 
-                <p className="mt-4 text-xs leading-5 text-[var(--dog-copy)]">
+                <p className="theme-copy mt-4 text-xs leading-5">
                   Stewarding pays {formatMoney(opportunity.payoutAmount)}, but
                   you cannot owner-handle dogs in this exact show/cluster. Each
                   kennel may hold one stewarding assignment per show weekend.
                 </p>
 
                 {opportunity.blockedReason ? (
-                  <div className="mt-4 rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm text-[var(--dog-copy)]">
+                  <div className="theme-card theme-copy mt-4 rounded-xl px-3 py-2 text-sm">
                     {opportunity.blockedReason}
                   </div>
                 ) : null}
@@ -150,7 +150,7 @@ export default async function StewardingServicesPage({
                   <button
                     type="submit"
                     disabled={!opportunity.canClaim}
-                    className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-45"
+                    className="theme-primary-button w-full rounded-xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     Steward this show
                   </button>

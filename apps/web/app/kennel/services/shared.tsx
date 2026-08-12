@@ -75,11 +75,11 @@ export function ServicesHeader({
   return (
     <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p className="text-sm uppercase tracking-[0.25em] text-emerald-200/80">
+        <p className="theme-label text-sm uppercase tracking-[0.25em]">
           Kennel Services
         </p>
-        <h1 className="mt-2 text-3xl font-semibold">{title}</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-purple-100/75">
+        <h1 className="theme-heading mt-2 text-3xl font-semibold">{title}</h1>
+        <p className="theme-copy mt-3 max-w-3xl text-sm leading-7">
           {description}
         </p>
       </div>
@@ -88,22 +88,22 @@ export function ServicesHeader({
         {showWorkBoardLink ? (
           <Link
             href="/kennel/services"
-            className="rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-5 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+            className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
           >
             Back to Work Board
           </Link>
         ) : null}
         <Link
           href="/kennel"
-          className="rounded-2xl border border-purple-300/25 bg-white/5 px-5 py-3 text-sm font-semibold text-purple-100 transition hover:bg-white/10"
+          className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
         >
           Back to My Kennel
         </Link>
-        <div className="rounded-2xl border border-purple-300/15 bg-white/5 px-5 py-4">
-          <div className="text-xs uppercase tracking-wide text-purple-200">
+        <div className="theme-card rounded-2xl px-5 py-4">
+          <div className="theme-label text-xs uppercase tracking-wide">
             Balance
           </div>
-          <div className="mt-1 text-xl font-semibold">
+          <div className="theme-heading mt-1 text-xl font-semibold">
             {formatMoney(balance)}
           </div>
         </div>
@@ -122,12 +122,12 @@ export function ServiceMessages({
   return (
     <>
       {message ? (
-        <div className="mb-5 rounded-2xl border border-emerald-300/35 bg-emerald-500/10 px-5 py-4 text-sm font-semibold text-emerald-100">
+        <div className="theme-status-success mb-5 rounded-2xl px-5 py-4 text-sm font-semibold">
           {message}
         </div>
       ) : null}
       {error ? (
-        <div className="mb-5 rounded-2xl border border-red-300/35 bg-red-500/10 px-5 py-4 text-sm font-semibold text-red-100">
+        <div className="theme-status-danger mb-5 rounded-2xl px-5 py-4 text-sm font-semibold">
           {error}
         </div>
       ) : null}

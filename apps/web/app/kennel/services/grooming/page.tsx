@@ -41,7 +41,7 @@ export default async function GroomingServicesPage({
     groomingSummary.groomingActionsRemainingThisWeek <= 0;
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-8 text-white">
+    <main className="mx-auto max-w-7xl px-6 py-8">
       <ServicesHeader
         title="Grooming Assistance"
         description="Accept outside grooming jobs from other kennels, improve dogs' coat condition, earn income, and build grooming experience."
@@ -51,79 +51,79 @@ export default async function GroomingServicesPage({
 
       <ServiceMessages message={message} error={error} />
 
-      <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
+      <section className="theme-panel rounded-[28px] p-5">
         <div className="mb-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/80">
+          <p className="theme-label text-xs font-semibold uppercase tracking-[0.2em]">
             Grooming Assistance
           </p>
-          <h2 className="mt-2 text-2xl font-semibold">
+          <h2 className="theme-heading mt-2 text-2xl font-semibold">
             Outside Grooming Jobs
           </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--dog-copy)]">
+          <p className="theme-copy mt-3 max-w-3xl text-sm leading-6">
             Help prep dogs for local exhibitors. Each kennel can perform 10
             grooming actions per game week. Use them on your own dogs, outside
             grooming jobs, or any combination of both.
           </p>
-          <div className="mt-4 rounded-2xl border border-sky-300/25 bg-sky-500/10 px-4 py-3 text-sm leading-6 text-sky-50">
+          <div className="theme-status-info mt-4 rounded-2xl px-4 py-3 text-sm leading-6">
             Outside grooming currently pays {formatMoney(500)} from the game.
             The listing owner is not charged during this stage of development.
           </div>
         </div>
 
         <div className="mb-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card rounded-xl p-3">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Used
             </div>
-            <div className="mt-1 font-semibold text-white">
+            <div className="theme-heading mt-1 font-semibold">
               {groomingSummary.groomingActionsUsedThisWeek} /{" "}
               {groomingSummary.totalGroomingActionLimit}
             </div>
           </div>
-          <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card rounded-xl p-3">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Own Dogs
             </div>
-            <div className="mt-1 font-semibold text-white">
+            <div className="theme-heading mt-1 font-semibold">
               {groomingSummary.selfGroomsCompletedThisWeek}
             </div>
           </div>
-          <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card rounded-xl p-3">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Outside Jobs
             </div>
-            <div className="mt-1 font-semibold text-white">
+            <div className="theme-heading mt-1 font-semibold">
               {groomingSummary.outsideGroomsCompletedThisWeek}
             </div>
           </div>
-          <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card rounded-xl p-3">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Remaining
             </div>
-            <div className="mt-1 font-semibold text-white">
+            <div className="theme-heading mt-1 font-semibold">
               {groomingSummary.groomingActionsRemainingThisWeek}
             </div>
           </div>
-          <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card rounded-xl p-3">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Level
             </div>
-            <div className="mt-1 font-semibold text-white">
+            <div className="theme-heading mt-1 font-semibold">
               {groomingSummary.groomingLevel}
             </div>
           </div>
-          <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card rounded-xl p-3">
+            <div className="theme-label text-xs uppercase tracking-wide">
               XP
             </div>
-            <div className="mt-1 font-semibold text-white">
+            <div className="theme-heading mt-1 font-semibold">
               {groomingSummary.groomingXp}
             </div>
           </div>
         </div>
 
         {groomingJobs.length === 0 ? (
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 text-sm text-[var(--dog-copy)]">
+          <div className="theme-card theme-copy rounded-2xl p-6 text-sm">
             No outside grooming jobs are available right now.
           </div>
         ) : (
@@ -131,63 +131,63 @@ export default async function GroomingServicesPage({
             {groomingJobs.map((job) => (
               <article
                 key={job.listingId}
-                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5"
+                className="theme-card rounded-2xl p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">
+                    <h3 className="theme-heading text-lg font-semibold">
                       {job.dogDisplayName}
                     </h3>
-                    <p className="mt-1 text-sm text-[var(--dog-copy)]">
+                    <p className="theme-copy mt-1 text-sm">
                       {job.breedName} ({job.breedCode2}) - {job.regNumber}
                     </p>
-                    <p className="mt-1 text-sm text-[var(--dog-copy)]">
+                    <p className="theme-copy mt-1 text-sm">
                       Owner: {job.ownerKennelName}
                     </p>
                   </div>
-                  <div className="rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-100">
+                  <div className="theme-neutral-badge rounded-full px-3 py-1 text-sm font-semibold">
                     Pay: {formatMoney(job.price)}
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 text-sm text-[var(--dog-copy)] sm:grid-cols-4">
-                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                <div className="theme-copy mt-4 grid gap-3 text-sm sm:grid-cols-4">
+                  <div className="theme-card rounded-xl p-3">
+                    <div className="theme-label text-xs uppercase tracking-wide">
                       Coat
                     </div>
-                    <div className="mt-1 font-semibold text-white">
+                    <div className="theme-heading mt-1 font-semibold">
                       {formatNumber(job.currentCoatCondition)}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                  <div className="theme-card rounded-xl p-3">
+                    <div className="theme-label text-xs uppercase tracking-wide">
                       Grooming
                     </div>
-                    <div className="mt-1 font-semibold text-white">
+                    <div className="theme-heading mt-1 font-semibold">
                       {job.groomingStatusLabel}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                  <div className="theme-card rounded-xl p-3">
+                    <div className="theme-label text-xs uppercase tracking-wide">
                       Net
                     </div>
-                    <div className="mt-1 font-semibold text-white">
+                    <div className="theme-heading mt-1 font-semibold">
                       {formatSignedNumber(job.netGroomingImpact)}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3">
-                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                  <div className="theme-card rounded-xl p-3">
+                    <div className="theme-label text-xs uppercase tracking-wide">
                       Listed
                     </div>
-                    <div className="mt-1 font-semibold text-white">
+                    <div className="theme-heading mt-1 font-semibold">
                       Epoch {job.listedAtEpoch}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-3 sm:col-span-4">
-                    <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                  <div className="theme-card rounded-xl p-3 sm:col-span-4">
+                    <div className="theme-label text-xs uppercase tracking-wide">
                       Paid By
                     </div>
-                    <div className="mt-1 font-semibold text-white">Game</div>
+                    <div className="theme-heading mt-1 font-semibold">Game</div>
                   </div>
                 </div>
 
@@ -209,7 +209,7 @@ export default async function GroomingServicesPage({
                         ? "No grooming actions remaining this week."
                         : undefined
                     }
-                    className="w-full rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-45"
+                    className="theme-primary-button w-full rounded-xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     {noGroomingActionsRemaining
                       ? "No Grooming Left"
