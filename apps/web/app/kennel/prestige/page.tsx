@@ -37,25 +37,25 @@ export default async function KennelPrestigePage() {
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-8">
-      <section className="mb-8 rounded-[28px] border border-fuchsia-300/20 bg-[var(--dog-panel)] p-6 text-white shadow-[var(--dog-shadow)]">
+      <section className="theme-panel mb-8 rounded-[28px] p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-fuchsia-100/75">
+              <p className="theme-label text-xs font-bold uppercase tracking-[0.2em]">
                 Kennel Prestige
               </p>
               <Link
                 href="/faq#kennel-prestige"
                 aria-label="How is kennel prestige calculated?"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-fuchsia-300/30 bg-fuchsia-500/10 text-sm font-bold text-fuchsia-100 transition hover:bg-fuchsia-500/20"
+                className="theme-secondary-button inline-flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold"
               >
                 ?
               </Link>
             </div>
-            <h1 className="mt-2 text-4xl font-bold tracking-tight">
+            <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
               {prestige.tier.label}
             </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--dog-copy)]">
+            <p className="theme-copy mt-3 max-w-3xl text-sm leading-7">
               Prestige rewards {kennel.name}&apos;s long-term show identity:
               champions bred, champions finished, Grand Champion achievements,
               major show wins, Top Ten standing, and health-tested excellence.
@@ -63,33 +63,33 @@ export default async function KennelPrestigePage() {
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href="/kennel"
-                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 Back to My Kennel
               </Link>
               <Link
                 href="/kennels/top-ten"
-                className="rounded-2xl border border-fuchsia-300/30 bg-fuchsia-500/10 px-5 py-3 text-sm font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/20"
+                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 Kennel Top Ten
               </Link>
             </div>
           </div>
 
-          <div className="rounded-3xl border border-fuchsia-200/20 bg-[var(--dog-card)] px-6 py-5 text-right">
-            <div className="text-xs uppercase tracking-[0.18em] text-fuchsia-100/70">
+          <div className="theme-card rounded-3xl px-6 py-5 text-right">
+            <div className="theme-label text-xs uppercase tracking-[0.18em]">
               Score
             </div>
-            <div className="mt-1 text-4xl font-black">
+            <div className="theme-heading mt-1 text-4xl font-black">
               {prestige.score.toLocaleString()}
             </div>
             {prestige.tier.nextScore ? (
-              <div className="mt-2 text-xs text-[var(--dog-copy)]">
+              <div className="theme-copy mt-2 text-xs">
                 {prestige.tier.nextScore - prestige.score} to{" "}
                 {prestige.tier.nextLabel}
               </div>
             ) : (
-              <div className="mt-2 text-xs text-[var(--dog-copy)]">
+              <div className="theme-copy mt-2 text-xs">
                 Highest prestige tier
               </div>
             )}
@@ -105,12 +105,12 @@ export default async function KennelPrestigePage() {
           ].map(([label, value]) => (
             <div
               key={label}
-              className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3"
+              className="theme-card rounded-2xl px-4 py-3"
             >
-              <div className="text-xs uppercase tracking-[0.16em] text-[var(--dog-copy)]">
+              <div className="theme-copy text-xs uppercase tracking-[0.16em]">
                 {label}
               </div>
-              <div className="mt-1 text-xl font-bold">
+              <div className="theme-heading mt-1 text-xl font-bold">
                 {Number(value).toLocaleString()}
               </div>
             </div>
@@ -118,66 +118,66 @@ export default async function KennelPrestigePage() {
         </div>
 
         <div className="mt-5 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
-            <div className="text-xs uppercase tracking-[0.16em] text-[var(--dog-copy)]">
+          <div className="theme-card rounded-2xl p-4">
+            <div className="theme-copy text-xs uppercase tracking-[0.16em]">
               Champions Bred
             </div>
-            <div className="mt-1 text-2xl font-bold">
+            <div className="theme-heading mt-1 text-2xl font-bold">
               {prestige.metrics.championsBred}
             </div>
-            <div className="mt-1 text-[var(--dog-copy)]">
+            <div className="theme-copy mt-1">
               {prestige.metrics.championProducingLitters} champion-producing
               litters
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
-            <div className="text-xs uppercase tracking-[0.16em] text-[var(--dog-copy)]">
+          <div className="theme-card rounded-2xl p-4">
+            <div className="theme-copy text-xs uppercase tracking-[0.16em]">
               Champions Finished
             </div>
-            <div className="mt-1 text-2xl font-bold">
+            <div className="theme-heading mt-1 text-2xl font-bold">
               {prestige.metrics.championsFinishedOwnerHandled +
                 prestige.metrics.championsFinishedWithHandler}
             </div>
-            <div className="mt-1 text-[var(--dog-copy)]">
+            <div className="theme-copy mt-1">
               {prestige.metrics.championsFinishedOwnerHandled} owner-handled,{" "}
               {prestige.metrics.championsFinishedWithHandler} with handler
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
-            <div className="text-xs uppercase tracking-[0.16em] text-[var(--dog-copy)]">
+          <div className="theme-card rounded-2xl p-4">
+            <div className="theme-copy text-xs uppercase tracking-[0.16em]">
               Grand Champions
             </div>
-            <div className="mt-1 text-2xl font-bold">
+            <div className="theme-heading mt-1 text-2xl font-bold">
               {grandChampionTotal}
             </div>
-            <div className="mt-1 text-[var(--dog-copy)]">
+            <div className="theme-copy mt-1">
               {prestige.metrics.grandChampionMilestoneTitles} milestone
               credits
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
-            <div className="text-xs uppercase tracking-[0.16em] text-[var(--dog-copy)]">
+          <div className="theme-card rounded-2xl p-4">
+            <div className="theme-copy text-xs uppercase tracking-[0.16em]">
               Year {prestige.currentYear} Top Ten
             </div>
-            <div className="mt-1 text-2xl font-bold">{topTenTotal}</div>
-            <div className="mt-1 text-[var(--dog-copy)]">
+            <div className="theme-heading mt-1 text-2xl font-bold">{topTenTotal}</div>
+            <div className="theme-copy mt-1">
               {prestige.metrics.currentBreedNumberOnes +
                 prestige.metrics.currentAllBreedNumberOnes}{" "}
               #1 standing credits
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
-            <div className="text-xs uppercase tracking-[0.16em] text-[var(--dog-copy)]">
+          <div className="theme-card rounded-2xl p-4">
+            <div className="theme-copy text-xs uppercase tracking-[0.16em]">
               Major Awards
             </div>
-            <div className="mt-1 text-2xl font-bold">
+            <div className="theme-heading mt-1 text-2xl font-bold">
               {prestige.metrics.bestInShowWins} BIS
             </div>
-            <div className="mt-1 text-[var(--dog-copy)]">
+            <div className="theme-copy mt-1">
               {prestige.metrics.reserveBestInShowWins} RBIS,{" "}
               {prestige.metrics.groupPlacements} group placements
             </div>
