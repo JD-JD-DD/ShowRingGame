@@ -10,6 +10,12 @@ function wantsHtmlRedirect(request: Request): boolean {
   return request.headers.get("accept")?.includes("text/html") ?? false;
 }
 
+function getMarketContextSuffix(request: Request): string {
+  return new URL(request.url).searchParams.get("from") === "market"
+    ? "?from=market"
+    : "";
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ listingId: string }> }
@@ -40,6 +46,7 @@ export async function POST(
     }
 
     const currentEpoch = getCurrentEpoch();
+    const marketContextSuffix = getMarketContextSuffix(request);
 
     if (listing.sellerType === "SYSTEM") {
       const dog = await buyFoundationDog({
@@ -49,7 +56,9 @@ export async function POST(
       });
 
       if (wantsHtmlRedirect(request)) {
-        return Response.redirect(new URL(`/dogs/${dog.dogId}`, request.url));
+        return Response.redirect(
+          new URL(`/dogs/${dog.dogId}${marketContextSuffix}`, request.url)
+        );
       }
 
       return ok({ dog });
@@ -62,7 +71,9 @@ export async function POST(
     });
 
     if (wantsHtmlRedirect(request)) {
-      return Response.redirect(new URL(`/dogs/${dogId}`, request.url));
+      return Response.redirect(
+        new URL(`/dogs/${dogId}${marketContextSuffix}`, request.url)
+      );
     }
 
     return ok({ dogId });

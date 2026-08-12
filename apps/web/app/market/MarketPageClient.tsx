@@ -160,6 +160,13 @@ export default function MarketPage() {
       );
   }, [breedCatalog, groupFilter, breedSearch]);
 
+  const selectedBreedName = useMemo(
+    () =>
+      breedCatalog.find((breed) => breed.code2 === selectedBreedCode2)?.name ??
+      "selected breed",
+    [breedCatalog, selectedBreedCode2]
+  );
+
   async function loadDogs(breedCode2: string) {
     setLoadingDogs(true);
     setError(null);
@@ -269,19 +276,13 @@ export default function MarketPage() {
               >
                 Browse Studs
               </Link>
-              <Link
-                href="/kennel"
-                className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-              >
-                Back to My Kennel
-              </Link>
             </div>
           </div>
         </section>
 
         <section className="theme-panel mb-8 rounded-[28px] px-6 py-6 backdrop-blur">
           <h2 className="theme-heading mb-4 text-lg font-semibold">
-            Find a Breed
+            Find a Dog to Purchase
           </h2>
 
           {loadingBreeds ? (
@@ -371,7 +372,7 @@ export default function MarketPage() {
           </section>
         ) : loadingDogs ? (
           <section className="theme-panel theme-copy rounded-[28px] p-8 text-sm">
-            Loading dogs for {selectedBreedCode2}...
+            Loading dogs for {selectedBreedName}...
           </section>
         ) : dogs.length === 0 ? (
           <section className="theme-panel theme-copy rounded-[28px] p-8 text-sm">
@@ -465,7 +466,7 @@ export default function MarketPage() {
 
                   <div className="mt-6 flex items-stretch gap-3">
                     <Link
-                      href={`/dogs/${dog.dogId}`}
+                      href={`/dogs/${dog.dogId}?from=market`}
                       className="theme-primary-button flex-[1.45] rounded-2xl px-4 py-3 text-center text-sm font-semibold"
                     >
                       View Dog

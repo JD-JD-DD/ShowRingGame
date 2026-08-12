@@ -33,6 +33,7 @@ type DogSearchParams = {
     showError?: string | string[];
     showMessage?: string | string[];
     kennelRunId?: string | string[];
+    from?: string | string[];
 };
 
 type PageProps = {
@@ -207,6 +208,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const notesMessage = firstQueryValue(resolvedSearchParams.notesMessage);
   const showError = firstQueryValue(resolvedSearchParams.showError);
   const showMessage = firstQueryValue(resolvedSearchParams.showMessage);
+  const openedFromMarket = firstQueryValue(resolvedSearchParams.from) === "market";
   const { header, actions, viewerContext } = profile;
   const canMoveKennelRun =
     viewerContext.isOwnedByCurrentKennel && header.lifecycleState === "ALIVE";
@@ -216,6 +218,10 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     profile.snapshot.canShow;
   const saleListing = profile.breedingAndProduction.activeSaleListing;
   const studListing = profile.breedingAndProduction.activeStudListing;
+  const marketSaleListing =
+    openedFromMarket && actions.canBuyActiveListing && saleListing
+      ? saleListing
+      : null;
   const grooming = profile.groomingDetails;
   const dogPageMutationContext = navigationKennelRunId
     ? `?kennelRunId=${encodeURIComponent(navigationKennelRunId)}`
@@ -358,6 +364,20 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
             <div className="flex flex-col gap-4 lg:justify-self-end">
               <div className="grid gap-3 sm:grid-cols-2">
+                {marketSaleListing ? (
+                  <form
+                    action={`/api/market-dogs/${marketSaleListing.listingId}/buy?from=market`}
+                    method="post"
+                  >
+                    <button
+                      type="submit"
+                      className="theme-primary-button w-full rounded-2xl px-5 py-3 text-sm font-semibold"
+                    >
+                      Buy Dog
+                    </button>
+                  </form>
+                ) : null}
+
                 <BreedDogActionButton
                   canBreed={actions.canBreed}
                   breedHref={`/breed?dogId=${header.dogId}`}
@@ -477,20 +497,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               </Link>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                {actions.canBuyActiveListing && saleListing ? (
-                  <form
-                    action={`/api/market-dogs/${saleListing.listingId}/buy`}
-                    method="post"
-                  >
-                    <button
-                      type="submit"
-                      className="theme-primary-button w-full rounded-2xl px-5 py-3 text-sm font-semibold"
-                    >
-                      Buy for {formatMoney(saleListing.askingPrice)}
-                    </button>
-                  </form>
-                ) : null}
-
                 {actions.canUseActiveStudListing && studListing ? (
                   <Link
                     href={`/breed?studListingId=${studListing.listingId}`}
