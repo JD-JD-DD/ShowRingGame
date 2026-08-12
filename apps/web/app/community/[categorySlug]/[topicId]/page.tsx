@@ -39,7 +39,7 @@ function renderLinkedText(text: string): ReactNode[] {
       href = null;
     }
     if (start > lastIndex) nodes.push(text.slice(lastIndex, start));
-    nodes.push(href ? <a key={`${href}-${start}`} href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-sky-200 underline underline-offset-4">{trimmed}</a> : trimmed);
+    nodes.push(href ? <a key={`${href}-${start}`} href={href} target="_blank" rel="noopener noreferrer" className="theme-accent-link font-semibold">{trimmed}</a> : trimmed);
     if (trailing) nodes.push(trailing);
     lastIndex = start + raw.length;
   }
@@ -97,13 +97,13 @@ export default async function CommunityTopicPage({
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <h1 className="theme-heading text-3xl font-semibold">{topic.title}</h1>
-                {topic.pinned ? <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold uppercase text-amber-100">Pinned</span> : null}
-                {topic.status !== "OPEN" ? <span className="rounded-full bg-fuchsia-500/15 px-3 py-1 text-xs font-semibold uppercase text-fuchsia-100">{topic.status}</span> : null}
+                {topic.pinned ? <span className="theme-status-warning rounded-full px-3 py-1 text-xs font-semibold uppercase">Pinned</span> : null}
+                {topic.status !== "OPEN" ? <span className="theme-status-info rounded-full px-3 py-1 text-xs font-semibold uppercase">{topic.status}</span> : null}
               </div>
               <div className="mt-4"><CommunityAuthor kennel={topic.kennel} badges={topic.badges} /></div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <a href="#reply-composer" className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500">
+              <a href="#reply-composer" className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold">
                 Jump to Reply
               </a>
               <Link href="/community" className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold">
@@ -116,7 +116,7 @@ export default async function CommunityTopicPage({
           </div>
         </header>
 
-        {error ? <p className="mb-6 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</p> : null}
+        {error ? <p className="theme-status-danger mb-6 rounded-2xl px-4 py-3 text-sm">{error}</p> : null}
 
         {actor.isAdmin ? (
           <section className="theme-card mb-6 rounded-2xl p-4">
@@ -125,8 +125,8 @@ export default async function CommunityTopicPage({
               <input name="reason" maxLength={240} placeholder="Optional moderation reason" className="theme-control min-w-[240px] flex-1 rounded-xl px-3 py-2 text-sm" />
               <button name="action" value={topic.pinned ? "UNPIN" : "PIN"} className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold">{topic.pinned ? "Unpin" : "Pin"}</button>
               <button name="action" value={topic.status === "LOCKED" ? "UNLOCK" : "LOCK"} className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold">{topic.status === "LOCKED" ? "Unlock" : "Lock"}</button>
-              <button name="action" value={topic.status === "HIDDEN" || topic.status === "DELETED" ? "RESTORE" : "HIDE"} className="rounded-xl border border-amber-300/25 px-3 py-2 text-sm font-semibold text-amber-100">{topic.status === "HIDDEN" || topic.status === "DELETED" ? "Restore" : "Hide"}</button>
-              <button name="action" value="DELETE" className="rounded-xl border border-red-300/25 px-3 py-2 text-sm font-semibold text-red-100">Delete</button>
+              <button name="action" value={topic.status === "HIDDEN" || topic.status === "DELETED" ? "RESTORE" : "HIDE"} className="theme-status-warning rounded-xl px-3 py-2 text-sm font-semibold">{topic.status === "HIDDEN" || topic.status === "DELETED" ? "Restore" : "Hide"}</button>
+              <button name="action" value="DELETE" className="theme-status-danger rounded-xl px-3 py-2 text-sm font-semibold">Delete</button>
             </form>
           </section>
         ) : null}
@@ -148,7 +148,7 @@ export default async function CommunityTopicPage({
                   <textarea name="body" defaultValue={originalPost?.body ?? ""} required maxLength={5000} rows={6} className="theme-control rounded-xl px-3 py-2 text-sm font-normal normal-case leading-6 tracking-normal" />
                 </label>
                 <div>
-                  <button className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500">
+                  <button className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold">
                     Save topic changes
                   </button>
                 </div>
@@ -159,7 +159,7 @@ export default async function CommunityTopicPage({
               </p>
             )}
             <form action={`/api/community/topics/${topic.id}`} method="post" className="mt-4 border-t border-[color:var(--dog-border)] pt-4">
-              <button name="action" value="DELETE" className="rounded-xl border border-red-300/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 hover:bg-red-500/20">
+              <button name="action" value="DELETE" className="theme-status-danger rounded-xl px-4 py-2 text-sm font-semibold">
                 Delete topic
               </button>
             </form>
@@ -168,18 +168,18 @@ export default async function CommunityTopicPage({
 
         <section className="grid gap-4">
           {topic.posts.map((post, index) => (
-            <article key={post.id} className={`rounded-[24px] p-5 ${post.moderationStatus === "VISIBLE" ? "theme-card" : "border border-amber-300/25 bg-amber-500/10"}`}>
+            <article key={post.id} className={`rounded-[24px] p-5 ${post.moderationStatus === "VISIBLE" ? "theme-card" : "theme-status-warning"}`}>
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <CommunityAuthor kennel={post.kennel} badges={post.badges} />
                 <div className="theme-label text-xs">{index === 0 ? "Original post" : `Reply ${index}`} · {formatPostTime(post.createdAt)}</div>
               </div>
-              {post.moderationStatus !== "VISIBLE" ? <p className="mb-3 text-xs font-semibold uppercase text-amber-200">{post.moderationStatus}{post.moderationReason ? ` · ${post.moderationReason}` : ""}</p> : null}
+              {post.moderationStatus !== "VISIBLE" ? <p className="mb-3 text-xs font-semibold uppercase">{post.moderationStatus}{post.moderationReason ? ` · ${post.moderationReason}` : ""}</p> : null}
               <div className="theme-copy whitespace-pre-wrap text-sm leading-7">{renderLinkedText(post.body)}</div>
               {actor.isAdmin && index > 0 ? (
                 <form action={`/api/community/admin/posts/${post.id}`} method="post" className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--dog-border)] pt-4">
                   <input name="reason" maxLength={240} placeholder="Optional reason" className="theme-control min-w-[200px] flex-1 rounded-xl px-3 py-2 text-sm" />
-                  <button name="action" value={post.moderationStatus === "VISIBLE" ? "HIDE" : "RESTORE"} className="rounded-xl border border-amber-300/25 px-3 py-2 text-sm font-semibold text-amber-100">{post.moderationStatus === "VISIBLE" ? "Hide post" : "Restore post"}</button>
-                  <button name="action" value="DELETE" className="rounded-xl border border-red-300/25 px-3 py-2 text-sm font-semibold text-red-100">Delete post</button>
+                  <button name="action" value={post.moderationStatus === "VISIBLE" ? "HIDE" : "RESTORE"} className="theme-status-warning rounded-xl px-3 py-2 text-sm font-semibold">{post.moderationStatus === "VISIBLE" ? "Hide post" : "Restore post"}</button>
+                  <button name="action" value="DELETE" className="theme-status-danger rounded-xl px-3 py-2 text-sm font-semibold">Delete post</button>
                 </form>
               ) : null}
               {index > 0 && post.sourceType === "PLAYER" && post.kennel.id === actorKennel.id ? (
@@ -192,7 +192,7 @@ export default async function CommunityTopicPage({
                       <input type="hidden" name="action" value="EDIT" />
                       <textarea name="body" defaultValue={post.body} required maxLength={5000} rows={5} className="theme-control rounded-xl px-3 py-2 text-sm leading-6" />
                       <div>
-                        <button className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500">
+                        <button className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold">
                           Save reply changes
                         </button>
                       </div>
@@ -203,7 +203,7 @@ export default async function CommunityTopicPage({
                     </p>
                   )}
                   <form action={`/api/community/posts/${post.id}`} method="post" className="mt-3">
-                    <button name="action" value="DELETE" className="rounded-xl border border-red-300/30 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 hover:bg-red-500/20">
+                    <button name="action" value="DELETE" className="theme-status-danger rounded-xl px-4 py-2 text-sm font-semibold">
                       Delete reply
                     </button>
                   </form>
@@ -219,7 +219,7 @@ export default async function CommunityTopicPage({
             <form action={`/api/bulletin/threads/${topic.id}/posts`} method="post" className="mt-5 grid gap-4">
               <input type="hidden" name="categorySlug" value={topic.category.slug} />
               <textarea name="body" required maxLength={5000} rows={5} placeholder="Write a reply..." className="theme-control rounded-2xl px-4 py-3 leading-7 outline-none" />
-              <div><button className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white hover:bg-purple-500">Post reply</button></div>
+              <div><button className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold">Post reply</button></div>
             </form>
           ) : (
             <p className="theme-copy mt-3 text-sm leading-7">

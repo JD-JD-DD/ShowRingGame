@@ -95,8 +95,8 @@ export default async function CommunityCategoryPage({
             {topics.map((topic) => (
               <article key={topic.id} className="theme-card rounded-[24px] p-5">
                 <div className="theme-label flex flex-wrap items-center gap-2 text-xs">
-                  {topic.pinned ? <span className="text-amber-200">Pinned ·</span> : null}
-                  {topic.status !== "OPEN" ? <span className="text-fuchsia-200">{topic.status} ·</span> : null}
+                  {topic.pinned ? <span className="text-[var(--color-warning-text)]">Pinned ·</span> : null}
+                  {topic.status !== "OPEN" ? <span className="text-[var(--color-text)]">{topic.status} ·</span> : null}
                   <span>{formatEpoch(topic.lastActivityEpoch)}</span><span>·</span><span>{topic.replyCount} replies</span>
                 </div>
                 <h3 className="theme-heading mt-2 text-lg font-semibold"><Link href={`/community/${category.slug}/${topic.id}`} className="hover:underline">{topic.title}</Link></h3>
