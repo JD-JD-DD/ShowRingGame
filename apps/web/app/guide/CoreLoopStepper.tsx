@@ -66,13 +66,13 @@ export default function CoreLoopStepper() {
   }
 
   return (
-    <section className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]">
+    <section className="theme-panel mb-8 rounded-[28px] p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-white">
+          <h2 className="theme-heading text-2xl font-semibold">
             The Core Loop
           </h2>
-          <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
+          <p className="theme-copy mt-2 text-sm leading-6">
             Move through the basics at your own pace. These steps guide your
             first decisions, but nothing here blocks play.
           </p>
@@ -91,23 +91,23 @@ export default function CoreLoopStepper() {
               className={[
                 "rounded-2xl border p-4 transition",
                 isActive
-                  ? "border-purple-300/70 bg-purple-500/20 shadow-[var(--dog-shadow)]"
+                  ? "theme-primary-button"
                   : isCompleted
-                    ? "border-emerald-300/30 bg-white/[0.04]"
-                    : "border-[var(--dog-border)] bg-[var(--dog-card)] opacity-80",
+                    ? "theme-status-success"
+                    : "theme-card opacity-80",
               ].join(" ")}
             >
               <button
                 type="button"
                 onClick={() => selectStep(index)}
                 aria-current={isActive ? "step" : undefined}
-                className="block w-full rounded-xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-purple-300 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                className="block w-full rounded-xl text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="theme-label text-xs font-semibold uppercase tracking-[0.16em]">
                     Step {index + 1}
                   </div>
-                  <span className="text-xs font-semibold text-[var(--dog-copy)]">
+                  <span className="theme-copy text-xs font-semibold">
                     {isCompleted ? "Done" : isActive ? "Current Step" : "Next"}
                   </span>
                 </div>
@@ -123,11 +123,11 @@ export default function CoreLoopStepper() {
                 ].join(" ")}
               >
                 {isActive || isCompleted ? (
-                  <p className="text-sm leading-6 text-[var(--dog-copy)]">
+                  <p className="theme-copy text-sm leading-6">
                     {step.body}
                   </p>
                 ) : (
-                  <p className="text-xs leading-5 text-[var(--dog-copy)]">
+                  <p className="theme-copy text-xs leading-5">
                     Open this step when you are ready.
                   </p>
                 )}
@@ -137,7 +137,7 @@ export default function CoreLoopStepper() {
                     <Link
                       key={`${step.title}-${action.href}-${action.label}`}
                       href={action.href}
-                      className="rounded-xl bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300"
+                      className="theme-primary-button rounded-xl px-3 py-1.5 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"
                     >
                       {action.label}
                     </Link>
@@ -149,10 +149,10 @@ export default function CoreLoopStepper() {
                     type="button"
                     onClick={continueToNextStep}
                     className={[
-                      "rounded-xl px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300",
+                      "rounded-xl px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]",
                       isActive
-                        ? "bg-white text-purple-800 hover:bg-purple-50"
-                        : "border border-[var(--dog-border)] text-[var(--dog-heading)] hover:bg-white/10",
+                        ? "theme-primary-button"
+                        : "theme-secondary-button",
                     ].join(" ")}
                   >
                     {step.continueLabel}
@@ -160,7 +160,7 @@ export default function CoreLoopStepper() {
                 ) : (
                   <Link
                     href="#first-useful-route"
-                    className="rounded-xl bg-white px-3 py-2 text-center text-xs font-semibold text-purple-800 transition hover:bg-purple-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300"
+                    className="theme-primary-button rounded-xl px-3 py-2 text-center text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"
                   >
                     Continue to your first route
                   </Link>

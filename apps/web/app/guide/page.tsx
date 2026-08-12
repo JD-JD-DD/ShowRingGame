@@ -144,16 +144,16 @@ export default function GuidePage() {
       <GuideVisitedMarker />
 
       <div className="mx-auto max-w-7xl">
-        <header className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-6 shadow-[var(--dog-shadow)] backdrop-blur">
+        <header className="theme-panel mb-8 rounded-[28px] px-6 py-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[var(--dog-label)]">
+              <p className="theme-label text-sm font-semibold uppercase tracking-[0.22em]">
                 New Player Guide
               </p>
               <h1 className="mt-2 text-4xl font-bold tracking-tight text-white sm:text-5xl">
                 Start Here
               </h1>
-              <p className="mt-4 max-w-3xl text-sm leading-7 text-[var(--dog-copy)] sm:text-base">
+              <p className="theme-copy mt-4 max-w-3xl text-sm leading-7 sm:text-base">
                 A practical path through your first kennel decisions, without a
                 forced tutorial. Keep playing, come back when something feels
                 murky, and use the direct links to jump into the game.
@@ -163,13 +163,13 @@ export default function GuidePage() {
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/kennel"
-                className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+                className="theme-secondary-button rounded-xl px-5 py-3 text-sm font-semibold"
               >
                 My Kennel
               </Link>
               <Link
                 href="/market"
-                className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
+                className="theme-primary-button rounded-xl px-5 py-3 text-sm font-semibold"
               >
                 Browse Market
               </Link>
@@ -185,10 +185,10 @@ export default function GuidePage() {
               key={card.title}
               className="theme-card rounded-[24px] p-5 shadow-[var(--dog-shadow)]"
             >
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="theme-heading text-lg font-semibold">
                 {card.title}
               </h2>
-              <p className="mt-3 text-sm leading-7 text-[var(--dog-copy)]">
+              <p className="theme-copy mt-3 text-sm leading-7">
                 {card.body}
               </p>
             </article>
@@ -197,11 +197,11 @@ export default function GuidePage() {
 
         <section
           id="first-useful-route"
-          className="mb-8 scroll-mt-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 shadow-[var(--dog-shadow)]"
+          className="theme-panel mb-8 scroll-mt-6 rounded-[28px] p-6"
         >
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+              <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
                 First 10 Minutes
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-white">
@@ -221,7 +221,7 @@ export default function GuidePage() {
                     <h3 className="text-base font-semibold text-white">
                       {step.title}
                     </h3>
-                    <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
+                    <p className="theme-copy mt-2 text-sm leading-6">
                       {step.body}
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -230,7 +230,7 @@ export default function GuidePage() {
                       </span>
                       <Link
                         href={step.href}
-                        className="rounded-xl bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-purple-500"
+                        className="theme-primary-button rounded-xl px-3 py-1.5 text-xs font-semibold"
                       >
                         {step.action}
                       </Link>
@@ -244,13 +244,13 @@ export default function GuidePage() {
 
         <section className="mb-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="theme-panel rounded-[28px] p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+            <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
               Understanding Dog Pages
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-white">
               Visible categories are not exact genetics
             </h2>
-            <p className="mt-3 text-sm leading-7 text-[var(--dog-copy)]">
+            <p className="theme-copy mt-3 text-sm leading-7">
               They are what you can observe about the dog in the ring. Hidden
               inherited traits still exist, but the dog page is about practical
               evaluation: what appears under ideal, near ideal, over ideal,
@@ -261,7 +261,7 @@ export default function GuidePage() {
               {dogPageNotes.map((note) => (
                 <div
                   key={note}
-                  className="theme-card rounded-xl px-4 py-3 text-sm leading-6 text-[var(--dog-copy)]"
+                  className="theme-card theme-copy rounded-xl px-4 py-3 text-sm leading-6"
                 >
                   {note}
                 </div>
@@ -270,10 +270,10 @@ export default function GuidePage() {
           </div>
 
           <div className="theme-card rounded-[28px] p-6 shadow-[var(--dog-shadow)]">
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="theme-heading text-lg font-semibold">
               Sample Visible Categories
             </h3>
-            <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
+            <p className="theme-copy mt-2 text-sm leading-6">
               This uses the same slider display as a real dog profile.
             </p>
             <div className="mt-5 grid gap-5">
@@ -318,10 +318,10 @@ export default function GuidePage() {
           />
         </section>
 
-        <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 shadow-[var(--dog-shadow)]">
+        <section className="theme-panel rounded-[28px] p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+              <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
                 Common Confusions
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-white">
@@ -342,7 +342,7 @@ export default function GuidePage() {
                 <h3 className="text-base font-semibold text-white">
                   {item.question}
                 </h3>
-                <p className="mt-2 text-sm leading-7 text-[var(--dog-copy)]">
+                <p className="theme-copy mt-2 text-sm leading-7">
                   {item.answer}
                 </p>
               </article>
@@ -369,13 +369,13 @@ function GuideList({
 }) {
   return (
     <article className="theme-card rounded-[24px] p-5 shadow-[var(--dog-shadow)]">
-      <h2 className="text-xl font-semibold text-white">{title}</h2>
-      <p className="mt-3 text-sm leading-7 text-[var(--dog-copy)]">{body}</p>
+      <h2 className="theme-heading text-xl font-semibold">{title}</h2>
+      <p className="theme-copy mt-3 text-sm leading-7">{body}</p>
       <div className="mt-4 grid gap-2">
         {items.map((item) => (
           <div
             key={item}
-            className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-control)] px-3 py-2 text-sm leading-6 text-[var(--dog-copy)]"
+            className="theme-control px-3 py-2 text-sm leading-6"
           >
             {item}
           </div>
@@ -383,7 +383,7 @@ function GuideList({
       </div>
       <Link
         href={href}
-        className="mt-5 inline-flex rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500"
+        className="theme-primary-button mt-5 inline-flex rounded-xl px-4 py-2 text-sm font-semibold"
       >
         {action}
       </Link>
