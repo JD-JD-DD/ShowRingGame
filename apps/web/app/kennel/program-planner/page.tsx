@@ -23,14 +23,14 @@ export default async function ProgramPlannerPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
-      <section className="rounded-[28px] border border-fuchsia-300/20 bg-[var(--dog-panel)] p-6 text-white shadow-[var(--dog-shadow)]">
-        <h1 className="text-3xl font-semibold">{UNAVAILABLE_TITLE}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--dog-copy)]">
+      <section className="theme-panel rounded-[28px] p-6">
+        <h1 className="theme-heading text-3xl font-semibold">{UNAVAILABLE_TITLE}</h1>
+        <p className="theme-copy mt-3 max-w-2xl text-sm leading-7">
           {UNAVAILABLE_MESSAGE}
         </p>
         <Link
           href="/kennel"
-          className="mt-6 inline-flex rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+          className="theme-secondary-button mt-6 inline-flex rounded-2xl px-5 py-3 text-sm font-semibold"
         >
           Back to My Kennel
         </Link>

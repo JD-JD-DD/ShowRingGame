@@ -28,8 +28,8 @@ function detailRow(label: string, value: string | number | null) {
   }
 
   return (
-    <div className="flex flex-wrap gap-x-2 gap-y-1 text-sm text-[var(--dog-copy)]">
-      <span className="font-semibold text-white">{label}</span>
+    <div className="theme-copy flex flex-wrap gap-x-2 gap-y-1 text-sm">
+      <span className="theme-heading font-semibold">{label}</span>
       <span>{value}</span>
     </div>
   );
@@ -135,7 +135,7 @@ export function RibbonTotalsSection({
               }}
               type="button"
               onClick={() => openDetails(award)}
-              className="rounded-[22px] text-left outline-none transition duration-150 hover:-translate-y-0.5 hover:brightness-105 focus-visible:ring-2 focus-visible:ring-purple-300/70"
+              className="rounded-[22px] text-left outline-none transition duration-150 hover:-translate-y-0.5 hover:brightness-105 focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"
               aria-haspopup="dialog"
               aria-label={`Open ${RIBBON_LABELS[award]} ribbon details`}
             >
@@ -155,24 +155,24 @@ export function RibbonTotalsSection({
             aria-modal="true"
             aria-labelledby={detailHeadingId}
             aria-describedby={detailDescriptionId}
-            className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-[30px] border border-[var(--dog-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(8,12,28,0.96))] shadow-[0_32px_90px_rgba(0,0,0,0.48)]"
+            className="theme-panel max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-[30px]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 border-b border-[var(--dog-border)] px-4 py-4 sm:px-6 sm:py-5">
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--color-border)] px-4 py-4 sm:px-6 sm:py-5">
               <div>
                 <div
                   id={detailDescriptionId}
-                  className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]"
+                  className="theme-label text-[0.68rem] font-semibold uppercase tracking-[0.18em]"
                 >
                   Ribbon Detail
                 </div>
                 <h3
                   id={detailHeadingId}
-                  className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-[2rem]"
+                  className="theme-heading mt-2 text-2xl font-semibold tracking-tight sm:text-[2rem]"
                 >
                   {RIBBON_LABELS[selectedRibbon.award]}
                 </h3>
-                <p className="mt-1 text-sm leading-6 text-[var(--dog-copy)]">
+                <p className="theme-copy mt-1 text-sm leading-6">
                   {selectedRibbon.count} recorded occurrence
                   {selectedRibbon.count === 1 ? "" : "s"}
                 </p>
@@ -180,24 +180,24 @@ export function RibbonTotalsSection({
               <button
                 type="button"
                 onClick={closeDetails}
-                className="rounded-xl border border-[var(--dog-border)] bg-white/5 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold"
               >
                 Close
               </button>
             </div>
 
             <div className="max-h-[calc(92vh-96px)] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
-              <div className="mb-5 flex items-center gap-4 rounded-[24px] border border-[var(--dog-border)] bg-black/20 p-4">
+              <div className="theme-card mb-5 flex items-center gap-4 rounded-[24px] p-4">
                 <img
                   src={getRegularRibbonAssetPath(selectedRibbon.award)}
                   alt={RIBBON_LABELS[selectedRibbon.award]}
                   className="h-28 w-28 shrink-0 object-contain"
                 />
                 <div>
-                  <div className="text-lg font-semibold tracking-tight text-white">
+                  <div className="theme-heading text-lg font-semibold tracking-tight">
                     {RIBBON_LABELS[selectedRibbon.award]}
                   </div>
-                  <div className="mt-1 text-sm leading-6 text-[var(--dog-copy)]">
+                  <div className="theme-copy mt-1 text-sm leading-6">
                     Full recorded history, newest first.
                   </div>
                 </div>
@@ -209,18 +209,18 @@ export function RibbonTotalsSection({
                   .map((occurrence, index) => (
                     <article
                       key={`${occurrence.originalAwardCode}-${occurrence.show.name}-${occurrence.year}-${occurrence.week}-${index}`}
-                      className="rounded-[22px] border border-[var(--dog-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(4,9,20,0.34))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                      className="theme-card rounded-[22px] p-4"
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <div className="text-lg font-semibold tracking-tight text-white">
+                          <div className="theme-heading text-lg font-semibold tracking-tight">
                             {occurrence.show.name}
                           </div>
-                          <div className="mt-1 text-sm leading-6 text-[var(--dog-copy)]">
+                          <div className="theme-copy mt-1 text-sm leading-6">
                             Year {occurrence.year}, Week {occurrence.week}
                           </div>
                         </div>
-                        <div className="rounded-full border border-[var(--dog-border)] bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dog-label)]">
+                        <div className="theme-neutral-badge rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em]">
                           {getRibbonOccurrenceLabel(occurrence)}
                         </div>
                       </div>
