@@ -16,11 +16,11 @@ function clamp(value: number, min: number, max: number): number {
 function getDeviationColor(value: number, ideal: number): string {
   const distance = Math.abs(value - ideal);
 
-  if (distance <= 0.5) return "#22c55e"; // bright green = ideal
-  if (distance <= 2) return "#84cc16";   // green-yellow
-  if (distance <= 4) return "#eab308";   // yellow
-  if (distance <= 6) return "#f97316";   // orange
-  return "#dc2626";                      // red
+  if (distance <= 0.5) return "#23f707"; // bright green = ideal
+  if (distance <= 2) return "#9df707";   // bright yellow-green
+  if (distance <= 4) return "#faf605";   // bright yellow
+  if (distance <= 6) return "#ff8c00";   // bright orange
+  return "#f70707";                      // bright red
 }
 
 export default function TraitLine({
@@ -53,7 +53,7 @@ export default function TraitLine({
 
         {/* ideal tick */}
         <div
-          className="absolute top-1/2 h-4 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded bg-emerald-300/80"
+          className="absolute top-1/2 h-4 w-[2px] -translate-x-1/2 -translate-y-1/2 rounded bg-[#23f707]"
           style={{ left: `${idealPercent}%` }}
         />
 
@@ -70,7 +70,7 @@ export default function TraitLine({
 
       <div className="dog-copy mt-1 flex items-center justify-between text-[11px] uppercase tracking-wide">
         <span>{leftLabel}</span>
-        <span className="text-emerald-300/80">{centerLabel}</span>
+        <span className="text-[#23f707]">{centerLabel}</span>
         <span>{rightLabel}</span>
       </div>
     </div>
