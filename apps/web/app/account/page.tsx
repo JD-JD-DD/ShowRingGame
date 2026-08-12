@@ -54,11 +54,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-100/75">
+        <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
           Account Settings
         </p>
-        <h1 className="mt-2 text-3xl font-semibold text-white">Account</h1>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--dog-copy)]">
+        <h1 className="theme-heading mt-2 text-3xl font-semibold">Account</h1>
+        <p className="theme-copy mt-2 max-w-2xl text-sm">
           Manage player-facing account details that stay attached to your
           existing kennel record.
         </p>

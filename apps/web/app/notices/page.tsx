@@ -108,21 +108,21 @@ export default async function NoticesPage({
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
-      <section className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-8 shadow-[var(--dog-shadow)]">
+      <section className="theme-panel rounded-2xl p-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--dog-label)]">
+            <p className="theme-label text-xs font-semibold uppercase tracking-[0.25em]">
               Kennel Inbox
             </p>
-            <h1 className="mt-2 text-4xl font-semibold">Notifications</h1>
-            <p className="mt-3 text-[var(--dog-copy)]">
+            <h1 className="theme-heading mt-2 text-4xl font-semibold">Notifications</h1>
+            <p className="theme-copy mt-3">
               Recent notices for {kennel.name}.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link
               href="/kennel"
-              className="rounded-xl bg-fuchsia-700 px-6 py-3 text-sm font-semibold text-white hover:bg-fuchsia-600"
+              className="theme-primary-button rounded-xl px-6 py-3 text-sm font-semibold"
             >
               My Kennel
             </Link>
@@ -142,19 +142,19 @@ export default async function NoticesPage({
       </section>
 
       {message ? (
-        <div className="mt-5 rounded-2xl border border-emerald-300/35 bg-emerald-500/10 px-5 py-4 text-sm font-semibold text-emerald-100">
+        <div className="theme-status-success mt-5 rounded-2xl px-5 py-4 text-sm font-semibold">
           {message}
         </div>
       ) : null}
       {error ? (
-        <div className="mt-5 rounded-2xl border border-red-300/35 bg-red-500/10 px-5 py-4 text-sm font-semibold text-red-100">
+        <div className="theme-status-danger mt-5 rounded-2xl px-5 py-4 text-sm font-semibold">
           {error}
         </div>
       ) : null}
 
-      <section className="mt-8 rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
+      <section className="theme-panel mt-8 rounded-2xl p-5">
         {notices.length === 0 ? (
-          <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-8 text-[var(--dog-copy)]">
+          <div className="theme-card theme-copy rounded-xl p-8">
             No notifications yet.
           </div>
         ) : (
@@ -168,27 +168,27 @@ export default async function NoticesPage({
                   key={notice.id}
                   className={`rounded-xl border p-5 ${
                     isUnread
-                      ? "border-fuchsia-400/50 bg-fuchsia-950/25"
-                      : "border-[var(--dog-border)] bg-[var(--dog-card)]"
+                      ? "theme-status-info"
+                      : "theme-card"
                   }`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+                      <div className="theme-label flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em]">
                         <span>{formatNoticeType(notice.type)}</span>
                         {isUnread ? (
-                          <span className="rounded-full bg-fuchsia-700 px-2 py-0.5 text-[10px] tracking-normal text-white">
+                          <span className="theme-primary-button rounded-full px-2 py-0.5 text-[10px] tracking-normal">
                             Unread
                           </span>
                         ) : null}
                       </div>
-                      <h2 className="mt-2 text-xl font-semibold text-white">
+                      <h2 className="theme-heading mt-2 text-xl font-semibold">
                         {notice.title}
                       </h2>
                       {notice.body ? (
-                        <p className="mt-2 text-[var(--dog-copy)]">{notice.body}</p>
+                        <p className="theme-copy mt-2">{notice.body}</p>
                       ) : null}
-                      <p className="mt-3 text-sm text-[var(--dog-label)]">
+                      <p className="theme-label mt-3 text-sm">
                         {formatNoticeDate(notice.createdAtEpoch)}
                       </p>
                     </div>
@@ -209,7 +209,7 @@ export default async function NoticesPage({
                         >
                           <button
                             type="submit"
-                            className="rounded-lg border border-emerald-300/30 px-4 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-950/40"
+                            className="theme-status-success rounded-lg px-4 py-2 text-sm font-semibold"
                           >
                             Read
                           </button>

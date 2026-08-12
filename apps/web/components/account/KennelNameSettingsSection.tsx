@@ -75,38 +75,38 @@ export default function KennelNameSettingsSection({
     <section className="theme-card rounded-2xl p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-100/75">
+          <div className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
             Kennel Name
           </div>
-          <h2 className="mt-2 text-2xl font-semibold text-white">
+          <h2 className="theme-heading mt-2 text-2xl font-semibold">
             {currentName}
           </h2>
-          <p className="mt-2 text-sm text-[var(--dog-copy)]">
+          <p className="theme-copy mt-2 text-sm">
             Public profile:{" "}
             <Link
               href={`/kennels/${currentSlug}`}
-              className="font-semibold text-fuchsia-100 hover:underline"
+              className="theme-accent-link font-semibold"
             >
               /kennels/{currentSlug}
             </Link>
           </p>
           {previousName ? (
-            <p className="mt-2 text-sm text-[var(--dog-copy)]">
-              Previously known as: <span className="font-semibold text-white">{previousName}</span>
+            <p className="theme-copy mt-2 text-sm">
+              Previously known as: <span className="theme-heading font-semibold">{previousName}</span>
             </p>
           ) : null}
         </div>
       </div>
 
       {success ? (
-        <p className="mt-4 rounded-2xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-100">
+        <p className="theme-status-success mt-4 rounded-2xl px-4 py-3 text-sm font-medium">
           Kennel name updated successfully.
         </p>
       ) : null}
 
       {hasUsedSelfServiceRename ? (
-        <div className="mt-5 rounded-2xl border border-white/10 bg-black/10 px-4 py-4 text-sm text-[var(--dog-copy)]">
-          <p className="font-semibold text-white">
+        <div className="theme-card theme-copy mt-5 rounded-2xl px-4 py-4 text-sm">
+          <p className="theme-heading font-semibold">
             Self-service kennel renaming has already been used.
           </p>
           <p className="mt-2">
@@ -116,14 +116,14 @@ export default function KennelNameSettingsSection({
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="mt-5 grid gap-4">
-          <p className="text-sm text-[var(--dog-copy)]">
+          <p className="theme-copy text-sm">
             You can change your kennel name once through self-service. Your
             former kennel name will remain visible on your public kennel
             profile.
           </p>
 
           <label className="grid gap-2">
-            <span className="text-sm font-semibold text-white">New kennel name</span>
+            <span className="theme-heading text-sm font-semibold">New kennel name</span>
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -134,7 +134,7 @@ export default function KennelNameSettingsSection({
             />
           </label>
 
-          <label className="flex items-start gap-3 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-50">
+          <label className="theme-status-warning flex items-start gap-3 rounded-2xl px-4 py-3 text-sm">
             <input
               type="checkbox"
               checked={confirmed}
@@ -145,7 +145,7 @@ export default function KennelNameSettingsSection({
           </label>
 
           {error ? (
-            <p className="rounded-2xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-100">
+            <p className="theme-status-danger rounded-2xl px-4 py-3 text-sm font-medium">
               {error}
             </p>
           ) : null}
@@ -154,11 +154,11 @@ export default function KennelNameSettingsSection({
             <button
               type="submit"
               disabled={isSubmitting || !confirmed}
-              className="rounded-xl bg-fuchsia-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-fuchsia-400 disabled:cursor-not-allowed disabled:opacity-60"
+              className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? "Saving..." : "Confirm kennel name change"}
             </button>
-            <p className="text-xs text-[var(--dog-copy)]">
+            <p className="theme-copy text-xs">
               One self-service rename per kennel.
             </p>
           </div>
