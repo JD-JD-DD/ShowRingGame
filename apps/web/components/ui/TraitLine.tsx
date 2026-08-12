@@ -70,7 +70,7 @@ export default function TraitLine({
 
       <div className="dog-copy mt-1 flex items-center justify-between text-[11px] uppercase tracking-wide">
         <span>{leftLabel}</span>
-        <span className="text-[#23f707]">{centerLabel}</span>
+        <span className="text-[var(--color-text)]">{centerLabel}</span>
         <span>{rightLabel}</span>
       </div>
     </div>

@@ -100,11 +100,11 @@ function entryActivityButtonTone(level: EntryActivityLevel): string {
     case "NONE":
       return "theme-secondary-button";
     case "LOW":
-      return "border-[var(--dog-border)] bg-purple-500/15 text-[var(--dog-heading)] hover:bg-purple-500/25";
+      return "theme-secondary-button";
     case "MODERATE":
-      return "border-purple-200/50 bg-purple-500/35 text-[var(--dog-heading)] hover:bg-purple-500/45";
+      return "theme-status-info hover:opacity-90";
     case "HEAVY":
-      return "border-fuchsia-200/70 bg-purple-600 text-white shadow-[var(--dog-shadow)] hover:bg-purple-500";
+      return "theme-primary-button";
   }
 }
 
@@ -422,25 +422,25 @@ export default async function ShowsPage({
         <JumpToCurrentWeekButton />
         <Link
           href="/shows/invitationals"
-          className="theme-status-warning rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+          className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
         >
           Invitationals
         </Link>
         <Link
           href="/shows/history"
-          className="theme-status-info rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+          className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
         >
           Historical Results
         </Link>
         <Link
           href="/shows/top-ten"
-          className="theme-status-warning rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+          className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
         >
           Top Ten Dogs
         </Link>
         <Link
           href="/travel-map"
-          className="theme-status-info rounded-xl border px-4 py-2 text-sm font-semibold transition hover:opacity-90"
+          className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
         >
           District Map
         </Link>
@@ -498,7 +498,7 @@ export default async function ShowsPage({
                     <Link
                       key={cluster.id}
                       href={display.clusterHref}
-                      className="block min-w-0 rounded-xl border border-[var(--dog-border)] bg-purple-500/10 px-3 py-2 transition hover:bg-purple-500/15 hover:text-sky-100"
+                      className="theme-card-interactive block min-w-0 rounded-xl px-3 py-2"
                     >
                       <div className="flex min-w-0 items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -510,7 +510,7 @@ export default async function ShowsPage({
                             {getShowDistrictRegionName(cluster.district)}
                           </div>
                         </div>
-                        <div className="shrink-0 text-right text-xs font-semibold text-emerald-100">
+                        <div className="shrink-0 text-right text-xs font-semibold text-[var(--color-warning-text)]">
                           <ShowCountdownText
                             targetEpoch={display.countdowns.entryClose.targetEpoch}
                             initialCurrentEpoch={currentEpoch}
@@ -538,7 +538,7 @@ export default async function ShowsPage({
                     <Link
                       key={cluster.id}
                       href={display.clusterHref}
-                      className="block min-w-0 rounded-xl border border-[var(--dog-border)] bg-purple-500/10 px-3 py-2 transition hover:bg-purple-500/15 hover:text-sky-100"
+                      className="theme-card-interactive block min-w-0 rounded-xl px-3 py-2"
                     >
                       <div className="flex min-w-0 items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -550,7 +550,7 @@ export default async function ShowsPage({
                             {getShowDistrictRegionName(cluster.district)}
                           </div>
                         </div>
-                        <div className="shrink-0 text-right text-xs font-semibold text-amber-100">
+                        <div className="shrink-0 text-right text-xs font-semibold text-[var(--color-info-text)]">
                           <ShowCountdownText
                             targetEpoch={display.countdowns.judging.targetEpoch}
                             initialCurrentEpoch={currentEpoch}
@@ -591,13 +591,13 @@ export default async function ShowsPage({
                 id={isCurrentWeekAnchor ? "current-week" : undefined}
                 className={
                   isCurrentWeek
-                    ? "scroll-mt-6 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[var(--dog-shadow)]"
+                    ? "scroll-mt-6 rounded-2xl border border-[var(--color-primary)] bg-[var(--color-surface-raised)] p-4 shadow-[var(--shadow-raised)]"
                     : "theme-card scroll-mt-6 rounded-2xl p-4"
                 }
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-amber-100/80">
+                    <div className="theme-label flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em]">
                       <span>
                         Week {template.weekInYear} - Slot{" "}
                         {template.slotIndex + 1}
@@ -613,7 +613,7 @@ export default async function ShowsPage({
                     <h2 className="theme-heading mt-1 text-lg font-semibold">
                       {template.name}
                     </h2>
-                    <div className="mt-2 text-sm text-amber-100/75">
+                    <div className="theme-copy mt-2 text-sm">
                       {formatShowDayNames(template.showDayNames)} -{" "}
                       {getShowDistrictRegionName(template.district)}
                     </div>
@@ -651,7 +651,7 @@ export default async function ShowsPage({
                           >
                             <Link
                               href={clusterHref}
-                              className="transition hover:text-sky-100"
+                              className="theme-accent-link"
                             >
                               <span className="theme-heading font-semibold">
                                 Year {cluster.year}
@@ -675,23 +675,23 @@ export default async function ShowsPage({
                                 </span>
                               ) : null}
                               {enteredClusterIds.has(cluster.id) ? (
-                                <span className="ml-2 rounded-full border border-emerald-300/35 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">
+                                <span className="theme-status-success ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold">
                                   REPRESENTED
                                 </span>
                               ) : null}
                               {stewardedClusterIds.has(cluster.id) ? (
-                                <span className="ml-2 rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-100">
+                                <span className="theme-status-info ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold">
                                   STEWARDING
                                 </span>
                               ) : null}
                               {resultCount > 0 ? (
-                                <span className="ml-2 text-sky-100">
+                                <span className="theme-accent-link ml-2">
                                   {resultCount} result
                                   {resultCount === 1 ? "" : "s"}
                                 </span>
                               ) : hasJudgingActivity &&
                                 !countdowns.rowMetaLabel ? (
-                                <span className="ml-2 text-sky-100">
+                                <span className="theme-accent-link ml-2">
                                   Judging underway
                                 </span>
                               ) : null}
@@ -722,13 +722,13 @@ export default async function ShowsPage({
             }
             className={
               currentCalendarPosition.weekInYear === 52
-                ? "scroll-mt-6 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-500/10 p-4 shadow-[var(--dog-shadow)]"
-                : "scroll-mt-6 rounded-2xl border border-amber-300/25 bg-amber-500/10 p-4"
+                ? "scroll-mt-6 rounded-2xl border border-[var(--color-primary)] bg-[var(--color-surface-raised)] p-4 shadow-[var(--shadow-raised)]"
+                : "scroll-mt-6 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
             }
           >
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em] text-amber-100/80">
+                <div className="theme-label flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.18em]">
                   <span>Week 52</span>
                   {currentCalendarPosition.weekInYear === 52 ? (
                     <span
@@ -741,7 +741,7 @@ export default async function ShowsPage({
                 <h2 className="theme-heading mt-1 text-lg font-semibold">
                   Invitational Show
                 </h2>
-                <div className="mt-2 text-sm text-amber-100/75">
+                <div className="theme-copy mt-2 text-sm">
                   The Top Ten dogs in every breed are invited after Week 51
                   judging. No regular district shows are scheduled this week.
                 </div>
@@ -776,7 +776,7 @@ export default async function ShowsPage({
                         <span className="theme-heading font-semibold">
                           Year {cluster.year}
                         </span>
-                        <span className="ml-2 text-amber-100/70">
+                        <span className="theme-copy ml-2">
                           {formatShowDate(cluster.startEpoch)}
                         </span>
                         <span
@@ -785,26 +785,26 @@ export default async function ShowsPage({
                           {playerStatus}
                         </span>
                         {countdowns.rowMetaLabel ? (
-                          <span className="ml-2 text-[11px] text-amber-100/70">
+                          <span className="theme-copy ml-2 text-[11px]">
                             {countdowns.rowMetaLabel}
                           </span>
                         ) : null}
                         {enteredClusterIds.has(cluster.id) ? (
-                          <span className="ml-2 rounded-full border border-emerald-300/35 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">
+                          <span className="theme-status-success ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold">
                             REPRESENTED
                           </span>
                         ) : null}
                         {stewardedClusterIds.has(cluster.id) ? (
-                          <span className="ml-2 rounded-full border border-cyan-300/35 bg-cyan-500/15 px-2 py-0.5 text-[11px] font-semibold text-cyan-100">
+                          <span className="theme-status-info ml-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold">
                             STEWARDING
                           </span>
                         ) : null}
-                        <span className="ml-2 text-amber-100/80">
+                        <span className="theme-copy ml-2">
                           {entryCount} invitation
                           {entryCount === 1 ? "" : "s"}
                         </span>
                         {resultCount > 0 ? (
-                          <span className="ml-2 text-sky-100">
+                          <span className="theme-accent-link ml-2">
                             {resultCount} result
                             {resultCount === 1 ? "" : "s"}
                           </span>
