@@ -6,7 +6,6 @@ import { Analytics } from "@vercel/analytics/next";
 import GameHeader from "@/components/layout/GameHeader";
 import GameHeaderVisibility from "@/components/layout/GameHeaderVisibility";
 import ReturnToTopButton from "@/components/ReturnToTopButton";
-import ThemeToggle from "@/components/ThemeToggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,7 +42,6 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <ThemeToggle />
         <GameHeaderVisibility>
           <GameHeader />
         </GameHeaderVisibility>

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import LogoutButton from "@/components/LogoutButton";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const navItems = [
   { label: "Home", href: "/" },
@@ -20,10 +21,12 @@ const navItems = [
 
 const accountItems = [
   { label: "Settings", href: "/account" },
-  { label: "Region", href: "/travel-map" },
   { label: "Prestige", href: "/kennel/prestige" },
   { label: "In Memoriam", href: "/memorium" },
   { label: "Ledger", href: "/ledger" },
+  { label: "FAQ", href: "/faq" },
+  { label: "Map", href: "/travel-map" },
+  { label: "Players", href: "/districts/kennels" },
 ] as const;
 
 function isActivePath(pathname: string, href: string): boolean {
@@ -39,7 +42,15 @@ function navClass(active: boolean): string {
   ].join(" ");
 }
 
-export default function GameHeaderNav() {
+type GameHeaderNavProps = {
+  balance: number | null;
+};
+
+function formatMoney(amount: number): string {
+  return `$${amount.toLocaleString()}`;
+}
+
+export default function GameHeaderNav({ balance }: GameHeaderNavProps) {
   const pathname = usePathname();
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement | null>(null);
@@ -98,6 +109,12 @@ export default function GameHeaderNav() {
         </Link>
       ))}
 
+      {balance !== null ? (
+        <div className="game-header__balance rounded-xl px-3 py-2 text-sm font-semibold">
+          Balance: {formatMoney(balance)}
+        </div>
+      ) : null}
+
       <div ref={accountRef} className="relative">
         <button
           type="button"
@@ -135,6 +152,9 @@ export default function GameHeaderNav() {
                 {item.label}
               </Link>
             ))}
+            <div className="game-header__menu-divider mt-2 border-t pt-2">
+              <ThemeToggle />
+            </div>
             <div className="game-header__menu-divider mt-2 border-t pt-2">
               <LogoutButton />
             </div>

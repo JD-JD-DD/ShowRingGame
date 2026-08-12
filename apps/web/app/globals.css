@@ -234,47 +234,11 @@ select {
   outline-offset: 2px;
 }
 
-.theme-toggle {
-  position: fixed;
-  top: 0.75rem;
-  left: 1rem;
-  z-index: 60;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  min-height: 2.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  padding: 0.4rem 0.75rem;
-  background: color-mix(in srgb, var(--color-surface-raised) 92%, transparent);
-  color: var(--color-text);
-  box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(12px);
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 700;
-  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
-}
-
-.theme-toggle:hover {
-  border-color: var(--color-border-strong);
-  background: var(--color-surface-raised);
-  transform: translateY(-1px);
-}
-
-.theme-toggle:focus-visible {
-  outline-color: var(--color-focus);
-}
-
 .game-header {
   border-bottom: 1px solid var(--color-border);
   background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
   box-shadow: var(--shadow-raised);
   color: var(--color-text);
-}
-
-.game-header__inner {
-  padding-left: 7.75rem;
 }
 
 .game-header__brand {
@@ -284,7 +248,8 @@ select {
 }
 
 .game-header__link,
-.game-header__account-button {
+.game-header__account-button,
+.game-header__balance {
   border: 1px solid var(--color-border);
   background: color-mix(in srgb, var(--color-surface) 88%, transparent);
   color: var(--color-text);
@@ -332,6 +297,22 @@ select {
   border-color: var(--color-border);
 }
 
+.game-header__color-mode {
+  color: var(--color-text);
+}
+
+.game-header__color-mode-select {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.game-header__color-mode-select:hover,
+.game-header__color-mode-select:focus-visible {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised);
+}
+
 .game-header__status,
 .game-header__inbox {
   border: 1px solid var(--color-border-strong);
@@ -366,17 +347,11 @@ select {
 html[data-theme="dark"] .game-header__brand,
 html[data-theme="dark"] .game-header__link,
 html[data-theme="dark"] .game-header__account-button,
+html[data-theme="dark"] .game-header__balance,
 html[data-theme="dark"] .game-header__menu,
 html[data-theme="dark"] .game-header__status,
 html[data-theme="dark"] .game-header__inbox {
   backdrop-filter: blur(14px);
-}
-
-@media (max-width: 720px) {
-  .game-header__inner {
-    padding-left: 0;
-    padding-top: 2.85rem;
-  }
 }
 
 /* The original interface used dark Tailwind utilities directly. These light-mode
