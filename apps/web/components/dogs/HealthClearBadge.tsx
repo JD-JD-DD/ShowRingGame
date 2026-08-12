@@ -17,15 +17,15 @@ const DOT_SIZE_STYLES = {
 };
 
 const STATUS_STYLES: Record<PhenotypeHealthBadgeStatus, string> = {
-  green: "theme-status-success",
-  yellow: "theme-status-warning",
-  red: "theme-status-danger",
+  green: "border-[#0F5F2A] bg-[#16803A]",
+  yellow: "border-[#A68300] bg-[#E5B700]",
+  red: "border-[#8E1D1D] bg-[#C62828]",
 };
 
 const DOT_STYLES: Record<PhenotypeHealthBadgeStatus, string> = {
-  green: "bg-[var(--color-success)]",
-  yellow: "bg-[var(--color-warning)]",
-  red: "bg-[var(--color-danger)]",
+  green: "bg-[#16803A]",
+  yellow: "bg-[#E5B700]",
+  red: "bg-[#C62828]",
 };
 
 const STATUS_LABELS: Record<PhenotypeHealthBadgeStatus, string> = {
@@ -50,7 +50,7 @@ export default function HealthClearBadge({
       aria-label={label}
       className={`inline-flex shrink-0 items-center justify-center rounded-full border font-extrabold ${
         status === "green" && fullClearance
-          ? "border-[var(--color-success)] bg-[var(--color-success)] text-[var(--color-text-inverse)] shadow-[var(--shadow-soft)]"
+          ? "border-[#0F5F2A] bg-[#16803A] text-white shadow-[var(--shadow-soft)]"
           : STATUS_STYLES[status]
       } ${SIZE_STYLES[size]}`}
     >
