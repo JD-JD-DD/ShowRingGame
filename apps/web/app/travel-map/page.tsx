@@ -52,13 +52,13 @@ export default async function TravelMapPage() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/shows"
-              className="rounded-2xl border border-sky-300/30 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               All Shows
             </Link>
             <Link
               href="/districts/kennels"
-              className="rounded-2xl border border-fuchsia-300/25 bg-fuchsia-500/10 px-5 py-3 text-sm font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/20"
+              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               All Kennels
             </Link>

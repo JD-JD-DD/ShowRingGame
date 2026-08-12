@@ -99,13 +99,13 @@ export default function DistrictTravelMap({
                   ) : null}
                 </div>
 
-                <h2 className="mt-4 text-lg font-semibold text-white transition group-hover:text-purple-100">
+                <h2 className="theme-heading mt-4 text-lg font-semibold transition">
                   {region.shortName}
                 </h2>
-                <p className="mt-1 text-xs leading-5 text-purple-100/65">
+                <p className="theme-copy mt-1 text-xs leading-5">
                   {region.name}
                 </p>
-                <p className="mt-3 text-xs font-semibold text-purple-100/80">
+                <p className="theme-copy mt-3 text-xs font-semibold">
                   {kennelCount} player kennel{kennelCount === 1 ? "" : "s"}
                 </p>
               </Link>
@@ -161,7 +161,7 @@ export default function DistrictTravelMap({
 
           <button
             type="submit"
-            className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
+            className="theme-primary-button rounded-xl px-5 py-3 text-sm font-semibold"
           >
             Apply
           </button>
@@ -174,7 +174,7 @@ export default function DistrictTravelMap({
               {getDistanceTierLabel(estimatedTier)}
             </span>{" "}
             travel, with a base kennel expense of{" "}
-            <span className="font-semibold text-emerald-100">
+            <span className="font-semibold text-[var(--color-success-text)]">
               {formatMoney(estimatedCost)}
             </span>
             .
