@@ -34,22 +34,22 @@ function statusTone(status: string): string {
   switch (status) {
     case "OPEN":
     case "ENTRY_OPEN":
-      return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+      return "theme-status-success";
     case "PAUSED":
-      return "border-amber-300/25 bg-amber-500/10 text-amber-100";
+      return "theme-status-warning";
     case "CLOSED":
       return "theme-neutral-badge opacity-75";
     case "SCHEDULED":
     case "JUDGING":
     case "ENTRY_LOCKED":
     case "AWAITING JUDGING":
-      return "border-amber-300/25 bg-amber-500/10 text-amber-100";
+      return "theme-status-warning";
     case "RESULTS_PUBLISHED":
     case "COMPLETE":
     case "JUDGED":
-      return "border-sky-300/25 bg-sky-500/10 text-sky-100";
+      return "theme-status-info";
     case "CANCELLED":
-      return "border-red-300/25 bg-red-500/10 text-red-100";
+      return "theme-status-danger";
     default:
       return "theme-neutral-badge";
   }
@@ -290,18 +290,18 @@ export default async function ShowDetailPage({
         </div>
 
         {entryMessage ? (
-          <div className="mt-5 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          <div className="theme-status-success mt-5 rounded-2xl px-4 py-3 text-sm">
             {entryMessage}
           </div>
         ) : null}
 
         {entryError ? (
-          <div className="mt-5 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+          <div className="theme-status-danger mt-5 rounded-2xl px-4 py-3 text-sm">
             {entryError}
             {entryErrorCode === "NO_ELIGIBLE_ENTRIES" ||
             entryErrorCode === "ENTRY_CLOSED" ||
             entryErrorCode === "INVALID_ENTRY_SCOPE" ? (
-              <div className="mt-2 text-red-50/90">
+              <div className="mt-2">
                 The planner has been refreshed to current server state so you can
                 review updated availability and retry.
               </div>
@@ -310,27 +310,27 @@ export default async function ShowDetailPage({
         ) : null}
 
         {clusterAvailability.entryStatus === "PAUSED" ? (
-          <div className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <div className="theme-status-warning mt-5 rounded-2xl px-4 py-3 text-sm">
             {clusterAvailability.message}
           </div>
         ) : null}
 
         {judged ? (
-          <div className="mt-5 rounded-2xl border border-sky-300/25 bg-sky-500/10 px-4 py-3 text-sm text-sky-100">
+          <div className="theme-status-info mt-5 rounded-2xl px-4 py-3 text-sm">
             Judging complete
             {judgedEntries ? ` for ${judgedEntries} entered dog(s).` : "."}
           </div>
         ) : null}
 
         {judgeError ? (
-          <div className="mt-5 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+          <div className="theme-status-danger mt-5 rounded-2xl px-4 py-3 text-sm">
             {judgeError}
           </div>
         ) : null}
 
         {isStewardingThisShow ? (
-          <div className="theme-copy mt-5 rounded-2xl border border-cyan-300/35 bg-cyan-500/10 px-5 py-4 text-sm leading-6">
-            <div className="theme-heading font-semibold">
+          <div className="theme-status-info mt-5 rounded-2xl px-5 py-4 text-sm leading-6">
+            <div className="font-semibold">
               Club Stewarding Assignment
             </div>
             <p className="mt-2">
@@ -354,21 +354,21 @@ export default async function ShowDetailPage({
         ) : null}
 
         {kennel && weekendPlanStatus && !weekendPlanStatus.primaryClusterId ? (
-          <div className="theme-copy mt-5 rounded-2xl border border-[var(--dog-border)] bg-purple-500/10 px-4 py-3 text-sm">
+          <div className="theme-status-info mt-5 rounded-2xl px-4 py-3 text-sm">
             Submitting entries here will make this your primary show for the
             weekend.
           </div>
         ) : null}
 
         {kennel && weekendPlanStatus?.isPrimaryShow ? (
-          <div className="mt-5 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          <div className="theme-status-success mt-5 rounded-2xl px-4 py-3 text-sm">
             This is your primary show for the weekend. Travel is already planned
             for this show.
           </div>
         ) : null}
 
         {kennel && hasDifferentPrimaryShow && isStewardingAnotherShowThisWeekend ? (
-          <div className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <div className="theme-status-warning mt-5 rounded-2xl px-4 py-3 text-sm">
             Your primary commitment this weekend is stewarding{" "}
             {stewardingCommitment?.showClusterName ?? "another show"}.
             Entries here use traveling handlers, and dogs already committed to
@@ -383,7 +383,7 @@ export default async function ShowDetailPage({
             </div>
           </div>
         ) : kennel && hasDifferentPrimaryShow ? (
-          <div className="mt-5 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <div className="theme-status-warning mt-5 rounded-2xl px-4 py-3 text-sm">
             Your primary show for this weekend is{" "}
             {weekendPlanStatus?.primaryClusterName ?? "another show"}.
             Entries here use traveling handlers, and dogs already entered in

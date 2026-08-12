@@ -124,7 +124,7 @@ export function ShowEntryPlannerScopeForm({
 
       <button
         type="submit"
-        className="self-end rounded-xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
+        className="theme-primary-button self-end rounded-xl px-5 py-3 text-sm font-semibold"
       >
         Show Dogs
       </button>

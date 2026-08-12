@@ -45,13 +45,14 @@ export default function OnboardingForm() {
   }
 
   return (
-    <main style={{ padding: "40px", maxWidth: "700px", margin: "0 auto" }}>
-      <h1>Create Your Kennel</h1>
-      <p>Your account is ready. Now create your kennel to enter the game.</p>
-      <p>Your home region will be assigned automatically to keep region populations balanced.</p>
+    <main className="mx-auto max-w-2xl px-6 py-10">
+      <section className="theme-panel rounded-[28px] p-6">
+      <h1 className="theme-heading text-3xl font-bold">Create Your Kennel</h1>
+      <p className="theme-copy mt-3">Your account is ready. Now create your kennel to enter the game.</p>
+      <p className="theme-copy mt-2">Your home region will be assigned automatically to keep region populations balanced.</p>
 
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px", marginTop: "24px" }}>
-        <label style={{ display: "grid", gap: "8px" }}>
+      <form onSubmit={handleSubmit} className="mt-6 grid gap-4">
+        <label className="theme-heading grid gap-2">
           <span>Kennel Name</span>
           <input
             value={name}
@@ -59,34 +60,32 @@ export default function OnboardingForm() {
             maxLength={45}
             placeholder="Show Ring Game"
             required
-            style={{ padding: "10px" }}
+            className="theme-control rounded-xl px-3 py-2.5"
           />
         </label>
 
-        <label style={{ display: "grid", gap: "8px" }}>
+        <label className="theme-heading grid gap-2">
           <span>Public Slogan (optional)</span>
           <input
             value={publicSlogan}
             onChange={(e) => setPublicSlogan(e.target.value)}
             placeholder="Built for the purple"
             maxLength={75}
-            style={{ padding: "10px" }}
+            className="theme-control rounded-xl px-3 py-2.5"
           />
         </label>
 
-        {error ? <div style={{ color: "red", fontWeight: 600 }}>{error}</div> : null}
+        {error ? <div className="theme-status-danger rounded-xl px-4 py-3 font-semibold">{error}</div> : null}
 
         <button
           type="submit"
           disabled={isSubmitting}
-          style={{
-            padding: "12px 16px",
-            cursor: isSubmitting ? "not-allowed" : "pointer",
-          }}
+          className="theme-primary-button rounded-xl px-4 py-3 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting ? "Creating Kennel..." : "Create Kennel"}
         </button>
       </form>
+      </section>
     </main>
   );
 }
