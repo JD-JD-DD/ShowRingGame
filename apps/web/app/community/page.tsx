@@ -6,8 +6,7 @@ import { createPerfTimer, estimateJsonSizeBytes } from "@/lib/perf";
 import { getSessionUserId } from "@/lib/session";
 import {
   getCommunityActor,
-  listBulletinCategories,
-  listBulletinThreads,
+  getCommunityOverview,
 } from "@/server/services/bulletin.service";
 
 function formatEpoch(epoch: number): string {
@@ -32,14 +31,12 @@ export default async function CommunityPage({
   if (!actor.kennel) redirect("/onboarding");
 
   const { error, saved } = await searchParams;
-  const [categories, recentTopics] = await perf.measure("communityListsMs", () =>
-    Promise.all([
-      listBulletinCategories({
-        includeInactive: actor.isAdmin,
-        includeModerated: actor.isAdmin,
-      }),
-      listBulletinThreads({ take: 8, includeModerated: actor.isAdmin }),
-    ])
+  const { categories, recentTopics } = await perf.measure("communityListsMs", () =>
+    getCommunityOverview({
+      includeInactive: actor.isAdmin,
+      includeModerated: actor.isAdmin,
+      recentTopicTake: 8,
+    })
   );
   const canPost = actor.isAdmin || actor.kennel.ownedDogCount > 0;
   perf.log({

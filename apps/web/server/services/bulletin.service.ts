@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { estimateJsonSizeBytes } from "@/lib/perf";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import { getKennelPrestigeSummary } from "@/server/services/kennelPrestige.service";
+import { getKennelPrestigeSummaries } from "@/server/services/kennelPrestige.service";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 
@@ -273,16 +273,17 @@ async function badgesForKennels(
     });
   }
 
-  await Promise.all(
-    uniqueKennelIds.map(async (kennelId) => {
-      const prestige = await getKennelPrestigeSummary(kennelId);
+  const prestigeByKennelId = await getKennelPrestigeSummaries(uniqueKennelIds);
 
-      result.set(kennelId, {
-        prestigeScore: prestige.score,
-        prestigeRank: prestige.tier.label,
-      });
-    })
-  );
+  for (const kennelId of uniqueKennelIds) {
+    const prestige = prestigeByKennelId.get(kennelId);
+    if (!prestige) continue;
+
+    result.set(kennelId, {
+      prestigeScore: prestige.score,
+      prestigeRank: prestige.tier.label,
+    });
+  }
   console.info("service-perf", {
     route: "service:bulletin.badgesForKennels",
     kennelCount: uniqueKennelIds.length,
@@ -325,13 +326,14 @@ function mapThreadListItem(
 }
 
 async function mapThreadRecords(
-  threads: ThreadListRecord[]
+  threads: ThreadListRecord[],
+  badgesByKennelId?: Map<string, KennelPrestigeBadges>
 ): Promise<BulletinThreadListItem[]> {
-  const badgesByKennelId = await badgesForKennels(
-    threads.map((thread) => thread.kennel.id)
-  );
+  const badges =
+    badgesByKennelId ??
+    (await badgesForKennels(threads.map((thread) => thread.kennel.id)));
 
-  return threads.map((thread) => mapThreadListItem(thread, badgesByKennelId));
+  return threads.map((thread) => mapThreadListItem(thread, badges));
 }
 
 export async function getCommunityActor(userId: string): Promise<CommunityActor> {
@@ -399,28 +401,7 @@ export async function listBulletinCategories(args: {
   includeModerated?: boolean;
 } = {}): Promise<BulletinCategoryDto[]> {
   const startedAtMs = Date.now();
-  const threadWhere: Prisma.BulletinThreadWhereInput = args.includeModerated
-    ? {}
-    : VISIBLE_THREAD_WHERE;
-  const categories = await db.bulletinCategory.findMany({
-    where: args.includeInactive ? {} : { isActive: true },
-    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-    include: {
-      _count: {
-        select: {
-          threads: {
-            where: threadWhere,
-          },
-        },
-      },
-      threads: {
-        where: threadWhere,
-        orderBy: [{ pinned: "desc" }, { lastActivityEpoch: "desc" }],
-        take: 1,
-        select: threadListSelect,
-      },
-    },
-  });
+  const categories = await findBulletinCategories(args);
   const latestThreads = categories.flatMap((category) => category.threads);
   const latestById = new Map(
     (await mapThreadRecords(latestThreads)).map((thread) => [thread.id, thread])
@@ -502,11 +483,51 @@ export async function listBulletinThreads(args: {
   includeInactive?: boolean;
 } = {}): Promise<BulletinThreadListItem[]> {
   const startedAtMs = Date.now();
-  const threads = await db.bulletinThread.findMany({
+  const threads = await findBulletinThreads(args);
+
+  const payload = await mapThreadRecords(threads);
+  console.info("service-perf", {
+    route: "service:bulletin.listBulletinThreads",
+    categorySlug: args.categorySlug ?? null,
+    threadCount: payload.length,
+    payloadSizeBytes: estimateJsonSizeBytes(payload),
+    totalServerDurationMs: Date.now() - startedAtMs,
+  });
+  return payload;
+}
+
+async function findBulletinCategories(args: {
+  includeInactive?: boolean;
+  includeModerated?: boolean;
+} = {}) {
+  const threadWhere: Prisma.BulletinThreadWhereInput = args.includeModerated
+    ? {}
+    : VISIBLE_THREAD_WHERE;
+
+  return db.bulletinCategory.findMany({
+    where: args.includeInactive ? {} : { isActive: true },
+    orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    include: {
+      _count: { select: { threads: { where: threadWhere } } },
+      threads: {
+        where: threadWhere,
+        orderBy: [{ pinned: "desc" }, { lastActivityEpoch: "desc" }],
+        take: 1,
+        select: threadListSelect,
+      },
+    },
+  });
+}
+
+async function findBulletinThreads(args: {
+  categorySlug?: string;
+  take?: number;
+  includeModerated?: boolean;
+  includeInactive?: boolean;
+} = {}) {
+  return db.bulletinThread.findMany({
     where: {
-      ...(args.includeModerated
-        ? {}
-        : VISIBLE_THREAD_WHERE),
+      ...(args.includeModerated ? {} : VISIBLE_THREAD_WHERE),
       ...(args.includeInactive
         ? args.categorySlug
           ? { category: { slug: args.categorySlug } }
@@ -522,16 +543,52 @@ export async function listBulletinThreads(args: {
     take: args.take,
     select: threadListSelect,
   });
+}
 
-  const payload = await mapThreadRecords(threads);
-  console.info("service-perf", {
-    route: "service:bulletin.listBulletinThreads",
-    categorySlug: args.categorySlug ?? null,
-    threadCount: payload.length,
-    payloadSizeBytes: estimateJsonSizeBytes(payload),
-    totalServerDurationMs: Date.now() - startedAtMs,
-  });
-  return payload;
+export async function getCommunityOverview(args: {
+  includeInactive?: boolean;
+  includeModerated?: boolean;
+  recentTopicTake?: number;
+} = {}): Promise<{
+  categories: BulletinCategoryDto[];
+  recentTopics: BulletinThreadListItem[];
+}> {
+  const [categories, recentThreads] = await Promise.all([
+    findBulletinCategories(args),
+    findBulletinThreads({
+      take: args.recentTopicTake ?? 8,
+      includeModerated: args.includeModerated,
+    }),
+  ]);
+  const latestThreads = categories.flatMap((category) => category.threads);
+  const badgesByKennelId = await badgesForKennels([
+    ...latestThreads.map((thread) => thread.kennel.id),
+    ...recentThreads.map((thread) => thread.kennel.id),
+  ]);
+  const latestById = new Map(
+    (await mapThreadRecords(latestThreads, badgesByKennelId)).map((thread) => [
+      thread.id,
+      thread,
+    ])
+  );
+
+  return {
+    categories: categories.map((category) => ({
+      id: category.id,
+      slug: category.slug,
+      name: category.name,
+      description: category.description,
+      sortOrder: category.sortOrder,
+      isActive: category.isActive,
+      topicCreationPolicy: category.topicCreationPolicy,
+      replyPolicy: category.replyPolicy,
+      threadCount: category._count.threads,
+      latestThread: category.threads[0]
+        ? latestById.get(category.threads[0].id) ?? null
+        : null,
+    })),
+    recentTopics: await mapThreadRecords(recentThreads, badgesByKennelId),
+  };
 }
 
 export async function getBulletinCategory(

@@ -788,12 +788,32 @@ export async function getKennelPrestigeSummary(
   kennelId: string,
   options: KennelPrestigeOptions = {}
 ): Promise<KennelPrestigeSummary> {
-  const { currentYear, summariesByKennelId } =
-    await buildKennelPrestigeSummaries(options, [kennelId]);
-  const accumulator =
-    summariesByKennelId.get(kennelId) ?? createEmptyAccumulator();
+  return (await getKennelPrestigeSummaries([kennelId], options)).get(kennelId)!;
+}
 
-  return finalizeSummary(accumulator, currentYear);
+export async function getKennelPrestigeSummaries(
+  kennelIds: string[],
+  options: KennelPrestigeOptions = {}
+): Promise<Map<string, KennelPrestigeSummary>> {
+  const uniqueKennelIds = [...new Set(kennelIds)].filter(Boolean);
+  if (uniqueKennelIds.length === 0) {
+    return new Map();
+  }
+  const { currentYear, summariesByKennelId } =
+    await buildKennelPrestigeSummaries(options, uniqueKennelIds);
+  const summaries = new Map<string, KennelPrestigeSummary>();
+
+  for (const kennelId of uniqueKennelIds) {
+    summaries.set(
+      kennelId,
+      finalizeSummary(
+        summariesByKennelId.get(kennelId) ?? createEmptyAccumulator(),
+        currentYear
+      )
+    );
+  }
+
+  return summaries;
 }
 
 export async function getKennelPrestigeLeaderboard(args: {
