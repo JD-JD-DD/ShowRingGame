@@ -65,9 +65,9 @@ export default async function CommunityPage({
           </Link>
         </header>
 
-        {error ? <p className="mb-6 rounded-2xl border border-red-300/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</p> : null}
-        {saved ? <p className="mb-6 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">Community settings saved.</p> : null}
-        {!canPost ? <p className="mb-6 rounded-2xl border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">You can read the community now. Own at least one dog before creating topics or replies.</p> : null}
+        {error ? <p className="theme-status-danger mb-6 rounded-2xl px-4 py-3 text-sm">{error}</p> : null}
+        {saved ? <p className="theme-status-success mb-6 rounded-2xl px-4 py-3 text-sm">Community settings saved.</p> : null}
+        {!canPost ? <p className="theme-status-warning mb-6 rounded-2xl px-4 py-3 text-sm">You can read the community now. Own at least one dog before creating topics or replies.</p> : null}
 
         <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
           <div>
@@ -79,8 +79,8 @@ export default async function CommunityPage({
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="theme-heading text-lg font-semibold">{category.name}</h3>
-                        {!category.isActive ? <span className="rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-semibold uppercase text-amber-100">Inactive</span> : null}
-                        {category.topicCreationPolicy === "ADMINS" ? <span className="rounded-full bg-fuchsia-500/15 px-2 py-1 text-[10px] font-semibold uppercase text-fuchsia-100">Announcements</span> : null}
+                        {!category.isActive ? <span className="theme-status-warning rounded-full px-2 py-1 text-[10px] font-semibold uppercase">Inactive</span> : null}
+                        {category.topicCreationPolicy === "ADMINS" ? <span className="theme-status-info rounded-full px-2 py-1 text-[10px] font-semibold uppercase">Announcements</span> : null}
                       </div>
                       <p className="theme-copy mt-2 text-sm leading-6">{category.description}</p>
                     </div>
@@ -127,7 +127,7 @@ export default async function CommunityPage({
                   <label className="flex items-center gap-2 text-sm"><input name="isActive" type="checkbox" value="true" defaultChecked={category.isActive} /> Active</label>
                   <label className="theme-copy grid gap-1 text-xs">Who can create topics<select name="topicCreationPolicy" defaultValue={category.topicCreationPolicy} className="theme-control rounded-xl px-3 py-2"><option value="MEMBERS">Members</option><option value="ADMINS">Admins</option><option value="DISABLED">Disabled</option></select></label>
                   <label className="theme-copy grid gap-1 text-xs">Who can reply<select name="replyPolicy" defaultValue={category.replyPolicy} className="theme-control rounded-xl px-3 py-2"><option value="MEMBERS">Members</option><option value="ADMINS">Admins</option><option value="DISABLED">Disabled</option></select></label>
-                  <div className="md:col-span-2"><button className="rounded-xl bg-fuchsia-700 px-4 py-2 text-sm font-semibold text-white hover:bg-fuchsia-600">Save {category.name}</button></div>
+                  <div className="md:col-span-2"><button className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold">Save {category.name}</button></div>
                 </form>
               ))}
               <form action="/api/community/admin/categories" method="post" className="theme-card grid gap-3 rounded-2xl border-dashed p-4 md:grid-cols-2">
@@ -139,7 +139,7 @@ export default async function CommunityPage({
                 <label className="flex items-center gap-2 text-sm"><input name="isActive" type="checkbox" value="true" defaultChecked /> Active</label>
                 <select name="topicCreationPolicy" defaultValue="MEMBERS" className="theme-control rounded-xl px-3 py-2"><option value="MEMBERS">Member topics</option><option value="ADMINS">Admin topics</option><option value="DISABLED">Topics disabled</option></select>
                 <select name="replyPolicy" defaultValue="MEMBERS" className="theme-control rounded-xl px-3 py-2"><option value="MEMBERS">Member replies</option><option value="ADMINS">Admin replies</option><option value="DISABLED">Replies disabled</option></select>
-                <div className="md:col-span-2"><button className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-500">Create category</button></div>
+                <div className="md:col-span-2"><button className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold">Create category</button></div>
               </form>
             </div>
           </section>
