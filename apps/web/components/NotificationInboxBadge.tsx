@@ -89,7 +89,7 @@ export default function NotificationInboxBadge({
   }
 
   return (
-    <span className="ml-2 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] text-white">
+    <span className="theme-status-danger ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
       {unreadCount > 99 ? "99+" : unreadCount}
     </span>
   );

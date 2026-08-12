@@ -45,7 +45,7 @@ export default function NotificationInboxLink() {
   return (
     <Link
       href="/notices"
-      className="game-header__inbox fixed right-4 top-[4.75rem] z-50 rounded-2xl px-3 py-1.5 text-right text-[11px] font-semibold leading-4 backdrop-blur"
+      className="game-header__inbox rounded-xl px-2.5 py-1.5 text-sm font-semibold"
     >
       <span>Inbox</span>
       <NotificationInboxBadge initialUnreadCount={unreadCount} />

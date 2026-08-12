@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import LogoutButton from "@/components/LogoutButton";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -37,20 +37,26 @@ function isActivePath(pathname: string, href: string): boolean {
 
 function navClass(active: boolean): string {
   return [
-    "rounded-xl px-3 py-2 text-sm font-semibold transition",
+    "rounded-xl px-2.5 py-1.5 text-sm font-semibold transition",
     active ? "game-header__link game-header__link--active" : "game-header__link",
   ].join(" ");
 }
 
 type GameHeaderNavProps = {
   balance: number | null;
+  gameTime: ReactNode;
+  inbox: ReactNode;
 };
 
 function formatMoney(amount: number): string {
   return `$${amount.toLocaleString()}`;
 }
 
-export default function GameHeaderNav({ balance }: GameHeaderNavProps) {
+export default function GameHeaderNav({
+  balance,
+  gameTime,
+  inbox,
+}: GameHeaderNavProps) {
   const pathname = usePathname();
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement | null>(null);
@@ -97,7 +103,7 @@ export default function GameHeaderNav({ balance }: GameHeaderNavProps) {
   return (
     <nav
       aria-label="Game navigation"
-      className="flex min-w-0 flex-wrap items-center gap-2"
+      className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5"
     >
       {navItems.map((item) => (
         <Link
@@ -109,57 +115,61 @@ export default function GameHeaderNav({ balance }: GameHeaderNavProps) {
         </Link>
       ))}
 
-      {balance !== null ? (
-        <div className="game-header__balance rounded-xl px-3 py-2 text-sm font-semibold">
-          Balance: {formatMoney(balance)}
-        </div>
-      ) : null}
-
-      <div ref={accountRef} className="relative">
-        <button
-          type="button"
-          aria-expanded={accountOpen}
-          aria-haspopup="menu"
-          onClick={() => setAccountOpen((current) => !current)}
-          className={[
-            "rounded-xl px-3 py-2 text-sm font-semibold transition",
-            accountActive
-              ? "game-header__account-button game-header__account-button--active"
-              : "game-header__account-button",
-          ].join(" ")}
-        >
-          Account
-        </button>
-
-        {accountOpen ? (
-          <div
-            role="menu"
-            className="game-header__menu absolute right-0 top-full z-[70] mt-2 min-w-48 rounded-2xl p-2 text-sm backdrop-blur"
-          >
-            {accountItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                role="menuitem"
-                onClick={() => setAccountOpen(false)}
-                className={[
-                  "game-header__menu-item block rounded-xl px-3 py-2 font-semibold transition",
-                  isActivePath(pathname, item.href)
-                    ? "game-header__menu-item--active"
-                    : "",
-                ].join(" ")}
-              >
-                {item.label}
-              </Link>
-            ))}
-            <div className="game-header__menu-divider mt-2 border-t pt-2">
-              <ThemeToggle />
-            </div>
-            <div className="game-header__menu-divider mt-2 border-t pt-2">
-              <LogoutButton />
-            </div>
+      <div className="game-header__utilities ml-auto flex flex-wrap items-center gap-1.5">
+        {balance !== null ? (
+          <div className="game-header__balance rounded-xl px-2.5 py-1.5 text-sm font-semibold">
+            Balance: {formatMoney(balance)}
           </div>
         ) : null}
+        {gameTime}
+
+        <div ref={accountRef} className="relative">
+          <button
+            type="button"
+            aria-expanded={accountOpen}
+            aria-haspopup="menu"
+            onClick={() => setAccountOpen((current) => !current)}
+            className={[
+              "rounded-xl px-2.5 py-1.5 text-sm font-semibold transition",
+              accountActive
+                ? "game-header__account-button game-header__account-button--active"
+                : "game-header__account-button",
+            ].join(" ")}
+          >
+            Account
+          </button>
+
+          {accountOpen ? (
+            <div
+              role="menu"
+              className="game-header__menu absolute right-0 top-full z-[70] mt-2 min-w-48 rounded-2xl p-2 text-sm backdrop-blur"
+            >
+              {accountItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  role="menuitem"
+                  onClick={() => setAccountOpen(false)}
+                  className={[
+                    "game-header__menu-item block rounded-xl px-3 py-2 font-semibold transition",
+                    isActivePath(pathname, item.href)
+                      ? "game-header__menu-item--active"
+                      : "",
+                  ].join(" ")}
+                >
+                  {item.label}
+                </Link>
+              ))}
+              <div className="game-header__menu-divider mt-2 border-t pt-2">
+                <ThemeToggle />
+              </div>
+              <div className="game-header__menu-divider mt-2 border-t pt-2">
+                <LogoutButton />
+              </div>
+            </div>
+          ) : null}
+        </div>
+        {inbox}
       </div>
     </nav>
   );

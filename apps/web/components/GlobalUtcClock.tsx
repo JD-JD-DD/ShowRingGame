@@ -58,7 +58,7 @@ export default function GlobalUtcClock() {
   }, []);
 
   return (
-    <div className="game-header__status pointer-events-none fixed right-4 top-3 z-50 rounded-2xl px-3 py-1.5 text-right text-[11px] font-semibold leading-4 backdrop-blur">
+    <div className="game-header__status rounded-xl px-2.5 py-1 text-right text-[11px] font-semibold leading-4">
       <div>{now ? formatUtc(now) : "UTC"}</div>
       <div className="game-header__status-muted">
         {now ? getShowCalendarLabel() : "Show Week"}
