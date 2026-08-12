@@ -265,7 +265,7 @@ export default function MarketPage() {
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/studs"
-                className="theme-status-info rounded-2xl border px-5 py-3 text-sm font-semibold transition hover:opacity-90"
+                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 Browse Studs
               </Link>
@@ -384,7 +384,7 @@ export default function MarketPage() {
                 key={dog.dogId}
                 className="theme-panel overflow-hidden rounded-[28px]"
               >
-                <div className="border-b border-[color:var(--dog-border)] bg-[color:var(--dog-card)] px-6 py-5">
+                <div className="border-b border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="theme-label text-sm font-medium">

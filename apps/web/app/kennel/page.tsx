@@ -63,19 +63,19 @@ export default async function KennelPage() {
       />
 
       <section className="theme-card mb-8 rounded-2xl p-4">
-        <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-100/75">
+        <div className="theme-label mb-3 text-xs font-semibold uppercase tracking-[0.18em]">
           Premium Features
         </div>
         <div className="flex flex-wrap gap-3">
-          <Link href="/plan-a-litter" className="premium-planner-link">
-            <span className="premium-planner-link__spark" aria-hidden="true">
-              
-            </span>
+          <Link
+            href="/plan-a-litter"
+            className="theme-primary-button inline-flex min-h-12 items-center gap-[.65rem] rounded-xl px-[.9rem] py-2"
+          >
             <span>
-              <span className="block text-[0.58rem] font-bold uppercase tracking-[0.2em] text-fuchsia-100/85">
+              <span className="block text-[0.58rem] font-bold uppercase tracking-[0.2em] text-[var(--color-primary-foreground)]">
                 Advanced Planning Tool
               </span>
-              <span className="mt-0.5 block text-sm font-bold tracking-wide text-white">
+              <span className="mt-0.5 block text-sm font-bold tracking-wide text-[var(--color-primary-foreground)]">
                 Plan A Litter
               </span>
             </span>

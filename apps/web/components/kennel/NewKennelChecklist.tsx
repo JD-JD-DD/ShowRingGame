@@ -142,8 +142,8 @@ export default function NewKennelChecklist({
                 className={[
                   "mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-black",
                   item.complete
-                    ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200"
-                    : "border-[var(--dog-border-strong)] bg-[var(--dog-card)] text-[var(--dog-label)]",
+                    ? "theme-status-success"
+                    : "border-[var(--color-border-strong)] bg-[var(--color-surface)] text-[var(--color-text-muted)]",
                 ].join(" ")}
               >
                 {item.complete ? "OK" : ""}

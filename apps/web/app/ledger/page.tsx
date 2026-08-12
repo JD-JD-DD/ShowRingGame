@@ -112,7 +112,7 @@ export default async function LedgerPage() {
             </Link>
             <Link
               href="/"
-              className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
+              className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               Home
             </Link>
@@ -175,8 +175,8 @@ export default async function LedgerPage() {
                     <td
                       className={`px-3 py-3 text-right font-semibold ${
                         transaction.amount < 0
-                          ? "text-rose-200"
-                          : "text-emerald-200"
+                          ? "text-[var(--color-danger-text)]"
+                          : "text-[var(--color-success-text)]"
                       }`}
                     >
                       {formatMoney(transaction.amount)}

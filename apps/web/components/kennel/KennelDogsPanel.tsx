@@ -1178,7 +1178,7 @@ export default function KennelDogsPanel() {
                 <button
                   type="submit"
                   disabled={!canCreateRun}
-                  className="rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-45"
+                  className="theme-primary-button rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   {creatingRun ? "Creating..." : "Create Run"}
                 </button>
@@ -1198,15 +1198,15 @@ export default function KennelDogsPanel() {
           ) : null}
 
           {runsLoading ? (
-            <div className="theme-copy mt-4 rounded-lg border border-white/10 px-3 py-3 text-sm">
+            <div className="theme-copy mt-4 rounded-lg border border-[var(--color-border)] px-3 py-3 text-sm">
               Loading runs...
             </div>
           ) : runError ? (
-            <div className="mt-4 rounded-lg border border-red-300/25 bg-red-500/10 px-3 py-3 text-sm text-red-100">
+            <div className="theme-status-danger mt-4 rounded-lg px-3 py-3 text-sm">
               {runError}
             </div>
           ) : runs.length === 0 ? (
-            <div className="theme-copy mt-4 rounded-lg border border-white/10 px-3 py-3 text-sm">
+            <div className="theme-copy mt-4 rounded-lg border border-[var(--color-border)] px-3 py-3 text-sm">
               No runs available.
             </div>
           ) : (
@@ -1219,7 +1219,7 @@ export default function KennelDogsPanel() {
                 return (
                   <div
                     key={run.id}
-                    className="rounded-lg border border-white/10 bg-black/10 p-1.5"
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-1.5"
                   >
                     {isRenaming ? (
                       <form
@@ -1257,7 +1257,7 @@ export default function KennelDogsPanel() {
                           <button
                             type="submit"
                             disabled={!canRenameRun}
-                            className="rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-45"
+                            className="theme-primary-button rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                           >
                             {renameRunLoading ? "Saving..." : "Save"}
                           </button>
@@ -1271,7 +1271,7 @@ export default function KennelDogsPanel() {
                           onClick={() => toggleRunSelection(run.id)}
                           className={`flex w-full min-w-0 items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-xs font-semibold transition ${
                             selected
-                              ? "border-fuchsia-200/70 bg-fuchsia-500/20 text-fuchsia-100"
+                              ? "theme-primary-button"
                               : "theme-neutral-badge hover:opacity-80"
                           }`}
                         >
@@ -1296,7 +1296,7 @@ export default function KennelDogsPanel() {
                                 setConfirmingDeleteRunId(run.id);
                                 setRenamingRunId(null);
                               }}
-                              className="rounded-md border border-red-300/25 bg-red-500/10 px-2 py-1 text-[0.68rem] font-semibold text-red-100 transition hover:bg-red-500/20"
+                              className="theme-status-danger rounded-md px-2 py-1 text-[0.68rem] font-semibold"
                             >
                               Delete Run
                             </button>
@@ -1304,11 +1304,11 @@ export default function KennelDogsPanel() {
                         ) : null}
 
                         {isConfirmingDelete ? (
-                          <div className="mt-2 rounded-lg border border-red-300/25 bg-red-500/10 p-2">
-                            <div className="text-xs font-semibold text-red-100">
+                          <div className="theme-status-danger mt-2 rounded-lg p-2">
+                            <div className="text-xs font-semibold">
                               Delete Run?
                             </div>
-                            <p className="mt-1 text-[0.7rem] leading-5 text-red-100/80">
+                            <p className="mt-1 text-[0.7rem] leading-5">
                               Dogs in this run will move to Uncategorized.
                             </p>
                             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1324,7 +1324,7 @@ export default function KennelDogsPanel() {
                                 type="button"
                                 onClick={() => void deleteRun(run)}
                                 disabled={deleteRunLoading}
-                                className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
+                                className="theme-status-danger rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                               >
                                 {deleteRunLoading ? "Deleting..." : "Delete"}
                               </button>
@@ -1523,7 +1523,7 @@ export default function KennelDogsPanel() {
           </div>
 
       {message ? (
-        <div className="mb-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+        <div className="theme-status-success mb-4 rounded-2xl px-4 py-3 text-sm">
           {message}
         </div>
       ) : null}
@@ -1605,7 +1605,7 @@ export default function KennelDogsPanel() {
                   type="button"
                   onClick={moveSelectedDogs}
                   disabled={!canMoveSelectedDogs}
-                  className="rounded-xl bg-fuchsia-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-fuchsia-500 disabled:cursor-not-allowed disabled:opacity-45 sm:self-end"
+                  className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 sm:self-end"
                 >
                   {moveDogsLoading ? "Moving..." : "Move Dogs"}
                 </button>
@@ -1640,7 +1640,7 @@ export default function KennelDogsPanel() {
                 type="button"
                 onClick={applyBulkAction}
                 disabled={!canApplyBulkAction}
-                className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
+                className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {bulkAction === "show-entry"
                   ? "Continue"
@@ -1660,7 +1660,7 @@ export default function KennelDogsPanel() {
           </div>
 
           {bulkAction === "rehome" && !canBulkRehome ? (
-            <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            <div className="theme-status-warning mt-3 rounded-xl px-4 py-3 text-sm">
               Only dogs at least 8 weeks old that are active and owned by your
               kennel can be re-homed in bulk. Sale and stud listings do not
               need to be removed first.
@@ -1668,21 +1668,21 @@ export default function KennelDogsPanel() {
           ) : null}
 
           {confirmingBulkAction && bulkAction === "rehome" ? (
-            <div className="mt-3 rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-3">
-              <div className="text-sm font-semibold text-red-100">
+            <div className="theme-status-danger mt-3 rounded-xl px-4 py-3">
+              <div className="text-sm font-semibold">
                 Re-home selected dogs?
               </div>
-              <div className="mt-1 text-sm leading-6 text-red-100/75">
+              <div className="mt-1 text-sm leading-6">
                 This cannot be undone. The selected dogs, even if they are for
                 sale or at stud, will leave your kennel and you will no longer
                 be able to use them.
               </div>
-              <div className="mt-2 text-sm text-red-100/75">
+              <div className="mt-2 text-sm">
                 You are about to re-home {selectedDogIds.length} dog
                 {selectedDogIds.length === 1 ? "" : "s"}.
               </div>
               {selectedRehomeCredits > 0 ? (
-                <div className="mt-2 text-sm font-semibold text-emerald-100">
+                <div className="mt-2 text-sm font-semibold">
                   Expected kennel ledger credit: $
                   {selectedRehomeCredits.toLocaleString()}.
                 </div>
@@ -1692,7 +1692,7 @@ export default function KennelDogsPanel() {
                   type="button"
                   onClick={rehomeSelectedDogs}
                   disabled={bulkActionLoading}
-                  className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
+                  className="theme-status-danger rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                 >
                   {bulkActionLoading
                     ? "Re-Homing..."
@@ -1716,7 +1716,7 @@ export default function KennelDogsPanel() {
           Loading kennel dogs...
         </div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-300/20 bg-red-500/10 px-4 py-6 text-sm text-red-100">
+        <div className="theme-status-danger rounded-2xl px-4 py-6 text-sm">
           {error}
         </div>
       ) : displayedDogs.length === 0 ? (
@@ -1986,7 +1986,7 @@ export default function KennelDogsPanel() {
                                 title={groomingMenuTitle}
                                 aria-expanded={groomingMenuOpen}
                                 aria-controls={groomingMenuId}
-                                className="w-full rounded-lg border border-amber-300/25 bg-amber-500/10 px-2 py-1 text-[0.7rem] font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                                className="theme-status-warning w-full rounded-lg px-2 py-1 text-[0.7rem] font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                               >
                                 {groomingMenuLabel}
                               </button>
@@ -2004,7 +2004,7 @@ export default function KennelDogsPanel() {
                                     onKeyDown={(event) => event.stopPropagation()}
                                     disabled={groomDisabled}
                                     title={groomingSelfActionTitle}
-                                    className="w-full rounded-md border border-amber-300/20 bg-black/20 px-2 py-1 text-[0.64rem] font-semibold text-amber-100 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-45"
+                                    className="theme-status-warning w-full rounded-md px-2 py-1 text-[0.64rem] font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                                   >
                                     {noGroomingActionsRemaining
                                       ? "No Grooming Left"
@@ -2019,7 +2019,7 @@ export default function KennelDogsPanel() {
                                     onKeyDown={(event) => event.stopPropagation()}
                                     disabled={offerDisabled}
                                     title={groomingAgeTitle}
-                                    className="w-full rounded-md border border-sky-300/20 bg-sky-500/10 px-2 py-1 text-[0.64rem] font-semibold text-sky-100 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-45"
+                                    className="theme-status-info w-full rounded-md px-2 py-1 text-[0.64rem] font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                                   >
                                     Offer for grooming
                                   </button>
@@ -2039,11 +2039,11 @@ export default function KennelDogsPanel() {
                         colSpan={rosterColumnCount}
                         className="rounded-2xl px-4 py-3"
                       >
-                        <div className="rounded-xl border border-sky-300/25 bg-sky-500/10 p-3">
-                          <div className="text-sm font-semibold text-sky-100">
+                        <div className="theme-status-info rounded-xl p-3">
+                          <div className="text-sm font-semibold">
                             Offer this dog for outside grooming?
                           </div>
-                          <p className="mt-1 text-xs leading-5 text-sky-50/80">
+                          <p className="mt-1 text-xs leading-5">
                             Offer {getDogDisplayName(dog)} for outside
                             grooming? This dog will be listed for another
                             player to groom.
@@ -2059,7 +2059,7 @@ export default function KennelDogsPanel() {
                                 });
                               }}
                               disabled={groomingBusy || offerDisabled}
-                              className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-45"
+                              className="theme-primary-button rounded-xl px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                             >
                               {groomingBusy
                                 ? "Offering..."
