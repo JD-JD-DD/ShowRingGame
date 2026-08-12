@@ -33,6 +33,7 @@ export default async function CommunityPage({
   const { error, saved } = await searchParams;
   const { categories, recentTopics } = await perf.measure("communityListsMs", () =>
     getCommunityOverview({
+      isAdmin: actor.isAdmin,
       includeInactive: actor.isAdmin,
       includeModerated: actor.isAdmin,
       recentTopicTake: 8,

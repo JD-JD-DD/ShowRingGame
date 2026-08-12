@@ -52,6 +52,47 @@ async function assertOverviewMatchesIndependentLists(args: {
 }
 
 async function main() {
+  const categoryDelegate = db.bulletinCategory as unknown as {
+    findMany: unknown;
+  };
+  const originalCategoryFindMany = categoryDelegate.findMany;
+  const originalConsoleError = console.error;
+  const failure = Object.assign(new Error("controlled community overview failure"), {
+    code: "P2024",
+  });
+  const failureLogs: unknown[][] = [];
+
+  try {
+    categoryDelegate.findMany = async () => {
+      throw failure;
+    };
+    console.error = (...args: unknown[]) => failureLogs.push(args);
+
+    await assert.rejects(
+      getCommunityOverview({ isAdmin: true }),
+      (error: unknown) => error === failure,
+      "overview failures preserve the original error"
+    );
+  } finally {
+    categoryDelegate.findMany = originalCategoryFindMany;
+    console.error = originalConsoleError;
+  }
+
+  assert.equal(failureLogs.length, 1, "overview failures emit one structured log");
+  const [failureLabel, failureDetails] = failureLogs[0];
+  assert.equal(failureLabel, "community-overview-failed", "failure label is stable");
+  assert.ok(
+    typeof failureDetails === "object" && failureDetails !== null,
+    "failure log includes structured details"
+  );
+  const failureContext = failureDetails as Record<string, unknown>;
+  assert.equal(failureContext.stage, "load-community-records", "failure stage is recorded");
+  assert.equal(failureContext.isAdmin, true, "viewer role is recorded");
+  assert.equal(failureContext.errorName, "Error", "error name is recorded");
+  assert.equal(failureContext.errorMessage, failure.message, "error message is recorded");
+  assert.equal(failureContext.errorCode, "P2024", "Prisma-style error code is recorded");
+  assert.equal(failureContext.error, failure, "original error object is logged");
+
   const communityAuthors = await db.bulletinThread.findMany({
     where: { status: { in: ["OPEN", "LOCKED"] } },
     orderBy: [{ pinned: "desc" }, { lastActivityEpoch: "desc" }],

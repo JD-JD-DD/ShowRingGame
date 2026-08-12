@@ -546,6 +546,7 @@ async function findBulletinThreads(args: {
 }
 
 export async function getCommunityOverview(args: {
+  isAdmin?: boolean;
   includeInactive?: boolean;
   includeModerated?: boolean;
   recentTopicTake?: number;
@@ -553,42 +554,79 @@ export async function getCommunityOverview(args: {
   categories: BulletinCategoryDto[];
   recentTopics: BulletinThreadListItem[];
 }> {
-  const [categories, recentThreads] = await Promise.all([
-    findBulletinCategories(args),
-    findBulletinThreads({
-      take: args.recentTopicTake ?? 8,
-      includeModerated: args.includeModerated,
-    }),
-  ]);
-  const latestThreads = categories.flatMap((category) => category.threads);
-  const badgesByKennelId = await badgesForKennels([
-    ...latestThreads.map((thread) => thread.kennel.id),
-    ...recentThreads.map((thread) => thread.kennel.id),
-  ]);
-  const latestById = new Map(
-    (await mapThreadRecords(latestThreads, badgesByKennelId)).map((thread) => [
-      thread.id,
-      thread,
-    ])
-  );
+  const startedAtMs = Date.now();
+  let stage = "load-community-records";
+  let categoryCount = 0;
+  let recentTopicCount = 0;
+  let distinctAuthorKennelCount = 0;
 
-  return {
-    categories: categories.map((category) => ({
-      id: category.id,
-      slug: category.slug,
-      name: category.name,
-      description: category.description,
-      sortOrder: category.sortOrder,
-      isActive: category.isActive,
-      topicCreationPolicy: category.topicCreationPolicy,
-      replyPolicy: category.replyPolicy,
-      threadCount: category._count.threads,
-      latestThread: category.threads[0]
-        ? latestById.get(category.threads[0].id) ?? null
-        : null,
-    })),
-    recentTopics: await mapThreadRecords(recentThreads, badgesByKennelId),
-  };
+  try {
+    const [categories, recentThreads] = await Promise.all([
+      findBulletinCategories(args),
+      findBulletinThreads({
+        take: args.recentTopicTake ?? 8,
+        includeModerated: args.includeModerated,
+      }),
+    ]);
+    categoryCount = categories.length;
+    recentTopicCount = recentThreads.length;
+
+    stage = "collect-author-kennel-ids";
+    const latestThreads = categories.flatMap((category) => category.threads);
+    const authorKennelIds = [
+      ...latestThreads.map((thread) => thread.kennel.id),
+      ...recentThreads.map((thread) => thread.kennel.id),
+    ];
+    distinctAuthorKennelCount = new Set(authorKennelIds).size;
+
+    stage = "load-prestige-badges";
+    const badgesByKennelId = await badgesForKennels(authorKennelIds);
+
+    stage = "assemble-community-overview";
+    const latestById = new Map(
+      (await mapThreadRecords(latestThreads, badgesByKennelId)).map((thread) => [
+        thread.id,
+        thread,
+      ])
+    );
+
+    return {
+      categories: categories.map((category) => ({
+        id: category.id,
+        slug: category.slug,
+        name: category.name,
+        description: category.description,
+        sortOrder: category.sortOrder,
+        isActive: category.isActive,
+        topicCreationPolicy: category.topicCreationPolicy,
+        replyPolicy: category.replyPolicy,
+        threadCount: category._count.threads,
+        latestThread: category.threads[0]
+          ? latestById.get(category.threads[0].id) ?? null
+          : null,
+      })),
+      recentTopics: await mapThreadRecords(recentThreads, badgesByKennelId),
+    };
+  } catch (error) {
+    const errorCode =
+      typeof error === "object" && error !== null && "code" in error
+        ? String(error.code)
+        : undefined;
+    console.error("community-overview-failed", {
+      stage,
+      durationMs: Date.now() - startedAtMs,
+      isAdmin: args.isAdmin ?? false,
+      categoryCount,
+      recentTopicCount,
+      distinctAuthorKennelCount,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorCode,
+      stack: error instanceof Error ? error.stack : undefined,
+      error,
+    });
+    throw error;
+  }
 }
 
 export async function getBulletinCategory(
