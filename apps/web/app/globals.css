@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* QA color framework: components consume semantic theme tokens, not literal palette
+   colors. Generic feedback uses fixed high-intensity QA signals. Health stoplights,
+   trait-deviation colors, and meaningful ribbon/award or image/logo colors may remain
+   fixed across themes. Any other literal UI color is migration technical debt. */
 :root {
   /* Canonical semantic tokens — Day palette. */
   --color-page: #ffffff;
@@ -31,21 +35,21 @@
   --color-accent: #ffd800;
   --color-accent-foreground: #000000;
 
-  --color-success: #007a2f;
-  --color-success-surface: #d8ffe5;
-  --color-success-text: #005a23;
-  --color-warning: #9a7600;
-  --color-warning-surface: #fff8c7;
-  --color-warning-text: #635000;
-  --color-danger: #c00000;
-  --color-danger-surface: #ffe0e0;
-  --color-danger-text: #8a0000;
-  --color-info: #0057c7;
-  --color-info-surface: #dcebff;
-  --color-info-text: #003d8f;
+  --color-success: #23f707;
+  --color-success-surface: #23f707;
+  --color-success-text: #000000;
+  --color-warning: #faf605;
+  --color-warning-surface: #faf605;
+  --color-warning-text: #000000;
+  --color-danger: #f70707;
+  --color-danger-surface: #f70707;
+  --color-danger-text: #000000;
+  --color-info: #0057ff;
+  --color-info-surface: #0057ff;
+  --color-info-text: #ffffff;
   --color-neutral: #555555;
-  --color-neutral-surface: #eeeeee;
-  --color-neutral-text: #222222;
+  --color-neutral-surface: #e6e6e6;
+  --color-neutral-text: #000000;
 
   --color-overlay: rgba(0, 0, 0, 0.48);
   --shadow-soft: 0 18px 48px rgba(0, 0, 0, 0.1);
@@ -126,21 +130,21 @@ html[data-theme="dark"] {
   --color-accent: #ffe600;
   --color-accent-foreground: #000000;
 
-  --color-success: #00e05a;
-  --color-success-surface: #003d18;
-  --color-success-text: #7cffac;
-  --color-warning: #ffe600;
-  --color-warning-surface: #3d3600;
-  --color-warning-text: #fff28a;
-  --color-danger: #ff3b30;
-  --color-danger-surface: #470000;
-  --color-danger-text: #ffb3ad;
-  --color-info: #4b9bff;
-  --color-info-surface: #001f4d;
-  --color-info-text: #a9ccff;
+  --color-success: #23f707;
+  --color-success-surface: #23f707;
+  --color-success-text: #000000;
+  --color-warning: #faf605;
+  --color-warning-surface: #faf605;
+  --color-warning-text: #000000;
+  --color-danger: #f70707;
+  --color-danger-surface: #f70707;
+  --color-danger-text: #000000;
+  --color-info: #0057ff;
+  --color-info-surface: #0057ff;
+  --color-info-text: #ffffff;
   --color-neutral: #bfbfbf;
-  --color-neutral-surface: #262626;
-  --color-neutral-text: #e6e6e6;
+  --color-neutral-surface: #333333;
+  --color-neutral-text: #ffffff;
 
   --color-overlay: rgba(0, 0, 0, 0.64);
   --shadow-soft: 0 18px 48px rgba(0, 0, 0, 0.28);
