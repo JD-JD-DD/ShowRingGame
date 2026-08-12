@@ -378,7 +378,7 @@ export default async function MyShowResultsPage() {
             </Link>
             <Link
               href="/kennel"
-              className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
+              className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               My Kennel
             </Link>
@@ -413,7 +413,7 @@ export default async function MyShowResultsPage() {
                         className={`px-0 ${showIndex === 0 ? "pt-0" : "pt-4"}`}
                       >
                         <div
-                          className={`border-t border-white/10 ${
+                          className={`border-t border-[var(--color-border)] ${
                             showIndex === 0 ? "pt-0" : "pt-3"
                           }`}
                         >
@@ -434,7 +434,7 @@ export default async function MyShowResultsPage() {
                       >
                         <tr>
                           <td colSpan={6} className="px-0 pt-3">
-                            <div className="mx-1 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                            <div className="theme-card mx-1 rounded-xl px-3 py-2">
                               <div className="theme-heading text-sm font-semibold">
                                 {breedSection.breedName} ({breedSection.breedCode2})
                               </div>
