@@ -120,12 +120,6 @@ export default async function NoticesPage({
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/kennel"
-              className="theme-primary-button rounded-xl px-6 py-3 text-sm font-semibold"
-            >
-              My Kennel
-            </Link>
             {unreadCount > 0 ? (
               <form action="/api/notices/mark-all-read" method="post">
                 <button

@@ -143,12 +143,6 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
 
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/kennel"
-                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-              >
-                My Kennel
-              </Link>
-              <Link
                 href="/shows/top-ten"
                 className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >

@@ -83,7 +83,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
   return (
     <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="mb-8">
           <div>
             <p className="theme-label text-sm uppercase tracking-[0.25em]">
               Breeding Records
@@ -95,15 +95,6 @@ export default async function LittersPage({ searchParams }: PageProps) {
               Follow active pregnancies and review every litter whelped by your
               kennel.
             </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/kennel"
-              className="theme-secondary-button rounded-xl px-5 py-3 text-sm font-semibold"
-            >
-              My Kennel
-            </Link>
           </div>
         </div>
 

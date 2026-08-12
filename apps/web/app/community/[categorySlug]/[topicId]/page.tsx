@@ -109,9 +109,6 @@ export default async function CommunityTopicPage({
               <Link href="/community" className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold">
                 Main Forum
               </Link>
-              <Link href="/kennel" className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold">
-                My Kennel
-              </Link>
             </div>
           </div>
         </header>

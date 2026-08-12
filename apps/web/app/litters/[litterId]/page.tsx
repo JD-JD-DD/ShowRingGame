@@ -75,21 +75,6 @@ export default async function LitterDetailPage({ params }: PageProps) {
   return (
     <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex flex-wrap gap-3">
-          <Link
-            href="/litters"
-            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
-          >
-            Back to Litters
-          </Link>
-          <Link
-            href="/kennel"
-            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
-          >
-            My Kennel
-          </Link>
-        </div>
-
         <section className="theme-panel mb-8 rounded-2xl px-5 py-4">
           <div className="grid gap-5 lg:grid-cols-[1fr_minmax(420px,0.75fr)] lg:items-center">
             <div>

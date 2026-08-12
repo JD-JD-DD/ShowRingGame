@@ -52,7 +52,7 @@ export default async function CommunityPage({
   return (
     <main className="community-page min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
-        <header className="theme-panel mb-8 flex flex-col gap-4 rounded-[28px] px-6 py-6 md:flex-row md:items-end md:justify-between">
+        <header className="theme-panel mb-8 rounded-[28px] px-6 py-6">
           <div>
             <p className="theme-label text-sm uppercase tracking-[0.25em]">ShowRing Community</p>
             <h1 className="theme-heading mt-2 text-3xl font-semibold">Community</h1>
@@ -60,9 +60,6 @@ export default async function CommunityPage({
               Talk with other kennels about shows, breeding programs, wins, litters, and game help.
             </p>
           </div>
-          <Link href="/kennel" className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold">
-            My Kennel
-          </Link>
         </header>
 
         {error ? <p className="theme-status-danger mb-6 rounded-2xl px-4 py-3 text-sm">{error}</p> : null}

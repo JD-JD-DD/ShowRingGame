@@ -92,7 +92,7 @@ export default async function MemoriumPage() {
   return (
     <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="mb-8">
           <div>
             <p className="theme-label text-sm uppercase tracking-[0.25em]">
               {kennel.name}
@@ -103,13 +103,6 @@ export default async function MemoriumPage() {
               kennel history.
             </p>
           </div>
-
-          <Link
-            href="/kennel"
-            className="theme-secondary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"
-          >
-            Back to My Kennel
-          </Link>
         </div>
 
         {dogs.length === 0 ? (

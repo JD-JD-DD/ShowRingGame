@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 const faqSections = [
   {
     title: "Getting Started",
@@ -217,34 +215,17 @@ export default function FAQPage() {
     <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-6xl">
         <header className="theme-panel mb-8 rounded-[28px] px-6 py-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="theme-label text-sm uppercase tracking-[0.22em]">
-                Player Guide
-              </p>
-              <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
-                Frequently Asked Questions
-              </h1>
-              <p className="theme-copy mt-4 max-w-3xl text-sm leading-7 sm:text-base">
-                A beginner-friendly guide to kennels, dog traits, breeding,
-                shows, time, and the economy in ShowRing.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/"
-                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-              >
-                Home
-              </Link>
-              <Link
-                href="/market"
-                className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-              >
-                Browse Market
-              </Link>
-            </div>
+          <div>
+            <p className="theme-label text-sm uppercase tracking-[0.22em]">
+              Player Guide
+            </p>
+            <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
+              Frequently Asked Questions
+            </h1>
+            <p className="theme-copy mt-4 max-w-3xl text-sm leading-7 sm:text-base">
+              A beginner-friendly guide to kennels, dog traits, breeding,
+              shows, time, and the economy in ShowRing.
+            </p>
           </div>
         </header>
 

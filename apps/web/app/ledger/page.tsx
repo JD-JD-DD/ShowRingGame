@@ -89,39 +89,16 @@ export default async function LedgerPage() {
 
   return (
     <main className="ledger-page mx-auto max-w-7xl px-6 py-8">
-      <section className="theme-panel mb-8 rounded-[28px] px-6 py-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="theme-label text-sm uppercase tracking-[0.22em]">
-              Kennel Ledger
-            </p>
-            <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
-              {kennel.name}
-            </h1>
-            <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
-              Review recent kennel income, purchases, fees, and balance changes.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/kennel"
-              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-            >
-              My Kennel
-            </Link>
-            <Link
-              href="/"
-              className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-            >
-              Home
-            </Link>
-          </div>
-        </div>
-
-        <div className="theme-card theme-heading mt-5 inline-flex rounded-2xl px-4 py-2 text-sm font-semibold">
-          Current balance: {formatMoney(kennel.balance)}
-        </div>
+      <section className="theme-panel mb-8 rounded-[28px] px-6 py-5">
+        <p className="theme-label text-sm uppercase tracking-[0.22em]">
+          Kennel Ledger
+        </p>
+        <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
+          {kennel.name}
+        </h1>
+        <p className="theme-copy mt-3 max-w-3xl text-sm leading-7">
+          Review recent kennel income, purchases, fees, and balance changes.
+        </p>
       </section>
 
       {transactions.length === 0 ? (

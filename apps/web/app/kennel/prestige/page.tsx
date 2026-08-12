@@ -62,12 +62,6 @@ export default async function KennelPrestigePage() {
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
-                href="/kennel"
-                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-              >
-                Back to My Kennel
-              </Link>
-              <Link
                 href="/kennels/top-ten"
                 className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
