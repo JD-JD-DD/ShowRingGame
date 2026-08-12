@@ -110,22 +110,22 @@ export function LittersListClient(props: {
         className="theme-panel grid gap-3 rounded-2xl p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto_auto] lg:items-end"
         action={applyFilters}
       >
-        <label className="grid gap-1 text-sm font-medium text-[var(--dog-heading)]">
+        <label className="theme-heading grid gap-1 text-sm font-medium">
           Search litters
           <input
             name="search"
             type="search"
             defaultValue={props.filters.search}
             placeholder="Parents, puppies, or litter serial"
-            className={`rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm ${focusControlClass}`}
+            className={`theme-control rounded-xl px-3 py-2 text-sm ${focusControlClass}`}
           />
         </label>
-        <label className="grid gap-1 text-sm font-medium text-[var(--dog-heading)]">
+        <label className="theme-heading grid gap-1 text-sm font-medium">
           Breed
           <select
             name="breedCode2"
             defaultValue={props.filters.breedCode2 ?? ""}
-            className={`rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm ${focusControlClass}`}
+            className={`theme-control rounded-xl px-3 py-2 text-sm ${focusControlClass}`}
           >
             <option value="">All breeds</option>
             {props.managementOptions.breeds.map((breed) => (
@@ -135,12 +135,12 @@ export function LittersListClient(props: {
             ))}
           </select>
         </label>
-        <label className="grid gap-1 text-sm font-medium text-[var(--dog-heading)]">
+        <label className="theme-heading grid gap-1 text-sm font-medium">
           Year
           <select
             name="year"
             defaultValue={props.filters.gameYear?.toString() ?? ""}
-            className={`rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm ${focusControlClass}`}
+            className={`theme-control rounded-xl px-3 py-2 text-sm ${focusControlClass}`}
           >
             <option value="">All years</option>
             {props.managementOptions.years.map((year) => (
@@ -150,12 +150,12 @@ export function LittersListClient(props: {
             ))}
           </select>
         </label>
-        <label className="grid gap-1 text-sm font-medium text-[var(--dog-heading)]">
+        <label className="theme-heading grid gap-1 text-sm font-medium">
           Sort
           <select
             name="sort"
             defaultValue={props.filters.sort}
-            className={`rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm ${focusControlClass}`}
+            className={`theme-control rounded-xl px-3 py-2 text-sm ${focusControlClass}`}
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
@@ -163,7 +163,7 @@ export function LittersListClient(props: {
         </label>
         <button
           type="submit"
-          className={`rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 ${focusControlClass}`}
+          className={`theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold ${focusControlClass}`}
         >
           Apply
         </button>
@@ -171,7 +171,7 @@ export function LittersListClient(props: {
           <button
             type="button"
             onClick={() => router.push(pathname)}
-            className={`rounded-xl border border-[var(--dog-border)] px-4 py-2 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)] ${focusControlClass}`}
+            className={`theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold ${focusControlClass}`}
           >
             Clear filters
           </button>
@@ -189,12 +189,12 @@ export function LittersListClient(props: {
 
       {litters.length === 0 ? (
         props.hasHistoricalLitters ? (
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-8 text-center">
-            <h3 className="text-xl font-semibold">No litters match these filters</h3>
+          <div className="theme-card rounded-2xl p-8 text-center">
+            <h3 className="theme-heading text-xl font-semibold">No litters match these filters</h3>
             <button
               type="button"
               onClick={() => router.push(pathname)}
-              className={`mt-5 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 ${focusControlClass}`}
+              className={`theme-primary-button mt-5 rounded-xl px-5 py-3 text-sm font-semibold ${focusControlClass}`}
             >
               Clear filters
             </button>
@@ -207,7 +207,7 @@ export function LittersListClient(props: {
       {errorMessage ? (
         <p
           role="alert"
-          className="rounded-xl border border-amber-300/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-50"
+          className="theme-status-warning rounded-xl px-4 py-3 text-sm"
         >
           {errorMessage}
         </p>
@@ -219,7 +219,7 @@ export function LittersListClient(props: {
             type="button"
             onClick={handleLoadMore}
             disabled={isLoadingMore}
-            className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200 disabled:cursor-not-allowed disabled:bg-[color:var(--dog-card)] disabled:text-[color:var(--dog-copy)]"
+            className="theme-primary-button rounded-xl px-5 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] disabled:cursor-not-allowed disabled:bg-[var(--color-surface-subtle)] disabled:text-[var(--color-text-disabled)]"
           >
             {isLoadingMore ? "Loading More Litters..." : "See More Litters"}
           </button>

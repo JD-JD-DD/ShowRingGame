@@ -73,30 +73,30 @@ export default async function LitterDetailPage({ params }: PageProps) {
   }
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex flex-wrap gap-3">
           <Link
             href="/litters"
-            className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-2 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
           >
             Back to Litters
           </Link>
           <Link
             href="/kennel"
-            className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-2 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
           >
             My Kennel
           </Link>
         </div>
 
-        <section className="mb-8 rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-panel)] px-5 py-4 shadow-[var(--dog-shadow)]">
+        <section className="theme-panel mb-8 rounded-2xl px-5 py-4">
           <div className="grid gap-5 lg:grid-cols-[1fr_minmax(420px,0.75fr)] lg:items-center">
             <div>
-              <p className="text-sm uppercase tracking-[0.25em] text-emerald-200">
+              <p className="theme-label text-sm uppercase tracking-[0.25em]">
                 Litter Record
               </p>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+              <h1 className="theme-heading mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
                 <Link
                   href={`/dogs/${litter.dam.dogId}`}
                   className={`hover:underline ${focusLinkClass}`}
@@ -111,12 +111,12 @@ export default async function LitterDetailPage({ params }: PageProps) {
                   {litter.sire.displayName}
                 </Link>
               </h1>
-            <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
+            <p className="theme-copy mt-2 text-sm leading-6">
               {litter.breedName} ({litter.breedCode2}) litter {litter.serial7},
               Whelped: {formatShowCalendarLabel(litter.bornEpoch)}. Litter age: {formatGameAge(litter.ageHours ?? 0)}.
             </p>
             {litter.neonatalLossCount > 0 ? (
-              <p className="mt-3 text-sm leading-6 text-rose-100/80">
+              <p className="theme-status-danger mt-3 rounded-xl px-3 py-2 text-sm leading-6">
                 {litter.neonatalLossCount === 1
                   ? "One puppy was lost before placement age."
                   : `${litter.neonatalLossCount} puppies were lost before placement age.`}
@@ -125,35 +125,35 @@ export default async function LitterDetailPage({ params }: PageProps) {
           </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3">
-                <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+              <div className="theme-card rounded-xl px-4 py-3">
+                <div className="theme-label text-xs uppercase tracking-wide">
                   Born
                 </div>
-                <div className="mt-1 text-2xl font-semibold leading-none">
+                <div className="theme-heading mt-1 text-2xl font-semibold leading-none">
                   {litter.pupCount}
                 </div>
               </div>
-              <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3">
-                <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+              <div className="theme-card rounded-xl px-4 py-3">
+                <div className="theme-label text-xs uppercase tracking-wide">
                   Survived
                 </div>
-                <div className="mt-1 text-2xl font-semibold leading-none">
+                <div className="theme-heading mt-1 text-2xl font-semibold leading-none">
                   {litter.survivedCount}
                 </div>
               </div>
-              <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3">
-                <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+              <div className="theme-card rounded-xl px-4 py-3">
+                <div className="theme-label text-xs uppercase tracking-wide">
                   Lost
                 </div>
-                <div className="mt-1 text-2xl font-semibold leading-none">
+                <div className="theme-heading mt-1 text-2xl font-semibold leading-none">
                   {litter.neonatalLossCount}
                 </div>
               </div>
-              <div className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3">
-                <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+              <div className="theme-card rounded-xl px-4 py-3">
+                <div className="theme-label text-xs uppercase tracking-wide">
                   Sexes
                 </div>
-                <div className="mt-1 text-sm font-semibold leading-5">
+                <div className="theme-heading mt-1 text-sm font-semibold leading-5">
                   {litter.maleCount} dogs
                   <br />
                   {litter.femaleCount} bitches
@@ -164,8 +164,8 @@ export default async function LitterDetailPage({ params }: PageProps) {
         </section>
 
         <section className="mb-8 grid gap-5 lg:grid-cols-3">
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card rounded-2xl p-5">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Sire
             </div>
             <Link
@@ -174,13 +174,13 @@ export default async function LitterDetailPage({ params }: PageProps) {
             >
               {litter.sire.displayName}
             </Link>
-            <div className="mt-1 text-sm text-[var(--dog-copy)]">
+            <div className="theme-copy mt-1 text-sm">
               {litter.sire.regNumber}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card rounded-2xl p-5">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Dam
             </div>
             <Link
@@ -189,21 +189,21 @@ export default async function LitterDetailPage({ params }: PageProps) {
             >
               {litter.dam.displayName}
             </Link>
-            <div className="mt-1 text-sm text-[var(--dog-copy)]">
+            <div className="theme-copy mt-1 text-sm">
               {litter.dam.regNumber}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card rounded-2xl p-5">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Breeding
             </div>
-            <div className="mt-2 text-lg font-semibold">
+            <div className="theme-heading mt-2 text-lg font-semibold">
               {litter.breedingAttempt
                 ? statusLabel(litter.breedingAttempt.status)
                 : "Recorded"}
             </div>
-            <div className="mt-1 text-sm text-[var(--dog-copy)]">
+            <div className="theme-copy mt-1 text-sm">
               Bred by{" "}
               {litter.bredByKennel ? (
                 <Link
@@ -221,8 +221,8 @@ export default async function LitterDetailPage({ params }: PageProps) {
 
         <section>
           <div className="mb-4 flex items-center justify-between gap-4">
-            <h2 className="text-2xl font-semibold">Puppies</h2>
-            <span className="text-sm text-[var(--dog-copy)]">
+            <h2 className="theme-heading text-2xl font-semibold">Puppies</h2>
+            <span className="theme-copy text-sm">
               Whelped {formatShowCalendarLabel(litter.bornEpoch)}
             </span>
           </div>
@@ -236,15 +236,15 @@ export default async function LitterDetailPage({ params }: PageProps) {
               return (
                 <article
                   key={puppy.dogId}
-                  className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]"
+                  className="theme-card rounded-2xl p-5"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <div className="text-xs uppercase tracking-wide text-emerald-100">
+                      <div className="theme-label text-xs uppercase tracking-wide">
                         Puppy {puppy.litterOrder ?? "-"} / {puppy.sex}
                       </div>
                       {puppy.isNeonatalLoss ? (
-                        <div className="mt-2 text-xl font-semibold text-white">
+                        <div className="theme-heading mt-2 text-xl font-semibold">
                           Litter loss
                         </div>
                       ) : (
@@ -255,17 +255,17 @@ export default async function LitterDetailPage({ params }: PageProps) {
                           {puppy.displayName}
                         </Link>
                       )}
-                      <div className="mt-1 text-sm text-[var(--dog-copy)]">
+                      <div className="theme-copy mt-1 text-sm">
                         {puppy.regNumber}
                       </div>
                     </div>
-                    <div className="rounded-full border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-1 text-xs font-medium text-[var(--dog-heading)]">
+                    <div className="theme-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
                       {statusLabel(puppy.lifecycleState)}
                     </div>
                   </div>
 
                   {puppy.isNeonatalLoss ? (
-                    <div className="mt-5 rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-4 text-sm text-[var(--dog-copy)]">
+                    <div className="theme-card theme-copy mt-5 rounded-xl p-4 text-sm">
                       This puppy was lost before placement age and is preserved
                       here as part of the litter record.
                     </div>

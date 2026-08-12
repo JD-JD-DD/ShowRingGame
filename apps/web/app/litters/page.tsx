@@ -88,10 +88,10 @@ export default async function LittersPage({ searchParams }: PageProps) {
             <p className="theme-label text-sm uppercase tracking-[0.25em]">
               Breeding Records
             </p>
-            <h1 className="mt-2 text-4xl font-semibold tracking-tight">
+            <h1 className="theme-heading mt-2 text-4xl font-semibold tracking-tight">
               Litters
             </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--dog-copy)]">
+            <p className="theme-copy mt-3 max-w-3xl text-sm leading-7">
               Follow active pregnancies and review every litter whelped by your
               kennel.
             </p>
@@ -109,23 +109,23 @@ export default async function LittersPage({ searchParams }: PageProps) {
 
         <section className="mb-8 grid gap-4 md:grid-cols-3">
           <div className="theme-card rounded-2xl p-5">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+            <div className="theme-label text-xs uppercase tracking-wide">
               {filters.search || filters.breedCode2 || filters.gameYear || filters.sort !== "newest"
                 ? "Matching Litters"
                 : "Total Litters"}
             </div>
-            <div className="mt-2 text-3xl font-semibold">{totalCount}</div>
+            <div className="theme-heading mt-2 text-3xl font-semibold">{totalCount}</div>
             {totalCount !== historicalTotalCount ? (
-              <div className="mt-1 text-xs text-[var(--dog-copy)]">
+              <div className="theme-copy mt-1 text-xs">
                 {historicalTotalCount} total historical litters
               </div>
             ) : null}
           </div>
           <div className="theme-card rounded-2xl p-5">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Puppies Whelped
             </div>
-            <div className="mt-2 text-3xl font-semibold">{totalPuppyCount}</div>
+            <div className="theme-heading mt-2 text-3xl font-semibold">{totalPuppyCount}</div>
           </div>
           <div className="theme-status-success rounded-2xl border p-5">
             <div className="text-xs uppercase tracking-wide">
@@ -140,8 +140,8 @@ export default async function LittersPage({ searchParams }: PageProps) {
         {activeBreedings.length > 0 ? (
           <section className="mb-8">
             <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="text-2xl font-semibold">In Progress</h2>
-              <span className="text-sm text-[var(--dog-copy)]">
+              <h2 className="theme-heading text-2xl font-semibold">In Progress</h2>
+              <span className="theme-copy text-sm">
                 {activeBreedings.length} active
               </span>
             </div>
@@ -157,7 +157,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
                       <div className="theme-label text-xs uppercase tracking-wide">
                         {breedingProgressLabel(attempt)}
                       </div>
-                      <h3 className="mt-2 text-lg font-semibold">
+                      <h3 className="theme-heading mt-2 text-lg font-semibold">
                         <Link href={`/dogs/${attempt.damId}`} className={`hover:underline ${focusLinkClass}`}>
                           {attempt.damName}
                         </Link>{" "}
@@ -166,7 +166,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
                           {attempt.sireName}
                         </Link>
                       </h3>
-                      <p className="mt-1 text-sm text-[var(--dog-copy)]">
+                      <p className="theme-copy mt-1 text-sm">
                         Breed code {attempt.breedCode2}
                       </p>
                     </div>
@@ -177,20 +177,20 @@ export default async function LittersPage({ searchParams }: PageProps) {
 
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
                     <div className="theme-card rounded-xl p-4">
-                      <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                      <div className="theme-label text-xs uppercase tracking-wide">
                         Pregnancy Check
                       </div>
-                      <div className="mt-1 text-sm font-semibold">
+                      <div className="theme-heading mt-1 text-sm font-semibold">
                         {attempt.hoursUntilPregCheck === null
                           ? "Not scheduled"
                           : `Pregnancy check in ${formatRealDurationHoursLong(attempt.hoursUntilPregCheck)}`}
                       </div>
                     </div>
                     <div className="theme-card rounded-xl p-4">
-                      <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+                      <div className="theme-label text-xs uppercase tracking-wide">
                         Due
                       </div>
-                      <div className="mt-1 text-sm font-semibold">
+                      <div className="theme-heading mt-1 text-sm font-semibold">
                         {attempt.hoursUntilDue === null
                           ? "Not scheduled"
                           : `Due in ${formatRealDurationHoursLong(attempt.hoursUntilDue)}`}
@@ -201,7 +201,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
                   attempt.reproductiveEmergencyStatus === "PENDING" ? (
                     <Link
                       href={`/dogs/${attempt.damId}#whelping-emergency`}
-                      className={`mt-5 inline-flex rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-500 ${focusLinkClass}`}
+                      className={`theme-status-danger mt-5 inline-flex rounded-xl px-4 py-2 text-sm font-semibold ${focusLinkClass}`}
                     >
                       Review emergency care
                     </Link>
@@ -214,7 +214,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
 
         <section>
           <div className="mb-4 flex items-center justify-between gap-4">
-            <h2 className="text-2xl font-semibold">Whelped Litters</h2>
+            <h2 className="theme-heading text-2xl font-semibold">Whelped Litters</h2>
           </div>
 
           <LittersListClient
