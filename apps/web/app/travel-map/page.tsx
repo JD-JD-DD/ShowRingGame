@@ -51,22 +51,10 @@ export default async function TravelMapPage() {
 
           <div className="flex flex-wrap gap-3">
             <Link
-              href="/shows"
-              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-            >
-              All Shows
-            </Link>
-            <Link
               href="/districts/kennels"
               className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
-              All Kennels
-            </Link>
-            <Link
-              href="/kennel"
-              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-            >
-              My Kennel
+              Player List
             </Link>
           </div>
         </div>

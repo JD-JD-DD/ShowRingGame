@@ -62,7 +62,7 @@ export default async function AllKennelsPage() {
               Show Districts
             </p>
             <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
-              All Kennels
+              Player List
             </h1>
             <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
               Browse all player kennels across ShowRing.
@@ -74,19 +74,7 @@ export default async function AllKennelsPage() {
               href="/travel-map"
               className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
-              District Map
-            </Link>
-            <Link
-              href="/shows"
-              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-            >
-              All Shows
-            </Link>
-            <Link
-              href="/kennel"
-              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-            >
-              My Kennel
+              Travel Map
             </Link>
           </div>
         </div>

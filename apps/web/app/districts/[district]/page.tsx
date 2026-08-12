@@ -76,13 +76,7 @@ export default async function DistrictPage({
               href="/travel-map"
               className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
-              District Map
-            </Link>
-            <Link
-              href="/shows"
-              className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
-            >
-              All Shows
+              Travel Map
             </Link>
           </div>
         </div>
