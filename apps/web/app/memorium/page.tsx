@@ -90,15 +90,15 @@ export default async function MemoriumPage() {
   });
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-rose-200/80">
+            <p className="theme-label text-sm uppercase tracking-[0.25em]">
               {kennel.name}
             </p>
-            <h1 className="mt-2 text-3xl font-semibold">In Memoriam</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-[var(--dog-copy)]">
+            <h1 className="theme-heading mt-2 text-3xl font-semibold">In Memoriam</h1>
+            <p className="theme-copy mt-3 max-w-2xl text-sm leading-7">
               Dogs who have passed stay here for pedigree, show record, and
               kennel history.
             </p>
@@ -106,19 +106,19 @@ export default async function MemoriumPage() {
 
           <Link
             href="/kennel"
-            className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-center text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+            className="theme-secondary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"
           >
             Back to My Kennel
           </Link>
         </div>
 
         {dogs.length === 0 ? (
-          <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-8 text-sm text-[var(--dog-copy)] shadow-[var(--dog-shadow)]">
+          <section className="theme-panel theme-copy rounded-[28px] p-8 text-sm">
             No dogs are listed in In Memoriam.
           </section>
         ) : (
-          <section className="overflow-hidden rounded-[28px] border border-rose-200/15 bg-[var(--dog-panel)] shadow-[var(--dog-shadow)]">
-            <div className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem_8rem] gap-4 border-b border-[var(--dog-border)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-rose-100/80">
+          <section className="theme-panel overflow-hidden rounded-[28px]">
+            <div className="theme-label grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem_8rem] gap-4 border-b border-[var(--color-border)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em]">
               <div>Name</div>
               <div className="text-right">Died</div>
               <div className="text-right">Progeny</div>
@@ -126,7 +126,7 @@ export default async function MemoriumPage() {
               <div className="text-right">Memorial</div>
             </div>
 
-            <div className="divide-y divide-white/10">
+            <div className="divide-y divide-[var(--color-border)]">
               {dogs.map((dog) => {
                 const name = formatDogDisplayName(dog);
                 const deathEpoch = dog.deathEpoch ?? currentEpoch;
@@ -138,21 +138,21 @@ export default async function MemoriumPage() {
                 return (
                   <div
                     key={dog.id}
-                    className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem_8rem] gap-4 px-5 py-2.5 text-sm transition hover:bg-[var(--dog-card)]"
+                    className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_4rem_8rem] gap-4 px-5 py-2.5 text-sm transition hover:bg-[var(--color-surface-subtle)]"
                   >
                     <Link
                       href={`/dogs/${dog.id}`}
-                      className="min-w-0 truncate self-center font-semibold text-white underline-offset-4 hover:underline"
+                      className="theme-heading min-w-0 truncate self-center font-semibold underline-offset-4 hover:underline"
                     >
                       {name}
                     </Link>
-                    <div className="self-center text-right font-semibold text-[var(--dog-heading)]">
+                    <div className="theme-heading self-center text-right font-semibold">
                       {formatDate(deathEpoch)}
                     </div>
-                    <div className="self-center text-right font-semibold text-white">
+                    <div className="theme-heading self-center text-right font-semibold">
                       {progenyCount}
                     </div>
-                    <div className="self-center text-right font-semibold text-white">
+                    <div className="theme-heading self-center text-right font-semibold">
                       {championProgenyCount}
                     </div>
                     <form
@@ -162,7 +162,7 @@ export default async function MemoriumPage() {
                     >
                       <button
                         type="submit"
-                        className="rounded-lg border border-rose-200/20 bg-[var(--dog-card)] px-2.5 py-1 text-xs font-semibold text-rose-100/80 transition hover:bg-rose-500/15 hover:text-rose-50"
+                        className="theme-status-danger rounded-lg px-2.5 py-1 text-xs font-semibold"
                       >
                         Remove
                       </button>

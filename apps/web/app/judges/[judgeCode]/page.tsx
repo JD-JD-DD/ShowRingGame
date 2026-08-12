@@ -34,19 +34,19 @@ export default async function JudgeProfilePage({
   });
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8 text-white">
-      <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] px-6 py-8 shadow-[var(--dog-shadow)]">
-        <p className="text-sm uppercase tracking-[0.22em] text-[var(--dog-label)]">
+    <main className="mx-auto max-w-3xl px-6 py-8">
+      <section className="theme-panel rounded-[28px] px-6 py-8">
+        <p className="theme-label text-sm uppercase tracking-[0.22em]">
           Judge Profile
         </p>
-        <h1 className="mt-3 text-4xl font-bold tracking-tight text-white">
+        <h1 className="theme-heading mt-3 text-4xl font-bold tracking-tight">
           {judge.name}
         </h1>
-        <p className="mt-3 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--dog-copy)]">
+        <p className="theme-copy mt-3 text-sm font-semibold uppercase tracking-[0.18em]">
           {judge.judgeCode}
         </p>
 
-        <div className="mt-8 space-y-5 text-base leading-8 text-[var(--dog-copy)]">
+        <div className="theme-copy mt-8 space-y-5 text-base leading-8">
           {biography && biography.paragraphs.length > 0 ? (
             biography.paragraphs.map((paragraph) => (
               <p key={paragraph}>{paragraph}</p>
@@ -59,7 +59,7 @@ export default async function JudgeProfilePage({
         <div className="mt-8">
           <Link
             href="/shows"
-            className="inline-flex rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+            className="theme-secondary-button inline-flex rounded-2xl px-5 py-3 text-sm font-semibold"
           >
             Back to Shows
           </Link>
