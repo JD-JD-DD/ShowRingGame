@@ -52,17 +52,17 @@ function statusTone(status: string): string {
   switch (status) {
     case "RESULTS_PUBLISHED":
     case "COMPLETE":
-      return "border-sky-300/25 bg-sky-500/10 text-sky-100";
+      return "theme-status-info";
     case "JUDGING":
     case "ENTRY_LOCKED":
-      return "border-amber-300/25 bg-amber-500/10 text-amber-100";
+      return "theme-status-warning";
     case "OPEN":
     case "ENTRY_OPEN":
-      return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+      return "theme-status-success";
     case "CANCELLED":
-      return "border-red-300/25 bg-red-500/10 text-red-100";
+      return "theme-status-danger";
     default:
-      return "border-[var(--dog-border)] bg-[var(--dog-card)] text-[var(--dog-heading)]";
+      return "theme-status-neutral";
   }
 }
 
@@ -467,20 +467,20 @@ export default async function BreedResultsPage({
 
   return (
     <main className="results-page mx-auto max-w-7xl px-6 py-8">
-      <section className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-8 text-center shadow-[var(--dog-shadow)]">
-        <p className="text-sm uppercase tracking-[0.22em] text-[var(--dog-label)]">
+      <section className="theme-panel rounded-[28px] px-6 py-8 text-center">
+        <p className="theme-label text-sm uppercase tracking-[0.22em]">
           Breed Results
         </p>
         <h1 className="theme-heading mt-3 text-4xl font-bold tracking-tight">
           {cluster.name}
         </h1>
-        <p className="mt-4 text-2xl font-semibold text-[var(--dog-heading)]">
+        <p className="theme-heading mt-4 text-2xl font-semibold">
           {formatShowCalendarLabel(cluster.startEpoch)}
         </p>
         <h2 className="theme-heading mt-8 text-2xl font-bold uppercase tracking-[0.08em]">
           {firstBlock.breed.name}
         </h2>
-        <p className="mt-2 text-lg font-semibold text-[var(--dog-heading)]">
+        <p className="theme-heading mt-2 text-lg font-semibold">
           {enteredDays.length || blocks.length} show day
           {(enteredDays.length || blocks.length) === 1 ? "" : "s"}
         </p>
@@ -489,26 +489,26 @@ export default async function BreedResultsPage({
           {cluster.status === "OPEN" ? (
             <Link
               href={`/shows/${cluster.id}`}
-              className="rounded-2xl bg-fuchsia-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-600"
+              className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               Enter Show
             </Link>
           ) : null}
           <Link
             href={`/shows/${cluster.id}/results`}
-            className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+            className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
           >
             Breed List
           </Link>
           <Link
             href={`/shows/${cluster.id}`}
-            className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+            className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
           >
             Show Detail
           </Link>
           <Link
             href="/shows"
-            className="rounded-2xl bg-purple-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-purple-500"
+            className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold"
           >
             All Shows
           </Link>
@@ -516,11 +516,11 @@ export default async function BreedResultsPage({
       </section>
 
       {enteredBlocks.length === 0 ? (
-        <section className="mt-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 text-sm text-[var(--dog-copy)]">
+        <section className="theme-card theme-copy mt-6 rounded-[28px] p-6 text-sm">
           This breed had no entries in this show.
         </section>
       ) : resultCount === 0 ? (
-        <section className="mt-6 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-6 text-sm text-[var(--dog-copy)]">
+        <section className="theme-card theme-copy mt-6 rounded-[28px] p-6 text-sm">
           Results have not been published for this breed yet.
         </section>
       ) : (
@@ -528,16 +528,16 @@ export default async function BreedResultsPage({
           {enteredDays.map((day) => (
             <section
               key={day.id}
-              className="rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] p-6 shadow-[var(--dog-shadow)]"
+              className="theme-panel rounded-[28px] p-6"
             >
-              <div className="border-b border-[var(--dog-border)] pb-5">
-                <p className="text-xs uppercase tracking-[0.18em] text-[var(--dog-label)]">
+              <div className="border-b border-[var(--color-border)] pb-5">
+                <p className="theme-label text-xs uppercase tracking-[0.18em]">
                   Show Day
                 </p>
                 <h3 className="theme-heading mt-2 text-2xl font-bold">
                   {formatShowCalendarLabel(day.scheduledEpoch)}
                 </h3>
-                <p className="mt-2 text-sm font-semibold text-[var(--dog-heading)]">
+                <p className="theme-heading mt-2 text-sm font-semibold">
                   Judge:{" "}
                   <Link
                     href={`/judges/${day.judgingBlocks[0].judge.judgeCode}`}
@@ -553,11 +553,11 @@ export default async function BreedResultsPage({
                   <div key={block.id}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-xs uppercase tracking-[0.18em] text-[var(--dog-label)]">
+                        <p className="theme-label text-xs uppercase tracking-[0.18em]">
                           Ring {block.ringNumber}
                           {block.ringName ? ` - ${block.ringName}` : ""}
                         </p>
-                        <p className="mt-2 text-sm text-[var(--dog-copy)]">
+                        <p className="theme-copy mt-2 text-sm">
                           {block._count.showEntries} entered /{" "}
                           {block._count.showResults} result
                           {block._count.showResults === 1 ? "" : "s"}
