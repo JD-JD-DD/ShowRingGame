@@ -299,11 +299,11 @@ function damMeetsStudRequirements(dam: DogCardDto | null, stud: DogCardDto) {
 function traitNumberTone(value: number) {
   const distance = Math.abs(value - 10);
 
-  if (distance <= 0.5) return "border-[#23f707] bg-[var(--color-surface)] text-[var(--color-text)]";
-  if (distance <= 2) return "border-[#a8f707] bg-[var(--color-surface)] text-[var(--color-text)]";
-  if (distance <= 4) return "border-[#faf605] bg-[var(--color-surface)] text-[var(--color-text)]";
-  if (distance <= 6) return "border-[#ff8a00] bg-[var(--color-surface)] text-[var(--color-text)]";
-  return "border-[#f70707] bg-[var(--color-surface)] text-[var(--color-text)]";
+  if (distance <= 0.5) return "border-black bg-[#23f707] text-black";
+  if (distance <= 2) return "border-black bg-[#a8f707] text-black";
+  if (distance <= 4) return "border-black bg-[#faf605] text-black";
+  if (distance <= 6) return "border-black bg-[#ff8a00] text-black";
+  return "border-black bg-[#f70707] text-black";
 }
 
 function visibleTraitNotes(dog: DogCardDto) {
