@@ -174,21 +174,21 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
   );
 
   return (
-    <main className="min-h-screen px-6 py-8 text-white">
+    <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-8 rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-card)] px-6 py-6 shadow-[var(--dog-shadow)]">
+        <header className="theme-panel mb-8 rounded-[28px] px-6 py-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.25em] text-[var(--dog-label)]">
+              <p className="theme-label text-sm uppercase tracking-[0.25em]">
                 Public Kennel
               </p>
-              <h1 className="mt-2 text-4xl font-semibold">{kennel.name}</h1>
+              <h1 className="theme-heading mt-2 text-4xl font-semibold">{kennel.name}</h1>
               {kennel.renameHistory[0]?.previousName ? (
-                <p className="mt-2 text-sm text-[var(--dog-copy)]">
+                <p className="theme-copy mt-2 text-sm">
                   Previously known as: {kennel.renameHistory[0].previousName}
                 </p>
               ) : null}
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-[var(--dog-copy)]">
+              <p className="theme-copy mt-3 max-w-3xl text-sm leading-7">
                 {kennel.publicSlogan?.trim() ||
                   "Browse this kennel's active dogs, stud listings, and dogs for sale."}
               </p>
@@ -197,25 +197,25 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
             <div className="flex flex-wrap gap-3">
               <Link
                 href="/community"
-                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 Community
               </Link>
               <Link
                 href="/kennel"
-                className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-3 text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 My Kennel
               </Link>
               <Link
                 href="/kennels/top-ten"
-                className="rounded-2xl border border-fuchsia-300/25 bg-fuchsia-500/10 px-5 py-3 text-sm font-semibold text-fuchsia-100 transition hover:bg-fuchsia-500/20"
+                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 Kennel Top Ten
               </Link>
               <Link
                 href="/travel-map"
-                className="rounded-2xl border border-sky-300/25 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 District Map
               </Link>
@@ -224,22 +224,22 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
         </header>
 
         <section className="mb-8 grid gap-4 md:grid-cols-5">
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card p-5">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Active Dogs
             </div>
             <div className="mt-2 text-3xl font-semibold">{dogs.length}</div>
           </div>
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card p-5">
+            <div className="theme-label text-xs uppercase tracking-wide">
               At Stud
             </div>
             <div className="mt-2 text-3xl font-semibold">
               {studListings.length}
             </div>
           </div>
-          <div className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5">
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+          <div className="theme-card p-5">
+            <div className="theme-label text-xs uppercase tracking-wide">
               For Sale
             </div>
             <div className="mt-2 text-3xl font-semibold">
@@ -259,9 +259,9 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
           </div>
           <div
             style={homeRegion ? getDistrictPanelStyle(homeRegion) : undefined}
-            className="rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] p-5"
+            className="theme-card p-5"
           >
-            <div className="text-xs uppercase tracking-wide text-[var(--dog-label)]">
+            <div className="theme-label text-xs uppercase tracking-wide">
               Region
             </div>
             <div className="mt-2 text-3xl font-semibold">
@@ -283,8 +283,8 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
           />
         </section>
 
-        <section className="overflow-hidden rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] shadow-[var(--dog-shadow)]">
-          <div className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_5rem_8rem] gap-4 border-b border-[var(--dog-border)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+        <section className="theme-panel overflow-hidden rounded-[28px]">
+          <div className="theme-label grid grid-cols-[minmax(0,1fr)_7rem_5rem_5rem_8rem] gap-4 border-b border-[var(--color-border)] px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em]">
             <div>Dog</div>
             <div>Breed</div>
             <div>Sex</div>
@@ -293,11 +293,11 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
           </div>
 
           {dogs.length === 0 ? (
-            <div className="px-5 py-5 text-sm text-[var(--dog-copy)]">
+            <div className="theme-copy px-5 py-5 text-sm">
               No active dogs are visible for this kennel.
             </div>
           ) : (
-            <div className="divide-y divide-white/10">
+            <div className="divide-y divide-[var(--color-border)]">
               {dogs.map((dog) => {
                 const listing = listingsByDogId.get(dog.id);
                 const status =
@@ -311,19 +311,19 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
                   <Link
                     key={dog.id}
                     href={`/dogs/${dog.id}`}
-                    className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_5rem_8rem] gap-4 px-5 py-2.5 text-sm transition hover:bg-[var(--dog-card)]"
+                    className="grid grid-cols-[minmax(0,1fr)_7rem_5rem_5rem_8rem] gap-4 px-5 py-2.5 text-sm transition hover:bg-[var(--color-surface-subtle)]"
                   >
-                    <div className="min-w-0 truncate font-semibold text-white">
+                    <div className="theme-heading min-w-0 truncate font-semibold">
                       {formatDogDisplayName(dog)}
                     </div>
-                    <div className="truncate text-[var(--dog-copy)]">
+                    <div className="theme-copy truncate">
                       {dog.breed.name} ({dog.breedCode2})
                     </div>
-                    <div className="text-[var(--dog-copy)]">{dog.sex}</div>
-                    <div className="text-[var(--dog-copy)]">
+                    <div className="theme-copy">{dog.sex}</div>
+                    <div className="theme-copy">
                       {formatAge(Math.max(0, currentEpoch - dog.birthEpoch))}
                     </div>
-                    <div className="text-right text-[var(--dog-copy)]">
+                    <div className="theme-copy text-right">
                       {status || "-"}
                     </div>
                   </Link>
@@ -364,29 +364,29 @@ function ListingPanel({
   }>;
 }) {
   return (
-    <div className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-5 shadow-[var(--dog-shadow)]">
-      <h2 className="text-xl font-semibold text-white">{title}</h2>
+    <div className="theme-panel rounded-[24px] p-5">
+      <h2 className="theme-heading text-xl font-semibold">{title}</h2>
       {listings.length === 0 ? (
-        <p className="mt-4 text-sm text-[var(--dog-copy)]">None right now.</p>
+        <p className="theme-copy mt-4 text-sm">None right now.</p>
       ) : (
         <div className="mt-4 grid gap-3">
           {listings.map((listing) => (
             <Link
               key={listing.id}
               href={`/dogs/${listing.dog.id}`}
-              className="grid grid-cols-[minmax(0,1fr)_6rem] gap-3 rounded-2xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-4 py-3 text-sm transition hover:bg-[var(--dog-card)]"
+              className="theme-card-interactive grid grid-cols-[minmax(0,1fr)_6rem] gap-3 rounded-2xl px-4 py-3 text-sm"
             >
               <div className="min-w-0">
-                <div className="truncate font-semibold text-white">
+                <div className="theme-heading truncate font-semibold">
                   {formatDogDisplayName(listing.dog)}
                 </div>
-                <div className="mt-1 text-xs text-[var(--dog-copy)]">
+                <div className="theme-copy mt-1 text-xs">
                   {listing.dog.breed.name} ({listing.dog.breedCode2}) -{" "}
                   {listing.dog.sex} -{" "}
                   {formatAge(Math.max(0, currentEpoch - listing.dog.birthEpoch))}
                 </div>
               </div>
-              <div className="self-center text-right font-semibold text-[var(--dog-heading)]">
+              <div className="theme-heading self-center text-right font-semibold">
                 {formatMoney(listing.askingPrice)}
               </div>
             </Link>

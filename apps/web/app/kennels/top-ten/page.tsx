@@ -41,31 +41,31 @@ function LeaderboardTable({
   rows: KennelPrestigeLeaderboardRow[];
 }) {
   return (
-    <section className="overflow-hidden rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] shadow-[var(--dog-shadow)]">
-      <div className="border-b border-[var(--dog-border)] px-6 py-5">
-        <h2 className="text-2xl font-bold text-white">{title}</h2>
-        <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
+    <section className="theme-panel overflow-hidden rounded-[28px]">
+      <div className="border-b border-[var(--color-border)] px-6 py-5">
+        <h2 className="theme-heading text-2xl font-bold">{title}</h2>
+        <p className="theme-copy mt-2 text-sm leading-6">
           {description}
         </p>
       </div>
 
       {rows.length === 0 ? (
-        <div className="px-6 py-6 text-sm text-[var(--dog-copy)]">
+        <div className="theme-copy px-6 py-6 text-sm">
           No kennel prestige has been earned here yet.
         </div>
       ) : (
-        <div className="divide-y divide-white/10">
+        <div className="divide-y divide-[var(--color-border)]">
           {rows.map((row) => (
             <Link
               key={`${title}:${row.kennel.id}`}
               href={`/kennels/${row.kennel.slug}`}
-              className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem] gap-4 px-6 py-4 text-sm transition hover:bg-[var(--dog-card)] md:grid-cols-[4rem_minmax(0,1fr)_9rem_8rem]"
+              className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem] gap-4 px-6 py-4 text-sm transition hover:bg-[var(--color-surface-subtle)] md:grid-cols-[4rem_minmax(0,1fr)_9rem_8rem]"
             >
               <div className="self-center text-2xl font-black text-fuchsia-100">
                 #{row.rank}
               </div>
               <div className="min-w-0">
-                <div className="truncate text-lg font-bold text-white">
+                <div className="theme-heading truncate text-lg font-bold">
                   {row.kennel.name}
                 </div>
                 <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-fuchsia-100/70">
@@ -73,14 +73,14 @@ function LeaderboardTable({
                 </div>
               </div>
               <div className="self-center text-right">
-                <div className="text-xs uppercase tracking-[0.16em] text-[var(--dog-copy)]">
+                <div className="theme-copy text-xs uppercase tracking-[0.16em]">
                   Score
                 </div>
-                <div className="text-xl font-bold text-white">
+                <div className="theme-heading text-xl font-bold">
                   {row.prestige.score.toLocaleString()}
                 </div>
               </div>
-              <div className="hidden self-center text-right text-xs text-[var(--dog-copy)] md:block">
+              <div className="theme-copy hidden self-center text-right text-xs md:block">
                 {row.prestige.metrics.championsBred} bred CH
                 <br />
                 {row.prestige.metrics.bestInShowWins} BIS
@@ -150,7 +150,7 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
               </Link>
               <Link
                 href="/shows/top-ten"
-                className="rounded-2xl border border-sky-300/30 bg-sky-500/10 px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+                className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
               >
                 Dog Top Ten
               </Link>
@@ -165,15 +165,15 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
             rows={overallRows}
           />
           <div className="grid gap-4">
-            <section className="rounded-[24px] border border-[var(--dog-border)] bg-[var(--dog-card)] p-4">
-              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+            <section className="theme-card rounded-[24px] p-4">
+              <div className="theme-label mb-3 text-xs font-semibold uppercase tracking-[0.18em]">
                 Breed
               </div>
               <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
                 <div>
                   <label
                     htmlFor="breed"
-                    className="mb-1 block text-xs uppercase tracking-wide text-[var(--dog-copy)]"
+                    className="theme-copy mb-1 block text-xs uppercase tracking-wide"
                   >
                     Breed
                   </label>
@@ -181,7 +181,7 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
                     id="breed"
                     name="breed"
                     defaultValue={selectedBreed?.code2 ?? ""}
-                    className="w-full rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-3 py-2 text-sm text-white outline-none"
+                    className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none"
                   >
                     <option value="">Choose a breed...</option>
                     <BreedSelectOptions options={breeds} />
@@ -190,7 +190,7 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
 
                 <button
                   type="submit"
-                  className="rounded-xl bg-purple-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-500"
+                  className="theme-primary-button rounded-xl px-5 py-2.5 text-sm font-semibold"
                 >
                   View Breed
                 </button>
@@ -198,7 +198,7 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
                 {selectedBreed ? (
                   <Link
                     href="/kennels/top-ten"
-                    className="rounded-xl border border-[var(--dog-border)] bg-[var(--dog-card)] px-5 py-2.5 text-center text-sm font-semibold text-[var(--dog-heading)] transition hover:bg-[var(--dog-card)]"
+                    className="theme-secondary-button rounded-xl px-5 py-2.5 text-center text-sm font-semibold"
                   >
                     Clear
                   </Link>
@@ -213,17 +213,17 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
                 rows={breedRows}
               />
             ) : (
-              <section className="overflow-hidden rounded-[28px] border border-[var(--dog-border)] bg-[var(--dog-panel)] shadow-[var(--dog-shadow)]">
-                <div className="border-b border-[var(--dog-border)] px-6 py-5">
-                  <h2 className="text-2xl font-bold text-white">
+              <section className="theme-panel overflow-hidden rounded-[28px]">
+                <div className="border-b border-[var(--color-border)] px-6 py-5">
+                  <h2 className="theme-heading text-2xl font-bold">
                     Breed Top Ten
                   </h2>
-                  <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">
+                  <p className="theme-copy mt-2 text-sm leading-6">
                     Choose a breed to view breed-specific kennel prestige
                     rankings.
                   </p>
                 </div>
-                <div className="px-6 py-6 text-sm text-[var(--dog-copy)]">
+                <div className="theme-copy px-6 py-6 text-sm">
                   Select a breed to load that breed&apos;s kennel rankings.
                 </div>
               </section>
@@ -232,11 +232,11 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
         </div>
 
         {selectedBreed ? (
-          <div className="mt-6 text-center text-xs text-[var(--dog-copy)]">
+          <div className="theme-copy mt-6 text-center text-xs">
             Direct link:{" "}
             <Link
               href={buildBreedHref(selectedBreed.code2)}
-              className="text-fuchsia-100 hover:text-white"
+              className="theme-accent-link"
             >
               {buildBreedHref(selectedBreed.code2)}
             </Link>
