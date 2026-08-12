@@ -46,10 +46,10 @@ export default function ExampleDogPage() {
         <section className="dog-panel mb-8 rounded-[28px] px-6 py-6 backdrop-blur">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div className="max-w-4xl">
-              <div className="mb-3 inline-flex rounded-full border border-[var(--dog-border)] bg-purple-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dog-label)]">
+              <div className="theme-neutral-badge mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em]">
                 Show Profile
               </div>
-              <div className="text-sm font-medium text-[var(--dog-label)]">
+              <div className="theme-label text-sm font-medium">
                 {header.breedName}
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -88,7 +88,7 @@ export default function ExampleDogPage() {
               </Link>
               <Link
                 href="/market"
-                className="rounded-2xl bg-purple-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
+                className="theme-primary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"
               >
                 Browse Market
               </Link>
