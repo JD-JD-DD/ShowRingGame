@@ -170,7 +170,7 @@ export default async function CommunityTopicPage({
               className={`rounded-[24px] p-5 ${
                 post.moderationStatus === "VISIBLE"
                   ? "theme-card"
-                  : "theme-status-warning [&_.theme-heading]:text-[var(--color-warning-text)] [&_.theme-copy]:text-[var(--color-warning-text)] [&_.theme-label]:text-[var(--color-warning-text)]"
+                  : "community-moderated-post theme-status-warning"
               }`}
             >
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

@@ -576,6 +576,14 @@ html:not([data-theme="dark"]) .showring-title-sweep {
   color: var(--color-warning-text);
 }
 
+/* A moderated community post intentionally uses the warning surface. Its nested
+   semantic text must inherit that surface's high-contrast foreground. */
+.community-moderated-post .theme-heading,
+.community-moderated-post .theme-copy,
+.community-moderated-post .theme-label {
+  color: var(--color-warning-text);
+}
+
 .theme-status-danger {
   border-color: color-mix(in srgb, var(--color-danger) 36%, transparent);
   background: var(--color-danger-surface);
