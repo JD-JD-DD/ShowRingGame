@@ -13,6 +13,7 @@ const VISIBLE_THREAD_WHERE: Prisma.BulletinThreadWhereInput = {
 export type CommunityActor = {
   userId: string;
   isAdmin: boolean;
+  isCommunityModerator: boolean;
   kennel: {
     id: string;
     name: string;
@@ -146,6 +147,44 @@ function policyAllows(policy: string, isAdmin: boolean): boolean {
   if (policy === "DISABLED") return false;
   if (policy === "ADMINS") return isAdmin;
   return true;
+}
+
+const COMMUNITY_MODERATOR_TOPIC_ACTIONS = new Set<BulletinTopicModerationAction>([
+  "PIN",
+  "UNPIN",
+  "HIDE",
+  "RESTORE",
+]);
+const COMMUNITY_MODERATOR_POST_ACTIONS = new Set<BulletinPostModerationAction>([
+  "HIDE",
+  "RESTORE",
+]);
+
+export function canViewModeratedCommunityContent(actor: CommunityActor): boolean {
+  return actor.isAdmin || actor.isCommunityModerator;
+}
+
+export function canCreateCommunityTopic(
+  actor: CommunityActor,
+  category: Pick<BulletinCategoryDto, "slug" | "topicCreationPolicy">
+): boolean {
+  if (category.topicCreationPolicy === "DISABLED") return false;
+  if (category.topicCreationPolicy === "MEMBERS") return true;
+  return actor.isAdmin || (actor.isCommunityModerator && category.slug === "game-changes");
+}
+
+export function canModerateBulletinTopic(
+  actor: CommunityActor,
+  action: BulletinTopicModerationAction
+): boolean {
+  return actor.isAdmin || (actor.isCommunityModerator && COMMUNITY_MODERATOR_TOPIC_ACTIONS.has(action));
+}
+
+export function canModerateBulletinPost(
+  actor: CommunityActor,
+  action: BulletinPostModerationAction
+): boolean {
+  return actor.isAdmin || (actor.isCommunityModerator && COMMUNITY_MODERATOR_POST_ACTIONS.has(action));
 }
 
 function getCommunityTopicAdminNoticeSourceKey(threadId: string, kennelId: string) {
@@ -342,6 +381,7 @@ export async function getCommunityActor(userId: string): Promise<CommunityActor>
     select: {
       id: true,
       isAdmin: true,
+      isCommunityModerator: true,
       displayName: true,
       kennel: {
         select: {
@@ -359,6 +399,7 @@ export async function getCommunityActor(userId: string): Promise<CommunityActor>
   return {
     userId: user.id,
     isAdmin: user.isAdmin,
+    isCommunityModerator: user.isCommunityModerator,
     kennel: user.kennel
       ? {
           id: user.kennel.id,
@@ -376,6 +417,7 @@ export async function getPostingKennelForUser(userId: string): Promise<{
   name: string;
   slug: string;
   isAdmin: boolean;
+  isCommunityModerator: boolean;
 }> {
   const actor = await getCommunityActor(userId);
   const kennel = actor.kennel;
@@ -393,6 +435,7 @@ export async function getPostingKennelForUser(userId: string): Promise<{
     name: kennel.name,
     slug: kennel.slug,
     isAdmin: actor.isAdmin,
+    isCommunityModerator: actor.isCommunityModerator,
   };
 }
 
@@ -757,6 +800,7 @@ export async function getBulletinThread(
 export async function createBulletinThread(args: {
   kennelId: string;
   isAdmin?: boolean;
+  isCommunityModerator?: boolean;
   categorySlug: string;
   title: string;
   body: string;
@@ -791,10 +835,12 @@ export async function createBulletinThread(args: {
     throw new Error("Community category not found.");
   }
 
-  if (
-    args.sourceType !== "SYSTEM" &&
-    !policyAllows(category.topicCreationPolicy, args.isAdmin ?? false)
-  ) {
+  if (args.sourceType !== "SYSTEM" && !canCreateCommunityTopic({
+    userId: "",
+    isAdmin: args.isAdmin ?? false,
+    isCommunityModerator: args.isCommunityModerator ?? false,
+    kennel: null,
+  }, category)) {
     throw new Error("You cannot start topics in this category.");
   }
 
@@ -1190,7 +1236,9 @@ export async function moderateBulletinTopic(args: {
   action: BulletinTopicModerationAction;
   reason?: string | null;
 }): Promise<string> {
-  if (!args.actor.isAdmin) throw new Error("Administrator access required.");
+  if (!canModerateBulletinTopic(args.actor, args.action)) {
+    throw new Error("Community moderator access required.");
+  }
 
   const thread = await db.bulletinThread.findUnique({
     where: { id: args.threadId },
@@ -1232,7 +1280,9 @@ export async function moderateBulletinPost(args: {
   action: BulletinPostModerationAction;
   reason?: string | null;
 }): Promise<{ threadId: string; categorySlug: string }> {
-  if (!args.actor.isAdmin) throw new Error("Administrator access required.");
+  if (!canModerateBulletinPost(args.actor, args.action)) {
+    throw new Error("Community moderator access required.");
+  }
 
   const post = await db.bulletinPost.findUnique({
     where: { id: args.postId },

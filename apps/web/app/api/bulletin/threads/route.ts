@@ -36,6 +36,7 @@ export async function POST(request: Request) {
       kennelId: kennel.id,
       categorySlug,
       isAdmin: kennel.isAdmin,
+      isCommunityModerator: kennel.isCommunityModerator,
       title,
       body,
       currentEpoch: getCurrentEpoch(),

@@ -5,7 +5,10 @@ import CommunityAuthor from "@/components/community/CommunityAuthor";
 import { getSessionUserId } from "@/lib/session";
 import {
   getBulletinThread,
+  canModerateBulletinPost,
+  canModerateBulletinTopic,
   getCommunityActor,
+  canViewModeratedCommunityContent,
 } from "@/server/services/bulletin.service";
 
 const LINK_PATTERN = /((?:https?:\/\/|www\.)[^\s<]+)/gi;
@@ -66,7 +69,7 @@ export default async function CommunityTopicPage({
 
   const { categorySlug, topicId } = await params;
   const { error } = await searchParams;
-  const topic = await getBulletinThread(topicId, { includeModerated: actor.isAdmin });
+  const topic = await getBulletinThread(topicId, { includeModerated: canViewModeratedCommunityContent(actor) });
   if (!topic) notFound();
   if (topic.category.slug !== categorySlug) redirect(`/community/${topic.category.slug}/${topic.id}`);
 
@@ -115,15 +118,15 @@ export default async function CommunityTopicPage({
 
         {error ? <p className="theme-status-danger mb-6 rounded-2xl px-4 py-3 text-sm">{error}</p> : null}
 
-        {actor.isAdmin ? (
+        {canModerateBulletinTopic(actor, topic.pinned ? "UNPIN" : "PIN") || canModerateBulletinTopic(actor, topic.status === "HIDDEN" || topic.status === "DELETED" ? "RESTORE" : "HIDE") ? (
           <section className="theme-card mb-6 rounded-2xl p-4">
             <h2 className="theme-heading font-semibold">Topic moderation</h2>
             <form action={`/api/community/admin/topics/${topic.id}`} method="post" className="mt-3 flex flex-wrap items-end gap-2">
               <input name="reason" maxLength={240} placeholder="Optional moderation reason" className="theme-control min-w-[240px] flex-1 rounded-xl px-3 py-2 text-sm" />
               <button name="action" value={topic.pinned ? "UNPIN" : "PIN"} className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold">{topic.pinned ? "Unpin" : "Pin"}</button>
-              <button name="action" value={topic.status === "LOCKED" ? "UNLOCK" : "LOCK"} className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold">{topic.status === "LOCKED" ? "Unlock" : "Lock"}</button>
+              {actor.isAdmin ? <button name="action" value={topic.status === "LOCKED" ? "UNLOCK" : "LOCK"} className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold">{topic.status === "LOCKED" ? "Unlock" : "Lock"}</button> : null}
               <button name="action" value={topic.status === "HIDDEN" || topic.status === "DELETED" ? "RESTORE" : "HIDE"} className="theme-status-warning rounded-xl px-3 py-2 text-sm font-semibold">{topic.status === "HIDDEN" || topic.status === "DELETED" ? "Restore" : "Hide"}</button>
-              <button name="action" value="DELETE" className="theme-status-danger rounded-xl px-3 py-2 text-sm font-semibold">Delete</button>
+              {actor.isAdmin ? <button name="action" value="DELETE" className="theme-status-danger rounded-xl px-3 py-2 text-sm font-semibold">Delete</button> : null}
             </form>
           </section>
         ) : null}
@@ -179,11 +182,11 @@ export default async function CommunityTopicPage({
               </div>
               {post.moderationStatus !== "VISIBLE" ? <p className="mb-3 text-xs font-semibold uppercase">{post.moderationStatus}{post.moderationReason ? ` · ${post.moderationReason}` : ""}</p> : null}
               <div className="theme-copy whitespace-pre-wrap text-sm leading-7">{renderLinkedText(post.body)}</div>
-              {actor.isAdmin && index > 0 ? (
+              {canModerateBulletinPost(actor, post.moderationStatus === "VISIBLE" ? "HIDE" : "RESTORE") && index > 0 ? (
                 <form action={`/api/community/admin/posts/${post.id}`} method="post" className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--dog-border)] pt-4">
                   <input name="reason" maxLength={240} placeholder="Optional reason" className="theme-control min-w-[200px] flex-1 rounded-xl px-3 py-2 text-sm" />
                   <button name="action" value={post.moderationStatus === "VISIBLE" ? "HIDE" : "RESTORE"} className="theme-status-warning rounded-xl px-3 py-2 text-sm font-semibold">{post.moderationStatus === "VISIBLE" ? "Hide post" : "Restore post"}</button>
-                  <button name="action" value="DELETE" className="theme-status-danger rounded-xl px-3 py-2 text-sm font-semibold">Delete post</button>
+                  {actor.isAdmin ? <button name="action" value="DELETE" className="theme-status-danger rounded-xl px-3 py-2 text-sm font-semibold">Delete post</button> : null}
                 </form>
               ) : null}
               {index > 0 && post.sourceType === "PLAYER" && post.kennel.id === actorKennel.id ? (

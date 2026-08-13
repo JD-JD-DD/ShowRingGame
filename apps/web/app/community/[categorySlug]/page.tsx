@@ -5,6 +5,8 @@ import { epochToDate } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import {
   getBulletinCategory,
+  canCreateCommunityTopic,
+  canViewModeratedCommunityContent,
   getCommunityActor,
   listBulletinThreads,
 } from "@/server/services/bulletin.service";
@@ -16,10 +18,6 @@ function formatEpoch(epoch: number): string {
     year: "numeric",
     timeZone: "UTC",
   });
-}
-
-function policyAllows(policy: string, isAdmin: boolean): boolean {
-  return policy === "MEMBERS" || (policy === "ADMINS" && isAdmin);
 }
 
 export default async function CommunityCategoryPage({
@@ -41,14 +39,13 @@ export default async function CommunityCategoryPage({
     listBulletinThreads({
       categorySlug,
       includeInactive: actor.isAdmin,
-      includeModerated: actor.isAdmin,
+      includeModerated: canViewModeratedCommunityContent(actor),
     }),
   ]);
   if (!category) notFound();
 
   const hasPostingKennel = actor.isAdmin || actor.kennel.ownedDogCount > 0;
-  const canCreateTopic =
-    hasPostingKennel && policyAllows(category.topicCreationPolicy, actor.isAdmin);
+  const canCreateTopic = hasPostingKennel && canCreateCommunityTopic(actor, category);
 
   return (
     <main className="community-page min-h-screen px-6 py-8">
@@ -81,7 +78,9 @@ export default async function CommunityCategoryPage({
           ) : (
             <p className="theme-copy mt-3 text-sm leading-7">
               {category.topicCreationPolicy === "ADMINS"
-                ? "Only administrators can start topics in this category."
+                ? category.slug === "game-changes"
+                  ? "Only administrators or Community moderators can start topics in this category."
+                  : "Only administrators can start topics in this category."
                 : category.topicCreationPolicy === "DISABLED"
                   ? "New topics are disabled in this category."
                   : "Own at least one dog before starting a topic."}
