@@ -1,8 +1,8 @@
 import { db } from "@/lib/db";
 
 const ENABLE_BETA_BALANCE_TOP_UP = true;
-const BETA_BALANCE_THRESHOLD = 10_000;
-const BETA_BALANCE_TOP_UP_AMOUNT = 25_000;
+const BETA_BALANCE_THRESHOLD = 25_000;
+const BETA_BALANCE_TOP_UP_AMOUNT = 100_000;
 
 type ApplyBetaBalanceTopUpArgs = {
   kennelId: string;
