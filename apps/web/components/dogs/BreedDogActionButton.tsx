@@ -47,7 +47,7 @@ export default function BreedDogActionButton({
         onClick={handleActivate}
         className={
           canBreed && !isPending
-            ? "rounded-2xl bg-purple-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-purple-500"
+            ? "theme-primary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"
             : "dog-card dog-copy rounded-2xl px-5 py-3 text-center text-sm font-semibold opacity-60"
         }
       >
@@ -57,7 +57,7 @@ export default function BreedDogActionButton({
         <div
           id={pendingId}
           role="status"
-          className="rounded-2xl border border-sky-300/20 bg-sky-500/10 px-4 py-3 text-center text-xs text-sky-100"
+          className="theme-status-info rounded-2xl px-4 py-3 text-center text-xs"
         >
           Loading breeding options...
         </div>
@@ -66,7 +66,7 @@ export default function BreedDogActionButton({
         <div
           id={noticeId}
           role="status"
-          className="rounded-2xl border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-center text-xs text-amber-100"
+          className="theme-status-warning rounded-2xl px-4 py-3 text-center text-xs"
         >
           {noticeMessage}
         </div>

@@ -27,6 +27,8 @@ export async function GET(request: Request) {
       ok: true,
       currentEpoch,
       candidatesEvaluated: result.candidatesEvaluated,
+      dogsScanned: result.candidatesEvaluated,
+      pagesScanned: result.pagesScanned,
       dueCandidates: result.dueCandidates,
       processedCandidates: result.processedCandidates,
       remainingDueBacklog: Math.max(
@@ -36,6 +38,9 @@ export async function GET(request: Request) {
       deathsFinalized: result.deceasedDogIds.length,
       deceasedDogIds: result.deceasedDogIds,
       deaths: result.deceasedDogs,
+      accidentCandidatesSkippedBecauseEventExists:
+        result.accidentCandidatesSkippedBecauseEventExists,
+      failures: result.failures,
       durationMs: Date.now() - startedAt,
       message: "Scheduled dog mortality resolution completed.",
     };

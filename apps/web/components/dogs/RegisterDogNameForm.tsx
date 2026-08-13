@@ -41,34 +41,34 @@ export default function RegisterDogNameForm({
           maxLength={45}
           required
           onChange={() => setConfirmingName(null)}
-          className="dog-control mt-2 w-full rounded-xl px-3 py-2 text-sm outline-none placeholder:text-purple-400/60 focus:border-purple-400"
+          className="dog-control mt-2 w-full rounded-xl px-3 py-2 text-sm outline-none"
           placeholder="Register Your Dog's Name"
         />
       </label>
       {!confirmingName ? (
         <button
           type="submit"
-          className="rounded-xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-500"
+          className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold"
         >
           Save Name
         </button>
       ) : null}
       {nameError ? (
-        <div className="basis-full text-sm text-rose-200">{nameError}</div>
+        <div className="theme-status-danger basis-full rounded-xl px-4 py-3 text-sm">{nameError}</div>
       ) : null}
       {confirmingName ? (
-        <div className="basis-full rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-3">
-          <div className="text-sm font-semibold text-red-100">
+        <div className="theme-status-danger basis-full rounded-xl px-4 py-3">
+          <div className="text-sm font-semibold">
             Confirm registered name.
           </div>
-          <div className="mt-1 text-sm leading-6 text-red-100/75">
+          <div className="mt-1 text-sm leading-6">
             Register &quot;{confirmingName}&quot; as this dog&apos;s permanent
             profile name? Registered names cannot be changed after confirmation.
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="submit"
-              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-500"
+              className="theme-status-danger rounded-xl px-4 py-2 text-sm font-semibold"
             >
               Confirm Name
             </button>

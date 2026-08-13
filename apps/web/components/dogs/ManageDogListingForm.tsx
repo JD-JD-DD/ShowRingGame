@@ -22,7 +22,7 @@ function CancelListingSubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
+      className="theme-status-danger rounded-xl px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
     >
       {pending ? "Canceling..." : "Yes, Cancel Listing"}
     </button>
@@ -41,7 +41,7 @@ export default function ManageDogListingForm({
 
   return (
     <div className="dog-card rounded-2xl p-3">
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-100/80">
+      <div className="dog-label text-xs font-semibold uppercase tracking-[0.16em]">
         Listed For Sale
       </div>
       <div className="dog-heading mt-1 text-sm font-semibold">
@@ -52,7 +52,7 @@ export default function ManageDogListingForm({
         <button
           type="button"
           onClick={() => setIsEditing(true)}
-          className="mt-3 w-full rounded-xl border border-emerald-300/25 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+          className="theme-secondary-button mt-3 w-full rounded-xl px-3 py-2 text-sm font-semibold"
         >
           Edit Sale
         </button>
@@ -71,22 +71,22 @@ export default function ManageDogListingForm({
               required
               inputMode="numeric"
               defaultValue={currentPrice}
-              className="dog-control w-full rounded-xl px-3 py-2 text-sm outline-none focus:border-emerald-400"
+              className="dog-control w-full rounded-xl px-3 py-2 text-sm outline-none"
             />
             <button
               type="submit"
-              className="mt-2 w-full rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+              className="theme-primary-button mt-2 w-full rounded-xl px-3 py-2 text-sm font-semibold"
             >
               Update Price
             </button>
           </form>
 
           {isConfirmingCancel ? (
-            <div className="mt-3 rounded-xl border border-red-300/25 bg-red-500/10 p-3">
-              <div className="text-sm font-semibold text-red-100">
+            <div className="theme-status-danger mt-3 rounded-xl p-3">
+              <div className="text-sm font-semibold">
                 Cancel this sale listing?
               </div>
-              <p className="mt-1 text-xs leading-5 text-red-100/75">
+              <p className="mt-1 text-xs leading-5">
                 The dog will be removed from the market.
               </p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -108,7 +108,7 @@ export default function ManageDogListingForm({
             <button
               type="button"
               onClick={() => setIsConfirmingCancel(true)}
-              className="mt-2 w-full rounded-xl border border-red-300/25 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
+              className="theme-status-danger mt-2 w-full rounded-xl px-3 py-2 text-sm font-semibold"
             >
               Cancel Listing
             </button>

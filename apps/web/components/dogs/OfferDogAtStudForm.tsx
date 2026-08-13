@@ -16,7 +16,7 @@ export default function OfferDogAtStudForm({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="w-full rounded-2xl border border-sky-300/25 bg-sky-500/10 px-5 py-3 text-center text-sm font-semibold text-sky-100 transition hover:bg-sky-500/20"
+        className="theme-secondary-button w-full rounded-2xl px-5 py-3 text-center text-sm font-semibold"
       >
         Offer Dog At Stud
       </button>
@@ -30,7 +30,7 @@ export default function OfferDogAtStudForm({
       className="dog-card rounded-2xl p-3"
     >
       <label className="block">
-        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-100/80">
+        <span className="dog-label text-xs font-semibold uppercase tracking-[0.16em]">
           Stud Fee
         </span>
         <input
@@ -40,12 +40,12 @@ export default function OfferDogAtStudForm({
           step={1}
           required
           inputMode="numeric"
-          className="dog-control mt-2 w-full rounded-xl px-3 py-2 text-sm outline-none placeholder:text-purple-400/60 focus:border-sky-400"
+          className="dog-control mt-2 w-full rounded-xl px-3 py-2 text-sm outline-none"
           placeholder="Whole dollars"
         />
       </label>
 
-      <label className="mt-3 flex items-start gap-2 rounded-xl border border-sky-300/20 bg-sky-500/10 p-3 text-xs leading-5 text-sky-100/85">
+      <label className="theme-status-info mt-3 flex items-start gap-2 rounded-xl p-3 text-xs leading-5">
         <input
           type="checkbox"
           name="requiresBrucellosisNegativeDam"
@@ -57,10 +57,10 @@ export default function OfferDogAtStudForm({
       </label>
 
       <div className="dog-card mt-3 rounded-xl p-3">
-        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-100/80">
+        <div className="dog-label text-xs font-semibold uppercase tracking-[0.16em]">
           Minimum Bitch Requirements
         </div>
-        <div className="mt-3 grid gap-2 text-xs leading-5 text-sky-100/85">
+        <div className="dog-copy mt-3 grid gap-2 text-xs leading-5">
           <label className="flex items-start gap-2">
             <input
               type="checkbox"
@@ -99,7 +99,7 @@ export default function OfferDogAtStudForm({
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           type="submit"
-          className="rounded-xl bg-sky-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-sky-500"
+          className="theme-primary-button rounded-xl px-3 py-2 text-sm font-semibold"
         >
           List At Stud
         </button>

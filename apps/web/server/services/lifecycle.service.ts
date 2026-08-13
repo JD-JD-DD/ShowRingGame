@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import {
   createPendingEmergencyForAccidentIllnessDeath,
+  getAccidentIllnessEmergencySourceKey,
   getEmergencyVetCareNoticeSourceKey,
 } from "@/server/services/emergencyVetCare.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
@@ -22,6 +23,8 @@ export type DogDeathCause =
   | "NEONATAL_PUPPY"
   | "WHELPING_DAM";
 const MAX_DEATHS_PER_RESOLUTION = 3;
+const MORTALITY_SCAN_PAGE_SIZE = 250;
+const MORTALITY_SCAN_STATE_ID = "global";
 
 type DeathCandidate = {
   id: string;
@@ -53,6 +56,11 @@ export type ResolvedDogDeath = {
   regNumber: string;
   deathEpoch: number;
   cause: DogDeathCause;
+};
+
+type DueDeathCandidate = {
+  dog: DeathCandidate;
+  projected: { deathEpoch: number; cause: DogDeathCause };
 };
 
 function seeded01(seed: string): number {
@@ -203,6 +211,42 @@ export function getProjectedDogDeath(dog: {
   return candidates.reduce((earliest, candidate) =>
     candidate.deathEpoch < earliest.deathEpoch ? candidate : earliest
   );
+}
+
+export function resolveInstantiatedAccidentCandidates(
+  candidates: DueDeathCandidate[],
+  instantiatedAccidentEventStatuses: ReadonlyMap<string, string>,
+  currentEpoch: number
+): { candidates: DueDeathCandidate[]; skippedAccidents: number } {
+  let skippedAccidents = 0;
+  const remainingCandidates: DueDeathCandidate[] = [];
+
+  for (const candidate of candidates) {
+    const { dog, projected } = candidate;
+    const accidentSourceKey = getAccidentIllnessEmergencySourceKey({
+      dogId: dog.id,
+      projectedDeathEpoch: projected.deathEpoch,
+    });
+    const emergencyStatus = instantiatedAccidentEventStatuses.get(accidentSourceKey);
+    if (projected.cause !== "ACCIDENT_ILLNESS" || !emergencyStatus) {
+      remainingCandidates.push(candidate);
+      continue;
+    }
+
+    skippedAccidents += 1;
+    const ageDeathEpoch = getProjectedDogDeathEpoch(dog);
+    if (
+      emergencyStatus === "TREATED_SURVIVED" &&
+      ageDeathEpoch <= currentEpoch
+    ) {
+      remainingCandidates.push({
+        dog,
+        projected: { deathEpoch: ageDeathEpoch, cause: "AGE" },
+      });
+    }
+  }
+
+  return { candidates: remainingCandidates, skippedAccidents };
 }
 
 function deathNoticeBody(displayName: string, cause: DogDeathCause): string {
@@ -384,6 +428,9 @@ async function resolveDogDeathsWithClient(args: {
   deceasedDogIds: string[];
   deceasedDogs: ResolvedDogDeath[];
   candidatesEvaluated: number;
+  pagesScanned: number;
+  accidentCandidatesSkippedBecauseEventExists: number;
+  failures: Array<{ dogId: string; message: string }>;
   dueCandidates: number;
   processedCandidates: number;
 }> {
@@ -395,19 +442,34 @@ async function resolveDogDeathsWithClient(args: {
       deceasedDogIds: [],
       deceasedDogs: [],
       candidatesEvaluated: 0,
+      pagesScanned: 0,
+      accidentCandidatesSkippedBecauseEventExists: 0,
+      failures: [],
       dueCandidates: 0,
       processedCandidates: 0,
     };
   }
 
-  const candidates: DeathCandidate[] = await client.dog.findMany({
+  const scanState =
+    !args.kennelId && !dogIds
+      ? await client.mortalityScanState.upsert({
+          where: { id: MORTALITY_SCAN_STATE_ID },
+          create: { id: MORTALITY_SCAN_STATE_ID },
+          update: {},
+          select: { cursorDogId: true, version: true },
+        })
+      : null;
+  let candidates: DeathCandidate[] = await client.dog.findMany({
     where: {
       lifecycleState: {
         in: ["ALIVE", "RETIRED"],
       },
       ...(args.kennelId ? { ownerKennelId: args.kennelId } : {}),
       ...(dogIds && dogIds.length > 0 ? { id: { in: dogIds } } : {}),
+      ...(scanState?.cursorDogId ? { id: { gt: scanState.cursorDogId } } : {}),
     },
+    orderBy: { id: "asc" },
+    ...(scanState ? { take: MORTALITY_SCAN_PAGE_SIZE } : {}),
     select: {
       id: true,
       regNumber: true,
@@ -446,13 +508,27 @@ async function resolveDogDeathsWithClient(args: {
     },
   });
 
+  if (scanState) {
+    const nextCursorDogId = candidates.at(-1)?.id ?? null;
+    await client.mortalityScanState.updateMany({
+      where: {
+        id: MORTALITY_SCAN_STATE_ID,
+        version: scanState.version,
+      },
+      data: {
+        cursorDogId: candidates.length < MORTALITY_SCAN_PAGE_SIZE ? null : nextCursorDogId,
+        version: { increment: 1 },
+      },
+    });
+  }
+
   const deceasedDogIds: string[] = [];
   const deceasedDogs: ResolvedDogDeath[] = [];
   const maxDeathsThisRun =
     dogIds && dogIds.length > 0
       ? Number.POSITIVE_INFINITY
       : MAX_DEATHS_PER_RESOLUTION;
-  const dueCandidates = candidates
+  const dueCandidatesBeforeAccidentExclusion = candidates
     .map((dog) => ({
       dog,
       projected: getProjectedDogDeath(dog),
@@ -463,10 +539,41 @@ async function resolveDogDeathsWithClient(args: {
         left.projected.deathEpoch - right.projected.deathEpoch ||
         left.dog.regNumber.localeCompare(right.dog.regNumber)
     );
+  const accidentSourceKeys = dueCandidatesBeforeAccidentExclusion
+    .filter(({ projected }) => projected.cause === "ACCIDENT_ILLNESS")
+    .map(({ dog, projected }) =>
+      getAccidentIllnessEmergencySourceKey({
+        dogId: dog.id,
+        projectedDeathEpoch: projected.deathEpoch,
+      })
+    );
+  const existingAccidentEvents = accidentSourceKeys.length
+    ? await client.dogEmergencyCareEvent.findMany({
+        where: { sourceKey: { in: accidentSourceKeys } },
+        select: { sourceKey: true, status: true },
+      })
+    : [];
+  const instantiatedAccidentEventStatuses = new Map(
+    existingAccidentEvents.flatMap((event) =>
+      event.sourceKey ? [[event.sourceKey, event.status] as const] : []
+    )
+  );
+  const resolvedAccidentCandidates = resolveInstantiatedAccidentCandidates(
+    dueCandidatesBeforeAccidentExclusion,
+    instantiatedAccidentEventStatuses,
+    args.currentEpoch
+  );
+  const dueCandidates = resolvedAccidentCandidates.candidates.sort(
+    (left, right) =>
+      left.projected.deathEpoch - right.projected.deathEpoch ||
+      left.dog.regNumber.localeCompare(right.dog.regNumber)
+  );
   const dueDeaths = dueCandidates.slice(0, maxDeathsThisRun);
+  const failures: Array<{ dogId: string; message: string }> = [];
 
   for (const { dog, projected } of dueDeaths) {
-    const { deathEpoch, cause } = projected;
+    try {
+      const { deathEpoch, cause } = projected;
 
     if (cause === "ACCIDENT_ILLNESS") {
       if (!dog.ownerKennelId || dog.marketState === "LISTED_NPC") {
@@ -545,13 +652,21 @@ async function resolveDogDeathsWithClient(args: {
       litterId: dog.litterId,
     });
 
-    if (changed) {
-      deceasedDogIds.push(dog.id);
-      deceasedDogs.push({
+      if (changed) {
+        deceasedDogIds.push(dog.id);
+        deceasedDogs.push({
+          dogId: dog.id,
+          regNumber: dog.regNumber,
+          deathEpoch,
+          cause,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failures.push({ dogId: dog.id, message });
+      console.error("dog mortality candidate resolution failed", {
         dogId: dog.id,
-        regNumber: dog.regNumber,
-        deathEpoch,
-        cause,
+        message,
       });
     }
   }
@@ -560,6 +675,10 @@ async function resolveDogDeathsWithClient(args: {
     deceasedDogIds,
     deceasedDogs,
     candidatesEvaluated: candidates.length,
+    pagesScanned: scanState ? 1 : 0,
+    accidentCandidatesSkippedBecauseEventExists:
+      resolvedAccidentCandidates.skippedAccidents,
+    failures,
     dueCandidates: dueCandidates.length,
     processedCandidates: dueDeaths.length,
   };
@@ -574,6 +693,9 @@ export async function resolveDogDeaths(args: {
   deceasedDogIds: string[];
   deceasedDogs: ResolvedDogDeath[];
   candidatesEvaluated: number;
+  pagesScanned: number;
+  accidentCandidatesSkippedBecauseEventExists: number;
+  failures: Array<{ dogId: string; message: string }>;
   dueCandidates: number;
   processedCandidates: number;
 }> {

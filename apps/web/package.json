@@ -18,6 +18,7 @@
     "test:kennel-roster-maintenance": "tsx scripts/testKennelRosterMaintenancePath.ts",
     "test:phenotype-health-truth-batching": "tsx scripts/testPhenotypeHealthTruthBatching.ts",
     "test:kennel-run-apis": "tsx scripts/testKennelRunApis.ts",
+    "test:mortality-workflow-hardening": "tsx scripts/testMortalityWorkflowHardening.ts",
     "test:kennel-inbox-notices": "tsx scripts/testKennelInboxNotices.ts",
     "test:community-topic-admin-notice": "tsx scripts/testCommunityTopicAdminNotice.ts",
     "test:community-read-performance": "tsx scripts/testCommunityReadPerformance.ts",

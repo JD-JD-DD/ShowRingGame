@@ -16,7 +16,7 @@ export default function OfferDogForSaleForm({
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="w-full rounded-2xl border border-emerald-300/25 bg-emerald-500/10 px-5 py-3 text-center text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+        className="theme-secondary-button w-full rounded-2xl px-5 py-3 text-center text-sm font-semibold"
       >
         Offer Dog For Sale
       </button>
@@ -30,7 +30,7 @@ export default function OfferDogForSaleForm({
       className="dog-card rounded-2xl p-3"
     >
       <label className="block">
-        <span className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-100/80">
+        <span className="dog-label text-xs font-semibold uppercase tracking-[0.16em]">
           Asking Price
         </span>
         <input
@@ -40,7 +40,7 @@ export default function OfferDogForSaleForm({
           step={1}
           required
           inputMode="numeric"
-          className="dog-control mt-2 w-full rounded-xl px-3 py-2 text-sm outline-none placeholder:text-purple-400/60 focus:border-emerald-400"
+          className="dog-control mt-2 w-full rounded-xl px-3 py-2 text-sm outline-none"
           placeholder="Whole dollars"
         />
       </label>
@@ -48,7 +48,7 @@ export default function OfferDogForSaleForm({
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           type="submit"
-          className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+          className="theme-primary-button rounded-xl px-3 py-2 text-sm font-semibold"
         >
           List Dog
         </button>

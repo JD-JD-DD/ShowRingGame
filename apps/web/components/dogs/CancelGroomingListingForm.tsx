@@ -59,7 +59,7 @@ export default function CancelGroomingListingForm({
           setError(null);
           setIsConfirming(true);
         }}
-        className="w-full rounded-xl border border-red-300/25 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
+        className="theme-status-danger w-full rounded-xl px-4 py-2 text-sm font-semibold"
       >
         Cancel Grooming Listing
       </button>
@@ -69,19 +69,19 @@ export default function CancelGroomingListingForm({
   return (
     <form
       onSubmit={cancelListing}
-      className="rounded-xl border border-red-300/25 bg-red-500/10 p-3"
+      className="theme-status-danger rounded-xl p-3"
     >
-      <div className="text-sm font-semibold text-red-100">
+      <div className="text-sm font-semibold">
         Cancel outside grooming listing?
       </div>
-      <p className="mt-1 text-xs leading-5 text-red-100/75">
+      <p className="mt-1 text-xs leading-5">
         Cancel the outside grooming listing for {dogName}?
       </p>
 
       {error ? (
         <p
           role="alert"
-          className="mt-2 rounded-lg border border-red-300/25 bg-red-950/35 px-3 py-2 text-xs text-red-100"
+          className="theme-status-danger mt-2 rounded-lg px-3 py-2 text-xs"
         >
           {error}
         </p>
@@ -91,7 +91,7 @@ export default function CancelGroomingListingForm({
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
+          className="theme-status-danger rounded-xl px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
         >
           {isPending ? "Canceling..." : "Yes, Cancel Listing"}
         </button>

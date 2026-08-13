@@ -16,7 +16,7 @@ function RehomeSubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-xl bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-45"
+      className="theme-status-danger rounded-xl px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
     >
       {pending ? "Re-Homing..." : "Yes, Re-Home Dog"}
     </button>
@@ -30,11 +30,11 @@ export default function RehomeDogForm({
 
   if (isConfirmingRehome) {
     return (
-      <div className="rounded-2xl border border-red-300/25 bg-red-500/10 p-3">
-        <div className="text-sm font-semibold text-red-100">
+      <div className="theme-status-danger rounded-2xl p-3">
+        <div className="text-sm font-semibold">
           Re-home this dog?
         </div>
-        <p className="mt-1 text-xs leading-5 text-red-100/75">
+        <p className="mt-1 text-xs leading-5">
           This cannot be undone. The dog even if it is for sale or at stud will
           leave your kennel and you will no longer be able to use it.
         </p>
@@ -58,7 +58,7 @@ export default function RehomeDogForm({
     <button
       type="button"
       onClick={() => setIsConfirmingRehome(true)}
-      className="w-full rounded-2xl border border-red-300/25 bg-red-500/10 px-5 py-3 text-center text-sm font-semibold text-red-100 transition hover:bg-red-500/20"
+      className="theme-status-danger w-full rounded-2xl px-5 py-3 text-center text-sm font-semibold"
     >
       Re-Home Dog
     </button>

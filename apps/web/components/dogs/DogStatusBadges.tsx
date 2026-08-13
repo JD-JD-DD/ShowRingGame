@@ -44,7 +44,7 @@ export default function DogStatusBadges({
         <span
           title="Dog is listed for sale"
           aria-label="Dog is listed for sale"
-          className={`inline-flex shrink-0 items-center justify-center rounded-full border border-emerald-300/55 bg-emerald-500/20 font-bold text-emerald-100 ${LISTING_SIZE_STYLES[size]}`}
+          className={`theme-status-success inline-flex shrink-0 items-center justify-center rounded-full font-bold ${LISTING_SIZE_STYLES[size]}`}
         >
           {FOR_SALE_STATUS_INDICATOR}
         </span>
@@ -53,7 +53,7 @@ export default function DogStatusBadges({
         <span
           title="Dog is listed at stud"
           aria-label="Dog is listed at stud"
-          className={`inline-flex shrink-0 items-center justify-center rounded-full border border-sky-300/55 bg-sky-500/20 font-bold text-sky-100 ${LISTING_SIZE_STYLES[size]}`}
+          className={`theme-status-info inline-flex shrink-0 items-center justify-center rounded-full font-bold ${LISTING_SIZE_STYLES[size]}`}
         >
           {AT_STUD_STATUS_INDICATOR}
         </span>
@@ -62,7 +62,7 @@ export default function DogStatusBadges({
         <span
           title="Dog is confirmed pregnant"
           aria-label="Dog is confirmed pregnant"
-          className={`inline-flex shrink-0 items-center justify-center rounded-full border border-fuchsia-300/55 bg-fuchsia-500/20 font-bold text-fuchsia-100 ${LISTING_SIZE_STYLES[size]}`}
+          className={`theme-status-neutral inline-flex shrink-0 items-center justify-center rounded-full font-bold ${LISTING_SIZE_STYLES[size]}`}
         >
           {PREGNANT_STATUS_INDICATOR}
         </span>

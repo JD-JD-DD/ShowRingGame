@@ -577,6 +577,13 @@ model Dog {
   @@index([producerMeritLevel])
 }
 
+model MortalityScanState {
+  id          String   @id
+  cursorDogId String?
+  version     Int      @default(0)
+  updatedAt   DateTime @updatedAt
+}
+
 model DogPlannerTag {
   id                 String              @id @default(cuid())
   dogId              String
