@@ -12,7 +12,7 @@ const themeOptions = [
   { value: "high-desert", label: "High Desert" },
   { value: "midnight-forest", label: "Midnight Forest" },
   { value: "deep-sea", label: "Deep Sea" },
-  { value: "galaxy", label: "Galaxy" },
+  { value: "galaxy", label: "Galaxy Dark" },
   { value: "black-cherry", label: "Black Cherry" },
   { value: "ember", label: "Ember" },
 ] as const;

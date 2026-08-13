@@ -257,37 +257,37 @@ html[data-theme="seaside"] {
 }
 
 html[data-theme="galaxy-light"] {
-  --color-page: #0b0914;
-  --color-surface: #171326;
-  --color-surface-raised: #211b35;
-  --color-surface-subtle: #2b2443;
-  --color-surface-inset: #100d1b;
-  --color-text: #f7f3ff;
-  --color-text-secondary: #ddd5f4;
-  --color-text-muted: #ada3c5;
-  --color-text-disabled: #777087;
-  --color-text-inverse: #151020;
-  --color-link: #a997ff;
-  --color-border: #776c98;
-  --color-border-subtle: #4d4566;
-  --color-border-strong: #e8deff;
-  --color-focus: #f4cc52;
+  --color-page: #f7f4ff;
+  --color-surface: #eee9fa;
+  --color-surface-raised: #ffffff;
+  --color-surface-subtle: #e2daf2;
+  --color-surface-inset: #d4cbe8;
+  --color-text: #221a2e;
+  --color-text-secondary: #433654;
+  --color-text-muted: #6d607d;
+  --color-text-disabled: #92889e;
+  --color-text-inverse: #ffffff;
+  --color-link: #6547c7;
+  --color-border: #83739b;
+  --color-border-subtle: #b7abc8;
+  --color-border-strong: #34263f;
+  --color-focus: #b17a00;
   --color-primary: #6652c9;
-  --color-primary-hover: #7c68de;
-  --color-primary-active: #453694;
+  --color-primary-hover: #5540b3;
+  --color-primary-active: #43318f;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #342b50;
-  --color-secondary-hover: #433861;
-  --color-secondary-foreground: #f2edff;
-  --color-accent: #e2b6ff;
-  --color-accent-foreground: #24162e;
+  --color-secondary: #e2daf2;
+  --color-secondary-hover: #d1c6e7;
+  --color-secondary-foreground: #2f2340;
+  --color-accent: #cfa6f3;
+  --color-accent-foreground: #2b1838;
   --color-neutral: var(--color-text-muted);
   --color-neutral-surface: var(--color-surface-subtle);
   --color-neutral-text: var(--color-text);
-  --color-overlay: rgba(0, 0, 0, 0.64);
-  --shadow-soft: 0 18px 48px rgba(0, 0, 0, 0.28);
-  --shadow-raised: 0 20px 55px rgba(0, 0, 0, 0.3);
-  color-scheme: dark;
+  --color-overlay: rgba(0, 0, 0, 0.48);
+  --shadow-soft: 0 18px 48px rgba(0, 0, 0, 0.1);
+  --shadow-raised: 0 20px 55px rgba(0, 0, 0, 0.11);
+  color-scheme: light;
 }
 
 html[data-theme="midnight-forest"] {
