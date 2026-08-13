@@ -36,6 +36,7 @@ const kennelRunFiltering = source(
   "apps/web/components/kennel/kennelDogFiltering.ts"
 );
 const kennelDogSearch = source("apps/web/components/kennel/kennelDogSearch.ts");
+const mineDogsRoute = source("apps/web/app/api/dogs/mine/route.ts");
 
 assertIncludes(
   kennelPanel,
@@ -74,6 +75,21 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
+  '<label className="grid gap-1.5">\n              <span className="theme-label text-[0.7rem] uppercase tracking-wide">\n                Search dogs',
+  "Search dogs has a programmatically associated wrapping label"
+);
+assertIncludes(
+  kennelPanel,
+  'type="text"',
+  "search uses a keyboard-semantic text input"
+);
+assertIncludes(
+  kennelPanel,
+  'className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none"',
+  "search uses the existing themed control focus treatment and full available width"
+);
+assertIncludes(
+  kennelPanel,
   "Call name, registered name, or registration number",
   "kennel roster explains searchable identity fields"
 );
@@ -93,6 +109,56 @@ assertIncludes(
   "Boolean(searchText.trim()) ||",
   "search counts as an active filter for empty-state behavior"
 );
+assertIncludes(
+  kennelPanel,
+  "searchMatch &&\n        breedMatch &&",
+  "search remains conjunctive with existing roster filters"
+);
+for (const existingFilter of [
+  "sexMatch &&",
+  "breedableMatch &&",
+  "forSaleMatch &&",
+  "atStudMatch &&",
+  "groomingMatch",
+]) {
+  assertIncludes(
+    kennelPanel,
+    existingFilter,
+    `search remains conjunctive with ${existingFilter.replace(" &&", "")}`
+  );
+}
+assertBefore(
+  kennelPanel,
+  "const searchMatch = matchesKennelDogSearch(dog, normalizedQuery);",
+  "list.sort((a, b) => {",
+  "search membership is decided before existing sorting"
+);
+assertIncludes(
+  kennelPanel,
+  "searchText,\n    breedFilter",
+  "displayed-dog memo depends on search text"
+);
+assertExcludes(
+  kennelPanel,
+  "fetch(\"/api/dogs/mine?",
+  "search does not add roster query parameters or per-keystroke requests"
+);
+assertExcludes(
+  kennelPanel,
+  "setTimeout(",
+  "search does not add debounce or timer behavior"
+);
+for (const rosterPredicate of [
+  "ownerKennelId: kennel.id",
+  'lifecycleState: "ALIVE"',
+  "isPlayerVisible: true",
+]) {
+  assertIncludes(
+    mineDogsRoute,
+    rosterPredicate,
+    `canonical active roster retains ${rosterPredicate}`
+  );
+}
 assertIncludes(
   kennelRunFiltering,
   "filterDogsBySelectedRuns",
