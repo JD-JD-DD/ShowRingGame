@@ -19,7 +19,10 @@ import {
 import { markDogDeceased } from "@/server/services/lifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
-import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
+import {
+  ensureLitterKennelRun,
+  ensureUncategorizedKennelRun,
+} from "@/server/services/kennelRun.service";
 import { createLitterWithCollisionRetry } from "@/server/services/litterPersistence.service";
 import {
   getValidNegativeBrucellosisTest,
@@ -913,6 +916,16 @@ async function resolveWhelpingAttempt(args: {
         traitTopline: puppy.traits.topline,
       })),
     });
+
+    if (fresh.createdByKennelId && persistedLitter.puppies.length > 0) {
+      await ensureLitterKennelRun({
+        client: tx,
+        kennelId: fresh.createdByKennelId,
+        litterId: outcome.litter.litterId,
+        breedCode2: outcome.litter.breedCode2,
+        serial7: persistedLitter.serial7,
+      });
+    }
 
     await ensurePhenotypeHealthTruthsForDogs(
       tx,

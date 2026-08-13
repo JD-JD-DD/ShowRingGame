@@ -6,7 +6,10 @@ import { buildPuppySexes, loadPedigreeForCoi, mapBreedingTraits } from "@/server
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { infectPuppiesFromDamBrucellosis } from "@/server/services/infectiousDisease.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
+import {
+  ensureLitterKennelRun,
+  ensureUncategorizedKennelRun,
+} from "@/server/services/kennelRun.service";
 import { createLitterWithCollisionRetry } from "@/server/services/litterPersistence.service";
 import { markDogDeceased } from "@/server/services/lifecycle.service";
 import { calculatePedigreeCoi, resolveReproductiveEmergencyOutcome, resolveWhelp } from "@showring/rules";
@@ -62,6 +65,9 @@ export async function resolveReproductiveEmergencyEvent(args: { eventId: string;
       });
       const kennelRunId = attempt.createdByKennelId ? attempt.dam.kennelRunId ?? (await ensureUncategorizedKennelRun({ kennelId: attempt.createdByKennelId, client: tx })).id : null;
       await tx.dog.createMany({ data: persistedLitter.puppies.map((puppy) => ({ id: puppy.dogId, ownerKennelId: attempt.createdByKennelId, breederKennelId: attempt.createdByKennelId, kennelRunId, callName: null, registeredName: null, regNumber: puppy.regNumber, breedCode2: puppy.breedCode2, sex: puppy.sex, birthEpoch: puppy.birthEpoch, lifecycleState: "ALIVE", marketState: "NOT_FOR_SALE", originType: "PLAYER_BRED", isFoundation: false, sireId: puppy.sireId, damId: puppy.damId, litterId, litterOrder: puppy.litterOrder, coiPercent: coi.coiPercent, coiGenerationDepth: coi.generationDepth, traitHead: puppy.traits.head, traitForequarters: puppy.traits.forequarters, traitHindquarters: puppy.traits.hindquarters, traitGait: puppy.traits.gait, traitCoat: puppy.traits.coat, traitSize: puppy.traits.size, traitTemperament: puppy.traits.temperament, traitShowShine: puppy.traits.show_shine, traitFeet: puppy.traits.feet, traitTopline: puppy.traits.topline })) });
+      if (attempt.createdByKennelId && persistedLitter.puppies.length > 0) {
+        await ensureLitterKennelRun({ client: tx, kennelId: attempt.createdByKennelId, litterId, breedCode2: attempt.breedCode2, serial7: persistedLitter.serial7 });
+      }
       await ensurePhenotypeHealthTruthsForDogs(tx, puppyIds);
       await infectPuppiesFromDamBrucellosis(tx, { damId: attempt.damId, puppyDogIds: puppyIds, currentEpoch: args.currentEpoch, breedingAttemptId: attempt.id });
     }

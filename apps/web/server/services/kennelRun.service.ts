@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import type { KennelRun, PrismaClient } from "@prisma/client";
+import { Prisma, type KennelRun, type PrismaClient } from "@prisma/client";
 
 export const UNCATEGORIZED_KENNEL_RUN_NAME = "Uncategorized";
 
@@ -29,6 +29,7 @@ export const STARTER_KENNEL_RUNS = [
 ] as const;
 
 export type KennelRunClient = Pick<PrismaClient, "kennelRun">;
+export type LitterKennelRunClient = Pick<Prisma.TransactionClient, "kennelRun">;
 
 const kennelRunSelect = {
   id: true,
@@ -84,6 +85,75 @@ export async function ensureUncategorizedKennelRun(args: {
   });
 
   return existing ?? upsertStarterRun(client, args.kennelId, STARTER_KENNEL_RUNS[0]);
+}
+
+export function formatLitterKennelRunName(args: {
+  breedCode2: string;
+  serial7: string;
+}): string {
+  return `${args.breedCode2}${args.serial7}`;
+}
+
+export async function ensureLitterKennelRun(args: {
+  kennelId: string;
+  litterId: string;
+  breedCode2: string;
+  serial7: string;
+  client: LitterKennelRunClient;
+}): Promise<KennelRun> {
+  const existing = await args.client.kennelRun.findUnique({
+    where: { sourceLitterId: args.litterId },
+    select: kennelRunSelect,
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  const name = formatLitterKennelRunName(args);
+  const nameConflict = await args.client.kennelRun.findUnique({
+    where: { kennelId_name: { kennelId: args.kennelId, name } },
+    select: { id: true },
+  });
+
+  if (nameConflict) {
+    throw new Error(
+      `Cannot create litter Kennel Run: name ${name} is already in use for this kennel.`
+    );
+  }
+
+  const lastRun = await args.client.kennelRun.findFirst({
+    where: { kennelId: args.kennelId },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+
+  try {
+    return await args.client.kennelRun.create({
+      data: {
+        kennelId: args.kennelId,
+        name,
+        sortOrder: (lastRun?.sortOrder ?? -1) + 1,
+        isSystem: false,
+        kind: "LITTER",
+        sourceLitterId: args.litterId,
+      },
+      select: kennelRunSelect,
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const concurrentRun = await args.client.kennelRun.findUnique({
+        where: { sourceLitterId: args.litterId },
+        select: kennelRunSelect,
+      });
+
+      if (concurrentRun) {
+        return concurrentRun;
+      }
+    }
+
+    throw error;
+  }
 }
 
 export async function ensureStarterKennelRuns(args: {

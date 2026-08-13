@@ -41,6 +41,7 @@
     "test:reproductive-emergency-presentation": "tsx scripts/testReproductiveEmergencyPresentation.ts",
     "test:litter-ownership": "tsx scripts/testLitterOwnershipSemantics.ts",
     "test:litter-attribution": "tsx scripts/testLitterAttributionInvariant.ts",
+    "test:litter-kennel-run-creation": "tsx scripts/testLitterKennelRunCreation.ts",
     "test:litter-read-only-progression": "tsx scripts/testLitterReadOnlyProgression.ts",
     "test:litter-list-summary-read-model": "tsx scripts/testLitterListSummaryReadModel.ts",
     "test:litter-navigation-progression": "tsx scripts/testLitterNavigationProgression.ts",
