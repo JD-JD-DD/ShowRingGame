@@ -59,6 +59,7 @@ export default function GameHeaderNav({
 }: GameHeaderNavProps) {
   const pathname = usePathname();
   const [accountOpen, setAccountOpen] = useState(false);
+  const [mobileCollapsed, setMobileCollapsed] = useState(false);
   const accountRef = useRef<HTMLDivElement | null>(null);
   const accountActive = accountItems.some((item) =>
     isActivePath(pathname, item.href)
@@ -103,8 +104,15 @@ export default function GameHeaderNav({
   return (
     <nav
       aria-label="Game navigation"
-      className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5"
+      className="flex min-w-0 flex-1 items-center gap-1.5"
     >
+      <div
+        id="game-header-navigation"
+        className={[
+          "min-w-0 flex-1 flex-wrap items-center gap-1.5",
+          mobileCollapsed ? "hidden lg:flex" : "flex",
+        ].join(" ")}
+      >
       {navItems.map((item) => (
         <Link
           key={item.href}
@@ -171,6 +179,32 @@ export default function GameHeaderNav({
         </div>
         {inbox}
       </div>
+      </div>
+
+      {mobileCollapsed ? (
+        <div className="game-header__utilities ml-auto flex items-center gap-1.5 lg:hidden">
+          {balance !== null ? (
+            <div className="game-header__balance rounded-xl px-2.5 py-1.5 text-sm font-semibold">
+              Balance: {formatMoney(balance)}
+            </div>
+          ) : null}
+          {inbox}
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        aria-controls="game-header-navigation"
+        aria-expanded={!mobileCollapsed}
+        aria-label={mobileCollapsed ? "Expand navigation" : "Collapse navigation"}
+        onClick={() => {
+          setMobileCollapsed((current) => !current);
+          setAccountOpen(false);
+        }}
+        className="game-header__account-button rounded-xl px-2.5 py-1.5 text-sm font-semibold transition lg:hidden"
+      >
+        <span aria-hidden="true">{mobileCollapsed ? "⌄" : "⌃"}</span>
+      </button>
     </nav>
   );
 }
