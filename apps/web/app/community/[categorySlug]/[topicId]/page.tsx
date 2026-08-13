@@ -165,7 +165,14 @@ export default async function CommunityTopicPage({
 
         <section className="grid gap-4">
           {topic.posts.map((post, index) => (
-            <article key={post.id} className={`rounded-[24px] p-5 ${post.moderationStatus === "VISIBLE" ? "theme-card" : "theme-status-warning"}`}>
+            <article
+              key={post.id}
+              className={`rounded-[24px] p-5 ${
+                post.moderationStatus === "VISIBLE"
+                  ? "theme-card"
+                  : "theme-status-warning [&_.theme-heading]:text-[var(--color-warning-text)] [&_.theme-copy]:text-[var(--color-warning-text)] [&_.theme-label]:text-[var(--color-warning-text)]"
+              }`}
+            >
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <CommunityAuthor kennel={post.kennel} badges={post.badges} />
                 <div className="theme-label text-xs">{index === 0 ? "Original post" : `Reply ${index}`} · {formatPostTime(post.createdAt)}</div>
