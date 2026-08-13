@@ -37,7 +37,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("showring-theme");if(t==="dark")document.documentElement.dataset.theme="dark"}catch(e){}`,
+            __html: `try{var t=localStorage.getItem("showring-theme");if(["dark","forest-glen","seaside","galaxy","rosewood","high-desert"].includes(t))document.documentElement.dataset.theme=t}catch(e){}`,
           }}
         />
       </head>

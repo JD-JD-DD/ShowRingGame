@@ -2,7 +2,17 @@
 
 import { useId, useSyncExternalStore } from "react";
 
-type Theme = "light" | "dark";
+const themeOptions = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "forest-glen", label: "Forest Glen" },
+  { value: "seaside", label: "Seaside" },
+  { value: "galaxy", label: "Galaxy" },
+  { value: "rosewood", label: "Rosewood" },
+  { value: "high-desert", label: "High Desert" },
+] as const;
+
+type Theme = (typeof themeOptions)[number]["value"];
 
 const THEME_STORAGE_KEY = "showring-theme";
 const THEME_CHANGE_EVENT = "showring-theme-change";
@@ -18,7 +28,11 @@ function subscribeToTheme(onStoreChange: () => void) {
 }
 
 function getTheme(): Theme {
-  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  const currentTheme = document.documentElement.dataset.theme;
+
+  return themeOptions.some((option) => option.value === currentTheme)
+    ? (currentTheme as Theme)
+    : "light";
 }
 
 export default function ThemeToggle() {
@@ -44,8 +58,11 @@ export default function ThemeToggle() {
         onChange={(event) => setTheme(event.target.value as Theme)}
         className="game-header__color-mode-select mt-1 w-full rounded-lg px-2 py-1 text-sm font-semibold"
       >
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
+        {themeOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
       </select>
     </div>
   );
