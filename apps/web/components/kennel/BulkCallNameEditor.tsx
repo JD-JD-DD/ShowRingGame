@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 
-import { MAX_CALL_NAME_LENGTH } from "@/server/validation/dogName.validation";
+import {
+  MAX_CALL_NAME_LENGTH,
+} from "@/server/validation/dogName.validation";
 
 type BulkNamingDog = {
   dogId: string;
@@ -27,19 +29,26 @@ export default function BulkCallNameEditor({
   onSaved,
 }: Props) {
   const [callNames, setCallNames] = useState<Record<string, string>>({});
+  const [registeredNames, setRegisteredNames] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmingRegisteredNames, setConfirmingRegisteredNames] = useState(false);
 
   useEffect(() => {
     setCallNames(
       Object.fromEntries(dogs.map((dog) => [dog.dogId, dog.callName ?? ""]))
     );
+    setRegisteredNames({});
     setError(null);
+    setConfirmingRegisteredNames(false);
   }, [dogs]);
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const hasNewRegisteredNames = dogs.some(
+    (dog) => !dog.registeredName && Boolean(registeredNames[dog.dogId]?.trim())
+  );
+
+  async function save() {
     setIsSaving(true);
     setError(null);
     setMessage(null);
@@ -53,6 +62,9 @@ export default function BulkCallNameEditor({
           updates: dogs.map((dog) => ({
             dogId: dog.dogId,
             callName: callNames[dog.dogId] ?? "",
+            ...(!dog.registeredName && registeredNames[dog.dogId]?.trim()
+              ? { registeredName: registeredNames[dog.dogId] }
+              : {}),
           })),
         }),
       });
@@ -68,7 +80,7 @@ export default function BulkCallNameEditor({
 
       await onSaved();
       setMessage(
-        `Updated ${data.updatedCount ?? dogs.length} call name${
+        `Updated ${data.updatedCount ?? dogs.length} dog name${
           (data.updatedCount ?? dogs.length) === 1 ? "" : "s"
         }.`
       );
@@ -76,11 +88,22 @@ export default function BulkCallNameEditor({
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Unable to update call names."
+          : "Unable to update names."
       );
     } finally {
       setIsSaving(false);
     }
+  }
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (hasNewRegisteredNames && !confirmingRegisteredNames) {
+      setConfirmingRegisteredNames(true);
+      return;
+    }
+
+    void save();
   }
 
   return (
@@ -91,7 +114,7 @@ export default function BulkCallNameEditor({
             Bulk Naming
           </h2>
           <p className="theme-copy mt-1 text-xs">
-            Edit call names for every dog in {runName}. Registered names are read-only.
+            Edit call names for every dog in {runName}. Registered names are permanent once assigned.
           </p>
         </div>
         <button
@@ -127,7 +150,27 @@ export default function BulkCallNameEditor({
                 </div>
                 <div className="min-w-0 text-sm">
                   <span className="theme-label mr-2 text-[0.68rem] uppercase tracking-wide md:hidden">Registered Name</span>
-                  <span className="theme-copy">{dog.registeredName ?? "Not registered"}</span>
+                  {dog.registeredName ? (
+                    <span className="theme-copy">{dog.registeredName}</span>
+                  ) : (
+                    <label className="grid gap-1">
+                      <span className="theme-label text-[0.68rem] uppercase tracking-wide md:sr-only">Registered Name</span>
+                      <input
+                        type="text"
+                        value={registeredNames[dog.dogId] ?? ""}
+                        maxLength={45}
+                        onChange={(event) => {
+                          setRegisteredNames((current) => ({
+                            ...current,
+                            [dog.dogId]: event.target.value,
+                          }));
+                          setConfirmingRegisteredNames(false);
+                        }}
+                        className="theme-control w-full rounded-lg px-3 py-2 text-sm outline-none"
+                        placeholder="Registered name"
+                      />
+                    </label>
+                  )}
                 </div>
                 <label className="grid gap-1 text-sm">
                   <span className="theme-label text-[0.68rem] uppercase tracking-wide md:sr-only">Call Name</span>
@@ -159,6 +202,33 @@ export default function BulkCallNameEditor({
           <p className="theme-status-success mt-3 rounded-xl px-3 py-2 text-sm" role="status">
             {message}
           </p>
+        ) : null}
+
+        {confirmingRegisteredNames ? (
+          <div className="theme-status-danger mt-3 rounded-xl px-3 py-3 text-sm">
+            <p className="font-semibold">Confirm permanent registered names.</p>
+            <p className="mt-1">
+              Registered names cannot be changed after confirmation. Call names remain editable.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void save()}
+                disabled={isSaving}
+                className="theme-status-danger rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Confirm and Submit
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingRegisteredNames(false)}
+                disabled={isSaving}
+                className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Back
+              </button>
+            </div>
+          </div>
         ) : null}
 
         <div className="mt-4 flex justify-end">

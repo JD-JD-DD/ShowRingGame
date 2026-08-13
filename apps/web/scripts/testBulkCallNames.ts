@@ -12,6 +12,7 @@ type Dog = {
   ownerKennelId: string;
   kennelRunId: string;
   callName: string | null;
+  registeredName: string | null;
 };
 
 type FakeClient = {
@@ -19,12 +20,14 @@ type FakeClient = {
     findUnique(args: { where: { id: string } }): Promise<{ id: string; kennelId: string } | null>;
   };
   dog: {
-    findMany(args: { where: { id: { in: string[] } } }): Promise<Array<Pick<Dog, "id" | "ownerKennelId" | "kennelRunId">>>;
+    findMany(args: { where: { id: { in: string[] } } }): Promise<Array<Pick<Dog, "id" | "ownerKennelId" | "kennelRunId" | "registeredName">>>;
+    findFirst(args: { where: { id: { not: string }; registeredName: { equals: string; mode: "insensitive" } } }): Promise<{ id: string } | null>;
     updateMany(args: {
       where: { id: string; ownerKennelId: string; kennelRunId: string };
-      data: { callName: string | null };
+      data: { callName?: string | null; registeredName?: string };
     }): Promise<{ count: number }>;
   };
+  breed: { findMany(): Promise<Array<{ name: string }>> };
   $transaction<T>(work: (tx: FakeClient) => Promise<T>): Promise<T>;
 };
 
@@ -46,11 +49,21 @@ function createClient(seedDogs: Dog[]) {
           id: dog.id,
           ownerKennelId: dog.ownerKennelId,
           kennelRunId: dog.kennelRunId,
+          registeredName: dog.registeredName,
         }));
+      },
+      async findFirst({ where }) {
+        const dog = dogs.find(
+          (candidate) =>
+            candidate.id !== where.id.not &&
+            candidate.registeredName?.toLowerCase() ===
+              where.registeredName.equals.toLowerCase()
+        );
+        return dog ? { id: dog.id } : null;
       },
       async updateMany(args: {
         where: { id: string; ownerKennelId: string; kennelRunId: string };
-        data: { callName: string | null };
+        data: { callName?: string | null; registeredName?: string };
       }) {
         const dog = dogs.find(
           (candidate) =>
@@ -59,8 +72,14 @@ function createClient(seedDogs: Dog[]) {
             candidate.kennelRunId === args.where.kennelRunId
         );
         if (!dog) return { count: 0 };
-        dog.callName = args.data.callName;
+        if (args.data.callName !== undefined) dog.callName = args.data.callName;
+        if (args.data.registeredName !== undefined) dog.registeredName = args.data.registeredName;
         return { count: 1 };
+      },
+    },
+    breed: {
+      async findMany() {
+        return [{ name: "Golden Retriever" }];
       },
     },
     async $transaction<T>(work: (tx: FakeClient) => Promise<T>) {
@@ -83,8 +102,8 @@ async function assertRejects(work: () => Promise<unknown>, message: string) {
 
 async function main() {
   const valid = createClient([
-    { id: "dog-a", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: "Old" },
-    { id: "dog-b", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: "Keep" },
+    { id: "dog-a", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: "Old", registeredName: null },
+    { id: "dog-b", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: "Keep", registeredName: null },
   ]);
 
   const result = await updateKennelRunDogCallNames({
@@ -101,19 +120,60 @@ async function main() {
   assert.equal(valid.dogs[0]?.callName, "Final Name", "last duplicate value is retained");
   assert.equal(valid.dogs[1]?.callName, null, "empty call names clear to null");
 
-  const foreignRun = createClient([{ id: "dog-a", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: null }]);
+  const foreignRun = createClient([{ id: "dog-a", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: null, registeredName: null }]);
   await assertRejects(
     () => updateKennelRunDogCallNames({ kennelId: "kennel-a", kennelRunId: "run-b", updates: [{ dogId: "dog-a", callName: "Name" }], client: foreignRun.client as never }),
     "foreign kennel runs are rejected"
   );
 
   const stale = createClient([
-    { id: "dog-a", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: "Before" },
-    { id: "dog-b", ownerKennelId: "kennel-a", kennelRunId: "other-run", callName: "Other" },
+    { id: "dog-a", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: "Before", registeredName: null },
+    { id: "dog-b", ownerKennelId: "kennel-a", kennelRunId: "other-run", callName: "Other", registeredName: null },
   ]);
   await assertRejects(
     () => updateKennelRunDogCallNames({ kennelId: "kennel-a", kennelRunId: "run-a", updates: [{ dogId: "dog-a", callName: "Changed" }, { dogId: "dog-b", callName: "Invalid" }], client: stale.client as never }),
     "foreign or stale dogs reject the complete request"
+  );
+
+  const registered = createClient([
+    { id: "dog-a", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: null, registeredName: null },
+    { id: "dog-b", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: "Old", registeredName: null },
+  ]);
+  await updateKennelRunDogCallNames({
+    kennelId: "kennel-a",
+    kennelRunId: "run-a",
+    updates: [
+      { dogId: "dog-a", registeredName: "  North Star  " },
+      { dogId: "dog-b", registeredName: "Silver Moon", callName: "New" },
+    ],
+    client: registered.client as never,
+  });
+  assert.equal(registered.dogs[0]?.registeredName, "North Star", "registered names use canonical normalization");
+  assert.equal(registered.dogs[1]?.registeredName, "Silver Moon", "mixed registered and call-name updates succeed");
+  assert.equal(registered.dogs[1]?.callName, "New", "mixed updates retain call-name changes");
+
+  await assertRejects(
+    () => updateKennelRunDogCallNames({ kennelId: "kennel-a", kennelRunId: "run-a", updates: [{ dogId: "dog-a", registeredName: "Replacement" }], client: registered.client as never }),
+    "already registered dogs cannot be renamed"
+  );
+  await assertRejects(
+    () => updateKennelRunDogCallNames({ kennelId: "kennel-a", kennelRunId: "run-a", updates: [{ dogId: "dog-b", registeredName: "Bad123" }], client: valid.client as never }),
+    "invalid registered names are rejected"
+  );
+
+  const conflicts = createClient([
+    { id: "dog-a", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: "Before", registeredName: null },
+    { id: "dog-b", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: null, registeredName: "Existing Name" },
+    { id: "dog-c", ownerKennelId: "kennel-a", kennelRunId: "run-a", callName: null, registeredName: null },
+  ]);
+  await assertRejects(
+    () => updateKennelRunDogCallNames({ kennelId: "kennel-a", kennelRunId: "run-a", updates: [{ dogId: "dog-a", registeredName: "existing name", callName: "Changed" }], client: conflicts.client as never }),
+    "case-insensitive database conflicts are rejected"
+  );
+  assert.equal(conflicts.dogs[0]?.callName, "Before", "registered-name failures roll back call-name changes");
+  await assertRejects(
+    () => updateKennelRunDogCallNames({ kennelId: "kennel-a", kennelRunId: "run-a", updates: [{ dogId: "dog-a", registeredName: "Twin Name" }, { dogId: "dog-c", registeredName: "twin name" }], client: conflicts.client as never }),
+    "batch duplicate registered names are rejected"
   );
   assert.equal(stale.dogs[0]?.callName, "Before", "rejected updates are atomic");
 

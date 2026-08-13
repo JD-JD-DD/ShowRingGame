@@ -6,7 +6,10 @@ import {
   ensureStarterKennelRuns,
   ensureUncategorizedKennelRun,
 } from "@/server/services/kennelRun.service";
-import { validateCallName } from "@/server/validation/dogName.validation";
+import {
+  validateCallName,
+  validateRegisteredDogName,
+} from "@/server/validation/dogName.validation";
 
 const MAX_KENNEL_RUN_NAME_LENGTH = 60;
 
@@ -17,7 +20,13 @@ type KennelRunTransactionRunner = KennelRunClient & {
 
 type BulkCallNameUpdate = {
   dogId: string;
-  callName: string | null;
+  callName?: string | null;
+  registeredName?: string;
+};
+
+type BulkNamingClient = Pick<PrismaClient, "dog" | "kennelRun" | "breed">;
+type BulkNamingTransactionRunner = BulkNamingClient & {
+  $transaction<T>(fn: (tx: BulkNamingClient) => Promise<T>): Promise<T>;
 };
 
 export type KennelRunMoveDirection = "up" | "down";
@@ -527,10 +536,10 @@ export async function updateKennelRunDogCallNames(args: {
   kennelId: string;
   kennelRunId: unknown;
   updates: unknown;
-  client?: KennelRunTransactionRunner;
+  client?: BulkNamingTransactionRunner;
 }) {
   const client =
-    args.client ?? (db as unknown as KennelRunTransactionRunner);
+    args.client ?? (db as unknown as BulkNamingTransactionRunner);
   const kennelRunId = String(args.kennelRunId ?? "").trim();
 
   if (!kennelRunId) {
@@ -538,7 +547,7 @@ export async function updateKennelRunDogCallNames(args: {
   }
 
   if (!Array.isArray(args.updates) || args.updates.length === 0) {
-    throw new KennelRunServiceError("At least one call name update is required.");
+    throw new KennelRunServiceError("At least one naming update is required.");
   }
 
   const updatesByDogId = new Map<string, BulkCallNameUpdate>();
@@ -548,30 +557,40 @@ export async function updateKennelRunDogCallNames(args: {
       throw new KennelRunServiceError("Each call name update must include a dog.");
     }
 
-    const update = rawUpdate as { dogId?: unknown; callName?: unknown };
+    const update = rawUpdate as {
+      dogId?: unknown;
+      callName?: unknown;
+      registeredName?: unknown;
+    };
     const dogId = String(update.dogId ?? "").trim();
 
     if (!dogId) {
       throw new KennelRunServiceError("Each call name update must include a dog.");
     }
 
-    if (
-      update.callName !== undefined &&
-      update.callName !== null &&
-      typeof update.callName !== "string"
-    ) {
+    if (update.callName !== undefined && update.callName !== null && typeof update.callName !== "string") {
       throw new KennelRunServiceError("Call names must be text.");
     }
 
-    const validation = validateCallName(update.callName ?? null);
+    if (update.registeredName !== undefined && typeof update.registeredName !== "string") {
+      throw new KennelRunServiceError("Registered names must be text.");
+    }
 
-    if (!validation.ok) {
-      throw new KennelRunServiceError(validation.error);
+    const callNameValidation =
+      update.callName === undefined
+        ? null
+        : validateCallName(update.callName ?? null);
+
+    if (callNameValidation && !callNameValidation.ok) {
+      throw new KennelRunServiceError(callNameValidation.error);
     }
 
     updatesByDogId.set(dogId, {
       dogId,
-      callName: validation.name || null,
+      ...(callNameValidation ? { callName: callNameValidation.name || null } : {}),
+      ...(update.registeredName !== undefined
+        ? { registeredName: update.registeredName }
+        : {}),
     });
   }
 
@@ -589,7 +608,7 @@ export async function updateKennelRunDogCallNames(args: {
 
     const dogs = await tx.dog.findMany({
       where: { id: { in: updates.map((update) => update.dogId) } },
-      select: { id: true, ownerKennelId: true, kennelRunId: true },
+      select: { id: true, ownerKennelId: true, kennelRunId: true, registeredName: true },
     });
     const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
     const invalidUpdate = updates.find((update) => {
@@ -608,6 +627,57 @@ export async function updateKennelRunDogCallNames(args: {
       );
     }
 
+    const requestedRegisteredNames = updates.filter(
+      (update): update is BulkCallNameUpdate & { registeredName: string } =>
+        update.registeredName !== undefined
+    );
+
+    if (requestedRegisteredNames.length > 0) {
+      const breeds = await tx.breed.findMany({ select: { name: true } });
+      const proposedNames = new Set<string>();
+
+      for (const update of requestedRegisteredNames) {
+        const dog = dogsById.get(update.dogId);
+
+        if (dog?.registeredName?.trim()) {
+          throw new KennelRunServiceError("This dog already has a registered name.", 409);
+        }
+
+        const validation = validateRegisteredDogName(
+          update.registeredName,
+          breeds.map((breed) => breed.name)
+        );
+
+        if (!validation.ok) {
+          throw new KennelRunServiceError(validation.error);
+        }
+
+        const comparisonName = validation.name.toLowerCase();
+        if (proposedNames.has(comparisonName)) {
+          throw new KennelRunServiceError("That dog name is already in use.", 409);
+        }
+        proposedNames.add(comparisonName);
+        update.registeredName = validation.name;
+      }
+
+      for (const update of requestedRegisteredNames) {
+        const existingDog = await tx.dog.findFirst({
+          where: {
+            id: { not: update.dogId },
+            registeredName: {
+              equals: update.registeredName,
+              mode: "insensitive",
+            },
+          },
+          select: { id: true },
+        });
+
+        if (existingDog) {
+          throw new KennelRunServiceError("That dog name is already in use.", 409);
+        }
+      }
+    }
+
     for (const update of updates) {
       const result = await tx.dog.updateMany({
         where: {
@@ -615,7 +685,12 @@ export async function updateKennelRunDogCallNames(args: {
           ownerKennelId: args.kennelId,
           kennelRunId,
         },
-        data: { callName: update.callName },
+        data: {
+          ...(update.callName !== undefined ? { callName: update.callName } : {}),
+          ...(update.registeredName !== undefined
+            ? { registeredName: update.registeredName }
+            : {}),
+        },
       });
 
       if (result.count !== 1) {

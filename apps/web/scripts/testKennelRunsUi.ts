@@ -202,10 +202,12 @@ assertIncludes(
   "Bulk Naming preserves local roster state while refreshing dogs"
 );
 assertIncludes(bulkCallNameEditor, "regNumber", "Bulk Naming displays registration numbers");
-assertIncludes(bulkCallNameEditor, "Not registered", "Bulk Naming has a neutral unregistered state");
+assertIncludes(bulkCallNameEditor, "dog.registeredName ?", "existing registered names stay read-only");
+assertIncludes(bulkCallNameEditor, 'placeholder="Registered name"', "blank registered names expose an editor");
 assertIncludes(bulkCallNameEditor, "maxLength={MAX_CALL_NAME_LENGTH}", "Bulk Naming uses the canonical call-name limit");
 assertIncludes(bulkCallNameEditor, "callName: callNames[dog.dogId]", "Bulk Naming submits only editable call names");
-assertExcludes(bulkCallNameEditor, "registeredName: dog", "Bulk Naming does not submit registered names");
+assertIncludes(bulkCallNameEditor, "Confirm permanent registered names.", "registered-name assignments require confirmation");
+assertIncludes(bulkCallNameEditor, "hasNewRegisteredNames && !confirmingRegisteredNames", "call-name-only saves skip permanence confirmation");
 assertIncludes(
   kennelPanel,
   "Uncategorized",
