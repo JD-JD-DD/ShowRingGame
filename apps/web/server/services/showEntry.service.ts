@@ -143,6 +143,49 @@ function duplicateShowEntryError(): ShowEntrySubmissionError {
   });
 }
 
+type BulkShowEntryTransactionPhase =
+  | "VALIDATE_REQUEST"
+  | "LOAD_CONTEXT"
+  | "LOAD_EXISTING_ENTRIES"
+  | "BUILD_HANDLER_PLAN"
+  | "REATTRIBUTE_HANDLERS"
+  | "ENSURE_JUDGING_BLOCKS"
+  | "UPDATE_BALANCE"
+  | "UPSERT_WEEKEND_PLAN"
+  | "CREATE_ENTRIES"
+  | "CREATE_LEDGER"
+  | "COMMIT"
+  | "UNKNOWN";
+
+function getBulkShowEntryPrismaErrorDetails(error: unknown): {
+  errorClass: string;
+  prismaCode: string | null;
+  prismaTarget: string | string[] | null;
+  appearsTransient: boolean;
+} {
+  const errorClass = error instanceof Error ? error.name : typeof error;
+  const knownError =
+    error instanceof Prisma.PrismaClientKnownRequestError ? error : null;
+  const prismaCode = knownError?.code ?? null;
+  const target = knownError?.meta?.target;
+  const prismaTarget =
+    typeof target === "string" || Array.isArray(target) ? target : null;
+
+  // These codes identify connection acquisition/connectivity or interactive
+  // transaction conflicts. Other Prisma errors remain deliberately unclassified
+  // until production evidence identifies them.
+  const appearsTransient =
+    error instanceof Prisma.PrismaClientInitializationError ||
+    prismaCode === "P1001" ||
+    prismaCode === "P1002" ||
+    prismaCode === "P1008" ||
+    prismaCode === "P1017" ||
+    prismaCode === "P2024" ||
+    prismaCode === "P2034";
+
+  return { errorClass, prismaCode, prismaTarget, appearsTransient };
+}
+
 type ShowBlockForEntry = Prisma.ShowJudgingBlockGetPayload<
   typeof showBlockForEntryArgs
 >;
@@ -2213,11 +2256,17 @@ export async function createShowEntriesForCluster(args: {
   currentEpoch: number;
   mode?: "SELECTED" | "ALL_ELIGIBLE";
 }): Promise<BulkShowEntryResultDto> {
+  const requestStartedAt = Date.now();
   const { showId, kennelId, currentEpoch } = args;
   const scope = normalizePlannerScope(args.scope);
   const selections = uniqueSelections(args.selections);
   const mode = args.mode ?? "SELECTED";
+  const requestShowDayCount = new Set(selections.map((selection) => selection.showDayId)).size;
+  const dogIds = [...new Set(selections.map((selection) => selection.dogId))];
+  let phase: BulkShowEntryTransactionPhase = "VALIDATE_REQUEST";
+  let transactionStartedAt: number | null = null;
 
+  try {
   if (scope.type === "BREED" && !scope.breedCode2) {
     throw createShowEntrySubmissionError({
       code: "INVALID_ENTRY_SCOPE",
@@ -2238,7 +2287,7 @@ export async function createShowEntriesForCluster(args: {
     throw new Error("Select at least one dog and show day.");
   }
 
-  const dogIds = [...new Set(selections.map((selection) => selection.dogId))];
+  phase = "LOAD_CONTEXT";
   const pendingEmergencyDogs = await db.dog.findMany({
     where: {
       id: { in: dogIds },
@@ -2263,7 +2312,9 @@ export async function createShowEntriesForCluster(args: {
     throw createDogEmergencyCareError(pendingEmergencyDogs);
   }
 
-  return db.$transaction(async (tx) => {
+    transactionStartedAt = Date.now();
+    return await db.$transaction(async (tx) => {
+    phase = "LOAD_CONTEXT";
     const cluster = await tx.showCluster.findUnique({
       where: { id: showId },
       include: {
@@ -2393,6 +2444,7 @@ export async function createShowEntriesForCluster(args: {
       throw new Error("One or more selected dogs could not be found.");
     }
 
+    phase = "LOAD_EXISTING_ENTRIES";
     const existingEntries = await tx.showEntry.findMany({
       where: {
         dogId: { in: dogIds },
@@ -2625,6 +2677,7 @@ export async function createShowEntriesForCluster(args: {
       });
     }
 
+    phase = "BUILD_HANDLER_PLAN";
     const affectedHandlerGroupKeys = new Set<string>();
     const proposedDogIdsByHandlerGroupKey = new Map<string, Set<string>>();
 
@@ -2684,6 +2737,7 @@ export async function createShowEntriesForCluster(args: {
 
     const handlerUsedByDogIdByGroupKey = new Map<string, Map<string, boolean>>();
 
+    phase = "REATTRIBUTE_HANDLERS";
     for (const groupKey of affectedHandlerGroupKeys) {
       const existingEntries = existingEntriesByHandlerGroupKey.get(groupKey) ?? [];
       const handlerUsedByDogId = getDeterministicHandlerUsedByDogId([
@@ -2725,6 +2779,7 @@ export async function createShowEntriesForCluster(args: {
       }
     }
 
+    phase = "ENSURE_JUDGING_BLOCKS";
     const blockIdByDayId = new Map<string, string>();
 
     for (const selection of validSelections) {
@@ -2751,11 +2806,13 @@ export async function createShowEntriesForCluster(args: {
       );
     }
 
+    phase = "UPDATE_BALANCE";
     await tx.kennel.update({
       where: { id: kennel.id },
       data: { balance: balanceAfter },
     });
 
+    phase = "UPSERT_WEEKEND_PLAN";
     if (!weekendPlan) {
       await tx.kennelShowWeekendPlan.create({
         data: {
@@ -2768,6 +2825,7 @@ export async function createShowEntriesForCluster(args: {
       });
     }
 
+    phase = "CREATE_ENTRIES";
     await tx.showEntry
       .createMany({
         data: validSelections.map((selection) => {
@@ -2808,6 +2866,7 @@ export async function createShowEntriesForCluster(args: {
         throw error;
       });
 
+    phase = "CREATE_LEDGER";
     const ledgerRows: Prisma.LedgerTransactionCreateManyInput[] = [];
     let runningBalance = kennel.balance;
 
@@ -2860,7 +2919,8 @@ export async function createShowEntriesForCluster(args: {
       await tx.ledgerTransaction.createMany({ data: ledgerRows });
     }
 
-      return {
+    phase = "COMMIT";
+    return {
       showId,
       scope: resolvedScope,
       entriesCreated: validSelections.length,
@@ -2877,7 +2937,26 @@ export async function createShowEntriesForCluster(args: {
         ...quote,
       },
     };
-  });
+    });
+  } catch (error) {
+    const errorDetails = getBulkShowEntryPrismaErrorDetails(error);
+    console.error("[bulk-show-entry-failed]", {
+      showId,
+      kennelId,
+      requestedSelectionCount: selections.length,
+      uniqueDogCount: dogIds.length,
+      showDayCount: requestShowDayCount,
+      breedCount: scope.type === "BREED" ? 1 : null,
+      scopeType: scope.type,
+      plannerMode: mode,
+      phase,
+      elapsedMs: Date.now() - requestStartedAt,
+      transactionElapsedMs:
+        transactionStartedAt == null ? null : Date.now() - transactionStartedAt,
+      ...errorDetails,
+    });
+    throw error;
+  }
 }
 
 export async function seedTestEntriesForShow(args: {

@@ -94,6 +94,21 @@ assertIncludes(
   "show entry route uses the new generic unexpected-error fallback"
 );
 assertIncludes(
+  showEntryService,
+  'console.error("[bulk-show-entry-failed]"',
+  "bulk entry emits a stable structured failure event"
+);
+assertIncludes(
+  showEntryService,
+  'phase = "ENSURE_JUDGING_BLOCKS"',
+  "bulk entry identifies the judging-block transaction phase"
+);
+assertIncludes(
+  showEntryService,
+  "transactionElapsedMs:",
+  "bulk entry records transaction elapsed time on failure"
+);
+assertIncludes(
   showPage,
   "selectedDogDaySelections",
   "show page restores exact dog/day selections after redirect"

@@ -301,7 +301,7 @@ export default async function HomePage() {
                   </svg>
                 </a>
                 <a
-                  href="https://discord.gg/qFFDmWY6WN"
+                  href="https://discord.gg/tGNRPQEvuG"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Join the ShowRing Game Discord server"
