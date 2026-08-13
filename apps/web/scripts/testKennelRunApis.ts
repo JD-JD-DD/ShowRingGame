@@ -22,6 +22,7 @@ type FakeRun = {
   name: string;
   sortOrder: number;
   isSystem: boolean;
+  kind?: "UNCATEGORIZED" | "PLAYER" | "LITTER";
   createdAt: Date;
   updatedAt: Date;
 };
@@ -70,8 +71,8 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
     kennelRun: {
       upsert(args: {
         where: { kennelId_name: { kennelId: string; name: string } };
-        update: Pick<FakeRun, "sortOrder" | "isSystem">;
-        create: Pick<FakeRun, "kennelId" | "name" | "sortOrder" | "isSystem">;
+        update: Pick<FakeRun, "sortOrder" | "isSystem" | "kind">;
+        create: Pick<FakeRun, "kennelId" | "name" | "sortOrder" | "isSystem" | "kind">;
         select?: Record<string, boolean>;
       }): Promise<FakeRun>;
       findMany(args: {
@@ -97,7 +98,7 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
         select?: Record<string, boolean>;
       }): Promise<FakeRun | null>;
       create(args: {
-        data: Pick<FakeRun, "kennelId" | "name" | "sortOrder" | "isSystem">;
+        data: Pick<FakeRun, "kennelId" | "name" | "sortOrder" | "isSystem" | "kind">;
         select?: Record<string, boolean>;
       }): Promise<FakeRun>;
       update(args: {
@@ -133,8 +134,8 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
     kennelRun: {
       async upsert(args: {
         where: { kennelId_name: { kennelId: string; name: string } };
-        update: Pick<FakeRun, "sortOrder" | "isSystem">;
-        create: Pick<FakeRun, "kennelId" | "name" | "sortOrder" | "isSystem">;
+        update: Pick<FakeRun, "sortOrder" | "isSystem" | "kind">;
+        create: Pick<FakeRun, "kennelId" | "name" | "sortOrder" | "isSystem" | "kind">;
         select?: Record<string, boolean>;
       }) {
         const key = args.where.kennelId_name;
@@ -145,6 +146,7 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
         if (existing) {
           existing.sortOrder = args.update.sortOrder;
           existing.isSystem = args.update.isSystem;
+          existing.kind = args.update.kind;
           return { ...existing };
         }
 
@@ -154,6 +156,7 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
           name: args.create.name,
           sortOrder: args.create.sortOrder,
           isSystem: args.create.isSystem,
+          kind: args.create.kind,
           createdAt: new Date(0),
           updatedAt: new Date(0),
         };
@@ -211,7 +214,7 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
         return run ? { ...run } : null;
       },
       async create(args: {
-        data: Pick<FakeRun, "kennelId" | "name" | "sortOrder" | "isSystem">;
+        data: Pick<FakeRun, "kennelId" | "name" | "sortOrder" | "isSystem" | "kind">;
       }) {
         const created = {
           id: `custom-run-${nextRunId}`,
@@ -219,6 +222,7 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
           name: args.data.name,
           sortOrder: args.data.sortOrder,
           isSystem: args.data.isSystem,
+          kind: args.data.kind,
           createdAt: new Date(0),
           updatedAt: new Date(0),
         };
@@ -438,6 +442,7 @@ async function main() {
   });
   assert.equal(customRun.name, "Sale Prospects 2");
   assert.equal(customRun.isSystem, false);
+  assert.equal(customRun.kind, "PLAYER");
 
   await assertRejectsServiceError(
     () => createKennelRun({ kennelId, name: "Specials", client: fake.client as never }),

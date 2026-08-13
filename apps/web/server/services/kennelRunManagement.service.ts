@@ -173,12 +173,14 @@ export async function createKennelRun(args: {
         name,
         sortOrder: await getNextSortOrder(client, args.kennelId),
         isSystem: false,
+        kind: "PLAYER",
       },
       select: {
         id: true,
         name: true,
         sortOrder: true,
         isSystem: true,
+        kind: true,
       },
     });
   } catch (error) {

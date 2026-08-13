@@ -50,6 +50,12 @@ enum DogPlannerTagSource {
   PROGRAM_PLANNER
 }
 
+enum KennelRunKind {
+  UNCATEGORIZED
+  PLAYER
+  LITTER
+}
+
 enum BreedingAttemptStatus {
   INITIATED
   CHECKED_NOT_PREGNANT
@@ -623,16 +629,19 @@ model KennelDogPrivateNote {
 }
 
 model KennelRun {
-  id        String   @id @default(cuid())
-  kennelId  String
-  name      String
-  sortOrder Int
-  isSystem  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String        @id @default(cuid())
+  kennelId       String
+  name           String
+  sortOrder      Int
+  isSystem       Boolean       @default(false)
+  kind           KennelRunKind
+  sourceLitterId String?       @unique
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
-  kennel Kennel @relation(fields: [kennelId], references: [id], onDelete: Cascade)
-  dogs   Dog[]
+  kennel       Kennel  @relation(fields: [kennelId], references: [id], onDelete: Cascade)
+  dogs         Dog[]
+  sourceLitter Litter? @relation(fields: [sourceLitterId], references: [id])
 
   @@unique([kennelId, name])
   @@index([kennelId])
@@ -716,6 +725,7 @@ model Litter {
   bredByKennel    Kennel?          @relation("LitterBredByKennel", fields: [bredByKennelId], references: [id])
   breedingAttempt BreedingAttempt? @relation("BreedingAttemptLitter")
   reproductiveEmergency ReproductiveEmergencyEvent?
+  sourceKennelRun KennelRun?
 
   puppies Dog[]
 

@@ -19,6 +19,7 @@ type FakeKennelRun = {
   name: string;
   sortOrder: number;
   isSystem: boolean;
+  kind?: "UNCATEGORIZED" | "PLAYER" | "LITTER";
   createdAt: Date;
   updatedAt: Date;
 };
@@ -65,10 +66,10 @@ function createFakeClient(seed?: {
       kennelRun: {
         async upsert(args: {
           where: { kennelId_name: { kennelId: string; name: string } };
-          update: Pick<FakeKennelRun, "sortOrder" | "isSystem">;
+          update: Pick<FakeKennelRun, "sortOrder" | "isSystem" | "kind">;
           create: Pick<
             FakeKennelRun,
-            "kennelId" | "name" | "sortOrder" | "isSystem"
+            "kennelId" | "name" | "sortOrder" | "isSystem" | "kind"
           >;
         }) {
           const key = args.where.kennelId_name;
@@ -79,6 +80,7 @@ function createFakeClient(seed?: {
           if (existing) {
             existing.sortOrder = args.update.sortOrder;
             existing.isSystem = args.update.isSystem;
+            existing.kind = args.update.kind;
             existing.updatedAt = new Date(existing.updatedAt.getTime() + 1);
             return projectRun(existing);
           }
@@ -89,6 +91,7 @@ function createFakeClient(seed?: {
             name: args.create.name,
             sortOrder: args.create.sortOrder,
             isSystem: args.create.isSystem,
+            kind: args.create.kind,
             createdAt: new Date(0),
             updatedAt: new Date(0),
           };
@@ -352,6 +355,7 @@ async function main() {
   assert.equal(fake.rows.length, 1, "uncategorized helper creates one run once");
   assert.equal(uncategorizedA.name, UNCATEGORIZED_KENNEL_RUN_NAME);
   assert.equal(uncategorizedA.isSystem, true);
+  assert.equal(uncategorizedA.kind, "UNCATEGORIZED");
   assert.equal(uncategorizedA.sortOrder, 0);
 
   const starterA = await ensureStarterKennelRuns({
@@ -376,6 +380,11 @@ async function main() {
     starterB.map((run) => run.name),
     STARTER_KENNEL_RUNS.map((run) => run.name),
     "ensureStarterKennelRuns remains stable on repeated calls"
+  );
+  assert.deepEqual(
+    starterB.map((run) => run.kind),
+    STARTER_KENNEL_RUNS.map((run) => run.kind),
+    "starter runs receive their canonical kinds"
   );
 
   const resetFake = createFakeClient({

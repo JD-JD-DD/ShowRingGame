@@ -4,13 +4,28 @@ import type { KennelRun, PrismaClient } from "@prisma/client";
 export const UNCATEGORIZED_KENNEL_RUN_NAME = "Uncategorized";
 
 export const STARTER_KENNEL_RUNS = [
-  { name: UNCATEGORIZED_KENNEL_RUN_NAME, sortOrder: 0, isSystem: true },
-  { name: "Specials", sortOrder: 1, isSystem: false },
-  { name: "Brood Bitches", sortOrder: 2, isSystem: false },
-  { name: "Stud Dogs", sortOrder: 3, isSystem: false },
-  { name: "Puppies", sortOrder: 4, isSystem: false },
-  { name: "Sale Prospects", sortOrder: 5, isSystem: false },
-  { name: "Retired", sortOrder: 6, isSystem: false },
+  {
+    name: UNCATEGORIZED_KENNEL_RUN_NAME,
+    sortOrder: 0,
+    isSystem: true,
+    kind: "UNCATEGORIZED",
+  },
+  { name: "Specials", sortOrder: 1, isSystem: false, kind: "PLAYER" },
+  {
+    name: "Brood Bitches",
+    sortOrder: 2,
+    isSystem: false,
+    kind: "PLAYER",
+  },
+  { name: "Stud Dogs", sortOrder: 3, isSystem: false, kind: "PLAYER" },
+  { name: "Puppies", sortOrder: 4, isSystem: false, kind: "PLAYER" },
+  {
+    name: "Sale Prospects",
+    sortOrder: 5,
+    isSystem: false,
+    kind: "PLAYER",
+  },
+  { name: "Retired", sortOrder: 6, isSystem: false, kind: "PLAYER" },
 ] as const;
 
 export type KennelRunClient = Pick<PrismaClient, "kennelRun">;
@@ -21,6 +36,8 @@ const kennelRunSelect = {
   name: true,
   sortOrder: true,
   isSystem: true,
+  kind: true,
+  sourceLitterId: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Record<keyof KennelRun, true>;
@@ -40,12 +57,14 @@ async function upsertStarterRun(
     update: {
       sortOrder: starterRun.sortOrder,
       isSystem: starterRun.isSystem,
+      kind: starterRun.kind,
     },
     create: {
       kennelId,
       name: starterRun.name,
       sortOrder: starterRun.sortOrder,
       isSystem: starterRun.isSystem,
+      kind: starterRun.kind,
     },
     select: kennelRunSelect,
   });
