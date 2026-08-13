@@ -6,6 +6,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import { filterDogsBySelectedRuns } from "@/components/kennel/kennelDogFiltering";
+import { matchesKennelDogSearch } from "@/components/kennel/kennelDogSearch";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { epochToDate } from "@/lib/gameClock";
 import { formatRealDurationHoursLong } from "@/lib/gameTimeFormat";
@@ -388,6 +389,7 @@ export default function KennelDogsPanel() {
     useState<string | null>(null);
 
   const [breedFilter, setBreedFilter] = useState("");
+  const [searchText, setSearchText] = useState("");
   const [sexFilter, setSexFilter] = useState<"" | "M" | "F">("");
   const [onlyBreedable, setOnlyBreedable] = useState(false);
   const [onlyForSale, setOnlyForSale] = useState(false);
@@ -553,7 +555,9 @@ export default function KennelDogsPanel() {
   }, [runFilteredDogs]);
 
   const displayedDogs = useMemo(() => {
+    const normalizedQuery = searchText.trim().toLowerCase();
     const list = runFilteredDogs.filter((dog) => {
+      const searchMatch = matchesKennelDogSearch(dog, normalizedQuery);
       const breedMatch = breedFilter ? dog.breedCode2 === breedFilter : true;
       const sexMatch = sexFilter ? dog.sex === sexFilter : true;
 
@@ -572,6 +576,7 @@ export default function KennelDogsPanel() {
         : true;
 
       return (
+        searchMatch &&
         breedMatch &&
         sexMatch &&
         breedableMatch &&
@@ -599,6 +604,7 @@ export default function KennelDogsPanel() {
     return list;
   }, [
     runFilteredDogs,
+    searchText,
     breedFilter,
     sexFilter,
     onlyBreedable,
@@ -631,6 +637,7 @@ export default function KennelDogsPanel() {
   const selectedRunSummary =
     selectedRunNames.length > 1 ? selectedRunNames.join(", ") : "";
   const filtersActive =
+    Boolean(searchText.trim()) ||
     Boolean(breedFilter) ||
     Boolean(sexFilter) ||
     onlyBreedable ||
@@ -745,6 +752,7 @@ export default function KennelDogsPanel() {
   }
 
   function clearAllFilters() {
+    setSearchText("");
     setBreedFilter("");
     setSexFilter("");
     setOnlyBreedable(false);
@@ -1441,6 +1449,19 @@ export default function KennelDogsPanel() {
 
           {/* TODO: Add low-risk age milestone filters here when the roster filter set expands. */}
           <div className="mt-4 grid gap-3">
+            <label className="grid gap-1.5">
+              <span className="theme-label text-[0.7rem] uppercase tracking-wide">
+                Search dogs
+              </span>
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Call name, registered name, or registration number"
+                className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none"
+              />
+            </label>
+
             <label className="grid gap-1.5">
               <span className="theme-label text-[0.7rem] uppercase tracking-wide">
                 Breed

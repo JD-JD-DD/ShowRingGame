@@ -35,6 +35,7 @@ const kennelPanel = source("apps/web/components/kennel/KennelDogsPanel.tsx");
 const kennelRunFiltering = source(
   "apps/web/components/kennel/kennelDogFiltering.ts"
 );
+const kennelDogSearch = source("apps/web/components/kennel/kennelDogSearch.ts");
 
 assertIncludes(
   kennelPanel,
@@ -45,6 +46,52 @@ assertIncludes(
   kennelPanel,
   'fetch("/api/dogs/mine"',
   "kennel roster loads one canonical full-roster dog collection"
+);
+assertIncludes(
+  kennelPanel,
+  'const [searchText, setSearchText] = useState("");',
+  "kennel roster tracks local search text"
+);
+assertIncludes(
+  kennelPanel,
+  "const normalizedQuery = searchText.trim().toLowerCase();",
+  "kennel roster normalizes search text once per visible-dog derivation"
+);
+assertIncludes(
+  kennelPanel,
+  "matchesKennelDogSearch(dog, normalizedQuery)",
+  "search is part of the existing visible-dog filter pipeline"
+);
+assertIncludes(
+  kennelDogSearch,
+  "dog.callName, dog.registeredName, dog.regNumber",
+  "search uses only the approved dog identity fields"
+);
+assertIncludes(
+  kennelPanel,
+  "Search dogs",
+  "kennel roster renders a semantic search label"
+);
+assertIncludes(
+  kennelPanel,
+  "Call name, registered name, or registration number",
+  "kennel roster explains searchable identity fields"
+);
+assertBefore(
+  kennelPanel,
+  "Search dogs",
+  "All Breeds",
+  "search renders above Breed in the Filters panel"
+);
+assertIncludes(
+  kennelPanel,
+  "setSearchText(\"\");",
+  "Clear All Filters clears local search text"
+);
+assertIncludes(
+  kennelPanel,
+  "Boolean(searchText.trim()) ||",
+  "search counts as an active filter for empty-state behavior"
 );
 assertIncludes(
   kennelRunFiltering,
