@@ -7,9 +7,14 @@ const themeOptions = [
   { value: "dark", label: "Dark" },
   { value: "forest-glen", label: "Forest Glen" },
   { value: "seaside", label: "Seaside" },
-  { value: "galaxy", label: "Galaxy" },
+  { value: "galaxy-light", label: "Galaxy Light" },
   { value: "rosewood", label: "Rosewood" },
   { value: "high-desert", label: "High Desert" },
+  { value: "midnight-forest", label: "Midnight Forest" },
+  { value: "deep-sea", label: "Deep Sea" },
+  { value: "galaxy", label: "Galaxy" },
+  { value: "black-cherry", label: "Black Cherry" },
+  { value: "ember", label: "Ember" },
 ] as const;
 
 type Theme = (typeof themeOptions)[number]["value"];
