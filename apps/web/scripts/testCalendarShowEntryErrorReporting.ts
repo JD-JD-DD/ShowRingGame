@@ -109,6 +109,16 @@ assertIncludes(
   "bulk entry records transaction elapsed time on failure"
 );
 assertIncludes(
+  showEntryService,
+  "const BULK_SHOW_ENTRY_TRANSACTION_TIMEOUT_MS = 15_000;",
+  "bulk entry declares its localized fifteen-second transaction timeout"
+);
+assertIncludes(
+  showEntryService,
+  "{ timeout: BULK_SHOW_ENTRY_TRANSACTION_TIMEOUT_MS }",
+  "bulk entry applies the timeout only to its interactive transaction"
+);
+assertIncludes(
   showPage,
   "selectedDogDaySelections",
   "show page restores exact dog/day selections after redirect"

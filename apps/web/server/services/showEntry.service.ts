@@ -39,6 +39,8 @@ import {
 } from "@showring/rules";
 import { Prisma } from "@prisma/client";
 
+const BULK_SHOW_ENTRY_TRANSACTION_TIMEOUT_MS = 15_000;
+
 const showBlockForEntryArgs =
   Prisma.validator<Prisma.ShowJudgingBlockDefaultArgs>()({
     include: {
@@ -2937,7 +2939,7 @@ export async function createShowEntriesForCluster(args: {
         ...quote,
       },
     };
-    });
+    }, { timeout: BULK_SHOW_ENTRY_TRANSACTION_TIMEOUT_MS });
   } catch (error) {
     const errorDetails = getBulkShowEntryPrismaErrorDetails(error);
     console.error("[bulk-show-entry-failed]", {
@@ -2953,6 +2955,7 @@ export async function createShowEntriesForCluster(args: {
       elapsedMs: Date.now() - requestStartedAt,
       transactionElapsedMs:
         transactionStartedAt == null ? null : Date.now() - transactionStartedAt,
+      transactionTimeoutMs: BULK_SHOW_ENTRY_TRANSACTION_TIMEOUT_MS,
       ...errorDetails,
     });
     throw error;
