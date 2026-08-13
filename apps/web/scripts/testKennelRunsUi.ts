@@ -397,6 +397,36 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
+  "Move Up",
+  "non-system runs expose a move-up control"
+);
+assertIncludes(
+  kennelPanel,
+  "Move Down",
+  "non-system runs expose a move-down control"
+);
+assertIncludes(
+  kennelPanel,
+  "aria-label={`Move ${run.name} up`}",
+  "move-up has an accessible run-specific label"
+);
+assertIncludes(
+  kennelPanel,
+  "disabled={movableRunIndex <= 0 || movingRunId !== null}",
+  "first movable run has a true disabled move-up button"
+);
+assertIncludes(
+  kennelPanel,
+  "movableRunIndex === movableRuns.length - 1",
+  "last movable run has a true disabled move-down button"
+);
+assertIncludes(
+  kennelPanel,
+  'method: "POST"',
+  "reorder uses a server-side mutation"
+);
+assertIncludes(
+  kennelPanel,
   "Dogs in this run will move to Uncategorized.",
   "delete confirmation explains dog movement"
 );

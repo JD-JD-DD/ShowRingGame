@@ -7,6 +7,7 @@ import {
   createKennelRun,
   deleteKennelRun,
   listKennelRuns,
+  moveKennelRun,
   moveDogsToKennelRun,
   updateKennelRun,
 } from "@/server/services/kennelRunManagement.service";
@@ -447,11 +448,38 @@ async function main() {
     kennelId,
     runId: customRun.id,
     name: "Yearlings",
-    sortOrder: 42,
     client: fake.client as never,
   });
   assert.equal(renamed.name, "Yearlings");
-  assert.equal(renamed.sortOrder, 42);
+
+  const movedUp = await moveKennelRun({
+    kennelId,
+    runId: customRun.id,
+    direction: "up",
+    client: fake.client as never,
+  });
+  assert.equal(movedUp.direction, "up");
+  assert.equal(
+    fake.runs.find((run) => run.id === customRun.id)?.sortOrder,
+    6,
+    "moving up swaps only the selected run's ordering value"
+  );
+  assert.equal(
+    fake.runs.find((run) => run.id === "starter-6")?.sortOrder,
+    7,
+    "moving up swaps the immediately preceding run's ordering value"
+  );
+
+  await assertRejectsServiceError(
+    () =>
+      moveKennelRun({
+        kennelId,
+        runId: "other-run",
+        direction: "up",
+        client: fake.client as never,
+      }),
+    "reordering rejects a run owned by another kennel"
+  );
 
   await assertRejectsServiceError(
     () =>
@@ -560,6 +588,11 @@ async function main() {
     newApiSources.includes("areaIds"),
     false,
     "new Kennel Run APIs do not return legacy area IDs"
+  );
+  assertIncludes(
+    source("apps/web/app/api/kennel/runs/[runId]/route.ts"),
+    "moveKennelRun",
+    "run detail API delegates reordering to the transactional service"
   );
 
   console.log("Kennel Run API checks passed.");

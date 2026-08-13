@@ -116,6 +116,13 @@ type DeleteRunResponse = {
   error?: string;
 };
 
+type MoveRunResponse = {
+  ok?: boolean;
+  runId?: string;
+  direction?: "up" | "down";
+  error?: string;
+};
+
 type GroomingSummaryDto = {
   groomingActionsUsedThisWeek: number;
   groomingActionsRemainingThisWeek: number;
@@ -363,6 +370,7 @@ export default function KennelDogsPanel() {
     string | null
   >(null);
   const [deleteRunLoading, setDeleteRunLoading] = useState(false);
+  const [movingRunId, setMovingRunId] = useState<string | null>(null);
   const [showColumnChooser, setShowColumnChooser] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState<OptionalColumnId[]>(
     DEFAULT_VISIBLE_COLUMNS
@@ -964,6 +972,37 @@ export default function KennelDogsPanel() {
     }
   }
 
+  async function moveRun(run: KennelRunDto, direction: "up" | "down") {
+    if (run.isSystem || movingRunId) {
+      return;
+    }
+
+    setMovingRunId(run.id);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/kennel/runs/${run.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direction }),
+      });
+      const data = (await response.json()) as MoveRunResponse;
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Failed to reorder Kennel Run.");
+      }
+
+      await loadRuns();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to reorder Kennel Run."
+      );
+    } finally {
+      setMovingRunId(null);
+    }
+  }
+
   async function runGroomingAction(args: {
     dogId: string;
     endpoint: string;
@@ -1215,6 +1254,11 @@ export default function KennelDogsPanel() {
                 const selected = selectedRunIds.includes(run.id);
                 const isRenaming = renamingRunId === run.id;
                 const isConfirmingDelete = confirmingDeleteRunId === run.id;
+                const movableRuns = runs.filter((candidate) => !candidate.isSystem);
+                const movableRunIndex = movableRuns.findIndex(
+                  (candidate) => candidate.id === run.id
+                );
+                const isMoveLoading = movingRunId === run.id;
 
                 return (
                   <div
@@ -1283,6 +1327,28 @@ export default function KennelDogsPanel() {
 
                         {managingRuns && !run.isSystem ? (
                           <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => void moveRun(run, "up")}
+                              disabled={movableRunIndex <= 0 || movingRunId !== null}
+                              aria-label={`Move ${run.name} up`}
+                              className="theme-secondary-button rounded-md px-2 py-1 text-[0.68rem] font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                            >
+                              {isMoveLoading ? "Moving..." : "Move Up"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void moveRun(run, "down")}
+                              disabled={
+                                movableRunIndex < 0 ||
+                                movableRunIndex === movableRuns.length - 1 ||
+                                movingRunId !== null
+                              }
+                              aria-label={`Move ${run.name} down`}
+                              className="theme-secondary-button rounded-md px-2 py-1 text-[0.68rem] font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                            >
+                              {isMoveLoading ? "Moving..." : "Move Down"}
+                            </button>
                             <button
                               type="button"
                               onClick={() => startRenameRun(run)}

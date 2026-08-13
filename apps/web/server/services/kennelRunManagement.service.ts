@@ -13,6 +13,8 @@ type KennelRunTransactionRunner = KennelRunClient & {
   $transaction<T>(fn: (tx: KennelRunClient) => Promise<T>): Promise<T>;
 };
 
+export type KennelRunMoveDirection = "up" | "down";
+
 export class KennelRunServiceError extends Error {
   constructor(
     message: string,
@@ -195,7 +197,6 @@ export async function updateKennelRun(args: {
   kennelId: string;
   runId: string;
   name?: unknown;
-  sortOrder?: unknown;
   client?: KennelRunClient;
 }) {
   const client = args.client ?? db;
@@ -221,7 +222,7 @@ export async function updateKennelRun(args: {
     );
   }
 
-  const data: { name?: string; sortOrder?: number } = {};
+  const data: { name?: string } = {};
 
   if (args.name !== undefined) {
     const name = assertRunName(args.name);
@@ -235,16 +236,6 @@ export async function updateKennelRun(args: {
       });
       data.name = name;
     }
-  }
-
-  if (args.sortOrder !== undefined) {
-    const sortOrder = Number(args.sortOrder);
-
-    if (!Number.isInteger(sortOrder) || sortOrder < 0) {
-      throw new KennelRunServiceError("sortOrder must be a non-negative integer.");
-    }
-
-    data.sortOrder = sortOrder;
   }
 
   if (Object.keys(data).length === 0) {
@@ -274,6 +265,64 @@ export async function updateKennelRun(args: {
 
     throw error;
   }
+}
+
+export async function moveKennelRun(args: {
+  kennelId: string;
+  runId: string;
+  direction: unknown;
+  client?: KennelRunTransactionRunner;
+}) {
+  const client =
+    args.client ?? (db as unknown as KennelRunTransactionRunner);
+  const direction = args.direction as KennelRunMoveDirection;
+
+  if (direction !== "up" && direction !== "down") {
+    throw new KennelRunServiceError("direction must be up or down.");
+  }
+
+  return client.$transaction(async (tx) => {
+    const run = await tx.kennelRun.findUnique({
+      where: { id: args.runId },
+      select: { id: true, kennelId: true, isSystem: true },
+    });
+
+    if (!run || run.kennelId !== args.kennelId) {
+      throw new KennelRunServiceError("Kennel Run not found.", 404);
+    }
+
+    if (run.isSystem) {
+      throw new KennelRunServiceError(
+        `${UNCATEGORIZED_KENNEL_RUN_NAME} cannot be reordered.`
+      );
+    }
+
+    const orderedRuns = await tx.kennelRun.findMany({
+      where: { kennelId: args.kennelId, isSystem: false },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, sortOrder: true },
+    });
+    const index = orderedRuns.findIndex((candidate) => candidate.id === run.id);
+    const neighbor = orderedRuns[index + (direction === "up" ? -1 : 1)];
+
+    if (!neighbor) {
+      throw new KennelRunServiceError(
+        `This Kennel Run cannot move ${direction}.`,
+        409
+      );
+    }
+
+    await tx.kennelRun.update({
+      where: { id: run.id },
+      data: { sortOrder: neighbor.sortOrder },
+    });
+    await tx.kennelRun.update({
+      where: { id: neighbor.id },
+      data: { sortOrder: orderedRuns[index].sortOrder },
+    });
+
+    return { runId: run.id, direction };
+  });
 }
 
 export async function deleteKennelRun(args: {
