@@ -18,13 +18,13 @@ function formatMoney(value: number): string {
 function badgeTone(tone: "green" | "amber" | "red" | "sky" | "neutral") {
   switch (tone) {
     case "green":
-      return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+      return "theme-status-success";
     case "amber":
-      return "border-amber-300/25 bg-amber-500/10 text-amber-100";
+      return "theme-status-warning";
     case "red":
-      return "border-red-300/25 bg-red-500/10 text-red-100";
+      return "theme-status-danger";
     case "sky":
-      return "border-sky-300/25 bg-sky-500/10 text-sky-100";
+      return "theme-status-info";
     case "neutral":
       return "theme-neutral-badge";
   }
@@ -42,7 +42,7 @@ function DetailRow({
   }
 
   return (
-    <div className="rounded-xl border border-[var(--dog-border)] bg-purple-500/10 px-3 py-2">
+    <div className="theme-card rounded-xl px-3 py-2">
       <div className="theme-label text-[0.68rem] uppercase tracking-[0.14em]">
         {label}
       </div>
@@ -150,7 +150,7 @@ function QuotePreview({
 }) {
   if (!quote) {
     return (
-      <div className="theme-copy rounded-xl border border-[var(--dog-border)] bg-black/10 px-3 py-2 text-sm">
+      <div className="theme-card theme-copy rounded-xl px-3 py-2 text-sm">
         No selectable days in this show, so no cost preview is available.
       </div>
     );
@@ -211,10 +211,10 @@ function AllEligibleDaysSelector({
     <label
       className={`block rounded-xl border px-3 py-3 md:w-52 md:shrink-0 ${
         disabled
-          ? "border-[var(--dog-border)] bg-black/10 opacity-75"
+          ? "theme-card opacity-75"
           : checked || indeterminate
-            ? "border-emerald-200/60 bg-emerald-500/20"
-            : "border-emerald-300/30 bg-emerald-500/10"
+            ? "theme-status-success"
+            : "theme-status-success"
       }`}
     >
       <div className="flex gap-3">
@@ -224,7 +224,7 @@ function AllEligibleDaysSelector({
           checked={checked}
           disabled={disabled}
           onChange={(event) => onToggle(event.target.checked)}
-          className="mt-1 h-5 w-5 accent-emerald-500 disabled:cursor-not-allowed disabled:opacity-30"
+          className="mt-1 h-5 w-5 accent-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Select all eligible days"
         />
         <div>
@@ -279,9 +279,9 @@ function DaySelector({
       className={`block rounded-xl border px-3 py-3 ${
         canSelect
           ? checked
-            ? "border-emerald-200/60 bg-emerald-500/20"
-            : "border-emerald-300/30 bg-emerald-500/10"
-          : "border-[var(--dog-border)] bg-black/10 opacity-75"
+          ? "theme-status-success"
+            : "theme-status-success"
+          : "theme-card opacity-75"
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -291,7 +291,7 @@ function DaySelector({
             checked={checked}
             disabled={!canSelect}
             onChange={(event) => onToggle(key, event.target.checked)}
-            className="mt-1 h-5 w-5 accent-emerald-500 disabled:cursor-not-allowed disabled:opacity-30"
+            className="mt-1 h-5 w-5 accent-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-30"
             aria-label={`Select day ${day.dayIndex}`}
           />
           <div>
@@ -318,7 +318,7 @@ function DaySelector({
         </div>
       ) : null}
       {day.sameWeekendConflict ? (
-        <div className="mt-2 text-xs text-amber-100">
+        <div className="theme-status-warning mt-2 rounded-xl px-3 py-2 text-xs">
           Same-weekend conflict: {day.sameWeekendConflict.clusterName}
         </div>
       ) : null}
@@ -403,10 +403,10 @@ function ShowClusterCard({
         <div
           className={`mt-3 rounded-xl border px-3 py-2 text-sm ${
             hasSelection
-              ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
+              ? "theme-status-success"
               : disabledByWeekendSelection
-                ? "border-sky-300/15 bg-sky-500/5 text-sky-100/70"
-              : "border-sky-300/25 bg-sky-500/10 text-sky-100"
+                ? "theme-status-info opacity-75"
+              : "theme-status-info"
           }`}
         >
           {cluster.entryImpact.notice}
@@ -414,13 +414,13 @@ function ShowClusterCard({
       ) : null}
 
       {cluster.disabledReason ? (
-        <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+        <div className="theme-status-warning mt-3 rounded-xl px-3 py-2 text-sm">
           {cluster.disabledReason}
         </div>
       ) : null}
 
       {localDisabledReason ? (
-        <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+        <div className="theme-status-warning mt-3 rounded-xl px-3 py-2 text-sm">
           {localDisabledReason}
         </div>
       ) : null}
@@ -709,7 +709,7 @@ export function DogShowEntryPlannerClient({
                 type="button"
                 disabled={summary.selectedDayCount === 0 || isSubmitting}
                 onClick={handleSubmit}
-                className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-[color:var(--dog-card)] disabled:text-[color:var(--dog-copy)]"
+                className="theme-primary-button rounded-xl px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSubmitting ? "Entering..." : "Enter Selected Shows"}
               </button>
@@ -724,10 +724,10 @@ export function DogShowEntryPlannerClient({
               <div
                 className={`mt-3 rounded-xl border px-3 py-2 text-sm ${
                   feedback.tone === "success"
-                    ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-100"
+                    ? "theme-status-success"
                     : feedback.tone === "error"
-                      ? "border-red-300/25 bg-red-500/10 text-red-100"
-                      : "border-sky-300/25 bg-sky-500/10 text-sky-100"
+                      ? "theme-status-danger"
+                      : "theme-status-info"
                 }`}
               >
                 {feedback.message}
@@ -739,7 +739,7 @@ export function DogShowEntryPlannerClient({
             {weekendGroups.map((group) => (
               <section
                 key={group.weekendKey}
-                className="rounded-2xl border border-[var(--dog-border)] bg-black/10 p-3"
+                className="theme-card rounded-2xl p-3"
               >
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <h3 className="theme-heading text-lg font-semibold">

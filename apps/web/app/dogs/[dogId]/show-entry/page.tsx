@@ -39,13 +39,13 @@ function formatState(value: string): string {
 function badgeTone(tone: "green" | "amber" | "red" | "sky" | "neutral") {
   switch (tone) {
     case "green":
-      return "border-emerald-300/25 bg-emerald-500/10 text-emerald-100";
+      return "theme-status-success";
     case "amber":
-      return "border-amber-300/25 bg-amber-500/10 text-amber-100";
+      return "theme-status-warning";
     case "red":
-      return "border-red-300/25 bg-red-500/10 text-red-100";
+      return "theme-status-danger";
     case "sky":
-      return "border-sky-300/25 bg-sky-500/10 text-sky-100";
+      return "theme-status-info";
     case "neutral":
       return "theme-neutral-badge";
   }
@@ -63,7 +63,7 @@ function DetailRow({
   }
 
   return (
-    <div className="rounded-xl border border-[var(--dog-border)] bg-purple-500/10 px-3 py-2">
+    <div className="theme-card rounded-xl px-3 py-2">
       <div className="theme-label text-[0.68rem] uppercase tracking-[0.14em]">
         {label}
       </div>
