@@ -21,7 +21,6 @@ import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   ensureLitterKennelRun,
-  ensureUncategorizedKennelRun,
 } from "@/server/services/kennelRun.service";
 import { createLitterWithCollisionRetry } from "@/server/services/litterPersistence.service";
 import {
@@ -872,21 +871,22 @@ async function resolveWhelpingAttempt(args: {
       puppies: outcome.puppies,
     });
 
-    const puppyKennelRunId = fresh.createdByKennelId
-      ? fresh.dam.kennelRunId ??
-        (
-          await ensureUncategorizedKennelRun({
-            kennelId: fresh.createdByKennelId,
+    const litterRun =
+      fresh.createdByKennelId && persistedLitter.puppies.length > 0
+        ? await ensureLitterKennelRun({
             client: tx,
+            kennelId: fresh.createdByKennelId,
+            litterId: outcome.litter.litterId,
+            breedCode2: outcome.litter.breedCode2,
+            serial7: persistedLitter.serial7,
           })
-        ).id
-      : null;
+        : null;
 
     await tx.dog.createMany({
       data: persistedLitter.puppies.map((puppy) => ({
         id: puppy.dogId,
         ownerKennelId: fresh.createdByKennelId,
-        kennelRunId: puppyKennelRunId,
+        kennelRunId: litterRun?.id ?? null,
         breederKennelId: fresh.createdByKennelId,
         callName: null,
         registeredName: null,
@@ -916,16 +916,6 @@ async function resolveWhelpingAttempt(args: {
         traitTopline: puppy.traits.topline,
       })),
     });
-
-    if (fresh.createdByKennelId && persistedLitter.puppies.length > 0) {
-      await ensureLitterKennelRun({
-        client: tx,
-        kennelId: fresh.createdByKennelId,
-        litterId: outcome.litter.litterId,
-        breedCode2: outcome.litter.breedCode2,
-        serial7: persistedLitter.serial7,
-      });
-    }
 
     await ensurePhenotypeHealthTruthsForDogs(
       tx,

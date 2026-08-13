@@ -593,13 +593,8 @@ async function main() {
   );
   assertIncludes(
     breedingService,
-    "fresh.dam.kennelRunId ??",
-    "whelping falls back when the dam has no Kennel Run"
-  );
-  assertIncludes(
-    breedingService,
-    "kennelRunId: puppyKennelRunId",
-    "whelped puppies inherit the selected Kennel Run"
+    "kennelRunId: litterRun?.id ?? null",
+    "whelped puppies start in their litter Kennel Run"
   );
   assertIncludes(
     rehomeService,

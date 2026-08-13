@@ -143,12 +143,12 @@ async function main() {
 
   const breedingService = readFileSync("server/services/breeding.service.ts", "utf8");
   const emergencyService = readFileSync("server/services/reproductiveEmergencyResolution.service.ts", "utf8");
-  assert.match(breedingService, /await tx\.dog\.createMany\([\s\S]*?ensureLitterKennelRun/);
-  assert.match(emergencyService, /await tx\.dog\.createMany\([\s\S]*?ensureLitterKennelRun/);
+  assert.match(breedingService, /ensureLitterKennelRun[\s\S]*?await tx\.dog\.createMany/);
+  assert.match(emergencyService, /ensureLitterKennelRun[\s\S]*?await tx\.dog\.createMany/);
   assert.match(breedingService, /persistedLitter\.puppies\.length > 0/);
   assert.match(emergencyService, /persistedLitter\.puppies\.length > 0/);
-  assert.match(breedingService, /kennelRunId: puppyKennelRunId/);
-  assert.match(emergencyService, /kennelRunId,/);
+  assert.match(breedingService, /kennelRunId: litterRun\?\.id \?\? null/);
+  assert.match(emergencyService, /kennelRunId: litterRun\?\.id \?\? null/);
   assert.doesNotMatch(breedingService, /kind:\s*"LITTER"/);
   assert.doesNotMatch(emergencyService, /kind:\s*"LITTER"/);
 
