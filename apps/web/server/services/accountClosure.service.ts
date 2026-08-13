@@ -4,6 +4,7 @@ import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
+import { deleteLitterRunIfEmpty } from "@/server/services/kennelRun.service";
 
 export type CloseUserAccountResult = {
   alreadyClosed: boolean;
@@ -83,7 +84,7 @@ export async function closeUserAccountForKennel(args: {
 
     const ownedDogs = await tx.dog.findMany({
       where: { ownerKennelId: kennel.id },
-      select: { id: true, lifecycleState: true },
+      select: { id: true, lifecycleState: true, kennelRunId: true },
     });
     const ownedDogIds = ownedDogs.map((dog) => dog.id);
     const activeDogIds = ownedDogs
@@ -125,6 +126,16 @@ export async function closeUserAccountForKennel(args: {
         where: { id: { in: activeDogIds }, ownerKennelId: kennel.id, lifecycleState: "ALIVE" },
         data: { lifecycleState: "RETIRED", marketState: "NOT_FOR_SALE", kennelRunId: null },
       });
+      await Promise.all(
+        [...new Set(
+          ownedDogs
+            .filter((dog) => dog.lifecycleState === "ALIVE")
+            .map((dog) => dog.kennelRunId)
+            .filter(Boolean)
+        )].map((priorRunId) =>
+          deleteLitterRunIfEmpty({ priorRunId, client: tx })
+        )
+      );
     }
     const dogRemovalChanged = activeDogIds.length + saleListings.length + studListings.length + futureEntries.length > 0;
     if (dogRemovalChanged && !existingDogRemovalAudit) {

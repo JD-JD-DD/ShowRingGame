@@ -8,6 +8,7 @@ import {
   PUPPY_SALE_MIN_AGE_HOURS,
   getPuppyRehomePayout,
 } from "@showring/rules";
+import { deleteLitterRunIfEmpty } from "@/server/services/kennelRun.service";
 
 type RehomeResult = {
   rehomedCount: number;
@@ -51,6 +52,7 @@ export async function rehomeOwnedDogs(args: {
       id: true,
       birthEpoch: true,
       lifecycleState: true,
+      kennelRunId: true,
     },
   });
 
@@ -141,6 +143,12 @@ export async function rehomeOwnedDogs(args: {
     if (transfer.count !== dogIds.length) {
       throw new Error("One or more dogs are no longer available to re-home.");
     }
+
+    await Promise.all(
+      [...new Set(dogs.map((dog) => dog.kennelRunId).filter(Boolean))].map(
+        (priorRunId) => deleteLitterRunIfEmpty({ priorRunId, client: tx })
+      )
+    );
 
     if (creditsAdded > 0) {
       const updatedKennel = await tx.kennel.update({

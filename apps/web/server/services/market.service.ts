@@ -3,7 +3,10 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
-import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
+import {
+  deleteLitterRunIfEmpty,
+  ensureUncategorizedKennelRun,
+} from "@/server/services/kennelRun.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
@@ -440,6 +443,7 @@ export async function buyPlayerDogListing(args: {
             visibleTitlePrefix: true,
             visibleTitleSuffix: true,
             ownerKennelId: true,
+            kennelRunId: true,
             lifecycleState: true,
             marketState: true,
           },
@@ -538,6 +542,10 @@ export async function buyPlayerDogListing(args: {
         kennelRunId: buyerKennelRun.id,
         marketState: "NOT_FOR_SALE",
       },
+    });
+    await deleteLitterRunIfEmpty({
+      priorRunId: listing.dog.kennelRunId,
+      client: tx,
     });
 
     await tx.dogListing.update({

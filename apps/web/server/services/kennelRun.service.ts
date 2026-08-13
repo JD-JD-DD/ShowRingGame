@@ -30,6 +30,10 @@ export const STARTER_KENNEL_RUNS = [
 
 export type KennelRunClient = Pick<PrismaClient, "kennelRun">;
 export type LitterKennelRunClient = Pick<Prisma.TransactionClient, "kennelRun">;
+export type LitterKennelRunCleanupClient = Pick<
+  Prisma.TransactionClient,
+  "dog" | "kennelRun"
+>;
 
 const kennelRunSelect = {
   id: true,
@@ -150,6 +154,50 @@ export async function ensureLitterKennelRun(args: {
       if (concurrentRun) {
         return concurrentRun;
       }
+    }
+
+    throw error;
+  }
+}
+
+export async function deleteLitterRunIfEmpty(args: {
+  priorRunId: string | null | undefined;
+  client: LitterKennelRunCleanupClient;
+}): Promise<boolean> {
+  if (!args.priorRunId) {
+    return false;
+  }
+
+  const run = await args.client.kennelRun.findUnique({
+    where: { id: args.priorRunId },
+    select: { id: true, kind: true, sourceLitterId: true },
+  });
+
+  if (
+    !run ||
+    run.kind !== "LITTER" ||
+    run.sourceLitterId === null
+  ) {
+    return false;
+  }
+
+  const dogCount = await args.client.dog.count({
+    where: { kennelRunId: run.id },
+  });
+
+  if (dogCount > 0) {
+    return false;
+  }
+
+  try {
+    await args.client.kennelRun.delete({ where: { id: run.id } });
+    return true;
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      return false;
     }
 
     throw error;

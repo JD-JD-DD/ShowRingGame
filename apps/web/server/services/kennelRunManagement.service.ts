@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import {
   UNCATEGORIZED_KENNEL_RUN_NAME,
+  deleteLitterRunIfEmpty,
   ensureStarterKennelRuns,
   ensureUncategorizedKennelRun,
 } from "@/server/services/kennelRun.service";
@@ -432,6 +433,7 @@ export async function moveDogsToKennelRun(args: {
     select: {
       id: true,
       ownerKennelId: true,
+      kennelRunId: true,
     },
   });
   const foundDogIds = new Set(dogs.map((dog) => dog.id));
@@ -459,6 +461,17 @@ export async function moveDogsToKennelRun(args: {
       kennelRunId: targetRun.id,
     },
   });
+
+  const sourceRunIds = new Set(
+    dogs
+      .map((dog) => dog.kennelRunId)
+      .filter((runId): runId is string => Boolean(runId && runId !== targetRun.id))
+  );
+  await Promise.all(
+    [...sourceRunIds].map((priorRunId) =>
+      deleteLitterRunIfEmpty({ priorRunId, client })
+    )
+  );
 
   return {
     targetRunId: targetRun.id,
