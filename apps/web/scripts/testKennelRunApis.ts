@@ -63,7 +63,10 @@ async function assertRejectsServiceError(
 }
 
 function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
-  const runs = seed.runs;
+  const runs: FakeRun[] = seed.runs.map((run) => ({
+    ...run,
+    kind: run.kind ?? (run.isSystem ? "UNCATEGORIZED" : "PLAYER"),
+  }));
   const dogs = seed.dogs;
   let nextRunId = 1;
 
@@ -81,6 +84,7 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
           id?: { in: string[] };
           name?: string | { in: string[] };
           isSystem?: boolean;
+          kind?: FakeRun["kind"] | { not: FakeRun["kind"] };
         };
         orderBy?: Array<Record<string, string>>;
       }): Promise<FakeRun[]>;
@@ -89,6 +93,7 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
           kennelId?: string;
           name?: string;
           id?: { not?: string };
+          kind?: FakeRun["kind"];
         };
         orderBy?: Record<string, string>;
         select?: Record<string, boolean>;
@@ -170,6 +175,7 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
           id?: { in: string[] };
           name?: string | { in: string[] };
           isSystem?: boolean;
+          kind?: FakeRun["kind"] | { not: FakeRun["kind"] };
         };
         orderBy?: Array<Record<string, string>>;
       }) {
@@ -191,17 +197,29 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
               ? true
               : run.isSystem === args.where.isSystem
           )
+          .filter((run) => {
+            if (args.where.kind === undefined) return true;
+            return typeof args.where.kind === "string"
+              ? run.kind === args.where.kind
+              : run.kind !== args.where.kind.not;
+          })
           .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
           .map((run) => ({ ...run }));
       },
       async findFirst(args: {
-        where: { kennelId: string; name?: string; id?: { not: string } };
+        where: {
+          kennelId: string;
+          name?: string;
+          id?: { not: string };
+          kind?: FakeRun["kind"];
+        };
         orderBy?: { sortOrder: "desc" };
       }) {
         let result = runs
           .filter((run) => run.kennelId === args.where.kennelId)
           .filter((run) => (args.where.name ? run.name === args.where.name : true))
-          .filter((run) => (args.where.id?.not ? run.id !== args.where.id.not : true));
+          .filter((run) => (args.where.id?.not ? run.id !== args.where.id.not : true))
+          .filter((run) => (args.where.kind ? run.kind === args.where.kind : true));
 
         if (args.orderBy?.sortOrder === "desc") {
           result = result.sort((a, b) => b.sortOrder - a.sortOrder);
@@ -435,6 +453,10 @@ async function main() {
     "empty starter runs are returned with dogCount 0"
   );
 
+  const uncategorized = fake.runs.find((run) => run.id === "uncategorized");
+  assert.ok(uncategorized, "fake Uncategorized run exists");
+  uncategorized.isSystem = false;
+
   const customRun = await createKennelRun({
     kennelId,
     name: " Sale Prospects 2 ",
@@ -494,7 +516,7 @@ async function main() {
         name: "Inbox",
         client: fake.client as never,
       }),
-    "system run cannot be renamed"
+    "Uncategorized cannot be renamed based on kind even without legacy isSystem"
   );
 
   await assertRejectsServiceError(
@@ -504,7 +526,29 @@ async function main() {
         runId: "uncategorized",
         client: fake.client as never,
       }),
-    "system run cannot be deleted"
+    "Uncategorized cannot be deleted based on kind even without legacy isSystem"
+  );
+
+  fake.runs.push({
+    id: "litter-run",
+    kennelId,
+    name: "Spring Litter",
+    sortOrder: 99,
+    isSystem: true,
+    kind: "LITTER",
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+  });
+  const renamedLitterRun = await updateKennelRun({
+    kennelId,
+    runId: "litter-run",
+    name: "Spring Puppies",
+    client: fake.client as never,
+  });
+  assert.equal(
+    renamedLitterRun.name,
+    "Spring Puppies",
+    "a LITTER run is not protected as Uncategorized by legacy isSystem"
   );
 
   const deleteResult = await deleteKennelRun({

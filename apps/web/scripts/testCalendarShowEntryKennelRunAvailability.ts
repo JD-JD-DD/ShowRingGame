@@ -28,10 +28,11 @@ const cluster = {
 };
 
 const runs = [
-  { id: "run-a", name: "Alpha", dogCount: 99, isSystem: false },
-  { id: "run-b", name: "Bravo", dogCount: 99, isSystem: false },
-  { id: "run-c", name: "Charlie", dogCount: 99, isSystem: false },
-  { id: "uncat", name: "Uncategorized", dogCount: 99, isSystem: true },
+  { id: "run-a", name: "Alpha", dogCount: 99, isSystem: false, kind: "PLAYER" as const },
+  { id: "run-b", name: "Bravo", dogCount: 99, isSystem: false, kind: "PLAYER" as const },
+  { id: "run-c", name: "Charlie", dogCount: 99, isSystem: false, kind: "PLAYER" as const },
+  { id: "uncat", name: "Uncategorized", dogCount: 99, isSystem: true, kind: "UNCATEGORIZED" as const },
+  { id: "litter", name: "Spring Litter", dogCount: 99, isSystem: true, kind: "LITTER" as const },
 ];
 
 function makeDog(args: {
@@ -94,6 +95,7 @@ const dogs = [
     breedCode2: "GG",
     birthEpoch: 1_078,
   }),
+  makeDog({ id: "litter-available", kennelRunId: "litter", breedCode2: "HH" }),
 ] as Parameters<typeof buildShowEntryAvailabilityOptionSnapshots>[0]["dogs"];
 
 const weekendConflictDogIds = new Set([
@@ -147,6 +149,11 @@ assert.equal(
   kennelRunOptions.some((run) => run.id === "uncat"),
   true,
   "Uncategorized remains listed when an unassigned dog is currently available"
+);
+assert.equal(
+  kennelRunOptions.find((run) => run.id === "litter")?.dogCount,
+  1,
+  "a litter run remains available as a normal run option"
 );
 
 const fullyUnavailableOptions = buildShowEntryKennelRunOptionsFromSnapshots({

@@ -118,6 +118,7 @@ export async function listKennelRuns(args: {
       name: true,
       sortOrder: true,
       isSystem: true,
+      kind: true,
     },
   });
   const activeDogs = await client.dog.findMany({
@@ -211,6 +212,7 @@ export async function updateKennelRun(args: {
       kennelId: true,
       name: true,
       isSystem: true,
+      kind: true,
     },
   });
 
@@ -218,7 +220,7 @@ export async function updateKennelRun(args: {
     throw new KennelRunServiceError("Kennel Run not found.", 404);
   }
 
-  if (run.isSystem) {
+  if (run.kind === "UNCATEGORIZED") {
     throw new KennelRunServiceError(
       `${UNCATEGORIZED_KENNEL_RUN_NAME} cannot be renamed or reordered.`
     );
@@ -255,6 +257,7 @@ export async function updateKennelRun(args: {
         name: true,
         sortOrder: true,
         isSystem: true,
+        kind: true,
       },
     });
   } catch (error) {
@@ -286,21 +289,21 @@ export async function moveKennelRun(args: {
   return client.$transaction(async (tx) => {
     const run = await tx.kennelRun.findUnique({
       where: { id: args.runId },
-      select: { id: true, kennelId: true, isSystem: true },
+      select: { id: true, kennelId: true, kind: true },
     });
 
     if (!run || run.kennelId !== args.kennelId) {
       throw new KennelRunServiceError("Kennel Run not found.", 404);
     }
 
-    if (run.isSystem) {
+    if (run.kind === "UNCATEGORIZED") {
       throw new KennelRunServiceError(
         `${UNCATEGORIZED_KENNEL_RUN_NAME} cannot be reordered.`
       );
     }
 
     const orderedRuns = await tx.kennelRun.findMany({
-      where: { kennelId: args.kennelId, isSystem: false },
+      where: { kennelId: args.kennelId, kind: { not: "UNCATEGORIZED" } },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       select: { id: true, sortOrder: true },
     });
@@ -343,7 +346,7 @@ export async function deleteKennelRun(args: {
       select: {
         id: true,
         kennelId: true,
-        isSystem: true,
+        kind: true,
       },
     });
 
@@ -351,7 +354,7 @@ export async function deleteKennelRun(args: {
       throw new KennelRunServiceError("Kennel Run not found.", 404);
     }
 
-    if (run.isSystem) {
+    if (run.kind === "UNCATEGORIZED") {
       throw new KennelRunServiceError(
         `${UNCATEGORIZED_KENNEL_RUN_NAME} cannot be deleted.`
       );

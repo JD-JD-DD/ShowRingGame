@@ -367,7 +367,7 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "managingRuns && !run.isSystem",
+  'managingRuns && run.kind !== "UNCATEGORIZED"',
   "rename/delete controls render only for non-system runs in manage mode"
 );
 assertIncludes(

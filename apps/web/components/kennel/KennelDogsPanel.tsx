@@ -80,6 +80,7 @@ type KennelRunDto = {
   name: string;
   sortOrder: number;
   isSystem: boolean;
+  kind: "UNCATEGORIZED" | "PLAYER" | "LITTER";
   dogCount: number;
 };
 
@@ -459,7 +460,7 @@ export default function KennelDogsPanel() {
         }
 
         const uncategorizedRun = nextRuns.find(
-          (run) => run.name === "Uncategorized" && run.isSystem
+          (run) => run.kind === "UNCATEGORIZED"
         );
 
         return uncategorizedRun ? [uncategorizedRun.id] : [];
@@ -874,7 +875,7 @@ export default function KennelDogsPanel() {
   }
 
   function startRenameRun(run: KennelRunDto) {
-    if (run.isSystem) {
+    if (run.kind === "UNCATEGORIZED") {
       return;
     }
 
@@ -922,12 +923,12 @@ export default function KennelDogsPanel() {
   }
 
   async function deleteRun(run: KennelRunDto) {
-    if (run.isSystem || deleteRunLoading) {
+    if (run.kind === "UNCATEGORIZED" || deleteRunLoading) {
       return;
     }
 
     const uncategorizedRun = runs.find(
-      (candidate) => candidate.name === "Uncategorized" && candidate.isSystem
+      (candidate) => candidate.kind === "UNCATEGORIZED"
     );
     const nextSelectedRunIds = selectedRunIds.filter(
       (runId) => runId !== run.id
@@ -973,7 +974,7 @@ export default function KennelDogsPanel() {
   }
 
   async function moveRun(run: KennelRunDto, direction: "up" | "down") {
-    if (run.isSystem || movingRunId) {
+    if (run.kind === "UNCATEGORIZED" || movingRunId) {
       return;
     }
 
@@ -1254,7 +1255,9 @@ export default function KennelDogsPanel() {
                 const selected = selectedRunIds.includes(run.id);
                 const isRenaming = renamingRunId === run.id;
                 const isConfirmingDelete = confirmingDeleteRunId === run.id;
-                const movableRuns = runs.filter((candidate) => !candidate.isSystem);
+                const movableRuns = runs.filter(
+                  (candidate) => candidate.kind !== "UNCATEGORIZED"
+                );
                 const movableRunIndex = movableRuns.findIndex(
                   (candidate) => candidate.id === run.id
                 );
@@ -1325,7 +1328,7 @@ export default function KennelDogsPanel() {
                           </span>
                         </button>
 
-                        {managingRuns && !run.isSystem ? (
+                        {managingRuns && run.kind !== "UNCATEGORIZED" ? (
                           <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                             <button
                               type="button"

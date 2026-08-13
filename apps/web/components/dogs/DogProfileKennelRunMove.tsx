@@ -7,6 +7,7 @@ type KennelRunOption = {
   name: string;
   sortOrder: number;
   isSystem: boolean;
+  kind: "UNCATEGORIZED" | "PLAYER" | "LITTER";
   dogCount?: number;
 };
 

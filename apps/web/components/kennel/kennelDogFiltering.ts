@@ -1,7 +1,7 @@
 export type KennelRunMembership = {
   id: string;
   name: string;
-  isSystem: boolean;
+  kind: "UNCATEGORIZED" | "PLAYER" | "LITTER";
 };
 
 export type DogRunMembership = {
@@ -19,13 +19,12 @@ export function filterDogsBySelectedRuns<T extends DogRunMembership>(
   }
 
   const selectedRunIdSet = new Set(selectedRunIds);
-  const userCreatedRunIds = new Set(
-    runs.filter((run) => !run.isSystem).map((run) => run.id)
+  const categorizedRunIds = new Set(
+    runs.filter((run) => run.kind !== "UNCATEGORIZED").map((run) => run.id)
   );
   const includesUncategorized = runs.some(
     (run) =>
-      run.isSystem &&
-      run.name === "Uncategorized" &&
+      run.kind === "UNCATEGORIZED" &&
       selectedRunIdSet.has(run.id)
   );
 
@@ -36,7 +35,7 @@ export function filterDogsBySelectedRuns<T extends DogRunMembership>(
 
     return (
       includesUncategorized &&
-      (!dog.kennelRunId || !userCreatedRunIds.has(dog.kennelRunId))
+      (!dog.kennelRunId || !categorizedRunIds.has(dog.kennelRunId))
     );
   });
 }

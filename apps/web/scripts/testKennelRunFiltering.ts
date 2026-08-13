@@ -2,8 +2,9 @@ import { strict as assert } from "node:assert";
 import { filterDogsBySelectedRuns } from "../components/kennel/kennelDogFiltering";
 
 const runs = [
-  { id: "uncategorized", name: "Uncategorized", isSystem: true },
-  { id: "vl", name: "VL", isSystem: false },
+  { id: "uncategorized", name: "Uncategorized", kind: "UNCATEGORIZED" as const },
+  { id: "vl", name: "VL", kind: "PLAYER" as const },
+  { id: "litter", name: "Spring Litter", kind: "LITTER" as const },
 ];
 const vlDogs = ["A", "B", "C", "D"].map((dogId) => ({
   dogId,
@@ -44,6 +45,26 @@ assert.deepEqual(
   ).map((dog) => dog.dogId),
   ["E", "F", "G", "H"],
   "unassigned legacy dogs are treated as Uncategorized"
+);
+
+assert.deepEqual(
+  filterDogsBySelectedRuns(
+    [...settledDogs, { dogId: "I", kennelRunId: "litter" }],
+    runs,
+    ["uncategorized"]
+  ).map((dog) => dog.dogId),
+  ["E", "F", "G"],
+  "a litter run is not treated as Uncategorized"
+);
+
+assert.deepEqual(
+  filterDogsBySelectedRuns(
+    [...settledDogs, { dogId: "I", kennelRunId: "litter" }],
+    runs,
+    ["litter"]
+  ).map((dog) => dog.dogId),
+  ["I"],
+  "a litter run behaves as an ordinary selected run"
 );
 
 assert.deepEqual(

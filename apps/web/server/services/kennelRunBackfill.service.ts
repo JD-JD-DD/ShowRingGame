@@ -80,8 +80,7 @@ async function getUncategorizedRunsByKennelId(
       kennelId: {
         in: kennelIds,
       },
-      name: UNCATEGORIZED_KENNEL_RUN_NAME,
-      isSystem: true,
+      kind: "UNCATEGORIZED",
     },
     select: {
       id: true,

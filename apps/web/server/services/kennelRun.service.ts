@@ -75,8 +75,15 @@ export async function ensureUncategorizedKennelRun(args: {
   client?: KennelRunClient;
 }): Promise<KennelRun> {
   const client = args.client ?? db;
+  const existing = await client.kennelRun.findFirst({
+    where: {
+      kennelId: args.kennelId,
+      kind: "UNCATEGORIZED",
+    },
+    select: kennelRunSelect,
+  });
 
-  return upsertStarterRun(client, args.kennelId, STARTER_KENNEL_RUNS[0]);
+  return existing ?? upsertStarterRun(client, args.kennelId, STARTER_KENNEL_RUNS[0]);
 }
 
 export async function ensureStarterKennelRuns(args: {

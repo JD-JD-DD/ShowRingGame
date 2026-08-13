@@ -47,7 +47,10 @@ function createFakeClient(seed?: {
   dogs?: FakeDog[];
 }) {
   const kennels = seed?.kennels ?? [];
-  const rows: FakeKennelRun[] = seed?.runs ?? [];
+  const rows: FakeKennelRun[] = (seed?.runs ?? []).map((run) => ({
+    ...run,
+    kind: run.kind ?? (run.isSystem ? "UNCATEGORIZED" : "PLAYER"),
+  }));
   const dogs = seed?.dogs ?? [];
   let nextId = 1;
 
@@ -64,6 +67,17 @@ function createFakeClient(seed?: {
         },
       },
       kennelRun: {
+        async findFirst(args: {
+          where: { kennelId: string; kind?: FakeKennelRun["kind"] };
+        }) {
+          const run = rows.find(
+            (candidate) =>
+              candidate.kennelId === args.where.kennelId &&
+              (args.where.kind === undefined || candidate.kind === args.where.kind)
+          );
+
+          return run ? projectRun(run) : null;
+        },
         async upsert(args: {
           where: { kennelId_name: { kennelId: string; name: string } };
           update: Pick<FakeKennelRun, "sortOrder" | "isSystem" | "kind">;
@@ -104,6 +118,7 @@ function createFakeClient(seed?: {
             kennelId: string | { in: string[] };
             name?: string | { in: string[] };
             isSystem?: boolean;
+            kind?: FakeKennelRun["kind"];
           };
           orderBy?: { sortOrder: "desc" } | Array<Record<string, string>>;
           take?: number;
@@ -123,6 +138,9 @@ function createFakeClient(seed?: {
               args.where.isSystem === undefined
                 ? true
                 : row.isSystem === args.where.isSystem
+            )
+            .filter((row) =>
+              args.where.kind === undefined ? true : row.kind === args.where.kind
             );
 
           if (

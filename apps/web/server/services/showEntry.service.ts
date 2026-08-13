@@ -10,7 +10,6 @@ import {
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
 import { listKennelRuns } from "@/server/services/kennelRunManagement.service";
-import { UNCATEGORIZED_KENNEL_RUN_NAME } from "@/server/services/kennelRun.service";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
 import { assertCanCreateOwnerHandledEntriesForCluster } from "@/server/services/kennelService.service";
 import {
@@ -314,6 +313,7 @@ export type ShowEntryKennelRunOptionDto = {
   name: string;
   dogCount: number;
   isSystem: boolean;
+  kind: "UNCATEGORIZED" | "PLAYER" | "LITTER";
 };
 
 type ShowEntryOptionDog = Pick<
@@ -343,6 +343,7 @@ type ShowEntryKennelRunOptionLike = {
   name: string;
   dogCount: number;
   isSystem: boolean;
+  kind: "UNCATEGORIZED" | "PLAYER" | "LITTER";
 };
 
 export type ShowEntryPlannerScope =
@@ -1798,9 +1799,7 @@ export async function listShowEntryKennelRunOptions(args: {
     weekendConflictDogIds,
     currentEpoch,
   });
-  const uncategorizedRun = runs.find(
-    (run) => run.name === UNCATEGORIZED_KENNEL_RUN_NAME && run.isSystem
-  );
+  const uncategorizedRun = runs.find((run) => run.kind === "UNCATEGORIZED");
 
   return buildShowEntryKennelRunOptionsFromSnapshots({
     runs,
