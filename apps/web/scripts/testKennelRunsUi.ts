@@ -397,6 +397,16 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
+  "const isPopulatedLitterRun =",
+  "litter-run delete visibility uses persisted occupancy"
+);
+assertIncludes(
+  kennelPanel,
+  "This litter run will be removed automatically when it is empty.",
+  "populated litter runs explain why delete is unavailable"
+);
+assertIncludes(
+  kennelPanel,
   "Move Up",
   "non-system runs expose a move-up control"
 );

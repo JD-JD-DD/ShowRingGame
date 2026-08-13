@@ -82,6 +82,7 @@ type KennelRunDto = {
   isSystem: boolean;
   kind: "UNCATEGORIZED" | "PLAYER" | "LITTER";
   dogCount: number;
+  persistedDogCount: number;
 };
 
 type KennelDogsResponse = {
@@ -1262,6 +1263,8 @@ export default function KennelDogsPanel() {
                   (candidate) => candidate.id === run.id
                 );
                 const isMoveLoading = movingRunId === run.id;
+                const isPopulatedLitterRun =
+                  run.kind === "LITTER" && run.persistedDogCount > 0;
 
                 return (
                   <div
@@ -1359,17 +1362,25 @@ export default function KennelDogsPanel() {
                             >
                               Rename Run
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setConfirmingDeleteRunId(run.id);
-                                setRenamingRunId(null);
-                              }}
-                              className="theme-status-danger rounded-md px-2 py-1 text-[0.68rem] font-semibold"
-                            >
-                              Delete Run
-                            </button>
+                            {!isPopulatedLitterRun ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setConfirmingDeleteRunId(run.id);
+                                  setRenamingRunId(null);
+                                }}
+                                className="theme-status-danger rounded-md px-2 py-1 text-[0.68rem] font-semibold"
+                              >
+                                Delete Run
+                              </button>
+                            ) : null}
                           </div>
+                        ) : null}
+
+                        {managingRuns && isPopulatedLitterRun ? (
+                          <p className="theme-copy mt-1.5 text-[0.68rem] leading-5">
+                            This litter run will be removed automatically when it is empty.
+                          </p>
                         ) : null}
 
                         {isConfirmingDelete ? (

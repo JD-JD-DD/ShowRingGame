@@ -135,7 +135,18 @@ export async function listKennelRuns(args: {
       kennelRunId: true,
     },
   });
+  const persistedDogs = await client.dog.findMany({
+    where: {
+      kennelRunId: {
+        in: runs.map((run) => run.id),
+      },
+    },
+    select: {
+      kennelRunId: true,
+    },
+  });
   const dogCountByRunId = new Map<string, number>();
+  const persistedDogCountByRunId = new Map<string, number>();
 
   for (const dog of activeDogs) {
     if (!dog.kennelRunId) {
@@ -148,9 +159,21 @@ export async function listKennelRuns(args: {
     );
   }
 
+  for (const dog of persistedDogs) {
+    if (!dog.kennelRunId) {
+      continue;
+    }
+
+    persistedDogCountByRunId.set(
+      dog.kennelRunId,
+      (persistedDogCountByRunId.get(dog.kennelRunId) ?? 0) + 1
+    );
+  }
+
   return runs.map((run) => ({
     ...run,
     dogCount: dogCountByRunId.get(run.id) ?? 0,
+    persistedDogCount: persistedDogCountByRunId.get(run.id) ?? 0,
   }));
 }
 
@@ -358,6 +381,21 @@ export async function deleteKennelRun(args: {
     if (run.kind === "UNCATEGORIZED") {
       throw new KennelRunServiceError(
         `${UNCATEGORIZED_KENNEL_RUN_NAME} cannot be deleted.`
+      );
+    }
+
+    if (run.kind === "LITTER") {
+      const deleted = await deleteLitterRunIfEmpty({
+        priorRunId: run.id,
+        client: tx,
+      });
+
+      if (deleted) {
+        return { runId: run.id, movedCount: 0 };
+      }
+
+      throw new KennelRunServiceError(
+        "This litter run will be removed automatically when it is empty."
       );
     }
 

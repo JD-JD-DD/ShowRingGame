@@ -23,6 +23,7 @@ type FakeRun = {
   sortOrder: number;
   isSystem: boolean;
   kind?: "UNCATEGORIZED" | "PLAYER" | "LITTER";
+  sourceLitterId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -133,6 +134,7 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
         };
         data: Partial<Pick<FakeDog, "kennelRunId">>;
       }): Promise<{ count: number }>;
+      count(args: { where: { kennelRunId: string } }): Promise<number>;
     };
     $transaction<T>(action: (tx: typeof client) => Promise<T>): Promise<T>;
   } = {
@@ -329,6 +331,10 @@ function createFakeClient(seed: { runs: FakeRun[]; dogs: FakeDog[] }) {
         }
 
         return { count };
+      },
+      async count(args: { where: { kennelRunId: string } }) {
+        return dogs.filter((dog) => dog.kennelRunId === args.where.kennelRunId)
+          .length;
       },
     },
     async $transaction<T>(fn: (tx: typeof client) => Promise<T>): Promise<T> {
@@ -536,6 +542,7 @@ async function main() {
     sortOrder: 99,
     isSystem: true,
     kind: "LITTER",
+    sourceLitterId: "litter-1",
     createdAt: new Date(0),
     updatedAt: new Date(0),
   });
@@ -549,6 +556,23 @@ async function main() {
     renamedLitterRun.name,
     "Spring Puppies",
     "a LITTER run is not protected as Uncategorized by legacy isSystem"
+  );
+  fake.dogs.push({
+    id: "litter-puppy",
+    ownerKennelId: kennelId,
+    kennelRunId: "litter-run",
+    lifecycleState: "DECEASED",
+    isPlayerVisible: false,
+    marketState: "NOT_FOR_SALE",
+  });
+  await assertRejectsServiceError(
+    () =>
+      deleteKennelRun({
+        kennelId,
+        runId: "litter-run",
+        client: fake.client as never,
+      }),
+    "a populated LITTER run cannot be manually deleted, including hidden dogs"
   );
 
   const deleteResult = await deleteKennelRun({
