@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import CancelGroomingListingForm from "@/components/dogs/CancelGroomingListingForm";
 import BreedDogActionButton from "@/components/dogs/BreedDogActionButton";
+import CallNameEditor from "@/components/dogs/CallNameEditor";
 import DogProfileKennelRunMove from "@/components/dogs/DogProfileKennelRunMove";
 import DogProfileDashboard from "@/components/dogs/DogProfileDashboard";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
@@ -229,7 +230,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const dogPageReturnTo = `/dogs/${header.dogId}${navigationKennelRunId ? `?kennelRunId=${encodeURIComponent(navigationKennelRunId)}` : ""}`;
   const headerDisplayName = [
     header.visibleTitlePrefix,
-    header.registeredName ?? header.callName ?? header.displayName,
+    header.registeredName?.trim() || header.regNumber,
     header.visibleTitleSuffix,
   ]
     .filter(Boolean)
@@ -275,6 +276,12 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   size="lg"
                 />
               </div>
+
+              <CallNameEditor
+                action={`/api/dogs/${header.dogId}/call-name${validatedKennelRunId ? `?kennelRunId=${encodeURIComponent(validatedKennelRunId)}` : ""}`}
+                callName={header.callName}
+                canEdit={viewerContext.isOwnedByCurrentKennel}
+              />
 
               {actions.canName ? (
                 <RegisterDogNameForm

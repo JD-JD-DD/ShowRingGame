@@ -1,4 +1,5 @@
 const MAX_REGISTERED_NAME_LENGTH = 45;
+export const MAX_CALL_NAME_LENGTH = 45;
 
 const TITLE_ABBREVIATIONS = new Set(
   "CH GCH GCHB GCHG GCHP GCHS"
@@ -119,6 +120,25 @@ export function validateRegisteredDogName(
 
   if (containsBreedName(name, breedNames)) {
     return { ok: false, error: "Dog names cannot include breed names." };
+  }
+
+  return { ok: true, name };
+}
+
+export function validateCallName(
+  value: FormDataEntryValue | string | null
+): DogNameValidationResult {
+  const name = String(value ?? "").trim();
+
+  if (!name) {
+    return { ok: true, name: "" };
+  }
+
+  if (name.length > MAX_CALL_NAME_LENGTH) {
+    return {
+      ok: false,
+      error: `Call name must be ${MAX_CALL_NAME_LENGTH} characters or fewer.`,
+    };
   }
 
   return { ok: true, name };
