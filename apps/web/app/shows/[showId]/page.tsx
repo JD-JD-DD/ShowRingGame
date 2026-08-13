@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ShowDayJudgePanel } from "@/components/shows/ShowDayJudgePanel";
+import { ScrollToBottomButton } from "@/components/ReturnToTopButton";
 import { CANONICAL_SHOW_GROUP_CODES, getCanonicalShowGroupLabel } from "@showring/rules";
 import { notFound } from "next/navigation";
 
@@ -603,6 +604,8 @@ export default async function ShowDetailPage({
           </div>
         )}
       </section>
+      <div id="show-entry-page-bottom" />
+      <ScrollToBottomButton targetId="show-entry-page-bottom" />
     </main>
   );
 }

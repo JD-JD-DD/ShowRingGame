@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { ScrollToBottomButton } from "@/components/ReturnToTopButton";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import {
@@ -178,8 +177,6 @@ export default async function DogShowEntryPage({ params }: PageProps) {
         <DogSnapshot dog={planner.dog} />
         <DogShowEntryPlannerClient planner={planner} />
       </div>
-      <div id="show-entry-page-bottom" />
-      <ScrollToBottomButton targetId="show-entry-page-bottom" />
     </main>
   );
 }
