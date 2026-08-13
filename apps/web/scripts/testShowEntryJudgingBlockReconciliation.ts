@@ -45,8 +45,33 @@ assertIncludes(
 );
 assertIncludes(
   showEntryService,
-  "data: { judgeId: scheduled.judgeId }",
+  "data: { judgeId: scheduledJudgeId }",
   "reconciliation updates only the stored judge reference"
+);
+assertIncludes(
+  showEntryService,
+  "const requiredBreeds = await tx.breed.findMany({",
+  "required breed metadata is loaded once for the full judging-block batch"
+);
+assertIncludes(
+  showEntryService,
+  "const scheduledAssignments = await tx.showDayGroupJudgeAssignment.findMany({",
+  "required group-judge assignments are loaded once for the full judging-block batch"
+);
+assertIncludes(
+  showEntryService,
+  "const existingBlocks = await tx.showJudgingBlock.findMany({",
+  "required existing judging blocks are loaded once for the full judging-block batch"
+);
+assertIncludes(
+  showEntryService,
+  "const siblingBlockOrders = await tx.showJudgingBlock.findMany({",
+  "per-day block-order data is loaded once for the full judging-block batch"
+);
+assertIncludes(
+  showEntryService,
+  "const nextBlockOrderByShowDayId = new Map<string, number>();",
+  "missing block orders are allocated from a per-day in-memory tracker"
 );
 assertIncludes(
   showEntryService,

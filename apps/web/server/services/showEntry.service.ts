@@ -1,5 +1,4 @@
 import { db } from "@/lib/db";
-import { resolveScheduledGroupJudgeForBreed } from "@/server/services/showDayGroupJudgeAssignment.service";
 import {
   getPhenotypeHealthBadgeStatus,
   hasAllGreenPhenotypeHealthTests,
@@ -35,6 +34,7 @@ import {
   getShowDistrictRegionName,
   getShowWeekendKey,
   getShowWeekendStartEpoch,
+  resolveBreedGroupNameToCanonicalShowGroupCode,
   type DogStatus,
 } from "@showring/rules";
 import { Prisma } from "@prisma/client";
@@ -191,6 +191,18 @@ function getBulkShowEntryPrismaErrorDetails(error: unknown): {
 type ShowBlockForEntry = Prisma.ShowJudgingBlockGetPayload<
   typeof showBlockForEntryArgs
 >;
+type ExistingBreedBlockForEntry = {
+  id: string;
+  showDayId: string;
+  breedCode2: string;
+  judgeId: string;
+  status: string;
+  publishedAtEpoch: number | null;
+  _count: {
+    showResults: number;
+    showAwards: number;
+  };
+};
 type DogForEntry = Prisma.DogGetPayload<typeof dogForEntryArgs>;
 type ShowEntryDogIdentity = Pick<
   DogForEntry,
@@ -2172,34 +2184,14 @@ async function ensureBreedBlockForEntry(args: {
     status: string;
   };
   breedCode2: string;
+  existingBlock: ExistingBreedBlockForEntry | undefined;
+  scheduledJudgeId: string;
+  nextBlockOrder: number;
 }): Promise<string> {
-  const { tx, showDay, breedCode2 } = args;
-  const existingBlock = await tx.showJudgingBlock.findFirst({
-    where: {
-      showDayId: showDay.id,
-      breedCode2,
-    },
-    select: {
-      id: true,
-      judgeId: true,
-      status: true,
-      publishedAtEpoch: true,
-      _count: {
-        select: {
-          showResults: true,
-          showAwards: true,
-        },
-      },
-    },
-  });
+  const { tx, showDay, breedCode2, existingBlock, scheduledJudgeId, nextBlockOrder } = args;
 
   if (existingBlock) {
-    const scheduled = await resolveScheduledGroupJudgeForBreed({
-      tx,
-      showDayId: showDay.id,
-      breedCode2,
-    });
-    if (existingBlock.judgeId !== scheduled.judgeId) {
+    if (existingBlock.judgeId !== scheduledJudgeId) {
       const isMutable = canReconcileExistingBreedBlock({
         status: existingBlock.status,
         publishedAtEpoch: existingBlock.publishedAtEpoch,
@@ -2217,31 +2209,23 @@ async function ensureBreedBlockForEntry(args: {
 
       await tx.showJudgingBlock.update({
         where: { id: existingBlock.id },
-        data: { judgeId: scheduled.judgeId },
+        data: { judgeId: scheduledJudgeId },
         select: { id: true },
       });
     }
     return existingBlock.id;
   }
 
-  const scheduled = await resolveScheduledGroupJudgeForBreed({ tx, showDayId: showDay.id, breedCode2 });
-
-  const lastBlock = await tx.showJudgingBlock.findFirst({
-    where: { showDayId: showDay.id },
-    orderBy: [{ blockOrder: "desc" }],
-    select: { blockOrder: true },
-  });
-
   const createdBlock = await tx.showJudgingBlock.create({
     data: {
       showDayId: showDay.id,
-      judgeId: scheduled.judgeId,
+      judgeId: scheduledJudgeId,
       breedCode2,
       ringNumber: 1,
       ringName: "Breed Judging",
       startEpoch: showDay.scheduledEpoch,
       classType: "REGULAR",
-      blockOrder: (lastBlock?.blockOrder ?? 0) + 1,
+      blockOrder: nextBlockOrder,
       status: showDay.status === "ENTRY_OPEN" ? "ENTRY_OPEN" : "SCHEDULED",
     },
     select: { id: true },
@@ -2783,6 +2767,10 @@ export async function createShowEntriesForCluster(args: {
 
     phase = "ENSURE_JUDGING_BLOCKS";
     const blockIdByDayId = new Map<string, string>();
+    const requiredBlockGroups = new Map<
+      string,
+      { showDay: (typeof cluster.showDays)[number]; breedCode2: string }
+    >();
 
     for (const selection of validSelections) {
       const dog = dogById.get(selection.dogId);
@@ -2794,18 +2782,138 @@ export async function createShowEntriesForCluster(args: {
 
       const blockKey = getSelectionBlockKey(showDay.id, dog.breedCode2);
 
-      if (blockIdByDayId.has(blockKey)) {
-        continue;
+      requiredBlockGroups.set(blockKey, { showDay, breedCode2: dog.breedCode2 });
+    }
+
+    const requiredBreedCode2s = [
+      ...new Set([...requiredBlockGroups.values()].map((group) => group.breedCode2)),
+    ];
+    const requiredShowDayIds = [
+      ...new Set([...requiredBlockGroups.values()].map((group) => group.showDay.id)),
+    ];
+    const requiredBreeds = await tx.breed.findMany({
+      where: { code2: { in: requiredBreedCode2s } },
+      select: { code2: true, groupName: true },
+    });
+    const breedByCode2 = new Map(requiredBreeds.map((breed) => [breed.code2, breed]));
+    const firstRequiredGroupByBreedCode2 = new Map<
+      string,
+      { showDay: (typeof cluster.showDays)[number]; breedCode2: string }
+    >();
+    for (const group of requiredBlockGroups.values()) {
+      if (!firstRequiredGroupByBreedCode2.has(group.breedCode2)) {
+        firstRequiredGroupByBreedCode2.set(group.breedCode2, group);
       }
+    }
+    const groupCodeByBreedCode2 = new Map<string, import("@showring/rules").CanonicalShowGroupCode>();
+
+    for (const breedCode2 of requiredBreedCode2s) {
+      const breed = breedByCode2.get(breedCode2);
+      const firstGroup = firstRequiredGroupByBreedCode2.get(breedCode2)!;
+
+      if (!breed) {
+        throw new Error(
+          `Scheduled group judge resolution failed for showDay=${firstGroup.showDay.id}, breed=${breedCode2}.`
+        );
+      }
+
+      try {
+        groupCodeByBreedCode2.set(
+          breedCode2,
+          resolveBreedGroupNameToCanonicalShowGroupCode(breed.groupName)
+        );
+      } catch (error) {
+        throw new Error(
+          `Scheduled group judge resolution failed for year=${cluster.year}, cluster=${cluster.id}, showDay=${firstGroup.showDay.id}, breed=${breedCode2}, groupName=${JSON.stringify(breed.groupName)}: ${error instanceof Error ? error.message : "invalid group"}`
+        );
+      }
+    }
+
+    const requiredAssignmentKeys = new Map<string, { showDayId: string; groupCode: import("@showring/rules").CanonicalShowGroupCode }>();
+    for (const group of requiredBlockGroups.values()) {
+      const groupCode = groupCodeByBreedCode2.get(group.breedCode2)!;
+      requiredAssignmentKeys.set(`${group.showDay.id}:${groupCode}`, {
+        showDayId: group.showDay.id,
+        groupCode,
+      });
+    }
+    const scheduledAssignments = await tx.showDayGroupJudgeAssignment.findMany({
+      where: { OR: [...requiredAssignmentKeys.values()] },
+      select: { showDayId: true, groupCode: true, judgeId: true },
+    });
+    const assignmentByShowDayAndGroupCode = new Map(
+      scheduledAssignments.map((assignment) => [
+        `${assignment.showDayId}:${assignment.groupCode}`,
+        assignment,
+      ])
+    );
+    const existingBlocks = await tx.showJudgingBlock.findMany({
+      where: {
+        showDayId: { in: requiredShowDayIds },
+        breedCode2: { in: requiredBreedCode2s },
+      },
+      select: {
+        id: true,
+        showDayId: true,
+        breedCode2: true,
+        judgeId: true,
+        status: true,
+        publishedAtEpoch: true,
+        _count: { select: { showResults: true, showAwards: true } },
+      },
+    });
+    const existingBlockByKey = new Map<string, ExistingBreedBlockForEntry>();
+    for (const block of existingBlocks) {
+      const blockKey = getSelectionBlockKey(block.showDayId, block.breedCode2);
+      if (requiredBlockGroups.has(blockKey) && !existingBlockByKey.has(blockKey)) {
+        existingBlockByKey.set(blockKey, block);
+      }
+    }
+    const siblingBlockOrders = await tx.showJudgingBlock.findMany({
+      where: { showDayId: { in: requiredShowDayIds } },
+      select: { showDayId: true, blockOrder: true },
+    });
+    const nextBlockOrderByShowDayId = new Map<string, number>();
+    for (const showDayId of requiredShowDayIds) {
+      nextBlockOrderByShowDayId.set(showDayId, 1);
+    }
+    for (const block of siblingBlockOrders) {
+      nextBlockOrderByShowDayId.set(
+        block.showDayId,
+        Math.max(nextBlockOrderByShowDayId.get(block.showDayId) ?? 1, block.blockOrder + 1)
+      );
+    }
+
+    for (const [blockKey, group] of requiredBlockGroups) {
+      const groupCode = groupCodeByBreedCode2.get(group.breedCode2)!;
+      const assignment = assignmentByShowDayAndGroupCode.get(
+        `${group.showDay.id}:${groupCode}`
+      );
+
+      if (!assignment) {
+        throw new Error(
+          `Scheduled group judge assignment is missing for year=${cluster.year}, cluster=${cluster.id}, showDay=${group.showDay.id}, breed=${group.breedCode2}, group=${groupCode}, key=${group.showDay.id}:${groupCode}.`
+        );
+      }
+
+      const existingBlock = existingBlockByKey.get(blockKey);
+      const nextBlockOrder = nextBlockOrderByShowDayId.get(group.showDay.id) ?? 1;
 
       blockIdByDayId.set(
         blockKey,
         await ensureBreedBlockForEntry({
           tx,
-          showDay,
-          breedCode2: dog.breedCode2,
+          showDay: group.showDay,
+          breedCode2: group.breedCode2,
+          existingBlock,
+          scheduledJudgeId: assignment.judgeId,
+          nextBlockOrder,
         })
       );
+
+      if (!existingBlock) {
+        nextBlockOrderByShowDayId.set(group.showDay.id, nextBlockOrder + 1);
+      }
     }
 
     phase = "UPDATE_BALANCE";
