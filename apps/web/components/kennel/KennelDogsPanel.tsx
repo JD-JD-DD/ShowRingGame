@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
+import BulkCallNameEditor from "@/components/kennel/BulkCallNameEditor";
 import { filterDogsBySelectedRuns } from "@/components/kennel/kennelDogFiltering";
 import { matchesKennelDogSearch } from "@/components/kennel/kennelDogSearch";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -353,6 +354,7 @@ export default function KennelDogsPanel() {
   const [allDogs, setAllDogs] = useState<KennelDogDto[]>([]);
   const [runs, setRuns] = useState<KennelRunDto[]>([]);
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
+  const [showBulkNaming, setShowBulkNaming] = useState(false);
   const dogsRequestSequence = useRef(0);
   const [groomingSummary, setGroomingSummary] =
     useState<GroomingSummaryDto | null>(null);
@@ -532,6 +534,12 @@ export default function KennelDogsPanel() {
     }
   }, [selectedDogIds.length]);
 
+  useEffect(() => {
+    if (selectedRunIds.length !== 1) {
+      setShowBulkNaming(false);
+    }
+  }, [selectedRunIds]);
+
   const runFilteredDogs = useMemo(
     () => filterDogsBySelectedRuns(allDogs, runs, selectedRunIds),
     [allDogs, runs, selectedRunIds]
@@ -627,6 +635,7 @@ export default function KennelDogsPanel() {
 
   const selectedDogsQuery = selectedDogIds.join(",");
   const selectedRuns = runs.filter((run) => selectedRunIds.includes(run.id));
+  const selectedRun = selectedRuns.length === 1 ? selectedRuns[0] : null;
   const selectedRunNames = selectedRuns.map((run) => run.name);
   const viewingLabel =
     selectedRuns.length === 1
@@ -773,7 +782,12 @@ export default function KennelDogsPanel() {
 
       return [...current, runId];
     });
+    setShowBulkNaming(false);
     clearSelection();
+  }
+
+  async function refreshAfterBulkNamingSave() {
+    await loadDogs({ preserveLoadingState: true });
   }
 
   function updateBulkAction(action: BulkAction) {
@@ -1563,13 +1577,24 @@ export default function KennelDogsPanel() {
               ) : null}
             </div>
             <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowColumnChooser((current) => !current)}
-                className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold"
-              >
-                View Options
-              </button>
+              <div className="flex flex-wrap justify-end gap-2">
+                {selectedRun ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkNaming((current) => !current)}
+                    className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold"
+                  >
+                    Bulk Naming
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setShowColumnChooser((current) => !current)}
+                  className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold"
+                >
+                  View Options
+                </button>
+              </div>
 
               {showColumnChooser ? (
                 <div className="theme-card absolute right-0 z-20 mt-2 w-72 rounded-2xl p-3 shadow-xl">
@@ -1627,6 +1652,16 @@ export default function KennelDogsPanel() {
         <div className="theme-status-success mb-4 rounded-2xl px-4 py-3 text-sm">
           {message}
         </div>
+      ) : null}
+
+      {showBulkNaming && selectedRun ? (
+        <BulkCallNameEditor
+          kennelRunId={selectedRun.id}
+          runName={selectedRun.name}
+          dogs={runFilteredDogs}
+          onClose={() => setShowBulkNaming(false)}
+          onSaved={refreshAfterBulkNamingSave}
+        />
       ) : null}
 
       <div className="theme-card mb-4 flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between">

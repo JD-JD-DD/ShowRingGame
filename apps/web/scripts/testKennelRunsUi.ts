@@ -37,6 +37,7 @@ const kennelRunFiltering = source(
 );
 const kennelDogSearch = source("apps/web/components/kennel/kennelDogSearch.ts");
 const mineDogsRoute = source("apps/web/app/api/dogs/mine/route.ts");
+const bulkCallNameEditor = source("apps/web/components/kennel/BulkCallNameEditor.tsx");
 
 assertIncludes(
   kennelPanel,
@@ -179,6 +180,32 @@ assertIncludes(
   "Kennel Runs",
   "kennel roster labels the selector as Kennel Runs"
 );
+assertIncludes(
+  kennelPanel,
+  "selectedRunIds.length !== 1",
+  "Bulk Naming closes when selection is not exactly one run"
+);
+assertIncludes(
+  kennelPanel,
+  "{selectedRun ? (",
+  "Bulk Naming is available only for exactly one selected run"
+);
+assertIncludes(kennelPanel, "Bulk Naming", "kennel roster exposes Bulk Naming");
+assertIncludes(
+  kennelPanel,
+  "dogs={runFilteredDogs}",
+  "Bulk Naming uses selected-run dogs before search and roster filters"
+);
+assertIncludes(
+  kennelPanel,
+  "loadDogs({ preserveLoadingState: true })",
+  "Bulk Naming preserves local roster state while refreshing dogs"
+);
+assertIncludes(bulkCallNameEditor, "regNumber", "Bulk Naming displays registration numbers");
+assertIncludes(bulkCallNameEditor, "Not registered", "Bulk Naming has a neutral unregistered state");
+assertIncludes(bulkCallNameEditor, "maxLength={MAX_CALL_NAME_LENGTH}", "Bulk Naming uses the canonical call-name limit");
+assertIncludes(bulkCallNameEditor, "callName: callNames[dog.dogId]", "Bulk Naming submits only editable call names");
+assertExcludes(bulkCallNameEditor, "registeredName: dog", "Bulk Naming does not submit registered names");
 assertIncludes(
   kennelPanel,
   "Uncategorized",

@@ -6,12 +6,18 @@ import {
   ensureStarterKennelRuns,
   ensureUncategorizedKennelRun,
 } from "@/server/services/kennelRun.service";
+import { validateCallName } from "@/server/validation/dogName.validation";
 
 const MAX_KENNEL_RUN_NAME_LENGTH = 60;
 
 type KennelRunClient = Pick<PrismaClient, "dog" | "kennelRun">;
 type KennelRunTransactionRunner = KennelRunClient & {
   $transaction<T>(fn: (tx: KennelRunClient) => Promise<T>): Promise<T>;
+};
+
+type BulkCallNameUpdate = {
+  dogId: string;
+  callName: string | null;
 };
 
 export type KennelRunMoveDirection = "up" | "down";
@@ -515,4 +521,111 @@ export async function moveDogsToKennelRun(args: {
     targetRunId: targetRun.id,
     movedCount: moved.count,
   };
+}
+
+export async function updateKennelRunDogCallNames(args: {
+  kennelId: string;
+  kennelRunId: unknown;
+  updates: unknown;
+  client?: KennelRunTransactionRunner;
+}) {
+  const client =
+    args.client ?? (db as unknown as KennelRunTransactionRunner);
+  const kennelRunId = String(args.kennelRunId ?? "").trim();
+
+  if (!kennelRunId) {
+    throw new KennelRunServiceError("kennelRunId is required.");
+  }
+
+  if (!Array.isArray(args.updates) || args.updates.length === 0) {
+    throw new KennelRunServiceError("At least one call name update is required.");
+  }
+
+  const updatesByDogId = new Map<string, BulkCallNameUpdate>();
+
+  for (const rawUpdate of args.updates) {
+    if (!rawUpdate || typeof rawUpdate !== "object") {
+      throw new KennelRunServiceError("Each call name update must include a dog.");
+    }
+
+    const update = rawUpdate as { dogId?: unknown; callName?: unknown };
+    const dogId = String(update.dogId ?? "").trim();
+
+    if (!dogId) {
+      throw new KennelRunServiceError("Each call name update must include a dog.");
+    }
+
+    if (
+      update.callName !== undefined &&
+      update.callName !== null &&
+      typeof update.callName !== "string"
+    ) {
+      throw new KennelRunServiceError("Call names must be text.");
+    }
+
+    const validation = validateCallName(update.callName ?? null);
+
+    if (!validation.ok) {
+      throw new KennelRunServiceError(validation.error);
+    }
+
+    updatesByDogId.set(dogId, {
+      dogId,
+      callName: validation.name || null,
+    });
+  }
+
+  const updates = [...updatesByDogId.values()];
+
+  return client.$transaction(async (tx) => {
+    const run = await tx.kennelRun.findUnique({
+      where: { id: kennelRunId },
+      select: { id: true, kennelId: true },
+    });
+
+    if (!run || run.kennelId !== args.kennelId) {
+      throw new KennelRunServiceError("Kennel Run not found.", 404);
+    }
+
+    const dogs = await tx.dog.findMany({
+      where: { id: { in: updates.map((update) => update.dogId) } },
+      select: { id: true, ownerKennelId: true, kennelRunId: true },
+    });
+    const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
+    const invalidUpdate = updates.find((update) => {
+      const dog = dogsById.get(update.dogId);
+      return (
+        !dog ||
+        dog.ownerKennelId !== args.kennelId ||
+        dog.kennelRunId !== kennelRunId
+      );
+    });
+
+    if (invalidUpdate) {
+      throw new KennelRunServiceError(
+        "A dog is no longer in this kennel run. Refresh and try again.",
+        409
+      );
+    }
+
+    for (const update of updates) {
+      const result = await tx.dog.updateMany({
+        where: {
+          id: update.dogId,
+          ownerKennelId: args.kennelId,
+          kennelRunId,
+        },
+        data: { callName: update.callName },
+      });
+
+      if (result.count !== 1) {
+        throw new KennelRunServiceError(
+          "A dog is no longer in this kennel run. Refresh and try again.",
+          409
+        );
+      }
+    }
+
+    return { updatedCount: updates.length };
+  });
 }

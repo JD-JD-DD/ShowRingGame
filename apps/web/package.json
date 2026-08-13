@@ -27,6 +27,7 @@
     "test:closed-kennel-masking": "tsx scripts/testClosedKennelMasking.ts",
     "test:kennel-run-filtering": "tsx scripts/testKennelRunFiltering.ts",
     "test:kennel-dog-search": "tsx scripts/testKennelDogSearch.ts",
+    "test:bulk-call-names": "tsx scripts/testBulkCallNames.ts",
     "test:global-header-logout": "tsx scripts/testGlobalHeaderLogout.ts",
     "test:game-header-visibility": "tsx scripts/testGameHeaderVisibility.ts",
     "test:breed-visibility": "tsx scripts/testBreedVisibility.ts",
