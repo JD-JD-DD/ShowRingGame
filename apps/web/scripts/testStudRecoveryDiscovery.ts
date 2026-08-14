@@ -27,6 +27,13 @@ assert.ok(
   ),
   "recovering direct-route public studs cannot become the initial planner selection"
 );
+assert.ok(
+  plannerClient.includes("dog.isEligibleToBreed && !dog.hasPendingVeterinaryCare") &&
+    plannerClient.includes("dog.isEligibleToBreed &&\n          dog.hasPendingVeterinaryCare") &&
+    plannerClient.includes("setSireId(\"\");") &&
+    plannerClient.includes("router.refresh();"),
+  "only canonically eligible sires can enter planner results, and successful breedings clear stale sire state before refresh"
+);
 
 const publicStudsPage = source("apps/web/app/studs/page.tsx");
 assert.ok(
