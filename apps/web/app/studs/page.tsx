@@ -17,6 +17,10 @@ import {
 } from "@/server/services/emergencyVetCare.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import {
+  getBreedingEligibilityMessage,
+  getIndividualBreedingEligibility,
+} from "@/server/services/breedingEligibility.service";
+import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
 } from "@/server/services/dogVisibleCategories.service";
@@ -272,6 +276,8 @@ export default async function StudsPage({ searchParams }: PageProps) {
           visibleTitleSuffix: true,
           breedCode2: true,
           birthEpoch: true,
+          lifecycleState: true,
+          sex: true,
           breed: {
             select: {
               name: true,
@@ -350,6 +356,22 @@ export default async function StudsPage({ searchParams }: PageProps) {
   })
     : [];
   const dogIds = listings.map((listing) => listing.dog.id);
+
+  const latestSireAttempts = dogIds.length
+    ? await db.breedingAttempt.findMany({
+        where: { sireId: { in: dogIds } },
+        orderBy: [
+          { sireId: "asc" },
+          { createdEpoch: "desc" },
+          { id: "desc" },
+        ],
+        distinct: ["sireId"],
+        select: { sireId: true, createdEpoch: true },
+      })
+    : [];
+  const latestSireAttemptEpochByDogId = new Map(
+    latestSireAttempts.map((attempt) => [attempt.sireId, attempt.createdEpoch])
+  );
 
   if (dogIds.length > 0) {
     await ensurePhenotypeHealthTruthsForDogs(db, dogIds);
@@ -512,6 +534,17 @@ export default async function StudsPage({ searchParams }: PageProps) {
                 emergencyCareEvents: dog.emergencyCareEvents,
                 reproductiveEmergencies: dog.reproductiveEmergencies,
               });
+              const breedingEligibility = getIndividualBreedingEligibility({
+                currentEpoch,
+                birthEpoch: dog.birthEpoch,
+                lifecycleState: dog.lifecycleState,
+                sex: dog.sex,
+                latestSireAttemptCreatedEpoch:
+                  latestSireAttemptEpochByDogId.get(dog.id) ?? null,
+              });
+              const breedingEligibilityMessage = getBreedingEligibilityMessage(
+                breedingEligibility
+              );
               const visibleCategories = deriveCurrentVisibleCategoriesForDogDisplay({
                 storedTraits: dog,
                 phenotypeHealthTruths:
@@ -562,6 +595,19 @@ export default async function StudsPage({ searchParams }: PageProps) {
                         <div className="theme-heading mt-1 font-medium">
                           {dog.ownerKennel?.name ?? "Player Kennel"}
                         </div>
+                      </div>
+                      <div className="theme-card rounded-2xl px-4 py-3">
+                        <div className="theme-label text-xs uppercase tracking-wide">
+                          Availability
+                        </div>
+                        <div className="theme-heading mt-1 font-medium">
+                          {breedingEligibility.isEligible ? "Available" : "Recovery"}
+                        </div>
+                        {!breedingEligibility.isEligible && breedingEligibilityMessage ? (
+                          <div className="theme-copy mt-1 text-xs">
+                            {breedingEligibilityMessage}
+                          </div>
+                        ) : null}
                       </div>
 
                       <div className="theme-card rounded-2xl px-4 py-3">
@@ -625,16 +671,25 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           {PENDING_VETERINARY_CARE_BREEDING_MESSAGE}
                         </div>
                       ) : null}
-                      <Link
-                        href={`/breed?studListingId=${listing.id}`}
-                        className={`flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold ${
-                          hasPendingVeterinaryCare
-                            ? "theme-secondary-button"
-                            : "theme-primary-button"
-                        }`}
-                      >
-                        {hasPendingVeterinaryCare ? "Review Availability" : "Use At Stud"}
-                      </Link>
+                      {breedingEligibility.isEligible ? (
+                        <Link
+                          href={`/breed?studListingId=${listing.id}`}
+                          className={`flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold ${
+                            hasPendingVeterinaryCare
+                              ? "theme-secondary-button"
+                              : "theme-primary-button"
+                          }`}
+                        >
+                          {hasPendingVeterinaryCare ? "Review Availability" : "Use At Stud"}
+                        </Link>
+                      ) : (
+                        <span
+                          aria-disabled="true"
+                          className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
+                        >
+                          Stud in Recovery
+                        </span>
+                      )}
 
                       <Link
                         href={`/dogs/${dog.id}`}

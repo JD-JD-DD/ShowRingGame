@@ -1665,7 +1665,8 @@ export default function BreedPageClient({
     null;
   const initialStud =
     dogs.find(
-      (dog) => dog.studListingId === initialStudListingId
+      (dog) =>
+        dog.studListingId === initialStudListingId && dog.isEligibleToBreed
     ) ?? null;
   const anchorDog = initialDog ?? initialStud;
   const initialBreedCode =

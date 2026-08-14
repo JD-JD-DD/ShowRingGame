@@ -722,6 +722,33 @@ export default async function BreedingPlannerPage({
         }),
       }),
     ]);
+  const plannerDogIds = [...new Set([
+    ...dogs.map((dog) => dog.id),
+    ...publicStudListings.map((listing) => listing.dog.id),
+  ])];
+  const latestSireAttempts = plannerDogIds.length
+    ? await measureBreedingRouteStage({
+        timer,
+        route,
+        operation: "latest_sire_attempt_query",
+        execution: "sequential",
+        action: () =>
+          db.breedingAttempt.findMany({
+            where: { sireId: { in: plannerDogIds } },
+            orderBy: [
+              { sireId: "asc" },
+              { createdEpoch: "desc" },
+              { id: "desc" },
+            ],
+            distinct: ["sireId"],
+            select: { sireId: true, createdEpoch: true },
+          }),
+        details: (rows) => ({ rowCount: rows.length }),
+      })
+    : [];
+  const latestSireAttemptEpochByDogId = new Map(
+    latestSireAttempts.map((attempt) => [attempt.sireId, attempt.createdEpoch])
+  );
 
   const dogCards: DogCardDto[] = await measureBreedingRouteStage({
     timer,
@@ -739,6 +766,8 @@ export default async function BreedingPlannerPage({
           sex: dog.sex,
           activeBreedingAttemptStatus: dog.breedingAttemptsAsDam[0]?.status ?? null,
           lastWhelpedEpoch: lastLitterEpoch,
+          latestSireAttemptCreatedEpoch:
+            latestSireAttemptEpochByDogId.get(dog.id) ?? null,
         });
         const breedingEligibilityMessage = getBreedingEligibilityMessage(
           breedingEligibility
@@ -815,6 +844,8 @@ export default async function BreedingPlannerPage({
           birthEpoch: dog.birthEpoch,
           lifecycleState: dog.lifecycleState,
           sex: dog.sex,
+          latestSireAttemptCreatedEpoch:
+            latestSireAttemptEpochByDogId.get(dog.id) ?? null,
         });
         const breedingEligibilityMessage = getBreedingEligibilityMessage(
           breedingEligibility
@@ -908,6 +939,11 @@ export default async function BreedingPlannerPage({
         initialNotice = {
           tone: "error",
           message: "This stud is not available for breeding.",
+        };
+      } else if (!requestedStud.isEligibleToBreed) {
+        initialNotice = {
+          tone: "warning",
+          message: `${formatDogDisplayName(requestedStud)} is not available to breed right now. ${requestedStud.breedingEligibilityMessage ?? ""}`.trim(),
         };
       }
     }

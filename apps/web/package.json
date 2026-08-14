@@ -34,6 +34,7 @@
     "test:breeding-eligibility": "tsx scripts/testBreedingEligibilityConsistency.ts",
     "test:breeding-eligibility-reasons": "tsx scripts/testBreedingEligibilityReasons.ts",
     "test:stud-recovery": "tsx scripts/testStudRecovery.ts",
+    "test:stud-recovery-discovery": "tsx scripts/testStudRecoveryDiscovery.ts",
     "test:breeding-action-feedback": "tsx scripts/testBreedingActionFeedback.ts",
     "test:public-stud-discovery": "tsx scripts/testPublicStudDiscovery.ts",
     "test:public-stud-pending-care": "tsx scripts/testPublicStudPendingCare.ts",

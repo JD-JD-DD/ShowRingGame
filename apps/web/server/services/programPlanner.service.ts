@@ -371,7 +371,12 @@ function healthSummary(
   };
 }
 
-function canBreedDog(dog: PlannerDogRecord, ageHours: number, currentEpoch: number) {
+function canBreedDog(
+  dog: PlannerDogRecord,
+  ageHours: number,
+  currentEpoch: number,
+  latestSireAttemptCreatedEpoch: number | null
+) {
   void ageHours;
   return getIndividualBreedingEligibility({
     currentEpoch,
@@ -385,6 +390,7 @@ function canBreedDog(dog: PlannerDogRecord, ageHours: number, currentEpoch: numb
         )
       )?.status ?? null,
     lastWhelpedEpoch: dog.dammedLitters[0]?.bornEpoch ?? null,
+    latestSireAttemptCreatedEpoch,
   }).isEligible;
 }
 
@@ -1180,10 +1186,24 @@ export async function getProgramPlannerData(args: {
   const selectedDogs = selectedBreedCode2
     ? allDogs.filter((dog) => dog.breedCode2 === selectedBreedCode2)
     : [];
-  const healthConditionTruthsByDogId =
-    await ensureAndLoadProgramPlannerHealthTruths(
-      selectedDogs.map((dog) => dog.id)
-    );
+  const [healthConditionTruthsByDogId, latestSireAttempts] = await Promise.all([
+    ensureAndLoadProgramPlannerHealthTruths(selectedDogs.map((dog) => dog.id)),
+    selectedDogs.length
+      ? db.breedingAttempt.findMany({
+          where: { sireId: { in: selectedDogs.map((dog) => dog.id) } },
+          orderBy: [
+            { sireId: "asc" },
+            { createdEpoch: "desc" },
+            { id: "desc" },
+          ],
+          distinct: ["sireId"],
+          select: { sireId: true, createdEpoch: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const latestSireAttemptEpochByDogId = new Map(
+    latestSireAttempts.map((attempt) => [attempt.sireId, attempt.createdEpoch])
+  );
 
   const baseDogs: ProgramPlannerDogDto[] = selectedDogs.map((dog) => {
     const ageHours = Math.max(0, args.currentEpoch - dog.birthEpoch);
@@ -1200,7 +1220,14 @@ export async function getProgramPlannerData(args: {
       dog.titleProgress?.championshipPoints ??
       dog.showResults.reduce((sum, result) => sum + result.pointsAwarded, 0);
     const isShowEligible = canShowDog(dog, ageHours);
-    const isBreedingEligible = canBreedDog(dog, ageHours, args.currentEpoch);
+    const latestSireAttemptCreatedEpoch =
+      latestSireAttemptEpochByDogId.get(dog.id) ?? null;
+    const isBreedingEligible = canBreedDog(
+      dog,
+      ageHours,
+      args.currentEpoch,
+      latestSireAttemptCreatedEpoch
+    );
     const breedingEligibility = getIndividualBreedingEligibility({
       currentEpoch: args.currentEpoch,
       birthEpoch: dog.birthEpoch,
@@ -1213,6 +1240,7 @@ export async function getProgramPlannerData(args: {
           )
         )?.status ?? null,
       lastWhelpedEpoch: dog.dammedLitters[0]?.bornEpoch ?? null,
+      latestSireAttemptCreatedEpoch,
     });
     const breedingEligibilityMessage = getBreedingEligibilityMessage(
       breedingEligibility
@@ -1286,6 +1314,8 @@ export async function getProgramPlannerData(args: {
               ? "Pregnant"
               : breedingEligibility.reasonCode === "POST_WHELP_COOLDOWN"
                 ? "Post-whelp Rest"
+                : breedingEligibility.reasonCode === "STUD_RECOVERY"
+                  ? "Recovery"
                 : breedingEligibility.reasonCode === "UNDER_MINIMUM_AGE"
                   ? "Too young"
                   : breedingEligibility.reasonCode === "OVER_MAXIMUM_DAM_AGE"
