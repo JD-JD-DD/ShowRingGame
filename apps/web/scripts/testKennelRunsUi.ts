@@ -202,6 +202,7 @@ assertIncludes(
   "Bulk Naming preserves local roster state while refreshing dogs"
 );
 assertIncludes(bulkCallNameEditor, "regNumber", "Bulk Naming displays registration numbers");
+assertIncludes(bulkCallNameEditor, "&middot; {dog.sex}", "Bulk Naming displays the stored sex inline after registration");
 assertIncludes(bulkCallNameEditor, "dog.registeredName ?", "existing registered names stay read-only");
 assertIncludes(bulkCallNameEditor, 'placeholder="Registered name"', "blank registered names expose an editor");
 assertIncludes(bulkCallNameEditor, "maxLength={MAX_CALL_NAME_LENGTH}", "Bulk Naming uses the canonical call-name limit");

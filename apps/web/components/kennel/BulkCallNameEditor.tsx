@@ -9,6 +9,7 @@ import {
 type BulkNamingDog = {
   dogId: string;
   regNumber: string;
+  sex: "M" | "F";
   registeredName: string | null;
   callName: string | null;
 };
@@ -147,6 +148,7 @@ export default function BulkCallNameEditor({
                 <div className="min-w-0 text-sm">
                   <span className="theme-label mr-2 text-[0.68rem] uppercase tracking-wide md:hidden">Registration</span>
                   <span className="font-semibold">{dog.regNumber}</span>
+                  <span className="theme-copy ml-2">&middot; {dog.sex}</span>
                 </div>
                 <div className="min-w-0 text-sm">
                   <span className="theme-label mr-2 text-[0.68rem] uppercase tracking-wide md:hidden">Registered Name</span>
