@@ -36,6 +36,7 @@ export type BuildDogActionWindowsInput = {
   currentEpoch: number;
   canShow: boolean;
   canBreed: boolean;
+  breedingUnavailableReason?: string | null;
   groomingState?: string | null;
   canGroom?: boolean;
   groomedThisWeek?: boolean;
@@ -152,6 +153,14 @@ function buildBreedingWindow(
       label: "Breeding Window",
       value: "Eligible now.",
       tone: "ready",
+    };
+  }
+
+  if (input.breedingUnavailableReason) {
+    return {
+      label: "Breeding Window",
+      value: input.breedingUnavailableReason,
+      tone: "pending",
     };
   }
 

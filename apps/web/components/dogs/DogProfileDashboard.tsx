@@ -154,8 +154,8 @@ export default function DogProfileDashboard(props: Props) {
     ...(snapshot.marketLabel !== "Not for sale" ? [snapshot.marketLabel] : []),
     `Show: ${snapshot.showEligibilityLabel}`,
     `Breeding: ${snapshot.breedingEligibilityLabel}`,
-    ...(snapshot.femaleReproductiveStatus
-      ? [`Repro: ${snapshot.femaleReproductiveStatus.label}`]
+    ...(snapshot.reproductiveStatus
+      ? [`Repro: ${snapshot.reproductiveStatus.label}`]
       : []),
   ];
   const actionWindows = buildDogActionWindows({
@@ -165,6 +165,7 @@ export default function DogProfileDashboard(props: Props) {
     currentEpoch: props.currentEpoch,
     canShow: snapshot.canShow,
     canBreed: snapshot.canBreed,
+    breedingUnavailableReason: snapshot.breedingEligibilityMessage ?? null,
     canGroom: profile.groomingDetails?.canGroom ?? false,
     groomedThisWeek: profile.groomingDetails?.groomedThisWeek ?? false,
     nextGroomingResetEpoch:
@@ -218,11 +219,11 @@ export default function DogProfileDashboard(props: Props) {
             value={snapshot.breedingEligibilityLabel}
             detail={snapshot.breedingEligibilityMessage ?? undefined}
           />
-          {snapshot.femaleReproductiveStatus ? (
+          {snapshot.reproductiveStatus ? (
             <SummaryValue
               label="Reproductive status"
-              value={snapshot.femaleReproductiveStatus.label}
-              detail={snapshot.femaleReproductiveStatus.detail ?? undefined}
+              value={snapshot.reproductiveStatus.label}
+              detail={snapshot.reproductiveStatus.detail ?? undefined}
             />
           ) : null}
         </div>

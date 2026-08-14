@@ -51,14 +51,16 @@ export type DogProfileHealthSummaryDto = {
   hasFullClearance: boolean;
 };
 
-export type FemaleReproductiveSnapshotStatusDto = {
-  key: "OPEN" | "BRED" | "PREGNANT" | "EMERGENCY" | "REST";
+export type ReproductiveSnapshotStatusDto = {
+  key: "OPEN" | "BRED" | "PREGNANT" | "EMERGENCY" | "REST" | "AVAILABLE" | "RECOVERY";
   label:
     | "Open"
     | "Bred"
     | "Pregnant"
     | "Reproductive Emergency"
-    | "Post-whelp Rest";
+    | "Post-whelp Rest"
+    | "Available"
+    | "Recovery";
   detail: string | null;
 } | null;
 
@@ -101,7 +103,7 @@ export type DogProfileSnapshotDto = {
   breedingEligibilityLabel: string;
   breedingEligibilityReasonCode?: string | null;
   breedingEligibilityMessage?: string | null;
-  femaleReproductiveStatus: FemaleReproductiveSnapshotStatusDto;
+  reproductiveStatus: ReproductiveSnapshotStatusDto;
   groomingLabel: string | null;
   healthTestingSummary: DogProfileHealthSummaryDto;
   coatConditionDisplay: string | null;
@@ -532,11 +534,11 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       breedingEligibilityReasonCode:
         input.snapshot.breedingEligibilityReasonCode,
       breedingEligibilityMessage: input.snapshot.breedingEligibilityMessage,
-      femaleReproductiveStatus: input.snapshot.femaleReproductiveStatus
+      reproductiveStatus: input.snapshot.reproductiveStatus
         ? {
-            key: input.snapshot.femaleReproductiveStatus.key,
-            label: input.snapshot.femaleReproductiveStatus.label,
-            detail: input.snapshot.femaleReproductiveStatus.detail,
+            key: input.snapshot.reproductiveStatus.key,
+            label: input.snapshot.reproductiveStatus.label,
+            detail: input.snapshot.reproductiveStatus.detail,
           }
         : null,
       groomingLabel: input.snapshot.groomingLabel,

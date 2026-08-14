@@ -14,7 +14,7 @@ import { estimateJsonSizeBytes } from "@/lib/perf";
 import { buildTitlePointsDisplay } from "@/lib/titlePoints";
 import {
   mapDogProfile,
-  type FemaleReproductiveSnapshotStatusDto,
+  type ReproductiveSnapshotStatusDto,
   type DogProfileBadgeDto,
   type DogProfileDto,
   type DogProfilePedigreeDogDto,
@@ -465,7 +465,7 @@ function formatBreedingAttemptStatus(status: string): string {
   }
 }
 
-function buildFemaleReproductiveSnapshotStatus(args: {
+function buildReproductiveSnapshotStatus(args: {
   sex: "M" | "F";
   activeBreedingAttempt: {
     status: string;
@@ -475,12 +475,29 @@ function buildFemaleReproductiveSnapshotStatus(args: {
   breedingEligibility: {
     reasonCode: BreedingEligibilityReasonCode;
     remainingHours: number;
+    isEligible: boolean;
   };
   currentEpoch: number;
-}): FemaleReproductiveSnapshotStatusDto {
+}): ReproductiveSnapshotStatusDto {
   const { sex, activeBreedingAttempt, breedingEligibility, currentEpoch } = args;
 
-  if (sex !== "F") {
+  if (sex === "M") {
+    if (breedingEligibility.reasonCode === "STUD_RECOVERY") {
+      return {
+        key: "RECOVERY",
+        label: "Recovery",
+        detail: getBreedingEligibilityMessage(breedingEligibility),
+      };
+    }
+
+    if (breedingEligibility.isEligible) {
+      return {
+        key: "AVAILABLE",
+        label: "Available",
+        detail: null,
+      };
+    }
+
     return null;
   }
 
@@ -1316,6 +1333,8 @@ export async function getDogProfile(args: {
       dog.breedingAttemptsAsDam.find(
         (attempt) => attempt.status === "WHELPED" && attempt.whelpedEpoch != null
       )?.whelpedEpoch ?? null,
+    latestSireAttemptCreatedEpoch:
+      dog.breedingAttemptsAsSire[0]?.createdEpoch ?? null,
     resolvedReproductiveEmergencies,
   });
   const breedingEligible = breedingEligibility.isEligible;
@@ -1781,7 +1800,7 @@ export async function getDogProfile(args: {
           ? null
           : breedingEligibility.reasonCode,
       breedingEligibilityMessage,
-      femaleReproductiveStatus: buildFemaleReproductiveSnapshotStatus({
+      reproductiveStatus: buildReproductiveSnapshotStatus({
         sex: dog.sex,
         activeBreedingAttempt,
         breedingEligibility,
@@ -2006,6 +2025,7 @@ export async function getDogProfile(args: {
         !isOwnedByCurrentKennel &&
         isAlive &&
         dog.sex === Sex.M &&
+        breedingEligible &&
         Boolean(activeStudListing),
       canOfferForSale,
       canEditSaleListing:

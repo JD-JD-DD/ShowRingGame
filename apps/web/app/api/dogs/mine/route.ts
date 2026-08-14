@@ -14,7 +14,10 @@ import {
 } from "@/server/services/grooming.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { resolveDueBreedingProgressForKennel } from "@/server/services/breeding.service";
-import { getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
+import {
+  getBreedingEligibilityMessage,
+  getIndividualBreedingEligibility,
+} from "@/server/services/breedingEligibility.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -79,11 +82,13 @@ type BreedingCardStatus = {
     | "Did Not Take"
     | "Whelped"
     | "Post-Whelp Rest"
-    | "Available for Stud"
+    | "Available"
+    | "Recovery"
     | "Not Eligible";
   pregCheckInHours: number | null;
   dueInHours: number | null;
   cooldownInHours: number | null;
+  detail: string | null;
 };
 
 type ActiveDamAttemptSummary = {
@@ -144,6 +149,7 @@ function getBreedingCardStatus(
     activeAttempt: ActiveDamAttemptSummary | null;
     latestWhelpedAttempt: LatestWhelpedAttemptSummary | null;
     recentNotPregnantAttempt: RecentNotPregnantAttemptSummary | null;
+    latestSireAttemptCreatedEpoch: number | null;
   },
   currentEpoch: number
 ): BreedingCardStatus {
@@ -158,13 +164,23 @@ function getBreedingCardStatus(
     sex: dog.sex,
     activeBreedingAttemptStatus: breedingSummary.activeAttempt?.status ?? null,
     lastWhelpedEpoch: breedingSummary.latestWhelpedAttempt?.whelpedEpoch ?? null,
+    latestSireAttemptCreatedEpoch: breedingSummary.latestSireAttemptCreatedEpoch,
   });
   if (dog.sex === "M") {
     return {
-      label: breedingEligibility.isEligible ? "Available for Stud" : "Not Eligible",
+      label:
+        breedingEligibility.reasonCode === "STUD_RECOVERY"
+          ? "Recovery"
+          : breedingEligibility.isEligible
+            ? "Available"
+            : "Not Eligible",
       pregCheckInHours: null,
       dueInHours: null,
-      cooldownInHours: null,
+      cooldownInHours:
+        breedingEligibility.reasonCode === "STUD_RECOVERY"
+          ? breedingEligibility.remainingHours
+          : null,
+      detail: getBreedingEligibilityMessage(breedingEligibility),
     };
   }
 
@@ -179,6 +195,7 @@ function getBreedingCardStatus(
           ? null
           : Math.max(0, activeAttempt.dueEpoch - currentEpoch),
       cooldownInHours: null,
+      detail: null,
     };
   }
 
@@ -193,6 +210,7 @@ function getBreedingCardStatus(
           : Math.max(0, activeAttempt.pregCheckEpoch - currentEpoch),
       dueInHours: null,
       cooldownInHours: null,
+      detail: null,
     };
   }
 
@@ -202,6 +220,7 @@ function getBreedingCardStatus(
       pregCheckInHours: null,
       dueInHours: null,
       cooldownInHours: breedingEligibility.remainingHours,
+      detail: null,
     };
   }
 
@@ -211,6 +230,7 @@ function getBreedingCardStatus(
       pregCheckInHours: null,
       dueInHours: null,
       cooldownInHours: null,
+      detail: null,
     };
   }
 
@@ -224,6 +244,7 @@ function getBreedingCardStatus(
       pregCheckInHours: null,
       dueInHours: null,
       cooldownInHours: null,
+      detail: null,
     };
   }
 
@@ -233,6 +254,7 @@ function getBreedingCardStatus(
       pregCheckInHours: null,
       dueInHours: null,
       cooldownInHours: null,
+      detail: null,
     };
   }
 
@@ -240,7 +262,8 @@ function getBreedingCardStatus(
     label: "Open",
     pregCheckInHours: null,
     dueInHours: null,
-    cooldownInHours: null,
+      cooldownInHours: null,
+      detail: null,
   };
 }
 
@@ -461,6 +484,7 @@ export async function GET(request: Request) {
       activeDamAttempts,
       latestWhelpedAttempts,
       recentNotPregnantAttempts,
+      latestSireAttempts,
       latestHealthTests,
       activeListings,
       groomingStatuses,
@@ -536,6 +560,16 @@ export async function GET(request: Request) {
               checkedEpoch: true,
             },
           }),
+          db.breedingAttempt.findMany({
+            where: { sireId: { in: dogIds } },
+            orderBy: [
+              { sireId: "asc" },
+              { createdEpoch: "desc" },
+              { id: "desc" },
+            ],
+            distinct: ["sireId"],
+            select: { sireId: true, createdEpoch: true },
+          }),
           db.healthTestRecord.findMany({
             where: {
               dogId: {
@@ -592,6 +626,7 @@ export async function GET(request: Request) {
           [],
           [],
           [],
+          [],
           new Map(),
           await getKennelGroomingSummary({
             kennelId: kennel.id,
@@ -635,6 +670,9 @@ export async function GET(request: Request) {
                 },
               ]
       )
+    );
+    const latestSireAttemptEpochByDogId = new Map(
+      latestSireAttempts.map((attempt) => [attempt.sireId, attempt.createdEpoch])
     );
     const healthTestsByDogId = groupHealthTestsByDog(latestHealthTests);
     const activeListingTypesByDogId = groupActiveListingTypesByDog(activeListings);
@@ -706,6 +744,8 @@ export async function GET(request: Request) {
               latestWhelpedAttempt: latestWhelpedByDogId.get(dog.id) ?? null,
               recentNotPregnantAttempt:
                 recentNotPregnantByDogId.get(dog.id) ?? null,
+              latestSireAttemptCreatedEpoch:
+                latestSireAttemptEpochByDogId.get(dog.id) ?? null,
             },
             currentEpoch
           ),

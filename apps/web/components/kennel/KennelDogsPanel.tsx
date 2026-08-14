@@ -27,11 +27,13 @@ type BreedingCardStatus = {
     | "Did Not Take"
     | "Whelped"
     | "Post-Whelp Rest"
-    | "Available for Stud"
+    | "Available"
+    | "Recovery"
     | "Not Eligible";
   pregCheckInHours: number | null;
   dueInHours: number | null;
   cooldownInHours: number | null;
+  detail: string | null;
 };
 
 type KennelDogDto = {
@@ -571,7 +573,7 @@ export default function KennelDogsPanel() {
 
       const breedableMatch = onlyBreedable
         ? dog.breedingCardStatus.label === "Open" ||
-          dog.breedingCardStatus.label === "Available for Stud"
+          dog.breedingCardStatus.label === "Available"
         : true;
 
       const forSaleMatch = onlyForSale ? dog.isListedForSale : true;
@@ -2072,7 +2074,7 @@ export default function KennelDogsPanel() {
                         return (
                           <td key={columnId} className="theme-copy px-2 py-2 text-xs">
                             {dog.breedingCardStatus.label === "Open" ||
-                            dog.breedingCardStatus.label === "Available for Stud"
+                            dog.breedingCardStatus.label === "Available"
                               ? "Yes"
                               : "No"}
                           </td>
@@ -2082,6 +2084,11 @@ export default function KennelDogsPanel() {
                           <td key={columnId} className="theme-copy px-2 py-2 text-xs">
                             <div className="grid gap-1">
                               <div>{dog.breedingCardStatus.label}</div>
+                              {dog.breedingCardStatus.detail ? (
+                                <div className="theme-copy text-[0.68rem]">
+                                  {dog.breedingCardStatus.detail}
+                                </div>
+                              ) : null}
                               {dog.breedingCardStatus.cooldownInHours !== null ? (
                                 <div className="theme-copy text-[0.68rem]">
                                   Available to breed in{" "}
