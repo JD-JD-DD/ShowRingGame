@@ -23,6 +23,7 @@ export const GESTATION_HOURS = 8 * SHOW_WEEK_HOURS; // 56 days
 export const PREG_CHECK_HOURS = 4 * SHOW_WEEK_HOURS; // 28 days
 export const DAM_MAX_BREED_AGE_HOURS = 7 * SHOW_YEAR_HOURS; // 7 years
 export const WHELPING_COOLDOWN_HOURS = 270  // ~9 months 
+export const STUD_RECOVERY_HOURS = 2;
 export const DAM_SHOW_POST_WHELP_COOLDOWN_HOURS = 8 * SHOW_WEEK_HOURS; // 8 weeks
 
 // Reproductive emergency (Stage 2 deterministic rules only)

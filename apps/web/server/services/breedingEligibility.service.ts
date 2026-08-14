@@ -4,6 +4,7 @@ import {
   MIN_BREED_AGE_HOURS,
   type DogStatus,
   type Sex,
+  STUD_RECOVERY_HOURS,
   WHELPING_COOLDOWN_HOURS,
 } from "@showring/rules";
 import { formatRealDurationHoursLong } from "../../lib/gameTimeFormat";
@@ -24,6 +25,7 @@ export type BreedingEligibilityReasonCode =
   | "PREGNANT"
   | "REPRODUCTIVE_EMERGENCY"
   | "POST_WHELP_COOLDOWN"
+  | "STUD_RECOVERY"
   | "REPRODUCTIVE_RECOVERY"
   | "REPRODUCTIVE_EXTENDED_RECOVERY"
   | "PERMANENT_REPRODUCTIVE_RESTRICTION";
@@ -35,6 +37,7 @@ export type IndividualBreedingEligibilityInput = {
   sex: Sex;
   activeBreedingAttemptStatus?: string | null;
   lastWhelpedEpoch?: number | null;
+  latestSireAttemptCreatedEpoch?: number | null;
   resolvedReproductiveEmergencies?: ResolvedReproductiveEmergencyEligibilityEvent[];
 };
 
@@ -46,6 +49,8 @@ export type IndividualBreedingEligibilityResult = {
   remainingHours: number;
   isInPostWhelpCooldown: boolean;
   cooldownUntilEpoch: number | null;
+  isInStudRecovery: boolean;
+  studRecoveryUntilEpoch: number | null;
   activeBreedingAttemptStatus:
     | "INITIATED"
     | "PREGNANT"
@@ -79,6 +84,12 @@ export function getIndividualBreedingEligibility(
       : null);
   const isInPostWhelpCooldown =
     cooldownUntilEpoch != null && args.currentEpoch < cooldownUntilEpoch;
+  const studRecoveryUntilEpoch =
+    args.sex === "M" && args.latestSireAttemptCreatedEpoch != null
+      ? args.latestSireAttemptCreatedEpoch + STUD_RECOVERY_HOURS
+      : null;
+  const isInStudRecovery =
+    studRecoveryUntilEpoch != null && args.currentEpoch < studRecoveryUntilEpoch;
   const ageHours = Math.max(0, args.currentEpoch - args.birthEpoch);
   const minimumAgeEligibleAtEpoch = args.birthEpoch + MIN_BREED_AGE_HOURS;
   let reasonCode: BreedingEligibilityReasonCode = "ELIGIBLE";
@@ -87,6 +98,10 @@ export function getIndividualBreedingEligibility(
 
   if (args.lifecycleState !== "ALIVE") {
     reasonCode = "NOT_ALIVE";
+  } else if (isInStudRecovery && studRecoveryUntilEpoch != null) {
+    reasonCode = "STUD_RECOVERY";
+    eligibleAtEpoch = studRecoveryUntilEpoch;
+    remainingHours = Math.max(0, studRecoveryUntilEpoch - args.currentEpoch);
   } else if (activeBreedingAttemptStatus === "INITIATED") {
     reasonCode = "PENDING_PREGNANCY_CONFIRMATION";
   } else if (activeBreedingAttemptStatus === "PREGNANT") {
@@ -135,6 +150,8 @@ export function getIndividualBreedingEligibility(
     remainingHours,
     isInPostWhelpCooldown,
     cooldownUntilEpoch,
+    isInStudRecovery,
+    studRecoveryUntilEpoch,
     activeBreedingAttemptStatus,
   };
 }
@@ -168,6 +185,10 @@ export function getBreedingEligibilityMessage(
       return "Veterinary complications mean she cannot safely carry another litter and may not be bred again.";
     case "POST_WHELP_COOLDOWN":
       return `Post-whelp recovery. May breed again in ${formatRealDurationHoursLong(
+        result.remainingHours
+      )}.`;
+    case "STUD_RECOVERY":
+      return `Stud recovery. May breed again in ${formatRealDurationHoursLong(
         result.remainingHours
       )}.`;
     default:

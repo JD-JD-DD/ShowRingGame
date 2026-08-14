@@ -1354,6 +1354,33 @@ export async function createBreedingAttemptForKennel(args: {
     let studSellerBalanceAfter: number | null = null;
     let requiresBrucellosisNegativeDam = false;
 
+    await tx.$queryRaw`
+      SELECT "id"
+      FROM "Dog"
+      WHERE "id" = ${sire.id}
+      FOR UPDATE
+    `;
+
+    const latestSireAttempt = await tx.breedingAttempt.findFirst({
+      where: { sireId: sire.id },
+      orderBy: [{ createdEpoch: "desc" }, { id: "desc" }],
+      select: { createdEpoch: true },
+    });
+    const sireEligibility = getIndividualBreedingEligibility({
+      currentEpoch,
+      birthEpoch: sire.birthEpoch,
+      lifecycleState: sire.lifecycleState as "ALIVE" | "RETIRED" | "DECEASED" | "TRANSFERRED",
+      sex: sire.sex,
+      latestSireAttemptCreatedEpoch: latestSireAttempt?.createdEpoch ?? null,
+    });
+
+    if (!sireEligibility.isEligible) {
+      throw new Error(
+        getBreedingEligibilityMessage(sireEligibility) ??
+          `${displayDogName(sire)} is not breeding eligible.`
+      );
+    }
+
     await assertDogHasNoPendingVeterinaryCare(dam.id, tx);
     await assertDogHasNoPendingVeterinaryCare(sire.id, tx);
 
