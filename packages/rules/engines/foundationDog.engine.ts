@@ -52,6 +52,8 @@ export type CreateFoundationDogEngineInput = {
   sex?: Sex;
   callName: string;
   breedBaseline: FoundationBreedBaseline;
+  /** GEN-09B context is intentionally generation-neutral until GEN-09C. */
+  populationContext?: unknown;
   random01?: () => number;
 };
 

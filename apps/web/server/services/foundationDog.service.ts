@@ -25,6 +25,7 @@ import { applyBetaBalanceTopUp } from "@/lib/betaEconomy";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { maybeSeedFoundationBrucellosis } from "@/server/services/infectiousDisease.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
+import { resolveFoundationPopulationContext, type FoundationPopulationContext } from "@/server/services/foundationPopulationContext.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
@@ -546,10 +547,11 @@ async function createOneFoundationDog(args: {
   breedCode2: string;
   currentEpoch: number;
   forcedSex?: "M" | "F";
+  populationContext?: FoundationPopulationContext;
 }): Promise<void> {
   const { breedCode2, currentEpoch, forcedSex } = args;
 
-  const breedBaseline = await getLiveBreedBaseline(breedCode2);
+  const breedBaseline = { breedCode2, traitMeans: GLOBAL_FALLBACK_BASELINE };
   const { regNumber, litterOrder } = await generateUniqueFoundationIdentity(
     breedCode2
   );
@@ -561,6 +563,7 @@ async function createOneFoundationDog(args: {
     birthEpoch: pickFoundationBirthEpoch(currentEpoch),
     callName: buildFoundationCallName(breedCode2),
     breedBaseline,
+    populationContext: args.populationContext,
   });
 
   const finalSex = forcedSex ?? generated.dog.sex;
@@ -750,12 +753,14 @@ export async function ensureFoundationInventoryForBreed(args: {
     malesNeeded,
     totalCount: createCount,
   });
+  const populationContext = await resolveFoundationPopulationContext(breedCode2);
 
   for (const forcedSex of forcedSexes) {
     await createOneFoundationDog({
       breedCode2,
       currentEpoch,
       forcedSex,
+      populationContext,
     });
   }
 }
@@ -802,12 +807,14 @@ export async function seedFoundationDogsForBreed(args: {
     malesNeeded,
     totalCount: count,
   });
+  const populationContext = await resolveFoundationPopulationContext(breedCode2);
 
   for (const forcedSex of forcedSexes) {
     await createOneFoundationDog({
       breedCode2,
       currentEpoch,
       forcedSex,
+      populationContext,
     });
   }
 }

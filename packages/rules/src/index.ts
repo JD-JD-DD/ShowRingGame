@@ -11,3 +11,4 @@ export * from "./seededRandom";
 export * from "../constants/lifecycle.constants";
 export * from "../constants/time.constants";
 export * from "../constants/release.constants";
+export * from "../calibration/geneticsCalibration.constants";
