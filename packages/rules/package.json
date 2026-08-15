@@ -14,6 +14,7 @@
     "test:genotype-contract": "tsx src/testGenotypeContract.ts",
     "test:legacy-genotype-reconstruction": "tsx src/testLegacyGenotypeReconstruction.ts",
     "test:polygenic-inheritance": "tsx src/testPolygenicInheritance.ts",
+    "test:genetics-calibration-simulation": "tsx src/testGeneticsCalibrationSimulation.ts",
     "test:health": "tsx src/testHealth.ts",
     "test:litter-construction": "tsx src/testLitterConstruction.ts",
     "test:reproductive-emergency": "tsx src/testReproductiveEmergency.ts",
