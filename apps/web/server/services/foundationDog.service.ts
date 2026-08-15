@@ -590,6 +590,8 @@ async function createOneFoundationDog(args: {
         marketState: "LISTED_NPC",
         originType: "FOUNDATION",
         isFoundation: true,
+        genotype: generated.dog.genotype,
+        geneticsVersion: generated.dog.geneticsVersion,
 
         ...toPersistedDogTraits(generated.dog.traits),
       },

@@ -1,9 +1,13 @@
 import {
+  CURRENT_GENETICS_VERSION,
+  TOTAL_LOCI,
   TRAIT_KEYS,
   TRAIT_MAX,
   TRAIT_MIN,
   type TraitKey,
 } from "../constants/genetics.constants";
+import { FINAL_GENETICS_CALIBRATION } from "../calibration/geneticsCalibration.constants";
+import { calculatePhenotypeFromGenotype, encodeGenotype, type CanonicalGenotype } from "./genotype.engine";
 import {
   CATEGORY_TRAIT_MAP,
   GENETIC_JUDGING_CATEGORIES,
@@ -525,9 +529,14 @@ export function createFoundationDogProfile(
   const random01 = input.random01 ?? Math.random;
   const sex = input.sex ?? pickSex(random01);
   const qualityBand = pickQualityBand(random01);
-  const baseline = input.breedBaseline.traitMeans;
-
-  const traits = generateFoundationTraits(baseline, qualityBand, random01);
+  // GEN-09: calibrated reset-population fallback is genotype-first. Legacy
+  // baseline/band values remain only for inventory-price compatibility.
+  const sampleAllele = () => {
+    const centered = Array.from({ length: 6 }, () => random01() * 2 - 1).reduce((sum, value) => sum + value, 0) / 6;
+    return Math.round(centered * FINAL_GENETICS_CALIBRATION.founderDistribution.spread * 1_000_000) / 1_000_000;
+  };
+  const genotype: CanonicalGenotype = { geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: TOTAL_LOCI }, () => [sampleAllele(), sampleAllele()] as const) };
+  const traits = calculatePhenotypeFromGenotype(genotype);
   const visibleCategories = deriveVisibleCategoriesFromTraits(traits);
   const suggestedPrice = calculateSuggestedPrice(visibleCategories, qualityBand);
 
@@ -543,6 +552,8 @@ export function createFoundationDogProfile(
     sireId: null,
     damId: null,
     traits,
+    genotype: encodeGenotype(genotype),
+    geneticsVersion: CURRENT_GENETICS_VERSION,
   };
 
   return {
