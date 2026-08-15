@@ -468,8 +468,38 @@ model Breed {
   showResults       ShowResult[]
   showAwards        ShowAward[]
   showJudgingBlocks ShowJudgingBlock[]
+  geneticBackgroundSnapshots BreedGeneticBackgroundSnapshot[]
 
   @@index([releaseVersion])
+}
+
+model BreedGeneticBackgroundSnapshot {
+  id                     String   @id @default(cuid())
+  breedCode2             String
+  gameYear               Int
+  backgroundRulesVersion String
+  geneticsVersion        String
+  snapshotEpoch          Int
+  sourceStatus           String
+  priorSnapshotId        String?
+  sourceFingerprint      String
+  eligibleDogCount       Int
+  usableDogCount         Int
+  kennelCount            Int
+  litterCount            Int
+  qualifiesForLiveUpdate Boolean
+  exclusionMetricsJson   Json
+  rawConcentrationJson   Json
+  weightingAuditJson     Json
+  phenotypeMetricsJson   Json
+  genotypeMetricsJson    Json
+  createdAt              DateTime @default(now())
+
+  breed Breed @relation(fields: [breedCode2], references: [code2])
+
+  @@unique([breedCode2, gameYear, backgroundRulesVersion])
+  @@index([breedCode2, gameYear])
+  @@index([priorSnapshotId])
 }
 
 model Dog {

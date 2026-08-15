@@ -72,6 +72,7 @@
     "backfill:phenotype-health": "tsx scripts/backfill-phenotype-health.ts",
     "backfill:kennel-runs": "tsx scripts/backfillKennelRuns.ts",
     "backfill:legacy-genotypes": "tsx scripts/initializeLegacyGenotypes.ts",
+    "snapshot:breed-genetic-background": "tsx scripts/createBreedGeneticBackgroundSnapshots.ts",
     "reset:kennel-runs-to-uncategorized": "tsx scripts/resetKennelRunsToUncategorized.ts",
     "cleanup:inactive-breed-foundation-listings": "tsx scripts/cleanupInactiveBreedFoundationListings.ts",
     "report:duplicate-breed-migration": "tsx scripts/reportDuplicateBreedMigration.ts",
