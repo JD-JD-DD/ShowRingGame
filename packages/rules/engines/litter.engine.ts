@@ -37,6 +37,10 @@ export type CreateLitterInput = {
   puppySexes: Sex[];
   sireTraits: DogTraits;
   damTraits: DogTraits;
+  sireGenotype: string;
+  sireGeneticsVersion: string;
+  damGenotype: string;
+  damGeneticsVersion: string;
   coiPercent: number;
   coiGenerationDepth: number;
   allowSinglePuppy?: boolean;
@@ -189,6 +193,10 @@ export function createLitter(input: CreateLitterInput): LitterWithDogs {
       damId: input.damId,
       sireTraits: input.sireTraits,
       damTraits: input.damTraits,
+      sireGenotype: input.sireGenotype,
+      sireGeneticsVersion: input.sireGeneticsVersion,
+      damGenotype: input.damGenotype,
+      damGeneticsVersion: input.damGeneticsVersion,
       coiPercent: input.coiPercent,
       coiGenerationDepth: input.coiGenerationDepth,
       random01: input.puppyGeneticsRandom01?.(litterOrder) ?? random01,

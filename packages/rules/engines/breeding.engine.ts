@@ -87,6 +87,10 @@ export type ResolveWhelpInput = {
   puppyDogIds: string[];
   sireTraits: DogTraits;
   damTraits: DogTraits;
+  sireGenotype: string;
+  sireGeneticsVersion: string;
+  damGenotype: string;
+  damGeneticsVersion: string;
   coiPercent: number;
   coiGenerationDepth: number;
   allowSinglePuppy?: boolean;
@@ -326,6 +330,10 @@ const { litter, puppies } = createLitter({
   puppyDogIds,
   sireTraits: input.sireTraits,
   damTraits: input.damTraits,
+  sireGenotype: input.sireGenotype,
+  sireGeneticsVersion: input.sireGeneticsVersion,
+  damGenotype: input.damGenotype,
+  damGeneticsVersion: input.damGeneticsVersion,
   coiPercent: input.coiPercent,
   coiGenerationDepth: input.coiGenerationDepth,
   allowSinglePuppy: input.allowSinglePuppy,

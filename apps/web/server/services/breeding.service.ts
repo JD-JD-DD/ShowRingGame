@@ -813,6 +813,10 @@ async function resolveWhelpingAttempt(args: {
       puppySexes,
       sireTraits: mapBreedingTraits(fresh.sire),
       damTraits: mapBreedingTraits(fresh.dam),
+      sireGenotype: fresh.sire.genotype ?? (() => { throw new Error(`GEN-08 integrity failure: breeding attempt ${fresh.id} sire ${fresh.sireId} is missing genotype.`); })(),
+      sireGeneticsVersion: fresh.sire.geneticsVersion ?? (() => { throw new Error(`GEN-08 integrity failure: breeding attempt ${fresh.id} sire ${fresh.sireId} is missing geneticsVersion.`); })(),
+      damGenotype: fresh.dam.genotype ?? (() => { throw new Error(`GEN-08 integrity failure: breeding attempt ${fresh.id} dam ${fresh.damId} is missing genotype.`); })(),
+      damGeneticsVersion: fresh.dam.geneticsVersion ?? (() => { throw new Error(`GEN-08 integrity failure: breeding attempt ${fresh.id} dam ${fresh.damId} is missing geneticsVersion.`); })(),
       coiPercent: pairingCoi.coiPercent,
       coiGenerationDepth: pairingCoi.generationDepth,
       random01: () => {
@@ -876,6 +880,8 @@ async function resolveWhelpingAttempt(args: {
         litterOrder: puppy.litterOrder,
         coiPercent: outcome.litter.coiPercent,
         coiGenerationDepth: outcome.litter.coiGenerationDepth,
+        genotype: puppy.genotype,
+        geneticsVersion: puppy.geneticsVersion,
         ...toPersistedDogTraits(puppy.traits),
       })),
     });

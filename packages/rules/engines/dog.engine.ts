@@ -1,5 +1,8 @@
 import { getLifecycleFlags, type DogStatus, type Sex } from "../src/lifecycle";
-import { generatePuppyTraits } from "./trait.engine";
+import { CURRENT_GENETICS_VERSION } from "../constants/genetics.constants";
+import { FINAL_GENETICS_CALIBRATION } from "../calibration/geneticsCalibration.constants";
+import { decodeGenotype } from "./genotype.engine";
+import { inheritModelDGenotype } from "./polygenicInheritance.engine";
 
 import type { TraitKey } from "../constants/genetics.constants";
 import type { JudgingCategory } from "../constants/judging.constants";
@@ -43,6 +46,8 @@ export type Dog = {
   coiPercent?: number;
   coiGenerationDepth?: number;
   presentation?: DogPresentationInfluences;
+  genotype?: string;
+  geneticsVersion?: string;
   traits: DogTraits;
 };
 
@@ -59,28 +64,37 @@ export type CreateDogFromLitterInput = {
   status?: DogStatus;
   sireTraits: DogTraits;
   damTraits: DogTraits;
+  sireGenotype: string;
+  sireGeneticsVersion: string;
+  damGenotype: string;
+  damGeneticsVersion: string;
   coiPercent: number;
   coiGenerationDepth: number;
-  random01?: () => number;
+  random01: () => number;
 };
 
-/** The one current-production conformation boundary for a logical puppy birth.
- * GEN-08 will replace this implementation directly; callers must not calculate
- * traits independently. */
-export function generatePuppyGeneticsForBirth(input: Pick<CreateDogFromLitterInput, "sireTraits" | "damTraits" | "coiPercent" | "random01">): DogTraits {
-  return generatePuppyTraits({
-    sireTraits: input.sireTraits,
-    damTraits: input.damTraits,
-    coiPercent: input.coiPercent,
+/** The single production Model D inheritance boundary for a logical puppy birth. */
+export function generatePuppyGeneticsForBirth(input: Pick<CreateDogFromLitterInput, "sireId" | "damId" | "sireGenotype" | "sireGeneticsVersion" | "damGenotype" | "damGeneticsVersion" | "random01">) {
+  const validateParent = (role: "sire" | "dam", id: string, encoded: string, version: string) => {
+    if (version !== CURRENT_GENETICS_VERSION) throw new Error(`GEN-08 integrity failure: ${role} ${id} has unsupported geneticsVersion ${String(version)}.`);
+    try { return decodeGenotype(encoded); } catch { throw new Error(`GEN-08 integrity failure: ${role} ${id} has an invalid ${CURRENT_GENETICS_VERSION} genotype.`); }
+  };
+  const result = inheritModelDGenotype({
+    sireGenotype: validateParent("sire", input.sireId, input.sireGenotype, input.sireGeneticsVersion),
+    damGenotype: validateParent("dam", input.damId, input.damGenotype, input.damGeneticsVersion),
     random01: input.random01,
+    mutation: FINAL_GENETICS_CALIBRATION.mutation,
+    breedBackground: { version: "breed-background-v1", coefficient: FINAL_GENETICS_CALIBRATION.breedBackgroundCoefficient, sourceStatus: "BASELINE" },
   });
+  return { traits: result.phenotype, genotype: result.encodedGenotype, geneticsVersion: result.geneticsVersion };
 }
 
 export function createDogFromLitter(
   input: CreateDogFromLitterInput
 ): Dog {
-  const random01 = input.random01 ?? Math.random;
+  const random01 = input.random01;
 
+  const genetics = generatePuppyGeneticsForBirth(input);
   return {
     dogId: input.dogId,
     regNumber: input.regNumber,
@@ -94,7 +108,9 @@ export function createDogFromLitter(
     damId: input.damId,
     coiPercent: input.coiPercent,
     coiGenerationDepth: input.coiGenerationDepth,
-    traits: generatePuppyGeneticsForBirth({ sireTraits: input.sireTraits, damTraits: input.damTraits, coiPercent: input.coiPercent, random01 }),
+    traits: genetics.traits,
+    genotype: genetics.genotype,
+    geneticsVersion: genetics.geneticsVersion,
   };
 }
 

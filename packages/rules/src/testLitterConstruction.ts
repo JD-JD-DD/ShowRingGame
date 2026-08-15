@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-import { createLitter, resolveWhelp, type BreedingAttempt, type DogTraits } from "./index";
+import { CURRENT_GENETICS_VERSION, createLitter, encodeGenotype, resolveWhelp, type BreedingAttempt, type DogTraits } from "./index";
 
 const traits: DogTraits = {
   head: 10,
@@ -30,6 +30,7 @@ const attempt: BreedingAttempt = {
   rngSeed: 123,
   status: "PREGNANT",
 };
+const parentGenotype = encodeGenotype({ geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: 40 }, () => [-0.5, 0.5] as const) });
 
 const litterInput = {
   litterId: "litter-1",
@@ -42,6 +43,10 @@ const litterInput = {
   puppySexes: ["F" as const],
   sireTraits: traits,
   damTraits: traits,
+  sireGenotype: parentGenotype,
+  sireGeneticsVersion: CURRENT_GENETICS_VERSION,
+  damGenotype: parentGenotype,
+  damGeneticsVersion: CURRENT_GENETICS_VERSION,
   coiPercent: 0,
   coiGenerationDepth: 1,
   random01: () => 0.5,
@@ -62,6 +67,10 @@ const whelpInput = {
   puppySexes: ["M" as const],
   sireTraits: traits,
   damTraits: traits,
+  sireGenotype: parentGenotype,
+  sireGeneticsVersion: CURRENT_GENETICS_VERSION,
+  damGenotype: parentGenotype,
+  damGeneticsVersion: CURRENT_GENETICS_VERSION,
   coiPercent: 0,
   coiGenerationDepth: 1,
   random01: () => 0.5,
