@@ -17,6 +17,7 @@ export * from "./judging.engine";
 export * from "./litter.engine";
 export * from "./legacyGenotypeReconstruction.engine";
 export * from "./presentation.engine";
+export * from "./polygenicInheritance.engine";
 export * from "./reproductiveEmergency.engine";
 export * from "./showCalendar.engine";
 export * from "./trait.engine";
