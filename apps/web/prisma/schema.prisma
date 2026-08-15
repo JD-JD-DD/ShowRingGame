@@ -507,16 +507,16 @@ model Dog {
   notesPublic            String?
 
   // Hidden inherited traits
-  traitHead         Int
-  traitForequarters Int
-  traitHindquarters Int
-  traitGait         Int
-  traitCoat         Int
-  traitSize         Int
-  traitTemperament  Int
-  traitShowShine    Int
-  traitFeet         Int
-  traitTopline      Int
+  traitHead         Decimal @db.Decimal(8, 6)
+  traitForequarters Decimal @db.Decimal(8, 6)
+  traitHindquarters Decimal @db.Decimal(8, 6)
+  traitGait         Decimal @db.Decimal(8, 6)
+  traitCoat         Decimal @db.Decimal(8, 6)
+  traitSize         Decimal @db.Decimal(8, 6)
+  traitTemperament  Decimal @db.Decimal(8, 6)
+  traitShowShine    Decimal @db.Decimal(8, 6)
+  traitFeet         Decimal @db.Decimal(8, 6)
+  traitTopline      Decimal @db.Decimal(8, 6)
 
   // Current mutable dog state
   ringObedience Int   @default(0)

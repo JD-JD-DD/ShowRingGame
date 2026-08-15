@@ -1,4 +1,5 @@
 import type { DogPlannerTagType } from "@prisma/client";
+import type { PersistedDogTraitRecord } from "@/server/services/phenotypePersistence.service";
 import {
   MAX_SHOW_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
@@ -185,17 +186,7 @@ function titledName(dog: {
     .join(" ");
 }
 
-function toVisibleCategories(dog: {
-  traitHead: number;
-  traitForequarters: number;
-  traitHindquarters: number;
-  traitGait: number;
-  traitCoat: number;
-  traitSize: number;
-  traitTemperament: number;
-  traitShowShine: number;
-  traitFeet: number;
-  traitTopline: number;
+function toVisibleCategories(dog: PersistedDogTraitRecord & {
   ringObedience: number;
   muscleTone: number;
   coatCondition: number;

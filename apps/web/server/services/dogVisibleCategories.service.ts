@@ -5,6 +5,10 @@ import {
   type DogTraits,
   type VisibleCategories,
 } from "@showring/rules";
+import {
+  toRulesDogTraits,
+  type PersistedDogTraitRecord,
+} from "@/server/services/phenotypePersistence.service";
 
 export const DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES = [
   "HIP_DYSPLASIA",
@@ -12,18 +16,7 @@ export const DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES = [
   "CAER_EYE",
 ] as const;
 
-export type DogStoredTraitInput = {
-  traitHead: number;
-  traitForequarters: number;
-  traitHindquarters: number;
-  traitGait: number;
-  traitCoat: number;
-  traitSize: number;
-  traitTemperament: number;
-  traitShowShine: number;
-  traitFeet: number;
-  traitTopline: number;
-};
+export type DogStoredTraitInput = PersistedDogTraitRecord;
 
 export type DogDisplayHealthTruthInput = {
   conditionCode: string;
@@ -44,18 +37,7 @@ export type DogConditioningDisplayInput = {
 };
 
 export function storedTraitsForDisplay(dog: DogStoredTraitInput): DogTraits {
-  return {
-    head: dog.traitHead,
-    forequarters: dog.traitForequarters,
-    hindquarters: dog.traitHindquarters,
-    gait: dog.traitGait,
-    coat: dog.traitCoat,
-    size: dog.traitSize,
-    temperament: dog.traitTemperament,
-    show_shine: dog.traitShowShine,
-    feet: dog.traitFeet,
-    topline: dog.traitTopline,
-  };
+  return toRulesDogTraits(dog);
 }
 
 export function deriveCurrentVisibleCategoriesForDogDisplay(input: {

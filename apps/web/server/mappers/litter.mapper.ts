@@ -1,4 +1,5 @@
 import type { VisibleCategories } from "@showring/rules";
+import type { PersistedDogTraitRecord } from "@/server/services/phenotypePersistence.service";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { deriveCurrentVisibleCategoriesForDogDisplay } from "@/server/services/dogVisibleCategories.service";
 
@@ -17,23 +18,13 @@ type LitterListPuppyPreviewInput = ParentDogInput & {
   litterOrder: number | null;
 };
 
-type PuppyDogInput = Omit<LitterListPuppyPreviewInput, "visibilityState"> & {
+type PuppyDogInput = PersistedDogTraitRecord & Omit<LitterListPuppyPreviewInput, "visibilityState"> & {
   visibilityState: string;
   birthEpoch: number;
   deathEpoch: number | null;
   lifecycleState: string;
   isPlayerVisible: boolean;
   marketState: string;
-  traitHead: number;
-  traitForequarters: number;
-  traitHindquarters: number;
-  traitGait: number;
-  traitCoat: number;
-  traitSize: number;
-  traitTemperament: number;
-  traitShowShine: number;
-  traitFeet: number;
-  traitTopline: number;
   healthConditionTruths: Array<{
     conditionCode: string;
     geneticLiability: number;

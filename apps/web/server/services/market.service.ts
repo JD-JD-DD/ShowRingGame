@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { PersistedDogTraitRecord } from "@/server/services/phenotypePersistence.service";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
@@ -20,18 +21,7 @@ import {
 export const PLAYER_SALE_LISTING_TYPE = "PLAYER_PUBLIC";
 export const PLAYER_STUD_LISTING_TYPE = "PLAYER_STUD";
 
-type HiddenTraitRecord = {
-  traitHead: number;
-  traitForequarters: number;
-  traitHindquarters: number;
-  traitGait: number;
-  traitCoat: number;
-  traitSize: number;
-  traitTemperament: number;
-  traitShowShine: number;
-  traitFeet: number;
-  traitTopline: number;
-};
+type HiddenTraitRecord = PersistedDogTraitRecord;
 
 type MarketListingRecord = {
   id: string;

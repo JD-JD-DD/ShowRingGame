@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { toPersistedDogTraits } from "@/server/services/phenotypePersistence.service";
 import {
   getPhenotypeHealthBadgeStatus,
   getPhenotypeHealthSeverity,
@@ -156,16 +157,7 @@ export async function saveEngineDog(args: {
       originType: mapOriginType(isFoundation),
       isFoundation: isFoundation ?? false,
 
-      traitHead: dog.traits.head,
-      traitForequarters: dog.traits.forequarters,
-      traitHindquarters: dog.traits.hindquarters,
-      traitGait: dog.traits.gait,
-      traitCoat: dog.traits.coat,
-      traitSize: dog.traits.size,
-      traitTemperament: dog.traits.temperament,
-      traitShowShine: dog.traits.show_shine,
-      traitFeet: dog.traits.feet,
-      traitTopline: dog.traits.topline,
+      ...toPersistedDogTraits(dog.traits),
       
     },
   });

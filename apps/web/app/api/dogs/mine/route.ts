@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/http";
+import type { PersistedDogTraitRecord } from "@/server/services/phenotypePersistence.service";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { createPerfTimer, estimateJsonSizeBytes } from "@/lib/perf";
 import { getSessionUserId } from "@/lib/session";
@@ -32,7 +33,7 @@ import {
 
 const RECENT_BREEDING_RESULT_HOURS = 14;
 
-type RosterDogRecord = {
+type RosterDogRecord = PersistedDogTraitRecord & {
   id: string;
   callName: string | null;
   registeredName: string | null;
@@ -53,16 +54,6 @@ type RosterDogRecord = {
     name: string;
     groupName: string | null;
   };
-  traitHead: number;
-  traitForequarters: number;
-  traitHindquarters: number;
-  traitGait: number;
-  traitCoat: number;
-  traitSize: number;
-  traitTemperament: number;
-  traitShowShine: number;
-  traitFeet: number;
-  traitTopline: number;
   healthConditionTruths: Array<{
     conditionCode: string;
     geneticLiability: number;

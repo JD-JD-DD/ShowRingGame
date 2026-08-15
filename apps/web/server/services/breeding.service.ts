@@ -1,4 +1,9 @@
 import { db } from "@/lib/db";
+import {
+  toPersistedDogTraits,
+  toRulesDogTraits,
+  type PersistedDogTraitRecord,
+} from "@/server/services/phenotypePersistence.service";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import {
@@ -50,7 +55,7 @@ import {
 import type { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 
-type DogForBreeding = {
+type DogForBreeding = PersistedDogTraitRecord & {
   id: string;
   callName: string | null;
   registeredName: string | null;
@@ -65,16 +70,6 @@ type DogForBreeding = {
   breed: {
     name: string;
   };
-  traitHead: number;
-  traitForequarters: number;
-  traitHindquarters: number;
-  traitGait: number;
-  traitCoat: number;
-  traitSize: number;
-  traitTemperament: number;
-  traitShowShine: number;
-  traitFeet: number;
-  traitTopline: number;
   healthTests: Array<{
     testTypeCode: string;
     resultCode: string;
@@ -114,32 +109,8 @@ type AttemptForResolution = {
     | "CANCELLED";
   rngSeed: number | null;
   createdByKennelId: string | null;
-  sire: {
-    id: string;
-    traitHead: number;
-    traitForequarters: number;
-    traitHindquarters: number;
-    traitGait: number;
-    traitCoat: number;
-    traitSize: number;
-    traitTemperament: number;
-    traitShowShine: number;
-    traitFeet: number;
-    traitTopline: number;
-  };
-  dam: {
-    id: string;
-    traitHead: number;
-    traitForequarters: number;
-    traitHindquarters: number;
-    traitGait: number;
-    traitCoat: number;
-    traitSize: number;
-    traitTemperament: number;
-    traitShowShine: number;
-    traitFeet: number;
-    traitTopline: number;
-  };
+  sire: PersistedDogTraitRecord & { id: string };
+  dam: PersistedDogTraitRecord & { id: string };
 };
 
 type DueAttemptForResolution = {
@@ -230,18 +201,7 @@ function requireRngSeed(seed: number | null): number {
 }
 
 export function mapBreedingTraits(dog: AttemptForResolution["sire"]) {
-  return {
-    head: dog.traitHead,
-    forequarters: dog.traitForequarters,
-    hindquarters: dog.traitHindquarters,
-    gait: dog.traitGait,
-    coat: dog.traitCoat,
-    size: dog.traitSize,
-    temperament: dog.traitTemperament,
-    show_shine: dog.traitShowShine,
-    feet: dog.traitFeet,
-    topline: dog.traitTopline,
-  };
+  return toRulesDogTraits(dog);
 }
 
 export async function loadPedigreeForCoi(
@@ -904,16 +864,7 @@ async function resolveWhelpingAttempt(args: {
         litterOrder: puppy.litterOrder,
         coiPercent: outcome.litter.coiPercent,
         coiGenerationDepth: outcome.litter.coiGenerationDepth,
-        traitHead: puppy.traits.head,
-        traitForequarters: puppy.traits.forequarters,
-        traitHindquarters: puppy.traits.hindquarters,
-        traitGait: puppy.traits.gait,
-        traitCoat: puppy.traits.coat,
-        traitSize: puppy.traits.size,
-        traitTemperament: puppy.traits.temperament,
-        traitShowShine: puppy.traits.show_shine,
-        traitFeet: puppy.traits.feet,
-        traitTopline: puppy.traits.topline,
+        ...toPersistedDogTraits(puppy.traits),
       })),
     });
 

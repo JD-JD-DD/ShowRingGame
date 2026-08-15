@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 
 import { db } from "@/lib/db";
 import {
+  toGameplayPhenotype,
+  toPersistedDogTraits,
+  type PersistedDogTraitRecord,
+} from "@/server/services/phenotypePersistence.service";
+import {
   createFoundationDogProfile,
   type FoundationBreedBaseline,
   type VisibleCategories,
@@ -144,18 +149,7 @@ export type FoundationDogMarketDto = {
   visibleCategories: VisibleCategories;
 };
 
-type HiddenTraitRecord = {
-  traitHead: number;
-  traitForequarters: number;
-  traitHindquarters: number;
-  traitGait: number;
-  traitCoat: number;
-  traitSize: number;
-  traitTemperament: number;
-  traitShowShine: number;
-  traitFeet: number;
-  traitTopline: number;
-};
+type HiddenTraitRecord = PersistedDogTraitRecord;
 
 type MarketDogRecord = HiddenTraitRecord & {
   id: string;
@@ -355,24 +349,24 @@ async function getLiveBreedBaseline(
   return {
     breedCode2,
     traitMeans: {
-      head: Number(average(rows.map((row) => row.traitHead)).toFixed(2)),
+      head: Number(average(rows.map((row) => toGameplayPhenotype(row.traitHead))).toFixed(2)),
       forequarters: Number(
-        average(rows.map((row) => row.traitForequarters)).toFixed(2)
+        average(rows.map((row) => toGameplayPhenotype(row.traitForequarters))).toFixed(2)
       ),
       hindquarters: Number(
-        average(rows.map((row) => row.traitHindquarters)).toFixed(2)
+        average(rows.map((row) => toGameplayPhenotype(row.traitHindquarters))).toFixed(2)
       ),
-      gait: Number(average(rows.map((row) => row.traitGait)).toFixed(2)),
-      coat: Number(average(rows.map((row) => row.traitCoat)).toFixed(2)),
-      size: Number(average(rows.map((row) => row.traitSize)).toFixed(2)),
+      gait: Number(average(rows.map((row) => toGameplayPhenotype(row.traitGait))).toFixed(2)),
+      coat: Number(average(rows.map((row) => toGameplayPhenotype(row.traitCoat))).toFixed(2)),
+      size: Number(average(rows.map((row) => toGameplayPhenotype(row.traitSize))).toFixed(2)),
       temperament: Number(
-        average(rows.map((row) => row.traitTemperament)).toFixed(2)
+        average(rows.map((row) => toGameplayPhenotype(row.traitTemperament))).toFixed(2)
       ),
       show_shine: Number(
-        average(rows.map((row) => row.traitShowShine)).toFixed(2)
+        average(rows.map((row) => toGameplayPhenotype(row.traitShowShine))).toFixed(2)
       ),
-      feet: Number(average(rows.map((row) => row.traitFeet)).toFixed(2)),
-      topline: Number(average(rows.map((row) => row.traitTopline)).toFixed(2)),
+      feet: Number(average(rows.map((row) => toGameplayPhenotype(row.traitFeet))).toFixed(2)),
+      topline: Number(average(rows.map((row) => toGameplayPhenotype(row.traitTopline))).toFixed(2)),
     },
   };
 }
@@ -597,16 +591,7 @@ async function createOneFoundationDog(args: {
         originType: "FOUNDATION",
         isFoundation: true,
 
-        traitHead: generated.dog.traits.head,
-        traitForequarters: generated.dog.traits.forequarters,
-        traitHindquarters: generated.dog.traits.hindquarters,
-        traitGait: generated.dog.traits.gait,
-        traitCoat: generated.dog.traits.coat,
-        traitSize: generated.dog.traits.size,
-        traitTemperament: generated.dog.traits.temperament,
-        traitShowShine: generated.dog.traits.show_shine,
-        traitFeet: generated.dog.traits.feet,
-        traitTopline: generated.dog.traits.topline,
+        ...toPersistedDogTraits(generated.dog.traits),
       },
       select: {
         id: true,

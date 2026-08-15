@@ -17,6 +17,7 @@
     "test:full-pedigree-slots": "tsx scripts/testFullPedigreeSlots.ts",
     "test:kennel-roster-maintenance": "tsx scripts/testKennelRosterMaintenancePath.ts",
     "test:phenotype-health-truth-batching": "tsx scripts/testPhenotypeHealthTruthBatching.ts",
+    "test:phenotype-decimal-persistence": "tsx scripts/testPhenotypeDecimalPersistence.ts",
     "test:kennel-run-apis": "tsx scripts/testKennelRunApis.ts",
     "test:mortality-workflow-hardening": "tsx scripts/testMortalityWorkflowHardening.ts",
     "test:kennel-inbox-notices": "tsx scripts/testKennelInboxNotices.ts",

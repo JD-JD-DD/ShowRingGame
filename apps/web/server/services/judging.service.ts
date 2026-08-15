@@ -1,5 +1,9 @@
 import { db } from "@/lib/db";
 import {
+  toRulesDogTraits,
+  type PersistedDogTraitRecord,
+} from "@/server/services/phenotypePersistence.service";
+import {
   isProtectedLegacyYear14OrdinaryShowDay,
   requireProtectedLegacyYear14FinalizationJudge,
   requirePersistedCompleteShowDayJudgePanelForBis,
@@ -110,7 +114,7 @@ type JudgeForEngine = {
   weightTemperamentRingBehavior: number;
   weightConditioningHandling: number;
 };
-type DogForEngine = {
+type DogForEngine = PersistedDogTraitRecord & {
   id: string;
   regNumber: string;
   breedCode2: string;
@@ -120,16 +124,6 @@ type DogForEngine = {
   litterOrder: number | null;
   sireId: string | null;
   damId: string | null;
-  traitHead: number;
-  traitForequarters: number;
-  traitHindquarters: number;
-  traitGait: number;
-  traitCoat: number;
-  traitSize: number;
-  traitTemperament: number;
-  traitShowShine: number;
-  traitFeet: number;
-  traitTopline: number;
   breedingAttemptsAsDam?: Array<{
     status: string;
     dueEpoch: number | null;
@@ -221,18 +215,7 @@ function toEngineDogRecord(
       fatigueSnapshot: prepSnapshot?.fatigueSnapshot ?? null,
       phenotypeHealthTruths: dog.healthConditionTruths ?? [],
     },
-    traits: {
-      head: dog.traitHead,
-      forequarters: dog.traitForequarters,
-      hindquarters: dog.traitHindquarters,
-      gait: dog.traitGait,
-      coat: dog.traitCoat,
-      size: dog.traitSize,
-      temperament: dog.traitTemperament,
-      show_shine: dog.traitShowShine,
-      feet: dog.traitFeet,
-      topline: dog.traitTopline,
-    },
+    traits: toRulesDogTraits(dog),
   };
 }
 
