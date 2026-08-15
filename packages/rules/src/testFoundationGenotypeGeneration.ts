@@ -10,6 +10,6 @@ assert.ok(foundation.dog.genotype && foundation.dog.geneticsVersion === "showrin
 const genotype = decodeGenotype(foundation.dog.genotype);
 assert.equal(genotype.loci.length, 40, "foundation genotype must contain forty diploid loci");
 assert.deepEqual(foundation.dog.traits, calculatePhenotypeFromGenotype(genotype), "foundation phenotype must be exclusively genotype-derived");
-const deterministic = (context?: unknown) => { let seed = 123456; return createFoundationDogProfile({ dogId: "foundation-2", regNumber: "AB000000102", breedCode2: "AB", birthEpoch: 1, callName: "Foundation", breedBaseline: { breedCode2: "AB", traitMeans: traits }, populationContext: context, random01: () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 0x100000000; } }); };
-assert.equal(deterministic({ mode: "LIVE" }).dog.genotype, deterministic({ mode: "RESET_FALLBACK" }).dog.genotype, "GEN-09B context must not bias foundation generation before GEN-09C");
+const deterministic = (context?: { mode: "LIVE" | "RETAINED_BASELINE" | "RESET_FALLBACK"; genotype: unknown | null }) => { let seed = 123456; return createFoundationDogProfile({ dogId: "foundation-2", regNumber: "AB000000102", breedCode2: "AB", birthEpoch: 1, callName: "Foundation", breedBaseline: { breedCode2: "AB", traitMeans: traits }, populationContext: context, random01: () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 0x100000000; } }); };
+assert.equal(deterministic({ mode: "RESET_FALLBACK", genotype: null }).dog.genotype, deterministic({ mode: "RESET_FALLBACK", genotype: null }).dog.genotype, "reset fallback must remain deterministic");
 console.log("GEN-09 genotype-first foundation generation tests passed");

@@ -53,9 +53,20 @@ export type CreateFoundationDogEngineInput = {
   callName: string;
   breedBaseline: FoundationBreedBaseline;
   /** GEN-09B context is intentionally generation-neutral until GEN-09C. */
-  populationContext?: unknown;
+  populationContext?: FoundationPopulationContextInput;
   random01?: () => number;
 };
+
+export type FoundationPopulationContextInput = {
+  mode: "LIVE" | "RETAINED_BASELINE" | "RESET_FALLBACK";
+  genotype: unknown | null;
+};
+/** GEN-09C calibration: independent target draw; never a player-visible tier. */
+export const FOUNDATION_OPPORTUNITY_TARGETS = { ZERO: 0.83, ONE: 0.15, TWO: 0.02, POPULATION_COMPONENT_MIX: 0.3, TARGET_ALTERNATIVE_BIAS: 0.2 } as const;
+
+type LocusEvidence = { locus: number; classification: "DIVERSE" | "NEAR_FIXED" | "EFFECTIVELY_FIXED"; components: Array<{ component: string; share: number }> };
+function contextLoci(context: FoundationPopulationContextInput | undefined): LocusEvidence[] { const payload=context?.genotype as { loci?: unknown } | null; return context?.mode === "RESET_FALLBACK" || !Array.isArray(payload?.loci) ? [] : payload.loci.filter((value): value is LocusEvidence => typeof value === "object" && value !== null && Array.isArray((value as LocusEvidence).components)); }
+function chooseWeighted<T>(items: T[], weights: number[], random01: () => number): T { let roll=random01()*weights.reduce((a,b)=>a+b,0); for(let i=0;i<items.length;i+=1){roll-=weights[i];if(roll<=0)return items[i];} return items.at(-1)!; }
 
 export type FoundationDogEngineResult = {
   dog: Dog;
@@ -537,7 +548,12 @@ export function createFoundationDogProfile(
     const centered = Array.from({ length: 6 }, () => random01() * 2 - 1).reduce((sum, value) => sum + value, 0) / 6;
     return Math.round(centered * FINAL_GENETICS_CALIBRATION.founderDistribution.spread * 1_000_000) / 1_000_000;
   };
-  const genotype: CanonicalGenotype = { geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: TOTAL_LOCI }, () => [sampleAllele(), sampleAllele()] as const) };
+  const lociEvidence=contextLoci(input.populationContext);
+  const targetRoll=random01(); const targetCount=targetRoll<FOUNDATION_OPPORTUNITY_TARGETS.TWO?2:targetRoll<FOUNDATION_OPPORTUNITY_TARGETS.TWO+FOUNDATION_OPPORTUNITY_TARGETS.ONE?1:0;
+  const eligible=lociEvidence.filter(locus=>locus.classification!=="DIVERSE");
+  const targets=new Set<number>(); while(targets.size<targetCount && targets.size<eligible.length) targets.add(chooseWeighted(eligible,eligible.map(locus=>locus.classification==="EFFECTIVELY_FIXED"?2:1),random01).locus);
+  const populationAllele=(locus:number) => { const evidence=lociEvidence.find(item=>item.locus===locus); if(!evidence || random01()>=FOUNDATION_OPPORTUNITY_TARGETS.POPULATION_COMPONENT_MIX)return sampleAllele(); const components=evidence.components; const ordinary=chooseWeighted(components,components.map(component=>component.share),random01); const alternate=chooseWeighted(components,components.map(component=>targets.has(locus)?Math.max(0.001,1-component.share):component.share),random01); const chosen=targets.has(locus) && random01()<FOUNDATION_OPPORTUNITY_TARGETS.TARGET_ALTERNATIVE_BIAS ? alternate : ordinary; return Math.max(-20,Math.min(20,Number(chosen.component)+(random01()-.5)*.5)); };
+  const genotype: CanonicalGenotype = { geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: TOTAL_LOCI }, (_,locus) => [populationAllele(locus), populationAllele(locus)] as const) };
   const traits = calculatePhenotypeFromGenotype(genotype);
   const visibleCategories = deriveVisibleCategoriesFromTraits(traits);
   const suggestedPrice = calculateSuggestedPrice(visibleCategories, qualityBand);
