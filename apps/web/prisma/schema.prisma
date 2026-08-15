@@ -517,6 +517,8 @@ model Dog {
   traitShowShine    Decimal @db.Decimal(8, 6)
   traitFeet         Decimal @db.Decimal(8, 6)
   traitTopline      Decimal @db.Decimal(8, 6)
+  genotype          String?
+  geneticsVersion   String?
 
   // Current mutable dog state
   ringObedience Int   @default(0)

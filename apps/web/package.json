@@ -71,6 +71,7 @@
     "repair:year15-schedule:dry-run": "tsx scripts/repairYear15Schedule.ts",
     "backfill:phenotype-health": "tsx scripts/backfill-phenotype-health.ts",
     "backfill:kennel-runs": "tsx scripts/backfillKennelRuns.ts",
+    "backfill:legacy-genotypes": "tsx scripts/initializeLegacyGenotypes.ts",
     "reset:kennel-runs-to-uncategorized": "tsx scripts/resetKennelRunsToUncategorized.ts",
     "cleanup:inactive-breed-foundation-listings": "tsx scripts/cleanupInactiveBreedFoundationListings.ts",
     "report:duplicate-breed-migration": "tsx scripts/reportDuplicateBreedMigration.ts",

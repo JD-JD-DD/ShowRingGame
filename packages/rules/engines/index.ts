@@ -15,6 +15,7 @@ export * from "./healthExpression.engine";
 export * from "./judge.engine";
 export * from "./judging.engine";
 export * from "./litter.engine";
+export * from "./legacyGenotypeReconstruction.engine";
 export * from "./presentation.engine";
 export * from "./reproductiveEmergency.engine";
 export * from "./showCalendar.engine";
