@@ -1,11 +1,13 @@
 import {
   DEFAULT_SCENARIO_OPTIONS,
-  LONG_HORIZON_MAD_TARGET_BANDS,
+  DEFAULT_POPULATION_GROWTH_SCHEDULE,
+  HISTORICAL_SUPERSEDED_MAD_BANDS,
   SimulationScenario,
   runComplementarityExperiment,
   runDiagnosticScenarioComparison,
   runNormalSelectionSimulation,
   runProducerConsistencyExperiment,
+  runResetPopulationDiscovery,
   runScenarioSimulation,
   summarizeScenario,
   type SimulationConfig,
@@ -26,13 +28,31 @@ const configuration: SimulationConfig = {
   breedBackgroundCoefficient: 0,
 };
 
-if (process.argv[2] === "compare") {
+if (process.argv[2] === "discover") {
+  const report = runResetPopulationDiscovery({
+    baseConfig: { ...configuration, seed: "reset-population-discovery-v1", founderAlleleEffectSpread: 5.5 },
+    candidateSpreads: [4, 5.5, 7.7],
+    seeds: ["reset-discovery-a", "reset-discovery-b", "reset-discovery-c"],
+    founderSampleCounts: { sires: 100, dams: 100 },
+    growthSchedule: DEFAULT_POPULATION_GROWTH_SCHEDULE,
+  });
+  const summarizeRun = (run: typeof report.fixedScaleRuns[number]) => ({ profile: run.profile, checkpoints: run.result.checkpoints.map((checkpoint) => ({ generation: checkpoint.generation, meanMad: checkpoint.meanMad, medianMad: checkpoint.medianMad, bestMad: checkpoint.bestMad, clampFrequency: checkpoint.clampFrequency, homozygosity: checkpoint.diversity.meanHomozygosity, fixedLoci: checkpoint.diversity.fixedLoci })), cumulativeBirths: run.result.cumulativeBirths, progressionDeltas: run.progressionDeltas });
+  console.log(JSON.stringify({
+    methodologyVersion: report.methodologyVersion, discoveryPass: report.discoveryPass, geneticsVersion: report.geneticsVersion,
+    mutation: report.mutation, breedBackgroundCoefficient: report.breedBackgroundCoefficient, growthSchedule: DEFAULT_POPULATION_GROWTH_SCHEDULE,
+    founderCandidates: report.founderCandidates.map((candidate) => ({ spread: candidate.founderAlleleEffectSpread, meanG0Mad: candidate.meanG0Mad, medianG0Mad: candidate.medianG0Mad, betweenSeedMadStandardDeviation: candidate.betweenSeedMadStandardDeviation, clampFrequency: candidate.seedReports.map((seed) => seed.checkpoint.clampFrequency), alleleBoundFrequency: candidate.meanAlleleBoundFrequency, directionalBalance: { below: candidate.seedReports.map((seed) => Object.values(seed.checkpoint.perTrait).reduce((sum, trait) => sum + trait.below, 0)), above: candidate.seedReports.map((seed) => Object.values(seed.checkpoint.perTrait).reduce((sum, trait) => sum + trait.above, 0)) }, flags: candidate.flags })),
+    primaryCandidateSpread: report.primaryCandidateSpread,
+    fixedScaleRuns: report.fixedScaleRuns.map(summarizeRun), scheduledGrowthRun: summarizeRun(report.scheduledGrowthRun), candidateScheduledRuns: report.candidateScheduledRuns.map((run, index) => ({ founderSpread: report.founderCandidates[index].founderAlleleEffectSpread, ...summarizeRun(run) })),
+    matureHighVolume: { cumulativeBirths: report.matureHighVolumeRun.cumulativeBirths, checkpoints: report.matureHighVolumeRun.checkpoints.map((checkpoint) => ({ generation: checkpoint.generation, meanMad: checkpoint.meanMad, bestMad: checkpoint.bestMad, fixedLoci: checkpoint.diversity.fixedLoci, exact10: checkpoint.exact10.traitFrequency, nearPerfect: checkpoint.nearPerfect["0.100"] })) },
+    broaderFounderScenarioSmoke: Object.fromEntries(Object.entries(report.broaderFounderScenarioSmoke).map(([scenario, result]) => [scenario, { finalPopulationSize: result.finalPopulationSize, finalGeneration: result.checkpoints.at(-1)?.generation, cumulativeBirths: result.cumulativeBirths }])),
+  }, null, 2));
+} else if (process.argv[2] === "compare") {
   const scenarios = runDiagnosticScenarioComparison(configuration);
   const outcross20 = runScenarioSimulation({ ...configuration, scenario: SimulationScenario.NORMAL_SELECTION, scenarioOptions: { outcross: { generation: 20, alleleEffect: 0.75 } } });
   const outcross50 = runScenarioSimulation({ ...configuration, scenario: SimulationScenario.NORMAL_SELECTION, scenarioOptions: { outcross: { generation: 50, alleleEffect: 0.75 } } });
   console.log(JSON.stringify({
     methodologyVersion: "genetics-calibration-v1",
-    targetBands: LONG_HORIZON_MAD_TARGET_BANDS,
+    historicalSupersededCheckpointGuidance: HISTORICAL_SUPERSEDED_MAD_BANDS,
     diagnosticConfiguration: configuration,
     scenarioDefaults: DEFAULT_SCENARIO_OPTIONS,
     scenarios: scenarios.map(summarizeScenario),
