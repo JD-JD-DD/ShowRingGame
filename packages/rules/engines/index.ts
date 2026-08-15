@@ -8,6 +8,7 @@ export * from "./directionalCategory.engine";
 export * from "./dog.engine";
 export * from "./economy.engine";
 export * from "./foundationDog.engine";
+export * from "./genotype.engine";
 export * from "./idealScoring.engine";
 export * from "./health.engine";
 export * from "./healthExpression.engine";
