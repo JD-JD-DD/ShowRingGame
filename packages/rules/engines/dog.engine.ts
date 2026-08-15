@@ -64,6 +64,18 @@ export type CreateDogFromLitterInput = {
   random01?: () => number;
 };
 
+/** The one current-production conformation boundary for a logical puppy birth.
+ * GEN-08 will replace this implementation directly; callers must not calculate
+ * traits independently. */
+export function generatePuppyGeneticsForBirth(input: Pick<CreateDogFromLitterInput, "sireTraits" | "damTraits" | "coiPercent" | "random01">): DogTraits {
+  return generatePuppyTraits({
+    sireTraits: input.sireTraits,
+    damTraits: input.damTraits,
+    coiPercent: input.coiPercent,
+    random01: input.random01,
+  });
+}
+
 export function createDogFromLitter(
   input: CreateDogFromLitterInput
 ): Dog {
@@ -82,12 +94,7 @@ export function createDogFromLitter(
     damId: input.damId,
     coiPercent: input.coiPercent,
     coiGenerationDepth: input.coiGenerationDepth,
-    traits: generatePuppyTraits({
-      sireTraits: input.sireTraits,
-      damTraits: input.damTraits,
-      coiPercent: input.coiPercent,
-      random01,
-    }),
+    traits: generatePuppyGeneticsForBirth({ sireTraits: input.sireTraits, damTraits: input.damTraits, coiPercent: input.coiPercent, random01 }),
   };
 }
 

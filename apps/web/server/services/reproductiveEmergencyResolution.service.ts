@@ -11,6 +11,7 @@ import {
   ensureLitterKennelRun,
 } from "@/server/services/kennelRun.service";
 import { createLitterWithCollisionRetry } from "@/server/services/litterPersistence.service";
+import { createPuppyGeneticsRandom01ForLitter } from "@/server/services/puppyGenetics.service";
 import { markDogDeceased } from "@/server/services/lifecycle.service";
 import { calculatePedigreeCoi, resolveReproductiveEmergencyOutcome, resolveWhelp } from "@showring/rules";
 
@@ -57,7 +58,9 @@ export async function resolveReproductiveEmergencyEvent(args: { eventId: string;
       const coi = calculatePedigreeCoi({ sireId: attempt.sireId, damId: attempt.damId, pedigree });
       litterId = randomUUID();
       const puppyIds = Array.from({ length: outcome.survivingPuppyCount }, () => randomUUID());
-      const resolved = resolveWhelp({ attempt: { ...attempt, attemptId: attempt.id, status: "PREGNANT", pregCheckEpoch: attempt.pregCheckEpoch ?? attempt.createdEpoch, dueEpoch: attempt.dueEpoch ?? args.currentEpoch, checkedEpoch: attempt.checkedEpoch ?? attempt.createdEpoch, isPregnant: true, whelpedEpoch: null, litterId: null, rngSeed: attempt.rngSeed ?? event.rngSeed }, currentEpoch: args.currentEpoch, litterId, pupCount: outcome.survivingPuppyCount, puppyDogIds: puppyIds, puppySexes: buildPuppySexes(`${event.rngSeed}:reproductive-emergency`, outcome.survivingPuppyCount), sireTraits: mapBreedingTraits(attempt.sire), damTraits: mapBreedingTraits(attempt.dam), coiPercent: coi.coiPercent, coiGenerationDepth: coi.generationDepth, allowSinglePuppy: true, random01: () => 0.5 });
+      const resolved = resolveWhelp({ attempt: { ...attempt, attemptId: attempt.id, status: "PREGNANT", pregCheckEpoch: attempt.pregCheckEpoch ?? attempt.createdEpoch, dueEpoch: attempt.dueEpoch ?? args.currentEpoch, checkedEpoch: attempt.checkedEpoch ?? attempt.createdEpoch, isPregnant: true, whelpedEpoch: null, litterId: null, rngSeed: attempt.rngSeed ?? event.rngSeed }, currentEpoch: args.currentEpoch, litterId, pupCount: outcome.survivingPuppyCount, puppyDogIds: puppyIds, puppySexes: buildPuppySexes(`${event.rngSeed}:reproductive-emergency`, outcome.survivingPuppyCount), sireTraits: mapBreedingTraits(attempt.sire), damTraits: mapBreedingTraits(attempt.dam), coiPercent: coi.coiPercent, coiGenerationDepth: coi.generationDepth, allowSinglePuppy: true, random01: () => 0.5,
+        puppyGeneticsRandom01: createPuppyGeneticsRandom01ForLitter({ breedingAttemptId: attempt.id, litterId, geneticsSeed: attempt.rngSeed ?? event.rngSeed, sire: { id: attempt.sireId, traits: mapBreedingTraits(attempt.sire), genotype: attempt.sire.genotype, geneticsVersion: attempt.sire.geneticsVersion }, dam: { id: attempt.damId, traits: mapBreedingTraits(attempt.dam), genotype: attempt.dam.genotype, geneticsVersion: attempt.dam.geneticsVersion }, coiPercent: coi.coiPercent }),
+      });
       const persistedLitter = await createLitterWithCollisionRetry({
         client: tx,
         litter: { id: litterId, bredByKennelId: attempt.createdByKennelId, sireId: attempt.sireId, damId: attempt.damId, breedCode2: attempt.breedCode2, serial7: resolved.litter.serial7, bornEpoch: args.currentEpoch, pupCount: outcome.survivingPuppyCount },

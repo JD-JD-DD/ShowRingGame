@@ -28,6 +28,7 @@ import {
   ensureLitterKennelRun,
 } from "@/server/services/kennelRun.service";
 import { createLitterWithCollisionRetry } from "@/server/services/litterPersistence.service";
+import { createPuppyGeneticsRandom01ForLitter } from "@/server/services/puppyGenetics.service";
 import {
   getValidNegativeBrucellosisTest,
   infectPuppiesFromDamBrucellosis,
@@ -109,8 +110,8 @@ type AttemptForResolution = {
     | "CANCELLED";
   rngSeed: number | null;
   createdByKennelId: string | null;
-  sire: PersistedDogTraitRecord & { id: string };
-  dam: PersistedDogTraitRecord & { id: string };
+  sire: PersistedDogTraitRecord & { id: string; genotype: string | null; geneticsVersion: string | null };
+  dam: PersistedDogTraitRecord & { id: string; genotype: string | null; geneticsVersion: string | null };
 };
 
 type DueAttemptForResolution = {
@@ -629,6 +630,8 @@ async function resolveWhelpingAttempt(args: {
             traitShowShine: true,
             traitFeet: true,
             traitTopline: true,
+            genotype: true,
+            geneticsVersion: true,
           },
         },
         dam: {
@@ -651,6 +654,8 @@ async function resolveWhelpingAttempt(args: {
             traitShowShine: true,
             traitFeet: true,
             traitTopline: true,
+            genotype: true,
+            geneticsVersion: true,
           },
         },
       },
@@ -784,6 +789,7 @@ async function resolveWhelpingAttempt(args: {
     });
     let noiseIndex = 0;
 
+    const litterId = randomUUID();
     const outcome = resolveWhelp({
       attempt: {
         attemptId: fresh.id,
@@ -801,7 +807,7 @@ async function resolveWhelpingAttempt(args: {
         rngSeed,
       },
       currentEpoch,
-      litterId: randomUUID(),
+      litterId,
       pupCount,
       puppyDogIds,
       puppySexes,
@@ -814,6 +820,12 @@ async function resolveWhelpingAttempt(args: {
         noiseIndex += 1;
         return value;
       },
+      puppyGeneticsRandom01: createPuppyGeneticsRandom01ForLitter({
+        breedingAttemptId: fresh.id, litterId, geneticsSeed: rngSeed,
+        sire: { id: fresh.sireId, traits: mapBreedingTraits(fresh.sire), genotype: fresh.sire.genotype, geneticsVersion: fresh.sire.geneticsVersion },
+        dam: { id: fresh.damId, traits: mapBreedingTraits(fresh.dam), genotype: fresh.dam.genotype, geneticsVersion: fresh.dam.geneticsVersion },
+        coiPercent: pairingCoi.coiPercent,
+      }),
     });
 
     const persistedLitter = await createLitterWithCollisionRetry({

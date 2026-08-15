@@ -91,6 +91,7 @@ export type ResolveWhelpInput = {
   coiGenerationDepth: number;
   allowSinglePuppy?: boolean;
   random01?: () => number;
+  puppyGeneticsRandom01?: (litterOrder: number) => () => number;
 };
 
 export type WhelpOutcome = {
@@ -329,6 +330,7 @@ const { litter, puppies } = createLitter({
   coiGenerationDepth: input.coiGenerationDepth,
   allowSinglePuppy: input.allowSinglePuppy,
   random01,
+  puppyGeneticsRandom01: input.puppyGeneticsRandom01,
 });
 
   const updatedAttempt: BreedingAttempt = {

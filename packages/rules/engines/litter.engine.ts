@@ -41,6 +41,8 @@ export type CreateLitterInput = {
   coiGenerationDepth: number;
   allowSinglePuppy?: boolean;
   random01?: () => number;
+  /** Purpose-separated per-puppy genetics streams; serial generation keeps random01. */
+  puppyGeneticsRandom01?: (litterOrder: number) => () => number;
 };
 
 export type LitterWithDogs = {
@@ -189,7 +191,7 @@ export function createLitter(input: CreateLitterInput): LitterWithDogs {
       damTraits: input.damTraits,
       coiPercent: input.coiPercent,
       coiGenerationDepth: input.coiGenerationDepth,
-      random01,
+      random01: input.puppyGeneticsRandom01?.(litterOrder) ?? random01,
     });
   });
 
