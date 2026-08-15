@@ -734,6 +734,24 @@ The required behavior is:
 * diversity remains strategically relevant;
 * each additional generation remains potentially worthwhile.
 
+### GEN-06E final checkpoint guidance - CALIBRATION
+
+GEN-06E selected the genotype-first reset calibration below from matched ten-seed scheduled-growth NORMAL_SELECTION evidence. These are broad expected population-MAD monitoring bands, not production caps, runtime inheritance inputs, or per-dog acceptance limits.
+
+| Generation | Expected population MAD band |
+| ---------- | ---------------------------: |
+| G0         |                    5.5–6.8 |
+| G3         |                    5.1–6.1 |
+| G10        |                    3.0–5.6 |
+| G20        |                    1.8–4.3 |
+| G50        |                    1.2–2.4 |
+| G100       |                    1.2–2.4 |
+| G200       |                    1.2–2.4 |
+
+The selected calibration is a continuous symmetric NORMAL_LIKE founder allele-effect distribution with bounded spread **14**, allele-level mutation probability **0.001** and symmetric effect magnitude **0.005**, and Breed Genetic Background coefficient **0**. Coefficient zero is an evidence-supported calibrated value: the locked background architecture remains available for later recalibration, but no background residual is applied by this calibration.
+
+The final reset remains deliberately rough and genotype-first (G0 central MAD approximately 6). Founder trait clamping is mixed-directional and concentrated in limited multi-trait counts rather than populations dominated by 8–10 clamped traits; no phenotype correction, reroll, or MAD rule is used.
+
 GEN-06 must first perform discovery simulations from the reset-population MAD 5-7 range and realistic population-growth profiles. Only after stable multi-seed progression is observed may revised G3/G10/G20/G50/G100/G200 checkpoint bands be selected and documented. Those bands remain CALIBRATION, not LOCKED architecture.
 
 The required behavior remains meaningful, progressively diminishing progress through approximately G100-G200 without routine population-wide all-ten-trait near-perfection. Producer consistency, litter variance, diversity, fixation pressure, strategic outcrossing, and continued opportunity in later generations remain required.
@@ -2019,12 +2037,12 @@ Before coordinated release, all of the following must be true:
 | Ten phenotype traits visible to players    | **LOCKED**                | No. Keep the ten transmissible phenotype traits hidden.                                                                                                                                                                          |
 | Player-visible decimal conformation values | **LOCKED**                | The five derived conformation/ring categories may display to three decimals where appropriate. Conditioning & Handling retains its own presentation semantics.                                                                   |
 | Genotype → phenotype architecture          | **LOCKED**                | Four diploid loci / eight allele contributions feed each phenotype trait. Use an additive base model centered on fixed ideal 10. Breed background must not move the phenotype ideal.                                             |
-| Allele-effect distribution                 | **CALIBRATION**           | Continuous, symmetric around neutral, bounded, predominantly modest effects. Exact spread is tuned through simulation.                                                                                                           |
+| Allele-effect distribution                 | **CALIBRATION**           | GEN-06E selected continuous symmetric bounded NORMAL_LIKE founder allele effects with spread 14 for reset-population simulation.                                                                                                 |
 | Recombination/segregation                  | **LOCKED**                | Mendelian segregation: each parent contributes one allele per locus. Treat loci as independently segregating in v1. No chromosome/linkage simulator.                                                                             |
 | Mutation architecture                      | **LOCKED**                | Mutation occurs at allele/component level and is rare, symmetric and usually small.                                                                                                                                              |
-| Mutation rate/effect size                  | **CALIBRATION**           | Exact probability and effect distribution are tuned through long-horizon simulation.                                                                                                                                             |
+| Mutation rate/effect size                  | **CALIBRATION**           | GEN-06E selected rare symmetric allele-level mutation: probability 0.001 and effect magnitude 0.005.                                                                                                                           |
 | Breed-background role                      | **LOCKED**                | Mild population-genetic context, never the breed standard and never the primary inheritance force.                                                                                                                               |
-| Breed-background coefficient               | **CALIBRATION**           | Exact strength is tuned against G50/G100/G200 outcomes.                                                                                                                                                                          |
+| Breed-background coefficient               | **CALIBRATION**           | GEN-06E selected coefficient 0 from long-horizon evidence; the locked residual architecture remains available for future recalibration.                                                                                          |
 | Background snapshot cadence                | **LOCKED**                | Once per game year after the annual/Invitational cycle.                                                                                                                                                                          |
 | Snapshot reference population              | **LOCKED**                | Living player-bred dogs in the active breeding population. Exclude system foundation inventory, deceased dogs and unreleased dogs. Foundation stock enters the signal through descendants.                                       |
 | Minimum live-background population         | **LOCKED**                | At least 50 eligible dogs and 5 independent kennels. Otherwise retain the prior/versioned baseline.                                                                                                                              |

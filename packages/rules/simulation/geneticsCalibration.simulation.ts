@@ -803,6 +803,91 @@ export function runCalibrationCandidateGrid(args: { baseConfig: SimulationConfig
 
 export type ExtremeBirthResult = { births: number; bestMad: number; exactTraitCount: number; nearPerfectDogCount: number; allTenExactDogCount: number; mutationAudit: MutationAudit };
 
+export type FounderSaturationReport = {
+  populationSize: number;
+  meanMad: number;
+  medianMad: number;
+  madStandardDeviation: number;
+  madPercentiles: Record<"p10" | "p25" | "p75" | "p90", number>;
+  bestMad: number;
+  worstMad: number;
+  clampCountDistribution: Record<"0" | "1" | "2" | "3" | "4" | "5" | "6-7" | "8-10", number>;
+  lowClampedTraits: number;
+  highClampedTraits: number;
+  bothSidesDogs: number;
+  onlyLowSideDogs: number;
+  onlyHighSideDogs: number;
+  perTrait: CheckpointMetrics["perTrait"];
+  diversity: CheckpointMetrics["diversity"];
+};
+
+/** Detailed genotype-first G0 audit used by GEN-06E finalist validation. */
+export function analyzeFounderSaturation(args: { seed: string; founderSireCount: number; founderDamCount: number; founderDistribution: FounderDistribution }): FounderSaturationReport {
+  const rng = new SimulationRng(args.seed);
+  const population = [
+    ...Array.from({ length: args.founderSireCount }, (_, index) => createSyntheticFounder(rng, `g0-s${index}`, 0, "M", args.founderDistribution.spread, args.founderDistribution)),
+    ...Array.from({ length: args.founderDamCount }, (_, index) => createSyntheticFounder(rng, `g0-d${index}`, 0, "F", args.founderDistribution.spread, args.founderDistribution)),
+  ];
+  const checkpoint = calculateCheckpointMetrics(population, 0, 0);
+  const scores = population.map(getSimulationDogMad).sort((left, right) => left - right);
+  const distribution: FounderSaturationReport["clampCountDistribution"] = { "0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6-7": 0, "8-10": 0 };
+  let lowClampedTraits = 0; let highClampedTraits = 0; let bothSidesDogs = 0; let onlyLowSideDogs = 0; let onlyHighSideDogs = 0;
+  for (const dog of population) {
+    let low = 0; let high = 0;
+    for (let traitIndex = 0; traitIndex < TRAIT_KEYS.length; traitIndex += 1) {
+      const raw = TRAIT_IDEAL + dog.genotype.loci.slice(traitIndex * 4, traitIndex * 4 + 4).flat().reduce((sum, allele) => sum + allele, 0);
+      if (raw <= 0) low += 1;
+      if (raw >= 20) high += 1;
+    }
+    lowClampedTraits += low; highClampedTraits += high;
+    const total = low + high;
+    const bin = total >= 8 ? "8-10" : total >= 6 ? "6-7" : String(total) as "0" | "1" | "2" | "3" | "4" | "5";
+    distribution[bin] += 1;
+    if (low && high) bothSidesDogs += 1;
+    else if (low) onlyLowSideDogs += 1;
+    else if (high) onlyHighSideDogs += 1;
+  }
+  return { populationSize: population.length, meanMad: checkpoint.meanMad, medianMad: checkpoint.medianMad, madStandardDeviation: standardDeviation(scores), madPercentiles: { p10: percentile(scores, .1), p25: percentile(scores, .25), p75: percentile(scores, .75), p90: percentile(scores, .9) }, bestMad: checkpoint.bestMad, worstMad: checkpoint.worstMad, clampCountDistribution: distribution, lowClampedTraits, highClampedTraits, bothSidesDogs, onlyLowSideDogs, onlyHighSideDogs, perTrait: checkpoint.perTrait, diversity: checkpoint.diversity };
+}
+
+export type CheckpointSummary = { mean: number; median: number; standardDeviation: number; p10: number; p90: number; min: number; max: number };
+export type FinalistValidationSummary = {
+  candidate: CalibrationCandidate;
+  seeds: string[];
+  g0: FounderSaturationReport[];
+  checkpoints: Record<string, CheckpointSummary>;
+  progressionDeltas: Array<{ fromGeneration: number; toGeneration: number; absolute: CheckpointSummary; proportional: CheckpointSummary }>;
+  mutationPerThousandBirths: CheckpointSummary;
+  mutation: MutationAudit;
+  finalDiversity: CheckpointSummary & { fixedLociMean: number; nearPerfectPointOneMean: number; exactTraitFrequencyMean: number };
+};
+
+function summary(values: number[]): CheckpointSummary {
+  const sorted = [...values].sort((left, right) => left - right);
+  const mean = sorted.reduce((sum, value) => sum + value, 0) / sorted.length;
+  return { mean, median: median(sorted), standardDeviation: standardDeviation(sorted), p10: percentile(sorted, .1), p90: percentile(sorted, .9), min: sorted[0], max: sorted.at(-1)! };
+}
+
+/** Aggregates existing scheduled-growth runs; it does not alter inheritance. */
+export function summarizeFinalistValidation(candidate: CalibrationCandidate, seedRuns: ScenarioSimulationResult[]): FinalistValidationSummary {
+  const seeds = seedRuns.map((run) => run.seed);
+  const initial = DEFAULT_POPULATION_SCALE_PROFILES.EARLY;
+  const g0 = seeds.map((seed) => analyzeFounderSaturation({ seed, founderSireCount: initial.founderSireCount, founderDamCount: initial.founderDamCount, founderDistribution: candidate.founderDistribution }));
+  const availableGenerations = CHECKPOINTS.filter((generation) => seedRuns.every((run) => run.checkpoints.some((checkpoint) => checkpoint.generation === generation)));
+  const checkpoints = Object.fromEntries(availableGenerations.map((generation) => [String(generation), summary(seedRuns.map((run) => run.checkpoints.find((checkpoint) => checkpoint.generation === generation)!.meanMad))]));
+  const progressionDeltas = availableGenerations.slice(1).map((toGeneration, index) => {
+    const fromGeneration = availableGenerations[index];
+    const absolute = seedRuns.map((run) => { const from = run.checkpoints.find((checkpoint) => checkpoint.generation === fromGeneration)!.meanMad; return from - run.checkpoints.find((checkpoint) => checkpoint.generation === toGeneration)!.meanMad; });
+    const proportional = seedRuns.map((run, runIndex) => absolute[runIndex] / run.checkpoints.find((checkpoint) => checkpoint.generation === fromGeneration)!.meanMad);
+    return { fromGeneration, toGeneration, absolute: summary(absolute), proportional: summary(proportional) };
+  });
+  const mutation: MutationAudit = seedRuns.reduce((total, run) => ({ count: total.count + run.mutationAudit.count, positiveCount: total.positiveCount + run.mutationAudit.positiveCount, negativeCount: total.negativeCount + run.mutationAudit.negativeCount, signedEffect: total.signedEffect + run.mutationAudit.signedEffect, absoluteEffect: total.absoluteEffect + run.mutationAudit.absoluteEffect }), { count: 0, positiveCount: 0, negativeCount: 0, signedEffect: 0, absoluteEffect: 0 });
+  const finalGeneration = availableGenerations.at(-1)!;
+  const final = seedRuns.map((run) => run.checkpoints.find((checkpoint) => checkpoint.generation === finalGeneration)!);
+  const diversityBase = summary(final.map((checkpoint) => checkpoint.diversity.meanHomozygosity));
+  return { candidate, seeds, g0, checkpoints, progressionDeltas, mutationPerThousandBirths: summary(seedRuns.map((run) => run.mutationAudit.count * 1000 / run.cumulativeBirths)), mutation, finalDiversity: { ...diversityBase, fixedLociMean: final.reduce((sum, checkpoint) => sum + checkpoint.diversity.fixedLoci, 0) / final.length, nearPerfectPointOneMean: final.reduce((sum, checkpoint) => sum + checkpoint.nearPerfect["0.100"], 0) / final.length, exactTraitFrequencyMean: final.reduce((sum, checkpoint) => sum + checkpoint.exact10.traitFrequency, 0) / final.length } };
+}
+
 /** One-generation extreme-value test, intentionally separate from population progression. */
 export function runExtremeBirthExperiment(args: { seed: string; sire: SimulationDog; dam: SimulationDog; births: number; mutation: ModelDMutationConfig; breedBackgroundCoefficient?: number }): ExtremeBirthResult {
   const rng = new SimulationRng(args.seed);

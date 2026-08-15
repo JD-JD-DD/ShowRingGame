@@ -10,10 +10,12 @@ import {
   runProducerConsistencyExperiment,
   runResetPopulationDiscovery,
   runCalibrationCandidateGrid,
+  summarizeFinalistValidation,
   runScenarioSimulation,
   summarizeScenario,
   type SimulationConfig,
 } from "../simulation/geneticsCalibration.simulation";
+import { FINAL_GENETICS_CALIBRATION, FINAL_GENETICS_CHECKPOINT_BANDS } from "../calibration/geneticsCalibration.constants";
 
 const generations = Number(process.argv[3] ?? "200");
 const configuration: SimulationConfig = {
@@ -30,7 +32,20 @@ const configuration: SimulationConfig = {
   breedBackgroundCoefficient: 0,
 };
 
-if (process.argv[2] === "calibrate") {
+if (process.argv[2] === "final") {
+  const finalists = [
+    { id: "finalist-a-normal-like-14", founderDistribution: { family: FounderDistributionFamily.NORMAL_LIKE, spread: 14 }, mutation: { probability: 0.001, effectMagnitude: 0.005 }, breedBackgroundCoefficient: 0 },
+    { id: "finalist-b-triangular-8", founderDistribution: { family: FounderDistributionFamily.TRIANGULAR, spread: 8 }, mutation: { probability: 0.0005, effectMagnitude: 0.0025 }, breedBackgroundCoefficient: 0 },
+    { id: "control-c-uniform-5.5", founderDistribution: { family: FounderDistributionFamily.UNIFORM, spread: 5.5 }, mutation: { probability: 0, effectMagnitude: 0 }, breedBackgroundCoefficient: 0 },
+  ] as const;
+  const seeds = Array.from({ length: 10 }, (_, index) => `gen-06e-final-${String(index + 1).padStart(2, "0")}`);
+  const results = runCalibrationCandidateGrid({ baseConfig: { ...configuration, seed: "gen-06e-final", generations: 200, founderAlleleEffectSpread: 14 }, candidates: [...finalists], seeds });
+  console.log(JSON.stringify({
+    methodologyVersion: "genetics-calibration-v1", validationPass: "gen-06e-finalist-validation-v1", seeds,
+    selectedCalibration: FINAL_GENETICS_CALIBRATION, expectedMonitoringBands: FINAL_GENETICS_CHECKPOINT_BANDS,
+    finalists: results.map((result) => ({ id: result.candidate.id, warnings: result.warnings, validation: summarizeFinalistValidation(result.candidate, result.seedRuns) })),
+  }, null, 2));
+} else if (process.argv[2] === "calibrate") {
   const candidates = [
     { id: "uniform-5.5-zero", founderDistribution: { family: FounderDistributionFamily.UNIFORM, spread: 5.5 }, mutation: { probability: 0, effectMagnitude: 0 }, breedBackgroundCoefficient: 0 },
     { id: "triangular-8-muted", founderDistribution: { family: FounderDistributionFamily.TRIANGULAR, spread: 8 }, mutation: { probability: 0.0005, effectMagnitude: 0.0025 }, breedBackgroundCoefficient: 0 },
