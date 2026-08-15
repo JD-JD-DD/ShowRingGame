@@ -9,6 +9,7 @@ import {
   type CanonicalGenotype,
   type GenotypePhenotype,
   type ModelDMutationConfig,
+  type BreedBackgroundContext,
 } from "../src/index";
 
 export const GENETICS_CALIBRATION_METHODOLOGY_VERSION = "genetics-calibration-v1";
@@ -59,7 +60,14 @@ export type SimulationConfig = {
   founderAlleleEffectSpread: number;
   mutation: ModelDMutationConfig;
   breedBackgroundCoefficient: number;
+  founderDistribution?: FounderDistribution;
+  simulatedBackground?: { annualGenerationCadence: number };
 };
+
+export const FounderDistributionFamily = { UNIFORM: "UNIFORM", TRIANGULAR: "TRIANGULAR", NORMAL_LIKE: "NORMAL_LIKE" } as const;
+export type FounderDistributionFamily = typeof FounderDistributionFamily[keyof typeof FounderDistributionFamily];
+/** Spread is the bounded maximum absolute allele effect for every family. */
+export type FounderDistribution = { family: FounderDistributionFamily; spread: number };
 
 export const SimulationScenario = {
   NORMAL_SELECTION: "NORMAL_SELECTION",
@@ -145,6 +153,8 @@ export type CheckpointMetrics = {
   mutationCount: number;
 };
 
+export type MutationAudit = { count: number; positiveCount: number; negativeCount: number; signedEffect: number; absoluteEffect: number };
+
 export type SimulationResult = {
   methodologyVersion: string;
   geneticsVersion: string;
@@ -174,6 +184,7 @@ export type ScenarioSimulationResult = SimulationResult & {
   populationScale?: PopulationScale;
   populationGrowthSchedule?: PopulationGrowthSchedule;
   cumulativeBirths: number;
+  mutationAudit: MutationAudit;
 };
 
 export type LitterExperimentResult = {
@@ -199,6 +210,15 @@ function roundToSixDecimals(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000;
 }
 
+function sampleFounderAllele(rng: SimulationRng, distribution: FounderDistribution): number {
+  const uniform = () => rng.next() * 2 - 1;
+  if (distribution.family === FounderDistributionFamily.UNIFORM) return roundToSixDecimals(uniform() * distribution.spread);
+  if (distribution.family === FounderDistributionFamily.TRIANGULAR) return roundToSixDecimals(((uniform() + uniform()) / 2) * distribution.spread);
+  // Sum of six independent centered uniforms: continuous, symmetric, bounded, and center-weighted.
+  const normalLike = Array.from({ length: 6 }, uniform).reduce((sum, value) => sum + value, 0) / 6;
+  return roundToSixDecimals(normalLike * distribution.spread);
+}
+
 export function getSimulationDogMad(dog: SimulationDog): number {
   return TRAIT_KEYS.reduce(
     (sum, trait) => sum + Math.abs(dog.phenotype[trait] - TRAIT_IDEAL),
@@ -212,10 +232,11 @@ export function createSyntheticFounder(
   generation: number,
   sex: "M" | "F",
   spread: number,
+  distribution: FounderDistribution = { family: FounderDistributionFamily.UNIFORM, spread },
 ): SimulationDog {
   const loci = Array.from({ length: TOTAL_LOCI }, () => [
-    roundToSixDecimals((rng.next() * 2 - 1) * spread),
-    roundToSixDecimals((rng.next() * 2 - 1) * spread),
+    sampleFounderAllele(rng, distribution),
+    sampleFounderAllele(rng, distribution),
   ] as const);
   const genotype: CanonicalGenotype = { geneticsVersion: CURRENT_GENETICS_VERSION, loci };
   assertCanonicalGenotype(genotype);
@@ -317,8 +338,8 @@ export function runNormalSelectionSimulation(config: SimulationConfig): Simulati
   validateConfig(config);
   const rng = new SimulationRng(config.seed);
   let population: SimulationDog[] = [];
-  for (let index = 0; index < config.founderSireCount; index += 1) population.push(createSyntheticFounder(rng, `g0-s${index}`, 0, "M", config.founderAlleleEffectSpread));
-  for (let index = 0; index < config.founderDamCount; index += 1) population.push(createSyntheticFounder(rng, `g0-d${index}`, 0, "F", config.founderAlleleEffectSpread));
+  for (let index = 0; index < config.founderSireCount; index += 1) population.push(createSyntheticFounder(rng, `g0-s${index}`, 0, "M", config.founderAlleleEffectSpread, config.founderDistribution));
+  for (let index = 0; index < config.founderDamCount; index += 1) population.push(createSyntheticFounder(rng, `g0-d${index}`, 0, "F", config.founderAlleleEffectSpread, config.founderDistribution));
 
   const checkpointGenerations: number[] = CHECKPOINTS.filter((generation) => generation <= config.generations);
   const checkpoints: CheckpointMetrics[] = [];
@@ -443,6 +464,12 @@ function profileForGeneration(config: ScenarioSimulationConfig, generation: numb
   return scale ? DEFAULT_POPULATION_SCALE_PROFILES[scale] : undefined;
 }
 
+function simulatedBackground(population: SimulationDog[], coefficient: number, generation: number) {
+  const weightedLocusAlleles = Array.from({ length: TOTAL_LOCI }, (_, locus) => population.flatMap((dog) => dog.genotype.loci[locus]));
+  const weightedLocusMeans = weightedLocusAlleles.map((alleles) => alleles.reduce((sum, allele) => sum + allele, 0) / alleles.length);
+  return { version: `simulated-background-g${generation}`, coefficient, sourceStatus: "LIVE" as const, weightedLocusAlleles, weightedLocusMeans };
+}
+
 /**
  * Scenario runner: all breeding uses the normal Model D engine. Scenario policy
  * changes only who is mated and how many ordinary offspring are produced.
@@ -453,15 +480,19 @@ export function runScenarioSimulation(config: ScenarioSimulationConfig): Scenari
   const options = config.scenarioOptions ?? {};
   const initialProfile = profileForGeneration(config, 0);
   let population: SimulationDog[] = [];
-  for (let index = 0; index < (initialProfile?.founderSireCount ?? config.founderSireCount); index += 1) population.push(createSyntheticFounder(rng, `g0-s${index}`, 0, "M", config.founderAlleleEffectSpread));
-  for (let index = 0; index < (initialProfile?.founderDamCount ?? config.founderDamCount); index += 1) population.push(createSyntheticFounder(rng, `g0-d${index}`, 0, "F", config.founderAlleleEffectSpread));
+  for (let index = 0; index < (initialProfile?.founderSireCount ?? config.founderSireCount); index += 1) population.push(createSyntheticFounder(rng, `g0-s${index}`, 0, "M", config.founderAlleleEffectSpread, config.founderDistribution));
+  for (let index = 0; index < (initialProfile?.founderDamCount ?? config.founderDamCount); index += 1) population.push(createSyntheticFounder(rng, `g0-d${index}`, 0, "F", config.founderAlleleEffectSpread, config.founderDistribution));
   const checkpointGenerations: number[] = CHECKPOINTS.filter((generation) => generation <= config.generations);
   const checkpoints: CheckpointMetrics[] = [];
   const contributionAudits: ContributionAudit[] = [];
   if (checkpointGenerations.includes(0)) checkpoints.push(calculateCheckpointMetrics(population, 0, 0));
   let totalMutationCount = 0;
+  const mutationAudit: MutationAudit = { count: 0, positiveCount: 0, negativeCount: 0, signedEffect: 0, absoluteEffect: 0 };
+  let background: BreedBackgroundContext = { version: "breed-background-v1", coefficient: config.breedBackgroundCoefficient, sourceStatus: "BASELINE" };
 
   for (let generation = 1; generation <= config.generations; generation += 1) {
+    const cadence = config.simulatedBackground?.annualGenerationCadence;
+    if (cadence && (generation === 1 || (generation - 1) % cadence === 0)) background = simulatedBackground(population, config.breedBackgroundCoefficient, generation);
     const profile = profileForGeneration(config, generation);
     const matingCount = scenarioCount(options.matingsPerGeneration, profile?.matingsPerGeneration ?? config.matingsPerGeneration);
     const litterSize = scenarioCount(options.litterSize, profile?.litterSize ?? config.litterSize);
@@ -506,9 +537,14 @@ export function runScenarioSimulation(config: ScenarioSimulationConfig): Scenari
       for (let puppy = 0; puppy < litterSize; puppy += 1) {
         const inherited = inheritModelDGenotype({
           sireGenotype: pair.sire.genotype, damGenotype: pair.dam.genotype, random01: () => rng.next(), mutation: config.mutation,
-          breedBackground: { version: "breed-background-v1", coefficient: config.breedBackgroundCoefficient, sourceStatus: "BASELINE" },
+          breedBackground: background,
         });
         generationMutationCount += inherited.mutationCount;
+        mutationAudit.count += inherited.mutationCount;
+        mutationAudit.positiveCount += inherited.mutationPositiveCount;
+        mutationAudit.negativeCount += inherited.mutationNegativeCount;
+        mutationAudit.signedEffect += inherited.mutationSignedEffect;
+        mutationAudit.absoluteEffect += inherited.mutationAbsoluteEffect;
         children.push({ id: `g${generation}-${mating}-${puppy}`, generation, sex: children.length % 2 === 0 ? "M" : "F", genotype: inherited.genotype, phenotype: inherited.phenotype, sireId: pair.sire.id, damId: pair.dam.id, familyId: pair.sire.familyId });
       }
     });
@@ -516,7 +552,7 @@ export function runScenarioSimulation(config: ScenarioSimulationConfig): Scenari
     population = children;
     if (checkpointGenerations.includes(generation)) checkpoints.push(calculateCheckpointMetrics(population, generation, generationMutationCount));
   }
-  return { methodologyVersion: GENETICS_CALIBRATION_METHODOLOGY_VERSION, geneticsVersion: CURRENT_GENETICS_VERSION, seed: config.seed, configuration: config, checkpoints, totalMutationCount, finalPopulationSize: population.length, scenario: config.scenario, contributionAudits, populationScale: config.populationScale, populationGrowthSchedule: config.populationGrowthSchedule, cumulativeBirths: contributionAudits.reduce((sum, audit) => sum + audit.births, 0) };
+  return { methodologyVersion: GENETICS_CALIBRATION_METHODOLOGY_VERSION, geneticsVersion: CURRENT_GENETICS_VERSION, seed: config.seed, configuration: config, checkpoints, totalMutationCount, finalPopulationSize: population.length, scenario: config.scenario, contributionAudits, populationScale: config.populationScale, populationGrowthSchedule: config.populationGrowthSchedule, cumulativeBirths: contributionAudits.reduce((sum, audit) => sum + audit.births, 0), mutationAudit };
 }
 
 /** Repeats real Model D litters. "Better" means lower ten-trait MAD than the parents' MAD midpoint. */
@@ -604,9 +640,13 @@ export type FounderSeedReport = {
   alleleBoundFrequency: number;
   allTraitsBelowFrequency: number;
   allTraitsAboveFrequency: number;
+  clampedTraitFrequency: number;
+  multipleClampedDogFrequency: number;
+  clampedUnderlyingAdditiveStandardDeviation: number;
 };
 
 export type FounderDistributionCandidate = {
+  family: FounderDistributionFamily;
   founderAlleleEffectSpread: number;
   seedCount: number;
   meanG0Mad: number;
@@ -642,18 +682,22 @@ export function discoverFounderDistributionCandidates(args: {
   seeds: string[];
   founderSireCount?: number;
   founderDamCount?: number;
+  family?: FounderDistributionFamily;
 }): FounderDistributionCandidate[] {
   const sireCount = args.founderSireCount ?? 100;
   const damCount = args.founderDamCount ?? 100;
+  const family = args.family ?? FounderDistributionFamily.UNIFORM;
   return args.spreads.map((spread) => {
     const seedReports = args.seeds.map((seed) => {
       const rng = new SimulationRng(seed);
       const population = [
-        ...Array.from({ length: sireCount }, (_, index) => createSyntheticFounder(rng, `g0-s${index}`, 0, "M", spread)),
-        ...Array.from({ length: damCount }, (_, index) => createSyntheticFounder(rng, `g0-d${index}`, 0, "F", spread)),
+        ...Array.from({ length: sireCount }, (_, index) => createSyntheticFounder(rng, `g0-s${index}`, 0, "M", spread, { family, spread })),
+        ...Array.from({ length: damCount }, (_, index) => createSyntheticFounder(rng, `g0-d${index}`, 0, "F", spread, { family, spread })),
       ];
       const scores = population.map(getSimulationDogMad).sort((left, right) => left - right);
       const alleles = population.flatMap((dog) => dog.genotype.loci.flat());
+      const rawClampedValues = population.flatMap((dog) => TRAIT_KEYS.map((_, traitIndex) => 10 + dog.genotype.loci.slice(traitIndex * 4, traitIndex * 4 + 4).flat().reduce((sum, allele) => sum + allele, 0))).filter((value) => value <= 0 || value >= 20);
+      const dogsWithMultipleClamps = population.filter((dog) => TRAIT_KEYS.filter((_, traitIndex) => { const raw = 10 + dog.genotype.loci.slice(traitIndex * 4, traitIndex * 4 + 4).flat().reduce((sum, allele) => sum + allele, 0); return raw <= 0 || raw >= 20; }).length > 1).length;
       return {
         seed,
         checkpoint: calculateCheckpointMetrics(population, 0, 0),
@@ -662,6 +706,9 @@ export function discoverFounderDistributionCandidates(args: {
         alleleBoundFrequency: alleles.filter((allele) => Math.abs(allele) === 20).length / alleles.length,
         allTraitsBelowFrequency: population.filter((dog) => TRAIT_KEYS.every((trait) => dog.phenotype[trait] < TRAIT_IDEAL)).length / population.length,
         allTraitsAboveFrequency: population.filter((dog) => TRAIT_KEYS.every((trait) => dog.phenotype[trait] > TRAIT_IDEAL)).length / population.length,
+        clampedTraitFrequency: rawClampedValues.length / (population.length * TRAIT_KEYS.length),
+        multipleClampedDogFrequency: dogsWithMultipleClamps / population.length,
+        clampedUnderlyingAdditiveStandardDeviation: rawClampedValues.length ? standardDeviation(rawClampedValues) : 0,
       };
     });
     const g0Mads = seedReports.map((report) => report.checkpoint.meanMad);
@@ -671,7 +718,7 @@ export function discoverFounderDistributionCandidates(args: {
     if (seedReports.some((report) => report.alleleBoundFrequency > 0)) flags.push("allele-bound-clamping");
     if (seedReports.some((report) => report.madStandardDeviation < 0.25)) flags.push("uniform-dog-mad-distribution");
     if (seedReports.some((report) => report.allTraitsBelowFrequency + report.allTraitsAboveFrequency > 0.1)) flags.push("excessively-polarized-all-trait-dogs");
-    return { founderAlleleEffectSpread: spread, seedCount: args.seeds.length, meanG0Mad: mean, medianG0Mad: median([...g0Mads].sort((left, right) => left - right)), betweenSeedMadStandardDeviation: standardDeviation(g0Mads), meanAlleleBoundFrequency: seedReports.reduce((sum, report) => sum + report.alleleBoundFrequency, 0) / seedReports.length, meanAllTraitsBelowFrequency: seedReports.reduce((sum, report) => sum + report.allTraitsBelowFrequency, 0) / seedReports.length, meanAllTraitsAboveFrequency: seedReports.reduce((sum, report) => sum + report.allTraitsAboveFrequency, 0) / seedReports.length, flags, seedReports };
+    return { family, founderAlleleEffectSpread: spread, seedCount: args.seeds.length, meanG0Mad: mean, medianG0Mad: median([...g0Mads].sort((left, right) => left - right)), betweenSeedMadStandardDeviation: standardDeviation(g0Mads), meanAlleleBoundFrequency: seedReports.reduce((sum, report) => sum + report.alleleBoundFrequency, 0) / seedReports.length, meanAllTraitsBelowFrequency: seedReports.reduce((sum, report) => sum + report.allTraitsBelowFrequency, 0) / seedReports.length, meanAllTraitsAboveFrequency: seedReports.reduce((sum, report) => sum + report.allTraitsAboveFrequency, 0) / seedReports.length, flags, seedReports };
   });
 }
 
@@ -722,4 +769,53 @@ export function runResetPopulationDiscovery(args: {
   const matureHighVolumeRun = runScenarioSimulation({ ...primaryConfig, scenario: SimulationScenario.AGGRESSIVE_HIGH_VOLUME, scenarioOptions: DEFAULT_SCENARIO_OPTIONS.AGGRESSIVE_HIGH_VOLUME, populationScale: PopulationScale.MATURE });
   const broaderFounderScenarioSmoke = Object.fromEntries(Object.values(SimulationScenario).map((scenario) => [scenario, runScenarioSimulation({ ...primaryConfig, generations: Math.min(primaryConfig.generations, 10), scenario, scenarioOptions: DEFAULT_SCENARIO_OPTIONS[scenario] })])) as Record<SimulationScenario, ScenarioSimulationResult>;
   return { methodologyVersion: GENETICS_CALIBRATION_METHODOLOGY_VERSION, discoveryPass: RESET_POPULATION_DISCOVERY_PASS, geneticsVersion: CURRENT_GENETICS_VERSION, mutation: args.baseConfig.mutation, breedBackgroundCoefficient: args.baseConfig.breedBackgroundCoefficient, founderCandidates: candidates, primaryCandidateSpread: primary.founderAlleleEffectSpread, fixedScaleRuns, scheduledGrowthRun, candidateScheduledRuns, matureHighVolumeRun, broaderFounderScenarioSmoke };
+}
+
+export type CalibrationCandidate = {
+  id: string;
+  founderDistribution: FounderDistribution;
+  mutation: ModelDMutationConfig;
+  breedBackgroundCoefficient: number;
+};
+export type CalibrationCandidateResult = {
+  candidate: CalibrationCandidate;
+  seedRuns: ScenarioSimulationResult[];
+  checkpointRanges: Record<string, { medianMad: number; minMad: number; maxMad: number }>;
+  warnings: string[];
+};
+
+export function runCalibrationCandidateGrid(args: { baseConfig: SimulationConfig; candidates: CalibrationCandidate[]; seeds: string[] }): CalibrationCandidateResult[] {
+  return args.candidates.map((candidate) => {
+    const seedRuns = args.seeds.map((seed) => runScenarioSimulation({ ...args.baseConfig, seed, founderAlleleEffectSpread: candidate.founderDistribution.spread, founderDistribution: candidate.founderDistribution, mutation: candidate.mutation, breedBackgroundCoefficient: candidate.breedBackgroundCoefficient, simulatedBackground: candidate.breedBackgroundCoefficient === 0 ? undefined : { annualGenerationCadence: 12 }, scenario: SimulationScenario.NORMAL_SELECTION, populationGrowthSchedule: DEFAULT_POPULATION_GROWTH_SCHEDULE }));
+    const checkpointRanges = Object.fromEntries(CHECKPOINTS.map((generation) => {
+      const values = seedRuns.map((run) => run.checkpoints.find((checkpoint) => checkpoint.generation === generation)?.meanMad).filter((value): value is number => value !== undefined).sort((left, right) => left - right);
+      return [String(generation), { medianMad: median(values), minMad: values[0], maxMad: values[values.length - 1] }];
+    }));
+    const warnings: string[] = [];
+    const g0Clamp = seedRuns.map((run) => run.checkpoints[0].clampFrequency).reduce((sum, value) => sum + value, 0) / seedRuns.length;
+    if (g0Clamp > 0.05) warnings.push("founder-phenotype-saturation");
+    if (seedRuns.some((run) => run.mutationAudit.count > 0 && Math.abs(run.mutationAudit.signedEffect / run.mutationAudit.absoluteEffect) > 0.2)) warnings.push("mutation-sign-imbalance");
+    if (seedRuns.some((run) => run.checkpoints.at(-1)!.nearPerfect["0.100"] > 0)) warnings.push("all-trait-near-perfection-observed");
+    if (candidate.breedBackgroundCoefficient > 0 && seedRuns.some((run) => run.checkpoints.at(-1)!.diversity.meanHomozygosity < 0.05)) warnings.push("background-prevents-ordinary-fixation");
+    return { candidate, seedRuns, checkpointRanges, warnings };
+  });
+}
+
+export type ExtremeBirthResult = { births: number; bestMad: number; exactTraitCount: number; nearPerfectDogCount: number; allTenExactDogCount: number; mutationAudit: MutationAudit };
+
+/** One-generation extreme-value test, intentionally separate from population progression. */
+export function runExtremeBirthExperiment(args: { seed: string; sire: SimulationDog; dam: SimulationDog; births: number; mutation: ModelDMutationConfig; breedBackgroundCoefficient?: number }): ExtremeBirthResult {
+  const rng = new SimulationRng(args.seed);
+  let bestMad = Number.POSITIVE_INFINITY; let exactTraitCount = 0; let nearPerfectDogCount = 0; let allTenExactDogCount = 0;
+  const mutationAudit: MutationAudit = { count: 0, positiveCount: 0, negativeCount: 0, signedEffect: 0, absoluteEffect: 0 };
+  for (let birth = 0; birth < args.births; birth += 1) {
+    const inherited = inheritModelDGenotype({ sireGenotype: args.sire.genotype, damGenotype: args.dam.genotype, random01: () => rng.next(), mutation: args.mutation, breedBackground: { version: "breed-background-v1", coefficient: args.breedBackgroundCoefficient ?? 0, sourceStatus: "BASELINE" } });
+    const dog: SimulationDog = { id: `extreme-${birth}`, generation: 0, sex: "M", genotype: inherited.genotype, phenotype: inherited.phenotype, familyId: "extreme" };
+    bestMad = Math.min(bestMad, getSimulationDogMad(dog));
+    exactTraitCount += TRAIT_KEYS.filter((trait) => dog.phenotype[trait] === TRAIT_IDEAL).length;
+    nearPerfectDogCount += Number(TRAIT_KEYS.every((trait) => Math.abs(dog.phenotype[trait] - TRAIT_IDEAL) <= 0.1));
+    allTenExactDogCount += Number(TRAIT_KEYS.every((trait) => dog.phenotype[trait] === TRAIT_IDEAL));
+    mutationAudit.count += inherited.mutationCount; mutationAudit.positiveCount += inherited.mutationPositiveCount; mutationAudit.negativeCount += inherited.mutationNegativeCount; mutationAudit.signedEffect += inherited.mutationSignedEffect; mutationAudit.absoluteEffect += inherited.mutationAbsoluteEffect;
+  }
+  return { births: args.births, bestMad, exactTraitCount, nearPerfectDogCount, allTenExactDogCount, mutationAudit };
 }

@@ -53,6 +53,10 @@ export type ModelDInheritanceResult = {
   geneticsVersion: typeof CURRENT_GENETICS_VERSION;
   phenotype: GenotypePhenotype;
   mutationCount: number;
+  mutationPositiveCount: number;
+  mutationNegativeCount: number;
+  mutationSignedEffect: number;
+  mutationAbsoluteEffect: number;
 };
 
 function nextRoll(random01: Random01, label: string): number {
@@ -84,7 +88,9 @@ function applyBreedBackgroundAllele(args: { allele: number; locusIndex: number; 
   if (!distribution || distribution.length === 0 || mean === undefined || !Number.isFinite(mean)) return args.allele;
   const sampled = distribution[Math.floor(nextRoll(args.random01, `background locus ${args.locusIndex}`) * distribution.length)];
   if (!Number.isFinite(sampled)) throw new Error(`Background locus ${args.locusIndex} contains an invalid allele.`);
-  return Math.max(-GENOTYPE_ALLELE_EFFECT_ABSOLUTE_MAX, Math.min(GENOTYPE_ALLELE_EFFECT_ABSOLUTE_MAX, args.allele + context.coefficient * (sampled - mean)));
+  const adjusted = Math.max(-GENOTYPE_ALLELE_EFFECT_ABSOLUTE_MAX, Math.min(GENOTYPE_ALLELE_EFFECT_ABSOLUTE_MAX, args.allele + context.coefficient * (sampled - mean)));
+  // The residual formula is continuous, but GEN-01 stores canonical six-decimal allele values.
+  return Math.round(adjusted * GENOTYPE_MICRO_UNITS) / GENOTYPE_MICRO_UNITS;
 }
 
 /** Forms a 40-allele gamete in canonical locus order using independent rolls. */
@@ -100,9 +106,9 @@ function mutateInheritedAllele(args: {
   random01: Random01;
   mutation: ModelDMutationConfig;
   label: string;
-}): { allele: number; mutated: boolean } {
+}): { allele: number; mutated: boolean; delta: number } {
   if (nextRoll(args.random01, `${args.label} mutation roll`) >= args.mutation.probability || args.mutation.effectMagnitude === 0) {
-    return { allele: args.allele, mutated: false };
+    return { allele: args.allele, mutated: false, delta: 0 };
   }
   const direction = nextRoll(args.random01, `${args.label} mutation direction`) < 0.5 ? -1 : 1;
   const mutated = args.allele + direction * args.mutation.effectMagnitude;
@@ -110,6 +116,7 @@ function mutateInheritedAllele(args: {
   return {
     allele: Math.max(-GENOTYPE_ALLELE_EFFECT_ABSOLUTE_MAX, Math.min(GENOTYPE_ALLELE_EFFECT_ABSOLUTE_MAX, mutated)),
     mutated: true,
+    delta: Math.max(-GENOTYPE_ALLELE_EFFECT_ABSOLUTE_MAX, Math.min(GENOTYPE_ALLELE_EFFECT_ABSOLUTE_MAX, mutated)) - args.allele,
   };
 }
 
@@ -128,10 +135,18 @@ export function inheritModelDGenotype(input: ModelDInheritanceInput): ModelDInhe
   }
 
   let mutationCount = 0;
+  let mutationPositiveCount = 0;
+  let mutationNegativeCount = 0;
+  let mutationSignedEffect = 0;
+  let mutationAbsoluteEffect = 0;
   const loci = Array.from({ length: TOTAL_LOCI }, (_, locusIndex) => {
     const sire = mutateInheritedAllele({ allele: applyBreedBackgroundAllele({ allele: sireGamete[locusIndex], locusIndex, random01: input.random01, context: input.breedBackground }), random01: input.random01, mutation: input.mutation, label: `sire locus ${locusIndex}` });
     const dam = mutateInheritedAllele({ allele: applyBreedBackgroundAllele({ allele: damGamete[locusIndex], locusIndex, random01: input.random01, context: input.breedBackground }), random01: input.random01, mutation: input.mutation, label: `dam locus ${locusIndex}` });
     mutationCount += Number(sire.mutated) + Number(dam.mutated);
+    mutationPositiveCount += Number(sire.delta > 0) + Number(dam.delta > 0);
+    mutationNegativeCount += Number(sire.delta < 0) + Number(dam.delta < 0);
+    mutationSignedEffect += sire.delta + dam.delta;
+    mutationAbsoluteEffect += Math.abs(sire.delta) + Math.abs(dam.delta);
     return [sire.allele, dam.allele] as const;
   });
   const genotype: CanonicalGenotype = { geneticsVersion: CURRENT_GENETICS_VERSION, loci };
@@ -142,5 +157,9 @@ export function inheritModelDGenotype(input: ModelDInheritanceInput): ModelDInhe
     geneticsVersion: CURRENT_GENETICS_VERSION,
     phenotype: calculatePhenotypeFromGenotype(genotype),
     mutationCount,
+    mutationPositiveCount,
+    mutationNegativeCount,
+    mutationSignedEffect,
+    mutationAbsoluteEffect,
   };
 }

@@ -68,6 +68,16 @@ assertEqual(negativeMutation.genotype.loci[0][0], 0.249999, "negative mutation i
 const neutralContexts = inheritModelDGenotype({ sireGenotype: sire, damGenotype: dam, random01: sequence([...selections, ...Array.from({ length: TOTAL_ALLELE_VALUES }, () => 0)]), mutation: { probability: 0, effectMagnitude: 0 }, breedBackground: { version: "future-neutral" }, coi: { coiPercent: 0 } });
 assertEqual(neutralContexts.encodedGenotype, noMutation.encodedGenotype, "future contexts are inert in GEN-04");
 
+const liveBackground = inheritModelDGenotype({
+  sireGenotype: homozygous,
+  damGenotype: homozygous,
+  random01: () => 0,
+  mutation: { probability: 0, effectMagnitude: 0 },
+  breedBackground: { version: "simulated-annual", sourceStatus: "LIVE", coefficient: 0.02, weightedLocusAlleles: Array.from({ length: TOTAL_LOCI }, () => [0.2, 0.4]), weightedLocusMeans: Array.from({ length: TOTAL_LOCI }, () => 0.3) },
+});
+assertEqual(liveBackground.genotype.loci[0][0], 0.248, "live background residual remains canonical six-decimal precision");
+assertCanonicalGenotype(liveBackground.genotype);
+
 const litter = Array.from({ length: 4 }, (_, puppyIndex) => inheritModelDGenotype({ sireGenotype: sire, damGenotype: dam, random01: sequence([...Array.from({ length: TOTAL_LOCI * 2 }, (_, roll) => (roll + puppyIndex) % 3 === 0 ? 0 : 0.9), ...Array.from({ length: TOTAL_ALLELE_VALUES }, () => 0)]), mutation: { probability: 0, effectMagnitude: 0 } }));
 assertEqual(new Set(litter.map((puppy) => puppy.encodedGenotype)).size > 1, true, "littermates can vary");
 litter.forEach((puppy) => assertCanonicalGenotype(puppy.genotype));

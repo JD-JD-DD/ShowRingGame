@@ -17,6 +17,7 @@
     "test:genetics-calibration-simulation": "tsx src/testGeneticsCalibrationSimulation.ts",
     "test:genetics-scenario-simulation": "tsx src/testGeneticsScenarioSimulation.ts",
     "test:genetics-reset-population-discovery": "tsx src/testGeneticsResetPopulationDiscovery.ts",
+    "test:genetics-calibration-sweep": "tsx src/testGeneticsCalibrationSweep.ts",
     "test:health": "tsx src/testHealth.ts",
     "test:litter-construction": "tsx src/testLitterConstruction.ts",
     "test:reproductive-emergency": "tsx src/testReproductiveEmergency.ts",

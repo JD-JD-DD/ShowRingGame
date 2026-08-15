@@ -1,6 +1,7 @@
 import {
   DEFAULT_SCENARIO_OPTIONS,
   DEFAULT_POPULATION_GROWTH_SCHEDULE,
+  FounderDistributionFamily,
   HISTORICAL_SUPERSEDED_MAD_BANDS,
   SimulationScenario,
   runComplementarityExperiment,
@@ -8,6 +9,7 @@ import {
   runNormalSelectionSimulation,
   runProducerConsistencyExperiment,
   runResetPopulationDiscovery,
+  runCalibrationCandidateGrid,
   runScenarioSimulation,
   summarizeScenario,
   type SimulationConfig,
@@ -28,7 +30,16 @@ const configuration: SimulationConfig = {
   breedBackgroundCoefficient: 0,
 };
 
-if (process.argv[2] === "discover") {
+if (process.argv[2] === "calibrate") {
+  const candidates = [
+    { id: "uniform-5.5-zero", founderDistribution: { family: FounderDistributionFamily.UNIFORM, spread: 5.5 }, mutation: { probability: 0, effectMagnitude: 0 }, breedBackgroundCoefficient: 0 },
+    { id: "triangular-8-muted", founderDistribution: { family: FounderDistributionFamily.TRIANGULAR, spread: 8 }, mutation: { probability: 0.0005, effectMagnitude: 0.0025 }, breedBackgroundCoefficient: 0 },
+    { id: "normal-like-14-current", founderDistribution: { family: FounderDistributionFamily.NORMAL_LIKE, spread: 14 }, mutation: { probability: 0.001, effectMagnitude: 0.005 }, breedBackgroundCoefficient: 0 },
+    { id: "normal-like-14-background", founderDistribution: { family: FounderDistributionFamily.NORMAL_LIKE, spread: 14 }, mutation: { probability: 0.002, effectMagnitude: 0.01 }, breedBackgroundCoefficient: 0.02 },
+  ] as const;
+  const results = runCalibrationCandidateGrid({ baseConfig: { ...configuration, seed: "calibration-grid", founderAlleleEffectSpread: 5.5 }, candidates: [...candidates], seeds: ["calibration-a", "calibration-b", "calibration-c"] });
+  console.log(JSON.stringify({ methodologyVersion: "genetics-calibration-v1", calibrationPass: "genetics-parameter-calibration-v1", seeds: ["calibration-a", "calibration-b", "calibration-c"], results: results.map((result) => ({ candidate: result.candidate, checkpoints: result.checkpointRanges, mutationPerThousandBirths: result.seedRuns.map((run) => run.mutationAudit.count * 1000 / run.cumulativeBirths), mutationSymmetry: result.seedRuns.map((run) => ({ positive: run.mutationAudit.positiveCount, negative: run.mutationAudit.negativeCount, meanSigned: run.mutationAudit.count ? run.mutationAudit.signedEffect / run.mutationAudit.count : 0 })), g0Clamp: result.seedRuns.map((run) => run.checkpoints[0].clampFrequency), g200: result.seedRuns.map((run) => ({ homozygosity: run.checkpoints.at(-1)?.diversity.meanHomozygosity, fixedLoci: run.checkpoints.at(-1)?.diversity.fixedLoci, exact10: run.checkpoints.at(-1)?.exact10.traitFrequency, nearPerfect: run.checkpoints.at(-1)?.nearPerfect["0.100"] })), warnings: result.warnings })) }, null, 2));
+} else if (process.argv[2] === "discover") {
   const report = runResetPopulationDiscovery({
     baseConfig: { ...configuration, seed: "reset-population-discovery-v1", founderAlleleEffectSpread: 5.5 },
     candidateSpreads: [4, 5.5, 7.7],
