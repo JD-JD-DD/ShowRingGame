@@ -25,6 +25,11 @@ export type ModelDMutationConfig = {
 export type BreedBackgroundContext = {
   version: string;
   referenceId?: string;
+  /** Only a qualifying GEN-05 LIVE snapshot may supply these distributions. */
+  sourceStatus?: "LIVE" | "BASELINE" | "RETAINED_BASELINE";
+  coefficient?: number;
+  weightedLocusAlleles?: readonly (readonly number[])[];
+  weightedLocusMeans?: readonly number[];
 };
 
 /** Reserved, inert context for future homozygosity/segregation behavior. */
@@ -70,6 +75,18 @@ function validateMutationConfig(config: ModelDMutationConfig): void {
   }
 }
 
+function applyBreedBackgroundAllele(args: { allele: number; locusIndex: number; random01: Random01; context?: BreedBackgroundContext }): number {
+  const context = args.context;
+  if (!context || context.coefficient === undefined || context.coefficient === 0 || context.sourceStatus !== "LIVE") return args.allele;
+  if (!Number.isFinite(context.coefficient) || context.coefficient < 0) throw new Error("Breed-background coefficient must be finite and nonnegative.");
+  const distribution = context.weightedLocusAlleles?.[args.locusIndex];
+  const mean = context.weightedLocusMeans?.[args.locusIndex];
+  if (!distribution || distribution.length === 0 || mean === undefined || !Number.isFinite(mean)) return args.allele;
+  const sampled = distribution[Math.floor(nextRoll(args.random01, `background locus ${args.locusIndex}`) * distribution.length)];
+  if (!Number.isFinite(sampled)) throw new Error(`Background locus ${args.locusIndex} contains an invalid allele.`);
+  return Math.max(-GENOTYPE_ALLELE_EFFECT_ABSOLUTE_MAX, Math.min(GENOTYPE_ALLELE_EFFECT_ABSOLUTE_MAX, args.allele + context.coefficient * (sampled - mean)));
+}
+
 /** Forms a 40-allele gamete in canonical locus order using independent rolls. */
 export function formModelDGamete(parent: CanonicalGenotype, random01: Random01): Gamete {
   assertCanonicalGenotype(parent);
@@ -112,8 +129,8 @@ export function inheritModelDGenotype(input: ModelDInheritanceInput): ModelDInhe
 
   let mutationCount = 0;
   const loci = Array.from({ length: TOTAL_LOCI }, (_, locusIndex) => {
-    const sire = mutateInheritedAllele({ allele: sireGamete[locusIndex], random01: input.random01, mutation: input.mutation, label: `sire locus ${locusIndex}` });
-    const dam = mutateInheritedAllele({ allele: damGamete[locusIndex], random01: input.random01, mutation: input.mutation, label: `dam locus ${locusIndex}` });
+    const sire = mutateInheritedAllele({ allele: applyBreedBackgroundAllele({ allele: sireGamete[locusIndex], locusIndex, random01: input.random01, context: input.breedBackground }), random01: input.random01, mutation: input.mutation, label: `sire locus ${locusIndex}` });
+    const dam = mutateInheritedAllele({ allele: applyBreedBackgroundAllele({ allele: damGamete[locusIndex], locusIndex, random01: input.random01, context: input.breedBackground }), random01: input.random01, mutation: input.mutation, label: `dam locus ${locusIndex}` });
     mutationCount += Number(sire.mutated) + Number(dam.mutated);
     return [sire.allele, dam.allele] as const;
   });
