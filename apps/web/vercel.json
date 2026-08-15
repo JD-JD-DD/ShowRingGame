@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "feature/post-invitational-genetics-overhaul": false
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/resolve-dog-mortality",
