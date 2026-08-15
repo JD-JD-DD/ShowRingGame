@@ -197,15 +197,15 @@ Halden Hound,HH,Hound,TRUE,12
 Hygen Hound,HY,Hound,TRUE,12
 Grand Bleu de Gascogne,GB,Hound,TRUE,12
 Rhodesian Ridgeback,RR,Hound,TRUE,12
-Alaskan Klee Kai,KK,Miscellaneous,TRUE,13
-Bolognese,ZB,Miscellaneous,TRUE,13
-Czechoslovakian Vlciak,VL,Miscellaneous,TRUE,13
-Japanese Akitainu,JA,Miscellaneous,TRUE,13
-German Spitz,GG,Miscellaneous,TRUE,13
-Kai Ken,KN,Miscellaneous,TRUE,13
-Norbottenspets,NB,Miscellaneous,TRUE,13
-Pyrenean Mastiff,PN,Miscellaneous,TRUE,13
-Yakutian Laika,YL,Miscellaneous,TRUE,13
+Alaskan Klee Kai,KK,Non-Sporting,TRUE,13
+Bolognese,ZB,Toy,TRUE,13
+Czechoslovakian Vlciak,VL,Working,TRUE,13
+Japanese Akitainu,JA,Non-Sporting,TRUE,13
+German Spitz,GG,Non-Sporting,TRUE,13
+Kai Ken,KN,Working,TRUE,13
+Norrbottenspets,NB,Hound,TRUE,13
+Pyrenean Mastiff,PN,Working,TRUE,13
+Yakutian Laika,YL,Working,TRUE,13
 Australian Cattle Dog,YY,Herding,TRUE,14
 English Cocker,QM,Sporting,TRUE,999
 American Cocker,QE,Sporting,TRUE,999
@@ -249,8 +249,8 @@ Wire Fox Terrier,WF,Terrier,TRUE,17
 Pug,UG,Toy,TRUE,17
 Silky Terrier,SQ,Toy,TRUE,17
 Pembroke Welsh Corgi,PW,Herding,TRUE,17
-Basset Fauve de Bretagne,FV,Miscellaneous,TRUE,17
-Silken Windhound,RD,Miscellaneous,TRUE,17
+Basset Fauve de Bretagne,FV,Hound,TRUE,17
+Silken Windhound,RD,Hound,TRUE,17
 Danish-Swedish Farmdogs,FW,Working,TRUE,18
 Toy Manchester Terrier,TC,Toy,TRUE,18
 Teddy Roosevelt Terrier,TE,Terrier,TRUE,18
@@ -261,5 +261,60 @@ Miniature American Shepherd,MA,Herding,TRUE,18
 Lancashire Heeler,LH,Herding,TRUE,18
 Berger Picard,PJ,Herding,TRUE,18
 Barbet,TG,Sporting,TRUE,18
-Hovawart,HO,Miscellaneous,TRUE,18
+Hovawart,HO,Working,TRUE,18
 Nenets Herding Laika,LN,Herding,TRUE,19
+American Leopard Hound,AL,Hound,TRUE,19
+Australian Kelpie,AI,Herding,TRUE,19
+Australian Stumpy Tail Cattle Dog,AQ,Herding,TRUE,19
+Barbado da Terceira,AO,Herding,TRUE,19
+Bavarian Mountain Scent Hound,MS,Hound,TRUE,19
+Blue Picardy Spaniel,LU,Sporting,TRUE,19
+Bohemian Shepherd,OM,Herding,TRUE,19
+Braque du Bourbonnais,RQ,Sporting,TRUE,19
+Braque Francais Pyrenean,FP,Sporting,TRUE,19
+Braque Saint-Germain,RI,Sporting,TRUE,19
+Brazilian Terrier,RZ,Terrier,TRUE,19
+Broholmer,RO,Working,TRUE,19
+Calupoh,LO,Herding,TRUE,19
+Canadian Eskimo Dog,CM,Working,TRUE,19
+Catahoula Leopard Dog,LD,Herding,TRUE,19
+Croatian Sheepdog,RN,Herding,TRUE,19
+Deutscher Wachtelhund,DW,Sporting,TRUE,19
+Drentsche Patrijshond,DE,Sporting,TRUE,19
+Estrela Mountain Dog,EM,Working,TRUE,19
+French Spaniel,FE,Sporting,TRUE,19
+German Longhaired Pointer,GL,Sporting,TRUE,19
+Hanoverian Scenthound,HA,Hound,TRUE,19
+Hokkaido,HK,Working,TRUE,19
+Jagdterrier,JG,Terrier,TRUE,19
+Japanese Spitz,JS,Non-Sporting,TRUE,19
+Japanese Terrier,JT,Terrier,TRUE,19
+Kishu Ken,KI,Hound,TRUE,19
+Lapponian Herder,LI,Herding,TRUE,19
+Large Munsterlander,LM,Sporting,TRUE,19
+Lucas Terrier,LC,Terrier,TRUE,19
+Mountain Cur,MC,Hound,TRUE,19
+Old Danish Pointer,OD,Sporting,TRUE,19
+Pont-Audemer Spaniel,PI,Sporting,TRUE,19
+Portuguese Pointer,OR,Sporting,TRUE,19
+Portuguese Sheepdog,OT,Herding,TRUE,19
+Pudelpointer,UD,Sporting,TRUE,19
+Rafeiro do Alentejo,RF,Working,TRUE,19
+Romanian Carpathian Shepherd,RM,Working,TRUE,19
+Romanian Mioritic Shepherd Dog,RH,Working,TRUE,19
+Schapendoes,HP,Herding,TRUE,19
+Segugio Italiano,EI,Hound,TRUE,19
+Shikoku Ken,HI,Hound,TRUE,19
+Slovensky Cuvac,LV,Herding,TRUE,19
+Slovensky Kopov,LE,Hound,TRUE,19
+Slovakian Wirehaired Pointer,OV,Sporting,TRUE,19
+Spanish Mastiff,PF,Working,TRUE,19
+Stabyhoun,TY,Sporting,TRUE,19
+Swedish Lapphund,WI,Herding,TRUE,19
+Tornjak,TO,Working,TRUE,19
+Transylvania Hound,TH,Hound,TRUE,19
+Treeing Tennessee Brindle,TN,Hound,TRUE,19
+Volpino Italiano,VI,Toy,TRUE,19
+Wetterhoun,WR,Sporting,TRUE,19
+Working Kelpie,WK,Herding,TRUE,19
+
