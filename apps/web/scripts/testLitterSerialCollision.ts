@@ -11,6 +11,7 @@ const createdLitters: Array<{ breedCode2: string; serial7: string }> = [
 ];
 let createAttempts = 0;
 const fakeClient = {
+  dogRegistrationReservation: { createMany: async () => ({ count: 1 }) },
   litter: {
     findUnique: async ({ where }: { where: { breedCode2_serial7: { breedCode2: string; serial7: string } } }) =>
       createdLitters.find(
@@ -77,6 +78,7 @@ async function main() {
   let raceFindUniqueCalls = 0;
   let raceCreateCalls = 0;
   const racingClient = {
+    dogRegistrationReservation: { createMany: async () => ({ count: 1 }) },
     litter: {
       findUnique: async () => {
         raceFindUniqueCalls += 1;
@@ -100,6 +102,7 @@ async function main() {
   assert.equal(raceCreateCalls, 1);
 
   const freshTransactionClient = {
+    dogRegistrationReservation: { createMany: async () => ({ count: 1 }) },
     litter: {
       findUnique: async () => null,
       create: async () => undefined,

@@ -25,6 +25,7 @@ import { applyBetaBalanceTopUp } from "@/lib/betaEconomy";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { maybeSeedFoundationBrucellosis } from "@/server/services/infectiousDisease.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
+import { isDogRegistrationCollision, reserveDogRegistrations } from "@/server/services/dogRegistration.service";
 import { resolveFoundationPopulationContext, type FoundationPopulationContext } from "@/server/services/foundationPopulationContext.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
@@ -381,9 +382,9 @@ async function generateUniqueFoundationIdentity(
     const serial7 = generateSerial7(Math.random);
     const regNumber = buildRegNumber(breedCode2, serial7, litterOrder);
 
-    const existing = await db.dog.findUnique({
+    const existing = await db.dogRegistrationReservation.findUnique({
       where: { regNumber },
-      select: { id: true },
+      select: { regNumber: true },
     });
 
     if (!existing) {
@@ -548,8 +549,9 @@ async function createOneFoundationDog(args: {
   currentEpoch: number;
   forcedSex?: "M" | "F";
   populationContext?: FoundationPopulationContext;
+  allocationAttempt?: number;
 }): Promise<void> {
-  const { breedCode2, currentEpoch, forcedSex } = args;
+  const { breedCode2, currentEpoch, forcedSex, allocationAttempt = 0 } = args;
 
   const breedBaseline = { breedCode2, traitMeans: GLOBAL_FALLBACK_BASELINE };
   const { regNumber, litterOrder } = await generateUniqueFoundationIdentity(
@@ -575,6 +577,7 @@ async function createOneFoundationDog(args: {
   });
 
   await db.$transaction(async (tx) => {
+    await reserveDogRegistrations(tx, [generated.dog.regNumber]);
     const createdDog = await tx.dog.create({
       data: {
         regNumber: generated.dog.regNumber,
@@ -622,6 +625,12 @@ async function createOneFoundationDog(args: {
         descriptionPublic: FOUNDATION_DESCRIPTION_PUBLIC,
       },
     });
+  }).catch(async (error) => {
+    if (isDogRegistrationCollision(error) && allocationAttempt < 99) {
+      await createOneFoundationDog({ ...args, allocationAttempt: allocationAttempt + 1 });
+      return;
+    }
+    throw error;
   });
 }
 

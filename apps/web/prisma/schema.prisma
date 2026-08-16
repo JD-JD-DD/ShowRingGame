@@ -616,6 +616,12 @@ model Dog {
   @@index([producerMeritLevel])
 }
 
+/** Permanent allocation ledger: registrations remain reserved after Dog deletion. */
+model DogRegistrationReservation {
+  regNumber String   @id
+  createdAt DateTime @default(now())
+}
+
 model MortalityScanState {
   id          String   @id
   cursorDogId String?

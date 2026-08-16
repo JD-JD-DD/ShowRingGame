@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 
 import type { Prisma } from "@prisma/client";
 import { buildRegNumber } from "@showring/rules";
+import { isDogRegistrationCollision, reserveDogRegistrations } from "./dogRegistration.service";
 
 const MAX_LITTER_SERIAL_ATTEMPTS = 5;
 
@@ -107,6 +108,7 @@ export async function createLitterWithCollisionRetry<
       serial7,
     });
     try {
+      await reserveDogRegistrations(args.client, puppies.map((puppy) => puppy.regNumber));
       await args.client.litter.create({
         data: {
           ...args.litter,
@@ -118,7 +120,7 @@ export async function createLitterWithCollisionRetry<
         puppies,
       };
     } catch (error) {
-      if (isLitterSerialCollision(error)) {
+      if (isLitterSerialCollision(error) || isDogRegistrationCollision(error)) {
         throw new RetriableLitterSerialCollisionError(error);
       }
       throw error;
