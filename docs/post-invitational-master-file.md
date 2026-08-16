@@ -1885,6 +1885,8 @@ Confirm progression remains inside acceptable long-term ranges.
 
 **Goal:** Rehearse every production data/schema operation on a development/staging copy.
 
+**Current status:** **BLOCKED — PostgreSQL rehearsal not performed.** Source audits and fixture tests do not substitute for an actual isolated PostgreSQL rehearsal. This unrehearsed risk remains carried into the eventual live maintenance operation.
+
 Include:
 
 * decimal phenotype migration;
@@ -1893,9 +1895,29 @@ Include:
 * breed-profile data import after canonical Breed rows exist;
 * required Foundation, Judging, and Breed verification.
 
-Required order: (1) GEN-02 Decimal schema migration; (2) GEN-03 genotype schema migration; (3) legacy genotype initialization/backfill; (4) GEN-05 Breed Genetic Background schema migration; (5) Dog registration reservation schema migration; (6) JUDGE-02 BreedJudgingProfile schema migration; (7) JUDGE-05 ShowResult audit schema migration; (8) BREED-03 canonical Breed data migration; (9) JUDGE-02 judging-profile import; (10) read-only verification. Step 8 must precede Step 9 because all 318 profile rows include 54 new Breed foreign-key targets.
+Physical schema installation and logical data-operation order are distinct. The six pending Prisma migrations may be installed first in timestamp order: (1) `20260815120000_gen02_decimal_dog_phenotype`; (2) `20260815130000_gen03_legacy_genotype_persistence`; (3) `20260815140000_gen05_breed_genetic_background`; (4) `20260816000000_add_dog_registration_reservation`; (5) `20260816010000_add_breed_judging_profiles`; (6) `20260816020000_add_breed_judging_result_audit`.
+
+The required data-operation order is then: (1) legacy genotype initialization/backfill; (2) backfill idempotency verification; (3) BREED-03 dry-run; (4) BREED-03 apply; (5) BREED-03 verify; (6) JUDGE-02 profile import; (7) profile-import idempotency verification; (8) read-only verification. GEN-05 through JUDGE-05 may already be physically installed when the backfill runs. The logical dependency remains GEN-02 → GEN-03 → legacy backfill, and that backfill must complete before final application traffic can create or resolve breeding under GEN-08. The former GEN-03 → backfill → GEN-05 placement represented historical implementation order, not a hard physical schema dependency.
+
+BREED-03 must precede JUDGE-02 profile import: 54 new profile rows reference newly inserted `Breed.code2` values through the foreign key. Final application deployment must wait until schema migration, backfill, Breed migration, profile import, and read-only verification have passed. The deployment build's `prisma migrate deploy` is then expected to be a no-op.
 
 Confirm rollback/recovery requirements.
+
+---
+
+#### RELEASE-03B — Migration-Sequencing Feasibility Audit
+
+**Status:** **PASS — source-level sequencing audit.**
+
+**Conclusion:** **ALL SCHEMA FIRST IS SAFE.** The legacy-backfill placement relative to GEN-05 and later schema is **HISTORICAL_IMPLEMENTATION_ORDER_ONLY**. This stage did not rehearse PostgreSQL and does not change the RELEASE-03 blocked status.
+
+---
+
+#### RELEASE-03C — Migration Sequencing Documentation Reconciliation
+
+**Goal:** Record the source-audited physical-schema versus logical-data-operation distinction without changing release implementation.
+
+**Gate:** The MasterFile and RELEASE-03 runbook describe the executable production sequence consistently while retaining the unrehearsed PostgreSQL risk.
 
 ---
 
@@ -1909,6 +1931,8 @@ Verify:
 * BREED-03 precedes all-breed judging-profile import;
 * verification succeeds at the safe boundary;
 * no hybrid partially migrated state is accepted.
+
+Rehearse the proven sequence: maintenance boundary → all schema first → data operations → verification → deployment.
 
 ---
 
@@ -1928,13 +1952,14 @@ No unrelated feature work should enter through this merge.
 
 Hard operational requirement:
 
-**Perform the Group/breed migration between shows.**
+**Perform the complete release data operation between shows.**
 
 Checklist:
 
 * previous relevant show processing complete;
 * no affected judging job executing;
 * no affected show-generation job partially running;
+* `judge-show-blocks`, `finalize-show-results`, `resolve-breeding-progress`, `maintain-show-schedule`, and `maintain-foundation-inventory` are idle;
 * migration/data update applied;
 * Breed records compared to finalized `breeds.csv`;
 * duplicate codes checked;
@@ -2192,7 +2217,9 @@ Before production deployment:
 10. Verify production Breed records against the canonical CSV.
 11. Import all 318 judging profiles only after the canonical Breed migration has completed, then complete read-only verification before deployment.
 
-Required migration order: (1) GEN-02 Decimal schema migration; (2) GEN-03 genotype schema migration; (3) legacy genotype initialization/backfill; (4) GEN-05 Breed Genetic Background schema migration; (5) Dog registration reservation schema migration; (6) JUDGE-02 BreedJudgingProfile schema migration; (7) JUDGE-05 ShowResult audit schema migration; (8) BREED-03 canonical Breed data migration; (9) JUDGE-02 judging-profile import; (10) read-only verification. Step 8 must precede Step 9 because the 54 newly added profile rows reference `Breed.code2` by foreign key.
+Required physical schema order: (1) `20260815120000_gen02_decimal_dog_phenotype`; (2) `20260815130000_gen03_legacy_genotype_persistence`; (3) `20260815140000_gen05_breed_genetic_background`; (4) `20260816000000_add_dog_registration_reservation`; (5) `20260816010000_add_breed_judging_profiles`; (6) `20260816020000_add_breed_judging_result_audit`.
+
+Required data order after schema installation: legacy genotype backfill and idempotency check; BREED-03 dry-run, apply, and verify; JUDGE-02 profile import and idempotency check; then read-only verification. The legacy backfill logically requires GEN-02 and GEN-03 but GEN-05 through JUDGE-05 may already be installed. BREED-03 must precede the profile import because all 318 profile rows include 54 new Breed foreign-key targets. Deploy final application code only after these operations verify; the build-time `prisma migrate deploy` should be a no-op.
 
 Known and accepted Alpha consequence:
 
