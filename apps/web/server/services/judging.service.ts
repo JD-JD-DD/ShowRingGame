@@ -19,13 +19,14 @@ import {
 } from "@/server/services/titleProgress.service";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import { processGrandChampionCreditsForShowDay } from "@/server/services/grandChampion.service";
-import { getBreedConformationWeightsForJudging } from "@/server/services/breedConformationWeightsForJudging.service";
+import { getBreedConformationProfileForJudging } from "@/server/services/breedConformationWeightsForJudging.service";
+import { createBreedJudgingResultAudit } from "@/server/services/judgingAudit.service";
 import {
+  BREED_WEIGHTED_JUDGING_SCORING_VERSION,
   canEnterShows,
   combineBreedAndJudgeConformationWeights,
   DAM_SHOW_POST_WHELP_COOLDOWN_HOURS,
   getChampionshipPointsForCompetition,
-  JUDGING_SCORING_VERSION,
   judgeBestInShow,
   judgeBreedBlock,
   judgeGroup,
@@ -1069,14 +1070,15 @@ export async function judgeShowBlock(args: {
       eligibleEntries.map((entry) => entry.dogId)
     );
     const engineJudge = toEngineJudge(block.judge);
+    let breedConformationProfile;
     let conformationCategoryWeights;
     try {
-      const breedWeights = await getBreedConformationWeightsForJudging({
+      breedConformationProfile = await getBreedConformationProfileForJudging({
         client: tx,
         breedCode2: block.breedCode2,
       });
       conformationCategoryWeights = combineBreedAndJudgeConformationWeights({
-        breedWeights,
+        breedWeights: breedConformationProfile.conformationWeights,
         judgeWeights: {
           TYPE_EXPRESSION: engineJudge.categoryWeights.TYPE_EXPRESSION,
           STRUCTURE_BALANCE: engineJudge.categoryWeights.STRUCTURE_BALANCE,
@@ -1138,6 +1140,11 @@ export async function judgeShowBlock(args: {
       judgedEntryIds.push(result.showEntryId);
       const sourceEntry = entryById.get(result.showEntryId);
       const pointsAwarded = pointsByShowEntryId.get(result.showEntryId) ?? 0;
+      const breedJudgingAudit = createBreedJudgingResultAudit({
+        effectiveConformationWeights: conformationCategoryWeights,
+        judge: engineJudge,
+        result,
+      });
       const createdResult = await tx.showResult.create({
         data: {
           showEntryId: result.showEntryId,
@@ -1157,7 +1164,10 @@ export async function judgeShowBlock(args: {
           isMajor: pointsAwarded >= 3,
           uniqueKennelsInCompetition,
           publishedAtEpoch: currentEpoch,
-          scoringVersion: JUDGING_SCORING_VERSION,
+          scoringVersion: BREED_WEIGHTED_JUDGING_SCORING_VERSION,
+          breedJudgingProfileId: breedConformationProfile.profileId,
+          breedJudgingRulesVersion: breedConformationProfile.rulesVersion,
+          breedJudgingAudit: breedJudgingAudit as Prisma.InputJsonValue,
         },
         select: { id: true },
       });

@@ -495,6 +495,7 @@ model BreedJudgingProfile {
   updatedAt   DateTime @updatedAt
 
   breed Breed @relation(fields: [breedCode2], references: [code2])
+  showResults ShowResult[]
 
   @@unique([breedCode2, rulesVersion])
   @@index([breedCode2, isActive])
@@ -980,6 +981,9 @@ model ShowResult {
   uniqueKennelsInCompetition Int?
   publishedAtEpoch           Int
   scoringVersion             String
+  breedJudgingProfileId      String?
+  breedJudgingRulesVersion   String?
+  breedJudgingAudit          Json?
   createdAt                  DateTime @default(now())
 
   showEntry    ShowEntry         @relation(fields: [showEntryId], references: [id])
@@ -988,6 +992,7 @@ model ShowResult {
   dog          Dog               @relation(fields: [dogId], references: [id])
   breed        Breed             @relation(fields: [breedCode2], references: [code2])
   judge        Judge             @relation(fields: [judgeId], references: [id])
+  breedJudgingProfile BreedJudgingProfile? @relation(fields: [breedJudgingProfileId], references: [id], onDelete: Restrict)
   showAwards   ShowAward[]
 
   @@index([showDayId])
@@ -996,6 +1001,7 @@ model ShowResult {
   @@index([enteredKennelId])
   @@index([breedCode2])
   @@index([judgeId])
+  @@index([breedJudgingProfileId])
   @@index([pointsAwarded])
 }
 

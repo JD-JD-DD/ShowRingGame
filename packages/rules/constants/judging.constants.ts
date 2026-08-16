@@ -106,6 +106,8 @@ export const RING_RANDOMNESS = 0.03;
 // +/- 3%
 
 export const JUDGING_SCORING_VERSION = "judging-v1";
+/** BREED-only scoring after the JUDGE-04 breed × judge integration. */
+export const BREED_WEIGHTED_JUDGING_SCORING_VERSION = "breed-weighted-v1";
 
 // ===============================
 // Breed Essential System
