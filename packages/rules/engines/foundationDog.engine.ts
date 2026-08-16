@@ -1,5 +1,6 @@
 import {
   CURRENT_GENETICS_VERSION,
+  LOCI_PER_TRAIT,
   TOTAL_LOCI,
   TRAIT_KEYS,
   TRAIT_MAX,
@@ -59,14 +60,135 @@ export type CreateFoundationDogEngineInput = {
 
 export type FoundationPopulationContextInput = {
   mode: "LIVE" | "RETAINED_BASELINE" | "RESET_FALLBACK";
+  phenotype?: unknown | null;
   genotype: unknown | null;
 };
-/** GEN-09C calibration: independent target draw; never a player-visible tier. */
-export const FOUNDATION_OPPORTUNITY_TARGETS = { ZERO: 0.83, ONE: 0.15, TWO: 0.02, POPULATION_COMPONENT_MIX: 0.3, TARGET_ALTERNATIVE_BIAS: 0.2 } as const;
+/** GEN-09C calibration: internal generation analysis, never a player-visible tier. */
+export const FOUNDATION_OPPORTUNITY_TARGETS = {
+  ZERO: 0.83,
+  ONE: 0.15,
+  TWO: 0.02,
+  /** Bounded contemporary component mixture; the remainder is broad calibrated sampling. */
+  POPULATION_COMPONENT_MIX: 0.3,
+  /** A selected opportunity only weakly biases a component draw. */
+  TARGET_ALTERNATIVE_BIAS: 0.2,
+  /** Symmetric directional evidence: one side dominates while the other is scarce. */
+  DIRECTIONAL_SCARCITY_DOMINANT_SHARE: 0.65,
+  DIRECTIONAL_SCARCITY_OPPOSITE_MAX_SHARE: 0.2,
+  LOW_FREQUENCY_COMPONENT_MAX_SHARE: 0.1,
+  /** Observed opportunity requires a diploid result in one conspicuously rare v2 component bin. */
+  CONSPICUOUS_COMPONENT_MAX_SHARE: 0.1,
+  CONSPICUOUS_COMPONENT_MIN_ALLELE_COPIES: 2,
+} as const;
 
-type LocusEvidence = { locus: number; classification: "DIVERSE" | "NEAR_FIXED" | "EFFECTIVELY_FIXED"; components: Array<{ component: string; share: number }> };
-function contextLoci(context: FoundationPopulationContextInput | undefined): LocusEvidence[] { const payload=context?.genotype as { loci?: unknown } | null; return context?.mode === "RESET_FALLBACK" || !Array.isArray(payload?.loci) ? [] : payload.loci.filter((value): value is LocusEvidence => typeof value === "object" && value !== null && Array.isArray((value as LocusEvidence).components)); }
-function chooseWeighted<T>(items: T[], weights: number[], random01: () => number): T { let roll=random01()*weights.reduce((a,b)=>a+b,0); for(let i=0;i<items.length;i+=1){roll-=weights[i];if(roll<=0)return items[i];} return items.at(-1)!; }
+export type OpportunityReason =
+  | "OPPOSITE_DIRECTION_SCARCITY"
+  | "LOW_FREQUENCY_COMPONENT"
+  | "NEAR_FIXED_LOCUS_DIVERSITY"
+  | "EFFECTIVELY_FIXED_LOCUS_DIVERSITY";
+
+export type FoundationOpportunityIdentity = {
+  trait: TraitKey;
+  locus: number;
+  reasons: OpportunityReason[];
+};
+
+export type FoundationGeneticsAnalysis = {
+  eligibleScarcityIdentities: FoundationOpportunityIdentity[];
+  opportunityTargetCount: 0 | 1 | 2;
+  targetedOpportunityIdentities: FoundationOpportunityIdentity[];
+  observedOpportunityIdentities: FoundationOpportunityIdentity[];
+  observedOpportunityCount: number;
+};
+
+type LocusEvidence = {
+  locus: number;
+  classification: "DIVERSE" | "NEAR_FIXED" | "EFFECTIVELY_FIXED";
+  components: Array<{ component: string; share: number }>;
+};
+type TraitEvidence = { belowShare: number; aboveShare: number; nearIdealShare: number };
+type OpportunityCandidate = FoundationOpportunityIdentity & { direction: -1 | 0 | 1 };
+
+function contextLoci(context: FoundationPopulationContextInput | undefined): LocusEvidence[] {
+  const payload = context?.genotype as { loci?: unknown } | null;
+  if (context?.mode === "RESET_FALLBACK" || !Array.isArray(payload?.loci)) return [];
+  return payload.loci
+    .filter((value): value is LocusEvidence => {
+      if (typeof value !== "object" || value === null) return false;
+      const locus = value as LocusEvidence;
+      return Number.isInteger(locus.locus) && locus.locus >= 0 && locus.locus < TOTAL_LOCI &&
+        (locus.classification === "DIVERSE" || locus.classification === "NEAR_FIXED" || locus.classification === "EFFECTIVELY_FIXED") &&
+        Array.isArray(locus.components) && locus.components.every(component => Number.isFinite(Number(component.component)) && Number.isFinite(component.share) && component.share >= 0);
+    })
+    .sort((left, right) => left.locus - right.locus);
+}
+
+function contextTraitEvidence(context: FoundationPopulationContextInput | undefined, trait: TraitKey): TraitEvidence | null {
+  const payload = context?.phenotype as Record<string, unknown> | null;
+  const value = payload?.[trait];
+  if (context?.mode === "RESET_FALLBACK" || typeof value !== "object" || value === null) return null;
+  const evidence = value as Partial<TraitEvidence>;
+  return Number.isFinite(evidence.belowShare) && Number.isFinite(evidence.aboveShare) && Number.isFinite(evidence.nearIdealShare)
+    ? { belowShare: evidence.belowShare!, aboveShare: evidence.aboveShare!, nearIdealShare: evidence.nearIdealShare! }
+    : null;
+}
+
+function traitForLocus(locus: number): TraitKey {
+  return TRAIT_KEYS[Math.floor(locus / LOCI_PER_TRAIT)]!;
+}
+
+function directionalScarcity(context: FoundationPopulationContextInput | undefined, trait: TraitKey): -1 | 0 | 1 {
+  const evidence = contextTraitEvidence(context, trait);
+  if (!evidence) return 0;
+  if (evidence.belowShare >= FOUNDATION_OPPORTUNITY_TARGETS.DIRECTIONAL_SCARCITY_DOMINANT_SHARE && evidence.aboveShare <= FOUNDATION_OPPORTUNITY_TARGETS.DIRECTIONAL_SCARCITY_OPPOSITE_MAX_SHARE) return 1;
+  if (evidence.aboveShare >= FOUNDATION_OPPORTUNITY_TARGETS.DIRECTIONAL_SCARCITY_DOMINANT_SHARE && evidence.belowShare <= FOUNDATION_OPPORTUNITY_TARGETS.DIRECTIONAL_SCARCITY_OPPOSITE_MAX_SHARE) return -1;
+  return 0;
+}
+
+function componentBin(allele: number): string { return (Math.round(allele / 0.5) * 0.5).toFixed(1); }
+function chooseWeighted<T>(items: readonly T[], weights: readonly number[], random01: () => number): T {
+  let roll = random01() * weights.reduce((sum, value) => sum + value, 0);
+  for (let index = 0; index < items.length; index += 1) { roll -= weights[index]!; if (roll <= 0) return items[index]!; }
+  return items.at(-1)!;
+}
+
+function opportunityCandidates(context: FoundationPopulationContextInput | undefined, loci: readonly LocusEvidence[]): OpportunityCandidate[] {
+  return loci.map((evidence) => {
+    const trait = traitForLocus(evidence.locus);
+    const direction = directionalScarcity(context, trait);
+    const reasons = new Set<OpportunityReason>();
+    if (evidence.classification === "NEAR_FIXED") reasons.add("NEAR_FIXED_LOCUS_DIVERSITY");
+    if (evidence.classification === "EFFECTIVELY_FIXED") reasons.add("EFFECTIVELY_FIXED_LOCUS_DIVERSITY");
+    if (evidence.components.some(component => component.share <= FOUNDATION_OPPORTUNITY_TARGETS.LOW_FREQUENCY_COMPONENT_MAX_SHARE)) reasons.add("LOW_FREQUENCY_COMPONENT");
+    if (direction !== 0 && evidence.components.some(component => Math.sign(Number(component.component)) === direction)) reasons.add("OPPOSITE_DIRECTION_SCARCITY");
+    return { trait, locus: evidence.locus, reasons: [...reasons].sort(), direction };
+  }).filter(candidate => candidate.reasons.length > 0);
+}
+
+/** Pure context-relative classifier; it never alters the supplied genotype. */
+export function classifyFoundationOpportunities(input: { populationContext?: FoundationPopulationContextInput; genotype: CanonicalGenotype }): FoundationOpportunityIdentity[] {
+  const loci = contextLoci(input.populationContext);
+  const candidates = opportunityCandidates(input.populationContext, loci);
+  const byLocus = new Map(candidates.map(candidate => [candidate.locus, candidate]));
+  return input.genotype.loci.flatMap((alleles, locus) => {
+    const candidate = byLocus.get(locus);
+    const evidence = loci.find(item => item.locus === locus);
+    if (!candidate || !evidence) return [];
+    const binCopies = new Map<string, number>();
+    alleles.map(componentBin).forEach(bin => binCopies.set(bin, (binCopies.get(bin) ?? 0) + 1));
+    const dominantShare = Math.max(...evidence.components.map(component => component.share));
+    const conspicuousComponents = evidence.components.filter(component =>
+      component.share <= FOUNDATION_OPPORTUNITY_TARGETS.CONSPICUOUS_COMPONENT_MAX_SHARE &&
+      (binCopies.get(component.component) ?? 0) >= FOUNDATION_OPPORTUNITY_TARGETS.CONSPICUOUS_COMPONENT_MIN_ALLELE_COPIES
+    );
+    const reasons = candidate.reasons.filter(reason => {
+      if (reason === "OPPOSITE_DIRECTION_SCARCITY") return conspicuousComponents.some(component => Math.sign(Number(component.component)) === candidate.direction);
+      if (reason === "LOW_FREQUENCY_COMPONENT") return conspicuousComponents.length > 0;
+      return conspicuousComponents.some(component => component.share < dominantShare);
+    });
+    return reasons.length === 0 ? [] : [{ trait: candidate.trait, locus, reasons }];
+  });
+}
 
 export type FoundationDogEngineResult = {
   dog: Dog;
@@ -74,6 +196,8 @@ export type FoundationDogEngineResult = {
   qualityBand: FoundationQualityBand;
   visibleCategories: VisibleCategories;
   suggestedPrice: number;
+  /** Internal/test-only GEN-09C observability; production persistence discards it. */
+  geneticsAnalysis: FoundationGeneticsAnalysis;
 };
 
 const FOUNDATION_STANDARD_WEIGHT = 0.60;
@@ -548,12 +672,47 @@ export function createFoundationDogProfile(
     const centered = Array.from({ length: 6 }, () => random01() * 2 - 1).reduce((sum, value) => sum + value, 0) / 6;
     return Math.round(centered * FINAL_GENETICS_CALIBRATION.founderDistribution.spread * 1_000_000) / 1_000_000;
   };
-  const lociEvidence=contextLoci(input.populationContext);
-  const targetRoll=random01(); const targetCount=targetRoll<FOUNDATION_OPPORTUNITY_TARGETS.TWO?2:targetRoll<FOUNDATION_OPPORTUNITY_TARGETS.TWO+FOUNDATION_OPPORTUNITY_TARGETS.ONE?1:0;
-  const eligible=lociEvidence.filter(locus=>locus.classification!=="DIVERSE");
-  const targets=new Set<number>(); while(targets.size<targetCount && targets.size<eligible.length) targets.add(chooseWeighted(eligible,eligible.map(locus=>locus.classification==="EFFECTIVELY_FIXED"?2:1),random01).locus);
-  const populationAllele=(locus:number) => { const evidence=lociEvidence.find(item=>item.locus===locus); if(!evidence || random01()>=FOUNDATION_OPPORTUNITY_TARGETS.POPULATION_COMPONENT_MIX)return sampleAllele(); const components=evidence.components; const ordinary=chooseWeighted(components,components.map(component=>component.share),random01); const alternate=chooseWeighted(components,components.map(component=>targets.has(locus)?Math.max(0.001,1-component.share):component.share),random01); const chosen=targets.has(locus) && random01()<FOUNDATION_OPPORTUNITY_TARGETS.TARGET_ALTERNATIVE_BIAS ? alternate : ordinary; return Math.max(-20,Math.min(20,Number(chosen.component)+(random01()-.5)*.5)); };
+  const isPopulationContext = input.populationContext?.mode === "LIVE" || input.populationContext?.mode === "RETAINED_BASELINE";
+  const lociEvidence = contextLoci(input.populationContext);
+  const candidates = opportunityCandidates(input.populationContext, lociEvidence);
+  const desiredTargetCount: 0 | 1 | 2 = !isPopulationContext ? 0 : (() => {
+    const targetRoll = random01();
+    return targetRoll < FOUNDATION_OPPORTUNITY_TARGETS.TWO ? 2 : targetRoll < FOUNDATION_OPPORTUNITY_TARGETS.TWO + FOUNDATION_OPPORTUNITY_TARGETS.ONE ? 1 : 0;
+  })();
+  const remainingCandidates = [...candidates];
+  const targetedOpportunityIdentities: FoundationOpportunityIdentity[] = [];
+  while (targetedOpportunityIdentities.length < desiredTargetCount && remainingCandidates.length > 0) {
+    const selected = chooseWeighted(
+      remainingCandidates,
+      remainingCandidates.map(candidate => candidate.reasons.includes("EFFECTIVELY_FIXED_LOCUS_DIVERSITY") ? 2 : 1),
+      random01
+    );
+    targetedOpportunityIdentities.push({ trait: selected.trait, locus: selected.locus, reasons: selected.reasons });
+    remainingCandidates.splice(remainingCandidates.findIndex(candidate => candidate.locus === selected.locus), 1);
+  }
+  const targetsByLocus = new Map(targetedOpportunityIdentities.map(identity => [identity.locus, identity]));
+  const evidenceByLocus = new Map(lociEvidence.map(evidence => [evidence.locus, evidence]));
+  const populationAllele = (locus: number) => {
+    const evidence = evidenceByLocus.get(locus);
+    if (!isPopulationContext || !evidence || random01() >= FOUNDATION_OPPORTUNITY_TARGETS.POPULATION_COMPONENT_MIX) return sampleAllele();
+    const target = targetsByLocus.get(locus);
+    const ordinary = chooseWeighted(evidence.components, evidence.components.map(component => component.share), random01);
+    let chosen = ordinary;
+    if (target && random01() < FOUNDATION_OPPORTUNITY_TARGETS.TARGET_ALTERNATIVE_BIAS) {
+      const direction = directionalScarcity(input.populationContext, target.trait);
+      const preferred = evidence.components.filter(component =>
+        (target.reasons.includes("OPPOSITE_DIRECTION_SCARCITY") && Math.sign(Number(component.component)) === direction) ||
+        (target.reasons.includes("LOW_FREQUENCY_COMPONENT") && component.share <= FOUNDATION_OPPORTUNITY_TARGETS.LOW_FREQUENCY_COMPONENT_MAX_SHARE) ||
+        ((target.reasons.includes("NEAR_FIXED_LOCUS_DIVERSITY") || target.reasons.includes("EFFECTIVELY_FIXED_LOCUS_DIVERSITY")) && component.share < Math.max(...evidence.components.map(value => value.share)))
+      );
+      const alternatives = preferred.length > 0 ? preferred : evidence.components;
+      chosen = chooseWeighted(alternatives, alternatives.map(component => Math.max(0.001, 1 - component.share)), random01);
+    }
+    const allele = Number(chosen.component) + (random01() - 0.5) * 0.5;
+    return Math.round(Math.max(-20, Math.min(20, allele)) * 1_000_000) / 1_000_000;
+  };
   const genotype: CanonicalGenotype = { geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: TOTAL_LOCI }, (_,locus) => [populationAllele(locus), populationAllele(locus)] as const) };
+  const observedOpportunityIdentities = classifyFoundationOpportunities({ populationContext: input.populationContext, genotype });
   const traits = calculatePhenotypeFromGenotype(genotype);
   const visibleCategories = deriveVisibleCategoriesFromTraits(traits);
   const suggestedPrice = calculateSuggestedPrice(visibleCategories, qualityBand);
@@ -580,6 +739,13 @@ export function createFoundationDogProfile(
     qualityBand,
     visibleCategories,
     suggestedPrice,
+    geneticsAnalysis: {
+      eligibleScarcityIdentities: candidates.map(candidate => ({ trait: candidate.trait, locus: candidate.locus, reasons: candidate.reasons })),
+      opportunityTargetCount: targetedOpportunityIdentities.length as 0 | 1 | 2,
+      targetedOpportunityIdentities,
+      observedOpportunityIdentities,
+      observedOpportunityCount: observedOpportunityIdentities.length,
+    },
   };
 }
 
