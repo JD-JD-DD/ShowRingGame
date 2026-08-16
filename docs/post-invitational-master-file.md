@@ -32,9 +32,10 @@ This development package is a coordinated overhaul of several closely related Sh
 * breed-specific judging emphasis;
 * judge preference interaction;
 * judging auditability;
-* show classes and class routing;
 * new and revised breed reference data;
-* coordinated post-Invitational activation.
+* coordinated Genetics, Foundation, Judging, and Breed deployment.
+
+The **current release package** is Genetics, Foundation, Judging, and Breed. Show classes and class routing remain a **deferred future release** with their locked design preserved below.
 
 The systems will be developed incrementally but held outside the production `main` branch until the complete package is ready for integrated testing.
 
@@ -69,35 +70,23 @@ The overhaul branch must not be merged into `main` until:
 * breed judging data is complete;
 * all release breeds have required supporting configuration;
 * judging behavior is audited;
-* class routing is audited;
 * migrations are rehearsed;
-* runtime activation controls are confirmed;
+* deployment sequencing is rehearsed;
 * the release boundary has been reached.
 
 ### Intended release boundary
 
-Target activation:
+Target deployment:
 
 **after the Invitational and before Week 1 of the following game cycle.**
 
 This is the intended coordinated rules boundary.
 
-### Runtime activation barrier
+### Release isolation
 
-Where practical, infrastructure should be deployable without immediately changing gameplay.
+Release isolation for the current package is provided by the development branch and deliberate deployment/migration sequencing. Incomplete Post-Invitational work does not enter production `main`.
 
-Examples:
-
-* hidden genotype may exist before puppy inheritance consumes it;
-* decimal trait storage may exist before Model D is activated;
-* breed judging profiles may exist before judging consumes them;
-* show-class definitions may exist before entry routing changes;
-* new breed rows may exist in development data without those breeds becoming player-selectable.
-
-There are therefore two major safety barriers:
-
-1. **Branch barrier** — incomplete work does not enter production `main`.
-2. **Runtime barrier** — infrastructure can exist without activating new simulation behavior.
+Do not add feature flags, runtime activation controls, dormant code paths, master activation switches, or subsystem release gates solely to stage this package. Schema/data preparation may exist on the branch before deployment, but production behavior changes only when the branch is deliberately merged/deployed and required migrations/data operations are executed.
 
 ---
 
@@ -105,7 +94,7 @@ There are therefore two major safety barriers:
 
 The new genetics model will first operate during Alpha.
 
-After activation, Alpha testers should breed through several additional generations over approximately 3–6 months.
+After deployment, Alpha testers should breed through several additional generations over approximately 3–6 months.
 
 This period will gather population evidence for:
 
@@ -972,7 +961,7 @@ Recommended audit/provenance fields may include:
 
 The separate supplied 7–10 descriptive conformation values are not required for breed-weight judging and must not be imported as breed-standard targets.
 
-Full production activation requires complete profiles for every breed participating in the activated judging system.
+Full production deployment requires complete profiles for every breed participating in the current judging system.
 
 Missing profiles must not make a breed unjudgeable.
 
@@ -1105,14 +1094,14 @@ The breed workstream must cover:
 * breed judging profile;
 * required health configuration;
 * color/phenotype configuration where applicable;
-* show/class routing;
+* compatibility with existing show/class behavior;
 * market/search/filter visibility;
 * breed-selector visibility;
 * import validation.
 
 ### Complete-data release gate
 
-**No breed may be included in the coordinated release unless it contains every piece of data required by every activated system in that release.**
+**No breed may be included in the coordinated release unless it contains every piece of data required by every system included in that release.**
 
 A breed must not go live while missing, for example:
 
@@ -1120,7 +1109,7 @@ A breed must not go live while missing, for example:
 * required Model D initialization/background configuration;
 * required health data;
 * Group;
-* class routing compatibility.
+* compatibility with existing class behavior; the deferred Class Workstream is not a current-release prerequisite.
 
 ---
 
@@ -1134,7 +1123,7 @@ Existing production `Breed` records must be brought into alignment with the new 
 
 ### Deployment requirement
 
-A **Prisma migration and/or controlled production data migration/update is required before coordinated activation.**
+A **Prisma migration and/or controlled production data migration/update is required before coordinated deployment.**
 
 It must occur:
 
@@ -1146,11 +1135,7 @@ Preferably:
 * before the next relevant show cycle opens or judging begins;
 * while affected background show-generation/judging work is not processing.
 
-The Group migration must happen before activating:
-
-* revised judging;
-* revised class routing;
-* newly released breeds.
+The Group migration must happen before current breed-specific judging release behavior and new/revised Breed rows are used. It must precede the all-318 `BreedJudgingProfile` import because the 54 newly added profile rows reference `Breed.code2` by foreign key. This is an operational dependency, not an implementation defect.
 
 ### Accepted temporary Alpha consequence
 
@@ -1176,6 +1161,8 @@ Newly generated shows after the migration should use the new canonical Group ass
 ---
 
 ## 27. Show Classes
+
+**Release status: FUTURE / DEFERRED FROM CURRENT RELEASE.** The taxonomy and broad routing rules remain **LOCKED** and controlling for a future coordinated Class release. CLASS-01 through CLASS-05 are not part of the current Genetics + Foundation + Judging + Breed release; existing production class behavior remains unchanged until a future show-safe deployment window.
 
 The show-class taxonomy and broad routing rules are now **LOCKED** for this package.
 
@@ -1765,6 +1752,8 @@ This migration must be rehearsed before release.
 
 ### Show Class Workstream
 
+**Status: DEFERRED — FUTURE COORDINATED RELEASE.** CLASS-01 through CLASS-05 remain not started; their locked design is preserved and existing production class behavior remains unchanged in the current release.
+
 #### CLASS-01 — Current Show-Class and Award Routing Audit
 
 **Goal:** Determine the exact production class/award flow before changing it.
@@ -1868,11 +1857,19 @@ Include:
 
 ### Release Integration Workstream
 
-#### RELEASE-01 — Integrated Genetics + Judging + Breed + Class Audit
+#### RELEASE-01 — Integrated Genetics + Foundation + Judging + Breed Audit (Class Deferred)
 
-**Goal:** Test the package as a single simulation release.
+**Goal:** Test the Genetics + Foundation + Judging + Breed package as a single simulation release while proving it has no dependency on CLASS-01 through CLASS-05.
 
 Audit cross-system assumptions and ensure no stage has drifted from the MasterFile.
+
+---
+
+#### RELEASE-01A — MasterFile Release-Scope Reconciliation
+
+**Goal:** Update the controlling MasterFile to reflect the release scope and release mechanics proven by RELEASE-01: current release = Genetics + Foundation + Judging + Breed; Class deferred intact; branch isolation controls release exposure; migration ordering is recorded; and the current-release Definition of Done is accurate.
+
+**Gate:** The MasterFile contains no contradiction between approved release scope and release procedures.
 
 ---
 
@@ -1892,32 +1889,26 @@ Include:
 
 * decimal phenotype migration;
 * genotype initialization;
-* breed-profile data;
 * breed/group updates;
-* class-related schema changes if any.
+* breed-profile data import after canonical Breed rows exist;
+* required Foundation, Judging, and Breed verification.
+
+Required order: (1) GEN-02 Decimal schema migration; (2) GEN-03 genotype schema migration; (3) legacy genotype initialization/backfill; (4) GEN-05 Breed Genetic Background schema migration; (5) Dog registration reservation schema migration; (6) JUDGE-02 BreedJudgingProfile schema migration; (7) JUDGE-05 ShowResult audit schema migration; (8) BREED-03 canonical Breed data migration; (9) JUDGE-02 judging-profile import; (10) read-only verification. Step 8 must precede Step 9 because all 318 profile rows include 54 new Breed foreign-key targets.
 
 Confirm rollback/recovery requirements.
 
 ---
 
-#### RELEASE-04 — Runtime Activation Rehearsal
+#### RELEASE-04 — Deployment Sequencing Rehearsal
 
-**Goal:** Prove that infrastructure can exist disabled and then activate cleanly at the intended boundary.
-
-Runtime controls are server-side.
-
-Use:
-
-* one master Post-Invitational activation control;
-* narrow subsystem controls where needed during development for genetics inheritance, breed judging, show classes, and new-breed release.
-
-Production behavior must default to the pre-activation state until explicitly enabled.
+**Goal:** Rehearse the verified release operational sequence without runtime activation controls.
 
 Verify:
 
-* old behavior before activation;
-* new behavior after activation;
-* no partial hybrid state.
+* migrations/data operations occur in required order;
+* BREED-03 precedes all-breed judging-profile import;
+* verification succeeds at the safe boundary;
+* no hybrid partially migrated state is accepted.
 
 ---
 
@@ -1933,7 +1924,7 @@ No unrelated feature work should enter through this merge.
 
 #### RELEASE-06 — Production Breed Migration Between Shows
 
-**Goal:** Update production Breed data before activating the package.
+**Goal:** Update production Breed data before deploying the package.
 
 Hard operational requirement:
 
@@ -1948,7 +1939,7 @@ Checklist:
 * Breed records compared to finalized `breeds.csv`;
 * duplicate codes checked;
 * Group mappings checked;
-* new breeds remain release-gated until activation.
+* new rows preserve existing canonical playable/releaseVersion visibility semantics.
 
 Temporary inconsistencies in already generated future Alpha shows are accepted.
 
@@ -1963,34 +1954,29 @@ Merge only after:
 * migrations have been rehearsed;
 * integrated validation passes;
 * release profile coverage is complete;
-* activation controls are confirmed;
+* deployment sequencing has been rehearsed;
 * the intended release boundary has arrived.
 
 ---
 
-#### RELEASE-08 — Coordinated Post-Invitational Activation
+#### RELEASE-08 — Coordinated Post-Invitational Deployment
 
-**Goal:** Activate the coordinated package.
+**Goal:** Deploy the already-complete coordinated package.
 
-Activation order:
+Deployment sequence:
 
-1. deploy inactive infrastructure;
-2. complete required migrations/data validation between shows;
-3. verify production state;
-4. confirm the Invitational is complete and Week 1 has not begun;
-5. activate Model D inheritance;
-6. activate revised foundation behavior;
-7. activate breed-specific judging;
-8. activate show classes;
-9. activate new/revised breed release behavior;
-10. force or verify appropriate future show-schedule generation under the new Group/class rules;
-11. immediately begin post-activation verification.
+1. confirm the safe release window;
+2. complete required migrations/data operations between shows in verified order;
+3. verify production data;
+4. merge/deploy the coordinated Genetics + Foundation + Judging + Breed branch;
+5. verify revised genetics, foundation, judging, Breed behavior, and future canonical Group lookup;
+6. immediately begin post-deployment verification.
 
-Never activate the coordinated package before the Breed/Group migration has completed successfully.
+Do not deploy deferred Show Classes in this release. Never deploy the coordinated package before the Breed/Group migration and profile-import dependency have completed successfully.
 
 ---
 
-#### RELEASE-09 — Post-Activation Audit
+#### RELEASE-09 — Post-Deployment Audit
 
 Immediately verify:
 
@@ -1998,7 +1984,6 @@ Immediately verify:
 * foundation inventory;
 * breed judging;
 * judge variation;
-* class routing;
 * Group assignments;
 * new breed visibility;
 * show generation;
@@ -2062,8 +2047,8 @@ Before coordinated release, all of the following must be true:
 | Champion routing                           | **LOCKED**                | Champions bypass regular classes and enter Best of Breed competition.                                                                                                                                                            |
 | Veteran routing                            | **LOCKED**                | Veteran is a special/non-regular class using the existing veteran threshold and does not silently override maximum show age.                                                                                                     |
 | Class → points/majors                      | **LOCKED**                | Class winners feed Winners Dog/Winners Bitch, then existing championship points/majors and BOW/BOB/BOS progression.                                                                                                              |
-| Feature-flag architecture                  | **LOCKED**                | Server-side controls only. Use one master activation control plus narrow subsystem controls where useful during development. Default off until coordinated activation.                                                           |
-| Operational activation                     | **LOCKED**                | Deploy inactive infrastructure → migrate/validate between shows → verify production → activate after Invitational and before Week 1 → verify future show generation → immediate post-activation audit.                           |
+| Release isolation                          | **LOCKED**                | Development branch isolation plus deliberate merge/deployment and ordered migrations/data operations. Do not add runtime feature flags, activation controls, or dormant release-gating paths for this package.                    |
+| Operational deployment                     | **LOCKED**                | Rehearse migrations → reach a safe between-shows boundary → execute required schema/data operations in dependency order → verify production data → merge/deploy the coordinated package → immediate post-deployment audit.       |
 
 ### Calibration rule
 
@@ -2193,7 +2178,7 @@ The revised `breeds.csv` contains:
 * new breeds; and
 * Group changes for multiple existing breeds.
 
-Before production activation:
+Before production deployment:
 
 1. Finalize `breeds.csv`.
 2. Identify every changed `breedCode2 → Group` mapping.
@@ -2205,7 +2190,9 @@ Before production activation:
 8. Confirm affected show/judging background jobs are idle.
 9. Execute the migration **between shows**.
 10. Verify production Breed records against the canonical CSV.
-11. Activate the coordinated package only after verification.
+11. Import all 318 judging profiles only after the canonical Breed migration has completed, then complete read-only verification before deployment.
+
+Required migration order: (1) GEN-02 Decimal schema migration; (2) GEN-03 genotype schema migration; (3) legacy genotype initialization/backfill; (4) GEN-05 Breed Genetic Background schema migration; (5) Dog registration reservation schema migration; (6) JUDGE-02 BreedJudgingProfile schema migration; (7) JUDGE-05 ShowResult audit schema migration; (8) BREED-03 canonical Breed data migration; (9) JUDGE-02 judging-profile import; (10) read-only verification. Step 8 must precede Step 9 because the 54 newly added profile rows reference `Breed.code2` by foreign key.
 
 Known and accepted Alpha consequence:
 
@@ -2225,7 +2212,9 @@ Newly generated shows should naturally converge onto the new canonical Group str
 
 ## 36. Release Definition of Done
 
-The Post-Invitational package is ready only when:
+### Current Release Definition of Done
+
+The current Genetics + Foundation + Judging + Breed release is ready only when:
 
 * Model D genetics is implemented and calibrated;
 * decimal phenotype migration is safe;
@@ -2241,11 +2230,15 @@ The Post-Invitational package is ready only when:
 * `breeds.csv` is final;
 * every release breed has complete cross-system data;
 * Group migration is rehearsed;
-* class taxonomy and routing are implemented and tested;
-* points/majors/title regression passes;
+* existing points/majors/title behavior regresses cleanly under unchanged current class behavior;
 * integrated simulation passes;
 * migration rehearsal passes;
-* runtime activation rehearsal passes;
+* deployment sequencing rehearsal passes;
 * branch diff is reviewed;
 * production breed migration occurs between shows;
-* activation occurs at the post-Invitational/pre-Week-1 boundary.
+* all 318 judging profiles are imported only after canonical Breed rows exist;
+* deployment occurs at the post-Invitational/pre-Week-1 boundary without rewriting historical results.
+
+### Deferred Class Release Definition of Done
+
+The locked Class Workstream is deferred intact to a future coordinated release. Its Definition of Done will include CLASS-01 production-flow audit, CLASS-02 eligibility contract, CLASS-03 deterministic assignment/routing, CLASS-04 Winners/points integration, CLASS-05 regression validation, and a coordinated no-entry/show-safe deployment boundary. Existing current class behavior remains unchanged until that future release.
