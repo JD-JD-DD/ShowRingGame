@@ -19,8 +19,10 @@ import {
 } from "@/server/services/titleProgress.service";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import { processGrandChampionCreditsForShowDay } from "@/server/services/grandChampion.service";
+import { getBreedConformationWeightsForJudging } from "@/server/services/breedConformationWeightsForJudging.service";
 import {
   canEnterShows,
+  combineBreedAndJudgeConformationWeights,
   DAM_SHOW_POST_WHELP_COOLDOWN_HOURS,
   getChampionshipPointsForCompetition,
   JUDGING_SCORING_VERSION,
@@ -1067,8 +1069,34 @@ export async function judgeShowBlock(args: {
       eligibleEntries.map((entry) => entry.dogId)
     );
     const engineJudge = toEngineJudge(block.judge);
+    let conformationCategoryWeights;
+    try {
+      const breedWeights = await getBreedConformationWeightsForJudging({
+        client: tx,
+        breedCode2: block.breedCode2,
+      });
+      conformationCategoryWeights = combineBreedAndJudgeConformationWeights({
+        breedWeights,
+        judgeWeights: {
+          TYPE_EXPRESSION: engineJudge.categoryWeights.TYPE_EXPRESSION,
+          STRUCTURE_BALANCE: engineJudge.categoryWeights.STRUCTURE_BALANCE,
+          MOVEMENT: engineJudge.categoryWeights.MOVEMENT,
+          COAT_PRESENTATION: engineJudge.categoryWeights.COAT_PRESENTATION,
+          TEMPERAMENT_RING_BEHAVIOR:
+            engineJudge.categoryWeights.TEMPERAMENT_RING_BEHAVIOR,
+        },
+      });
+    } catch (error) {
+      console.error("Breed judging profile configuration failed", {
+        breedCode2: block.breedCode2,
+        judgingBlockId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
     const judgedBlock = judgeBreedBlock({
       judge: engineJudge,
+      conformationCategoryWeights,
       showEpoch: block.startEpoch,
       entries: eligibleEntries.map((entry) => ({
         showEntryId: entry.id,

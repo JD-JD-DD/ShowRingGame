@@ -10,6 +10,7 @@ import {
   RING_RANDOMNESS,
   type JudgingCategory,
 } from "../constants/judging.constants";
+import type { BreedConformationCategoryWeights } from "./breedJudgingWeight.engine";
 import { deriveConditioningHandlingScore } from "./conditioning.engine";
 import { aggregateDirectionalCategory } from "./directionalCategory.engine";
 import { deriveHealthAdjustedExpressedTraits } from "./healthExpression.engine";
@@ -135,6 +136,7 @@ export function deriveShowCharacteristicsFromTraits(
 export function scoreDogByJudgeWeights(args: {
   dog: Dog;
   judge: Judge;
+  conformationCategoryWeights?: BreedConformationCategoryWeights;
   showEpoch?: number;
   random01?: () => number;
 }): JudgedDogBreakdown {
@@ -166,8 +168,14 @@ export function scoreDogByJudgeWeights(args: {
 
   for (const category of JUDGING_CATEGORIES) {
     const idealScore = scoreValueAgainstIdeal(characteristics[category]);
-    const categoryScore =
-      idealScore * judge.categoryWeights[category];
+    const categoryWeight = GENETIC_JUDGING_CATEGORIES.includes(
+      category as (typeof GENETIC_JUDGING_CATEGORIES)[number]
+    )
+      ? args.conformationCategoryWeights?.[
+          category as (typeof GENETIC_JUDGING_CATEGORIES)[number]
+        ] ?? judge.categoryWeights[category]
+      : judge.categoryWeights[category];
+    const categoryScore = idealScore * categoryWeight;
 
     weightedCategoryScores[category] = roundScore(categoryScore);
     baseScore += categoryScore;
@@ -229,6 +237,7 @@ function compareJudgedDogs(
 export function judgeBreedEntries(args: {
   entries: JudgingEntry[];
   judge: Judge;
+  conformationCategoryWeights?: BreedConformationCategoryWeights;
   showEpoch?: number;
   random01?: () => number;
 }): JudgedEntryResult[] {
@@ -240,6 +249,7 @@ export function judgeBreedEntries(args: {
       ...scoreDogByJudgeWeights({
         dog: entry.dog,
         judge: args.judge,
+        conformationCategoryWeights: args.conformationCategoryWeights,
         showEpoch: args.showEpoch,
         random01,
       }),
@@ -482,6 +492,7 @@ function buildBreedAwards(args: {
 export function judgeBreedBlock(args: {
   entries: JudgingEntry[];
   judge: Judge;
+  conformationCategoryWeights?: BreedConformationCategoryWeights;
   showEpoch?: number;
   random01?: () => number;
 }): JudgedBreedBlock {

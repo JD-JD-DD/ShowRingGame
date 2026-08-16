@@ -24,6 +24,11 @@ export type BreedJudgingProfileInput = {
 export type NormalizedBreedJudgingWeights = Omit<BreedJudgingProfileInput,
   "headWeight" | "forequartersWeight" | "hindquartersWeight" | "gaitWeight" | "coatWeight" | "sizeWeight" | "temperamentWeight" | "showShineWeight" | "feetWeight" | "toplineWeight"
 > & Record<(typeof WEIGHT_COLUMNS)[number][1], number>;
+export type BreedJudgingWeightValues = Pick<BreedJudgingProfileInput, (typeof WEIGHT_COLUMNS)[number][1]>;
+export type NormalizedBreedJudgingTraitWeights = {
+  head: number; forequarters: number; hindquarters: number; gait: number; coat: number;
+  size: number; temperament: number; show_shine: number; feet: number; topline: number;
+};
 
 function parseCsv(csv: string, sourceName: string): Array<Record<string, string>> {
   const rows: string[][] = [[]];
@@ -90,6 +95,32 @@ export function parseBreedJudgingProfilesCsv(csv: string): BreedJudgingProfileIn
     if (Math.abs(total - 100) > 0.01) throw new Error(`${label}: ten explicit weights total ${total}; expected 100.00 ± 0.01.`);
     return { breed: row.Breed, breedCode2: row.breedCode2, group: row.Group, ...weights, rulesVersion: row.RulesVersion, isActive: row.IsActive === "TRUE", source: row.Source, notes: row.Notes } as BreedJudgingProfileInput;
   });
+}
+
+/** Validates the persisted ten-source-weight contract before rules-layer use. */
+export function toNormalizedBreedJudgingTraitWeights(
+  weights: BreedJudgingWeightValues
+): NormalizedBreedJudgingTraitWeights {
+  const normalized = {} as Record<string, number>;
+  let total = 0;
+  for (const [, key] of WEIGHT_COLUMNS) {
+    const value = weights[key];
+    if (!Number.isFinite(value) || value < 0) {
+      throw new Error(`Breed judging weight ${key} must be finite and >= 0.`);
+    }
+    total += value;
+    normalized[key] = value / 100;
+  }
+  if (Math.abs(total - 100) > 0.01) {
+    throw new Error(`Breed judging source weights total ${total}; expected 100.00 ± 0.01.`);
+  }
+  return {
+    head: normalized.headWeight, forequarters: normalized.forequartersWeight,
+    hindquarters: normalized.hindquartersWeight, gait: normalized.gaitWeight,
+    coat: normalized.coatWeight, size: normalized.sizeWeight,
+    temperament: normalized.temperamentWeight, show_shine: normalized.showShineWeight,
+    feet: normalized.feetWeight, topline: normalized.toplineWeight,
+  };
 }
 
 export function validateBreedJudgingProfileCoverage(args: { canonicalBreeds: CanonicalBreedReference[]; profiles: BreedJudgingProfileInput[] }): BreedJudgingProfileInput[] {

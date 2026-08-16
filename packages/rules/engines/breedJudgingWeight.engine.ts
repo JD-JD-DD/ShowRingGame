@@ -3,6 +3,7 @@ import { CATEGORY_TRAIT_MAP, GENETIC_JUDGING_CATEGORIES, type GeneticJudgingCate
 
 export type NormalizedBreedTraitWeights = Record<TraitKey, number>;
 export type BreedConformationCategoryWeights = Record<GeneticJudgingCategory, number>;
+export const FIXED_CONFORMATION_BUDGET = GENETIC_JUDGING_CATEGORIES.length;
 
 const NORMALIZED_TOTAL_TOLERANCE = 1e-9;
 
@@ -43,4 +44,50 @@ export function deriveBreedConformationCategoryWeights(weights: NormalizedBreedT
     throw new Error(`Overlap-aware conformation allocation must conserve normalized source weight; got ${total}.`);
   }
   return Object.fromEntries(GENETIC_JUDGING_CATEGORIES.map((category) => [category, raw[category] / total])) as BreedConformationCategoryWeights;
+}
+
+/**
+ * Applies a judge's existing conformation preferences to the breed-standard
+ * emphasis, then restores the established five-point conformation budget.
+ * CONDITIONING_HANDLING deliberately is not part of this vector.
+ */
+export function combineBreedAndJudgeConformationWeights(args: {
+  breedWeights: BreedConformationCategoryWeights;
+  judgeWeights: BreedConformationCategoryWeights;
+  conformationBudget?: number;
+}): BreedConformationCategoryWeights {
+  const conformationBudget = args.conformationBudget ?? FIXED_CONFORMATION_BUDGET;
+  if (!Number.isFinite(conformationBudget) || conformationBudget <= 0) {
+    throw new Error(`Conformation budget must be finite and > 0; got ${conformationBudget}.`);
+  }
+
+  let breedTotal = 0;
+  let rawTotal = 0;
+  const raw = {} as BreedConformationCategoryWeights;
+  for (const category of GENETIC_JUDGING_CATEGORIES) {
+    const breedWeight = args.breedWeights[category];
+    const judgeWeight = args.judgeWeights[category];
+    if (!Number.isFinite(breedWeight) || breedWeight < 0) {
+      throw new Error(`Breed conformation weight ${category} must be finite and >= 0.`);
+    }
+    if (!Number.isFinite(judgeWeight) || judgeWeight < 0) {
+      throw new Error(`Judge conformation preference ${category} must be finite and >= 0.`);
+    }
+    breedTotal += breedWeight;
+    raw[category] = breedWeight * judgeWeight;
+    rawTotal += raw[category];
+  }
+  if (Math.abs(breedTotal - 1) > NORMALIZED_TOTAL_TOLERANCE) {
+    throw new Error(`Breed conformation weights must total 1.0 ± ${NORMALIZED_TOTAL_TOLERANCE}; got ${breedTotal}.`);
+  }
+  if (!Number.isFinite(rawTotal) || rawTotal <= 0) {
+    throw new Error("Breed and judge conformation weights must produce a positive finite total.");
+  }
+
+  return Object.fromEntries(
+    GENETIC_JUDGING_CATEGORIES.map((category) => [
+      category,
+      (raw[category] / rawTotal) * conformationBudget,
+    ])
+  ) as BreedConformationCategoryWeights;
 }
