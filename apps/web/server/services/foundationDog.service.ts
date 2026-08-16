@@ -93,10 +93,13 @@ const GLOBAL_FALLBACK_BASELINE: DogTraits = {
 const FOUNDATION_MIN_ACTIVE_FEMALES = 2;
 const FOUNDATION_MIN_ACTIVE_MALES = 1;
 
+type FoundationInventoryCountClient = Pick<Prisma.TransactionClient, "dog">;
+
 export async function countUnsoldFoundationFemalesByBreed(
-  breedCode2: string
+  breedCode2: string,
+  client: FoundationInventoryCountClient = db
 ): Promise<number> {
-  return db.dog.count({
+  return client.dog.count({
     where: {
       breedCode2,
       sex: "F",
@@ -117,9 +120,10 @@ export async function countUnsoldFoundationFemalesByBreed(
 }
 
 export async function countUnsoldFoundationMalesByBreed(
-  breedCode2: string
+  breedCode2: string,
+  client: FoundationInventoryCountClient = db
 ): Promise<number> {
-  return db.dog.count({
+  return client.dog.count({
     where: {
       breedCode2,
       sex: "M",
@@ -891,9 +895,10 @@ export async function expireStaleFoundationListings(args: {
 }
 
 export async function countUnsoldFoundationDogsByBreed(
-  breedCode2: string
+  breedCode2: string,
+  client: FoundationInventoryCountClient = db
 ): Promise<number> {
-  return db.dog.count({
+  return client.dog.count({
     where: {
       breedCode2,
       originType: "FOUNDATION",
@@ -912,6 +917,24 @@ export async function countUnsoldFoundationDogsByBreed(
   });
 }
 
+/**
+ * PostgreSQL transaction-scoped advisory locks are process-independent and
+ * release automatically on commit/rollback. `hashtextextended` deterministically
+ * maps the canonical breed code to PostgreSQL's bigint lock space; collisions
+ * can only cause harmless extra serialization between two breeds.
+ */
+async function withFoundationInventoryBreedLock<T>(args: {
+  breedCode2: string;
+  operation: (tx: Prisma.TransactionClient) => Promise<T>;
+}): Promise<T> {
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${args.breedCode2}, 0))
+    `;
+    return args.operation(tx);
+  });
+}
+
 export async function ensureFoundationInventoryForBreed(args: {
   breedCode2: string;
   currentEpoch: number;
@@ -927,51 +950,85 @@ export async function ensureFoundationInventoryForBreed(args: {
     breedCode2,
   });
 
-  const [currentCount, currentFemaleCount, currentMaleCount, policy] =
-    await Promise.all([
-    countUnsoldFoundationDogsByBreed(breedCode2),
-    countUnsoldFoundationFemalesByBreed(breedCode2),
-    countUnsoldFoundationMalesByBreed(breedCode2),
-    getFoundationPolicyForBreed({ breedCode2, currentEpoch }),
-  ]);
-
-  const targetInventory = getEffectiveFoundationTarget(policy);
-  const femalesNeeded = Math.max(
-    0,
-    FOUNDATION_MIN_ACTIVE_FEMALES - currentFemaleCount
-  );
-  const malesNeeded = Math.max(
-    0,
-    FOUNDATION_MIN_ACTIVE_MALES - currentMaleCount
-  );
-
-  if (
-    currentCount >= targetInventory &&
-    femalesNeeded === 0 &&
-    malesNeeded === 0
-  ) {
-    return;
-  }
-
-  const createCount = Math.max(
-    targetInventory - currentCount,
-    femalesNeeded + malesNeeded
-  );
-
-  const forcedSexes = buildForcedFoundationSexes({
-    femalesNeeded,
-    malesNeeded,
-    totalCount: createCount,
-  });
-  const populationContext = await resolveFoundationPopulationContext(breedCode2);
-
-  for (const forcedSex of forcedSexes) {
-    await createOneFoundationDog({
+  try {
+    await withFoundationInventoryBreedLock({
       breedCode2,
-      currentEpoch,
-      forcedSex,
-      populationContext,
+      operation: async (tx) => {
+      // These are the authoritative post-lock inventory counts. A waiting
+      // caller always derives its deficit from the preceding lock holder's work.
+      const [currentCount, currentFemaleCount, currentMaleCount, policy] =
+        await Promise.all([
+          countUnsoldFoundationDogsByBreed(breedCode2, tx),
+          countUnsoldFoundationFemalesByBreed(breedCode2, tx),
+          countUnsoldFoundationMalesByBreed(breedCode2, tx),
+          getFoundationPolicyForBreed({ breedCode2, currentEpoch }),
+        ]);
+
+      const targetInventory = getEffectiveFoundationTarget(policy);
+      const femalesNeeded = Math.max(
+        0,
+        FOUNDATION_MIN_ACTIVE_FEMALES - currentFemaleCount
+      );
+      const malesNeeded = Math.max(
+        0,
+        FOUNDATION_MIN_ACTIVE_MALES - currentMaleCount
+      );
+      const createCount = Math.max(
+        targetInventory - currentCount,
+        femalesNeeded + malesNeeded
+      );
+
+      if (createCount === 0) {
+        return;
+      }
+
+      const forcedSexes = buildForcedFoundationSexes({
+        femalesNeeded,
+        malesNeeded,
+        totalCount: createCount,
+      });
+      const populationContext = await resolveFoundationPopulationContext(breedCode2);
+
+      for (const forcedSex of forcedSexes) {
+        await createOneFoundationDog({
+          breedCode2,
+          currentEpoch,
+          forcedSex,
+          populationContext,
+        });
+      }
+
+      const [finalCount, finalFemaleCount, finalMaleCount] = await Promise.all([
+        countUnsoldFoundationDogsByBreed(breedCode2, tx),
+        countUnsoldFoundationFemalesByBreed(breedCode2, tx),
+        countUnsoldFoundationMalesByBreed(breedCode2, tx),
+      ]);
+      if (
+        finalCount < targetInventory ||
+        finalFemaleCount < FOUNDATION_MIN_ACTIVE_FEMALES ||
+        finalMaleCount < FOUNDATION_MIN_ACTIVE_MALES
+      ) {
+        console.error("foundation-inventory-maintenance-incomplete", {
+          breedCode2,
+          currentCount,
+          currentFemaleCount,
+          currentMaleCount,
+          targetInventory,
+          createdCount: createCount,
+          finalCount,
+          finalFemaleCount,
+          finalMaleCount,
+        });
+      }
+      },
     });
+  } catch (error) {
+    console.error("foundation-inventory-maintenance-failed", {
+      breedCode2,
+      cleanupStage: "breed-serialization",
+      error,
+    });
+    throw error;
   }
 }
 
