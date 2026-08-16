@@ -30,7 +30,8 @@ export type NormalizedBreedJudgingTraitWeights = {
   size: number; temperament: number; show_shine: number; feet: number; topline: number;
 };
 
-function parseCsv(csv: string, sourceName: string): Array<Record<string, string>> {
+/** Shared strict CSV reader for canonical breed reference files. */
+export function parseCsvRows(csv: string, sourceName: string): Array<Record<string, string>> {
   const rows: string[][] = [[]];
   let value = "";
   let quoted = false;
@@ -76,7 +77,7 @@ function parseWeight(row: Record<string, string>, column: string, profileLabel: 
 }
 
 export function parseCanonicalBreedsCsv(csv: string): CanonicalBreedReference[] {
-  const rows = requireHeaders(parseCsv(csv, "breeds.csv"), csv, "breeds.csv", ["breed_name", "code2", "group"]);
+  const rows = requireHeaders(parseCsvRows(csv, "breeds.csv"), csv, "breeds.csv", ["breed_name", "code2", "group"]);
   return rows.map((row, index) => {
     if (!row.code2 || !row.breed_name || !row.group) throw new Error(`breeds.csv row ${index + 2}: breed_name, code2, and group are required.`);
     return { breed: row.breed_name, breedCode2: row.code2, group: row.group };
@@ -84,7 +85,7 @@ export function parseCanonicalBreedsCsv(csv: string): CanonicalBreedReference[] 
 }
 
 export function parseBreedJudgingProfilesCsv(csv: string): BreedJudgingProfileInput[] {
-  const rows = requireHeaders(parseCsv(csv, "JUDGE-01_Breed_Judging_Profile.csv"), csv, "JUDGE-01_Breed_Judging_Profile.csv", BREED_JUDGING_PROFILE_REQUIRED_HEADERS);
+  const rows = requireHeaders(parseCsvRows(csv, "JUDGE-01_Breed_Judging_Profile.csv"), csv, "JUDGE-01_Breed_Judging_Profile.csv", BREED_JUDGING_PROFILE_REQUIRED_HEADERS);
   return rows.map((row, index) => {
     const label = `JUDGE-01_Breed_Judging_Profile.csv row ${index + 2} (${row.breedCode2 || "missing breedCode2"}, ${row.Breed || "missing Breed"})`;
     if (!row.breedCode2 || !row.Breed || !row.Group) throw new Error(`${label}: Breed, breedCode2, and Group are required.`);
