@@ -72,6 +72,8 @@ export const FOUNDATION_OPPORTUNITY_TARGETS = {
   POPULATION_COMPONENT_MIX: 0.3,
   /** A selected opportunity only weakly biases a component draw. */
   TARGET_ALTERNATIVE_BIAS: 0.2,
+  /** Selected low-frequency identities may sample one valid conspicuous diploid component pair. */
+  TARGETED_LOW_FREQUENCY_DIPLOID_MIX: 0.7,
   /** Symmetric directional evidence: one side dominates while the other is scarce. */
   DIRECTIONAL_SCARCITY_DOMINANT_SHARE: 0.65,
   DIRECTIONAL_SCARCITY_OPPOSITE_MAX_SHARE: 0.2,
@@ -692,10 +694,23 @@ export function createFoundationDogProfile(
   }
   const targetsByLocus = new Map(targetedOpportunityIdentities.map(identity => [identity.locus, identity]));
   const evidenceByLocus = new Map(lociEvidence.map(evidence => [evidence.locus, evidence]));
-  const populationAllele = (locus: number) => {
+  const sampleComponentAllele = (component: { component: string }) => {
+    const allele = Number(component.component) + (random01() - 0.5) * 0.5;
+    return Math.round(Math.max(-20, Math.min(20, allele)) * 1_000_000) / 1_000_000;
+  };
+  const populationAlleles = (locus: number): readonly [number, number] => {
     const evidence = evidenceByLocus.get(locus);
-    if (!isPopulationContext || !evidence || random01() >= FOUNDATION_OPPORTUNITY_TARGETS.POPULATION_COMPONENT_MIX) return sampleAllele();
+    if (!isPopulationContext || !evidence) return [sampleAllele(), sampleAllele()];
     const target = targetsByLocus.get(locus);
+    const conspicuousLowFrequency = target?.reasons.length === 1 && target.reasons.includes("LOW_FREQUENCY_COMPONENT")
+      ? evidence.components.filter(component => component.share <= FOUNDATION_OPPORTUNITY_TARGETS.CONSPICUOUS_COMPONENT_MAX_SHARE)
+      : [];
+    if (conspicuousLowFrequency.length > 0 && random01() < FOUNDATION_OPPORTUNITY_TARGETS.TARGETED_LOW_FREQUENCY_DIPLOID_MIX) {
+      const component = chooseWeighted(conspicuousLowFrequency, conspicuousLowFrequency.map(value => Math.max(.001, 1 - value.share)), random01);
+      return [sampleComponentAllele(component), sampleComponentAllele(component)];
+    }
+    const populationAllele = () => {
+      if (random01() >= FOUNDATION_OPPORTUNITY_TARGETS.POPULATION_COMPONENT_MIX) return sampleAllele();
     const ordinary = chooseWeighted(evidence.components, evidence.components.map(component => component.share), random01);
     let chosen = ordinary;
     if (target && random01() < FOUNDATION_OPPORTUNITY_TARGETS.TARGET_ALTERNATIVE_BIAS) {
@@ -708,10 +723,11 @@ export function createFoundationDogProfile(
       const alternatives = preferred.length > 0 ? preferred : evidence.components;
       chosen = chooseWeighted(alternatives, alternatives.map(component => Math.max(0.001, 1 - component.share)), random01);
     }
-    const allele = Number(chosen.component) + (random01() - 0.5) * 0.5;
-    return Math.round(Math.max(-20, Math.min(20, allele)) * 1_000_000) / 1_000_000;
+      return sampleComponentAllele(chosen);
+    };
+    return [populationAllele(), populationAllele()];
   };
-  const genotype: CanonicalGenotype = { geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: TOTAL_LOCI }, (_,locus) => [populationAllele(locus), populationAllele(locus)] as const) };
+  const genotype: CanonicalGenotype = { geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: TOTAL_LOCI }, (_, locus) => populationAlleles(locus)) };
   const observedOpportunityIdentities = classifyFoundationOpportunities({ populationContext: input.populationContext, genotype });
   const traits = calculatePhenotypeFromGenotype(genotype);
   const visibleCategories = deriveVisibleCategoriesFromTraits(traits);
