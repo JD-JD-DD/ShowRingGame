@@ -469,8 +469,36 @@ model Breed {
   showAwards        ShowAward[]
   showJudgingBlocks ShowJudgingBlock[]
   geneticBackgroundSnapshots BreedGeneticBackgroundSnapshot[]
+  judgingProfiles   BreedJudgingProfile[]
 
   @@index([releaseVersion])
+}
+
+model BreedJudgingProfile {
+  id          String   @id @default(cuid())
+  breedCode2  String
+  rulesVersion String
+  isActive    Boolean  @default(true)
+  headWeight         Decimal @db.Decimal(5, 2)
+  forequartersWeight Decimal @db.Decimal(5, 2)
+  hindquartersWeight Decimal @db.Decimal(5, 2)
+  gaitWeight         Decimal @db.Decimal(5, 2)
+  coatWeight         Decimal @db.Decimal(5, 2)
+  sizeWeight         Decimal @db.Decimal(5, 2)
+  temperamentWeight  Decimal @db.Decimal(5, 2)
+  showShineWeight    Decimal @db.Decimal(5, 2)
+  feetWeight         Decimal @db.Decimal(5, 2)
+  toplineWeight      Decimal @db.Decimal(5, 2)
+  source      String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  breed Breed @relation(fields: [breedCode2], references: [code2])
+
+  @@unique([breedCode2, rulesVersion])
+  @@index([breedCode2, isActive])
+  @@index([rulesVersion, isActive])
 }
 
 model BreedGeneticBackgroundSnapshot {
