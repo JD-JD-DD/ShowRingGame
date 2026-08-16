@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import {
@@ -26,6 +27,7 @@ import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest
 import { maybeSeedFoundationBrucellosis } from "@/server/services/infectiousDisease.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
 import { isDogRegistrationCollision, reserveDogRegistrations } from "@/server/services/dogRegistration.service";
+import { assessDisposableFoundationInventoryDog } from "@/server/services/disposableFoundationInventory.service";
 import { resolveFoundationPopulationContext, type FoundationPopulationContext } from "@/server/services/foundationPopulationContext.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
@@ -634,59 +636,258 @@ async function createOneFoundationDog(args: {
   });
 }
 
+type FoundationInventoryCleanupResult = {
+  expiredCount: number;
+  deletedDogCount: number;
+  protectedCount: number;
+  skippedCount: number;
+};
+
+type ExpiredFoundationInventoryCandidate = {
+  listingId: string;
+  dogId: string;
+};
+
+class FoundationInventoryCleanupSkipped extends Error {}
+
+export async function cleanupExpiredFoundationInventoryCandidateInTransaction(
+  tx: Prisma.TransactionClient,
+  args: {
+  candidate: ExpiredFoundationInventoryCandidate;
+  currentEpoch: number;
+  }
+): Promise<
+  | "EXPIRED"
+  | "DELETED_AFTER_EXPIRATION"
+  | "DELETED"
+  | "PROTECTED_AFTER_EXPIRATION"
+  | "PROTECTED"
+  | "SKIPPED"
+> {
+  const { candidate, currentEpoch } = args;
+      const listing = await tx.dogListing.findUnique({
+        where: { id: candidate.listingId },
+        select: {
+          id: true,
+          dogId: true,
+          sellerType: true,
+          listingType: true,
+          status: true,
+          expiresAtEpoch: true,
+          dog: {
+            select: {
+              breedCode2: true,
+              ownerKennelId: true,
+              lifecycleState: true,
+              marketState: true,
+              originType: true,
+              isFoundation: true,
+            },
+          },
+        },
+      });
+
+      if (
+        !listing ||
+        listing.dogId !== candidate.dogId ||
+        listing.sellerType !== "SYSTEM" ||
+        listing.listingType !== FOUNDATION_LISTING_TYPE ||
+        listing.expiresAtEpoch === null ||
+        listing.expiresAtEpoch > currentEpoch ||
+        listing.dog.ownerKennelId !== null ||
+        listing.dog.lifecycleState !== "ALIVE" ||
+        listing.dog.originType !== "FOUNDATION" ||
+        !listing.dog.isFoundation
+      ) {
+        return "SKIPPED";
+      }
+
+      let expiredThisCall = false;
+      if (listing.status === "ACTIVE") {
+        if (listing.dog.marketState !== "LISTED_NPC") {
+          return "SKIPPED";
+        }
+
+        const expired = await tx.dogListing.updateMany({
+          where: {
+            id: listing.id,
+            sellerType: "SYSTEM",
+            listingType: FOUNDATION_LISTING_TYPE,
+            status: "ACTIVE",
+            expiresAtEpoch: { lte: currentEpoch },
+          },
+          data: {
+            status: "EXPIRED",
+            expiresAtEpoch: currentEpoch,
+          },
+        });
+        if (expired.count !== 1) {
+          return "SKIPPED";
+        }
+
+        const dogExpired = await tx.dog.updateMany({
+          where: {
+            id: listing.dogId,
+            ownerKennelId: null,
+            lifecycleState: "ALIVE",
+            marketState: "LISTED_NPC",
+            originType: "FOUNDATION",
+            isFoundation: true,
+          },
+          data: { marketState: "NOT_FOR_SALE" },
+        });
+        if (dogExpired.count !== 1) {
+          throw new FoundationInventoryCleanupSkipped();
+        }
+        expiredThisCall = true;
+      } else if (
+        listing.status !== "EXPIRED" ||
+        listing.dog.marketState !== "NOT_FOR_SALE"
+      ) {
+        return "SKIPPED";
+      }
+
+      const assessment = await assessDisposableFoundationInventoryDog(tx, listing.dogId);
+      if (assessment.status === "PROTECTED") {
+        console.info("foundation-inventory-cleanup-retained", {
+          dogId: listing.dogId,
+          breedCode2: listing.dog.breedCode2,
+          listingIds: [listing.id],
+          assessmentStatus: assessment.status,
+          protectedReasons: assessment.protectedReasons,
+        });
+        return expiredThisCall ? "PROTECTED_AFTER_EXPIRATION" : "PROTECTED";
+      }
+      if (assessment.status !== "DISPOSABLE") {
+        return expiredThisCall ? "EXPIRED" : "SKIPPED";
+      }
+
+      const children = assessment.disposableSystemChildren;
+      // These are the exact FOUNDATION-03-approved rows, deleted before the Dog.
+      await tx.dogEmergencyCareEvent.deleteMany({
+        where: { id: { in: children.pendingSystemEmergencyCareEventIds } },
+      });
+      await tx.dogInfectiousDiseaseStatus.deleteMany({
+        where: { id: { in: children.foundationDiseaseStatusIds } },
+      });
+      await tx.dogHealthConditionTruth.deleteMany({
+        where: { id: { in: children.healthConditionTruthIds } },
+      });
+      await tx.dogListing.deleteMany({
+        where: {
+          id: { in: children.expiredFoundationListingIds },
+          dogId: listing.dogId,
+          sellerType: "SYSTEM",
+          listingType: FOUNDATION_LISTING_TYPE,
+          status: "EXPIRED",
+        },
+      });
+      await tx.dog.delete({ where: { id: listing.dogId } });
+
+      return expiredThisCall ? "DELETED_AFTER_EXPIRATION" : "DELETED";
+}
+
+async function cleanupExpiredFoundationInventoryCandidate(args: {
+  candidate: ExpiredFoundationInventoryCandidate;
+  currentEpoch: number;
+}): Promise<
+  | "EXPIRED"
+  | "DELETED_AFTER_EXPIRATION"
+  | "DELETED"
+  | "PROTECTED_AFTER_EXPIRATION"
+  | "PROTECTED"
+  | "SKIPPED"
+> {
+  const { candidate } = args;
+  try {
+    return await db.$transaction((tx) =>
+      cleanupExpiredFoundationInventoryCandidateInTransaction(tx, args)
+    );
+  } catch (error) {
+    if (error instanceof FoundationInventoryCleanupSkipped) {
+      return "SKIPPED";
+    }
+    console.error("foundation-inventory-cleanup-failed", {
+      dogId: candidate.dogId,
+      listingIds: [candidate.listingId],
+      cleanupStage: "candidate-transaction",
+      error,
+    });
+    return "SKIPPED";
+  }
+}
+
+export async function cleanupExpiredDisposableFoundationInventory(args: {
+  currentEpoch: number;
+  breedCode2?: string;
+}): Promise<FoundationInventoryCleanupResult> {
+  const { currentEpoch, breedCode2 } = args;
+  const candidates = await db.dogListing.findMany({
+    where: {
+      sellerType: "SYSTEM",
+      listingType: FOUNDATION_LISTING_TYPE,
+      expiresAtEpoch: { lte: currentEpoch },
+      OR: [
+        {
+          status: "ACTIVE",
+          dog: {
+            ownerKennelId: null,
+            lifecycleState: "ALIVE",
+            marketState: "LISTED_NPC",
+            originType: "FOUNDATION",
+            isFoundation: true,
+            ...(breedCode2 ? { breedCode2 } : {}),
+          },
+        },
+        {
+          status: "EXPIRED",
+          dog: {
+            ownerKennelId: null,
+            lifecycleState: "ALIVE",
+            marketState: "NOT_FOR_SALE",
+            originType: "FOUNDATION",
+            isFoundation: true,
+            ...(breedCode2 ? { breedCode2 } : {}),
+          },
+        },
+      ],
+    },
+    select: { id: true, dogId: true },
+  });
+
+  const result: FoundationInventoryCleanupResult = {
+    expiredCount: 0,
+    deletedDogCount: 0,
+    protectedCount: 0,
+    skippedCount: 0,
+  };
+  for (const candidate of candidates) {
+    const outcome = await cleanupExpiredFoundationInventoryCandidate({
+      candidate: { listingId: candidate.id, dogId: candidate.dogId },
+      currentEpoch,
+    });
+    if (outcome === "EXPIRED") result.expiredCount += 1;
+    if (outcome === "DELETED_AFTER_EXPIRATION") {
+      result.deletedDogCount += 1;
+      result.expiredCount += 1;
+    }
+    if (outcome === "DELETED") result.deletedDogCount += 1;
+    if (outcome === "PROTECTED_AFTER_EXPIRATION") {
+      result.protectedCount += 1;
+      result.expiredCount += 1;
+    }
+    if (outcome === "PROTECTED") result.protectedCount += 1;
+    if (outcome === "SKIPPED") result.skippedCount += 1;
+  }
+  return result;
+}
+
 export async function expireStaleFoundationListings(args: {
   currentEpoch: number;
   breedCode2?: string;
 }): Promise<number> {
-  const { currentEpoch, breedCode2 } = args;
-
-  const staleListings = await db.dogListing.findMany({
-    where: {
-      sellerType: "SYSTEM",
-      listingType: FOUNDATION_LISTING_TYPE,
-      status: "ACTIVE",
-      expiresAtEpoch: {
-        lte: currentEpoch,
-      },
-      dog: {
-        ownerKennelId: null,
-        lifecycleState: "ALIVE",
-        marketState: "LISTED_NPC",
-        originType: "FOUNDATION",
-        isFoundation: true,
-        ...(breedCode2 ? { breedCode2 } : {}),
-      },
-    },
-    select: {
-      id: true,
-      dogId: true,
-    },
-  });
-
-  if (staleListings.length === 0) {
-    return 0;
-  }
-
-  await db.$transaction(async (tx) => {
-    for (const listing of staleListings) {
-      await tx.dogListing.update({
-        where: { id: listing.id },
-        data: {
-          status: "EXPIRED",
-          expiresAtEpoch: currentEpoch,
-        },
-      });
-
-      await tx.dog.update({
-        where: { id: listing.dogId },
-        data: {
-          marketState: "NOT_FOR_SALE",
-        },
-      });
-    }
-  });
-
-  return staleListings.length;
+  const result = await cleanupExpiredDisposableFoundationInventory(args);
+  return result.expiredCount;
 }
 
 export async function countUnsoldFoundationDogsByBreed(
