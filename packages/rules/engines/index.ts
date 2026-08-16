@@ -13,6 +13,7 @@ export * from "./idealScoring.engine";
 export * from "./health.engine";
 export * from "./healthExpression.engine";
 export * from "./judge.engine";
+export * from "./breedJudgingWeight.engine";
 export * from "./judging.engine";
 export * from "./litter.engine";
 export * from "./legacyGenotypeReconstruction.engine";
