@@ -1,8 +1,9 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 
 import type { BreedJudgingProfileInput } from "./breedJudgingProfile.service";
 
 type ProfileClient = Pick<Prisma.TransactionClient, "breedJudgingProfile">;
+type ProfileMutationClient = Pick<Prisma.TransactionClient, "breedJudgingProfile" | "$executeRaw">;
 type ProfileDatabase = Pick<PrismaClient, "$transaction">;
 
 export class MissingBreedJudgingProfileError extends Error {}
@@ -42,26 +43,88 @@ function assertPersistableProfiles(profiles: BreedJudgingProfileInput[]) {
   }
 }
 
+type PersistenceRow = BreedJudgingProfileInput & { persistedIsActive: boolean };
+
+function buildPersistencePlan(profiles: BreedJudgingProfileInput[]) {
+  assertPersistableProfiles(profiles);
+  const lastActiveProfileIndexByBreed = new Map<string, number>();
+  profiles.forEach((profile, index) => {
+    if (profile.isActive) lastActiveProfileIndexByBreed.set(profile.breedCode2, index);
+  });
+
+  return {
+    activeBreedCodes: [...lastActiveProfileIndexByBreed.keys()],
+    rows: profiles.map((profile, index): PersistenceRow => ({
+      ...profile,
+      // Preserve sequential upsert semantics if a caller supplies multiple active
+      // versions for one Breed: the final active profile remains the sole active one.
+      persistedIsActive: profile.isActive && lastActiveProfileIndexByBreed.get(profile.breedCode2) === index,
+    })),
+  };
+}
+
+function toPersistedData(row: PersistenceRow) {
+  return { ...toPersistenceData(row), isActive: row.persistedIsActive };
+}
+
+function bulkProfileUpdate(rows: PersistenceRow[]) {
+  const values = rows.map((row) => Prisma.sql`(
+    ${row.breedCode2}, ${row.rulesVersion}, ${row.persistedIsActive},
+    ${row.headWeight}, ${row.forequartersWeight}, ${row.hindquartersWeight}, ${row.gaitWeight},
+    ${row.coatWeight}, ${row.sizeWeight}, ${row.temperamentWeight}, ${row.showShineWeight},
+    ${row.feetWeight}, ${row.toplineWeight}, ${row.source || null}, ${row.notes || null}
+  )`);
+  return Prisma.sql`
+    UPDATE "BreedJudgingProfile" AS target
+    SET
+      "isActive" = source."isActive",
+      "headWeight" = source."headWeight",
+      "forequartersWeight" = source."forequartersWeight",
+      "hindquartersWeight" = source."hindquartersWeight",
+      "gaitWeight" = source."gaitWeight",
+      "coatWeight" = source."coatWeight",
+      "sizeWeight" = source."sizeWeight",
+      "temperamentWeight" = source."temperamentWeight",
+      "showShineWeight" = source."showShineWeight",
+      "feetWeight" = source."feetWeight",
+      "toplineWeight" = source."toplineWeight",
+      "source" = source."source",
+      "notes" = source."notes",
+      "updatedAt" = CURRENT_TIMESTAMP
+    FROM (VALUES ${Prisma.join(values)}) AS source(
+      "breedCode2", "rulesVersion", "isActive",
+      "headWeight", "forequartersWeight", "hindquartersWeight", "gaitWeight",
+      "coatWeight", "sizeWeight", "temperamentWeight", "showShineWeight",
+      "feetWeight", "toplineWeight", "source", "notes"
+    )
+    WHERE target."breedCode2" = source."breedCode2"
+      AND target."rulesVersion" = source."rulesVersion"
+  `;
+}
+
 /** Writes only profiles that have already passed the complete JUDGE-01 CSV gate. */
 export async function syncValidatedBreedJudgingProfiles(args: {
   database: ProfileDatabase;
   profiles: BreedJudgingProfileInput[];
 }): Promise<{ importedCount: number; activeCount: number }> {
-  assertPersistableProfiles(args.profiles);
+  const plan = buildPersistencePlan(args.profiles);
   return args.database.$transaction(async (tx) => {
-    for (const profile of args.profiles) {
-      if (profile.isActive) {
-        await tx.breedJudgingProfile.updateMany({
-          where: { breedCode2: profile.breedCode2, rulesVersion: { not: profile.rulesVersion }, isActive: true },
-          data: { isActive: false },
-        });
-      }
-      await tx.breedJudgingProfile.upsert({
-        where: { breedCode2_rulesVersion: { breedCode2: profile.breedCode2, rulesVersion: profile.rulesVersion } },
-        create: { breedCode2: profile.breedCode2, rulesVersion: profile.rulesVersion, ...toPersistenceData(profile) },
-        update: toPersistenceData(profile),
+    const mutationClient = tx as ProfileMutationClient;
+    if (plan.activeBreedCodes.length > 0) {
+      await mutationClient.breedJudgingProfile.updateMany({
+        where: { breedCode2: { in: plan.activeBreedCodes }, isActive: true },
+        data: { isActive: false },
       });
     }
+    await mutationClient.breedJudgingProfile.createMany({
+      data: plan.rows.map((row) => ({
+        breedCode2: row.breedCode2,
+        rulesVersion: row.rulesVersion,
+        ...toPersistedData(row),
+      })),
+      skipDuplicates: true,
+    });
+    await mutationClient.$executeRaw(bulkProfileUpdate(plan.rows));
     return { importedCount: args.profiles.length, activeCount: args.profiles.filter((profile) => profile.isActive).length };
   });
 }

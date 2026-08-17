@@ -7,13 +7,15 @@ import { AmbiguousActiveBreedJudgingProfileError, getActiveBreedJudgingProfile, 
 
 const data = (file: string) => readFileSync(resolve(process.cwd(), `prisma/data/${file}`), "utf8");
 
-function fixtureDatabase() {
+function fixtureDatabase(options: { failBulkUpdate?: boolean } = {}) {
   const rows = new Map<string, Record<string, unknown>>();
   const key = (breedCode2: string, rulesVersion: string) => `${breedCode2}:${rulesVersion}`;
+  const snapshot = () => new Map([...rows].map(([id, row]) => [id, { ...row }]));
   const profile = {
-    updateMany: async ({ where, data }: { where: { breedCode2: string; rulesVersion?: { not: string }; isActive?: boolean }; data: Record<string, unknown> }) => {
+    updateMany: async ({ where, data }: { where: { breedCode2: string | { in: string[] }; rulesVersion?: { not: string }; isActive?: boolean }; data: Record<string, unknown> }) => {
       let count = 0;
-      for (const row of rows.values()) if (row.breedCode2 === where.breedCode2 && (!where.rulesVersion || row.rulesVersion !== where.rulesVersion.not) && (!where.isActive || row.isActive === where.isActive)) { Object.assign(row, data); count += 1; }
+      const breedCodes = typeof where.breedCode2 === "string" ? [where.breedCode2] : where.breedCode2.in;
+      for (const row of rows.values()) if (breedCodes.includes(row.breedCode2 as string) && (!where.rulesVersion || row.rulesVersion !== where.rulesVersion.not) && (!where.isActive || row.isActive === where.isActive)) { Object.assign(row, data); count += 1; }
       return { count };
     },
     upsert: async ({ where, create, update }: { where: { breedCode2_rulesVersion: { breedCode2: string; rulesVersion: string } }; create: Record<string, unknown>; update: Record<string, unknown> }) => {
@@ -22,14 +24,63 @@ function fixtureDatabase() {
       if (existing) { Object.assign(existing, update); return existing; }
       const row = { id, ...create }; rows.set(id, row); return row;
     },
+    createMany: async ({ data, skipDuplicates }: { data: Array<Record<string, unknown>>; skipDuplicates?: boolean }) => {
+      let count = 0;
+      for (const create of data) {
+        const id = key(create.breedCode2 as string, create.rulesVersion as string);
+        if (rows.has(id)) {
+          if (skipDuplicates) continue;
+          throw new Error(`Duplicate profile ${id}`);
+        }
+        rows.set(id, { id, ...create }); count += 1;
+      }
+      return { count };
+    },
     findUnique: async ({ where }: { where: { breedCode2_rulesVersion: { breedCode2: string; rulesVersion: string } } }) => rows.get(key(where.breedCode2_rulesVersion.breedCode2, where.breedCode2_rulesVersion.rulesVersion)) ?? null,
     findMany: async ({ where }: { where: { breedCode2: string; isActive: boolean } }) => [...rows.values()].filter((row) => row.breedCode2 === where.breedCode2 && row.isActive === where.isActive),
   };
-  return { rows, database: { $transaction: async (action: (tx: { breedJudgingProfile: typeof profile }) => Promise<unknown>) => action({ breedJudgingProfile: profile }) }, client: { breedJudgingProfile: profile } };
+  const transaction = {
+    breedJudgingProfile: profile,
+    $executeRaw: async (query: { values: unknown[] }) => {
+      if (options.failBulkUpdate) throw new Error("simulated bulk profile write failure");
+      const columns = 15;
+      for (let index = 0; index < query.values.length; index += columns) {
+        const [breedCode2, rulesVersion, isActive, headWeight, forequartersWeight, hindquartersWeight, gaitWeight, coatWeight, sizeWeight, temperamentWeight, showShineWeight, feetWeight, toplineWeight, source, notes] = query.values.slice(index, index + columns);
+        const row = rows.get(key(breedCode2 as string, rulesVersion as string));
+        if (!row) throw new Error(`Missing bulk profile ${breedCode2}:${rulesVersion}`);
+        Object.assign(row, { isActive, headWeight, forequartersWeight, hindquartersWeight, gaitWeight, coatWeight, sizeWeight, temperamentWeight, showShineWeight, feetWeight, toplineWeight, source, notes });
+      }
+      return rows.size;
+    },
+  };
+  return {
+    rows,
+    unrelatedRows: new Map([["untouched", { value: 1 }]]),
+    database: {
+      $transaction: async (action: (tx: typeof transaction) => Promise<unknown>) => {
+        const before = snapshot();
+        try { return await action(transaction); }
+        catch (error) { rows.clear(); before.forEach((row, id) => rows.set(id, row)); throw error; }
+      },
+    },
+    client: { breedJudgingProfile: profile },
+  };
 }
 
 async function main() {
   const profiles = validateBreedJudgingProfileCoverage({ canonicalBreeds: parseCanonicalBreedsCsv(data("breeds.csv")), profiles: parseBreedJudgingProfilesCsv(data("JUDGE-01_Breed_Judging_Profile.csv")) });
+  const emptyFixture = fixtureDatabase();
+  const emptyFirst = await syncValidatedBreedJudgingProfiles({ database: emptyFixture.database as never, profiles });
+  assert.deepEqual(emptyFirst, { importedCount: 318, activeCount: 318 }, "empty target imports all 318 canonical profiles");
+  assert.equal(emptyFixture.rows.size, 318, "empty target finishes with exactly 318 profile identities");
+  await syncValidatedBreedJudgingProfiles({ database: emptyFixture.database as never, profiles });
+  assert.equal(emptyFixture.rows.size, 318, "empty-target re-import remains idempotent without duplicates");
+  for (const canonical of profiles) {
+    const persisted = emptyFixture.rows.get(`${canonical.breedCode2}:${canonical.rulesVersion}`) as Record<string, unknown>;
+    assert.ok(persisted, `${canonical.breedCode2} remains present after re-import`);
+    assert.equal(persisted.headWeight, canonical.headWeight, `${canonical.breedCode2} matching rows retain canonical data`);
+  }
+
   const fixture = fixtureDatabase();
   const v0: BreedJudgingProfileInput = { ...profiles[0], rulesVersion: "breed-judging-v0", isActive: true };
   await syncValidatedBreedJudgingProfiles({ database: fixture.database as never, profiles: [v0] });
@@ -39,6 +90,7 @@ async function main() {
   assert.equal((fixture.rows.get(`${v0.breedCode2}:breed-judging-v0`) as { isActive: boolean }).isActive, false, "new active version deterministically deactivates older version");
   await syncValidatedBreedJudgingProfiles({ database: fixture.database as never, profiles });
   assert.equal(fixture.rows.size, 319, "same-version re-import is idempotent");
+  assert.deepEqual([...fixture.unrelatedRows], [["untouched", { value: 1 }]], "profile import leaves unrelated tables untouched");
 
   const changed = profiles.map((profile) => profile.breedCode2 === v0.breedCode2 ? { ...profile, headWeight: profile.headWeight + 1, toplineWeight: profile.toplineWeight - 1 } : profile);
   await syncValidatedBreedJudgingProfiles({ database: fixture.database as never, profiles: changed });
@@ -56,6 +108,13 @@ async function main() {
 
   const bad = data("JUDGE-01_Breed_Judging_Profile.csv").replace(/,10\.00,breed-judging-v1/, ",9.00,breed-judging-v1");
   assert.throws(() => parseBreedJudgingProfilesCsv(bad), /total/, "invalid source is rejected before import can begin");
+  const invalidFixture = fixtureDatabase();
+  await assert.rejects(() => syncValidatedBreedJudgingProfiles({ database: invalidFixture.database as never, profiles: [{ ...profiles[0], headWeight: -1 }] }), /Invalid persisted judging weight/, "invalid input fails before persistence");
+  assert.equal(invalidFixture.rows.size, 0, "invalid input leaves no partial profile rows");
+
+  const failingFixture = fixtureDatabase({ failBulkUpdate: true });
+  await assert.rejects(() => syncValidatedBreedJudgingProfiles({ database: failingFixture.database as never, profiles }), /simulated bulk profile write failure/, "bulk write failure is propagated");
+  assert.equal(failingFixture.rows.size, 0, "bulk write failure rolls back the whole 318-profile import");
   console.log("Breed judging profile persistence checks passed.");
 }
 
