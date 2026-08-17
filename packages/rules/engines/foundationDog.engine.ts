@@ -131,6 +131,8 @@ export const FOUNDATION_OPPORTUNITY_TARGETS = {
   TARGET_ALTERNATIVE_BIAS: 0.2,
   /** Selected low-frequency identities may sample one valid conspicuous diploid component pair. */
   TARGETED_LOW_FREQUENCY_DIPLOID_MIX: 0.7,
+  /** Composite scarcity evidence remains a weak bias, not a multi-locus repair signal. */
+  TARGETED_COMPOSITE_SCARCITY_DIPLOID_MIX: 0.05,
   /** Symmetric directional evidence: one side dominates while the other is scarce. */
   DIRECTIONAL_SCARCITY_DOMINANT_SHARE: 0.65,
   DIRECTIONAL_SCARCITY_OPPOSITE_MAX_SHARE: 0.2,
@@ -794,10 +796,13 @@ export function createFoundationDogProfile(
     const evidence = evidenceByLocus.get(locus);
     if (!isPopulationContext || !evidence) return [sampleBaseAllele(), sampleBaseAllele()];
     const target = targetsByLocus.get(locus);
-    const conspicuousLowFrequency = target?.reasons.length === 1 && target.reasons.includes("LOW_FREQUENCY_COMPONENT")
+    const conspicuousLowFrequency = target?.reasons.includes("LOW_FREQUENCY_COMPONENT")
       ? evidence.components.filter(component => component.share <= FOUNDATION_OPPORTUNITY_TARGETS.CONSPICUOUS_COMPONENT_MAX_SHARE)
       : [];
-    if (conspicuousLowFrequency.length > 0 && random01() < FOUNDATION_OPPORTUNITY_TARGETS.TARGETED_LOW_FREQUENCY_DIPLOID_MIX) {
+    const targetedDiploidMix = target?.reasons.length === 1
+      ? FOUNDATION_OPPORTUNITY_TARGETS.TARGETED_LOW_FREQUENCY_DIPLOID_MIX
+      : FOUNDATION_OPPORTUNITY_TARGETS.TARGETED_COMPOSITE_SCARCITY_DIPLOID_MIX;
+    if (conspicuousLowFrequency.length > 0 && random01() < targetedDiploidMix) {
       const component = chooseWeighted(conspicuousLowFrequency, conspicuousLowFrequency.map(value => Math.max(.001, 1 - value.share)), random01);
       return [sampleComponentAllele(component), sampleComponentAllele(component)];
     }
