@@ -4,10 +4,10 @@ import {
   TOTAL_LOCI,
   TRAIT_KEYS,
   createFoundationDogProfile,
-  isOrdinaryFoundationPhenotypePlausible,
   type DogTraits,
   type FoundationPopulationContextInput,
 } from "./index";
+import { classifyFoundationDiamondDiagnostic, isDirectionalPhenotypeDiamondDiagnostic } from "./foundationDiamondDiagnostics";
 
 const SEEDS = [101, 202, 303] as const;
 const PER_SEED = 3_000;
@@ -36,30 +36,6 @@ function context(geneticShape: GeneticShape, direction: PopulationDirection): Fo
   };
 }
 
-/** GEN-09F diagnostic only: a rare-side, clean-profile phenotype—not a persisted dog property. */
-function directionalDiamond(input: { traits: DogTraits; populationContext: FoundationPopulationContextInput }): boolean {
-  if (!isOrdinaryFoundationPhenotypePlausible(input)) return false;
-  const qualifying = TRAIT_KEYS.filter(trait => {
-    const profile = input.populationContext.phenotypeContext.traits?.[trait];
-    if (!profile) return false;
-    const majorityAbove = profile.aboveShare >= .75 && profile.belowShare <= .25;
-    const majorityBelow = profile.belowShare >= .75 && profile.aboveShare <= .25;
-    if (!majorityAbove && !majorityBelow) return false;
-    const value = input.traits[trait], scale = Math.max(1, Math.sqrt(profile.variance));
-    const majorityCenter = majorityAbove ? profile.aboveCenter : profile.belowCenter;
-    return (majorityAbove ? value < 10 : value > 10) && Math.abs(value - (majorityCenter ?? profile.center)) >= 3 * scale;
-  });
-  if (qualifying.length !== 1) return false;
-  return TRAIT_KEYS.filter(trait => trait !== qualifying[0]).every(trait => {
-    const profile = input.populationContext.phenotypeContext.traits?.[trait]!;
-    return Math.abs(input.traits[trait] - profile.center) <= 2 * Math.max(1, Math.sqrt(profile.variance));
-  });
-}
-
-function ordinaryPhenotype(input: { traits: DogTraits; populationContext: FoundationPopulationContextInput }): boolean {
-  return isOrdinaryFoundationPhenotypePlausible(input) && TRAIT_KEYS.filter(trait => input.traits[trait] < 5 || input.traits[trait] > 15).length < 2;
-}
-
 function run(name: string, populationContext: FoundationPopulationContextInput) {
   const counts = { neither: 0, hiddenOnly: 0, directionalOnly: 0, both: 0, repairRisk: 0, other: 0 };
   const bySelection = Array.from({ length: 3 }, () => ({ selected: 0, realized: 0, hidden: 0, directional: 0, both: 0, repairRisk: 0 }));
@@ -67,9 +43,10 @@ function run(name: string, populationContext: FoundationPopulationContextInput) 
   for (const seed of SEEDS) for (let index = 0; index < PER_SEED; index += 1) {
     const result = createFoundationDogProfile({ dogId: `${name}-${seed}-${index}`, regNumber: `DF${seed}${index}`.padEnd(11, "0"), breedCode2: "DF", birthEpoch: 1, callName: "Diagnostic", breedBaseline: { breedCode2: "DF", traitMeans: traits }, populationContext, random01: rng(seed * 1_000_003 + index) });
     const target = result.geneticsAnalysis.opportunityTargetCount, observed = result.geneticsAnalysis.observedOpportunityCount;
+    const classification = classifyFoundationDiamondDiagnostic({ traits: result.dog.traits, populationContext, observedOpportunityCount: observed });
     const genetic = observed > 0 && observed < 3;
-    const visible = directionalDiamond({ traits: result.dog.traits, populationContext });
-    const hidden = genetic && ordinaryPhenotype({ traits: result.dog.traits, populationContext }) && !visible;
+    const visible = isDirectionalPhenotypeDiamondDiagnostic({ traits: result.dog.traits, populationContext });
+    const hidden = classification === "HIDDEN_GENETIC";
     bySelection[target]!.selected += 1;
     if (genetic) { bySelection[target]!.realized += 1; realized += 1; }
     if (hidden) bySelection[target]!.hidden += 1;
@@ -90,9 +67,9 @@ function run(name: string, populationContext: FoundationPopulationContextInput) 
 const above = context("HEALTHY", "ABOVE"), below = context("HEALTHY", "BELOW");
 const sameValue: DogTraits = { ...traits, gait: 8.6 };
 const multiExtreme: DogTraits = { head: 2, forequarters: 18, hindquarters: 2.4, gait: 19.6, coat: .8, size: 10, temperament: 10, show_shine: 10, feet: 10, topline: 10 };
-assert.equal(directionalDiamond({ traits: sameValue, populationContext: above }), true, "8.6 is a clean opposite-side diamond against an above-ideal population");
-assert.equal(directionalDiamond({ traits: sameValue, populationContext: below }), false, "the same value is not a directional diamond in a below-ideal population");
-assert.equal(directionalDiamond({ traits: multiExtreme, populationContext: above }), false, "multi-trait extreme profiles are never desirable directional diamonds");
+assert.equal(isDirectionalPhenotypeDiamondDiagnostic({ traits: sameValue, populationContext: above }), true, "8.6 is a clean opposite-side diamond against an above-ideal population");
+assert.equal(isDirectionalPhenotypeDiamondDiagnostic({ traits: sameValue, populationContext: below }), false, "the same value is not a directional diamond in a below-ideal population");
+assert.equal(isDirectionalPhenotypeDiamondDiagnostic({ traits: multiExtreme, populationContext: above }), false, "multi-trait extreme profiles are never desirable directional diamonds");
 
 const reports = [
   run("HEALTHY_BALANCED", context("HEALTHY", "BALANCED")),
