@@ -453,6 +453,7 @@ export default function MarketPage() {
                             key={key}
                             label={formatCategoryName(key)}
                             value={value}
+                            precision={3}
                             min={0}
                             max={20}
                             ideal={10}

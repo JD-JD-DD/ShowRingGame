@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
+import { formatGeneticCategoryValue } from "@/lib/phenotypeFormat";
 
 type TagType =
   | "KEEP"
@@ -819,7 +820,9 @@ export default function ProgramPlannerClient() {
                               {planner.categoryLabels[key]}
                             </div>
                             <div className="mt-1 text-base font-bold">
-                              {dog.visibleCategories[key].toFixed(1)}
+                              {key === "conditioningHandling"
+                                ? dog.visibleCategories[key].toFixed(1)
+                                : formatGeneticCategoryValue(dog.visibleCategories[key])}
                             </div>
                           </div>
                         ))}

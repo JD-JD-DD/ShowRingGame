@@ -7,6 +7,7 @@ type TraitLineProps = {
   leftLabel?: string;
   centerLabel?: string;
   rightLabel?: string;
+  precision?: number;
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -32,6 +33,7 @@ export default function TraitLine({
   leftLabel = "Under ideal",
   centerLabel = "10 ideal",
   rightLabel = "Over ideal",
+  precision = 1,
 }: TraitLineProps) {
   const safeValue = clamp(value, min, max);
   const safeIdeal = clamp(ideal, min, max);
@@ -44,7 +46,7 @@ export default function TraitLine({
     <div>
       <div className="mb-1 text-sm">
         <span className="dog-copy">{label} </span>
-        <span className="dog-heading font-semibold">{safeValue.toFixed(1)}</span>
+        <span className="dog-heading font-semibold">{safeValue.toFixed(precision)}</span>
     </div>
 
       <div className="relative mt-2 h-6">
@@ -64,7 +66,7 @@ export default function TraitLine({
             left: `${valuePercent}%`,
             backgroundColor: markerColor,
           }}
-          title={safeValue.toFixed(1)}
+          title={safeValue.toFixed(precision)}
         />
       </div>
 

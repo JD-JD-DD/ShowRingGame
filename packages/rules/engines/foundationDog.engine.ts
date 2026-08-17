@@ -483,7 +483,7 @@ export function deriveVisibleCategoriesFromTraits(
   for (const category of GENETIC_JUDGING_CATEGORIES) {
     const traitKeys = CATEGORY_TRAIT_MAP[category];
     const values = traitKeys.map((traitKey) => traits[traitKey]);
-    const score = Number(aggregateDirectionalCategory(values).toFixed(1));
+    const score = aggregateDirectionalCategory(values);
 
     visibleCategories[mapCategoryKey(category)] = score;
   }

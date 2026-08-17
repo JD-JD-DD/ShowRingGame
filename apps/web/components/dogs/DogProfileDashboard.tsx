@@ -245,7 +245,7 @@ export default function DogProfileDashboard(props: Props) {
         defaultOpen
       >
         {profile.qualityAndPresentation.visibleCategories.map((category) => (
-          <TraitLine key={category.key} label={category.label} value={category.numericScore} min={category.min} max={category.max} ideal={category.ideal} leftLabel={category.leftLabel} centerLabel={category.centerLabel} rightLabel={category.rightLabel} />
+          <TraitLine key={category.key} label={category.label} value={category.numericScore} min={category.min} max={category.max} ideal={category.ideal} leftLabel={category.leftLabel} centerLabel={category.centerLabel} rightLabel={category.rightLabel} precision={category.key === "conditioningHandling" ? 1 : 3} />
         ))}
       </CollapsibleDogSection>
 

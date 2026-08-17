@@ -14,6 +14,7 @@ import {
   type PhenotypeHealthSeverity,
 } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { formatGeneticCategoryValue } from "@/lib/phenotypeFormat";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import { formatGameAge, formatUtcDateTime } from "@/lib/gameTimeFormat";
 import { PENDING_VETERINARY_CARE_BREEDING_MESSAGE } from "@/lib/breedingAvailability";
@@ -614,7 +615,7 @@ function TraitNumberGrid({
             {formatCategoryName(key)}
           </div>
           <div className="mt-1 text-xl font-bold leading-none">
-            {value.toFixed(1)}
+            {formatGeneticCategoryValue(value)}
           </div>
         </div>
       ))}
@@ -716,7 +717,7 @@ function DogOptionCard({
           </div>
           <div className="mt-1 text-purple-100/70">
             {traitNotes.strengths
-              .map((category) => `${category.label} ${category.value.toFixed(1)}`)
+              .map((category) => `${category.label} ${formatGeneticCategoryValue(category.value)}`)
               .join(" · ")}
           </div>
           <CompactHealthChips dog={dog} kind="strength" />
@@ -728,7 +729,7 @@ function DogOptionCard({
           <div className="mt-1 text-purple-100/70">
             {traitNotes.watchItems.length > 0
               ? traitNotes.watchItems
-                  .map((category) => `${category.label} ${category.value.toFixed(1)}`)
+                  .map((category) => `${category.label} ${formatGeneticCategoryValue(category.value)}`)
                   .join(" · ")
               : "No pronounced visible watch areas"}
           </div>
@@ -773,6 +774,7 @@ function MiniTraitSummary({ dog }: { dog: DogCardDto }) {
           key={key}
           label={formatCategoryName(key)}
           value={value}
+          precision={3}
           min={0}
           max={20}
           ideal={10}
@@ -1080,13 +1082,13 @@ function TraitOutlook({ dam, sire }: { dam: DogCardDto; sire: DogCardDto }) {
                   {formatCategoryName(key)}
                 </td>
                 <td className="px-3 py-2 text-right text-white">
-                  {damValue.toFixed(1)}
+                  {formatGeneticCategoryValue(damValue)}
                 </td>
                 <td className="px-3 py-2 text-right text-white">
-                  {sireValue.toFixed(1)}
+                  {formatGeneticCategoryValue(sireValue)}
                 </td>
                 <td className="px-3 py-2 text-right font-semibold text-emerald-100">
-                  {low.toFixed(1)} - {high.toFixed(1)}
+                  {formatGeneticCategoryValue(low)} - {formatGeneticCategoryValue(high)}
                 </td>
                 <td className="px-3 py-2 text-purple-100/70">{outlook}</td>
               </tr>
@@ -1132,7 +1134,7 @@ function PairingParentSnapshot({
           </div>
           <div className="mt-1 text-purple-100/70">
             {traitNotes.strengths
-              .map((category) => `${category.label} ${category.value.toFixed(1)}`)
+              .map((category) => `${category.label} ${formatGeneticCategoryValue(category.value)}`)
               .join(" · ")}
           </div>
           <CompactHealthChips dog={dog} kind="strength" />
@@ -1144,7 +1146,7 @@ function PairingParentSnapshot({
           <div className="mt-1 text-purple-100/70">
             {traitNotes.watchItems.length > 0
               ? traitNotes.watchItems
-                  .map((category) => `${category.label} ${category.value.toFixed(1)}`)
+                  .map((category) => `${category.label} ${formatGeneticCategoryValue(category.value)}`)
                   .join(" · ")
               : "No pronounced visible watch areas"}
           </div>

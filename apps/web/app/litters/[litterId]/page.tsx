@@ -261,6 +261,7 @@ export default async function LitterDetailPage({ params }: PageProps) {
                           key={key}
                           label={formatCategoryName(key)}
                           value={value}
+                          precision={3}
                           min={0}
                           max={20}
                           ideal={10}

@@ -9,6 +9,7 @@ import BulkCallNameEditor from "@/components/kennel/BulkCallNameEditor";
 import { filterDogsBySelectedRuns } from "@/components/kennel/kennelDogFiltering";
 import { matchesKennelDogSearch } from "@/components/kennel/kennelDogSearch";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { formatGeneticCategoryValue } from "@/lib/phenotypeFormat";
 import { epochToDate } from "@/lib/gameClock";
 import { formatRealDurationHoursLong } from "@/lib/gameTimeFormat";
 import {
@@ -273,10 +274,10 @@ function colorClassForVisibleValue(value: number): string {
   return "text-red-300";
 }
 
-function StatCell({ value }: { value: number }) {
+function StatCell({ value, genetic = true }: { value: number; genetic?: boolean }) {
   return (
     <div className={`text-sm font-semibold ${colorClassForVisibleValue(value)}`}>
-      {value.toFixed(1)}
+      {genetic ? formatGeneticCategoryValue(value) : value.toFixed(1)}
     </div>
   );
 }
@@ -2035,7 +2036,7 @@ export default function KennelDogsPanel() {
                       case "conditioningHandling":
                         return (
                           <td key={columnId} className="px-2 py-2">
-                            <StatCell value={dog.visibleCategories[columnId] ?? 0} />
+                            <StatCell value={dog.visibleCategories[columnId] ?? 0} genetic={columnId !== "conditioningHandling"} />
                           </td>
                         );
                       case "currentRun":
