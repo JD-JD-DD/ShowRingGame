@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 
 import {
   CURRENT_GENETICS_VERSION, TOTAL_ALLELE_VALUES, TOTAL_LOCI, TRAIT_KEYS,
-  createFoundationDogProfile, decodeGenotype, deriveBreedConformationCategoryWeights, encodeGenotype,
+  createFoundationDogProfile, createResetFoundationPopulationContext, decodeGenotype, deriveBreedConformationCategoryWeights, encodeGenotype,
   type NormalizedBreedTraitWeights,
 } from "@showring/rules";
 import { FINAL_GENETICS_CALIBRATION } from "../../../packages/rules/calibration/geneticsCalibration.constants";
@@ -71,7 +71,7 @@ function main() {
   const extremes = [100, 1_000, 10_000].map((births) => runExtremeBirthExperiment({ seed: `extreme-${births}`, sire: founder, dam: createSyntheticFounder(new SimulationRng(`dam-${births}`), `dam-${births}`, 0, "F", 14, FINAL_GENETICS_CALIBRATION.founderDistribution), births, mutation: FINAL_GENETICS_CALIBRATION.mutation }));
   assert.ok(extremes.every((result) => result.nearPerfectDogCount === 0), "extreme cohorts do not yield all-ten near-perfect dogs");
   const foundationCounts = [0, 0, 0];
-  for (let index = 0; index < 2000; index += 1) { const dog = createFoundationDogProfile({ dogId: `foundation-${index}`, regNumber: `AL${String(index).padStart(9, "0")}`, breedCode2: "AL", birthEpoch: 0, callName: "Foundation", breedBaseline: { breedCode2: "AL", traitMeans: traits }, populationContext: { mode: "RESET_FALLBACK", genotype: null }, random01: new SimulationRng(`foundation-${index}`).next.bind(new SimulationRng(`foundation-${index}`)) }); foundationCounts[Math.min(2, dog.geneticsAnalysis.opportunityTargetCount)] += 1; assert.equal(dog.dog.geneticsVersion, CURRENT_GENETICS_VERSION); }
+  for (let index = 0; index < 2000; index += 1) { const dog = createFoundationDogProfile({ dogId: `foundation-${index}`, regNumber: `AL${String(index).padStart(9, "0")}`, breedCode2: "AL", birthEpoch: 0, callName: "Foundation", breedBaseline: { breedCode2: "AL", traitMeans: traits }, populationContext: createResetFoundationPopulationContext(), random01: new SimulationRng(`foundation-${index}`).next.bind(new SimulationRng(`foundation-${index}`)) }); foundationCounts[Math.min(2, dog.geneticsAnalysis.opportunityTargetCount)] += 1; assert.equal(dog.dog.geneticsVersion, CURRENT_GENETICS_VERSION); }
   const foundationShares = foundationCounts.map((count) => count / 2000);
   assert.deepEqual(foundationShares, [1, 0, 0], "RESET_FALLBACK has no live population shortage to target");
   const mutationCount = normal.reduce((total, run) => total + run.mutationAudit.count, 0); const transmissions = normal.reduce((total, run) => total + run.cumulativeBirths * 80, 0);

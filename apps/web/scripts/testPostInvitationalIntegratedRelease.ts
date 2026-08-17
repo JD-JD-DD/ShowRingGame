@@ -15,6 +15,7 @@ import {
   TRAIT_KEYS,
   combineBreedAndJudgeConformationWeights,
   createFoundationDogProfile,
+  createResetFoundationPopulationContext,
   createJudge,
   createLitter,
   decodeGenotype,
@@ -48,7 +49,7 @@ function main() {
   assert.deepEqual(new Set(Object.values(CATEGORY_TRAIT_MAP).flat()).size, TRAIT_KEYS.length, "all and only ten inherited traits feed judging");
   assert.ok(!Object.values(CATEGORY_TRAIT_MAP).flat().includes("conditioningHandling" as never));
   for (const code2 of ["LR", "KK", "AL", "TO"]) {
-    const foundation = createFoundationDogProfile({ dogId: `${code2}-f`, regNumber: `${code2}000000101`, breedCode2: code2, birthEpoch: 1, callName: "Foundation", breedBaseline: { breedCode2: code2, traitMeans: traits }, populationContext: { mode: "RESET_FALLBACK", genotype: null }, random01: rng });
+    const foundation = createFoundationDogProfile({ dogId: `${code2}-f`, regNumber: `${code2}000000101`, breedCode2: code2, birthEpoch: 1, callName: "Foundation", breedBaseline: { breedCode2: code2, traitMeans: traits }, populationContext: createResetFoundationPopulationContext(), random01: rng });
     assert.equal(foundation.dog.geneticsVersion, CURRENT_GENETICS_VERSION);
     assert.equal(decodeGenotype(foundation.dog.genotype!).loci.length, TOTAL_LOCI);
     assert.deepEqual(Object.keys(foundation.dog.traits).sort(), [...TRAIT_KEYS].sort());

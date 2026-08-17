@@ -5,6 +5,7 @@ import {
   TOTAL_LOCI,
   TRAIT_KEYS,
   createFoundationDogProfile,
+  createResetFoundationPopulationContext,
   decodeGenotype,
   type DogTraits,
   type FoundationPopulationContextInput,
@@ -28,10 +29,10 @@ const mad = (dog: DogTraits) => TRAIT_KEYS.reduce((sum, trait) => sum + Math.abs
 type Shape = { components: Array<{ component: string; share: number }>; classification?: "DIVERSE" | "NEAR_FIXED" | "EFFECTIVELY_FIXED"; below?: number; above?: number };
 function liveContext(shape: Shape, overrides: Partial<Record<number, Shape>> = {}, mode: "LIVE" | "RETAINED_BASELINE" = "LIVE"): FoundationPopulationContextInput {
   const at = (locus: number) => overrides[locus] ?? shape;
+  const source = { mode, snapshotId: "test", gameYear: 1, snapshotEpoch: 1, rulesVersion: "breed-background-v1", sourceFingerprint: "test", eligibleDogCount: 50, kennelCount: 5 };
   return {
-    mode,
-    phenotype: Object.fromEntries(TRAIT_KEYS.map((trait, index) => { const current = at(index * 4); return [trait, { belowShare: current.below ?? .45, aboveShare: current.above ?? .45, nearIdealShare: .1 }]; })),
-    genotype: { payloadVersion: "breed-background-payload-v2", loci: Array.from({ length: TOTAL_LOCI }, (_, locus) => { const current = at(locus); return { locus, classification: current.classification ?? "DIVERSE", components: current.components }; }) },
+    phenotypeContext: { source, traits: Object.fromEntries(TRAIT_KEYS.map((trait, index) => { const current = at(index * 4); return [trait, { center: 10, variance: 1, meanAbsoluteDeviation: 1, min: 0, max: 20, belowCount: 1, exactCount: 0, aboveCount: 1, belowCenter: 9, aboveCenter: 11, belowShare: current.below ?? .45, aboveShare: current.above ?? .45, nearIdealShare: .1 }]; })) },
+    geneticDiversityContext: { source, payloadVersion: "breed-background-payload-v2", componentBinWidth: .5, overallMeanHomozygosity: 0, fixedLocusCount: 0, nearFixedLocusCount: 0, loci: Array.from({ length: TOTAL_LOCI }, (_, locus) => { const current = at(locus); const dominantShare = Math.max(...current.components.map(component => component.share)); return { locus, classification: current.classification ?? "DIVERSE", components: current.components, dominantShare, effectiveComponentCount: 1 / current.components.reduce((sum, component) => sum + component.share * component.share, 0), homozygosity: 0 }; }) },
   };
 }
 const healthy = liveContext({ components: [{ component: "-1.0", share: .25 }, { component: "-0.5", share: .25 }, { component: "0.5", share: .25 }, { component: "1.0", share: .25 }] });
@@ -44,13 +45,13 @@ const bottleneck = liveContext({ classification: "EFFECTIVELY_FIXED", components
 const worst = liveContext({ classification: "NEAR_FIXED", components: [{ component: "-1.0", share: .9 }, { component: "1.0", share: .1 }], below: .9, above: .05 });
 const rough = liveContext({ components: [{ component: "-2.0", share: .55 }, { component: "-1.5", share: .45 }], below: .75, above: .2 });
 const refined = liveContext({ components: [{ component: "-0.5", share: .5 }, { component: "0.5", share: .5 }], below: .45, above: .45 });
-const reset: FoundationPopulationContextInput = { mode: "RESET_FALLBACK", genotype: null, phenotype: null };
+const reset: FoundationPopulationContextInput = createResetFoundationPopulationContext();
 const retained = liveContext({ components: [{ component: "-0.5", share: .5 }, { component: "0.5", share: .5 }] }, {}, "RETAINED_BASELINE");
 
 function run(name: string, populationContext: FoundationPopulationContextInput) {
   const targets = [0, 0, 0], observed = [0, 0, 0, 0], reasonCounts = Object.fromEntries(reasons.map(reason => [reason, 0])) as Record<OpportunityReason, number>;
   const mads: number[] = [], byObserved = [[], [], []] as number[][]; let multiReasonIdentityCount = 0, rawReasonCount = 0, eligibleIdentityTotal = 0, observedIdentityTotal = 0, targetOneRealized = 0, targetTwoOne = 0, targetTwoTwo = 0, accidental = 0, positiveAtLocus0 = 0, negativeAtLocus0 = 0, commonAtLocus0 = 0, lowAtLocus0 = 0, genotypeNonPopulationBins = 0;
-  const populationBins = new Set((((populationContext.genotype as { loci?: Array<{ components: Array<{ component: string }> }> })?.loci?.flatMap(locus => locus.components.map(component => component.component))) ?? []));
+  const populationBins = new Set((populationContext.geneticDiversityContext.loci?.flatMap(locus => locus.components.map(component => component.component))) ?? []);
   for (const seed of SEEDS) for (let index = 0; index < PER_SEED; index += 1) {
     const result = createFoundationDogProfile({ dogId: `${name}-${seed}-${index}`, regNumber: `AB${seed}${index}`.padEnd(11, "0"), breedCode2: "AB", birthEpoch: 1, callName: "Validation", breedBaseline: { breedCode2: "AB", traitMeans: traits }, populationContext, random01: rng(seed * 1_000_003 + index) });
     const analysis = result.geneticsAnalysis, count = analysis.observedOpportunityCount, value = mad(result.dog.traits); eligibleIdentityTotal += analysis.eligibleScarcityIdentities.length; observedIdentityTotal += count; targets[analysis.opportunityTargetCount] += 1; observed[Math.min(3, count)] += 1; mads.push(value); if (count <= 2) byObserved[count]!.push(value);
@@ -60,7 +61,7 @@ function run(name: string, populationContext: FoundationPopulationContextInput) 
     genotypeNonPopulationBins += decodeGenotype(result.dog.genotype!).loci.flat().filter(value => !populationBins.has((Math.round(value / .5) * .5).toFixed(1))).length;
   }
   const total = SEEDS.length * PER_SEED, one = observed[1]!, two = observed[2]!, three = observed[3]!;
-  return { name, mode: populationContext.mode, batchSize: total, seeds: SEEDS, targetCounts: targets, observedOpportunityCounts: observed, targetPercents: targets.map(value => percent(value, total)), observedPercents: observed.map(value => percent(value, total)), eligibleScarcity: { meanPerDog: eligibleIdentityTotal / total, observedToEligibleRatio: eligibleIdentityTotal === 0 ? 0 : observedIdentityTotal / eligibleIdentityTotal }, targetRealization: { target1Observed1Plus: percent(targetOneRealized, targets[1]!), target2Observed1Plus: percent(targetTwoOne, targets[2]!), target2Observed2Plus: percent(targetTwoTwo, targets[2]!), accidentalTarget0: percent(accidental, targets[0]!) }, reasonCounts, multiReasonIdentityCount, rawReasonCount, uniqueObservedOpportunityIdentityCount: observedIdentityTotal, madDistribution: distribution(mads), madByObserved: byObserved.map(values => values.length ? distribution(values) : null), directionalMetrics: { positiveAlleleRateLocus0: percent(positiveAtLocus0, total * 2), negativeAlleleRateLocus0: percent(negativeAtLocus0, total * 2) }, componentMetrics: { locus0CommonNegativeRate: percent(commonAtLocus0, total * 2), locus0LowPositiveRate: percent(lowAtLocus0, total * 2), independentAlleleRate: percent(genotypeNonPopulationBins, total * TOTAL_LOCI * 2) }, gateResults: { observedThreePlus: three / total <= .005 ? "PASS" : "FAIL", ordinaryMajority: observed[0]! / total > .5 ? "PASS" : "FAIL" } };
+  return { name, mode: populationContext.geneticDiversityContext.source.mode, batchSize: total, seeds: SEEDS, targetCounts: targets, observedOpportunityCounts: observed, targetPercents: targets.map(value => percent(value, total)), observedPercents: observed.map(value => percent(value, total)), eligibleScarcity: { meanPerDog: eligibleIdentityTotal / total, observedToEligibleRatio: eligibleIdentityTotal === 0 ? 0 : observedIdentityTotal / eligibleIdentityTotal }, targetRealization: { target1Observed1Plus: percent(targetOneRealized, targets[1]!), target2Observed1Plus: percent(targetTwoOne, targets[2]!), target2Observed2Plus: percent(targetTwoTwo, targets[2]!), accidentalTarget0: percent(accidental, targets[0]!) }, reasonCounts, multiReasonIdentityCount, rawReasonCount, uniqueObservedOpportunityIdentityCount: observedIdentityTotal, madDistribution: distribution(mads), madByObserved: byObserved.map(values => values.length ? distribution(values) : null), directionalMetrics: { positiveAlleleRateLocus0: percent(positiveAtLocus0, total * 2), negativeAlleleRateLocus0: percent(negativeAtLocus0, total * 2) }, componentMetrics: { locus0CommonNegativeRate: percent(commonAtLocus0, total * 2), locus0LowPositiveRate: percent(lowAtLocus0, total * 2), independentAlleleRate: percent(genotypeNonPopulationBins, total * TOTAL_LOCI * 2) }, gateResults: { observedThreePlus: three / total <= .005 ? "PASS" : "FAIL", ordinaryMajority: observed[0]! / total > .5 ? "PASS" : "FAIL" } };
 }
 
 const contexts = [["RESET_FALLBACK", reset], ["HEALTHY_DIVERSITY", healthy], ["ONE_SIDED_BELOW", below], ["ONE_SIDED_ABOVE", above], ["LOW_FREQUENCY_COMPONENT", lowFrequency], ["NEAR_FIXED", nearFixed], ["EFFECTIVELY_FIXED", effectivelyFixed], ["BOTTLENECK", bottleneck], ["WORST_CASE_MULTI_SHORTAGE", worst], ["ROUGH", rough], ["REFINED", refined], ["RETAINED_BASELINE", retained]] as const;

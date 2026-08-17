@@ -9,6 +9,7 @@ import {
   CURRENT_GENETICS_VERSION,
   combineBreedAndJudgeConformationWeights,
   createFoundationDogProfile,
+  createResetFoundationPopulationContext,
   createJudge,
   createLitter,
   deriveBreedConformationCategoryWeights,
@@ -55,7 +56,7 @@ function main() {
   const dogService = source("server/services/dog.service.ts");
   const selector = source("components/breeds/BreedSelectOptions.tsx");
   requireSource(foundationService, /ensureFoundationInventoryForBreed\(args/, "foundation inventory is breedCode2-generic");
-  requireSource(populationContextService, /return \{ breedCode2, mode: "RESET_FALLBACK"/, "empty populations use generic reset fallback");
+  requireSource(populationContextService, /createResetFoundationPopulationContext\(\)/, "empty populations use generic reset fallback");
   requireSource(marketService, /const dogBreedFilter = breedCode2 \? \{ breedCode2 \} : \{\}/, "dog market filter is canonical-code driven");
   requireSource(catalogRoute, /releaseVersion:\s*\{\s*lte: CURRENT_BREED_RELEASE/, "catalog honors release state");
   requireSource(seedSource, /code2,\s*name,\s*groupName/, "seed imports canonical code/name/group");
@@ -69,8 +70,8 @@ function main() {
     assert.ok(breed.releaseVersion > 0, `${breed.breedCode2} release version is valid`);
     resolveBreedGroupNameToCanonicalShowGroupCode(breed.group);
     const rng = random(index + 1);
-    const sire = createFoundationDogProfile({ dogId: `${breed.breedCode2}-sire`, regNumber: `${breed.breedCode2}000000101`, breedCode2: breed.breedCode2, birthEpoch: 0, callName: "Sire", breedBaseline: { breedCode2: breed.breedCode2, traitMeans }, populationContext: { mode: "RESET_FALLBACK", genotype: null }, random01: rng });
-    const dam = createFoundationDogProfile({ dogId: `${breed.breedCode2}-dam`, regNumber: `${breed.breedCode2}000000201`, breedCode2: breed.breedCode2, birthEpoch: 0, callName: "Dam", breedBaseline: { breedCode2: breed.breedCode2, traitMeans }, populationContext: { mode: "RESET_FALLBACK", genotype: null }, random01: rng });
+    const sire = createFoundationDogProfile({ dogId: `${breed.breedCode2}-sire`, regNumber: `${breed.breedCode2}000000101`, breedCode2: breed.breedCode2, birthEpoch: 0, callName: "Sire", breedBaseline: { breedCode2: breed.breedCode2, traitMeans }, populationContext: createResetFoundationPopulationContext(), random01: rng });
+    const dam = createFoundationDogProfile({ dogId: `${breed.breedCode2}-dam`, regNumber: `${breed.breedCode2}000000201`, breedCode2: breed.breedCode2, birthEpoch: 0, callName: "Dam", breedBaseline: { breedCode2: breed.breedCode2, traitMeans }, populationContext: createResetFoundationPopulationContext(), random01: rng });
     assert.equal(sire.dog.geneticsVersion, CURRENT_GENETICS_VERSION, `${breed.breedCode2} foundation genetics version`);
     const litter = createLitter({ litterId: `${breed.breedCode2}-litter`, breedCode2: breed.breedCode2, bornEpoch: 1, sireId: sire.dog.dogId, damId: dam.dog.dogId, pupCount: 2, puppyDogIds: [`${breed.breedCode2}-p1`, `${breed.breedCode2}-p2`], puppySexes: ["M", "F"], sireTraits: sire.dog.traits, damTraits: dam.dog.traits, sireGenotype: sire.dog.genotype!, sireGeneticsVersion: sire.dog.geneticsVersion!, damGenotype: dam.dog.genotype!, damGeneticsVersion: dam.dog.geneticsVersion!, coiPercent: 0, coiGenerationDepth: 0, random01: rng, puppyGeneticsRandom01: () => rng });
     assert.equal(litter.puppies[0].geneticsVersion, CURRENT_GENETICS_VERSION, `${breed.breedCode2} Model D litter generation`);

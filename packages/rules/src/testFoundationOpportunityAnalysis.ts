@@ -5,6 +5,7 @@ import {
   TOTAL_LOCI,
   classifyFoundationOpportunities,
   createFoundationDogProfile,
+  createResetFoundationPopulationContext,
   decodeGenotype,
   type CanonicalGenotype,
   type DogTraits,
@@ -17,10 +18,10 @@ const genotype = (first: readonly [number, number]): CanonicalGenotype => ({ gen
 
 function context(args: { below?: number; above?: number; components?: Array<{ component: string; share: number }>; classification?: "DIVERSE" | "NEAR_FIXED" | "EFFECTIVELY_FIXED"; mode?: "LIVE" | "RETAINED_BASELINE"; singleLocus?: boolean } = {}): FoundationPopulationContextInput {
   const components = args.components ?? [{ component: "-1.0", share: 0.95 }, { component: "1.0", share: 0.05 }];
+  const source = { mode: args.mode ?? "LIVE" as const, snapshotId: "test", gameYear: 1, snapshotEpoch: 1, rulesVersion: "breed-background-v1", sourceFingerprint: "test", eligibleDogCount: 50, kennelCount: 5 };
   return {
-    mode: args.mode ?? "LIVE",
-    phenotype: Object.fromEntries(Object.keys(traits).map(trait => [trait, { belowShare: args.below ?? 0.9, aboveShare: args.above ?? 0.05, nearIdealShare: 0.05 }])),
-    genotype: { loci: Array.from({ length: TOTAL_LOCI }, (_, locus) => ({ locus, classification: args.singleLocus && locus !== 0 ? "DIVERSE" : args.classification ?? "DIVERSE", components: args.singleLocus && locus !== 0 ? [{ component: "0.0", share: 1 }] : components })) },
+    phenotypeContext: { source, traits: Object.fromEntries(Object.keys(traits).map(trait => [trait, { center: 10, variance: 1, meanAbsoluteDeviation: 1, min: 0, max: 20, belowCount: 1, exactCount: 0, aboveCount: 1, belowCenter: 9, aboveCenter: 11, belowShare: args.below ?? 0.9, aboveShare: args.above ?? 0.05, nearIdealShare: 0.05 }])) },
+    geneticDiversityContext: { source, payloadVersion: "breed-background-payload-v2", componentBinWidth: .5, overallMeanHomozygosity: 0, fixedLocusCount: 0, nearFixedLocusCount: 0, loci: Array.from({ length: TOTAL_LOCI }, (_, locus) => { const entries = args.singleLocus && locus !== 0 ? [{ component: "0.0", share: 1 }] : components; const dominantShare = Math.max(...entries.map(entry => entry.share)); return { locus, classification: args.singleLocus && locus !== 0 ? "DIVERSE" : args.classification ?? "DIVERSE", components: entries, dominantShare, effectiveComponentCount: 1 / entries.reduce((sum, entry) => sum + entry.share * entry.share, 0), homozygosity: 0 }; }) },
   };
 }
 
@@ -52,8 +53,8 @@ const directionalTrials = targetedTrials(context({ singleLocus: true, below: 0.9
 assert.ok(directionalTrials.every(result => result.geneticsAnalysis.targetedOpportunityIdentities[0]!.reasons.includes("OPPOSITE_DIRECTION_SCARCITY")), "directional scarcity is eligible from below/above evidence");
 assert.ok(directionalTrials.some(result => result.geneticsAnalysis.observedOpportunityCount === 0), "directional targeting does not guarantee a conspicuous diploid result");
 
-const resetA = createFoundationDogProfile({ dogId: "reset", regNumber: "AB000000401", breedCode2: "AB", birthEpoch: 1, callName: "Reset", breedBaseline: { breedCode2: "AB", traitMeans: traits }, populationContext: { mode: "RESET_FALLBACK", genotype: null }, random01: random(77) });
-const resetB = createFoundationDogProfile({ dogId: "reset", regNumber: "AB000000401", breedCode2: "AB", birthEpoch: 1, callName: "Reset", breedBaseline: { breedCode2: "AB", traitMeans: traits }, populationContext: { mode: "RESET_FALLBACK", genotype: null }, random01: random(77) });
+const resetA = createFoundationDogProfile({ dogId: "reset", regNumber: "AB000000401", breedCode2: "AB", birthEpoch: 1, callName: "Reset", breedBaseline: { breedCode2: "AB", traitMeans: traits }, populationContext: createResetFoundationPopulationContext(), random01: random(77) });
+const resetB = createFoundationDogProfile({ dogId: "reset", regNumber: "AB000000401", breedCode2: "AB", birthEpoch: 1, callName: "Reset", breedBaseline: { breedCode2: "AB", traitMeans: traits }, populationContext: createResetFoundationPopulationContext(), random01: random(77) });
 assert.equal(resetA.dog.genotype, resetB.dog.genotype, "reset fallback remains deterministic");
 assert.deepEqual(resetA.geneticsAnalysis, { eligibleScarcityIdentities: [], opportunityTargetCount: 0, targetedOpportunityIdentities: [], observedOpportunityIdentities: [], observedOpportunityCount: 0 }, "reset fallback has no population-derived opportunity work");
 

@@ -53,16 +53,74 @@ export type CreateFoundationDogEngineInput = {
   sex?: Sex;
   callName: string;
   breedBaseline: FoundationBreedBaseline;
-  /** GEN-09B context is intentionally generation-neutral until GEN-09C. */
+  /** Server-resolved contemporary evidence; rules never query population state. */
   populationContext?: FoundationPopulationContextInput;
   random01?: () => number;
 };
 
-export type FoundationPopulationContextInput = {
+export type FoundationContextSource = {
   mode: "LIVE" | "RETAINED_BASELINE" | "RESET_FALLBACK";
-  phenotype?: unknown | null;
-  genotype: unknown | null;
+  snapshotId: string | null;
+  gameYear: number | null;
+  snapshotEpoch: number | null;
+  rulesVersion: string | null;
+  sourceFingerprint: string | null;
+  eligibleDogCount: number;
+  kennelCount: number;
 };
+
+export type FoundationPhenotypeTraitContext = {
+  center: number;
+  variance: number;
+  meanAbsoluteDeviation: number;
+  min: number;
+  max: number;
+  belowCount: number;
+  exactCount: number;
+  aboveCount: number;
+  belowCenter: number | null;
+  aboveCenter: number | null;
+  belowShare: number;
+  aboveShare: number;
+  nearIdealShare: number;
+};
+
+export type FoundationPhenotypeContext = {
+  source: FoundationContextSource;
+  traits: Partial<Record<TraitKey, FoundationPhenotypeTraitContext>> | null;
+};
+
+export type FoundationLocusDiversityContext = {
+  locus: number;
+  components: Array<{ component: string; share: number }>;
+  dominantShare: number;
+  effectiveComponentCount: number;
+  homozygosity: number;
+  classification: "DIVERSE" | "NEAR_FIXED" | "EFFECTIVELY_FIXED";
+};
+
+export type FoundationGeneticDiversityContext = {
+  source: FoundationContextSource;
+  payloadVersion: string | null;
+  componentBinWidth: number | null;
+  overallMeanHomozygosity: number | null;
+  fixedLocusCount: number | null;
+  nearFixedLocusCount: number | null;
+  loci: FoundationLocusDiversityContext[] | null;
+};
+
+export type FoundationPopulationContextInput = {
+  phenotypeContext: FoundationPhenotypeContext;
+  geneticDiversityContext: FoundationGeneticDiversityContext;
+};
+
+export function createResetFoundationPopulationContext(): FoundationPopulationContextInput {
+  const source: FoundationContextSource = { mode: "RESET_FALLBACK", snapshotId: null, gameYear: null, snapshotEpoch: null, rulesVersion: null, sourceFingerprint: null, eligibleDogCount: 0, kennelCount: 0 };
+  return {
+    phenotypeContext: { source, traits: null },
+    geneticDiversityContext: { source, payloadVersion: null, componentBinWidth: null, overallMeanHomozygosity: null, fixedLocusCount: null, nearFixedLocusCount: null, loci: null },
+  };
+}
 /** GEN-09C calibration: internal generation analysis, never a player-visible tier. */
 export const FOUNDATION_OPPORTUNITY_TARGETS = {
   ZERO: 0.83,
@@ -111,11 +169,11 @@ type LocusEvidence = {
 type TraitEvidence = { belowShare: number; aboveShare: number; nearIdealShare: number };
 type OpportunityCandidate = FoundationOpportunityIdentity & { direction: -1 | 0 | 1 };
 
-function contextLoci(context: FoundationPopulationContextInput | undefined): LocusEvidence[] {
-  const payload = context?.genotype as { loci?: unknown } | null;
-  if (context?.mode === "RESET_FALLBACK" || !Array.isArray(payload?.loci)) return [];
-  return payload.loci
-    .filter((value): value is LocusEvidence => {
+function contextLoci(context: FoundationPopulationContextInput | undefined): FoundationLocusDiversityContext[] {
+  const loci = context?.geneticDiversityContext.loci;
+  if (context?.geneticDiversityContext.source.mode === "RESET_FALLBACK" || !Array.isArray(loci)) return [];
+  return loci
+    .filter((value): value is FoundationLocusDiversityContext => {
       if (typeof value !== "object" || value === null) return false;
       const locus = value as LocusEvidence;
       return Number.isInteger(locus.locus) && locus.locus >= 0 && locus.locus < TOTAL_LOCI &&
@@ -126,9 +184,8 @@ function contextLoci(context: FoundationPopulationContextInput | undefined): Loc
 }
 
 function contextTraitEvidence(context: FoundationPopulationContextInput | undefined, trait: TraitKey): TraitEvidence | null {
-  const payload = context?.phenotype as Record<string, unknown> | null;
-  const value = payload?.[trait];
-  if (context?.mode === "RESET_FALLBACK" || typeof value !== "object" || value === null) return null;
+  const value = context?.phenotypeContext.traits?.[trait];
+  if (context?.phenotypeContext.source.mode === "RESET_FALLBACK" || !value) return null;
   const evidence = value as Partial<TraitEvidence>;
   return Number.isFinite(evidence.belowShare) && Number.isFinite(evidence.aboveShare) && Number.isFinite(evidence.nearIdealShare)
     ? { belowShare: evidence.belowShare!, aboveShare: evidence.aboveShare!, nearIdealShare: evidence.nearIdealShare! }
@@ -674,7 +731,8 @@ export function createFoundationDogProfile(
     const centered = Array.from({ length: 6 }, () => random01() * 2 - 1).reduce((sum, value) => sum + value, 0) / 6;
     return Math.round(centered * FINAL_GENETICS_CALIBRATION.founderDistribution.spread * 1_000_000) / 1_000_000;
   };
-  const isPopulationContext = input.populationContext?.mode === "LIVE" || input.populationContext?.mode === "RETAINED_BASELINE";
+  const mode = input.populationContext?.geneticDiversityContext.source.mode;
+  const isPopulationContext = mode === "LIVE" || mode === "RETAINED_BASELINE";
   const lociEvidence = contextLoci(input.populationContext);
   const candidates = opportunityCandidates(input.populationContext, lociEvidence);
   const desiredTargetCount: 0 | 1 | 2 = !isPopulationContext ? 0 : (() => {
