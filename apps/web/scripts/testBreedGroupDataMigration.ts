@@ -32,13 +32,27 @@ function main() {
   const groupChanges = canonical.filter((row) => baselineByCode.has(row.code2) && baselineByCode.get(row.code2)!.groupName !== row.groupName);
   const newBreeds = canonical.filter((row) => !baselineByCode.has(row.code2));
   assert.equal(old.length, 264); assert.equal(canonical.length, 318); assert.equal(newBreeds.length, 54); assert.equal(groupChanges.length, 12);
-  const plan = buildCanonicalBreedMigrationPlan({ canonical, baseline: old, target: old });
-  assert.equal(plan.inserts, 54); assert.equal(plan.groupUpdates, 12); assert.equal(plan.nameUpdates, 1); assert.equal(plan.activeUpdates, 0); assert.equal(plan.releaseVersionUpdates, 0); assert.equal(plan.databaseOnly.length, 0); assert.equal(plan.identityConflicts.length, 0);
+  for (const code2 of ["QE", "QM", "RC", "SO"]) {
+    const breed = canonical.find((row) => row.code2 === code2)!;
+    assert.equal(breed.isActive, false, `${code2} remains inactive`);
+    assert.equal(breed.releaseVersion, 999, `${code2} retains release version 999`);
+  }
+  const tc = canonical.find((row) => row.code2 === "TC")!;
+  assert.equal(tc.name, "Toy Manchester Terrier");
+  const inactiveDuplicateCodes = new Set(["QE", "QM", "RC", "SO"]);
+  const approvedTarget = old.map((row) => ({
+    ...clone(row),
+    name: row.code2 === "TC" ? "Toy Macnchester Terrier" : row.name,
+    isActive: inactiveDuplicateCodes.has(row.code2) ? false : row.isActive,
+  }));
+  const plan = buildCanonicalBreedMigrationPlan({ canonical, baseline: old, target: approvedTarget });
+  assert.equal(plan.inserts, 54); assert.equal(plan.groupUpdates, 12); assert.equal(plan.nameUpdates, 2); assert.equal(plan.activeUpdates, 0); assert.equal(plan.releaseVersionUpdates, 0); assert.equal(plan.databaseOnly.length, 0); assert.equal(plan.identityConflicts.length, 0);
+  assert.deepEqual(plan.rows.filter((row) => row.kinds.includes("UPDATE_NAME")).map((row) => row.code2).sort(), ["NB", "TC"]);
   const relations = { dogs: [{ id: "dog", breedCode2: "KK", sireId: "sire", damId: "dam" }], litters: [{ id: "litter", breedCode2: "KK" }], registrations: [{ id: "reservation", breedCode2: "KK" }], showEntries: [{ id: "entry", breedCode2: "KK" }], showResults: [{ id: "result", breedCode2: "KK", group: "MIS" }], showAwards: [{ id: "award", breedCode2: "KK" }], pointsTitles: [{ id: "points", breedCode2: "KK" }], shows: [{ id: "future-show", groups: ["MIS"] }], judgingProfiles: [{ id: "profile", breedCode2: "KK" }] };
   const preserved = clone(relations);
-  assert.throws(() => applyFixture(old, plan, 2), /injected transaction failure/);
-  assert.deepEqual(old, baseline(), "failure leaves transaction source unchanged");
-  const migrated = applyFixture(old, plan);
+  assert.throws(() => applyFixture(approvedTarget, plan, 2), /injected transaction failure/);
+  assert.equal(approvedTarget.find((row) => row.code2 === "TC")!.name, "Toy Macnchester Terrier", "failure leaves transaction source unchanged");
+  const migrated = applyFixture(approvedTarget, plan);
   assert.deepEqual(relations, preserved, "Breed-only migration does not write related/historical fixtures");
   assert.ok(migrated.every((breed) => !relations.dogs.some((dog) => dog.breedCode2 === breed.code2) || breed.code2 === "KK"));
   assert.equal(verifyCanonicalBreedData({ canonical, target: migrated }).valid, true);

@@ -18,6 +18,17 @@ export type BreedMigrationPlan = { rows: BreedMigrationPlanRow[]; inserts: numbe
 
 const CSV_HEADERS = ["breed_name", "code2", "group", "playable", "release_version"] as const;
 
+/** Narrow, release-audited legacy spellings that may be corrected by code2. */
+const APPROVED_LEGACY_NAME_CORRECTIONS: Readonly<Record<string, { before: string; after: string }>> = {
+  NB: { before: "Norbottenspets", after: "Norrbottenspets" },
+  TC: { before: "Toy Macnchester Terrier", after: "Toy Manchester Terrier" },
+};
+
+function isApprovedLegacyNameCorrection(code2: string, before: string, after: string): boolean {
+  const approved = APPROVED_LEGACY_NAME_CORRECTIONS[code2];
+  return approved?.before === before && approved.after === after;
+}
+
 /** Parses the repository-owned canonical file before any migration plan or write. */
 export function parseCanonicalBreedDataCsv(csv: string): CanonicalBreedData[] {
   // Reuse the BREED-01/JUDGE canonical identity parser before reading the migration-only fields.
@@ -67,7 +78,7 @@ export function buildCanonicalBreedMigrationPlan(args: { canonical: CanonicalBre
     if (!target) { rows.push({ code2: canonical.code2, name: canonical.name, kinds: ["INSERT"], after: canonical }); continue; }
     const kinds: PlanKind[] = [];
     if (target.name !== canonical.name) {
-      if (baselineByCode.get(canonical.code2)?.name === target.name) kinds.push("UPDATE_NAME");
+      if (baselineByCode.get(canonical.code2)?.name === target.name || isApprovedLegacyNameCorrection(canonical.code2, target.name, canonical.name)) kinds.push("UPDATE_NAME");
       else { kinds.push("IDENTITY_CONFLICT"); identityConflicts.push(canonical.code2); }
     }
     if (target.groupName !== canonical.groupName) kinds.push("UPDATE_GROUP");
