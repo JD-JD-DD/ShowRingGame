@@ -7,7 +7,6 @@ import {
   TRAIT_MIN,
   type TraitKey,
 } from "../constants/genetics.constants";
-import { FINAL_GENETICS_CALIBRATION } from "../calibration/geneticsCalibration.constants";
 import { calculatePhenotypeFromGenotype, encodeGenotype, type CanonicalGenotype } from "./genotype.engine";
 import {
   CATEGORY_TRAIT_MAP,
@@ -169,6 +168,17 @@ type LocusEvidence = {
 type TraitEvidence = { belowShare: number; aboveShare: number; nearIdealShare: number };
 type OpportunityCandidate = FoundationOpportunityIdentity & { direction: -1 | 0 | 1 };
 
+/** GEN-09C ordinary-import calibration; deliberately separate from GEN-06E reset founders. */
+export const ORDINARY_IMPORT_CALIBRATION = {
+  ALLELE_SPREAD: 3.5,
+  MAX_CANDIDATE_ATTEMPTS: 12,
+  EMERGENCY_ALLELE_BOUND: 0.5,
+  MAX_EXTREME_TRAITS: 1,
+  MAX_BROAD_OUTLIER_TRAITS: 2,
+  MAX_RELATIVE_OUTLIER_TRAITS: 2,
+  MAX_MEAN_RELATIVE_DEPARTURE: 2.2,
+} as const;
+
 function contextLoci(context: FoundationPopulationContextInput | undefined): FoundationLocusDiversityContext[] {
   const loci = context?.geneticDiversityContext.loci;
   if (context?.geneticDiversityContext.source.mode === "RESET_FALLBACK" || !Array.isArray(loci)) return [];
@@ -190,6 +200,29 @@ function contextTraitEvidence(context: FoundationPopulationContextInput | undefi
   return Number.isFinite(evidence.belowShare) && Number.isFinite(evidence.aboveShare) && Number.isFinite(evidence.nearIdealShare)
     ? { belowShare: evidence.belowShare!, aboveShare: evidence.aboveShare!, nearIdealShare: evidence.nearIdealShare! }
     : null;
+}
+
+function contextTraitProfile(context: FoundationPopulationContextInput | undefined, trait: TraitKey): FoundationPhenotypeTraitContext | null {
+  const value = context?.phenotypeContext.traits?.[trait];
+  return context?.phenotypeContext.source.mode === "RESET_FALLBACK" || !value ? null : value;
+}
+
+/** GEN-09C profile-level check: contemporary evidence bounds plausibility but never supplies a phenotype target. */
+export function isOrdinaryFoundationPhenotypePlausible(input: { traits: DogTraits; populationContext?: FoundationPopulationContextInput }): boolean {
+  const values = TRAIT_KEYS.map(trait => input.traits[trait]);
+  const extremeTraits = values.filter(value => value < 3 || value > 17).length;
+  const broadOutlierTraits = values.filter(value => value < 5 || value > 15).length;
+  if (extremeTraits > ORDINARY_IMPORT_CALIBRATION.MAX_EXTREME_TRAITS || broadOutlierTraits > ORDINARY_IMPORT_CALIBRATION.MAX_BROAD_OUTLIER_TRAITS) return false;
+  const relativeDepartures = TRAIT_KEYS.flatMap(trait => {
+    const profile = contextTraitProfile(input.populationContext, trait);
+    if (!profile) return [];
+    const scale = Math.max(1, Math.sqrt(profile.variance));
+    return [Math.abs(input.traits[trait] - profile.center) / scale];
+  });
+  if (relativeDepartures.length === 0) return true;
+  const relativeOutliers = relativeDepartures.filter(value => value > 3.5).length;
+  const meanRelativeDeparture = average(relativeDepartures);
+  return relativeOutliers <= ORDINARY_IMPORT_CALIBRATION.MAX_RELATIVE_OUTLIER_TRAITS && meanRelativeDeparture <= ORDINARY_IMPORT_CALIBRATION.MAX_MEAN_RELATIVE_DEPARTURE;
 }
 
 function traitForLocus(locus: number): TraitKey {
@@ -725,20 +758,21 @@ export function createFoundationDogProfile(
   const random01 = input.random01 ?? Math.random;
   const sex = input.sex ?? pickSex(random01);
   const qualityBand = pickQualityBand(random01);
-  // GEN-09: calibrated reset-population fallback is genotype-first. Legacy
-  // baseline/band values remain only for inventory-price compatibility.
-  const sampleAllele = () => {
+  // GEN-09C ordinary imports are external, genotype-first stock. GEN-06E's
+  // spread 14 remains reserved for clean-reset founder calibration.
+  const sampleOrdinaryAllele = () => {
     const centered = Array.from({ length: 6 }, () => random01() * 2 - 1).reduce((sum, value) => sum + value, 0) / 6;
-    return Math.round(centered * FINAL_GENETICS_CALIBRATION.founderDistribution.spread * 1_000_000) / 1_000_000;
+    return Math.round(centered * ORDINARY_IMPORT_CALIBRATION.ALLELE_SPREAD * 1_000_000) / 1_000_000;
   };
   const mode = input.populationContext?.geneticDiversityContext.source.mode;
   const isPopulationContext = mode === "LIVE" || mode === "RETAINED_BASELINE";
   const lociEvidence = contextLoci(input.populationContext);
   const candidates = opportunityCandidates(input.populationContext, lociEvidence);
-  const desiredTargetCount: 0 | 1 | 2 = !isPopulationContext ? 0 : (() => {
+  const desiredTargetCount: 0 | 1 | 2 = !isPopulationContext || candidates.length === 0 ? 0 : (() => {
     const targetRoll = random01();
     return targetRoll < FOUNDATION_OPPORTUNITY_TARGETS.TWO ? 2 : targetRoll < FOUNDATION_OPPORTUNITY_TARGETS.TWO + FOUNDATION_OPPORTUNITY_TARGETS.ONE ? 1 : 0;
   })();
+  const sampleBaseAllele = sampleOrdinaryAllele;
   const remainingCandidates = [...candidates];
   const targetedOpportunityIdentities: FoundationOpportunityIdentity[] = [];
   while (targetedOpportunityIdentities.length < desiredTargetCount && remainingCandidates.length > 0) {
@@ -758,7 +792,7 @@ export function createFoundationDogProfile(
   };
   const populationAlleles = (locus: number): readonly [number, number] => {
     const evidence = evidenceByLocus.get(locus);
-    if (!isPopulationContext || !evidence) return [sampleAllele(), sampleAllele()];
+    if (!isPopulationContext || !evidence) return [sampleBaseAllele(), sampleBaseAllele()];
     const target = targetsByLocus.get(locus);
     const conspicuousLowFrequency = target?.reasons.length === 1 && target.reasons.includes("LOW_FREQUENCY_COMPONENT")
       ? evidence.components.filter(component => component.share <= FOUNDATION_OPPORTUNITY_TARGETS.CONSPICUOUS_COMPONENT_MAX_SHARE)
@@ -768,7 +802,7 @@ export function createFoundationDogProfile(
       return [sampleComponentAllele(component), sampleComponentAllele(component)];
     }
     const populationAllele = () => {
-      if (random01() >= FOUNDATION_OPPORTUNITY_TARGETS.POPULATION_COMPONENT_MIX) return sampleAllele();
+      if (random01() >= FOUNDATION_OPPORTUNITY_TARGETS.POPULATION_COMPONENT_MIX) return sampleBaseAllele();
     const ordinary = chooseWeighted(evidence.components, evidence.components.map(component => component.share), random01);
     let chosen = ordinary;
     if (target && random01() < FOUNDATION_OPPORTUNITY_TARGETS.TARGET_ALTERNATIVE_BIAS) {
@@ -785,9 +819,25 @@ export function createFoundationDogProfile(
     };
     return [populationAllele(), populationAllele()];
   };
-  const genotype: CanonicalGenotype = { geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: TOTAL_LOCI }, (_, locus) => populationAlleles(locus)) };
+  const ordinaryCandidate = (): CanonicalGenotype => ({ geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: TOTAL_LOCI }, (_, locus) => populationAlleles(locus)) });
+  let genotype = ordinaryCandidate();
+  let traits = calculatePhenotypeFromGenotype(genotype);
+  const needsOrdinaryPlausibilityRetry = true;
+  for (let attempt = 1; needsOrdinaryPlausibilityRetry && attempt < ORDINARY_IMPORT_CALIBRATION.MAX_CANDIDATE_ATTEMPTS && !isOrdinaryFoundationPhenotypePlausible({ traits, populationContext: input.populationContext }); attempt += 1) {
+    genotype = ordinaryCandidate();
+    traits = calculatePhenotypeFromGenotype(genotype);
+  }
+  if (needsOrdinaryPlausibilityRetry && !isOrdinaryFoundationPhenotypePlausible({ traits, populationContext: input.populationContext })) {
+    genotype = {
+      geneticsVersion: CURRENT_GENETICS_VERSION,
+      loci: Array.from({ length: TOTAL_LOCI }, () => [
+        Math.round((random01() * 2 - 1) * ORDINARY_IMPORT_CALIBRATION.EMERGENCY_ALLELE_BOUND * 1_000_000) / 1_000_000,
+        Math.round((random01() * 2 - 1) * ORDINARY_IMPORT_CALIBRATION.EMERGENCY_ALLELE_BOUND * 1_000_000) / 1_000_000,
+      ] as const),
+    };
+    traits = calculatePhenotypeFromGenotype(genotype);
+  }
   const observedOpportunityIdentities = classifyFoundationOpportunities({ populationContext: input.populationContext, genotype });
-  const traits = calculatePhenotypeFromGenotype(genotype);
   const visibleCategories = deriveVisibleCategoriesFromTraits(traits);
   const suggestedPrice = calculateSuggestedPrice(visibleCategories, qualityBand);
 
