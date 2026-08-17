@@ -179,6 +179,8 @@ export const ORDINARY_IMPORT_CALIBRATION = {
   MAX_BROAD_OUTLIER_TRAITS: 2,
   MAX_RELATIVE_OUTLIER_TRAITS: 2,
   MAX_MEAN_RELATIVE_DEPARTURE: 2.2,
+  RARE_DIRECTION_MAX_MULTIPLIER: 1.1,
+  OBSERVED_RANGE_GRACE_STANDARD_DEVIATIONS: 1,
 } as const;
 
 function contextLoci(context: FoundationPopulationContextInput | undefined): FoundationLocusDiversityContext[] {
@@ -219,7 +221,14 @@ export function isOrdinaryFoundationPhenotypePlausible(input: { traits: DogTrait
     const profile = contextTraitProfile(input.populationContext, trait);
     if (!profile) return [];
     const scale = Math.max(1, Math.sqrt(profile.variance));
-    return [Math.abs(input.traits[trait] - profile.center) / scale];
+    const value = input.traits[trait];
+    const below = value < 10;
+    const sideCenter = below ? profile.belowCenter ?? profile.center : value > 10 ? profile.aboveCenter ?? profile.center : profile.center;
+    const sideShare = below ? profile.belowShare : value > 10 ? profile.aboveShare : profile.nearIdealShare;
+    const rarityMultiplier = 1 + Math.max(0, .2 - sideShare) / .2 * (ORDINARY_IMPORT_CALIBRATION.RARE_DIRECTION_MAX_MULTIPLIER - 1);
+    const directionalDeparture = Math.abs(value - sideCenter) / scale * rarityMultiplier;
+    const beyondObservedRange = value < profile.min ? (profile.min - value) / scale : value > profile.max ? (value - profile.max) / scale : 0;
+    return [Math.max(directionalDeparture, Math.max(0, beyondObservedRange - ORDINARY_IMPORT_CALIBRATION.OBSERVED_RANGE_GRACE_STANDARD_DEVIATIONS))];
   });
   if (relativeDepartures.length === 0) return true;
   const relativeOutliers = relativeDepartures.filter(value => value > 3.5).length;
@@ -292,6 +301,11 @@ export type FoundationDogEngineResult = {
   suggestedPrice: number;
   /** Internal/test-only GEN-09C observability; production persistence discards it. */
   geneticsAnalysis: FoundationGeneticsAnalysis;
+  /** Internal/test-only GEN-09E observability; production persistence discards it. */
+  plausibilityDiagnostics: {
+    candidateAttempts: number;
+    usedEmergencyFallback: boolean;
+  };
 };
 
 const FOUNDATION_STANDARD_WEIGHT = 0.60;
@@ -827,12 +841,16 @@ export function createFoundationDogProfile(
   const ordinaryCandidate = (): CanonicalGenotype => ({ geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: TOTAL_LOCI }, (_, locus) => populationAlleles(locus)) });
   let genotype = ordinaryCandidate();
   let traits = calculatePhenotypeFromGenotype(genotype);
+  let candidateAttempts = 1;
+  let usedEmergencyFallback = false;
   const needsOrdinaryPlausibilityRetry = true;
   for (let attempt = 1; needsOrdinaryPlausibilityRetry && attempt < ORDINARY_IMPORT_CALIBRATION.MAX_CANDIDATE_ATTEMPTS && !isOrdinaryFoundationPhenotypePlausible({ traits, populationContext: input.populationContext }); attempt += 1) {
     genotype = ordinaryCandidate();
     traits = calculatePhenotypeFromGenotype(genotype);
+    candidateAttempts += 1;
   }
   if (needsOrdinaryPlausibilityRetry && !isOrdinaryFoundationPhenotypePlausible({ traits, populationContext: input.populationContext })) {
+    usedEmergencyFallback = true;
     genotype = {
       geneticsVersion: CURRENT_GENETICS_VERSION,
       loci: Array.from({ length: TOTAL_LOCI }, () => [
@@ -875,6 +893,7 @@ export function createFoundationDogProfile(
       observedOpportunityIdentities,
       observedOpportunityCount: observedOpportunityIdentities.length,
     },
+    plausibilityDiagnostics: { candidateAttempts, usedEmergencyFallback },
   };
 }
 
