@@ -584,6 +584,7 @@ model Dog {
   muscleTone    Int   @default(0)
   coatCondition Float @default(0)
   fatiguePoints Int   @default(0)
+  isBreedingActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

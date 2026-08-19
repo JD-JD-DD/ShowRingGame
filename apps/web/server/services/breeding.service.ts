@@ -68,6 +68,7 @@ type DogForBreeding = PersistedDogTraitRecord & {
   birthEpoch: number;
   lifecycleState: string;
   ownerKennelId: string | null;
+  isBreedingActive: boolean;
   breed: {
     name: string;
   };
@@ -355,6 +356,17 @@ function displayDogNameOrFallback(
   return displayDogName(dog);
 }
 
+function assertBreedingParticipationActive(dog: {
+  isBreedingActive: boolean;
+  callName: string | null;
+  registeredName: string | null;
+  regNumber: string;
+}) {
+  if (!dog.isBreedingActive) {
+    throw new Error(`${displayDogName(dog)} is not currently active for breeding.`);
+  }
+}
+
 function formatCurrency(amount: number) {
   return `$${amount.toLocaleString()}`;
 }
@@ -443,6 +455,7 @@ async function getDogForBreeding(dogId: string): Promise<DogForBreeding | null> 
       birthEpoch: true,
       lifecycleState: true,
       ownerKennelId: true,
+      isBreedingActive: true,
       breed: {
         select: {
           name: true,
@@ -1226,6 +1239,9 @@ export async function createBreedingAttemptForKennel(args: {
     throw new Error("A dog cannot be bred to itself.");
   }
 
+  assertBreedingParticipationActive(primaryDog);
+  assertBreedingParticipationActive(mateDog);
+
   if (primaryDog.lifecycleState !== "ALIVE" || mateDog.lifecycleState !== "ALIVE") {
     throw new Error("Only living dogs may be bred.");
   }
@@ -1329,6 +1345,22 @@ export async function createBreedingAttemptForKennel(args: {
       WHERE "id" = ${sire.id}
       FOR UPDATE
     `;
+
+    const freshSire = await tx.dog.findUnique({
+      where: { id: sire.id },
+      select: {
+        isBreedingActive: true,
+        callName: true,
+        registeredName: true,
+        regNumber: true,
+      },
+    });
+
+    if (!freshSire) {
+      throw new Error("Stud is no longer available.");
+    }
+
+    assertBreedingParticipationActive(freshSire);
 
     const latestSireAttempt = await tx.breedingAttempt.findFirst({
       where: { sireId: sire.id },
