@@ -79,6 +79,11 @@ export function getInvitationalClusterId(year: number): string {
   return `invitational-year-${year}`;
 }
 
+/** Canonical, identifier-based Invitational classification for server-side queries. */
+export function isInvitationalClusterId(clusterId: string): boolean {
+  return clusterId.startsWith(getInvitationalClusterId(0).slice(0, -1));
+}
+
 function getInvitationalStartEpoch(year: number): number {
   const yearStartEpoch = (year - 1) * SHOW_YEAR_HOURS;
 
