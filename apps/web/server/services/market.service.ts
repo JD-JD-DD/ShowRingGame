@@ -531,6 +531,7 @@ export async function buyPlayerDogListing(args: {
         ownerKennelId: buyer.id,
         kennelRunId: buyerKennelRun.id,
         marketState: "NOT_FOR_SALE",
+        isBreedingActive: true,
       },
     });
     await deleteLitterRunIfEmpty({
@@ -704,11 +705,14 @@ export async function listDogAtStud(args: {
       select: {
         id: true,
         regNumber: true,
+        callName: true,
+        registeredName: true,
         ownerKennelId: true,
         sex: true,
         birthEpoch: true,
         lifecycleState: true,
         marketState: true,
+        isBreedingActive: true,
       },
     });
 
@@ -718,6 +722,12 @@ export async function listDogAtStud(args: {
 
     if (dog.ownerKennelId !== sellerKennelId) {
       throw new Error("You do not own this dog.");
+    }
+
+    if (!dog.isBreedingActive) {
+      throw new Error(
+        `${formatDogDisplayName(dog)} is not currently active for breeding.`
+      );
     }
 
     if (dog.lifecycleState !== "ALIVE") {

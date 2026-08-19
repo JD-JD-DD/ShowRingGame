@@ -49,8 +49,8 @@ assert.ok(
   "Dog Profile derives male status from its latest loaded sire attempt"
 );
 assert.ok(
-  dogService.includes("dog.sex === Sex.M &&\n        breedingEligible &&"),
-  "Dog Profile blocks use of an active stud listing while recovery makes breeding ineligible"
+  dogService.includes("dog.sex === Sex.M &&\n        dog.isBreedingActive &&\n        breedingEligible &&"),
+  "Dog Profile requires breeding participation and blocks use of an active stud listing while recovery makes breeding ineligible"
 );
 
 const mineRoute = source("apps/web/app/api/dogs/mine/route.ts");

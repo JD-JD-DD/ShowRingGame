@@ -278,6 +278,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
           birthEpoch: true,
           lifecycleState: true,
           sex: true,
+          isBreedingActive: true,
           breed: {
             select: {
               name: true,
@@ -601,9 +602,13 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           Availability
                         </div>
                         <div className="theme-heading mt-1 font-medium">
-                          {breedingEligibility.isEligible ? "Available" : "Recovery"}
+                          {!dog.isBreedingActive
+                            ? "Breeding Inactive"
+                            : breedingEligibility.isEligible
+                              ? "Available"
+                              : "Recovery"}
                         </div>
-                        {!breedingEligibility.isEligible && breedingEligibilityMessage ? (
+                        {dog.isBreedingActive && !breedingEligibility.isEligible && breedingEligibilityMessage ? (
                           <div className="theme-copy mt-1 text-xs">
                             {breedingEligibilityMessage}
                           </div>
@@ -672,7 +677,14 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           {PENDING_VETERINARY_CARE_BREEDING_MESSAGE}
                         </div>
                       ) : null}
-                      {breedingEligibility.isEligible ? (
+                      {!dog.isBreedingActive ? (
+                        <span
+                          aria-disabled="true"
+                          className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
+                        >
+                          Breeding Inactive
+                        </span>
+                      ) : breedingEligibility.isEligible ? (
                         <Link
                           href={`/breed?studListingId=${listing.id}`}
                           className={`flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold ${

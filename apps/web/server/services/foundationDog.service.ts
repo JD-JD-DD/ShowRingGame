@@ -1371,6 +1371,7 @@ export async function buyFoundationDog(args: {
         ownerKennelId: kennel.id,
         kennelRunId: kennelRun.id,
         marketState: "NOT_FOR_SALE",
+        isBreedingActive: true,
       },
     });
 

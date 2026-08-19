@@ -990,6 +990,7 @@ export async function getDogProfile(args: {
       marketState: true,
       isFoundation: true,
       isPlayerVisible: true,
+      isBreedingActive: true,
       ownerKennelId: true,
       kennelRunId: true,
       sireId: true,
@@ -1558,6 +1559,7 @@ export async function getDogProfile(args: {
     dog.sex === Sex.M &&
     ageHours >= MIN_BREED_AGE_HOURS &&
     dog.marketState === DogMarketState.NOT_FOR_SALE &&
+    dog.isBreedingActive &&
     !hasActiveListing;
   const canPullEntries = Boolean(
     ownerData?.showEntries.some((entry) => entry.entryStatus === "ENTERED")
@@ -2017,6 +2019,7 @@ export async function getDogProfile(args: {
         !isOwnedByCurrentKennel &&
         isAlive &&
         dog.sex === Sex.M &&
+        dog.isBreedingActive &&
         breedingEligible &&
         Boolean(activeStudListing),
       canOfferForSale,
