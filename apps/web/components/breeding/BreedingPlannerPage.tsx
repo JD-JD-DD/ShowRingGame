@@ -307,6 +307,7 @@ export default async function BreedingPlannerPage({
                 id: initialDogId,
                 ownerKennelId: kennel.id,
                 isPlayerVisible: true,
+                isBreedingActive: true,
               },
               select: {
                 id: true,
@@ -346,6 +347,7 @@ export default async function BreedingPlannerPage({
                   dog: {
                     lifecycleState: "ALIVE",
                     sex: "M",
+                    isBreedingActive: true,
                   },
                 },
                 select: {
@@ -392,6 +394,7 @@ export default async function BreedingPlannerPage({
                 ownerKennelId: kennel.id,
                 lifecycleState: "ALIVE",
                 isPlayerVisible: true,
+                isBreedingActive: true,
                 breedCode2: directRouteContext.anchorBreedCode2,
                 OR: directRouteContext.selectedDogId
                   ? [
@@ -404,6 +407,7 @@ export default async function BreedingPlannerPage({
                 ownerKennelId: kennel.id,
                 lifecycleState: "ALIVE",
                 isPlayerVisible: true,
+                isBreedingActive: true,
               },
           select: {
             id: true,
@@ -574,6 +578,7 @@ export default async function BreedingPlannerPage({
             dog: {
               lifecycleState: "ALIVE",
               isPlayerVisible: true,
+              isBreedingActive: true,
               sex: "M",
               ownerKennelId: {
                 not: null,
