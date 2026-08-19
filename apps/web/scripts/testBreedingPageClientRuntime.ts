@@ -57,12 +57,38 @@ assert.ok(
 );
 assert.ok(
   client.includes('setBreedCode2("");\n    synchronizeWorksheetBreedCode2("");') &&
-    client.includes('if (nextDam) synchronizeWorksheetBreedCode2(nextDam.breedCode2);'),
+    client.includes('if (nextDam) {\n      if (worksheetBreedCode2NeedsSync(nextDam.breedCode2))'),
   "run selection clears public-stud breed context, while dam selection remains the sole sire-discovery boundary"
 );
 assert.ok(
   client.includes("There are no eligible dams in this kennel run."),
   "empty kennel runs receive a specific player-facing dam-discovery message"
+);
+assert.ok(
+  client.includes("useTransition") &&
+    client.includes("const [isSireLoading, startSireLoadingTransition] = useTransition();") &&
+    client.includes("worksheetBreedCode2NeedsSync(nextDam.breedCode2)") &&
+    client.includes("startSireLoadingTransition(() => {") &&
+    client.includes("synchronizeWorksheetBreedCode2(nextDam.breedCode2);"),
+  "only an actual dam-triggered breed refresh enters the sire-loading transition"
+);
+assert.ok(
+  client.indexOf("setDamId(nextDamId);") <
+    client.indexOf("startSireLoadingTransition(() => {"),
+  "the selected dam is retained before the sire refresh begins"
+);
+assert.ok(
+  client.includes("aria-busy={isSireLoading || undefined}") &&
+    client.includes('aria-live="polite"') &&
+    client.includes('role="status"') &&
+    client.includes("Loading available sires…"),
+  "Step 2B exposes accessible busy and live loading feedback"
+);
+assert.ok(
+  client.includes("disabled={isSireLoading}") &&
+    client.includes("{isSireLoading ? (") &&
+    client.includes(") : sires.length > 0 ? ("),
+  "pending sire discovery disables filters and replaces stale sire cards with a non-interactive status"
 );
 
 const card = (overrides: Partial<{ isOwned: boolean; listed: boolean; pending: boolean }> = {}) => ({

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
@@ -1712,6 +1712,7 @@ export default function BreedPageClient({
   const [successMessage, setSuccessMessage] = useState("");
   const [plannerNotice, setPlannerNotice] = useState(initialNotice);
   const submitInFlightRef = useRef(false);
+  const [isSireLoading, startSireLoadingTransition] = useTransition();
   const eligibleDogs = useMemo(
     () =>
       dogs.filter(
@@ -1843,6 +1844,14 @@ export default function BreedPageClient({
     .map((id) => eligibleDogs.find((dog) => dog.id === id))
     .filter((dog): dog is DogCardDto => Boolean(dog));
 
+  function worksheetBreedCode2NeedsSync(nextBreedCode: string) {
+    return (
+      experience === "worksheet" &&
+      new URLSearchParams(window.location.search).get("breedCode2") !==
+        nextBreedCode
+    );
+  }
+
   function synchronizeWorksheetBreedCode2(nextBreedCode: string) {
     if (experience !== "worksheet") return;
 
@@ -1918,7 +1927,15 @@ export default function BreedPageClient({
     }
 
     setDamId(nextDamId);
-    if (nextDam) synchronizeWorksheetBreedCode2(nextDam.breedCode2);
+    if (nextDam) {
+      if (worksheetBreedCode2NeedsSync(nextDam.breedCode2)) {
+        startSireLoadingTransition(() => {
+          synchronizeWorksheetBreedCode2(nextDam.breedCode2);
+        });
+      } else {
+        synchronizeWorksheetBreedCode2(nextDam.breedCode2);
+      }
+    }
   }
 
   function toggleShortlist(sireIdToToggle: string) {
@@ -2195,7 +2212,10 @@ export default function BreedPageClient({
               </div>
             </div>
 
-            <div className="theme-panel rounded-[28px] p-5">
+            <div
+              className="theme-panel rounded-[28px] p-5"
+              aria-busy={isSireLoading || undefined}
+            >
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
@@ -2210,6 +2230,7 @@ export default function BreedPageClient({
                         key={source}
                         type="button"
                         onClick={() => setSireSource(source)}
+                        disabled={isSireLoading}
                         className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                           sireSource === source
                             ? "border-sky-300/50 bg-sky-500/20 text-sky-100"
@@ -2229,6 +2250,7 @@ export default function BreedPageClient({
                     <select
                       value={sireSort}
                       onChange={(event) => setSireSort(event.target.value as SireSort)}
+                      disabled={isSireLoading}
                       className="theme-control rounded-xl px-3 py-2 text-sm font-semibold normal-case tracking-normal outline-none"
                     >
                       <option value="RECOMMENDED">Recommended</option>
@@ -2237,8 +2259,12 @@ export default function BreedPageClient({
                       <option value="FEE">Lowest Stud Fee</option>
                     </select>
                   </label>
-                  <div className="mt-5 space-y-3">
-                    {sires.length > 0 ? (
+                  <div className="mt-5 space-y-3" aria-live="polite">
+                    {isSireLoading ? (
+                      <div role="status" className="theme-card theme-copy rounded-xl p-4 text-sm">
+                        Loading available sires…
+                      </div>
+                    ) : sires.length > 0 ? (
                       sires.map((dog) => (
                         <DogOptionCard
                           key={`${dog.id}-${dog.studListingId ?? "owned"}`}
