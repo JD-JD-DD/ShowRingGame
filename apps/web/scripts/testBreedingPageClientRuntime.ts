@@ -56,6 +56,34 @@ assert.ok(
   "worksheet Step 1 keeps separate mutually exclusive Breed and Kennel Run selects"
 );
 assert.ok(
+  client.includes('value={worksheetSelectionMode === "BREED" ? breedCode2 : ""}') &&
+    client.includes("value={kennelRunId}") &&
+    client.includes('setWorksheetSelectionMode(nextBreedCode ? "BREED" : null)') &&
+    client.includes('setWorksheetSelectionMode(nextKennelRunId ? "KENNEL_RUN" : null)'),
+  "both controls begin clear, retain only their active scope, and re-enable each other when cleared"
+);
+assert.ok(
+  client.includes("function clearWorksheetPairingState()") &&
+    client.includes("setDamId(\"\");") &&
+    client.includes("setSireId(\"\");") &&
+    client.includes("setShortlistedSireIds([]);") &&
+    client.includes("setTestDamBrucellosis(false);") &&
+    client.includes("setTestSireBrucellosis(false);") &&
+    client.includes("setErrorMessage(\"\");"),
+  "scope changes centrally clear stale dam, sire, shortlist, test, and feedback state"
+);
+assert.ok(
+  /worksheetSelectionMode === "KENNEL_RUN"[\s\S]*dog\.kennelRunId === kennelRunId[\s\S]*dog\.breedCode2 === breedCode2/.test(client) &&
+    client.includes("dog.isOwnedByCurrentKennel") &&
+    client.includes('dog.sex === "F"'),
+  "run mode composes exact run membership with the existing eligible owned-female dam result while breed mode retains its breed predicate"
+);
+assert.ok(
+  client.indexOf('if (experience === "breed-dog" && anchorDog)') <
+    client.indexOf("Choose A Breed Or Kennel Run"),
+  "the worksheet-only Step 1 controls remain outside the direct dog-anchored breeding experience"
+);
+assert.ok(
   client.includes('setBreedCode2("");\n    synchronizeWorksheetBreedCode2("");') &&
     client.includes('if (nextDam) {\n      if (worksheetBreedCode2NeedsSync(nextDam.breedCode2))'),
   "run selection clears public-stud breed context, while dam selection remains the sole sire-discovery boundary"

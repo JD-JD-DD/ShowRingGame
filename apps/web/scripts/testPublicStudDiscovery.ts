@@ -230,4 +230,24 @@ assert.deepEqual(
   "an eligible external NL PLAYER_STUD with pending/null COI remains visible under Outside Studs and Lowest Litter COI"
 );
 
+const mixedRunStuds: FixtureListing[] = [
+  { ...targetStud, id: "borzoi-stud", breedCode2: "BZ" },
+  { ...targetStud, id: "whippet-stud", breedCode2: "WH" },
+];
+assert.deepEqual(
+  fixtureDiscover(mixedRunStuds, "viewer", "BZ").map((listing) => listing.id),
+  ["borzoi-stud"],
+  "a Borzoi dam from a mixed kennel run scopes public discovery to Borzoi only"
+);
+assert.deepEqual(
+  fixtureDiscover(mixedRunStuds, "viewer", "WH").map((listing) => listing.id),
+  ["whippet-stud"],
+  "a Whippet dam from the same mixed kennel run replaces the prior sire scope"
+);
+assert.ok(
+  plannerClientSource.includes('setBreedCode2("");\n    synchronizeWorksheetBreedCode2("");') &&
+    plannerClientSource.includes("worksheetBreedCode2NeedsSync(nextDam.breedCode2)"),
+  "run selection leaves public discovery without a breed context until a selected dam establishes one"
+);
+
 console.log("Public stud discovery regression checks passed.");
