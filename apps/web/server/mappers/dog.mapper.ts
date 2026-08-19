@@ -421,6 +421,7 @@ export type DogProfilePrivatePlanningDto = {
 
 export type DogProfileActionsDto = {
   canName: boolean;
+  isBreedingActive: boolean;
   canBreed: boolean;
   breedingDisabledReason?: string | null;
   canBuyActiveListing: boolean;
@@ -864,6 +865,7 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       : null,
     actions: {
       canName: input.actions.canName,
+      isBreedingActive: input.actions.isBreedingActive,
       canBreed: input.actions.canBreed,
       breedingDisabledReason: input.actions.breedingDisabledReason,
       canBuyActiveListing: input.actions.canBuyActiveListing,

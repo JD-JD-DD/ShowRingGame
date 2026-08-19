@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import CancelGroomingListingForm from "@/components/dogs/CancelGroomingListingForm";
+import BreedingActiveControl from "@/components/dogs/BreedingActiveControl";
 import BreedDogActionButton from "@/components/dogs/BreedDogActionButton";
 import CallNameEditor from "@/components/dogs/CallNameEditor";
 import DogProfileKennelRunMove from "@/components/dogs/DogProfileKennelRunMove";
@@ -371,6 +372,13 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
             <div className="flex flex-col gap-4 lg:justify-self-end">
               <div className="grid gap-3 sm:grid-cols-2">
+                {viewerContext.canManage ? (
+                  <BreedingActiveControl
+                    action={`/api/dogs/${header.dogId}/breeding-active`}
+                    isBreedingActive={actions.isBreedingActive}
+                  />
+                ) : null}
+
                 {marketSaleListing ? (
                   <form
                     action={`/api/market-dogs/${marketSaleListing.listingId}/buy?from=market`}

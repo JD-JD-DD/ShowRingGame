@@ -2008,10 +2008,13 @@ export async function getDogProfile(args: {
       : null,
     actions: {
       canName: isOwnedByCurrentKennel && !dog.registeredName?.trim(),
-      canBreed: isOwnedByCurrentKennel && breedingEligible,
+      isBreedingActive: dog.isBreedingActive,
+      canBreed: isOwnedByCurrentKennel && dog.isBreedingActive && breedingEligible,
       breedingDisabledReason:
-        isOwnedByCurrentKennel && !breedingEligible
-          ? breedingEligibilityMessage
+        isOwnedByCurrentKennel && (!dog.isBreedingActive || !breedingEligible)
+          ? !dog.isBreedingActive
+            ? "This dog is not currently active for breeding."
+            : breedingEligibilityMessage
           : null,
       canBuyActiveListing:
         !isOwnedByCurrentKennel && isAlive && Boolean(activeSaleListing),
