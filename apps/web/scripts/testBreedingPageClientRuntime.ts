@@ -9,6 +9,14 @@ const source = (relativePath: string) =>
 const client = source("apps/web/components/breeding/BreedPageClient.tsx");
 const planner = source("apps/web/components/breeding/BreedingPlannerPage.tsx");
 
+function section(text: string, start: string, end: string) {
+  const startIndex = text.indexOf(start);
+  const endIndex = text.indexOf(end, startIndex);
+  assert.ok(startIndex >= 0, `missing ${start}`);
+  assert.ok(endIndex > startIndex, `missing ${end}`);
+  return text.slice(startIndex, endIndex);
+}
+
 assert.ok(client.startsWith('"use client"'), "breeding planner is a client component");
 assert.ok(
   client.includes('from "@/lib/breedingAvailability"'),
@@ -117,6 +125,50 @@ assert.ok(
     client.includes("{isSireLoading ? (") &&
     client.includes(") : sires.length > 0 ? ("),
   "pending sire discovery disables filters and replaces stale sire cards with a non-interactive status"
+);
+
+const chooseBreedSource = section(
+  client,
+  "function chooseBreed(nextBreedCode: string)",
+  "function chooseKennelRun(nextKennelRunId: string)"
+);
+const chooseKennelRunSource = section(
+  client,
+  "function chooseKennelRun(nextKennelRunId: string)",
+  "function chooseDam(nextDamId: string)"
+);
+const chooseDamSource = section(
+  client,
+  "function chooseDam(nextDamId: string)",
+  "function toggleShortlist(sireIdToToggle: string)"
+);
+
+assert.equal(
+  chooseBreedSource.includes("startSireLoadingTransition"),
+  false,
+  "selecting or clearing a breed never manufactures sire loading"
+);
+assert.equal(
+  chooseKennelRunSource.includes("startSireLoadingTransition"),
+  false,
+  "selecting or clearing a kennel run never starts sire loading"
+);
+assert.ok(
+  chooseDamSource.includes("worksheetBreedCode2NeedsSync(nextDam.breedCode2)") &&
+    chooseDamSource.includes("startSireLoadingTransition(() => {") &&
+    chooseDamSource.indexOf("setSireId(\"\");") <
+      chooseDamSource.indexOf("startSireLoadingTransition(() => {") &&
+    chooseDamSource.includes("} else {\n        synchronizeWorksheetBreedCode2(nextDam.breedCode2);"),
+  "only a dam selection with a changed sire breed starts loading; same-breed dam changes clear stale sire state without a false transition"
+);
+assert.ok(
+  client.includes("const [isSireLoading, startSireLoadingTransition] = useTransition();") &&
+    !client.includes("setIsSireLoading") &&
+    client.includes("aria-busy={isSireLoading || undefined}") &&
+    client.includes("{isSireLoading ? (") &&
+    client.includes(") : sires.length > 0 ? (") &&
+    client.includes("No sires match this breed and source filter."),
+  "React owns pending completion so successful, empty, interrupted, or failed refresh work cannot leave a manually latched busy state"
 );
 
 const card = (overrides: Partial<{ isOwned: boolean; listed: boolean; pending: boolean }> = {}) => ({
