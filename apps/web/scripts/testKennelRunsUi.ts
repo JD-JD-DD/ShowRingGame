@@ -540,11 +540,6 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "const isPopulatedRun = run.persistedDogCount > 0;",
-  "delete confirmation uses persisted occupancy"
-);
-assertIncludes(
-  kennelPanel,
   "Move Up",
   "non-system runs expose a move-up control"
 );
@@ -575,8 +570,8 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "Dogs in this run will be moved to Uncategorized.",
-  "delete confirmation explains dog movement"
+  "Run deleted. Any dogs remaining in the kennel run were transferred to Uncategorized.",
+  "delete success explains the reassignment outcome"
 );
 assertIncludes(
   kennelPanel,
@@ -600,9 +595,12 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "Moved ${",
-  "delete success can include moved dog count"
+  "disabled={deleteRunLoading}",
+  "delete is disabled while the request is pending"
 );
+
+assertExcludes(kennelPanel, "confirmingDeleteRunId", "run deletion has no confirmation state");
+assertExcludes(kennelPanel, "Delete Run?", "run deletion has no confirmation panel");
 
 assertExcludes(
   kennelPanel,

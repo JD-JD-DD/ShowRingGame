@@ -374,9 +374,6 @@ export default function KennelDogsPanel() {
   const [renamingRunId, setRenamingRunId] = useState<string | null>(null);
   const [renameRunName, setRenameRunName] = useState("");
   const [renameRunLoading, setRenameRunLoading] = useState(false);
-  const [confirmingDeleteRunId, setConfirmingDeleteRunId] = useState<
-    string | null
-  >(null);
   const [deleteRunLoading, setDeleteRunLoading] = useState(false);
   const [movingRunId, setMovingRunId] = useState<string | null>(null);
   const [showColumnChooser, setShowColumnChooser] = useState(false);
@@ -907,7 +904,6 @@ export default function KennelDogsPanel() {
 
     setRenamingRunId(run.id);
     setRenameRunName(run.name);
-    setConfirmingDeleteRunId(null);
   }
 
   async function renameRun() {
@@ -984,11 +980,8 @@ export default function KennelDogsPanel() {
       setSelectedRunIds(selectedAfterDelete);
       await loadDogs({ preserveLoadingState: true });
       clearSelection();
-      setConfirmingDeleteRunId(null);
       setMessage(
-        `Deleted Kennel Run "${run.name}". Moved ${
-          data.movedCount ?? 0
-        } dog${(data.movedCount ?? 0) === 1 ? "" : "s"} to Uncategorized.`
+        "Run deleted. Any dogs remaining in the kennel run were transferred to Uncategorized."
       );
     } catch (err) {
       setError(
@@ -1199,7 +1192,6 @@ export default function KennelDogsPanel() {
               onClick={() => {
                 setShowCreateRunForm((current) => !current);
                 setRenamingRunId(null);
-                setConfirmingDeleteRunId(null);
               }}
               className="theme-secondary-button rounded-md px-2 py-1 text-[0.68rem] font-semibold"
             >
@@ -1280,7 +1272,6 @@ export default function KennelDogsPanel() {
               {runs.map((run) => {
                 const selected = selectedRunIds.includes(run.id);
                 const isRenaming = renamingRunId === run.id;
-                const isConfirmingDelete = confirmingDeleteRunId === run.id;
                 const movableRuns = runs.filter(
                   (candidate) => candidate.kind !== "UNCATEGORIZED"
                 );
@@ -1288,8 +1279,6 @@ export default function KennelDogsPanel() {
                   (candidate) => candidate.id === run.id
                 );
                 const isMoveLoading = movingRunId === run.id;
-                const isPopulatedRun = run.persistedDogCount > 0;
-
                 return (
                   <div
                     key={run.id}
@@ -1388,47 +1377,15 @@ export default function KennelDogsPanel() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => {
-                                setConfirmingDeleteRunId(run.id);
-                                setRenamingRunId(null);
-                              }}
-                              className="theme-status-danger rounded-md px-2 py-1 text-[0.68rem] font-semibold"
+                              onClick={() => void deleteRun(run)}
+                              disabled={deleteRunLoading}
+                              className="theme-status-danger rounded-md px-2 py-1 text-[0.68rem] font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                             >
-                              Delete Run
+                              {deleteRunLoading ? "Deleting..." : "Delete Run"}
                             </button>
                           </div>
                         ) : null}
 
-                        {isConfirmingDelete ? (
-                          <div className="theme-status-danger mt-2 rounded-lg p-2">
-                            <div className="text-xs font-semibold">
-                              Delete Run?
-                            </div>
-                            {isPopulatedRun ? (
-                              <p className="mt-1 text-[0.7rem] leading-5">
-                                Dogs in this run will be moved to Uncategorized.
-                              </p>
-                            ) : null}
-                            <div className="mt-2 grid grid-cols-2 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setConfirmingDeleteRunId(null)}
-                                disabled={deleteRunLoading}
-                                className="theme-secondary-button rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void deleteRun(run)}
-                                disabled={deleteRunLoading}
-                                className="theme-status-danger rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
-                              >
-                                {deleteRunLoading ? "Deleting..." : "Delete"}
-                              </button>
-                            </div>
-                          </div>
-                        ) : null}
                       </>
                     )}
                   </div>
@@ -1441,7 +1398,6 @@ export default function KennelDogsPanel() {
             onClick={() => {
               setManagingRuns((current) => !current);
               setRenamingRunId(null);
-              setConfirmingDeleteRunId(null);
             }}
             className="theme-secondary-button mt-3 w-full rounded-lg px-3 py-2 text-xs font-semibold"
           >
