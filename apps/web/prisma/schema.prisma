@@ -12,6 +12,11 @@ enum Sex {
   F
 }
 
+enum AnnualChampionshipPointSchedulePublicationStatus {
+  DRAFT
+  PUBLISHED
+}
+
 enum DogLifecycleState {
   ALIVE
   DECEASED
@@ -470,6 +475,7 @@ model Breed {
   showJudgingBlocks ShowJudgingBlock[]
   geneticBackgroundSnapshots BreedGeneticBackgroundSnapshot[]
   judgingProfiles   BreedJudgingProfile[]
+  annualChampionshipPointSchedules AnnualChampionshipPointSchedule[]
 
   @@index([releaseVersion])
 }
@@ -500,6 +506,45 @@ model BreedJudgingProfile {
   @@unique([breedCode2, rulesVersion])
   @@index([breedCode2, isActive])
   @@index([rulesVersion, isActive])
+}
+
+model AnnualChampionshipPointSchedulePublication {
+  id                 String                                           @id @default(cuid())
+  sourceYear         Int
+  effectiveYear      Int                                              @unique
+  calculationVersion String
+  status             AnnualChampionshipPointSchedulePublicationStatus @default(DRAFT)
+  calculatedAt       DateTime?
+  publishedAt        DateTime?
+  createdAt          DateTime                                         @default(now())
+  updatedAt          DateTime                                         @updatedAt
+
+  schedules AnnualChampionshipPointSchedule[]
+}
+
+model AnnualChampionshipPointSchedule {
+  id                  String   @id @default(cuid())
+  publicationId       String
+  effectiveYear       Int
+  district            Int
+  breedCode2          String
+  sex                 Sex
+  onePointThreshold   Int
+  twoPointThreshold   Int
+  threePointThreshold Int
+  fourPointThreshold  Int
+  fivePointThreshold  Int
+  observationCount    Int
+  achievedOnePointRate Decimal @db.Decimal(8, 6)
+  achievedMajorRate    Decimal @db.Decimal(8, 6)
+  achievedFivePointRate Decimal @db.Decimal(8, 6)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  breed Breed @relation(fields: [breedCode2], references: [code2])
+  publication AnnualChampionshipPointSchedulePublication @relation(fields: [publicationId], references: [id])
+
+  @@unique([effectiveYear, district, breedCode2, sex])
 }
 
 model BreedGeneticBackgroundSnapshot {
