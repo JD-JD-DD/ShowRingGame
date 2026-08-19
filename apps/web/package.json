@@ -57,6 +57,7 @@
     "diagnose:reproductive-emergencies": "tsx scripts/diagnoseReproductiveEmergencies.ts",
     "test:retired-fatal-whelp": "tsx scripts/testRetiredFatalWhelp.ts",
     "test:pending-veterinary-care": "tsx scripts/testPendingVeterinaryCare.ts",
+    "test:bulk-rehome-scaling": "tsx scripts/testBulkRehomeScaling.ts",
     "test:judging-automatic-absence": "tsx scripts/testJudgingAutomaticAbsence.ts",
     "test:show-entry-absence-reasons": "tsx scripts/testShowEntryAbsenceReasons.ts",
     "test:show-entry-maintenance": "tsx scripts/testShowEntryMaintenance.ts",

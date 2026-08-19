@@ -525,8 +525,8 @@ assertIncludes(
 );
 assertIncludes(
   rehomeService,
-  "assertDogHasNoPendingEmergencyCare(dogId, tx)",
-  "rehome transfer blocks pending emergency care"
+  "hasPendingVeterinaryCareForDogs(dogIds, tx)",
+  "rehome transfer blocks pending emergency care in bulk"
 );
 assertIncludes(
   dogService,

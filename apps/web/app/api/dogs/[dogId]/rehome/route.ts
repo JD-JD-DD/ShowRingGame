@@ -42,7 +42,9 @@ export async function POST(
     return NextResponse.json(
       {
         error:
-          error instanceof Error ? error.message : "Failed to re-home dog.",
+          error instanceof RehomeError
+            ? error.message
+            : "We could not re-home this dog. Please try again.",
       },
       { status: error instanceof RehomeError ? error.status : 500 }
     );

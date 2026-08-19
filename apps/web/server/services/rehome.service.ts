@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
+import { hasPendingVeterinaryCareForDogs } from "@/server/services/emergencyVetCare.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -8,7 +8,6 @@ import {
   PUPPY_SALE_MIN_AGE_HOURS,
   getPuppyRehomePayout,
 } from "@showring/rules";
-import { deleteLitterRunIfEmpty } from "@/server/services/kennelRun.service";
 
 type RehomeResult = {
   rehomedCount: number;
@@ -16,6 +15,8 @@ type RehomeResult = {
   dogIds: string[];
   cancelledListingCount: number;
 };
+
+type RehomeDatabaseClient = Pick<typeof db, "$transaction">;
 
 export class RehomeError extends Error {
   status: number;
@@ -36,62 +37,73 @@ export async function rehomeOwnedDogs(args: {
   dogIds: string[];
   currentEpoch: number;
 }): Promise<RehomeResult> {
+  return rehomeOwnedDogsWithClient(args, db);
+}
+
+export async function rehomeOwnedDogsWithClient(
+  args: {
+    kennelId: string;
+    dogIds: string[];
+    currentEpoch: number;
+  },
+  client: RehomeDatabaseClient = db
+): Promise<RehomeResult> {
   const dogIds = uniqueDogIds(args.dogIds);
 
   if (dogIds.length === 0) {
     throw new RehomeError("Select at least one dog to re-home.");
   }
 
-  const dogs = await db.dog.findMany({
-    where: {
-      id: { in: dogIds },
-      ownerKennelId: args.kennelId,
-      isPlayerVisible: true,
-    },
-    select: {
-      id: true,
-      birthEpoch: true,
-      lifecycleState: true,
-      kennelRunId: true,
-    },
-  });
+  return client.$transaction(async (tx) => {
+    const dogs = await tx.dog.findMany({
+      where: {
+        id: { in: dogIds },
+        ownerKennelId: args.kennelId,
+        isPlayerVisible: true,
+      },
+      select: {
+        id: true,
+        birthEpoch: true,
+        lifecycleState: true,
+        kennelRunId: true,
+      },
+    });
 
-  if (dogs.length !== dogIds.length) {
-    throw new RehomeError(
-      "One or more selected dogs could not be found in your kennel.",
-      403
-    );
-  }
-
-  const blockedDog = dogs.find((dog) => {
-    const ageHours = args.currentEpoch - dog.birthEpoch;
-
-    return ageHours < PUPPY_SALE_MIN_AGE_HOURS || dog.lifecycleState !== "ALIVE";
-  });
-
-  if (blockedDog) {
-    throw new RehomeError(
-      "Only dogs at least 8 weeks old that are active and owned by your kennel can be re-homed."
-    );
-  }
-
-  const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
-  const payoutDogs = dogIds
-    .map((dogId) => dogsById.get(dogId)!)
-    .map((dog) => ({
-      ...dog,
-      payout: getPuppyRehomePayout(args.currentEpoch, dog.birthEpoch),
-    }))
-    .filter((dog) => dog.payout > 0);
-  const creditsAdded = payoutDogs.reduce(
-    (total, dog) => total + dog.payout,
-    0
-  );
-
-  return db.$transaction(async (tx) => {
-    for (const dogId of dogIds) {
-      await assertDogHasNoPendingVeterinaryCare(dogId, tx);
+    if (dogs.length !== dogIds.length) {
+      throw new RehomeError(
+        "One or more selected dogs could not be found in your kennel.",
+        403
+      );
     }
+
+    const blockedDog = dogs.find((dog) => {
+      const ageHours = args.currentEpoch - dog.birthEpoch;
+
+      return ageHours < PUPPY_SALE_MIN_AGE_HOURS || dog.lifecycleState !== "ALIVE";
+    });
+
+    if (blockedDog) {
+      throw new RehomeError(
+        "Only dogs at least 8 weeks old that are active and owned by your kennel can be re-homed."
+      );
+    }
+
+    if (await hasPendingVeterinaryCareForDogs(dogIds, tx)) {
+      throw new RehomeError("This dog is awaiting emergency veterinary care.");
+    }
+
+    const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
+    const payoutDogs = dogIds
+      .map((dogId) => dogsById.get(dogId)!)
+      .map((dog) => ({
+        ...dog,
+        payout: getPuppyRehomePayout(args.currentEpoch, dog.birthEpoch),
+      }))
+      .filter((dog) => dog.payout > 0);
+    const creditsAdded = payoutDogs.reduce(
+      (total, dog) => total + dog.payout,
+      0
+    );
 
     const activeDamBreeding = await tx.breedingAttempt.findFirst({
       where: {
@@ -144,11 +156,23 @@ export async function rehomeOwnedDogs(args: {
       throw new Error("One or more dogs are no longer available to re-home.");
     }
 
-    await Promise.all(
-      [...new Set(dogs.map((dog) => dog.kennelRunId).filter(Boolean))].map(
-        (priorRunId) => deleteLitterRunIfEmpty({ priorRunId, client: tx })
-      )
-    );
+    const priorRunIds = [
+      ...new Set(
+        dogs
+          .map((dog) => dog.kennelRunId)
+          .filter((runId): runId is string => runId !== null)
+      ),
+    ];
+    if (priorRunIds.length > 0) {
+      await tx.kennelRun.deleteMany({
+        where: {
+          id: { in: priorRunIds },
+          kind: "LITTER",
+          sourceLitterId: { not: null },
+          dogs: { none: {} },
+        },
+      });
+    }
 
     if (creditsAdded > 0) {
       const updatedKennel = await tx.kennel.update({

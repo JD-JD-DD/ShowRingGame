@@ -59,9 +59,9 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error
+          error instanceof RehomeError
             ? error.message
-            : "Failed to re-home selected dogs.",
+            : "We could not re-home those dogs. Please try again.",
       },
       { status: error instanceof RehomeError ? error.status : 500 }
     );

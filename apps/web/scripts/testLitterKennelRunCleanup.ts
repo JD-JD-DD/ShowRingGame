@@ -63,7 +63,9 @@ async function main() {
   const lifecycle = readFileSync("server/services/lifecycle.service.ts", "utf8");
   assert.match(runManagement, /const sourceRunIds = new Set\([\s\S]*?deleteLitterRunIfEmpty/);
   assert.match(market, /priorRunId: listing\.dog\.kennelRunId/);
-  assert.match(rehome, /dogs\.map\(\(dog\) => dog\.kennelRunId\)/);
+  assert.match(rehome, /dogs[\s\S]*?\.map\(\(dog\) => dog\.kennelRunId\)/);
+  assert.match(rehome, /kennelRun\.deleteMany/);
+  assert.match(rehome, /dogs: \{ none: \{\} \}/);
   assert.doesNotMatch(lifecycle, /deleteLitterRunIfEmpty/);
   console.log("Bulk movement deduplicates source runs; sale and rehome clean prior runs.");
   console.log("Litter Kennel Run cleanup checks passed.");

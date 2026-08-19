@@ -364,6 +364,11 @@ export function hasPendingVeterinaryCareFromRecords(args: {
 
 type PendingVeterinaryCareClient = typeof db | Prisma.TransactionClient;
 
+type PendingVeterinaryCareBatchClient = Pick<
+  Prisma.TransactionClient,
+  "dogEmergencyCareEvent" | "reproductiveEmergencyEvent"
+>;
+
 export async function getPendingVeterinaryCareForDog(
   dogId: string,
   client: PendingVeterinaryCareClient = db
@@ -417,6 +422,38 @@ export async function hasPendingVeterinaryCareForDog(
   client: PendingVeterinaryCareClient = db
 ): Promise<boolean> {
   return (await getPendingVeterinaryCareForDog(dogId, client)).hasPendingCare;
+}
+
+/**
+ * Checks a group of dogs with one ordinary-care query and one reproductive-care
+ * query. Bulk actions should use this instead of calling the single-dog helper
+ * in a loop while holding an interactive transaction open.
+ */
+export async function hasPendingVeterinaryCareForDogs(
+  dogIds: string[],
+  client: PendingVeterinaryCareBatchClient = db
+): Promise<boolean> {
+  if (dogIds.length === 0) {
+    return false;
+  }
+
+  const [ordinary, reproductive] = await Promise.all([
+    client.dogEmergencyCareEvent.findFirst({
+      where: { dogId: { in: dogIds }, status: "PENDING" },
+      select: { id: true },
+    }),
+    client.reproductiveEmergencyEvent.findFirst({
+      where: {
+        damId: { in: dogIds },
+        status: {
+          in: ["PENDING", "TREATMENT_AUTHORIZED", "TREATMENT_DECLINED"],
+        },
+      },
+      select: { id: true },
+    }),
+  ]);
+
+  return ordinary !== null || reproductive !== null;
 }
 
 export async function assertDogHasNoPendingVeterinaryCare(
