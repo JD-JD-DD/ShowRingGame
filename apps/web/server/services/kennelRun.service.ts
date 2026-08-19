@@ -35,6 +35,10 @@ export type LitterKennelRunCleanupClient = Pick<
   "dog" | "kennelRun"
 >;
 
+function uniqueRunIds(runIds: Array<string | null | undefined>): string[] {
+  return [...new Set(runIds.filter((runId): runId is string => Boolean(runId)))];
+}
+
 const kennelRunSelect = {
   id: true,
   kennelId: true,
@@ -202,6 +206,28 @@ export async function deleteLitterRunIfEmpty(args: {
 
     throw error;
   }
+}
+
+export async function deleteEmptyLitterRuns(args: {
+  priorRunIds: Array<string | null | undefined>;
+  client: LitterKennelRunCleanupClient;
+}): Promise<number> {
+  const priorRunIds = uniqueRunIds(args.priorRunIds);
+
+  if (priorRunIds.length === 0) {
+    return 0;
+  }
+
+  const deleted = await args.client.kennelRun.deleteMany({
+    where: {
+      id: { in: priorRunIds },
+      kind: "LITTER",
+      sourceLitterId: { not: null },
+      dogs: { none: {} },
+    },
+  });
+
+  return deleted.count;
 }
 
 export async function ensureStarterKennelRuns(args: {

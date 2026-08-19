@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { hasPendingVeterinaryCareForDogs } from "@/server/services/emergencyVetCare.service";
+import { deleteEmptyLitterRuns } from "@/server/services/kennelRun.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -156,23 +157,10 @@ export async function rehomeOwnedDogsWithClient(
       throw new Error("One or more dogs are no longer available to re-home.");
     }
 
-    const priorRunIds = [
-      ...new Set(
-        dogs
-          .map((dog) => dog.kennelRunId)
-          .filter((runId): runId is string => runId !== null)
-      ),
-    ];
-    if (priorRunIds.length > 0) {
-      await tx.kennelRun.deleteMany({
-        where: {
-          id: { in: priorRunIds },
-          kind: "LITTER",
-          sourceLitterId: { not: null },
-          dogs: { none: {} },
-        },
-      });
-    }
+    await deleteEmptyLitterRuns({
+      priorRunIds: dogs.map((dog) => dog.kennelRunId),
+      client: tx,
+    });
 
     if (creditsAdded > 0) {
       const updatedKennel = await tx.kennel.update({

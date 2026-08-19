@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { deleteLitterRunIfEmpty } from "../server/services/kennelRun.service";
+import {
+  deleteEmptyLitterRuns,
+  deleteLitterRunIfEmpty,
+} from "../server/services/kennelRun.service";
 
 type Run = {
   id: string;
@@ -34,6 +37,23 @@ const client = {
       runs.delete(args.where.id);
       return run;
     },
+    async deleteMany(args: {
+      where: {
+        id: { in: string[] };
+        kind: "LITTER";
+        sourceLitterId: { not: null };
+        dogs: { none: Record<string, never> };
+      };
+    }) {
+      const deleted = args.where.id.in.filter((id) => {
+        const run = runs.get(id);
+        return run?.kind === args.where.kind &&
+          run.sourceLitterId !== null &&
+          (dogCounts.get(id) ?? 0) === 0;
+      });
+      deleted.forEach((id) => runs.delete(id));
+      return { count: deleted.length };
+    },
   },
   dog: {
     async count(args: { where: { kennelRunId: string } }) {
@@ -57,15 +77,29 @@ async function main() {
   assert.equal(await deleteLitterRunIfEmpty({ priorRunId: "uncategorized", client: client as never }), false);
   assert.ok(countCalls >= 3, "cleanup checks persisted Dog references");
 
+  runs.set("litter-empty", { id: "litter-empty", kind: "LITTER", sourceLitterId: "litter-a" });
+  assert.equal(
+    await deleteEmptyLitterRuns({
+      priorRunIds: ["litter-empty", "litter-populated", "player-empty", "litter-empty", null],
+      client: client as never,
+    }),
+    1,
+    "batch cleanup deduplicates source runs and only deletes empty provenanced litter runs"
+  );
+  assert.equal(runs.has("litter-empty"), false);
+  assert.equal(runs.has("litter-populated"), true);
+  assert.equal(runs.has("player-empty"), true);
+
   const runManagement = readFileSync("server/services/kennelRunManagement.service.ts", "utf8");
   const market = readFileSync("server/services/market.service.ts", "utf8");
   const rehome = readFileSync("server/services/rehome.service.ts", "utf8");
+  const kennelRun = readFileSync("server/services/kennelRun.service.ts", "utf8");
   const lifecycle = readFileSync("server/services/lifecycle.service.ts", "utf8");
   assert.match(runManagement, /const sourceRunIds = new Set\([\s\S]*?deleteLitterRunIfEmpty/);
   assert.match(market, /priorRunId: listing\.dog\.kennelRunId/);
   assert.match(rehome, /dogs[\s\S]*?\.map\(\(dog\) => dog\.kennelRunId\)/);
-  assert.match(rehome, /kennelRun\.deleteMany/);
-  assert.match(rehome, /dogs: \{ none: \{\} \}/);
+  assert.match(rehome, /deleteEmptyLitterRuns/);
+  assert.match(kennelRun, /dogs: \{ none: \{\} \}/);
   assert.doesNotMatch(lifecycle, /deleteLitterRunIfEmpty/);
   console.log("Bulk movement deduplicates source runs; sale and rehome clean prior runs.");
   console.log("Litter Kennel Run cleanup checks passed.");

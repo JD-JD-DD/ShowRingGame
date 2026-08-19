@@ -73,4 +73,41 @@ assert.deepEqual(
   "an empty selection represents the full kennel roster"
 );
 
+type PlannerDam = {
+  id: string;
+  kennelRunId: string | null;
+  breedCode2: string;
+  sex: "M" | "F";
+  isOwnedByCurrentKennel: boolean;
+  isEligibleToBreed: boolean;
+};
+
+const plannerDams: PlannerDam[] = [
+  { id: "borzoi", kennelRunId: "girls", breedCode2: "BZ", sex: "F", isOwnedByCurrentKennel: true, isEligibleToBreed: true },
+  { id: "whippet", kennelRunId: "girls", breedCode2: "WH", sex: "F", isOwnedByCurrentKennel: true, isEligibleToBreed: true },
+  { id: "inactive", kennelRunId: "girls", breedCode2: "IS", sex: "F", isOwnedByCurrentKennel: true, isEligibleToBreed: false },
+  { id: "other-run", kennelRunId: "other", breedCode2: "BZ", sex: "F", isOwnedByCurrentKennel: true, isEligibleToBreed: true },
+  { id: "male", kennelRunId: "girls", breedCode2: "BZ", sex: "M", isOwnedByCurrentKennel: true, isEligibleToBreed: true },
+];
+
+const eligibleDamsInRun = (runId: string) =>
+  plannerDams.filter(
+    (dog) =>
+      dog.isEligibleToBreed &&
+      dog.isOwnedByCurrentKennel &&
+      dog.sex === "F" &&
+      dog.kennelRunId === runId
+  );
+
+assert.deepEqual(
+  eligibleDamsInRun("girls").map((dog) => dog.id),
+  ["borzoi", "whippet"],
+  "a mixed-breed run includes every otherwise eligible owned dam and excludes inactive, other-run, and male dogs"
+);
+assert.deepEqual(
+  eligibleDamsInRun("empty"),
+  [],
+  "an empty run has no dam candidates"
+);
+
 console.log("Kennel Run filtering checks passed.");

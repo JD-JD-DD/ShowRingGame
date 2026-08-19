@@ -52,6 +52,7 @@ type DogCardDto = {
   breedCode2: string;
   breedName: string;
   breedGroupName: string | null;
+  kennelRunId: string | null;
   sex: "M" | "F";
   birthEpoch: number;
   ageHours: number;
@@ -83,6 +84,12 @@ type DogCardDto = {
     resultCode: string;
   }>;
   visibleCategories: VisibleCategories;
+};
+
+type KennelRunOptionDto = {
+  id: string;
+  name: string;
+  kind: "UNCATEGORIZED" | "PLAYER" | "LITTER";
 };
 
 type PlannerNotice = {
@@ -418,6 +425,7 @@ export default async function BreedingPlannerPage({
             visibleTitleSuffix: true,
             coiPercent: true,
             breedCode2: true,
+            kennelRunId: true,
             sex: true,
             birthEpoch: true,
             lifecycleState: true,
@@ -696,9 +704,28 @@ export default async function BreedingPlannerPage({
     });
   };
 
-  const [dogs, publicStudListings] = await Promise.all([
+  const [dogs, publicStudListings, kennelRuns] = await Promise.all([
     loadOwnedDogs(),
     loadPublicStudListings(),
+    experience === "worksheet"
+      ? measureBreedingRouteStage({
+          timer,
+          route,
+          operation: "kennel_run_options_query",
+          execution: "concurrent",
+          action: () =>
+            db.kennelRun.findMany({
+              where: { kennelId: kennel.id },
+              orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+              select: {
+                id: true,
+                name: true,
+                kind: true,
+              },
+            }),
+          details: (rows) => ({ rowCount: rows.length }),
+        })
+      : Promise.resolve<KennelRunOptionDto[]>([]),
   ]);
   const [dogHealthConditionTruthsByDogId, publicStudHealthConditionTruthsByDogId] =
     await Promise.all([
@@ -788,6 +815,7 @@ export default async function BreedingPlannerPage({
           breedCode2: dog.breedCode2,
           breedName: dog.breed.name,
           breedGroupName: dog.breed.groupName,
+          kennelRunId: dog.kennelRunId,
           sex: dog.sex,
           birthEpoch: dog.birthEpoch,
           ageHours,
@@ -870,6 +898,7 @@ export default async function BreedingPlannerPage({
           breedCode2: dog.breedCode2,
           breedName: dog.breed.name,
           breedGroupName: dog.breed.groupName,
+          kennelRunId: null,
           sex: dog.sex,
           birthEpoch: dog.birthEpoch,
           ageHours,
@@ -1073,6 +1102,7 @@ export default async function BreedingPlannerPage({
             dog.isEligibleToBreed ||
             (Boolean(dog.studListingId) && dog.hasPendingVeterinaryCare)
         )}
+        kennelRuns={kennelRuns}
         pedigree={pedigree}
         currentEpoch={currentEpoch}
         initialBreedCode2={initialBreedCode2}

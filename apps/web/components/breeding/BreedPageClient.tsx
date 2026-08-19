@@ -58,6 +58,7 @@ type DogCardDto = {
   breedCode2: string;
   breedName: string;
   breedGroupName: string | null;
+  kennelRunId: string | null;
   sex: "M" | "F";
   birthEpoch: number;
   ageHours: number;
@@ -88,6 +89,12 @@ type DogCardDto = {
   visibleCategories: VisibleCategories;
 };
 
+type KennelRunOptionDto = {
+  id: string;
+  name: string;
+  kind: "UNCATEGORIZED" | "PLAYER" | "LITTER";
+};
+
 type Props = {
   experience: "breed-dog" | "worksheet";
   returnMode: "damPage" | "stayOnPlanner";
@@ -98,6 +105,7 @@ type Props = {
   initialBreedCode2: string | null;
   pedigree: PlannerPedigreeDog[];
   dogs: DogCardDto[];
+  kennelRuns: KennelRunOptionDto[];
   initialDogId: string | null;
   initialStudListingId: string | null;
   initialNotice: {
@@ -108,6 +116,7 @@ type Props = {
 
 type SireSource = "ALL" | "OWNED" | "PUBLIC";
 type SireSort = "RECOMMENDED" | "LOWEST_COI" | "HEALTH" | "FEE";
+type WorksheetSelectionMode = "BREED" | "KENNEL_RUN" | null;
 
 const HEALTH_TONES: Record<PhenotypeHealthSeverity, string> = {
   green: "border-emerald-300/35 bg-emerald-500/10 text-emerald-100",
@@ -1649,6 +1658,7 @@ export default function BreedPageClient({
   initialBreedCode2,
   pedigree,
   dogs,
+  kennelRuns,
   initialDogId,
   initialStudListingId,
   initialNotice,
@@ -1676,6 +1686,11 @@ export default function BreedPageClient({
       ? initialBreedCode2 ?? ""
       : initialDog?.breedCode2 ?? initialStud?.breedCode2 ?? "";
   const [breedCode2, setBreedCode2] = useState(initialBreedCode);
+  const [worksheetSelectionMode, setWorksheetSelectionMode] =
+    useState<WorksheetSelectionMode>(
+      experience === "worksheet" && initialBreedCode ? "BREED" : null
+    );
+  const [kennelRunId, setKennelRunId] = useState("");
   const [damId, setDamId] = useState(
     experience === "worksheet" ? "" : initialDog?.sex === "F" ? initialDog.id : ""
   );
@@ -1746,10 +1761,12 @@ export default function BreedPageClient({
           (dog) =>
             dog.isOwnedByCurrentKennel &&
             dog.sex === "F" &&
-            dog.breedCode2 === breedCode2
+            (worksheetSelectionMode === "KENNEL_RUN"
+              ? dog.kennelRunId === kennelRunId
+              : dog.breedCode2 === breedCode2)
         )
         .sort((a, b) => b.ageHours - a.ageHours),
-    [breedCode2, eligibleDogs]
+    [breedCode2, eligibleDogs, kennelRunId, worksheetSelectionMode]
   );
   const sires = useMemo(() => {
     const candidates = [...eligibleDogs, ...temporarilyUnavailablePublicStuds].filter(
@@ -1841,7 +1858,27 @@ export default function BreedPageClient({
     router.refresh();
   }
 
+  function clearWorksheetPairingState() {
+    setDamId("");
+    setSireId("");
+    setShortlistedSireIds([]);
+    setTestDamBrucellosis(false);
+    setTestSireBrucellosis(false);
+    setErrorMessage("");
+    setSuccessMessage("");
+    setPlannerNotice(null);
+  }
+
   function chooseBreed(nextBreedCode: string) {
+    if (experience === "worksheet") {
+      clearWorksheetPairingState();
+      setKennelRunId("");
+      setWorksheetSelectionMode(nextBreedCode ? "BREED" : null);
+      setBreedCode2(nextBreedCode);
+      synchronizeWorksheetBreedCode2(nextBreedCode);
+      return;
+    }
+
     setSuccessMessage("");
     setPlannerNotice(null);
     setBreedCode2(nextBreedCode);
@@ -1853,6 +1890,14 @@ export default function BreedPageClient({
     setTestSireBrucellosis(false);
 
     synchronizeWorksheetBreedCode2(nextBreedCode);
+  }
+
+  function chooseKennelRun(nextKennelRunId: string) {
+    clearWorksheetPairingState();
+    setKennelRunId(nextKennelRunId);
+    setWorksheetSelectionMode(nextKennelRunId ? "KENNEL_RUN" : null);
+    setBreedCode2("");
+    synchronizeWorksheetBreedCode2("");
   }
 
   function chooseDam(nextDamId: string) {
@@ -2074,28 +2119,48 @@ export default function BreedPageClient({
               Step 1
             </p>
             <h2 className="theme-heading mt-2 text-2xl font-semibold">
-              Choose A Breed
+              Choose A Breed Or Kennel Run
             </h2>
             <p className="theme-copy mt-2 text-sm">
-              Parent choices and planning tools appear after you select a breed.
+              Parent choices and planning tools appear after you select a breed or kennel run.
             </p>
           </div>
-          <label className="theme-label grid min-w-[280px] gap-2 text-sm">
-            Breed
-            <select
-              autoComplete="off"
-              value={breedCode2}
-              onChange={(event) => chooseBreed(event.target.value)}
-              className="theme-control rounded-xl px-4 py-3 font-semibold outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-300/25"
-            >
-              <option value="">Choose a breed...</option>
-              <BreedSelectOptions options={breeds} />
-            </select>
-          </label>
+          <div className="grid min-w-[280px] gap-4 sm:grid-cols-2">
+            <label className="theme-label grid gap-2 text-sm">
+              Breed
+              <select
+                autoComplete="off"
+                value={worksheetSelectionMode === "BREED" ? breedCode2 : ""}
+                onChange={(event) => chooseBreed(event.target.value)}
+                disabled={worksheetSelectionMode === "KENNEL_RUN"}
+                className="theme-control rounded-xl px-4 py-3 font-semibold outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-300/25 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">Choose a breed...</option>
+                <BreedSelectOptions options={breeds} />
+              </select>
+            </label>
+            <label className="theme-label grid gap-2 text-sm">
+              Kennel Run
+              <select
+                autoComplete="off"
+                value={kennelRunId}
+                onChange={(event) => chooseKennelRun(event.target.value)}
+                disabled={worksheetSelectionMode === "BREED"}
+                className="theme-control rounded-xl px-4 py-3 font-semibold outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-300/25 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">Choose a kennel run...</option>
+                {kennelRuns.map((run) => (
+                  <option key={run.id} value={run.id}>
+                    {run.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
       </section>
 
-      {breedCode2 ? (
+      {worksheetSelectionMode ? (
         <>
           <section className="mt-6 grid gap-6 lg:grid-cols-2">
             <div className="theme-panel rounded-[28px] p-5">
@@ -2104,7 +2169,9 @@ export default function BreedPageClient({
               </p>
               <h2 className="theme-heading mt-2 text-xl font-semibold">Choose Dam</h2>
               <p className="theme-copy mt-2 text-sm">
-                Your kennel&apos;s eligible females for this breed.
+                {worksheetSelectionMode === "KENNEL_RUN"
+                  ? "Your kennel's eligible females in this run."
+                  : "Your kennel's eligible females for this breed."}
               </p>
               <div className="mt-5 space-y-3">
                 {dams.length > 0 ? (
@@ -2120,7 +2187,9 @@ export default function BreedPageClient({
                   ))
                 ) : (
                   <div className="theme-card theme-copy rounded-xl p-4 text-sm">
-                    No females of this breed are currently in your kennel.
+                    {worksheetSelectionMode === "KENNEL_RUN"
+                      ? "There are no eligible dams in this kennel run."
+                      : "No females of this breed are currently in your kennel."}
                   </div>
                 )}
               </div>

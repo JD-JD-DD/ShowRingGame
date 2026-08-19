@@ -119,12 +119,14 @@ async function main() {
   await checkBlockedBatch("reproductive");
 
   const rehome = readFileSync("server/services/rehome.service.ts", "utf8");
+  const kennelRuns = readFileSync("server/services/kennelRun.service.ts", "utf8");
   const route = readFileSync("app/api/dogs/bulk-rehome/route.ts", "utf8");
   assert.match(rehome, /hasPendingVeterinaryCareForDogs\(dogIds, tx\)/);
   assert.doesNotMatch(rehome, /for \(const dogId of dogIds\)[\s\S]{0,160}assertDogHasNoPendingVeterinaryCare/);
   assert.match(rehome, /dogListing\.updateMany/);
   assert.match(rehome, /dog\.updateMany/);
-  assert.match(rehome, /kennelRun\.deleteMany/);
+  assert.match(rehome, /deleteEmptyLitterRuns/);
+  assert.match(kennelRuns, /kennelRun\.deleteMany/);
   assert.match(route, /error instanceof RehomeError/);
   assert.doesNotMatch(route, /error instanceof Error\s*\? error\.message/);
   console.log("Bulk re-home scaling checks passed for 1, 30, 100, and 200 dogs.");

@@ -35,9 +35,35 @@ for (const expected of [
   "hasPendingVeterinaryCare,",
   "dog.isEligibleToBreed ||",
   "Boolean(dog.studListingId) && dog.hasPendingVeterinaryCare",
+  "kennelRunId: dog.kennelRunId,",
+  "kennelRuns={kennelRuns}",
 ]) {
   assert.ok(planner.includes(expected), `planner DTO path includes ${expected}`);
 }
+
+assert.ok(
+  planner.includes('experience === "worksheet"') &&
+    planner.includes('operation: "kennel_run_options_query"') &&
+    planner.includes("where: { kennelId: kennel.id }") &&
+    planner.includes('Promise.resolve<KennelRunOptionDto[]>([])'),
+  "only the worksheet loads minimal, current-kennel run options"
+);
+assert.ok(
+  client.includes('type WorksheetSelectionMode = "BREED" | "KENNEL_RUN" | null') &&
+    client.includes('disabled={worksheetSelectionMode === "KENNEL_RUN"}') &&
+    client.includes('disabled={worksheetSelectionMode === "BREED"}') &&
+    client.includes('function chooseKennelRun(nextKennelRunId: string)'),
+  "worksheet Step 1 keeps separate mutually exclusive Breed and Kennel Run selects"
+);
+assert.ok(
+  client.includes('setBreedCode2("");\n    synchronizeWorksheetBreedCode2("");') &&
+    client.includes('if (nextDam) synchronizeWorksheetBreedCode2(nextDam.breedCode2);'),
+  "run selection clears public-stud breed context, while dam selection remains the sole sire-discovery boundary"
+);
+assert.ok(
+  client.includes("There are no eligible dams in this kennel run."),
+  "empty kennel runs receive a specific player-facing dam-discovery message"
+);
 
 const card = (overrides: Partial<{ isOwned: boolean; listed: boolean; pending: boolean }> = {}) => ({
   isOwned: overrides.isOwned ?? false,

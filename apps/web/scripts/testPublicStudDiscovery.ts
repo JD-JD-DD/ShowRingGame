@@ -26,7 +26,7 @@ function section(start: string, end: string) {
 
 const publicStudQuery = section(
   "const loadPublicStudListings = async () =>",
-  "const [dogs, publicStudListings]"
+  "const [dogs, publicStudListings, kennelRuns]"
 );
 
 type FixtureListing = {
