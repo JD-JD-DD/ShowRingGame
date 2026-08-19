@@ -1288,8 +1288,7 @@ export default function KennelDogsPanel() {
                   (candidate) => candidate.id === run.id
                 );
                 const isMoveLoading = movingRunId === run.id;
-                const isPopulatedLitterRun =
-                  run.kind === "LITTER" && run.persistedDogCount > 0;
+                const isPopulatedRun = run.persistedDogCount > 0;
 
                 return (
                   <div
@@ -1387,25 +1386,17 @@ export default function KennelDogsPanel() {
                             >
                               Rename Run
                             </button>
-                            {!isPopulatedLitterRun ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setConfirmingDeleteRunId(run.id);
-                                  setRenamingRunId(null);
-                                }}
-                                className="theme-status-danger rounded-md px-2 py-1 text-[0.68rem] font-semibold"
-                              >
-                                Delete Run
-                              </button>
-                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmingDeleteRunId(run.id);
+                                setRenamingRunId(null);
+                              }}
+                              className="theme-status-danger rounded-md px-2 py-1 text-[0.68rem] font-semibold"
+                            >
+                              Delete Run
+                            </button>
                           </div>
-                        ) : null}
-
-                        {managingRuns && isPopulatedLitterRun ? (
-                          <p className="theme-copy mt-1.5 text-[0.68rem] leading-5">
-                            This litter run will be removed automatically when it is empty.
-                          </p>
                         ) : null}
 
                         {isConfirmingDelete ? (
@@ -1413,9 +1404,11 @@ export default function KennelDogsPanel() {
                             <div className="text-xs font-semibold">
                               Delete Run?
                             </div>
-                            <p className="mt-1 text-[0.7rem] leading-5">
-                              Dogs in this run will move to Uncategorized.
-                            </p>
+                            {isPopulatedRun ? (
+                              <p className="mt-1 text-[0.7rem] leading-5">
+                                Dogs in this run will be moved to Uncategorized.
+                              </p>
+                            ) : null}
                             <div className="mt-2 grid grid-cols-2 gap-2">
                               <button
                                 type="button"

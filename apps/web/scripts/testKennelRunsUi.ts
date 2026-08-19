@@ -540,13 +540,8 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "const isPopulatedLitterRun =",
-  "litter-run delete visibility uses persisted occupancy"
-);
-assertIncludes(
-  kennelPanel,
-  "This litter run will be removed automatically when it is empty.",
-  "populated litter runs explain why delete is unavailable"
+  "const isPopulatedRun = run.persistedDogCount > 0;",
+  "delete confirmation uses persisted occupancy"
 );
 assertIncludes(
   kennelPanel,
@@ -580,7 +575,7 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  "Dogs in this run will move to Uncategorized.",
+  "Dogs in this run will be moved to Uncategorized.",
   "delete confirmation explains dog movement"
 );
 assertIncludes(

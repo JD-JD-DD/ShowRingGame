@@ -399,21 +399,6 @@ export async function deleteKennelRun(args: {
       );
     }
 
-    if (run.kind === "LITTER") {
-      const deleted = await deleteLitterRunIfEmpty({
-        priorRunId: run.id,
-        client: tx,
-      });
-
-      if (deleted) {
-        return { runId: run.id, movedCount: 0 };
-      }
-
-      throw new KennelRunServiceError(
-        "This litter run will be removed automatically when it is empty."
-      );
-    }
-
     const uncategorizedRun = await ensureUncategorizedKennelRun({
       kennelId: args.kennelId,
       client: tx,

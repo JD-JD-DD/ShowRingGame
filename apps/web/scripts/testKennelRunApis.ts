@@ -35,6 +35,10 @@ type FakeDog = {
   lifecycleState: string;
   isPlayerVisible: boolean;
   marketState: string;
+  litterId?: string | null;
+  sireId?: string | null;
+  damId?: string | null;
+  regNumber?: string;
 };
 
 function source(path: string): string {
@@ -564,15 +568,55 @@ async function main() {
     lifecycleState: "DECEASED",
     isPlayerVisible: false,
     marketState: "NOT_FOR_SALE",
+    litterId: "litter-1",
+    sireId: "sire-1",
+    damId: "dam-1",
+    regNumber: "SR-0001",
   });
-  await assertRejectsServiceError(
-    () =>
-      deleteKennelRun({
-        kennelId,
-        runId: "litter-run",
-        client: fake.client as never,
-      }),
-    "a populated LITTER run cannot be manually deleted, including hidden dogs"
+  const litterPuppyBeforeDelete = { ...fake.dogs.at(-1)! };
+  const litterDeleteResult = await deleteKennelRun({
+    kennelId,
+    runId: "litter-run",
+    client: fake.client as never,
+  });
+  assert.equal(litterDeleteResult.movedCount, 1);
+  assert.equal(
+    fake.dogs.find((dog) => dog.id === "litter-puppy")?.kennelRunId,
+    "uncategorized",
+    "deleting a populated LITTER run moves every assigned dog to Uncategorized"
+  );
+  assert.equal(
+    fake.runs.some((run) => run.id === "litter-run"),
+    false,
+    "a populated LITTER run can be manually deleted"
+  );
+  assert.deepEqual(
+    fake.dogs.find((dog) => dog.id === "litter-puppy"),
+    { ...litterPuppyBeforeDelete, kennelRunId: "uncategorized" },
+    "deleting a litter run preserves dog ownership, litter, pedigree, registration, and lifecycle data"
+  );
+
+  fake.runs.push({
+    id: "empty-litter-run",
+    kennelId,
+    name: "Empty Litter",
+    sortOrder: 100,
+    isSystem: false,
+    kind: "LITTER",
+    sourceLitterId: "litter-2",
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+  });
+  const emptyLitterDeleteResult = await deleteKennelRun({
+    kennelId,
+    runId: "empty-litter-run",
+    client: fake.client as never,
+  });
+  assert.equal(emptyLitterDeleteResult.movedCount, 0);
+  assert.equal(
+    fake.runs.some((run) => run.id === "empty-litter-run"),
+    false,
+    "an empty LITTER run can be manually deleted"
   );
 
   const deleteResult = await deleteKennelRun({
