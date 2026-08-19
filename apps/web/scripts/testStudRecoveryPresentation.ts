@@ -41,6 +41,10 @@ function source(relativePath: string): string {
 }
 
 const dogService = source("apps/web/server/services/dog.service.ts");
+const breedingEligibilityService = source(
+  "apps/web/server/services/breedingEligibility.service.ts"
+);
+const publicStudsPage = source("apps/web/app/studs/page.tsx");
 assert.ok(
   dogService.includes("buildReproductiveSnapshotStatus") &&
     dogService.includes('label: "Recovery"') &&
@@ -51,6 +55,16 @@ assert.ok(
 assert.ok(
   dogService.includes("dog.sex === Sex.M &&\n        dog.isBreedingActive &&\n        breedingEligible &&"),
   "Dog Profile requires breeding participation and blocks use of an active stud listing while recovery makes breeding ineligible"
+);
+assert.equal(
+  breedingEligibilityService.includes("isBreedingActive"),
+  false,
+  "Stud Recovery remains independent of owner breeding participation"
+);
+assert.match(
+  publicStudsPage,
+  /!dog\.isBreedingActive\s*\?\s*"Breeding Inactive"\s*:\s*breedingEligibility\.isEligible\s*\?\s*"Available"\s*:\s*"Recovery"/,
+  "an inactive recovering stud presents Breeding Inactive before its unchanged recovery state"
 );
 
 const mineRoute = source("apps/web/app/api/dogs/mine/route.ts");
