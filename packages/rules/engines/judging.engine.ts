@@ -293,6 +293,70 @@ export function getChampionshipPointsFromThresholds(args: {
   return 5;
 }
 
+export type BreedLevelChampionshipUpgrade = Readonly<{
+  bowPoints: number | null;
+  bosPoints: number | null;
+  bosCompetitionCount: number | null;
+  bobPoints: number | null;
+  bobCompetitionCount: number | null;
+  finalPoints: number;
+}>;
+
+/**
+ * Calculates the Year 17+ inclusive CH value for a WD/WB class dog advancing
+ * through BOW, BOS, or BOB. Regular class counts and additional BOB-level
+ * counts are supplied separately so Winners are never counted twice.
+ */
+export function calculateBreedLevelChampionshipUpgrade(args: {
+  recipientSex: "M" | "F";
+  basePoints: number;
+  oppositeSexBasePoints: number;
+  wonBow: boolean;
+  wonBos: boolean;
+  wonBob: boolean;
+  regularSameSexCount: number;
+  additionalBobMaleCount: number;
+  additionalBobFemaleCount: number;
+  thresholds: ChampionshipPointThresholds;
+}): BreedLevelChampionshipUpgrade {
+  const additionalSameSexCount =
+    args.recipientSex === "M"
+      ? args.additionalBobMaleCount
+      : args.additionalBobFemaleCount;
+  const bowPoints = args.wonBow
+    ? Math.max(args.basePoints, args.oppositeSexBasePoints)
+    : null;
+  const bosCompetitionCount = args.wonBos
+    ? args.regularSameSexCount + additionalSameSexCount
+    : null;
+  const bobCompetitionCount = args.wonBob
+    ? args.regularSameSexCount +
+      args.additionalBobMaleCount +
+      args.additionalBobFemaleCount
+    : null;
+  const bosPoints = bosCompetitionCount === null
+    ? null
+    : getChampionshipPointsFromThresholds({
+        dogsInCompetition: bosCompetitionCount,
+        thresholds: args.thresholds,
+      });
+  const bobPoints = bobCompetitionCount === null
+    ? null
+    : getChampionshipPointsFromThresholds({
+        dogsInCompetition: bobCompetitionCount,
+        thresholds: args.thresholds,
+      });
+
+  return {
+    bowPoints,
+    bosPoints,
+    bosCompetitionCount,
+    bobPoints,
+    bobCompetitionCount,
+    finalPoints: Math.max(args.basePoints, bowPoints ?? 0, bosPoints ?? 0, bobPoints ?? 0),
+  };
+}
+
 function makeAward(args: {
   result: JudgedEntryResult;
   awardCode: ShowAwardCode;
@@ -390,6 +454,7 @@ function buildBreedAwards(args: {
   femaleClassResults: JudgedEntryResult[];
   breedResults: JudgedEntryResult[];
   pointsForCompetition: (sex: "M" | "F", dogsInCompetition: number) => number;
+  championshipPointThresholds?: Partial<Record<"M" | "F", ChampionshipPointThresholds>>;
 }): JudgedShowAward[] {
   const winnersCandidates = [
     args.maleClassResults[0],
@@ -422,6 +487,12 @@ function buildBreedAwards(args: {
       .filter((entry) => entry.isChampion)
       .map((entry) => [entry.showEntryId, entry])
   );
+  const additionalBobLevelCounts = { M: 0, F: 0 };
+  for (const entry of args.entries) {
+    if (entry.isChampion) {
+      additionalBobLevelCounts[entry.dog.sex] += 1;
+    }
+  }
   const remainingSpecials = args.breedResults.filter(
     (result) =>
       !breedWinnerDogIds.has(result.dogId) &&
@@ -439,6 +510,29 @@ function buildBreedAwards(args: {
   const maleWinnerPoints = args.pointsForCompetition("M", args.maleClassResults.length);
   const femaleWinnerPoints = args.pointsForCompetition("F", args.femaleClassResults.length);
   const bestOfWinnersPoints = Math.max(maleWinnerPoints, femaleWinnerPoints);
+  const winnerSexByDogId = new Map(
+    winnersCandidates.map((winner) => [winner.dogId, entrySexForResult(args.entries, winner)])
+  );
+  const upgradeFor = (result: JudgedEntryResult, awardCode: "BOS" | "BOB") => {
+    const sex = winnerSexByDogId.get(result.dogId);
+    if (!sex) return null;
+    const thresholds = args.championshipPointThresholds?.[sex];
+    if (!thresholds) return null;
+    const basePoints = sex === "M" ? maleWinnerPoints : femaleWinnerPoints;
+    const oppositeSexBasePoints = sex === "M" ? femaleWinnerPoints : maleWinnerPoints;
+    return calculateBreedLevelChampionshipUpgrade({
+      recipientSex: sex,
+      basePoints,
+      oppositeSexBasePoints,
+      wonBow: bestOfWinners?.dogId === result.dogId,
+      wonBos: awardCode === "BOS",
+      wonBob: awardCode === "BOB",
+      regularSameSexCount: sex === "M" ? args.maleClassResults.length : args.femaleClassResults.length,
+      additionalBobMaleCount: additionalBobLevelCounts.M,
+      additionalBobFemaleCount: additionalBobLevelCounts.F,
+      thresholds,
+    });
+  };
 
   if (bestOfWinners && args.maleClassResults[0] && args.femaleClassResults[0]) {
     awards.push(
@@ -458,6 +552,7 @@ function buildBreedAwards(args: {
   }
 
   if (bestOfBreed) {
+    const upgrade = upgradeFor(bestOfBreed, "BOB");
     awards.push(
       makeAward({
         result: bestOfBreed,
@@ -465,18 +560,23 @@ function buildBreedAwards(args: {
         awardGroup: "BREED",
         sex: null,
         rank: 1,
+        pointsAwarded: upgrade?.finalPoints,
+        dogsInCompetition: upgrade?.bobCompetitionCount,
       })
     );
   }
 
   if (bestOfOpposite) {
+    const upgrade = upgradeFor(bestOfOpposite, "BOS");
     awards.push(
       makeAward({
         result: bestOfOpposite,
         awardCode: "BOS",
         awardGroup: "BREED",
-        sex: bestOfOpposite.dogId === args.maleClassResults[0]?.dogId ? "M" : "F",
+        sex: entrySexForResult(args.entries, bestOfOpposite),
         rank: 2,
+        pointsAwarded: upgrade?.finalPoints,
+        dogsInCompetition: upgrade?.bosCompetitionCount,
       })
     );
   }
@@ -555,6 +655,7 @@ export function judgeBreedBlock(args: {
         femaleClassResults,
         breedResults,
         pointsForCompetition,
+        championshipPointThresholds: args.championshipPointThresholds,
       }),
     ],
   };
