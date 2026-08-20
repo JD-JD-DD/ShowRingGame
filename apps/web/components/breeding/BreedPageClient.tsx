@@ -642,6 +642,7 @@ function DogOptionCard({
   shortlisted,
   onSelect,
   onToggleShortlist,
+  contractHref = null,
 }: {
   dog: DogCardDto;
   currentEpoch: number;
@@ -651,8 +652,11 @@ function DogOptionCard({
   shortlisted?: boolean;
   onSelect: () => void;
   onToggleShortlist?: () => void;
+  contractHref?: string | null;
 }) {
   const unavailable = reasonDogUnavailable(dog, currentEpoch);
+  const outsideSire =
+    !dog.isOwnedByCurrentKennel && dog.sex === "M" && dog.studListingId !== null;
   const projectedCoi =
     dog.sex === "M" && pairingDam ? pairingCoi(dog, pairingDam, pedigree) : null;
   const traitNotes = visibleTraitNotes(dog);
@@ -688,13 +692,7 @@ function DogOptionCard({
         {!dog.isOwnedByCurrentKennel ? (
           <>
             <span>Owner: {dog.ownerKennelName ?? "Player Kennel"}</span>
-            <span>Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</span>
             <span>Brucellosis: {brucellosisStatusLabel(dog)}</span>
-            {studRequirementLabels(dog).length > 0 ? (
-              <span>
-                Bitch minimums: {studRequirementLabels(dog).join(", ")}
-              </span>
-            ) : null}
           </>
         ) : null}
         {projectedCoi ? (
@@ -707,6 +705,18 @@ function DogOptionCard({
         ) : null}
         {cooldownSummary ? <span>{cooldownSummary}</span> : null}
       </div>
+
+      {outsideSire ? (
+        <div className="mt-3 rounded-xl border border-sky-300/20 bg-sky-500/5 p-3 text-xs text-sky-100">
+          <div className="font-semibold uppercase tracking-wide">Stud Terms</div>
+          <div className="mt-1">Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</div>
+          <div className="mt-1">
+            {studRequirementLabels(dog).length > 0
+              ? `Bitch requirements: ${studRequirementLabels(dog).join(", ")}`
+              : "No minimums set"}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-4 rounded-2xl border border-fuchsia-300/20 bg-[linear-gradient(135deg,rgba(168,85,247,0.16),rgba(14,165,233,0.08))] p-3">
         <div className="mb-2 flex items-center justify-between gap-3">
@@ -770,6 +780,14 @@ function DogOptionCard({
           >
             {shortlisted ? "Unpin" : "Compare"}
           </button>
+        ) : null}
+        {contractHref ? (
+          <Link
+            href={contractHref}
+            className="theme-secondary-button rounded-xl px-3 py-2 text-xs font-semibold"
+          >
+            Open Contract
+          </Link>
         ) : null}
       </div>
     </article>
@@ -2303,6 +2321,13 @@ export default function BreedPageClient({
                           pairingDam={selectedDam}
                           pedigree={pedigree}
                           shortlisted={shortlistedSireIds.includes(dog.id)}
+                          contractHref={
+                            !dog.isOwnedByCurrentKennel &&
+                            dog.sex === "M" &&
+                            dog.studListingId
+                              ? `/stud-contract?studListingId=${dog.studListingId}&sireDogId=${dog.id}&damDogId=${selectedDam.id}&source=plan-a-litter`
+                              : null
+                          }
                           onSelect={() => {
                             setSuccessMessage("");
                             setSireId(dog.id);

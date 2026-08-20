@@ -127,6 +127,25 @@ assert.ok(
   "Step 2B explains the selected-dam-specific outside-sire filtering separately from its live loading status"
 );
 assert.ok(
+  client.includes(
+    '!dog.isOwnedByCurrentKennel && dog.sex === "M" && dog.studListingId !== null;'
+  ) &&
+    client.includes("Stud Terms"),
+  "only outside public sire cards expose current listing information as Stud Terms"
+);
+assert.ok(
+  client.includes(
+    "`/stud-contract?studListingId=${dog.studListingId}&sireDogId=${dog.id}&damDogId=${selectedDam.id}&source=plan-a-litter`"
+  ) &&
+    client.includes("Open Contract"),
+  "worksheet outside sire cards link to the contract destination with their listing, sire, selected dam, and source context"
+);
+assert.ok(
+  client.includes("contractHref?: string | null;") &&
+    client.includes("{contractHref ? (\n          <Link"),
+  "Open Contract remains a separate navigation link from sire selection and comparison controls"
+);
+assert.ok(
   client.includes("disabled={isSireLoading}") &&
     client.includes("{isSireLoading ? (") &&
     client.includes(") : sires.length > 0 ? ("),
