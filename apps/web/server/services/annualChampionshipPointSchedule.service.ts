@@ -22,6 +22,9 @@ export type AnnualChampionshipPointScheduleInput =
     fourPointThreshold: number;
     fivePointThreshold: number;
     observationCount: number;
+    resolutionType?: "LOCAL" | "PRIOR_PUBLISHED_SCHEDULE" | "NATIONAL_SAME_BREED_SAME_SEX";
+    sourceObservationCount?: number | null;
+    inheritedFromScheduleId?: string | null;
     achievedOnePointRate: number;
     achievedMajorRate: number;
     achievedFivePointRate: number;
@@ -74,8 +77,8 @@ function assertPersistableSchedule(schedule: AnnualChampionshipPointScheduleInpu
 }
 
 function toUpdateData(schedule: AnnualChampionshipPointScheduleInput) {
-  const { publicationId, effectiveYear, district, breedCode2, sex, ...data } = schedule;
-  return data;
+  const { publicationId, effectiveYear, district, breedCode2, sex, resolutionType, sourceObservationCount, inheritedFromScheduleId, ...data } = schedule;
+  return { ...data, resolutionType: resolutionType ?? "LOCAL", sourceObservationCount: sourceObservationCount ?? null, inheritedFromScheduleId: inheritedFromScheduleId ?? null };
 }
 
 async function requireMutablePublication(
@@ -147,7 +150,7 @@ export async function createAnnualChampionshipPointSchedule(args: {
   return args.database.$transaction(async (tx) => {
     const client = tx as ScheduleClient;
     await requireMutablePublication(client, args.schedule);
-    return client.annualChampionshipPointSchedule.create({ data: args.schedule });
+    return client.annualChampionshipPointSchedule.create({ data: { ...args.schedule, resolutionType: args.schedule.resolutionType ?? "LOCAL" } });
   });
 }
 
@@ -165,7 +168,7 @@ export async function persistAnnualChampionshipPointSchedule(args: {
     await requireMutablePublication(client, args.schedule);
     return client.annualChampionshipPointSchedule.upsert({
       where: whereFor(args.schedule),
-      create: args.schedule,
+      create: { ...args.schedule, resolutionType: args.schedule.resolutionType ?? "LOCAL" },
       update: toUpdateData(args.schedule),
     });
   });

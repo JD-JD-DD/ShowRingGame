@@ -17,6 +17,12 @@ enum AnnualChampionshipPointSchedulePublicationStatus {
   PUBLISHED
 }
 
+enum AnnualChampionshipPointScheduleResolutionType {
+  LOCAL
+  PRIOR_PUBLISHED_SCHEDULE
+  NATIONAL_SAME_BREED_SAME_SEX
+}
+
 enum DogLifecycleState {
   ALIVE
   DECEASED
@@ -535,6 +541,9 @@ model AnnualChampionshipPointSchedule {
   fourPointThreshold  Int
   fivePointThreshold  Int
   observationCount    Int
+  resolutionType      AnnualChampionshipPointScheduleResolutionType
+  sourceObservationCount Int?
+  inheritedFromScheduleId String?
   achievedOnePointRate Decimal @db.Decimal(8, 6)
   achievedMajorRate    Decimal @db.Decimal(8, 6)
   achievedFivePointRate Decimal @db.Decimal(8, 6)

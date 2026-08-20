@@ -10,6 +10,8 @@ export type AnnualChampionshipPointScheduleCalculation = {
   achievedFivePointRate: number;
 };
 
+export const ANNUAL_CHAMPIONSHIP_POINT_SCHEDULE_CALCULATION_VERSION = "points-03-v1";
+
 export type AnnualChampionshipPointScheduleCalculationFailureCode =
   | "INVALID_COMPETITION_COUNTS"
   | "NO_VALID_MAJOR_THRESHOLD"

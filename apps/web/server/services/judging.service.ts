@@ -11,6 +11,7 @@ import {
 } from "@/server/services/showDayGroupJudgeAssignment.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { getInvitationalClusterId } from "@/server/services/invitational.service";
+import { ensureAnnualChampionshipPointSchedulesForEffectiveYear } from "@/server/services/annualChampionshipPointScheduleBuild.service";
 import { createInvitationalResultsPublishedNotices } from "@/server/services/kennelNotice.service";
 import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
 import {
@@ -2296,6 +2297,14 @@ export async function finalizeReadyShowDayResults(args: {
           "Unable to create invitational results published notices:",
           error
         );
+      }
+      try {
+        await ensureAnnualChampionshipPointSchedulesForEffectiveYear({
+          sourceYear: showDay.cluster.year,
+          effectiveYear: showDay.cluster.year + 1,
+        });
+      } catch (error) {
+        console.error("Unable to ensure Annual Championship Point Schedules:", error);
       }
     }
   }
