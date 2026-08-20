@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 
@@ -826,18 +827,20 @@ function FreeMateCard({
   dog,
   selected,
   onSelect,
+  contractHref,
 }: {
   dog: DogCardDto;
   selected: boolean;
   onSelect: () => void;
+  contractHref: string | null;
 }) {
   const outsideKennel = !dog.isOwnedByCurrentKennel;
+  const outsideSire =
+    outsideKennel && dog.sex === "M" && dog.studListingId !== null;
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`w-full rounded-2xl border p-4 text-left transition ${
+    <article
+      className={`w-full rounded-2xl border text-left transition ${
         selected
           ? outsideKennel
             ? "border-sky-200/70 bg-sky-500/25"
@@ -847,39 +850,54 @@ function FreeMateCard({
             : "border-white/10 bg-black/20 hover:border-purple-300/45"
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="font-semibold text-white">
-            <DogName dog={dog} />
+      <button type="button" onClick={onSelect} className="w-full p-4 text-left">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="font-semibold text-white">
+              <DogName dog={dog} />
+            </div>
+            <div className="mt-1 text-xs text-purple-100/55">{dog.regNumber}</div>
           </div>
-          <div className="mt-1 text-xs text-purple-100/55">{dog.regNumber}</div>
+          <span
+            className={`rounded-full border px-2 py-1 text-[0.68rem] font-semibold ${
+              outsideKennel
+                ? "border-sky-300/35 bg-sky-500/10 text-sky-100"
+                : "border-white/10 bg-white/5 text-purple-100/75"
+            }`}
+          >
+            {outsideKennel ? "Outside Stud" : "My Kennel"}
+          </span>
         </div>
-        <span
-          className={`rounded-full border px-2 py-1 text-[0.68rem] font-semibold ${
-            outsideKennel
-              ? "border-sky-300/35 bg-sky-500/10 text-sky-100"
-              : "border-white/10 bg-white/5 text-purple-100/75"
-          }`}
+        <div className="mt-3 grid gap-1 text-xs text-purple-100/70 sm:grid-cols-2">
+          <span>Age: {formatGameAge(dog.ageHours)}</span>
+          {dog.sex === "M" ? (
+            <span>Brucellosis: {brucellosisStatusLabel(dog)}</span>
+          ) : null}
+        </div>
+        {outsideSire ? (
+          <div className="mt-3 rounded-xl border border-sky-300/20 bg-sky-500/5 p-3 text-xs text-sky-100">
+            <div className="font-semibold uppercase tracking-wide">Stud Terms</div>
+            <div className="mt-1">Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</div>
+            <div className="mt-1">
+              {studRequirementLabels(dog).length > 0
+                ? `Bitch requirements: ${studRequirementLabels(dog).join(", ")}`
+                : "No minimums set"}
+            </div>
+          </div>
+        ) : null}
+        <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-3">
+          <MiniTraitSummary dog={dog} />
+        </div>
+      </button>
+      {contractHref ? (
+        <Link
+          href={contractHref}
+          className="theme-secondary-button mx-4 mb-4 inline-flex rounded-xl px-3 py-2 text-xs font-semibold"
         >
-          {outsideKennel ? "Outside Stud" : "My Kennel"}
-        </span>
-      </div>
-      <div className="mt-3 grid gap-1 text-xs text-purple-100/70 sm:grid-cols-2">
-        <span>Age: {formatGameAge(dog.ageHours)}</span>
-        {outsideKennel ? (
-          <span>Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</span>
-        ) : null}
-        {dog.sex === "M" ? (
-          <span>Brucellosis: {brucellosisStatusLabel(dog)}</span>
-        ) : null}
-        {outsideKennel && studRequirementLabels(dog).length > 0 ? (
-          <span>Bitch minimums: {studRequirementLabels(dog).join(", ")}</span>
-        ) : null}
-      </div>
-      <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-3">
-        <MiniTraitSummary dog={dog} />
-      </div>
-    </button>
+          Open Contract
+        </Link>
+      ) : null}
+    </article>
   );
 }
 
@@ -2066,6 +2084,14 @@ export default function BreedPageClient({
                     key={`${dog.id}-${dog.studListingId ?? "owned"}`}
                     dog={dog}
                     selected={dog.id === selectedMate?.id}
+                    contractHref={
+                      !dog.isOwnedByCurrentKennel &&
+                      dog.sex === "M" &&
+                      dog.studListingId &&
+                      selectedDam
+                        ? `/stud-contract?studListingId=${dog.studListingId}&sireDogId=${dog.id}&damDogId=${selectedDam.id}&source=breed-dog`
+                        : null
+                    }
                     onSelect={() => {
                       if (selectingDams) {
                         setDamId(dog.id);

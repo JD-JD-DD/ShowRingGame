@@ -237,6 +237,31 @@ assertIncludes(
 );
 assertIncludes(
   plannerClientSource,
+  'const outsideSire =\n    outsideKennel && dog.sex === "M" && dog.studListingId !== null;',
+  "only outside public sire cards receive the Stud Terms presentation"
+);
+assertIncludes(
+  plannerClientSource,
+  "Stud Terms",
+  "outside public sire cards expose the current listing terms seam"
+);
+assertIncludes(
+  plannerClientSource,
+  "Open Contract",
+  "outside public sire cards expose the informational contract navigation"
+);
+assertIncludes(
+  plannerClientSource,
+  "`/stud-contract?studListingId=${dog.studListingId}&sireDogId=${dog.id}&damDogId=${selectedDam.id}&source=breed-dog`",
+  "outside public sire contract navigation preserves active listing, sire, selected dam, and source context"
+);
+assertIncludes(
+  plannerClientSource,
+  "{contractHref ? (\n        <Link",
+  "Open Contract remains a navigation link separate from the candidate selection button"
+);
+assertIncludes(
+  plannerClientSource,
   'role={plannerNotice.tone === "error" ? "alert" : "status"}',
   "breed page notice uses accessible alert/status semantics"
 );
