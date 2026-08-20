@@ -3,6 +3,7 @@ import { getAnnualChampionshipCompetitionObservations } from "@/server/services/
 import {
   ANNUAL_CHAMPIONSHIP_POINT_SCHEDULE_CALCULATION_VERSION,
   resolveAnnualChampionshipPointScheduleSource,
+  type PriorPublishedAnnualChampionshipPointSchedule,
 } from "@showring/rules";
 import { CURRENT_BREED_RELEASE, SHOW_DISTRICT_COUNT } from "@showring/rules";
 import { type Sex } from "@prisma/client";
@@ -98,7 +99,7 @@ export async function ensureAnnualChampionshipPointSchedulesForEffectiveYear(arg
   ]);
   const expected = breeds.flatMap((breed) => Array.from({ length: SHOW_DISTRICT_COUNT }, (_, index) => SEXES.map((sex) => ({ district: index + 1, breedCode2: breed.code2, sex })))).flat();
   const existingByKey = new Map(existingSchedules.map((schedule) => [keyOf(schedule), schedule]));
-  const priorByKey = new Map(priorSchedules.map((schedule) => [keyOf(schedule), { ...schedule, publicationStatus: schedule.publication.status }]));
+  const priorByKey = new Map<string, PriorPublishedAnnualChampionshipPointSchedule>(priorSchedules.map((schedule) => [keyOf(schedule), { ...schedule, publicationStatus: schedule.publication.status, achievedOnePointRate: Number(schedule.achievedOnePointRate), achievedMajorRate: Number(schedule.achievedMajorRate), achievedFivePointRate: Number(schedule.achievedFivePointRate) }]));
   const resolutionCounts = { ...emptyCounts };
   const unresolved: UnresolvedKey[] = [];
   let resolvedScheduleCount = 0;
