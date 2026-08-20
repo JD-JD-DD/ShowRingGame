@@ -62,6 +62,18 @@ assert.equal(resultFor(snapshot({ sameShowDayWinnersBitchIds: new Set(["bos-f"])
   assert.equal(value?.championDefeatFacts.qualifyingChampionOpponentCount, 3, "Champion-defeat evidence excludes recipient and is not competition count minus one");
 }
 {
+  const value = resultFor(snapshot({
+    bobLevelCompetitors: [
+      competitor("bob-m", "M"),
+      competitor("bos-f", "F", { championDefeatEligible: false }),
+      competitor("select-m", "M", { championDefeatEligible: false }),
+      competitor("select-f", "F", { championDefeatEligible: false }),
+    ],
+  }), "BOB");
+  assert.equal(value?.competitionCount, 9, "numerical GCH population remains independent from Champion-defeat evidence");
+  assert.equal(value?.championDefeatFacts.qualifyingChampionOpponentCount, 0, "large numerical competition does not invent a qualifying Champion defeat");
+}
+{
   const original = snapshot();
   const before = structuredClone({ regularCompetitorCounts: original.regularCompetitorCounts, bobLevelCompetitors: original.bobLevelCompetitors, awards: original.awards, winnersDog: [...original.sameShowDayWinnersDogIds], winnersBitch: [...original.sameShowDayWinnersBitchIds] });
   const first = calculateGrandChampionCompetitionCounts(original);
