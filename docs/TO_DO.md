@@ -16,8 +16,6 @@ Items not listed here are treated as complete, superseded, or folded into one of
 
 - Add named handler schedules later so players can choose handlers for secondary shows.
 
-- Replace the temporary all-breed point schedule with the real point schedule.
-
 - Add breed clubs and specialty shows. Players can pay for club membership; clubs fund breed specialties that run as additional shows within a cluster and accept only that breed. Later, add breed nationals weeks or multi-day national specialties for specific breeds.
 
 - Add once-a-year prestige shows, including a Week 52 invitational based on the Top Ten per breed system.

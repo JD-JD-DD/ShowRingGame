@@ -1240,6 +1240,106 @@ except where an explicit class-integration stage requires localized routing chan
 
 ---
 
+## 27A. Annual Championship and Grand Championship Point Schedules — Implemented
+
+**Implementation status: implemented on the post-Invitational release branch (POINTS-01 through POINTS-10 and GCH-01 through GCH-07).** This is the authoritative point-system section. It supersedes older universal point tables, fixed Group/BIS bonuses, and pre-provenance Grand Champion descriptions.
+
+### Annual Championship Point Schedule authority and lifecycle
+
+There is one Annual Championship Point Schedule system for Championship (CH) and Grand Champion (GCH) scoring. Its canonical row key is:
+
+`effectiveYear × district × breedCode2 × sex`
+
+`district` is the internal and database term. The player Point Schedule UI calls the same concept a **Division**. There is no separate GCH schedule and no `ALL` storage row.
+
+Each effective year has one Publication, initially `DRAFT`, with a unique `effectiveYear`. A schedule set is live only when its parent Publication is `PUBLISHED` and has a publication timestamp. DRAFT rows, including complete-looking rows, are not authoritative for judging, GCH, or the player reference page.
+
+Year 16 is the legacy/data-collection year. Year 17 is the first dynamic schedule year. Thereafter, the cycle is generic:
+
+`Year N Invitational COMPLETE → sourceYear=N / effectiveYear=N+1 build → DRAFT → exact complete key set → PUBLISHED`.
+
+The Invitational completion is the publication boundary. It is not a show-generation, entry-opening, calendar-rollover, or ordinary-judging prerequisite. Shows may exist and entries may open for Year N+1 before publication; Year N+1 judging fails closed until the exact published row exists.
+
+The build requires consecutive years, `effectiveYear = sourceYear + 1`. It uses the current eligible publication universe: active breeds whose `releaseVersion` is at or below the current breed release, for each district 1–15 and sex M/F. Before publishing, stored child keys must exactly equal that expected key set; row count alone is insufficient. An unresolved or malformed source leaves the Publication DRAFT. A completed PUBLISHED build is a safe no-op: it neither changes rows nor resets `publishedAt`.
+
+Annual build failure is isolated from the already completed Invitational transaction. Invitational results remain published, a DRAFT may remain for retry, and the normal deterministic build can resume it. No annual generation, observation collection, or publication-wide completeness scan occurs while judging an ordinary show.
+
+### Annual observations, calculation, and fallback
+
+Annual Championship Point Schedules are calculated from immutable judging-time WD/WB competition counts. `dogsInCompetition` means all eligible non-champion dogs of the applicable sex that actually remained in regular-class competition when Winners judging occurred, regardless of which regular class they entered or won. Individual regular-class names are not part of annual schedule calculation.
+
+The calculator derives strictly increasing 1–5 point thresholds. The 1-point threshold is the highest threshold, never below two dogs, at which at least 95% of observations qualify. The 3-point major threshold is the reachable threshold closest to an 18% rate while never exceeding 20%; ties choose the higher threshold. The 5-point threshold is the reachable threshold closest to 2%. The 2-point threshold is the rounded midpoint from 1 to 3, and the 4-point threshold is the rounded two-thirds interpolation from 3 to 5. The Publication preserves achieved one-point, major, and five-point rates plus resolution provenance.
+
+Sparse resolution uses one unblended source in this order:
+
+1. local `sourceYear × district × breed × sex` observations;
+2. the exact prior PUBLISHED schedule for the same district/breed/sex, where applicable;
+3. the `sourceYear` all-district population for the same breed and sex;
+4. unresolved when none is valid.
+
+Malformed/data-quality observations stop the build; they are not silently converted into a fallback. There is no unrelated-breed, opposite-sex, previous/next-year, or “latest schedule” fallback.
+
+### Championship scoring
+
+For Year 16 and earlier, Championship scoring remains legacy. For Year 17 and later, Winners Dog (WD) resolves the exact published M schedule using regular male `dogsInCompetition`; Winners Bitch (WB) resolves the exact published F schedule using regular female `dogsInCompetition`.
+
+Best of Winners (BOW) receives the higher WD/WB Championship value. Values never add. The former combined-sex single-point BOW exception is superseded and is not an active rule.
+
+When a WD/WB class dog advances:
+
+* **Best of Opposite Sex (BOS):** recipient-sex regular-class count plus additional same-sex BOB-level competition, through the recipient-sex schedule. The Winners advancement is not double-counted.
+* **Best of Breed (BOB):** recipient-sex regular-class count plus additional male and female BOB-level competition, through the recipient-sex schedule. Opposite-sex regular-class count is not added.
+
+For one ShowDay, a class dog’s final Championship value is the inclusive maximum of its WD/WB base value, BOW value, BOS/BOB upgrade, Group upgrade, and BIS/RBIS upgrade. Values never stack and cannot exceed five points. A three-, four-, or five-point CH or GCH award is a major.
+
+Year 17+ Group, BIS, and RBIS upgrades use persisted WD/WB **base** Winners ratings only. They do not reuse BOW, BOB/BOS, earlier Group/BIS, GCH, or a universal finalist-count helper.
+
+* **Group 1:** highest eligible base Winners rating among breeds actually represented in that Group.
+* **Group 2–4:** the same comparison after excluding every breed that placed higher; unplaced represented breeds remain eligible, and exclusion is by whole breed.
+* **BIS:** highest eligible base Winners rating across the ShowDay.
+* **RBIS:** the same comparison after excluding the entire Group from which BIS advanced.
+
+These are inclusive Championship ratings, not fixed additive bonuses. The older “Group 4 +1 through BIS +5” table is superseded.
+
+The current CH title is 15 Championship points and two majors. Title progress consumes the best persisted positive award per ShowDay; it does not recalculate prior show points from a newer schedule.
+
+### Grand Champion scoring and titles
+
+Only eligible Champion-level recipients of BOB, BOS, Select Dog, or Select Bitch can earn GCH. A dog receiving WD or WB on that same ShowDay cannot earn GCH that day, even if it finishes CH; a dog already finished on an earlier ShowDay may earn GCH later.
+
+GCH competition is judged-time semantic population data, not a universal “counted Champions” formula:
+
+* **BOB:** regular M + regular F + eligible additional BOB-level M/F population.
+* **BOS:** same-sex regular + same-sex eligible BOB-level population.
+* **Select Dog / Select Bitch:** the corresponding same-sex BOS-style population minus exactly one higher same-sex BOB/BOS dog.
+
+For BOB, compare the full BOB count and the same-sex comparison count with the recipient’s sex-specific schedule; award the greater result, never their sum. Champion-defeated evidence is separate from competition count and is not inferred as `competitionCount - 1`.
+
+Year 16 and earlier use the isolated legacy GCH conversion. Year 17 and later use the exact same PUBLISHED Annual Championship Point Schedule authority as CH, keyed by the Invitational or show cluster’s persisted year, district, breed, and recipient sex. GCH does not calculate schedules or fall back during finalization. Group/BIS/RBIS never add, upgrade, or create GCH points or GCH majors.
+
+The initial GCH requires an existing CH title, 25 GCH points, three major ShowDays, three distinct major judges, positive points under at least four distinct judges overall, and qualifying Champion defeated at three distinct ShowDays. Higher tiers are cumulative point milestones only: GCH 25, GCHB 100, GCHS 200, GCHG 400, GCHP 800, GCHP2 1600, GCHP3 2400, GCHP4 3200, and GCHP5 4000.
+
+Corrected prospective GCH credits preserve effective year, district, breed, sex, judge, raw competition count, BOB same-sex comparison count where applicable, Champion-defeat evidence, rules version, and finalized timestamp. Pre-provenance historical credits remain historical facts; linked ShowAward judge identity may be read as an immutable legacy fallback, but those credits are not backfilled.
+
+### Invitationals, history, and player reference
+
+Invitationals deliberately separate four behaviors:
+
+* ordinary CH points are suppressed;
+* Invitational WD/WB observations are excluded from annual source statistics;
+* GCH remains enabled;
+* canonical Invitational completion triggers the next annual Publication build.
+
+Completed ShowAward, ShowResult, and DogGrandChampionCredit numeric values are permanent historical facts. Later schedule publications, title/ownership/eligibility changes, breed Group changes, or class-structure changes must not rebuild, backfill, rerate, or otherwise rewrite completed CH/GCH results.
+
+`/point-schedules` is an authenticated player reference route. It lists PUBLISHED effective years only, retains historical years, and renders All Divisions or Division 1–15 with Dogs and Bitches under 1–5 point headings. All Divisions is a presentation aggregation of canonical district rows; it neither stores nor calculates a schedule. Its reads remain bounded to a publication read and a set-based schedule-table read.
+
+### Specialty and non-regular readiness
+
+Ordinary all-breed shows do not yet implement future specialty non-regular class behavior. The architecture is intentionally ready: annual calculation is independent of individual class names, and GCH uses semantic BOB-level competition categories. A future specialty implementation may supply eligible non-regular BOB-advancing population input without rewriting annual schedule calculation or the core GCH count engine. Specialty Reserve Winners and variety/inter-variety rules remain future work and are not current ordinary-show behavior.
+
+---
+
 ## 28. International Accessibility and Localization Readiness
 
 English remains the supported game language.

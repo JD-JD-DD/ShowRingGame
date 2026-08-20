@@ -2714,6 +2714,8 @@ minimum 3 unique kennels
 
 ## point schedule
 
+> **Historical / superseded:** This pre-Post-Invitational point-system draft is retained only as development history. It is not an active rules specification. The implemented authoritative rules are in [the Annual Championship and Grand Championship Point Schedules section of the Post-Invitational Master File](post-invitational-master-file.md#27a-annual-championship-and-grand-champion-point-schedules--implemented), including annual district/breed/sex schedules, published authority, inclusive CH upgrades, and current GCH qualification.
+
 ### Universal Point Table
 
 ```txt
