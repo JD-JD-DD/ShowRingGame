@@ -1106,6 +1106,16 @@ model DogGrandChampionCredit {
   showDayId              String
   showAwardId            String?  @unique
   awardCode              String
+  effectiveYear          Int?
+  district               Int?
+  breedCode2             String?
+  sex                    Sex?
+  judgeId                String?
+  competitionCount       Int?
+  bobSameSexComparisonCount Int?
+  qualifyingChampionOpponentCount Int?
+  rulesVersion           String?
+  finalizedAtEpoch       Int?
   pointsAwarded          Int      @default(0)
   isMajor                Boolean  @default(false)
   defeatedChampionCount  Int      @default(0)
@@ -1121,6 +1131,8 @@ model DogGrandChampionCredit {
   @@index([dogId])
   @@index([showDayId])
   @@index([awardCode])
+  @@index([effectiveYear, district, breedCode2, sex])
+  @@index([judgeId])
   @@index([pointsAwarded])
   @@index([isMajor])
   @@index([countsAsChampionDefeat])
