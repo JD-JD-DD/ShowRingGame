@@ -247,7 +247,7 @@ function isChampionEntry(entry: EntryForJudging): boolean {
 }
 
 async function ensureAndLoadBreedJudgingHealthTruths(
-  tx: Prisma.TransactionClient,
+  tx: DbClient,
   dogIds: string[]
 ): Promise<Map<string, NonNullable<DogForEngine["healthConditionTruths"]>>> {
   const uniqueDogIds = [...new Set(dogIds)];
@@ -895,6 +895,22 @@ export async function judgeShowBlock(args: {
   const preparedEntryStatuses = new Map(
     block.showEntries.map((entry) => [entry.id, entry.entryStatus])
   );
+  const preparedEligibleEntries = block.showEntries
+    .map((entry) => ({ entry, disposition: getBlockJudgingEntryDisposition(entry, block) }))
+    .filter((candidate): candidate is { entry: EntryForJudging; disposition: Extract<BlockJudgingEntryDisposition, { isEligible: true }> } => candidate.disposition.isEligible)
+    .map((candidate) => candidate.entry);
+  const preparedHealthTruthsByDogId = await ensureAndLoadBreedJudgingHealthTruths(db, preparedEligibleEntries.map((entry) => entry.dogId));
+  const preparedEngineJudge = toEngineJudge(block.judge);
+  const preparedShouldAwardChampionshipPoints = awardsChampionshipPoints(block.showDay.cluster.id);
+  const preparedChampionshipPointThresholds: Partial<Record<"M" | "F", { onePointThreshold: number; twoPointThreshold: number; threePointThreshold: number; fourPointThreshold: number; fivePointThreshold: number }>> = {};
+  if (preparedShouldAwardChampionshipPoints && block.showDay.cluster.year >= 17) {
+    const requiredSexes = (["M", "F"] as const).filter((sex) => preparedEligibleEntries.some((entry) => !isChampionEntry(entry) && entry.dog.sex === sex));
+    const schedules = await Promise.all(requiredSexes.map((sex) => getPublishedAnnualChampionshipPointSchedule({ client: db as never, effectiveYear: block.showDay.cluster.year, district: block.showDay.cluster.district, breedCode2: block.breedCode2, sex })));
+    for (const schedule of schedules) preparedChampionshipPointThresholds[schedule.sex] = schedule;
+  }
+  const preparedBreedConformationProfile = await getBreedConformationProfileForJudging({ client: db, breedCode2: block.breedCode2 });
+  const preparedConformationCategoryWeights = combineBreedAndJudgeConformationWeights({ breedWeights: preparedBreedConformationProfile.conformationWeights, judgeWeights: { TYPE_EXPRESSION: preparedEngineJudge.categoryWeights.TYPE_EXPRESSION, STRUCTURE_BALANCE: preparedEngineJudge.categoryWeights.STRUCTURE_BALANCE, MOVEMENT: preparedEngineJudge.categoryWeights.MOVEMENT, COAT_PRESENTATION: preparedEngineJudge.categoryWeights.COAT_PRESENTATION, TEMPERAMENT_RING_BEHAVIOR: preparedEngineJudge.categoryWeights.TEMPERAMENT_RING_BEHAVIOR } });
+  const preparedJudgedBlock = judgeBreedBlock({ judge: preparedEngineJudge, conformationCategoryWeights: preparedConformationCategoryWeights, showEpoch: block.startEpoch, entries: preparedEligibleEntries.map((entry) => ({ showEntryId: entry.id, dog: toEngineDog(entry, preparedHealthTruthsByDogId.get(entry.dogId)), isChampion: isChampionEntry(entry) })), championshipPointThresholds: preparedChampionshipPointThresholds });
 
   return db.$transaction(async (tx) => {
     const currentBlock = await tx.showJudgingBlock.findUnique({
@@ -1081,57 +1097,13 @@ export async function judgeShowBlock(args: {
     const uniqueKennelsInCompetition = new Set(
       eligibleEntries.map((entry) => entry.kennelId)
     ).size;
-    const healthTruthsByDogId = await ensureAndLoadBreedJudgingHealthTruths(
-      tx,
-      eligibleEntries.map((entry) => entry.dogId)
-    );
-    const engineJudge = toEngineJudge(block.judge);
-    const shouldAwardChampionshipPoints = awardsChampionshipPoints(
-      block.showDay.cluster.id
-    );
-    const championshipPointThresholds: Partial<Record<"M" | "F", { onePointThreshold: number; twoPointThreshold: number; threePointThreshold: number; fourPointThreshold: number; fivePointThreshold: number }>> = {};
-    if (shouldAwardChampionshipPoints && block.showDay.cluster.year >= 17) {
-      const requiredSexes = (["M", "F"] as const).filter((sex) => eligibleEntries.some((entry) => !isChampionEntry(entry) && entry.dog.sex === sex));
-      const schedules = await Promise.all(requiredSexes.map((sex) => getPublishedAnnualChampionshipPointSchedule({ client: tx, effectiveYear: block.showDay.cluster.year, district: block.showDay.cluster.district, breedCode2: block.breedCode2, sex })));
-      for (const schedule of schedules) championshipPointThresholds[schedule.sex] = schedule;
-    }
-    let breedConformationProfile;
-    let conformationCategoryWeights;
-    try {
-      breedConformationProfile = await getBreedConformationProfileForJudging({
-        client: tx,
-        breedCode2: block.breedCode2,
-      });
-      conformationCategoryWeights = combineBreedAndJudgeConformationWeights({
-        breedWeights: breedConformationProfile.conformationWeights,
-        judgeWeights: {
-          TYPE_EXPRESSION: engineJudge.categoryWeights.TYPE_EXPRESSION,
-          STRUCTURE_BALANCE: engineJudge.categoryWeights.STRUCTURE_BALANCE,
-          MOVEMENT: engineJudge.categoryWeights.MOVEMENT,
-          COAT_PRESENTATION: engineJudge.categoryWeights.COAT_PRESENTATION,
-          TEMPERAMENT_RING_BEHAVIOR:
-            engineJudge.categoryWeights.TEMPERAMENT_RING_BEHAVIOR,
-        },
-      });
-    } catch (error) {
-      console.error("Breed judging profile configuration failed", {
-        breedCode2: block.breedCode2,
-        judgingBlockId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-    const judgedBlock = judgeBreedBlock({
-      judge: engineJudge,
-      conformationCategoryWeights,
-      showEpoch: block.startEpoch,
-      entries: eligibleEntries.map((entry) => ({
-        showEntryId: entry.id,
-        dog: toEngineDog(entry, healthTruthsByDogId.get(entry.dogId)),
-        isChampion: isChampionEntry(entry),
-      })),
-      championshipPointThresholds,
-    });
+    const healthTruthsByDogId = preparedHealthTruthsByDogId;
+    const engineJudge = preparedEngineJudge;
+    const shouldAwardChampionshipPoints = preparedShouldAwardChampionshipPoints;
+    const championshipPointThresholds = preparedChampionshipPointThresholds;
+    const breedConformationProfile = preparedBreedConformationProfile;
+    const conformationCategoryWeights = preparedConformationCategoryWeights;
+    const judgedBlock = preparedJudgedBlock;
     const resultIdByShowEntryId = new Map<string, string>();
     const judgedEntryIds: string[] = [];
     const pointsByShowEntryId = new Map<string, number>();
