@@ -1126,6 +1126,7 @@ export async function judgeShowBlock(args: {
       );
     }
 
+    const resultsToCreate: Prisma.ShowResultCreateManyInput[] = [];
     for (const result of judgedBlock.results) {
       if (!result.showEntryId) {
         continue;
@@ -1139,34 +1140,50 @@ export async function judgeShowBlock(args: {
         judge: engineJudge,
         result,
       });
-      const createdResult = await tx.showResult.create({
-        data: {
-          showEntryId: result.showEntryId,
-          showDayId: block.showDayId,
-          judgingBlockId,
-          dogId: result.dogId,
-          enteredKennelId: sourceEntry?.enteredKennelId ?? sourceEntry?.kennelId,
-          enteredKennelName: sourceEntry?.enteredKennelName,
-          enteredKennelSlug: sourceEntry?.enteredKennelSlug,
-          breedCode2: block.breedCode2,
-          judgeId: block.judgeId,
-          finalRank: result.finalRank,
-          placementCode: result.placementCode,
-          baseScore: result.baseScore,
-          finalScore: result.finalScore,
-          pointsAwarded,
-          isMajor: pointsAwarded >= 3,
-          uniqueKennelsInCompetition,
-          publishedAtEpoch: currentEpoch,
-          scoringVersion: BREED_WEIGHTED_JUDGING_SCORING_VERSION,
-          breedJudgingProfileId: breedConformationProfile.profileId,
-          breedJudgingRulesVersion: breedConformationProfile.rulesVersion,
-          breedJudgingAudit: breedJudgingAudit as Prisma.InputJsonValue,
-        },
-        select: { id: true },
+      resultsToCreate.push({
+        showEntryId: result.showEntryId,
+        showDayId: block.showDayId,
+        judgingBlockId,
+        dogId: result.dogId,
+        enteredKennelId: sourceEntry?.enteredKennelId ?? sourceEntry?.kennelId,
+        enteredKennelName: sourceEntry?.enteredKennelName,
+        enteredKennelSlug: sourceEntry?.enteredKennelSlug,
+        breedCode2: block.breedCode2,
+        judgeId: block.judgeId,
+        finalRank: result.finalRank,
+        placementCode: result.placementCode,
+        baseScore: result.baseScore,
+        finalScore: result.finalScore,
+        pointsAwarded,
+        isMajor: pointsAwarded >= 3,
+        uniqueKennelsInCompetition,
+        publishedAtEpoch: currentEpoch,
+        scoringVersion: BREED_WEIGHTED_JUDGING_SCORING_VERSION,
+        breedJudgingProfileId: breedConformationProfile.profileId,
+        breedJudgingRulesVersion: breedConformationProfile.rulesVersion,
+        breedJudgingAudit: breedJudgingAudit as Prisma.InputJsonValue,
       });
+    }
 
-      resultIdByShowEntryId.set(result.showEntryId, createdResult.id);
+    if (resultsToCreate.length > 0) {
+      await tx.showResult.createMany({ data: resultsToCreate });
+      const expectedShowEntryIds = new Set(resultsToCreate.map((result) => result.showEntryId));
+      const persistedResults = await tx.showResult.findMany({
+        where: { showEntryId: { in: [...expectedShowEntryIds] } },
+        select: { id: true, showEntryId: true },
+      });
+      if (persistedResults.length !== expectedShowEntryIds.size) {
+        throw new Error("Bulk ShowResult persistence did not return exact ShowEntry coverage.");
+      }
+      for (const persistedResult of persistedResults) {
+        if (!expectedShowEntryIds.delete(persistedResult.showEntryId) || resultIdByShowEntryId.has(persistedResult.showEntryId)) {
+          throw new Error("Bulk ShowResult persistence returned an ambiguous ShowEntry mapping.");
+        }
+        resultIdByShowEntryId.set(persistedResult.showEntryId, persistedResult.id);
+      }
+      if (expectedShowEntryIds.size > 0) {
+        throw new Error("Bulk ShowResult persistence is missing a ShowEntry mapping.");
+      }
     }
 
     const awardsToCreate: Prisma.ShowAwardCreateManyInput[] = [];
