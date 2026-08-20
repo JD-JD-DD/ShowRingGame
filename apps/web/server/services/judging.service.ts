@@ -256,34 +256,16 @@ async function ensureAndLoadBreedJudgingHealthTruths(
     return new Map();
   }
 
-  await ensurePhenotypeHealthTruthsForDogs(tx, uniqueDogIds);
-
-  const healthConditionTruths = await tx.dogHealthConditionTruth.findMany({
-    where: {
-      dogId: {
-        in: uniqueDogIds,
-      },
-    },
-    select: {
-      dogId: true,
-      conditionCode: true,
-      geneticLiability: true,
-      environmentModifier: true,
-    },
-  });
+  const healthConditionTruths = await ensurePhenotypeHealthTruthsForDogs(tx, uniqueDogIds);
   const truthsByDogId = new Map<
     string,
     NonNullable<DogForEngine["healthConditionTruths"]>
   >();
 
-  for (const truth of healthConditionTruths) {
-    const dogTruths = truthsByDogId.get(truth.dogId) ?? [];
-    dogTruths.push({
-      conditionCode: truth.conditionCode,
-      geneticLiability: truth.geneticLiability,
-      environmentModifier: truth.environmentModifier,
-    });
-    truthsByDogId.set(truth.dogId, dogTruths);
+  for (const [dogId, truths] of healthConditionTruths) {
+    const dogTruths = truthsByDogId.get(dogId) ?? [];
+    dogTruths.push(...truths);
+    truthsByDogId.set(dogId, dogTruths);
   }
 
   return truthsByDogId;
@@ -300,20 +282,7 @@ async function ensureAndLoadGroupJudgingHealthTruths(
   }
 
   await ensurePhenotypeHealthTruthsForDogs(tx, uniqueDogIds);
-
-  const healthConditionTruths = await tx.dogHealthConditionTruth.findMany({
-    where: {
-      dogId: {
-        in: uniqueDogIds,
-      },
-    },
-    select: {
-      dogId: true,
-      conditionCode: true,
-      geneticLiability: true,
-      environmentModifier: true,
-    },
-  });
+  const healthConditionTruths = await tx.dogHealthConditionTruth.findMany({ where: { dogId: { in: uniqueDogIds } }, select: { dogId: true, conditionCode: true, geneticLiability: true, environmentModifier: true } });
   const truthsByDogId = new Map<
     string,
     NonNullable<DogForEngine["healthConditionTruths"]>
@@ -321,11 +290,7 @@ async function ensureAndLoadGroupJudgingHealthTruths(
 
   for (const truth of healthConditionTruths) {
     const dogTruths = truthsByDogId.get(truth.dogId) ?? [];
-    dogTruths.push({
-      conditionCode: truth.conditionCode,
-      geneticLiability: truth.geneticLiability,
-      environmentModifier: truth.environmentModifier,
-    });
+    dogTruths.push(truth);
     truthsByDogId.set(truth.dogId, dogTruths);
   }
 
@@ -343,20 +308,7 @@ async function ensureAndLoadBestInShowJudgingHealthTruths(
   }
 
   await ensurePhenotypeHealthTruthsForDogs(tx, uniqueDogIds);
-
-  const healthConditionTruths = await tx.dogHealthConditionTruth.findMany({
-    where: {
-      dogId: {
-        in: uniqueDogIds,
-      },
-    },
-    select: {
-      dogId: true,
-      conditionCode: true,
-      geneticLiability: true,
-      environmentModifier: true,
-    },
-  });
+  const healthConditionTruths = await tx.dogHealthConditionTruth.findMany({ where: { dogId: { in: uniqueDogIds } }, select: { dogId: true, conditionCode: true, geneticLiability: true, environmentModifier: true } });
   const truthsByDogId = new Map<
     string,
     NonNullable<DogForEngine["healthConditionTruths"]>
@@ -364,11 +316,7 @@ async function ensureAndLoadBestInShowJudgingHealthTruths(
 
   for (const truth of healthConditionTruths) {
     const dogTruths = truthsByDogId.get(truth.dogId) ?? [];
-    dogTruths.push({
-      conditionCode: truth.conditionCode,
-      geneticLiability: truth.geneticLiability,
-      environmentModifier: truth.environmentModifier,
-    });
+    dogTruths.push(truth);
     truthsByDogId.set(truth.dogId, dogTruths);
   }
 
@@ -935,14 +883,46 @@ export async function judgeShowBlock(args: {
   currentEpoch: number;
 }): Promise<JudgeShowBlockDto> {
   const { judgingBlockId, currentEpoch } = args;
+  const block = await db.showJudgingBlock.findUnique({
+    where: { id: judgingBlockId },
+    ...showBlockForJudgingArgs,
+  });
+
+  if (!block) {
+    throw new Error("Show judging block not found.");
+  }
+
+  const preparedEntryStatuses = new Map(
+    block.showEntries.map((entry) => [entry.id, entry.entryStatus])
+  );
+
   return db.$transaction(async (tx) => {
-    const block = await tx.showJudgingBlock.findUnique({
+    const currentBlock = await tx.showJudgingBlock.findUnique({
       where: { id: judgingBlockId },
-      ...showBlockForJudgingArgs,
+      select: {
+        status: true,
+        startEpoch: true,
+        showDayId: true,
+        showDay: { select: { status: true, cluster: { select: { status: true } } } },
+        showEntries: { select: { id: true, entryStatus: true } },
+      },
     });
 
-    if (!block) {
+    if (!currentBlock) {
       throw new Error("Show judging block not found.");
+    }
+
+    const preparationIsCurrent =
+      currentBlock.status === block.status &&
+      currentBlock.startEpoch === block.startEpoch &&
+      currentBlock.showDayId === block.showDayId &&
+      currentBlock.showEntries.length === preparedEntryStatuses.size &&
+      currentBlock.showEntries.every(
+        (entry) => preparedEntryStatuses.get(entry.id) === entry.entryStatus
+      );
+
+    if (!preparationIsCurrent) {
+      throw new Error("Show judging block changed during preparation; retry judging.");
     }
 
     if (block.showDay.cluster.status === "CANCELLED") {
@@ -1052,12 +1032,18 @@ export async function judgeShowBlock(args: {
       .map((candidate) => candidate.entry.id);
 
     if (automaticAbsentEntries.length > 0) {
+      const absentEntryIdsByReason = new Map<ShowEntryAbsenceReason, string[]>();
       for (const absentEntry of automaticAbsentEntries) {
+        const entryIds = absentEntryIdsByReason.get(absentEntry.absenceReason) ?? [];
+        entryIds.push(absentEntry.entryId);
+        absentEntryIdsByReason.set(absentEntry.absenceReason, entryIds);
+      }
+      for (const [absenceReason, entryIds] of absentEntryIdsByReason) {
         await tx.showEntry.updateMany({
-          where: { id: absentEntry.entryId, entryStatus: "ENTERED" },
+          where: { id: { in: entryIds }, entryStatus: "ENTERED" },
           data: {
             entryStatus: "ABSENT",
-            absenceReason: absentEntry.absenceReason,
+            absenceReason,
           },
         });
       }

@@ -210,11 +210,11 @@ function resolvePhenotypeHealthTruthsForDog(args: {
 export async function ensurePhenotypeHealthTruthsForDogs(
   client: HealthClient,
   dogIds: string[]
-): Promise<void> {
+): Promise<Map<string, PhenotypeHealthTruth[]>> {
   const uniqueDogIds = [...new Set(dogIds)].filter(Boolean);
 
   if (uniqueDogIds.length === 0) {
-    return;
+    return new Map();
   }
 
   const dogsById = await loadPhenotypeHealthPedigree(client, uniqueDogIds);
@@ -259,13 +259,15 @@ export async function ensurePhenotypeHealthTruthsForDogs(
   );
 
   if (rowsToCreate.length === 0) {
-    return;
+    return resolvedTruthsByDogId;
   }
 
   await client.dogHealthConditionTruth.createMany({
     data: rowsToCreate,
     skipDuplicates: true,
   });
+
+  return resolvedTruthsByDogId;
 }
 
 export async function runPhenotypeHealthTestForKennel(args: {
