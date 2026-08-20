@@ -2271,6 +2271,9 @@ export default function BreedPageClient({
               </div>
               {selectedDam ? (
                 <>
+                  <p className="theme-copy mt-4 text-sm">
+                    Only outside sires available to the selected dam are shown.
+                  </p>
                   <label className="theme-label mt-4 grid gap-2 text-xs uppercase tracking-wide">
                     Sort Sires
                     <select

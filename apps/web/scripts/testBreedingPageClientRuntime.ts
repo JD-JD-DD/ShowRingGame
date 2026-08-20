@@ -121,6 +121,12 @@ assert.ok(
   "Step 2B exposes accessible busy and live loading feedback"
 );
 assert.ok(
+  client.includes("Only outside sires available to the selected dam are shown.") &&
+    client.indexOf("Only outside sires available to the selected dam are shown.") <
+      client.indexOf("Loading available sires…"),
+  "Step 2B explains the selected-dam-specific outside-sire filtering separately from its live loading status"
+);
+assert.ok(
   client.includes("disabled={isSireLoading}") &&
     client.includes("{isSireLoading ? (") &&
     client.includes(") : sires.length > 0 ? ("),
