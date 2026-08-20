@@ -302,6 +302,44 @@ export type BreedLevelChampionshipUpgrade = Readonly<{
   finalPoints: number;
 }>;
 
+export type BreedWinnersPointRating = Readonly<{
+  breedCode2: string;
+  groupCode: string;
+  pointsAwarded: number;
+}>;
+
+/**
+ * Applies the inclusive AKC-style higher-level CH rating. Only persisted WD/WB
+ * base ratings belong in `eligibleBreedRatings`; callers supply higher breed or
+ * BIS-group exclusions from the judged placement topology.
+ */
+export function calculateHigherLevelChampionshipUpgrade(args: {
+  recipientWasWinners: boolean;
+  existingPoints: number;
+  eligibleBreedRatings: readonly BreedWinnersPointRating[];
+  excludedBreedCodes?: ReadonlySet<string>;
+  excludedGroupCodes?: ReadonlySet<string>;
+}): Readonly<{ comparisonPoints: number; pointsAwarded: number }> {
+  const excludedBreedCodes = args.excludedBreedCodes ?? new Set<string>();
+  const excludedGroupCodes = args.excludedGroupCodes ?? new Set<string>();
+  let comparisonPoints = 0;
+  for (const rating of args.eligibleBreedRatings) {
+    if (
+      excludedBreedCodes.has(rating.breedCode2) ||
+      excludedGroupCodes.has(rating.groupCode)
+    ) {
+      continue;
+    }
+    comparisonPoints = Math.max(comparisonPoints, rating.pointsAwarded);
+  }
+  return {
+    comparisonPoints,
+    pointsAwarded: args.recipientWasWinners
+      ? Math.max(args.existingPoints, comparisonPoints)
+      : 0,
+  };
+}
+
 /**
  * Calculates the Year 17+ inclusive CH value for a WD/WB class dog advancing
  * through BOW, BOS, or BOB. Regular class counts and additional BOB-level

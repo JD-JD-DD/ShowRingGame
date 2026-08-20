@@ -27,6 +27,7 @@ import {
   BREED_WEIGHTED_JUDGING_SCORING_VERSION,
   canEnterShows,
   combineBreedAndJudgeConformationWeights,
+  calculateHigherLevelChampionshipUpgrade,
   DAM_SHOW_POST_WHELP_COOLDOWN_HOURS,
   getChampionshipPointsForCompetition,
   judgeBestInShow,
@@ -416,6 +417,33 @@ function getFinalsPointsForClassDog(args: {
   }
 
   return getChampionshipPointsForCompetition(args.dogsInCompetition);
+}
+
+async function loadShowDayWinnersPointFacts(args: {
+  tx: Prisma.TransactionClient;
+  showDayId: string;
+}) {
+  const awards = await args.tx.showAward.findMany({
+    where: {
+      showDayId: args.showDayId,
+      awardGroup: "WINNERS",
+      awardCode: { in: ["WD", "WB"] },
+    },
+    select: {
+      dogId: true,
+      breedCode2: true,
+      pointsAwarded: true,
+      dog: { select: { breed: { select: { groupName: true } } } },
+    },
+  });
+  return awards.map((award) => ({
+    dogId: award.dogId,
+    breedCode2: award.breedCode2,
+    pointsAwarded: award.pointsAwarded,
+    groupCode: resolveBreedGroupNameToCanonicalShowGroupCode(
+      award.dog.breed.groupName
+    ),
+  }));
 }
 
 async function getClassDogIdsForShowDay(args: {
@@ -1605,6 +1633,7 @@ async function createGroupAwardsForShowDay(args: {
         showResultId: true,
         dogId: true,
         breedCode2: true,
+        showResult: { select: { pointsAwarded: true } },
         showEntry: {
           select: {
             kennelId: true,
@@ -1669,6 +1698,10 @@ async function createGroupAwardsForShowDay(args: {
       tx,
       bobAwards.map((award) => award.dogId)
     );
+    const winnersPointFacts = await loadShowDayWinnersPointFacts({
+      tx,
+      showDayId: args.showDayId,
+    });
     const awardsByGroup = new Map<CanonicalShowGroupCode, typeof bobAwards>();
 
     for (const award of bobAwards) {
@@ -1723,6 +1756,16 @@ async function createGroupAwardsForShowDay(args: {
           ),
         })),
       });
+      const representedBreedCodes = new Set(
+        groupAwards.map((award) => award.breedCode2)
+      );
+      const eligibleBreedRatings = winnersPointFacts.filter(
+        (fact) =>
+          fact.pointsAwarded > 0 &&
+          fact.groupCode === groupCode &&
+          representedBreedCodes.has(fact.breedCode2)
+      );
+      const higherPlacedBreedCodes = new Set<string>();
 
       for (const judgedAward of judgedGroupAwards) {
         if (!judgedAward.showEntryId) {
@@ -1735,13 +1778,22 @@ async function createGroupAwardsForShowDay(args: {
           continue;
         }
 
-        const pointsAwarded = shouldAwardChampionshipPoints
-          ? getFinalsPointsForClassDog({
-              isClassDog: classDogIds.has(sourceAward.dogId),
-              rank: judgedAward.rank,
-              dogsInCompetition: judgedAward.dogsInCompetition,
-            })
-          : 0;
+        const pointsAwarded = !shouldAwardChampionshipPoints
+          ? 0
+          : showDayTiming.cluster.year >= 17
+            ? calculateHigherLevelChampionshipUpgrade({
+                recipientWasWinners: winnersPointFacts.some(
+                  (fact) => fact.dogId === sourceAward.dogId
+                ),
+                existingPoints: sourceAward.showResult?.pointsAwarded ?? 0,
+                eligibleBreedRatings,
+                excludedBreedCodes: higherPlacedBreedCodes,
+              }).pointsAwarded
+            : getFinalsPointsForClassDog({
+                isClassDog: classDogIds.has(sourceAward.dogId),
+                rank: judgedAward.rank,
+                dogsInCompetition: judgedAward.dogsInCompetition,
+              });
 
         awardsToCreate.push({
           showResultId: sourceAward.showResultId,
@@ -1761,6 +1813,7 @@ async function createGroupAwardsForShowDay(args: {
           uniqueKennelsInCompetition,
           publishedAtEpoch: args.currentEpoch,
         });
+        higherPlacedBreedCodes.add(sourceAward.breedCode2);
       }
     }
 
@@ -1827,6 +1880,8 @@ async function createBestInShowAwardsForShowDay(args: {
       select: {
         showEntryId: true,
         showResultId: true,
+        showResult: { select: { pointsAwarded: true } },
+        pointsAwarded: true,
         dogId: true,
         breedCode2: true,
         showEntry: {
@@ -1880,6 +1935,7 @@ async function createBestInShowAwardsForShowDay(args: {
                 environmentModifier: true,
               },
             },
+            breed: { select: { groupName: true } },
           },
         },
       },
@@ -1888,6 +1944,24 @@ async function createBestInShowAwardsForShowDay(args: {
     if (groupOneAwards.length === 0) {
       return 0;
     }
+
+    const [winnersPointFacts, bobFinalists] = await Promise.all([
+      loadShowDayWinnersPointFacts({ tx, showDayId: args.showDayId }),
+      tx.showAward.findMany({
+        where: {
+          showDayId: args.showDayId,
+          awardGroup: "BREED",
+          awardCode: "BOB",
+        },
+        select: { breedCode2: true },
+      }),
+    ]);
+    const representedBreedCodes = new Set(
+      bobFinalists.map((award) => award.breedCode2)
+    );
+    const eligibleBreedRatings = winnersPointFacts.filter(
+      (fact) => fact.pointsAwarded > 0 && representedBreedCodes.has(fact.breedCode2)
+    );
 
     const healthTruthsByDogId =
       await ensureAndLoadBestInShowJudgingHealthTruths(
@@ -1930,6 +2004,15 @@ async function createBestInShowAwardsForShowDay(args: {
       showDayId: args.showDayId,
       dogIds: groupOneAwards.map((award) => award.dogId),
     });
+    const bisSourceAward = judgedBestInShowAwards
+      .filter((award) => award.awardCode === "BIS")
+      .map((award) => awardByEntryId.get(award.showEntryId ?? ""))
+      .find((award) => Boolean(award));
+    const bisGroupCode = bisSourceAward
+      ? resolveBreedGroupNameToCanonicalShowGroupCode(
+          bisSourceAward.dog.breed.groupName
+        )
+      : null;
 
     for (const judgedAward of judgedBestInShowAwards) {
       if (!judgedAward.showEntryId) {
@@ -1942,13 +2025,28 @@ async function createBestInShowAwardsForShowDay(args: {
         continue;
       }
 
-      const pointsAwarded = shouldAwardChampionshipPoints
-        ? getFinalsPointsForClassDog({
-            isClassDog: classDogIds.has(sourceAward.dogId),
-            rank: judgedAward.rank,
-            dogsInCompetition: judgedAward.dogsInCompetition,
-          })
-        : 0;
+      const pointsAwarded = !shouldAwardChampionshipPoints
+        ? 0
+        : showDayTiming.cluster.year >= 17
+          ? calculateHigherLevelChampionshipUpgrade({
+              recipientWasWinners: winnersPointFacts.some(
+                (fact) => fact.dogId === sourceAward.dogId
+              ),
+              existingPoints: Math.max(
+                sourceAward.showResult?.pointsAwarded ?? 0,
+                sourceAward.pointsAwarded
+              ),
+              eligibleBreedRatings,
+              excludedGroupCodes:
+                judgedAward.awardCode === "RBIS" && bisGroupCode
+                  ? new Set([bisGroupCode])
+                  : undefined,
+            }).pointsAwarded
+          : getFinalsPointsForClassDog({
+              isClassDog: classDogIds.has(sourceAward.dogId),
+              rank: judgedAward.rank,
+              dogsInCompetition: judgedAward.dogsInCompetition,
+            });
 
       awardsToCreate.push({
         showResultId: sourceAward.showResultId,
