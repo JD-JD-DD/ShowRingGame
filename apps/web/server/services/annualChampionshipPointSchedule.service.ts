@@ -32,6 +32,7 @@ export type AnnualChampionshipPointScheduleInput =
 
 export class MissingAnnualChampionshipPointSchedulePublicationError extends Error {}
 export class PublishedAnnualChampionshipPointScheduleError extends Error {}
+export class UnavailablePublishedAnnualChampionshipPointScheduleError extends Error {}
 
 function whereFor(key: AnnualChampionshipPointScheduleKey) {
   return {
@@ -114,6 +115,24 @@ export async function getAnnualChampionshipPointSchedule(
     where: whereFor(args),
     include: { publication: true },
   });
+}
+
+export async function getPublishedAnnualChampionshipPointSchedule(
+  args: { client: ScheduleClient } & AnnualChampionshipPointScheduleKey
+) {
+  const schedule = await getAnnualChampionshipPointSchedule(args);
+  if (!schedule) {
+    throw new UnavailablePublishedAnnualChampionshipPointScheduleError(
+      `Missing Annual Championship Point Schedule for ${args.effectiveYear}/${args.district}/${args.breedCode2}/${args.sex}.`
+    );
+  }
+  const publication = schedule.publication;
+  if (publication.effectiveYear !== args.effectiveYear || publication.status !== "PUBLISHED" || !publication.publishedAt || Number.isNaN(publication.publishedAt.getTime())) {
+    throw new UnavailablePublishedAnnualChampionshipPointScheduleError(
+      `Annual Championship Point Schedule publication is unavailable for effective year ${args.effectiveYear}.`
+    );
+  }
+  return schedule;
 }
 
 export async function listAnnualChampionshipPointSchedules(args: {

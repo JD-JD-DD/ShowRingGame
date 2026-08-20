@@ -12,6 +12,7 @@ import {
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import { getInvitationalClusterId } from "@/server/services/invitational.service";
 import { ensureAnnualChampionshipPointSchedulesForEffectiveYear } from "@/server/services/annualChampionshipPointScheduleBuild.service";
+import { getPublishedAnnualChampionshipPointSchedule } from "@/server/services/annualChampionshipPointSchedule.service";
 import { createInvitationalResultsPublishedNotices } from "@/server/services/kennelNotice.service";
 import { refreshPrestigeStatsForShowDay } from "@/server/services/prestige.service";
 import {
@@ -1071,6 +1072,15 @@ export async function judgeShowBlock(args: {
       eligibleEntries.map((entry) => entry.dogId)
     );
     const engineJudge = toEngineJudge(block.judge);
+    const shouldAwardChampionshipPoints = awardsChampionshipPoints(
+      block.showDay.cluster.id
+    );
+    const championshipPointThresholds: Partial<Record<"M" | "F", { onePointThreshold: number; twoPointThreshold: number; threePointThreshold: number; fourPointThreshold: number; fivePointThreshold: number }>> = {};
+    if (shouldAwardChampionshipPoints && block.showDay.cluster.year >= 17) {
+      const requiredSexes = (["M", "F"] as const).filter((sex) => eligibleEntries.some((entry) => !isChampionEntry(entry) && entry.dog.sex === sex));
+      const schedules = await Promise.all(requiredSexes.map((sex) => getPublishedAnnualChampionshipPointSchedule({ client: tx, effectiveYear: block.showDay.cluster.year, district: block.showDay.cluster.district, breedCode2: block.breedCode2, sex })));
+      for (const schedule of schedules) championshipPointThresholds[schedule.sex] = schedule;
+    }
     let breedConformationProfile;
     let conformationCategoryWeights;
     try {
@@ -1106,15 +1116,12 @@ export async function judgeShowBlock(args: {
         dog: toEngineDog(entry, healthTruthsByDogId.get(entry.dogId)),
         isChampion: isChampionEntry(entry),
       })),
+      championshipPointThresholds,
     });
     const resultIdByShowEntryId = new Map<string, string>();
     const judgedEntryIds: string[] = [];
     const pointsByShowEntryId = new Map<string, number>();
     const entryById = new Map(eligibleEntries.map((entry) => [entry.id, entry]));
-    const shouldAwardChampionshipPoints = awardsChampionshipPoints(
-      block.showDay.cluster.id
-    );
-
     for (const award of judgedBlock.awards) {
       if (
         !shouldAwardChampionshipPoints ||

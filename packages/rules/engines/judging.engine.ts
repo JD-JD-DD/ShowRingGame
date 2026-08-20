@@ -272,6 +272,27 @@ export function getChampionshipPointsForCompetition(
   );
 }
 
+export type ChampionshipPointThresholds = {
+  onePointThreshold: number;
+  twoPointThreshold: number;
+  threePointThreshold: number;
+  fourPointThreshold: number;
+  fivePointThreshold: number;
+};
+
+export function getChampionshipPointsFromThresholds(args: {
+  dogsInCompetition: number;
+  thresholds: ChampionshipPointThresholds;
+}): number {
+  const { dogsInCompetition, thresholds } = args;
+  if (dogsInCompetition < thresholds.onePointThreshold) return 0;
+  if (dogsInCompetition < thresholds.twoPointThreshold) return 1;
+  if (dogsInCompetition < thresholds.threePointThreshold) return 2;
+  if (dogsInCompetition < thresholds.fourPointThreshold) return 3;
+  if (dogsInCompetition < thresholds.fivePointThreshold) return 4;
+  return 5;
+}
+
 function makeAward(args: {
   result: JudgedEntryResult;
   awardCode: ShowAwardCode;
@@ -326,6 +347,7 @@ function buildSexClassAwards(args: {
 function buildWinnersAwards(args: {
   results: JudgedEntryResult[];
   sex: "M" | "F";
+  pointsForCompetition: (sex: "M" | "F", dogsInCompetition: number) => number;
 }): JudgedShowAward[] {
   const { results, sex } = args;
   const winner = results[0];
@@ -340,7 +362,7 @@ function buildWinnersAwards(args: {
         awardGroup: "WINNERS",
         sex,
         rank: 1,
-        pointsAwarded: getChampionshipPointsForCompetition(results.length),
+        pointsAwarded: args.pointsForCompetition(sex, results.length),
         dogsInCompetition: results.length,
       })
     );
@@ -367,6 +389,7 @@ function buildBreedAwards(args: {
   maleClassResults: JudgedEntryResult[];
   femaleClassResults: JudgedEntryResult[];
   breedResults: JudgedEntryResult[];
+  pointsForCompetition: (sex: "M" | "F", dogsInCompetition: number) => number;
 }): JudgedShowAward[] {
   const winnersCandidates = [
     args.maleClassResults[0],
@@ -413,12 +436,8 @@ function buildBreedAwards(args: {
     return entry?.dog.sex === "F";
   });
   const awards: JudgedShowAward[] = [];
-  const maleWinnerPoints = getChampionshipPointsForCompetition(
-    args.maleClassResults.length
-  );
-  const femaleWinnerPoints = getChampionshipPointsForCompetition(
-    args.femaleClassResults.length
-  );
+  const maleWinnerPoints = args.pointsForCompetition("M", args.maleClassResults.length);
+  const femaleWinnerPoints = args.pointsForCompetition("F", args.femaleClassResults.length);
   const bestOfWinnersPoints = Math.max(maleWinnerPoints, femaleWinnerPoints);
 
   if (bestOfWinners && args.maleClassResults[0] && args.femaleClassResults[0]) {
@@ -495,6 +514,7 @@ export function judgeBreedBlock(args: {
   conformationCategoryWeights?: BreedConformationCategoryWeights;
   showEpoch?: number;
   random01?: () => number;
+  championshipPointThresholds?: Partial<Record<"M" | "F", ChampionshipPointThresholds>>;
 }): JudgedBreedBlock {
   const results = judgeBreedEntries(args);
   const classEntries = args.entries.filter((entry) => !entry.isChampion);
@@ -515,19 +535,26 @@ export function judgeBreedBlock(args: {
       result.showEntryId === femaleClassResults[0]?.showEntryId
     );
   });
+  const pointsForCompetition = (sex: "M" | "F", dogsInCompetition: number) => {
+    const thresholds = args.championshipPointThresholds?.[sex];
+    return thresholds
+      ? getChampionshipPointsFromThresholds({ dogsInCompetition, thresholds })
+      : getChampionshipPointsForCompetition(dogsInCompetition);
+  };
 
   return {
     results,
     awards: [
       ...buildSexClassAwards({ results: maleClassResults, sex: "M" }),
       ...buildSexClassAwards({ results: femaleClassResults, sex: "F" }),
-      ...buildWinnersAwards({ results: maleClassResults, sex: "M" }),
-      ...buildWinnersAwards({ results: femaleClassResults, sex: "F" }),
+      ...buildWinnersAwards({ results: maleClassResults, sex: "M", pointsForCompetition }),
+      ...buildWinnersAwards({ results: femaleClassResults, sex: "F", pointsForCompetition }),
       ...buildBreedAwards({
         entries: args.entries,
         maleClassResults,
         femaleClassResults,
         breedResults,
+        pointsForCompetition,
       }),
     ],
   };
