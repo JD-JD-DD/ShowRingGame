@@ -6,6 +6,7 @@ import {
   calculateGrandChampionCompetitionCounts,
   calculateGrandChampionPointsFromCompetition,
   calculateLegacyGrandChampionPointsFromCompetition,
+  evaluateGrandChampionQualification,
   getLegacyGrandChampionPointsForCount,
 } from "@showring/rules";
 import {
@@ -305,35 +306,43 @@ async function recalculateGrandChampionProgressForDogs(args: {
     const credits = await args.client.dogGrandChampionCredit.findMany({
       where: { dogId },
       select: {
+        id: true,
         showDayId: true,
         pointsAwarded: true,
         isMajor: true,
         countsAsChampionDefeat: true,
+        qualifyingChampionOpponentCount: true,
+        judgeId: true,
+        showAward: { select: { judgeId: true } },
       },
     });
-    const grandPoints = credits.reduce(
-      (sum, credit) => sum + credit.pointsAwarded,
-      0
-    );
-    const grandMajorCount = credits.filter((credit) => credit.isMajor).length;
-    const grandChampionDefeatShowCount = new Set(
-      credits
-        .filter((credit) => credit.countsAsChampionDefeat)
-        .map((credit) => credit.showDayId)
-    ).size;
+    for (const credit of credits) {
+      if (credit.qualifyingChampionOpponentCount !== null && !credit.judgeId) {
+        throw new Error(
+          `GCH credit ${credit.id} has corrected provenance but no immutable judgeId.`
+        );
+      }
+    }
+    const qualification = evaluateGrandChampionQualification({
+      credits: credits.map((credit) => ({
+        ...credit,
+        judgeId: credit.judgeId ?? credit.showAward?.judgeId ?? null,
+      })),
+      alreadyGrandChampion: false,
+    });
 
     await args.client.dogTitleProgress.upsert({
       where: { dogId },
       update: {
-        grandPoints,
-        grandMajorCount,
-        grandChampionDefeatShowCount,
+        grandPoints: qualification.totalPoints,
+        grandMajorCount: qualification.majorShowCount,
+        grandChampionDefeatShowCount: qualification.championDefeatShowCount,
       },
       create: {
         dogId,
-        grandPoints,
-        grandMajorCount,
-        grandChampionDefeatShowCount,
+        grandPoints: qualification.totalPoints,
+        grandMajorCount: qualification.majorShowCount,
+        grandChampionDefeatShowCount: qualification.championDefeatShowCount,
       },
     });
   }

@@ -7,6 +7,7 @@ import { estimateJsonSizeBytes } from "@/lib/perf";
 import {
   getGrandChampionMilestoneTitle,
   isGrandChampionComplete,
+  isGrandChampionTitleCode,
 } from "@/server/services/titleProgress.service";
 
 const CHAMPIONSHIP_POINTS_REQUIRED = 15;
@@ -224,7 +225,8 @@ export function summarizeGrandChampionProgress(args: {
   const points = args.titleProgress?.grandPoints ?? 0;
   const majors = args.titleProgress?.grandMajorCount ?? 0;
   const completed = args.titleProgress
-    ? isGrandChampionComplete(args.titleProgress)
+    ? isGrandChampionTitleCode(args.titleProgress.currentTitleCode) ||
+      isGrandChampionComplete(args.titleProgress)
     : false;
 
   return {

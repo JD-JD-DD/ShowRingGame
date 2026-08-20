@@ -13,6 +13,7 @@ export * from "./foundationDog.engine";
 export * from "./genotype.engine";
 export * from "./grandChampionCompetition.engine";
 export * from "./grandChampionPointApplication.engine";
+export * from "./grandChampionQualification.engine";
 export * from "./idealScoring.engine";
 export * from "./health.engine";
 export * from "./healthExpression.engine";

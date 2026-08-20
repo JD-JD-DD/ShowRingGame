@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { evaluateGrandChampionQualification } from "@showring/rules";
 
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -37,6 +38,8 @@ export type ConformationTitleProgress = {
   grandPoints: number;
   grandMajorCount: number;
   grandChampionDefeatShowCount: number;
+  grandMajorJudgeCount?: number;
+  grandPointAwardingJudgeCount?: number;
   currentTitleCode: string | null;
 };
 
@@ -45,6 +48,8 @@ export type GrandChampionCompletionSnapshot = {
   grandPoints: number;
   grandMajorCount: number;
   grandChampionDefeatShowCount: number;
+  grandMajorJudgeCount?: number;
+  grandPointAwardingJudgeCount?: number;
   grandCompletedAtShowDayId: string | null;
   grandCompletedAtEpoch: number | null;
 };
@@ -84,12 +89,16 @@ export function isGrandChampionComplete(
     | "grandPoints"
     | "grandMajorCount"
     | "grandChampionDefeatShowCount"
+    | "grandMajorJudgeCount"
+    | "grandPointAwardingJudgeCount"
   >
 ): boolean {
   return (
     isChampionOfRecordTitleCode(progress.currentTitleCode) &&
     progress.grandPoints >= GRAND_CHAMPION_POINTS_REQUIRED &&
     progress.grandMajorCount >= GRAND_CHAMPION_MAJORS_REQUIRED &&
+    (progress.grandMajorJudgeCount ?? 0) >= GRAND_CHAMPION_MAJORS_REQUIRED &&
+    (progress.grandPointAwardingJudgeCount ?? 0) >= 4 &&
     progress.grandChampionDefeatShowCount >=
       GRAND_CHAMPION_DEFEAT_SHOWS_REQUIRED
   );
@@ -108,6 +117,19 @@ export function getGrandChampionMilestoneTitle(
 export function getHighestConformationTitle(
   progress: ConformationTitleProgress
 ): string | null {
+  if (isGrandChampionTitleCode(progress.currentTitleCode)) {
+    const calculated = getGrandChampionMilestoneTitle(Math.max(25, progress.grandPoints));
+    const currentRank = GRAND_CHAMPION_MILESTONE_TITLES.findIndex(
+      (milestone) => milestone.titleCode === progress.currentTitleCode
+    );
+    const calculatedRank = GRAND_CHAMPION_MILESTONE_TITLES.findIndex(
+      (milestone) => milestone.titleCode === calculated
+    );
+    return currentRank >= 0 && (calculatedRank < 0 || currentRank < calculatedRank)
+      ? progress.currentTitleCode
+      : calculated;
+  }
+
   if (isGrandChampionComplete(progress)) {
     return getGrandChampionMilestoneTitle(progress.grandPoints);
   }
@@ -276,7 +298,9 @@ export async function recalculateDogTitleProgress(args: {
     },
   });
   const summary = summarizeChampionshipAwards(awards);
-  const nextCurrentTitleCode = getHighestConformationTitle({
+  const nextCurrentTitleCode = isGrandChampionTitleCode(previousProgress?.currentTitleCode ?? null)
+    ? previousProgress!.currentTitleCode
+    : getHighestConformationTitle({
     championshipPoints: summary.championshipPoints,
     majorCount: summary.majorCount,
     grandPoints: previousProgress?.grandPoints ?? 0,
@@ -285,7 +309,7 @@ export async function recalculateDogTitleProgress(args: {
       previousProgress?.grandChampionDefeatShowCount ?? 0,
     currentTitleCode:
       previousProgress?.currentTitleCode ?? summary.currentTitleCode,
-  });
+    });
 
   await tx.dogTitleProgress.upsert({
     where: { dogId },
@@ -380,7 +404,7 @@ export async function promoteGrandChampionTitleForDog(args: {
   showDayId: string;
   currentEpoch: number;
 }) {
-  const [dog, progress] = await Promise.all([
+  const [dog, progress, credits] = await Promise.all([
     args.tx.dog.findUnique({
       where: { id: args.dogId },
       select: {
@@ -406,6 +430,19 @@ export async function promoteGrandChampionTitleForDog(args: {
         currentTitleCode: true,
       },
     }),
+    args.tx.dogGrandChampionCredit.findMany({
+      where: { dogId: args.dogId },
+      select: {
+        id: true,
+        showDayId: true,
+        pointsAwarded: true,
+        isMajor: true,
+        countsAsChampionDefeat: true,
+        qualifyingChampionOpponentCount: true,
+        judgeId: true,
+        showAward: { select: { judgeId: true } },
+      },
+    }),
   ]);
 
   if (!dog || !progress) {
@@ -417,9 +454,30 @@ export async function promoteGrandChampionTitleForDog(args: {
     (isChampionOfRecordTitleCode(dog.visibleTitlePrefix)
       ? dog.visibleTitlePrefix
       : null);
+  for (const credit of credits) {
+    if (credit.qualifyingChampionOpponentCount !== null && !credit.judgeId) {
+      throw new Error(
+        `GCH credit ${credit.id} has corrected provenance but no immutable judgeId.`
+      );
+    }
+  }
+  const qualification = evaluateGrandChampionQualification({
+    credits: credits.map((credit) => ({
+      ...credit,
+      judgeId: credit.judgeId ?? credit.showAward?.judgeId ?? null,
+    })),
+    alreadyGrandChampion:
+      isGrandChampionTitleCode(progress.currentTitleCode) ||
+      isGrandChampionTitleCode(dog.visibleTitlePrefix),
+  });
   const promotionProgress = {
     ...progress,
     currentTitleCode: championStatusTitleCode,
+    grandPoints: qualification.totalPoints,
+    grandMajorCount: qualification.majorShowCount,
+    grandChampionDefeatShowCount: qualification.championDefeatShowCount,
+    grandMajorJudgeCount: qualification.majorJudgeCount,
+    grandPointAwardingJudgeCount: qualification.pointAwardingJudgeCount,
   };
   const nextTitleCode = getHighestConformationTitle(promotionProgress);
 

@@ -15,6 +15,8 @@ function progress(overrides: Partial<Parameters<typeof getHighestConformationTit
     grandPoints: 25,
     grandMajorCount: 3,
     grandChampionDefeatShowCount: 3,
+    grandMajorJudgeCount: 3,
+    grandPointAwardingJudgeCount: 4,
     currentTitleCode: "CH",
     ...overrides,
   };
@@ -27,6 +29,8 @@ assert.equal(
   false
 );
 assert.equal(isGrandChampionComplete(progress()), true);
+assert.equal(isGrandChampionComplete(progress({ grandMajorJudgeCount: 2 })), false);
+assert.equal(isGrandChampionComplete(progress({ grandPointAwardingJudgeCount: 3 })), false);
 
 assert.equal(getHighestConformationTitle(progress({ grandPoints: 24 })), "CH");
 assert.equal(getHighestConformationTitle(progress()), "GCH");
@@ -38,6 +42,10 @@ assert.equal(getHighestConformationTitle(progress({ grandPoints: 1600 })), "GCHP
 assert.equal(getHighestConformationTitle(progress({ grandPoints: 2400 })), "GCHP3");
 assert.equal(getHighestConformationTitle(progress({ grandPoints: 3200 })), "GCHP4");
 assert.equal(getHighestConformationTitle(progress({ grandPoints: 4000 })), "GCHP5");
+assert.equal(
+  getHighestConformationTitle(progress({ currentTitleCode: "GCHB", grandPoints: 25 })),
+  "GCHB"
+);
 
 assert.equal(
   getHighestConformationTitle(
@@ -93,6 +101,8 @@ assert.deepEqual(
       grandPoints: 25,
       grandMajorCount: 3,
       grandChampionDefeatShowCount: 3,
+      grandMajorJudgeCount: 3,
+      grandPointAwardingJudgeCount: 4,
       grandCompletedAtShowDayId: null,
       grandCompletedAtEpoch: null,
     },
@@ -112,6 +122,8 @@ assert.deepEqual(
       grandPoints: 25,
       grandMajorCount: 3,
       grandChampionDefeatShowCount: 3,
+      grandMajorJudgeCount: 3,
+      grandPointAwardingJudgeCount: 4,
       grandCompletedAtShowDayId: "show-day-original",
       grandCompletedAtEpoch: 99,
     },
@@ -131,6 +143,8 @@ assert.deepEqual(
       grandPoints: 25,
       grandMajorCount: 3,
       grandChampionDefeatShowCount: 3,
+      grandMajorJudgeCount: 3,
+      grandPointAwardingJudgeCount: 4,
       grandCompletedAtShowDayId: "show-day-original",
       grandCompletedAtEpoch: 99,
     },
