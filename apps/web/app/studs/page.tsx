@@ -637,7 +637,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                       </div>
                       <div className="theme-card rounded-2xl px-4 py-3">
                         <div className="theme-label text-xs uppercase tracking-wide">
-                          Bitch Requirements
+                          Stud Terms
                         </div>
                         <div className="theme-heading mt-1 font-medium">
                           {requirements.length > 0
@@ -671,7 +671,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                       </div>
                     </div>
 
-                    <div className="mt-6 flex items-stretch gap-3">
+                    <div className="mt-6 flex flex-wrap items-stretch gap-3">
                       {hasPendingVeterinaryCare ? (
                         <div className="theme-status-danger flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold">
                           {PENDING_VETERINARY_CARE_BREEDING_MESSAGE}
@@ -703,6 +703,13 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           Stud in Recovery
                         </span>
                       )}
+
+                      <Link
+                        href={`/stud-contract?studListingId=${listing.id}&sireDogId=${dog.id}&source=public-stud`}
+                        className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
+                      >
+                        Contract Terms
+                      </Link>
 
                       <Link
                         href={`/dogs/${dog.id}`}

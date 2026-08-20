@@ -46,6 +46,26 @@ assert.ok(
   "the studs page presents the specific pending-care reason"
 );
 assert.ok(
+  studsPage.includes("Stud Terms"),
+  "public stud cards present current listing requirements as Stud Terms"
+);
+assert.ok(
+  studsPage.includes(
+    "`/stud-contract?studListingId=${listing.id}&sireDogId=${dog.id}&source=public-stud`"
+  ) &&
+    studsPage.includes("Contract Terms"),
+  "public stud cards link Contract Terms with the active listing and sire context only"
+);
+assert.ok(
+  studsPage.includes("href={`/breed?studListingId=${listing.id}`}") &&
+    studsPage.includes("Use At Stud"),
+  "Use At Stud retains its current destination and label"
+);
+assert.ok(
+  studsPage.includes("href={`/dogs/${dog.id}`}") && studsPage.includes("View Dog"),
+  "View Dog retains its current destination and label"
+);
+assert.ok(
   plannerClient.includes("hasPendingVeterinaryCare"),
   "the planner carries temporary care state to client selection"
 );
