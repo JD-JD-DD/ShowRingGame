@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
+import { getLegacyGrandChampionPointsForCount } from "@showring/rules";
 
 const GCH_AWARD_CODES = [
   "BOB",
@@ -57,7 +58,7 @@ function isGrandChampionAwardCode(
 }
 
 export function getGrandChampionPointsForCount(countedDogs: number): number {
-  return Math.max(0, Math.min(countedDogs - 1, 5));
+  return getLegacyGrandChampionPointsForCount(countedDogs);
 }
 
 function makeCandidate(args: {
