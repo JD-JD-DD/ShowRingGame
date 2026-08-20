@@ -34,6 +34,30 @@ export class MissingAnnualChampionshipPointSchedulePublicationError extends Erro
 export class PublishedAnnualChampionshipPointScheduleError extends Error {}
 export class UnavailablePublishedAnnualChampionshipPointScheduleError extends Error {}
 
+export type PublishedPointScheduleYear = Readonly<{
+  effectiveYear: number;
+  publishedAt: Date;
+}>;
+
+export type PublishedPointScheduleBreedRow = Readonly<{
+  breedCode2: string;
+  breedName: string;
+  dogThresholds: Readonly<{ one: number; two: number; three: number; four: number; five: number }>;
+  bitchThresholds: Readonly<{ one: number; two: number; three: number; four: number; five: number }>;
+}>;
+
+export type PublishedPointScheduleDivision = Readonly<{
+  district: number;
+  rows: readonly PublishedPointScheduleBreedRow[];
+}>;
+
+export type PublishedPointScheduleTable = Readonly<{
+  effectiveYear: number;
+  publishedAt: Date;
+  divisions: readonly PublishedPointScheduleDivision[];
+  incompleteBreedKeys: readonly string[];
+}>;
+
 function whereFor(key: AnnualChampionshipPointScheduleKey) {
   return {
     effectiveYear_district_breedCode2_sex: {
@@ -144,6 +168,115 @@ export async function listAnnualChampionshipPointSchedules(args: {
     orderBy: [{ district: "asc" }, { breedCode2: "asc" }, { sex: "asc" }],
     include: { publication: true },
   });
+}
+
+/** Player-reference read path: only complete PUBLISHED schedule facts are exposed. */
+export async function listPublishedAnnualChampionshipPointScheduleYears(args: {
+  client: ScheduleClient;
+}): Promise<readonly PublishedPointScheduleYear[]> {
+  return args.client.annualChampionshipPointSchedulePublication.findMany({
+    where: { status: "PUBLISHED", publishedAt: { not: null } },
+    orderBy: { effectiveYear: "desc" },
+    select: { effectiveYear: true, publishedAt: true },
+  }).then((publications) =>
+    publications.flatMap((publication) =>
+      publication.publishedAt
+        ? [{ effectiveYear: publication.effectiveYear, publishedAt: publication.publishedAt }]
+        : []
+    )
+  );
+}
+
+/**
+ * Loads one published effective year in one set-based schedule read. Division
+ * is a presentation filter over canonical district rows, never an aggregate.
+ */
+export async function getPublishedAnnualChampionshipPointScheduleTable(args: {
+  client: ScheduleClient;
+  effectiveYear: number;
+  district?: number;
+}): Promise<PublishedPointScheduleTable | null> {
+  const publication = await args.client.annualChampionshipPointSchedulePublication.findUnique({
+    where: { effectiveYear: args.effectiveYear },
+    select: { id: true, effectiveYear: true, status: true, publishedAt: true },
+  });
+  if (
+    !publication ||
+    publication.status !== "PUBLISHED" ||
+    !publication.publishedAt
+  ) {
+    return null;
+  }
+  const schedules = await args.client.annualChampionshipPointSchedule.findMany({
+    where: {
+      publicationId: publication.id,
+      effectiveYear: args.effectiveYear,
+      ...(args.district === undefined ? {} : { district: args.district }),
+    },
+    select: {
+      district: true,
+      breedCode2: true,
+      sex: true,
+      onePointThreshold: true,
+      twoPointThreshold: true,
+      threePointThreshold: true,
+      fourPointThreshold: true,
+      fivePointThreshold: true,
+      breed: { select: { name: true } },
+    },
+    orderBy: [{ district: "asc" }, { breedCode2: "asc" }, { sex: "asc" }],
+  });
+  const pairs = new Map<string, {
+    district: number;
+    breedCode2: string;
+    breedName: string;
+    M?: (typeof schedules)[number];
+    F?: (typeof schedules)[number];
+  }>();
+  for (const schedule of schedules) {
+    const key = `${schedule.district}:${schedule.breedCode2}`;
+    const pair = pairs.get(key) ?? {
+      district: schedule.district,
+      breedCode2: schedule.breedCode2,
+      breedName: schedule.breed.name,
+    };
+    pair[schedule.sex] = schedule;
+    pairs.set(key, pair);
+  }
+  const divisionRows = new Map<number, PublishedPointScheduleBreedRow[]>();
+  const incompleteBreedKeys: string[] = [];
+  for (const [key, pair] of pairs) {
+    if (!pair.M || !pair.F) {
+      incompleteBreedKeys.push(key);
+      continue;
+    }
+    const thresholds = (schedule: NonNullable<typeof pair.M>) => ({
+      one: schedule.onePointThreshold,
+      two: schedule.twoPointThreshold,
+      three: schedule.threePointThreshold,
+      four: schedule.fourPointThreshold,
+      five: schedule.fivePointThreshold,
+    });
+    const rows = divisionRows.get(pair.district) ?? [];
+    rows.push({
+      breedCode2: pair.breedCode2,
+      breedName: pair.breedName,
+      dogThresholds: thresholds(pair.M),
+      bitchThresholds: thresholds(pair.F),
+    });
+    divisionRows.set(pair.district, rows);
+  }
+  return {
+    effectiveYear: publication.effectiveYear,
+    publishedAt: publication.publishedAt,
+    divisions: [...divisionRows.entries()]
+      .sort(([left], [right]) => left - right)
+      .map(([district, rows]) => ({
+        district,
+        rows: rows.sort((left, right) => left.breedName.localeCompare(right.breedName)),
+      })),
+    incompleteBreedKeys,
+  };
 }
 
 export async function annualChampionshipPointScheduleExists(

@@ -26,6 +26,7 @@ const accountItems = [
   { label: "Ledger", href: "/ledger" },
   { label: "FAQ", href: "/faq" },
   { label: "Map", href: "/travel-map" },
+  { label: "Point Schedules", href: "/point-schedules" },
   { label: "Players", href: "/districts/kennels" },
 ] as const;
 
