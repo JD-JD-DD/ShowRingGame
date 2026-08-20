@@ -1,4 +1,6 @@
 // export * from "./aging.engine";
+export * from "./annualChampionshipPointSchedule.engine";
+export * from "./annualChampionshipPointScheduleFallback.engine";
 export * from "./breeding.engine";
 export * from "./clock.engine";
 export * from "./conditioning.engine";
