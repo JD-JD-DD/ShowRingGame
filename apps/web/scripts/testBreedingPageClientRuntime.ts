@@ -167,6 +167,16 @@ const chooseDamSource = section(
   "function chooseDam(nextDamId: string)",
   "function toggleShortlist(sireIdToToggle: string)"
 );
+const toggleShortlistSource = section(
+  client,
+  "function toggleShortlist(sireIdToToggle: string)",
+  "async function handleSubmit()"
+);
+const shortlistSource = section(
+  client,
+  "function Shortlist({",
+  "export default function BreedPageClient"
+);
 
 assert.equal(
   chooseBreedSource.includes("startSireLoadingTransition"),
@@ -194,6 +204,74 @@ assert.ok(
     client.includes(") : sires.length > 0 ? (") &&
     client.includes("No sires match this breed and source filter."),
   "React owns pending completion so successful, empty, interrupted, or failed refresh work cannot leave a manually latched busy state"
+);
+
+assert.ok(
+  shortlistSource.includes("if (!dam || sires.length === 0) return null;") &&
+    shortlistSource.includes("Pinned Sire Comparison") &&
+    shortlistSource.includes("<table"),
+  "zero pins omit the inline comparison while one or more pins render the existing semantic table"
+);
+for (const heading of ["Sire", "Source", "Litter COI", "Stud Fee", "Complements"]) {
+  assert.ok(
+    shortlistSource.includes(`>${heading}<`),
+    `comparison retains its ${heading} column`
+  );
+}
+assert.ok(
+  toggleShortlistSource.includes("current.length >= 3") &&
+    toggleShortlistSource.includes("[...current.slice(1), sireIdToToggle]") &&
+    toggleShortlistSource.includes("current.filter((id) => id !== sireIdToToggle)"),
+  "pinning preserves the three-sire oldest-eviction rule and Unpin removes only the chosen sire"
+);
+
+function toggleShortlist(current: string[], sireId: string) {
+  if (current.includes(sireId)) {
+    return current.filter((id) => id !== sireId);
+  }
+
+  return current.length >= 3 ? [...current.slice(1), sireId] : [...current, sireId];
+}
+
+assert.deepEqual([], [], "zero pins leave no comparison rows");
+assert.deepEqual(toggleShortlist([], "sire-a"), ["sire-a"], "one pin is retained");
+assert.deepEqual(
+  ["sire-a", "sire-b"].reduce(toggleShortlist, []),
+  ["sire-a", "sire-b"],
+  "two pins retain insertion order"
+);
+assert.deepEqual(
+  ["sire-a", "sire-b", "sire-c"].reduce(toggleShortlist, []),
+  ["sire-a", "sire-b", "sire-c"],
+  "three pins retain insertion order"
+);
+assert.deepEqual(
+  toggleShortlist(["sire-a", "sire-b", "sire-c"], "sire-d"),
+  ["sire-b", "sire-c", "sire-d"],
+  "a fourth pin evicts the oldest sire and retains the newest three"
+);
+assert.deepEqual(
+  toggleShortlist(["sire-b", "sire-c", "sire-d"], "sire-c"),
+  ["sire-b", "sire-d"],
+  "Unpin removes only the intended sire and preserves the others"
+);
+
+assert.ok(
+  chooseDamSource.includes("if (nextDamId !== damId) {") &&
+    chooseDamSource.includes("setShortlistedSireIds([]);"),
+  "changing the selected dam clears the shortlist"
+);
+assert.ok(
+  chooseBreedSource.includes("setShortlistedSireIds([]);") &&
+    chooseKennelRunSource.includes("clearWorksheetPairingState();") &&
+    client.includes("function clearWorksheetPairingState()") &&
+    client.includes("setShortlistedSireIds([]);"),
+  "changing breed or kennel-run context clears the shortlist"
+);
+assert.equal(
+  toggleShortlistSource.includes("setShortlistedSireIds"),
+  true,
+  "ordinary pin and Unpin interaction is the only local shortlist mutation and does not clear it"
 );
 
 const card = (overrides: Partial<{ isOwned: boolean; listed: boolean; pending: boolean }> = {}) => ({
