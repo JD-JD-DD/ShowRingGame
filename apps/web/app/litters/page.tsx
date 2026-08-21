@@ -92,6 +92,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
       currentActor: true,
       turnDeadlineAt: true,
       damFirstPickDogId: true,
+      damFirstPickForfeitedAt: true,
       litter: { select: { serial7: true, puppies: { where: { lifecycleState: "ALIVE" }, orderBy: { litterOrder: "asc" }, select: { id: true, callName: true, registeredName: true, regNumber: true, sex: true } } } },
       contract: { select: { puppyPickPosition: true, puppySex: true, sireKennelId: true, damKennelId: true } },
     },
@@ -252,6 +253,15 @@ export default async function LittersPage({ searchParams }: PageProps) {
                     ) : null}
                     {selection.status === "STUD_PICK" ? (
                       <p className="theme-copy mt-2 text-sm">Puppy sex requirement: {selection.contract.puppySex ?? "EITHER"}. No puppy will be selected automatically.</p>
+                    ) : null}
+                    {selection.damFirstPickForfeitedAt ? (
+                      <p className="theme-copy mt-2 text-sm">Protected first-pick deadline missed. The dam owner’s first-pick right was forfeited.</p>
+                    ) : null}
+                    {selection.status === "FORFEITED" ? (
+                      <p className="theme-copy mt-2 text-sm">Puppy Back selection deadline missed. The stud owner’s puppy-selection right was forfeited. No puppy was selected.</p>
+                    ) : null}
+                    {selection.status === "UNFULFILLABLE" ? (
+                      <p className="theme-copy mt-2 text-sm">Puppy Back cannot be fulfilled because no living puppy satisfies the contract sex requirement.</p>
                     ) : null}
                     {isActive && (!isStudOwner || selection.currentActor === "STUD_OWNER") ? (
                       <p className="theme-copy mt-3 text-sm">{deadlinePassed ? "Selection deadline passed — awaiting processing." : `Selection deadline: ${formatSelectionDeadline(selection.turnDeadlineAt)}`}</p>

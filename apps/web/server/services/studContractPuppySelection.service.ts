@@ -42,6 +42,24 @@ async function loadSelectablePuppy(args: { client: Prisma.TransactionClient; lit
   return puppy;
 }
 
+export async function hasSelectableStudContractPuppy(args: {
+  client: Prisma.TransactionClient;
+  litterId: string;
+  damFirstPickDogId: string | null;
+  puppySex: "MALE" | "FEMALE" | "EITHER" | null;
+}) {
+  const puppy = await args.client.dog.findFirst({
+    where: {
+      litterId: args.litterId,
+      lifecycleState: "ALIVE",
+      ...(args.damFirstPickDogId ? { id: { not: args.damFirstPickDogId } } : {}),
+      ...(args.puppySex === "MALE" ? { sex: "M" } : args.puppySex === "FEMALE" ? { sex: "F" } : {}),
+    },
+    select: { id: true },
+  });
+  return puppy !== null;
+}
+
 export async function selectDamProtectedPuppy(args: { kennelId: string; selectionId: string; puppyId: string; currentEpoch: number; now?: Date }) {
   const now = args.now ?? new Date();
   const deadline = new Date(now.getTime() + PUPPY_SELECTION_TURN_MS);
