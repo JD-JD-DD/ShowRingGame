@@ -24,6 +24,7 @@ const accountItems = [
   { label: "Prestige", href: "/kennel/prestige" },
   { label: "In Memoriam", href: "/memorium" },
   { label: "Ledger", href: "/ledger" },
+  { label: "Stud Requests", href: "/stud-contracts/requests" },
   { label: "FAQ", href: "/faq" },
   { label: "Map", href: "/travel-map" },
   { label: "Point Schedules", href: "/point-schedules" },
