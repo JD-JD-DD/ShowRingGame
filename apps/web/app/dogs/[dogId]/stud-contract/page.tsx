@@ -33,6 +33,7 @@ export default async function StudOfferWorksheetPage({ params }: PageProps) {
       registeredName: true,
       regNumber: true,
       breedCode2: true,
+      breed: { select: { name: true } },
     },
   });
 
@@ -58,6 +59,11 @@ export default async function StudOfferWorksheetPage({ params }: PageProps) {
         <StudOfferWorksheet
           dogName={dogName}
           applicableHealthTests={applicableHealthTests}
+          sireIdentity={{
+            dogId: dog.id,
+            breedName: dog.breed.name,
+            regNumber: dog.regNumber,
+          }}
         />
       </div>
     </main>

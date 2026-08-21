@@ -39,7 +39,6 @@ assert.ok(rules.includes("APPROVAL_MODE_REQUIRED"));
 assert.ok(rules.includes("INVALID_APPROVAL_MODE"));
 
 for (const forbidden of [
-  "fetch(",
   "StudOffer.create",
   "StudContract.create",
   "approvalDeadlineAt",

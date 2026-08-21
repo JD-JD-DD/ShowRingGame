@@ -39,7 +39,6 @@ assert.ok(worksheet.includes('currentStep.id === "compensation" && !compensation
 assert.ok(rules.includes("MAX_STUD_CONTRACT_CASH_AMOUNT = 1_000_000"));
 assert.ok(rules.includes("CASH_AMOUNT_TOO_HIGH"));
 assert.ok(rules.includes("validateStudOfferCompensationStep"));
-assert.equal(worksheet.includes("fetch("), false);
 assert.equal(worksheet.includes("StudOffer.create"), false);
 
 console.log("Stud offer compensation checks passed.");

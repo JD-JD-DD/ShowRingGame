@@ -50,7 +50,7 @@ for (const code of [
   assert.ok(rules.includes(code), `rules include ${code}`);
 }
 
-for (const forbidden of ["fetch(", "StudOffer.create", "StudContract.create", "DogListing"]) {
+for (const forbidden of ["StudOffer.create", "StudContract.create", "DogListing"]) {
   assert.equal(worksheet.includes(forbidden), false, `worksheet does not include ${forbidden}`);
 }
 

@@ -14,6 +14,7 @@ import {
   validateStudOfferDamRequirementsStep,
   validateStudOfferPuppyBackTermsStep,
   validateStudOfferReturnServiceStep,
+  validateStudOfferTerms,
   type EditableStudOfferTerms,
   type StudCompensationType,
   type StudApprovalMode,
@@ -29,6 +30,11 @@ type StudOfferWorksheetProps = {
     code: string;
     label: string;
   }>;
+  sireIdentity: {
+    dogId: string;
+    breedName: string;
+    regNumber: string;
+  };
 };
 
 type WorksheetStepId =
@@ -278,6 +284,27 @@ const APPROVAL_OPTIONS: ReadonlyArray<{
   },
 ];
 
+const REVIEW_COPY = {
+  title: "Review Stud Offer",
+  sire: "Sire",
+  compensation: "Compensation",
+  minimumLitter: "Minimum qualifying litter",
+  noLitterReturn: "No-litter return service",
+  smallLitterReturn: "Small-litter return service",
+  brucellosis: "Brucellosis",
+  healthTests: "Health Tests",
+  titleRequirement: "Title requirement",
+  approval: "Approval",
+  offered: "Offered",
+  notOffered: "Not offered",
+  noRestriction: "No restriction",
+  negativeRequired: "Negative required",
+  publish: "Publish Stud Offer",
+  publishing: "Publishing…",
+  published: "Stud Offer published.",
+  invalid: "Complete all required worksheet choices before publishing.",
+} as const;
+
 export const STUD_OFFER_WORKSHEET_STEPS: readonly WorksheetStep[] = [
   {
     id: "compensation",
@@ -339,6 +366,7 @@ function adjustIndexAfterPuppyBackRemoval(index: number): number {
 export default function StudOfferWorksheet({
   dogName,
   applicableHealthTests,
+  sireIdentity,
 }: StudOfferWorksheetProps) {
   const [terms, setTerms] = useState<EditableStudOfferTerms>(
     INITIAL_STUD_OFFER_TERMS
@@ -350,6 +378,9 @@ export default function StudOfferWorksheet({
   const [showReturnServiceErrors, setShowReturnServiceErrors] = useState(false);
   const [showDamRequirementsErrors, setShowDamRequirementsErrors] = useState(false);
   const [showApprovalErrors, setShowApprovalErrors] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+  const [publishSuccess, setPublishSuccess] = useState(false);
   const [returnServiceAnswers, setReturnServiceAnswers] = useState({
     noLitterReturnServiceAnswered: false,
     smallLitterReturnThresholdAnswered: false,
@@ -374,6 +405,14 @@ export default function StudOfferWorksheet({
     damRequirementsAnswers
   );
   const approvalValidation = validateStudOfferApprovalStep(terms);
+  const fullTermsValidation = validateStudOfferTerms(terms);
+  const canPublish =
+    compensationValidation.valid &&
+    (!hasPuppyBack(terms.compensationType) || puppyBackValidation.valid) &&
+    returnServiceValidation.valid &&
+    damRequirementsValidation.valid &&
+    approvalValidation.valid &&
+    fullTermsValidation.valid;
   const cashValidation = validateStudContractCashAmount(terms.cashAmount);
   const cashError =
     cashInputError ??
@@ -636,6 +675,54 @@ export default function StudOfferWorksheet({
   function approvalFieldError(): string | null {
     if (!showApprovalErrors) return null;
     return approvalValidation.errors.find((error) => error.field === "approvalMode")?.message ?? null;
+  }
+
+  function healthRequirementLabel(
+    value: StudHealthRequirementLevel | null
+  ): string {
+    return HEALTH_REQUIREMENT_OPTIONS.find((option) => option.value === value)
+      ?.label ?? REVIEW_COPY.noRestriction;
+  }
+
+  function titleRequirementLabel(value: StudTitleRequirement | null): string {
+    return TITLE_REQUIREMENT_OPTIONS.find((option) => option.value === value)
+      ?.label ?? REVIEW_COPY.noRestriction;
+  }
+
+  function compensationSummary(): string {
+    const cash = terms.cashAmount === null ? null : currencyFormatter.format(terms.cashAmount);
+    const puppyBack = hasPuppyBack(terms.compensationType)
+      ? `${terms.puppyPickPosition === "SECOND" ? "Second" : "First"} Pick ${terms.puppySex === "MALE" ? "Male" : terms.puppySex === "FEMALE" ? "Female" : "Either"}`
+      : null;
+    return [cash, puppyBack].filter(Boolean).join(" + ");
+  }
+
+  async function publishOffer() {
+    if (!canPublish || isPublishing) return;
+    setIsPublishing(true);
+    setPublishError(null);
+
+    try {
+      const response = await fetch(`/api/dogs/${sireIdentity.dogId}/stud-offer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ terms }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok) {
+        setPublishError(
+          payload && typeof payload === "object" && typeof (payload as { error?: unknown }).error === "string"
+            ? (payload as { error: string }).error
+            : "Unable to publish this Stud Offer. Please try again."
+        );
+        return;
+      }
+      setPublishSuccess(true);
+    } catch {
+      setPublishError("Unable to publish this Stud Offer. Please try again.");
+    } finally {
+      setIsPublishing(false);
+    }
   }
 
   return (
@@ -1322,9 +1409,85 @@ export default function StudOfferWorksheet({
             ) : null}
           </fieldset>
         ) : currentStep.id === "review" ? (
-          <p className="theme-status-info mt-5 rounded-xl p-4 text-sm font-semibold">
-            {STUD_OFFER_WORKSHEET_COPY.publishingLater}
-          </p>
+          <div className="mt-5 grid gap-5" aria-busy={isPublishing || undefined}>
+            <section aria-labelledby="review-summary-title">
+              <h3 id="review-summary-title" className="theme-heading text-lg font-semibold">
+                {REVIEW_COPY.title}
+              </h3>
+              <dl className="theme-card mt-3 grid gap-3 rounded-xl p-4 text-sm">
+                <div>
+                  <dt className="theme-label font-semibold">{REVIEW_COPY.sire}</dt>
+                  <dd className="theme-copy mt-1">{dogName} · {sireIdentity.breedName} · {sireIdentity.regNumber}</dd>
+                </div>
+                <div>
+                  <dt className="theme-label font-semibold">{REVIEW_COPY.compensation}</dt>
+                  <dd className="theme-copy mt-1">{compensationSummary()}</dd>
+                </div>
+                {hasPuppyBack(terms.compensationType) ? (
+                  <div>
+                    <dt className="theme-label font-semibold">{REVIEW_COPY.minimumLitter}</dt>
+                    <dd className="theme-copy mt-1">{terms.minimumLitterSize} surviving {terms.minimumLitterSize === 1 ? "puppy" : "puppies"}</dd>
+                  </div>
+                ) : null}
+                <div>
+                  <dt className="theme-label font-semibold">{REVIEW_COPY.noLitterReturn}</dt>
+                  <dd className="theme-copy mt-1">{terms.noLitterReturnService ? REVIEW_COPY.offered : REVIEW_COPY.notOffered}</dd>
+                </div>
+                <div>
+                  <dt className="theme-label font-semibold">{REVIEW_COPY.smallLitterReturn}</dt>
+                  <dd className="theme-copy mt-1">{terms.smallLitterReturnThreshold === null ? REVIEW_COPY.notOffered : `${terms.smallLitterReturnThreshold} or fewer surviving ${terms.smallLitterReturnThreshold === 1 ? "puppy" : "puppies"}`}</dd>
+                </div>
+                <div>
+                  <dt className="theme-label font-semibold">{REVIEW_COPY.brucellosis}</dt>
+                  <dd className="theme-copy mt-1">{terms.brucellosisNegativeRequired ? REVIEW_COPY.negativeRequired : REVIEW_COPY.noRestriction}</dd>
+                </div>
+                <div>
+                  <dt className="theme-label font-semibold">{REVIEW_COPY.healthTests}</dt>
+                  <dd className="theme-copy mt-1 grid gap-1">
+                    {applicableHealthTests.map((test) => (
+                      <span key={test.code}>{test.label}: {healthRequirementLabel(terms.healthRequirements.find((item) => item.healthTestCode === test.code)?.requirementLevel ?? null)}</span>
+                    ))}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="theme-label font-semibold">{REVIEW_COPY.titleRequirement}</dt>
+                  <dd className="theme-copy mt-1">{titleRequirementLabel(terms.titleRequirement)}</dd>
+                </div>
+                <div>
+                  <dt className="theme-label font-semibold">{REVIEW_COPY.approval}</dt>
+                  <dd className="theme-copy mt-1">{terms.approvalMode === "MANUAL" ? "Manual Approval — requests remain open for 24 real hours." : "Automatic Approval — qualifying breedings do not require individual owner approval."}</dd>
+                </div>
+              </dl>
+            </section>
+
+            {!canPublish ? (
+              <p className="theme-status-danger rounded-xl p-3 text-sm" role="alert">
+                {REVIEW_COPY.invalid}
+              </p>
+            ) : null}
+            {publishError ? (
+              <p className="theme-status-danger rounded-xl p-3 text-sm" role="alert">
+                {publishError}
+              </p>
+            ) : null}
+            {publishSuccess ? (
+              <div className="theme-status-info rounded-xl p-4" role="status">
+                <p className="font-semibold">{REVIEW_COPY.published}</p>
+                <a href={`/dogs/${sireIdentity.dogId}`} className="theme-secondary-button mt-3 inline-flex rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+                  Back to Dog
+                </a>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={publishOffer}
+                disabled={!canPublish || isPublishing}
+                className="theme-primary-button rounded-xl px-5 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {isPublishing ? REVIEW_COPY.publishing : REVIEW_COPY.publish}
+              </button>
+            )}
+          </div>
         ) : (
           <p className="theme-copy mt-5 text-sm">
             {STUD_OFFER_WORKSHEET_COPY.futureStep}

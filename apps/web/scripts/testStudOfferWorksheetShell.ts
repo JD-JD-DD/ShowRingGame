@@ -62,7 +62,6 @@ assert.ok(worksheet.includes("<h1 id=\"stud-offer-worksheet-title\""));
 assert.ok(worksheet.includes("type=\"button\""));
 assert.ok(worksheet.includes("focus-visible:outline"));
 assert.ok(worksheet.includes("Publishing will be added in a later stage."));
-assert.equal(worksheet.includes("fetch("), false);
 assert.equal(worksheet.includes("localStorage"), false);
 assert.equal(worksheet.includes("sessionStorage"), false);
 assert.equal(worksheet.includes("db."), false);

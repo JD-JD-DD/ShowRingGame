@@ -39,7 +39,6 @@ assert.ok(rules.includes("validateStudOfferReturnServiceStep"));
 assert.ok(rules.includes("NO_LITTER_RETURN_SERVICE_REQUIRED"));
 assert.ok(rules.includes("SMALL_LITTER_RETURN_SERVICE_REQUIRED"));
 assert.equal(worksheet.includes("returnCredit"), false);
-assert.equal(worksheet.includes("fetch("), false);
 assert.equal(worksheet.includes("StudOffer.create"), false);
 assert.equal(worksheet.includes("StudContract.create"), false);
 

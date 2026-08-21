@@ -42,7 +42,6 @@ assert.ok(worksheet.includes("separately configured litter-size terms"));
 assert.ok(worksheet.includes("aria-describedby"));
 assert.ok(rules.includes("validateStudOfferPuppyBackTermsStep"));
 assert.ok(rules.includes("SECOND_PICK_REQUIRES_MINIMUM_TWO"));
-assert.equal(worksheet.includes("fetch("), false);
 assert.equal(worksheet.includes("StudOffer.create"), false);
 assert.equal(worksheet.includes("StudContract.create"), false);
 
