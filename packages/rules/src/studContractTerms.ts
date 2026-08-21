@@ -440,6 +440,32 @@ export function validateStudOfferApprovalStep(
   return { valid: errors.length === 0, errors };
 }
 
+export function areStudOfferTermsEqual(
+  left: EditableStudOfferTerms,
+  right: EditableStudOfferTerms
+): boolean {
+  const comparable = (terms: EditableStudOfferTerms) => ({
+    compensationType: terms.compensationType,
+    cashAmount: terms.cashAmount,
+    puppyPickPosition: terms.puppyPickPosition,
+    puppySex: terms.puppySex,
+    minimumLitterSize: terms.minimumLitterSize,
+    noLitterReturnService: terms.noLitterReturnService,
+    smallLitterReturnThreshold: terms.smallLitterReturnThreshold,
+    brucellosisNegativeRequired: terms.brucellosisNegativeRequired,
+    titleRequirement: terms.titleRequirement,
+    approvalMode: terms.approvalMode,
+    healthRequirements: [...terms.healthRequirements]
+      .map(({ healthTestCode, requirementLevel }) => ({
+        healthTestCode,
+        requirementLevel,
+      }))
+      .sort((a, b) => a.healthTestCode.localeCompare(b.healthTestCode)),
+  });
+
+  return JSON.stringify(comparable(left)) === JSON.stringify(comparable(right));
+}
+
 export function validateStudOfferTerms(
   terms: EditableStudOfferTerms
 ): StudOfferTermsValidationResult {

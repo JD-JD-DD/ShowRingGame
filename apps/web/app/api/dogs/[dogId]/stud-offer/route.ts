@@ -40,6 +40,10 @@ export async function POST(
       body && typeof body === "object"
         ? (body as { terms?: unknown }).terms
         : undefined;
+    const baseVersion =
+      body && typeof body === "object" && typeof (body as { baseVersion?: unknown }).baseVersion === "number"
+        ? (body as { baseVersion: number }).baseVersion
+        : null;
     if (!isTerms(terms)) {
       return NextResponse.json(
         { error: "Stud Offer terms are invalid." },
@@ -53,6 +57,7 @@ export async function POST(
       ownerKennelId: kennel.id,
       currentEpoch: getCurrentEpoch(),
       terms,
+      baseVersion,
     });
 
     return NextResponse.json({ offerId: offer.offerId, version: offer.version });

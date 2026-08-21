@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
 import {
   getRequiredHealthTestsForBreed,
+  areStudOfferTermsEqual,
   MIN_BREED_AGE_HOURS,
   validateStudOfferDamRequirementsStep,
   validateStudOfferTerms,
@@ -15,11 +16,29 @@ export class StudOfferPublishError extends Error {
       | "SIRE_NOT_ELIGIBLE"
       | "INVALID_TERMS"
       | "HEALTH_REQUIREMENTS_INVALID"
-      | "ALREADY_PUBLISHED",
+      | "ALREADY_PUBLISHED"
+      | "CURRENT_OFFER_MISSING"
+      | "STALE_EDIT"
+      | "NO_CHANGES",
     message: string
   ) {
     super(message);
   }
+}
+
+export async function getCurrentPublishedStudOfferForOwnedDog(args: {
+  dogId: string;
+  ownerKennelId: string;
+}) {
+  return db.studOffer.findFirst({
+    where: {
+      sireDogId: args.dogId,
+      ownerKennelId: args.ownerKennelId,
+      status: "PUBLISHED",
+      sireDog: { ownerKennelId: args.ownerKennelId },
+    },
+    include: { healthRequirements: true },
+  });
 }
 
 export async function publishStudOffer(args: {
@@ -27,6 +46,7 @@ export async function publishStudOffer(args: {
   ownerKennelId: string;
   currentEpoch: number;
   terms: EditableStudOfferTerms;
+  baseVersion?: number | null;
 }): Promise<{ offerId: string; version: number }> {
   return db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Dog" WHERE "id" = ${args.dogId} FOR UPDATE`;
@@ -108,13 +128,52 @@ export async function publishStudOffer(args: {
 
     const publishedOffer = await tx.studOffer.findFirst({
       where: { sireDogId: sire.id, status: "PUBLISHED" },
-      select: { id: true },
+      include: { healthRequirements: true },
     });
-    if (publishedOffer) {
+    const isEditing = args.baseVersion !== null && args.baseVersion !== undefined;
+    if (publishedOffer && !isEditing) {
       throw new StudOfferPublishError(
         "ALREADY_PUBLISHED",
         "This dog already has a published Stud Offer."
       );
+    }
+
+    if (!publishedOffer && isEditing) {
+      throw new StudOfferPublishError(
+        "CURRENT_OFFER_MISSING",
+        "The current Stud Offer is no longer available. Reload the worksheet."
+      );
+    }
+    if (publishedOffer && publishedOffer.version !== args.baseVersion) {
+      throw new StudOfferPublishError(
+        "STALE_EDIT",
+        "This Stud Offer changed after you opened the worksheet. Reload the current terms before publishing your changes."
+      );
+    }
+    if (publishedOffer) {
+      const currentTerms: EditableStudOfferTerms = {
+        compensationType: publishedOffer.compensationType,
+        cashAmount: publishedOffer.cashAmount,
+        puppyPickPosition: publishedOffer.puppyPickPosition,
+        puppySex: publishedOffer.puppySex,
+        minimumLitterSize: publishedOffer.minimumLitterSize,
+        noLitterReturnService: publishedOffer.noLitterReturnService,
+        smallLitterReturnThreshold: publishedOffer.smallLitterReturnThreshold,
+        brucellosisNegativeRequired: publishedOffer.brucellosisNegativeRequired,
+        titleRequirement: publishedOffer.titleRequirement,
+        approvalMode: publishedOffer.approvalMode,
+        healthRequirements: publishedOffer.healthRequirements.map((requirement) => ({
+          healthTestCode: requirement.healthTestCode,
+          requirementLevel: requirement.requirementLevel,
+        })),
+      };
+      if (areStudOfferTermsEqual(currentTerms, args.terms)) {
+        throw new StudOfferPublishError("NO_CHANGES", "No changes to publish.");
+      }
+      await tx.studOffer.update({
+        where: { id: publishedOffer.id },
+        data: { status: "RETIRED" },
+      });
     }
 
     const latestOffer = await tx.studOffer.findFirst({
@@ -128,7 +187,7 @@ export async function publishStudOffer(args: {
         sireDogId: sire.id,
         ownerKennelId: args.ownerKennelId,
         status: "PUBLISHED",
-        version: (latestOffer?.version ?? 0) + 1,
+        version: publishedOffer ? publishedOffer.version + 1 : (latestOffer?.version ?? 0) + 1,
         compensationType: args.terms.compensationType!,
         cashAmount: args.terms.cashAmount,
         puppyPickPosition: args.terms.puppyPickPosition,

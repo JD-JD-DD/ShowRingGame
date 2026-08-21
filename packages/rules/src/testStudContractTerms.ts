@@ -7,6 +7,7 @@ import {
   validateStudContractCashAmount,
   validateStudOfferCompensationStep,
   validateStudOfferApprovalStep,
+  areStudOfferTermsEqual,
   validateStudOfferDamRequirementsStep,
   validateStudOfferPuppyBackTermsStep,
   validateStudOfferReturnServiceStep,
@@ -153,6 +154,8 @@ assert.equal(validateStudOfferApprovalStep(terms({ approvalMode: null })).errors
 assert.equal(validateStudOfferApprovalStep(terms({ approvalMode: "AUTOMATIC" })).valid, true, "AUTOMATIC approval is valid");
 assert.equal(validateStudOfferApprovalStep(terms({ approvalMode: "MANUAL" })).valid, true, "MANUAL approval is valid");
 assert.equal(validateStudOfferApprovalStep(terms({ approvalMode: "CUSTOM" as never })).errors[0]?.code, "INVALID_APPROVAL_MODE", "unknown approval mode is rejected");
+assert.equal(areStudOfferTermsEqual(terms({ healthRequirements: [{ healthTestCode: "CARDIAC", requirementLevel: "NONE" }, { healthTestCode: "HIP_DYSPLASIA", requirementLevel: "GREEN_ONLY" }] }), terms({ healthRequirements: [{ healthTestCode: "HIP_DYSPLASIA", requirementLevel: "GREEN_ONLY" }, { healthTestCode: "CARDIAC", requirementLevel: "NONE" }] })), true, "health requirement ordering does not change offer terms");
+assert.equal(areStudOfferTermsEqual(terms(), terms({ approvalMode: "MANUAL" })), false, "approval changes offer terms");
 
 const upstreamTerms = puppyBackTerms({
   cashAmount: 50,

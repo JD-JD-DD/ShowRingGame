@@ -5,6 +5,7 @@ import StudOfferWorksheet from "@/components/stud-contract/StudOfferWorksheet";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
+import { getCurrentPublishedStudOfferForOwnedDog } from "@/server/services/studOffer.service";
 import {
   getRequiredHealthTestsForBreed,
   PHENOTYPE_HEALTH_TESTS,
@@ -40,6 +41,10 @@ export default async function StudOfferWorksheetPage({ params }: PageProps) {
   if (!dog) notFound();
 
   const dogName = dog.registeredName?.trim() || dog.callName?.trim() || dog.regNumber;
+  const currentOffer = await getCurrentPublishedStudOfferForOwnedDog({
+    dogId: dog.id,
+    ownerKennelId: kennel.id,
+  });
   const applicableHealthTests = getRequiredHealthTestsForBreed(dog.breedCode2).map(
     (code) => ({
       code,
@@ -64,6 +69,33 @@ export default async function StudOfferWorksheetPage({ params }: PageProps) {
             breedName: dog.breed.name,
             regNumber: dog.regNumber,
           }}
+          initialOffer={
+            currentOffer
+              ? {
+                  version: currentOffer.version,
+                  terms: {
+                    compensationType: currentOffer.compensationType,
+                    cashAmount: currentOffer.cashAmount,
+                    puppyPickPosition: currentOffer.puppyPickPosition,
+                    puppySex: currentOffer.puppySex,
+                    minimumLitterSize: currentOffer.minimumLitterSize,
+                    noLitterReturnService: currentOffer.noLitterReturnService,
+                    smallLitterReturnThreshold:
+                      currentOffer.smallLitterReturnThreshold,
+                    brucellosisNegativeRequired:
+                      currentOffer.brucellosisNegativeRequired,
+                    titleRequirement: currentOffer.titleRequirement,
+                    approvalMode: currentOffer.approvalMode,
+                    healthRequirements: currentOffer.healthRequirements.map(
+                      (requirement) => ({
+                        healthTestCode: requirement.healthTestCode,
+                        requirementLevel: requirement.requirementLevel,
+                      })
+                    ),
+                  },
+                }
+              : null
+          }
         />
       </div>
     </main>

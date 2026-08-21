@@ -37,7 +37,7 @@ for (const fragment of [
   "getRequiredHealthTestsForBreed",
   "validateStudOfferDamRequirementsStep",
   "status: \"PUBLISHED\"",
-  "version: (latestOffer?.version ?? 0) + 1",
+  "latestOffer?.version ?? 0",
   "healthRequirements: {",
   "ALREADY_PUBLISHED",
 ]) {

@@ -21,7 +21,7 @@ assert.ok(route.includes("<StudOfferWorksheet"));
 assert.ok(route.includes("dogName={dogName}"));
 assert.ok(route.includes("applicableHealthTests={applicableHealthTests}"));
 assert.equal(route.includes("StudOffer"), true, "route names the UI component only");
-assert.equal(route.includes("studOffer."), false, "route does not query StudOffer persistence");
+assert.ok(route.includes("getCurrentPublishedStudOfferForOwnedDog"), "route loads the current offer through the focused service");
 
 assert.ok(worksheet.startsWith('"use client"'));
 assert.ok(worksheet.includes("type EditableStudOfferTerms"));

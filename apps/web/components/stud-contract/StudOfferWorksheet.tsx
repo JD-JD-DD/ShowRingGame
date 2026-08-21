@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   hasPuppyBack,
   getAllowedMinimumLitterSizes,
+  areStudOfferTermsEqual,
   isValidSmallLitterReturnThreshold,
   MAX_STUD_CONTRACT_CASH_AMOUNT,
   normalizeStudOfferTermsAfterChange,
@@ -35,6 +36,10 @@ type StudOfferWorksheetProps = {
     breedName: string;
     regNumber: string;
   };
+  initialOffer: {
+    version: number;
+    terms: EditableStudOfferTerms;
+  } | null;
 };
 
 type WorksheetStepId =
@@ -302,7 +307,11 @@ const REVIEW_COPY = {
   publish: "Publish Stud Offer",
   publishing: "Publishing…",
   published: "Stud Offer published.",
+  updated: "Updated Stud Offer published.",
   invalid: "Complete all required worksheet choices before publishing.",
+  noChanges: "No changes to publish.",
+  editing: "Editing Stud Offer",
+  publishUpdated: "Publish Updated Terms",
 } as const;
 
 export const STUD_OFFER_WORKSHEET_STEPS: readonly WorksheetStep[] = [
@@ -363,16 +372,34 @@ function adjustIndexAfterPuppyBackRemoval(index: number): number {
   return index - 1;
 }
 
+function termsForCurrentHealthTests(
+  initialOffer: StudOfferWorksheetProps["initialOffer"],
+  applicableHealthTests: StudOfferWorksheetProps["applicableHealthTests"]
+): EditableStudOfferTerms {
+  if (!initialOffer) return INITIAL_STUD_OFFER_TERMS;
+  const applicableCodes = new Set(applicableHealthTests.map((test) => test.code));
+  return {
+    ...initialOffer.terms,
+    healthRequirements: initialOffer.terms.healthRequirements.filter((requirement) =>
+      applicableCodes.has(requirement.healthTestCode)
+    ),
+  };
+}
+
 export default function StudOfferWorksheet({
   dogName,
   applicableHealthTests,
   sireIdentity,
+  initialOffer,
 }: StudOfferWorksheetProps) {
+  const loadedTerms = termsForCurrentHealthTests(initialOffer, applicableHealthTests);
   const [terms, setTerms] = useState<EditableStudOfferTerms>(
-    INITIAL_STUD_OFFER_TERMS
+    loadedTerms
   );
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [furthestReachedStepIndex, setFurthestReachedStepIndex] = useState(0);
+  const [furthestReachedStepIndex, setFurthestReachedStepIndex] = useState(
+    initialOffer ? getActiveSteps(loadedTerms).length - 1 : 0
+  );
   const [showCompensationErrors, setShowCompensationErrors] = useState(false);
   const [showPuppyBackErrors, setShowPuppyBackErrors] = useState(false);
   const [showReturnServiceErrors, setShowReturnServiceErrors] = useState(false);
@@ -382,14 +409,16 @@ export default function StudOfferWorksheet({
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishSuccess, setPublishSuccess] = useState(false);
   const [returnServiceAnswers, setReturnServiceAnswers] = useState({
-    noLitterReturnServiceAnswered: false,
-    smallLitterReturnThresholdAnswered: false,
+    noLitterReturnServiceAnswered: Boolean(initialOffer),
+    smallLitterReturnThresholdAnswered: Boolean(initialOffer),
   });
   const [cashInputError, setCashInputError] = useState<string | null>(null);
   const [damRequirementsAnswers, setDamRequirementsAnswers] = useState({
-    brucellosisNegativeRequiredAnswered: false,
-    titleRequirementAnswered: false,
-    healthRequirementAnsweredCodes: [] as string[],
+    brucellosisNegativeRequiredAnswered: Boolean(initialOffer),
+    titleRequirementAnswered: Boolean(initialOffer),
+    healthRequirementAnsweredCodes: loadedTerms.healthRequirements.map(
+      (requirement) => requirement.healthTestCode
+    ),
   });
   const activeSteps = useMemo(() => getActiveSteps(terms), [terms]);
   const currentStep = activeSteps[currentStepIndex] ?? activeSteps[0];
@@ -412,7 +441,8 @@ export default function StudOfferWorksheet({
     returnServiceValidation.valid &&
     damRequirementsValidation.valid &&
     approvalValidation.valid &&
-    fullTermsValidation.valid;
+    fullTermsValidation.valid &&
+    (!initialOffer || !areStudOfferTermsEqual(terms, loadedTerms));
   const cashValidation = validateStudContractCashAmount(terms.cashAmount);
   const cashError =
     cashInputError ??
@@ -706,7 +736,7 @@ export default function StudOfferWorksheet({
       const response = await fetch(`/api/dogs/${sireIdentity.dogId}/stud-offer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ terms }),
+        body: JSON.stringify({ terms, baseVersion: initialOffer?.version ?? null }),
       });
       const payload: unknown = await response.json();
       if (!response.ok) {
@@ -735,6 +765,11 @@ export default function StudOfferWorksheet({
           {STUD_OFFER_WORKSHEET_COPY.title}: {dogName}
         </h1>
         <p className="theme-copy mt-3 max-w-2xl">{STUD_OFFER_WORKSHEET_COPY.subtitle}</p>
+        {initialOffer ? (
+          <p className="theme-status-info mt-3 inline-flex rounded-xl px-3 py-2 text-sm">
+            {REVIEW_COPY.editing} — Version {initialOffer.version}
+          </p>
+        ) : null}
       </header>
 
       <nav className="mt-8" aria-label="Stud offer worksheet progress">
@@ -1414,6 +1449,11 @@ export default function StudOfferWorksheet({
               <h3 id="review-summary-title" className="theme-heading text-lg font-semibold">
                 {REVIEW_COPY.title}
               </h3>
+              {initialOffer ? (
+                <p className="theme-status-info mt-2 rounded-xl p-3 text-sm">
+                  {REVIEW_COPY.editing} — Version {initialOffer.version}. Publishing will create version {initialOffer.version + 1}.
+                </p>
+              ) : null}
               <dl className="theme-card mt-3 grid gap-3 rounded-xl p-4 text-sm">
                 <div>
                   <dt className="theme-label font-semibold">{REVIEW_COPY.sire}</dt>
@@ -1462,7 +1502,9 @@ export default function StudOfferWorksheet({
 
             {!canPublish ? (
               <p className="theme-status-danger rounded-xl p-3 text-sm" role="alert">
-                {REVIEW_COPY.invalid}
+                {initialOffer && areStudOfferTermsEqual(terms, loadedTerms)
+                  ? REVIEW_COPY.noChanges
+                  : REVIEW_COPY.invalid}
               </p>
             ) : null}
             {publishError ? (
@@ -1472,7 +1514,7 @@ export default function StudOfferWorksheet({
             ) : null}
             {publishSuccess ? (
               <div className="theme-status-info rounded-xl p-4" role="status">
-                <p className="font-semibold">{REVIEW_COPY.published}</p>
+                <p className="font-semibold">{initialOffer ? REVIEW_COPY.updated : REVIEW_COPY.published}</p>
                 <a href={`/dogs/${sireIdentity.dogId}`} className="theme-secondary-button mt-3 inline-flex rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
                   Back to Dog
                 </a>
@@ -1484,7 +1526,11 @@ export default function StudOfferWorksheet({
                 disabled={!canPublish || isPublishing}
                 className="theme-primary-button rounded-xl px-5 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                {isPublishing ? REVIEW_COPY.publishing : REVIEW_COPY.publish}
+                {isPublishing
+                  ? REVIEW_COPY.publishing
+                  : initialOffer
+                    ? REVIEW_COPY.publishUpdated
+                    : REVIEW_COPY.publish}
               </button>
             )}
           </div>
