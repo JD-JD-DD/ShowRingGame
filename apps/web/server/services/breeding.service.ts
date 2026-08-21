@@ -1349,7 +1349,6 @@ export async function createBreedingAttemptForKennel(args: {
     let studSellerKennelId: string | null = null;
     let studSellerBalanceAfter: number | null = null;
     let requiresBrucellosisNegativeDam = false;
-    let automaticOffer: Awaited<ReturnType<typeof tx.studOffer.findFirst>> = null;
     let manualContract: Awaited<ReturnType<typeof tx.studContract.findFirst>> = null;
 
     if (args.automaticStudContract) {
@@ -1441,6 +1440,13 @@ export async function createBreedingAttemptForKennel(args: {
     await assertDogHasNoPendingVeterinaryCare(dam.id, tx);
     await assertDogHasNoPendingVeterinaryCare(sire.id, tx);
 
+    const automaticOffer = args.automaticStudContract
+      ? await tx.studOffer.findFirst({
+          where: { sireDogId: sire.id, status: "PUBLISHED" },
+          include: { healthRequirements: true },
+        })
+      : null;
+
     if (usesPublicStud) {
       const studListing = await tx.dogListing.findFirst({
         where: {
@@ -1502,10 +1508,6 @@ export async function createBreedingAttemptForKennel(args: {
         studFeeAmount = manualContract.compensationType === "PUPPY_BACK" ? 0 : manualContract.cashAmount ?? 0;
         requiresBrucellosisNegativeDam = false;
       } else if (args.automaticStudContract) {
-        automaticOffer = await tx.studOffer.findFirst({
-          where: { sireDogId: sire.id, status: "PUBLISHED" },
-          include: { healthRequirements: true },
-        });
         if (!automaticOffer) {
           throw new Error("This Stud Offer is no longer published.");
         }
