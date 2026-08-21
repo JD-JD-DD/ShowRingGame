@@ -9,6 +9,112 @@ export const STUD_COMPENSATION_TYPES = [
 ] as const;
 export type StudCompensationType = (typeof STUD_COMPENSATION_TYPES)[number];
 
+export type StudContractBreedingAttemptStatus =
+  | "INITIATED"
+  | "CHECKED_NOT_PREGNANT"
+  | "PREGNANT"
+  | "REPRODUCTIVE_EMERGENCY"
+  | "WHELPED"
+  | "FAILED"
+  | "CANCELLED";
+
+export type StudContractLitterOutcome =
+  | "PENDING"
+  | "NO_LITTER"
+  | "QUALIFIED_LITTER";
+
+export type StudContractPuppyBackLitterSizeOutcome =
+  | "PENDING"
+  | "NOT_APPLICABLE"
+  | "NO_QUALIFYING_LITTER"
+  | "POTENTIALLY_FULFILLABLE"
+  | "NOT_FULFILLABLE_LITTER_SIZE";
+
+export type StudContractOutcomeInput = {
+  compensationType: StudCompensationType;
+  noLitterReturnService: boolean;
+  smallLitterReturnThreshold: number | null;
+  minimumLitterSize: number | null;
+  breedingAttemptStatus: StudContractBreedingAttemptStatus;
+  hasLinkedLitter: boolean;
+  qualificationCheckpointAt: Date | string | null;
+  qualifyingSurvivingPuppyCount: number | null;
+  puppyBackMinimumMet: boolean | null;
+  smallLitterReturnServiceMet: boolean | null;
+};
+
+export type StudContractOutcomeClassification = {
+  outcomeReady: boolean;
+  litterOutcome: StudContractLitterOutcome;
+  noLitterReturnServiceTriggered: boolean;
+  smallLitterReturnServiceTriggered: boolean;
+  returnServiceConditionTriggered: boolean;
+  puppyBackApplicable: boolean;
+  puppyBackLitterSizeOutcome: StudContractPuppyBackLitterSizeOutcome;
+};
+
+const NO_LITTER_BREEDING_ATTEMPT_STATUSES = new Set<StudContractBreedingAttemptStatus>([
+  "CHECKED_NOT_PREGNANT",
+  "FAILED",
+  "CANCELLED",
+]);
+
+/**
+ * Outcome classification uses the immutable accepted StudContract snapshot and
+ * frozen lifecycle facts; it never re-derives terms from current public configuration.
+ */
+export function classifyStudContractOutcome(
+  input: StudContractOutcomeInput
+): StudContractOutcomeClassification {
+  const puppyBackApplicable = input.compensationType !== "CASH";
+  const base = {
+    noLitterReturnServiceTriggered: false,
+    smallLitterReturnServiceTriggered: false,
+    returnServiceConditionTriggered: false,
+    puppyBackApplicable,
+  };
+
+  if (!input.hasLinkedLitter && NO_LITTER_BREEDING_ATTEMPT_STATUSES.has(input.breedingAttemptStatus)) {
+    const noLitterReturnServiceTriggered = input.noLitterReturnService;
+    return {
+      ...base,
+      outcomeReady: true,
+      litterOutcome: "NO_LITTER",
+      noLitterReturnServiceTriggered,
+      returnServiceConditionTriggered: noLitterReturnServiceTriggered,
+      puppyBackLitterSizeOutcome: puppyBackApplicable
+        ? "NO_QUALIFYING_LITTER"
+        : "NOT_APPLICABLE",
+    };
+  }
+
+  if (!input.hasLinkedLitter || input.qualificationCheckpointAt === null) {
+    return {
+      ...base,
+      outcomeReady: false,
+      litterOutcome: "PENDING",
+      puppyBackLitterSizeOutcome: puppyBackApplicable ? "PENDING" : "NOT_APPLICABLE",
+    };
+  }
+
+  const smallLitterReturnServiceTriggered = input.smallLitterReturnServiceMet === true;
+  const puppyBackLitterSizeOutcome = !puppyBackApplicable
+    ? "NOT_APPLICABLE"
+    : input.puppyBackMinimumMet === true
+      ? "POTENTIALLY_FULFILLABLE"
+      : input.puppyBackMinimumMet === false
+        ? "NOT_FULFILLABLE_LITTER_SIZE"
+        : "PENDING";
+  return {
+    ...base,
+    outcomeReady: true,
+    litterOutcome: "QUALIFIED_LITTER",
+    smallLitterReturnServiceTriggered,
+    returnServiceConditionTriggered: smallLitterReturnServiceTriggered,
+    puppyBackLitterSizeOutcome,
+  };
+}
+
 export const STUD_PUPPY_PICK_POSITIONS = ["FIRST", "SECOND"] as const;
 export type StudPuppyPickPosition =
   (typeof STUD_PUPPY_PICK_POSITIONS)[number];

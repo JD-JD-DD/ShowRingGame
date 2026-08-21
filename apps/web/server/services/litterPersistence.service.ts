@@ -78,7 +78,7 @@ export async function createLitterWithCollisionRetry<
   litter: LitterRow;
   puppies: Puppy[];
   nextSerial7?: () => string;
-}): Promise<{ serial7: string; puppies: Puppy[] }> {
+}): Promise<{ id: string; serial7: string; puppies: Puppy[] }> {
   let serial7 = args.litter.serial7;
 
   for (let attempt = 1; attempt <= MAX_LITTER_SERIAL_ATTEMPTS; attempt += 1) {
@@ -109,13 +109,15 @@ export async function createLitterWithCollisionRetry<
     });
     try {
       await reserveDogRegistrations(args.client, puppies.map((puppy) => puppy.regNumber));
-      await args.client.litter.create({
+      const persistedLitter = await args.client.litter.create({
         data: {
           ...args.litter,
           serial7,
         },
+        select: { id: true },
       });
       return {
+        id: persistedLitter.id,
         serial7,
         puppies,
       };
