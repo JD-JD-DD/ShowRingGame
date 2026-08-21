@@ -205,6 +205,74 @@ export function validateStudOfferCompensationStep(
   return { valid: errors.length === 0, errors };
 }
 
+export function validateStudOfferPuppyBackTermsStep(
+  terms: Pick<
+    EditableStudOfferTerms,
+    | "compensationType"
+    | "puppyPickPosition"
+    | "puppySex"
+    | "minimumLitterSize"
+  >
+): StudOfferTermsValidationResult {
+  const errors: StudOfferTermsValidationError[] = [];
+
+  if (!hasPuppyBack(terms.compensationType)) {
+    addError(
+      errors,
+      "compensationType",
+      "INVALID_COMPENSATION_TYPE",
+      "Puppy-Back terms require Puppy Back compensation."
+    );
+    return { valid: false, errors };
+  }
+
+  if (!includesValue(STUD_PUPPY_PICK_POSITIONS, terms.puppyPickPosition)) {
+    addError(
+      errors,
+      "puppyPickPosition",
+      terms.puppyPickPosition === null
+        ? "PUPPY_PICK_REQUIRED"
+        : "INVALID_PUPPY_PICK",
+      "Choose First Pick or Second Pick."
+    );
+  }
+  if (!includesValue(STUD_PUPPY_SEX_REQUIREMENTS, terms.puppySex)) {
+    addError(
+      errors,
+      "puppySex",
+      terms.puppySex === null ? "PUPPY_SEX_REQUIRED" : "INVALID_PUPPY_SEX",
+      "Choose whether the puppy must be male, female, or either sex."
+    );
+  }
+  if (terms.minimumLitterSize === null) {
+    addError(
+      errors,
+      "minimumLitterSize",
+      "MINIMUM_LITTER_REQUIRED",
+      "Choose a minimum qualifying litter size."
+    );
+  } else if (!includesValue(STUD_MINIMUM_LITTER_SIZES, terms.minimumLitterSize)) {
+    addError(
+      errors,
+      "minimumLitterSize",
+      "INVALID_MINIMUM_LITTER_SIZE",
+      "Minimum litter size must be 1, 2, or 3."
+    );
+  } else if (
+    terms.puppyPickPosition === "SECOND" &&
+    terms.minimumLitterSize === 1
+  ) {
+    addError(
+      errors,
+      "minimumLitterSize",
+      "SECOND_PICK_REQUIRES_MINIMUM_TWO",
+      "Second Pick requires at least 2 surviving puppies."
+    );
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
 export function validateStudOfferTerms(
   terms: EditableStudOfferTerms
 ): StudOfferTermsValidationResult {
@@ -234,22 +302,7 @@ export function validateStudOfferTerms(
   }
 
   if (puppyBackRequired) {
-    if (!includesValue(STUD_PUPPY_PICK_POSITIONS, terms.puppyPickPosition)) {
-      addError(errors, "puppyPickPosition", terms.puppyPickPosition === null ? "PUPPY_PICK_REQUIRED" : "INVALID_PUPPY_PICK", "Puppy Back compensation requires a valid pick position.");
-    }
-    if (!includesValue(STUD_PUPPY_SEX_REQUIREMENTS, terms.puppySex)) {
-      addError(errors, "puppySex", terms.puppySex === null ? "PUPPY_SEX_REQUIRED" : "INVALID_PUPPY_SEX", "Puppy Back compensation requires a valid puppy sex requirement.");
-    }
-    if (terms.minimumLitterSize === null) {
-      addError(errors, "minimumLitterSize", "MINIMUM_LITTER_REQUIRED", "Puppy Back compensation requires a minimum litter size.");
-    } else if (!includesValue(STUD_MINIMUM_LITTER_SIZES, terms.minimumLitterSize)) {
-      addError(errors, "minimumLitterSize", "INVALID_MINIMUM_LITTER_SIZE", "Minimum litter size must be 1, 2, or 3.");
-    } else if (
-      terms.puppyPickPosition === "SECOND" &&
-      terms.minimumLitterSize === 1
-    ) {
-      addError(errors, "minimumLitterSize", "SECOND_PICK_REQUIRES_MINIMUM_TWO", "Second Pick Puppy Back terms require a minimum litter size of 2 or 3.");
-    }
+    errors.push(...validateStudOfferPuppyBackTermsStep(terms).errors);
   } else {
     if (terms.puppyPickPosition !== null) {
       addError(errors, "puppyPickPosition", "PUPPY_PICK_NOT_ALLOWED", "Puppy pick position is only allowed when Puppy Back compensation is selected.");

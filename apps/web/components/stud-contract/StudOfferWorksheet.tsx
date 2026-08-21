@@ -3,14 +3,17 @@
 import { useMemo, useState } from "react";
 import {
   hasPuppyBack,
+  getAllowedMinimumLitterSizes,
   MAX_STUD_CONTRACT_CASH_AMOUNT,
   normalizeStudOfferTermsAfterChange,
   requiresCash,
   validateStudContractCashAmount,
   validateStudOfferCompensationStep,
+  validateStudOfferPuppyBackTermsStep,
   type EditableStudOfferTerms,
   type StudCompensationType,
   type StudPuppyPickPosition,
+  type StudPuppySexRequirement,
 } from "@showring/rules";
 
 type StudOfferWorksheetProps = {
@@ -72,6 +75,65 @@ const currencyFormatter = new Intl.NumberFormat("en-US", {
   currency: "USD",
   maximumFractionDigits: 0,
 });
+
+const PUPPY_BACK_COPY = {
+  pickLegend: "Pick Position",
+  sexLegend: "Required Sex",
+  litterLegend: "Minimum Qualifying Litter",
+  firstPick: "First Pick",
+  secondPick: "Second Pick",
+  either: "Either",
+  male: "Male",
+  female: "Female",
+  secondPickMinimum:
+    "Second Pick requires at least 2 surviving puppies because the dam owner receives the first protected selection.",
+  litterDefinition:
+    "Minimum litter size is the number of surviving puppies at the contract's litter-qualification checkpoint.",
+  timingTitle: "How Puppy Selection Works",
+  timing:
+    "Selection begins after the Week 1 neonatal mortality window closes and takes place during the puppies' first eight weeks of life. Each active selection turn lasts 24 real hours.",
+  noAutomatic:
+    "The game will never automatically select a puppy on behalf of either kennel.",
+  forfeiture:
+    "Failure to exercise a puppy-selection right before its deadline forfeits that selection right.",
+  selectedDeath:
+    "If a selected contract puppy dies before transfer while the selection window remains open, the stud owner may choose again from remaining qualifying puppies under the same pick, sex, and contract terms. If no qualifying replacement exists, the puppy-back portion is unfulfilled without automatic cash substitution or contract error.",
+  unavailableSex:
+    "Sex is a requirement, not a preference. If the required sex is unavailable, the game does not substitute another sex or cash; the contract remains valid.",
+  returnService:
+    "A missed selection, unavailable sex, or unfulfilled puppy-back portion does not by itself create return service. Return service depends only on separately configured litter-size terms.",
+} as const;
+
+const PICK_OPTIONS: ReadonlyArray<{
+  value: StudPuppyPickPosition;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "FIRST",
+    label: PUPPY_BACK_COPY.firstPick,
+    description:
+      "The stud owner makes the first contractual puppy selection after the Week 1 neonatal window closes.",
+  },
+  {
+    value: "SECOND",
+    label: PUPPY_BACK_COPY.secondPick,
+    description:
+      "The dam owner receives one protected first selection. Their 24-real-hour turn is unrestricted by this contract's sex requirement; then the stud owner's turn opens. If the dam owner misses the deadline, that protected pick is forfeited and the stud owner's turn opens.",
+  },
+];
+
+const SEX_OPTIONS: ReadonlyArray<{
+  value: StudPuppySexRequirement;
+  label: string;
+  description: string;
+}> = [
+  { value: "EITHER", label: PUPPY_BACK_COPY.either, description: "The stud owner may select a puppy of either sex." },
+  { value: "MALE", label: PUPPY_BACK_COPY.male, description: "The stud owner may select only a male puppy." },
+  { value: "FEMALE", label: PUPPY_BACK_COPY.female, description: "The stud owner may select only a female puppy." },
+];
+
+const MINIMUM_LITTER_OPTIONS = [1, 2, 3] as const;
 
 export const STUD_OFFER_WORKSHEET_STEPS: readonly WorksheetStep[] = [
   {
@@ -138,10 +200,12 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [furthestReachedStepIndex, setFurthestReachedStepIndex] = useState(0);
   const [showCompensationErrors, setShowCompensationErrors] = useState(false);
+  const [showPuppyBackErrors, setShowPuppyBackErrors] = useState(false);
   const [cashInputError, setCashInputError] = useState<string | null>(null);
   const activeSteps = useMemo(() => getActiveSteps(terms), [terms]);
   const currentStep = activeSteps[currentStepIndex] ?? activeSteps[0];
   const compensationValidation = validateStudOfferCompensationStep(terms);
+  const puppyBackValidation = validateStudOfferPuppyBackTermsStep(terms);
   const cashValidation = validateStudContractCashAmount(terms.cashAmount);
   const cashError =
     cashInputError ??
@@ -159,8 +223,23 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
   ): void;
   function updateTerm(field: "cashAmount", value: number | null): void;
   function updateTerm(
-    field: "compensationType" | "puppyPickPosition" | "cashAmount",
-    value: StudCompensationType | StudPuppyPickPosition | number | null
+    field: "puppySex",
+    value: StudPuppySexRequirement | null
+  ): void;
+  function updateTerm(field: "minimumLitterSize", value: number | null): void;
+  function updateTerm(
+    field:
+      | "compensationType"
+      | "puppyPickPosition"
+      | "cashAmount"
+      | "puppySex"
+      | "minimumLitterSize",
+    value:
+      | StudCompensationType
+      | StudPuppyPickPosition
+      | StudPuppySexRequirement
+      | number
+      | null
   ) {
     if (field === "compensationType" && !hasPuppyBack(value as StudCompensationType | null)) {
       setCurrentStepIndex((index) => adjustIndexAfterPuppyBackRemoval(index));
@@ -186,7 +265,21 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
         );
       }
 
-      return { ...previousTerms, cashAmount: value as number | null };
+      if (field === "cashAmount") {
+        return { ...previousTerms, cashAmount: value as number | null };
+      }
+
+      if (field === "puppySex") {
+        return {
+          ...previousTerms,
+          puppySex: value as StudPuppySexRequirement | null,
+        };
+      }
+
+      return {
+        ...previousTerms,
+        minimumLitterSize: value as number | null,
+      };
     });
   }
 
@@ -230,6 +323,10 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
       setShowCompensationErrors(true);
       return;
     }
+    if (currentStep.id === "puppy-back" && !puppyBackValidation.valid) {
+      setShowPuppyBackErrors(true);
+      return;
+    }
 
     setCurrentStepIndex((index) => {
       const nextIndex = Math.min(activeSteps.length - 1, index + 1);
@@ -242,6 +339,14 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
     if (index <= furthestReachedStepIndex) {
       setCurrentStepIndex(index);
     }
+  }
+
+  function puppyBackFieldError(field: string): string | null {
+    if (!showPuppyBackErrors) return null;
+    return (
+      puppyBackValidation.errors.find((error) => error.field === field)
+        ?.message ?? null
+    );
   }
 
   return (
@@ -389,6 +494,198 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
               </div>
             ) : null}
           </fieldset>
+        ) : currentStep.id === "puppy-back" ? (
+          <div className="mt-5 grid gap-6">
+            <fieldset
+              aria-describedby={
+                puppyBackFieldError("puppyPickPosition")
+                  ? "puppy-pick-error"
+                  : undefined
+              }
+            >
+              <legend className="theme-heading text-lg font-semibold">
+                {PUPPY_BACK_COPY.pickLegend}
+              </legend>
+              <p className="theme-copy mt-2 text-sm">
+                Pick position means selection order, not puppy quality.
+              </p>
+              <div className="mt-3 grid gap-3">
+                {PICK_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className="theme-card flex cursor-pointer items-start gap-3 rounded-xl border p-4 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2"
+                  >
+                    <input
+                      type="radio"
+                      name="puppyPickPosition"
+                      value={option.value}
+                      checked={terms.puppyPickPosition === option.value}
+                      onChange={() => {
+                        setShowPuppyBackErrors(false);
+                        updateTerm("puppyPickPosition", option.value);
+                      }}
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="theme-heading block text-base font-semibold">
+                        {option.label}
+                      </span>
+                      <span className="theme-copy mt-1 block text-sm">
+                        {option.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {puppyBackFieldError("puppyPickPosition") ? (
+                <p
+                  id="puppy-pick-error"
+                  className="theme-status-danger mt-3 rounded-xl p-3 text-sm"
+                  role="alert"
+                >
+                  {puppyBackFieldError("puppyPickPosition")}
+                </p>
+              ) : null}
+            </fieldset>
+
+            <fieldset
+              aria-describedby={
+                puppyBackFieldError("puppySex")
+                  ? "puppy-sex-error"
+                  : undefined
+              }
+            >
+              <legend className="theme-heading text-lg font-semibold">
+                {PUPPY_BACK_COPY.sexLegend}
+              </legend>
+              <p className="theme-copy mt-2 text-sm">
+                Sex is a requirement, not a preference. The game does not substitute another sex automatically.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                {SEX_OPTIONS.map((option) => (
+                  <label
+                    key={option.value}
+                    className="theme-card flex cursor-pointer items-start gap-3 rounded-xl border p-4 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2"
+                  >
+                    <input
+                      type="radio"
+                      name="puppySex"
+                      value={option.value}
+                      checked={terms.puppySex === option.value}
+                      onChange={() => {
+                        setShowPuppyBackErrors(false);
+                        updateTerm("puppySex", option.value);
+                      }}
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="theme-heading block text-base font-semibold">
+                        {option.label}
+                      </span>
+                      <span className="theme-copy mt-1 block text-sm">
+                        {option.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {puppyBackFieldError("puppySex") ? (
+                <p
+                  id="puppy-sex-error"
+                  className="theme-status-danger mt-3 rounded-xl p-3 text-sm"
+                  role="alert"
+                >
+                  {puppyBackFieldError("puppySex")}
+                </p>
+              ) : null}
+            </fieldset>
+
+            <fieldset
+              aria-describedby={
+                puppyBackFieldError("minimumLitterSize")
+                  ? "minimum-litter-error"
+                  : undefined
+              }
+            >
+              <legend className="theme-heading text-lg font-semibold">
+                {PUPPY_BACK_COPY.litterLegend}
+              </legend>
+              <p className="theme-copy mt-2 text-sm">
+                {PUPPY_BACK_COPY.litterDefinition}
+              </p>
+              {terms.puppyPickPosition === "SECOND" ? (
+                <p className="theme-status-info mt-3 rounded-xl p-3 text-sm">
+                  {PUPPY_BACK_COPY.secondPickMinimum}
+                </p>
+              ) : null}
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                {MINIMUM_LITTER_OPTIONS.map((minimum) => {
+                  const isAllowed =
+                    terms.puppyPickPosition === null ||
+                    getAllowedMinimumLitterSizes(
+                      terms.puppyPickPosition
+                    ).includes(minimum);
+
+                  return (
+                    <label
+                      key={minimum}
+                      className="theme-card flex items-center gap-3 rounded-xl border p-4 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-55"
+                    >
+                      <input
+                        type="radio"
+                        name="minimumLitterSize"
+                        value={minimum}
+                        checked={terms.minimumLitterSize === minimum}
+                        disabled={!isAllowed}
+                        onChange={() => {
+                          setShowPuppyBackErrors(false);
+                          updateTerm("minimumLitterSize", minimum);
+                        }}
+                      />
+                      <span>{minimum}+</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {puppyBackFieldError("minimumLitterSize") ? (
+                <p
+                  id="minimum-litter-error"
+                  className="theme-status-danger mt-3 rounded-xl p-3 text-sm"
+                  role="alert"
+                >
+                  {puppyBackFieldError("minimumLitterSize")}
+                </p>
+              ) : null}
+            </fieldset>
+
+            <section className="theme-status-info rounded-xl p-4" aria-labelledby="puppy-selection-rules-title">
+              <h3 id="puppy-selection-rules-title" className="theme-heading text-lg font-semibold">
+                {PUPPY_BACK_COPY.timingTitle}
+              </h3>
+              <div className="theme-copy mt-3 grid gap-3 text-sm leading-6">
+                <p>{PUPPY_BACK_COPY.timing}</p>
+                <p className="font-semibold">{PUPPY_BACK_COPY.noAutomatic}</p>
+                <p>{PUPPY_BACK_COPY.forfeiture}</p>
+                <p>
+                  For Second Pick, the dam owner has the protected first 24-real-hour turn. If they select, the stud owner's turn opens immediately. If they miss it, their right is forfeited and the stud owner's turn opens with no puppy automatically selected.
+                </p>
+                <p>
+                  If the stud owner misses their turn, the puppy-back right is forfeited. No puppy is assigned, no penalty payment is generated solely for the missed selection, and no automatic cash substitute applies.
+                </p>
+              </div>
+            </section>
+
+            <section className="theme-card rounded-xl p-4" aria-labelledby="puppy-contract-rules-title">
+              <h3 id="puppy-contract-rules-title" className="theme-heading text-lg font-semibold">
+                Important Contract Rules
+              </h3>
+              <div className="theme-copy mt-3 grid gap-3 text-sm leading-6">
+                <p>{PUPPY_BACK_COPY.unavailableSex}</p>
+                <p>{PUPPY_BACK_COPY.selectedDeath}</p>
+                <p>{PUPPY_BACK_COPY.returnService}</p>
+              </div>
+            </section>
+          </div>
         ) : currentStep.id === "review" ? (
           <p className="theme-status-info mt-5 rounded-xl p-4 text-sm font-semibold">
             {STUD_OFFER_WORKSHEET_COPY.publishingLater}

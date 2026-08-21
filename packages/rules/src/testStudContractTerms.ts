@@ -6,6 +6,7 @@ import {
   type EditableStudOfferTerms,
   validateStudContractCashAmount,
   validateStudOfferCompensationStep,
+  validateStudOfferPuppyBackTermsStep,
   validateStudOfferTerms,
 } from "../src/index";
 
@@ -113,6 +114,11 @@ assert.equal(validateStudOfferCompensationStep(terms()).valid, true, "CASH compe
 assert.equal(validateStudOfferCompensationStep(terms({ cashAmount: null })).errors[0]?.code, "CASH_AMOUNT_REQUIRED", "CASH compensation step requires cash");
 assert.equal(validateStudOfferCompensationStep(puppyBackTerms()).valid, true, "PUPPY_BACK compensation step defers puppy fields to its later step");
 assert.equal(validateStudOfferCompensationStep(combinedTerms).valid, true, "combined compensation step accepts valid cash");
+assert.equal(validateStudOfferPuppyBackTermsStep(puppyBackTerms()).valid, true, "Puppy-Back step accepts FIRST plus valid terms");
+assert.equal(validateStudOfferPuppyBackTermsStep(puppyBackTerms({ puppyPickPosition: null })).errors[0]?.code, "PUPPY_PICK_REQUIRED", "Puppy-Back step requires pick");
+assert.equal(validateStudOfferPuppyBackTermsStep(puppyBackTerms({ puppySex: null })).errors[0]?.code, "PUPPY_SEX_REQUIRED", "Puppy-Back step requires sex");
+assert.equal(validateStudOfferPuppyBackTermsStep(puppyBackTerms({ minimumLitterSize: null })).errors[0]?.code, "MINIMUM_LITTER_REQUIRED", "Puppy-Back step requires minimum");
+assert.equal(validateStudOfferPuppyBackTermsStep(puppyBackTerms({ puppyPickPosition: "SECOND", minimumLitterSize: 1 })).errors[0]?.code, "SECOND_PICK_REQUIRES_MINIMUM_TWO", "Puppy-Back step rejects SECOND plus 1");
 
 const upstreamTerms = puppyBackTerms({
   cashAmount: 50,
