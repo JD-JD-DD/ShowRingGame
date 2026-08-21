@@ -75,6 +75,8 @@ export type StudOfferTermsErrorCode =
   | "INVALID_MINIMUM_LITTER_SIZE"
   | "SECOND_PICK_REQUIRES_MINIMUM_TWO"
   | "INVALID_SMALL_LITTER_RETURN_THRESHOLD"
+  | "NO_LITTER_RETURN_SERVICE_REQUIRED"
+  | "SMALL_LITTER_RETURN_SERVICE_REQUIRED"
   | "INVALID_NO_LITTER_RETURN_SERVICE"
   | "INVALID_BRUCELLOSIS_REQUIREMENT"
   | "INVALID_TITLE_REQUIREMENT"
@@ -267,6 +269,53 @@ export function validateStudOfferPuppyBackTermsStep(
       "minimumLitterSize",
       "SECOND_PICK_REQUIRES_MINIMUM_TWO",
       "Second Pick requires at least 2 surviving puppies."
+    );
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateStudOfferReturnServiceStep(
+  terms: Pick<
+    EditableStudOfferTerms,
+    "noLitterReturnService" | "smallLitterReturnThreshold"
+  >,
+  answers: {
+    noLitterReturnServiceAnswered: boolean;
+    smallLitterReturnThresholdAnswered: boolean;
+  }
+): StudOfferTermsValidationResult {
+  const errors: StudOfferTermsValidationError[] = [];
+
+  if (!answers.noLitterReturnServiceAnswered) {
+    addError(
+      errors,
+      "noLitterReturnService",
+      "NO_LITTER_RETURN_SERVICE_REQUIRED",
+      "Choose whether no-litter return service is offered."
+    );
+  } else if (typeof terms.noLitterReturnService !== "boolean") {
+    addError(
+      errors,
+      "noLitterReturnService",
+      "INVALID_NO_LITTER_RETURN_SERVICE",
+      "No-litter return service must be offered or not offered."
+    );
+  }
+
+  if (!answers.smallLitterReturnThresholdAnswered) {
+    addError(
+      errors,
+      "smallLitterReturnThreshold",
+      "SMALL_LITTER_RETURN_SERVICE_REQUIRED",
+      "Choose a small-litter return service setting."
+    );
+  } else if (!isValidSmallLitterReturnThreshold(terms.smallLitterReturnThreshold)) {
+    addError(
+      errors,
+      "smallLitterReturnThreshold",
+      "INVALID_SMALL_LITTER_RETURN_THRESHOLD",
+      "Small-litter return threshold must be 1, 2, 3, or omitted."
     );
   }
 

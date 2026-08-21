@@ -7,6 +7,7 @@ import {
   validateStudContractCashAmount,
   validateStudOfferCompensationStep,
   validateStudOfferPuppyBackTermsStep,
+  validateStudOfferReturnServiceStep,
   validateStudOfferTerms,
 } from "../src/index";
 
@@ -119,6 +120,9 @@ assert.equal(validateStudOfferPuppyBackTermsStep(puppyBackTerms({ puppyPickPosit
 assert.equal(validateStudOfferPuppyBackTermsStep(puppyBackTerms({ puppySex: null })).errors[0]?.code, "PUPPY_SEX_REQUIRED", "Puppy-Back step requires sex");
 assert.equal(validateStudOfferPuppyBackTermsStep(puppyBackTerms({ minimumLitterSize: null })).errors[0]?.code, "MINIMUM_LITTER_REQUIRED", "Puppy-Back step requires minimum");
 assert.equal(validateStudOfferPuppyBackTermsStep(puppyBackTerms({ puppyPickPosition: "SECOND", minimumLitterSize: 1 })).errors[0]?.code, "SECOND_PICK_REQUIRES_MINIMUM_TWO", "Puppy-Back step rejects SECOND plus 1");
+assert.equal(validateStudOfferReturnServiceStep(terms(), { noLitterReturnServiceAnswered: false, smallLitterReturnThresholdAnswered: false }).valid, false, "Return Service requires explicit answers");
+assert.equal(validateStudOfferReturnServiceStep(terms(), { noLitterReturnServiceAnswered: true, smallLitterReturnThresholdAnswered: true }).valid, true, "false and null are valid explicit Return Service answers");
+assert.equal(validateStudOfferReturnServiceStep(terms({ noLitterReturnService: false, smallLitterReturnThreshold: 3 }), { noLitterReturnServiceAnswered: true, smallLitterReturnThresholdAnswered: true }).valid, true, "independent no-litter and small-litter answers are valid");
 
 const upstreamTerms = puppyBackTerms({
   cashAmount: 50,

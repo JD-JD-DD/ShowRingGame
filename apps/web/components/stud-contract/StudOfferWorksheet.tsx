@@ -4,12 +4,14 @@ import { useMemo, useState } from "react";
 import {
   hasPuppyBack,
   getAllowedMinimumLitterSizes,
+  isValidSmallLitterReturnThreshold,
   MAX_STUD_CONTRACT_CASH_AMOUNT,
   normalizeStudOfferTermsAfterChange,
   requiresCash,
   validateStudContractCashAmount,
   validateStudOfferCompensationStep,
   validateStudOfferPuppyBackTermsStep,
+  validateStudOfferReturnServiceStep,
   type EditableStudOfferTerms,
   type StudCompensationType,
   type StudPuppyPickPosition,
@@ -135,6 +137,57 @@ const SEX_OPTIONS: ReadonlyArray<{
 
 const MINIMUM_LITTER_OPTIONS = [1, 2, 3] as const;
 
+const RETURN_SERVICE_COPY = {
+  noLitterLegend: "No-Litter Return Service",
+  smallLitterLegend: "Small-Litter Return Service",
+  offered: "Offered",
+  notOffered: "Not offered",
+  none: "None",
+  appliesWhenNoLitter:
+    "Offer one return service if this breeding does not produce a litter under the eventual breeding-lifecycle outcome.",
+  threshold:
+    "Small-litter return service is based on the number of surviving puppies at the contract's qualifying litter checkpoint.",
+  exclusionsTitle: "What Return Service Does Not Cover",
+  exclusions:
+    "Return service applies only under the conditions selected here. Puppy-back fulfillment problems do not automatically create a return service.",
+  unavailableSex:
+    "An unavailable required sex does not create return service. There is no automatic alternate-sex or cash substitution.",
+  priorPick:
+    "For Second Pick, the dam owner's protected first pick may use the only puppy of the required sex. The contract remains valid and this alone does not create return service.",
+  missedSelection:
+    "If the stud owner misses the active selection deadline, their puppy-back right is forfeited. No puppy is assigned and no return service is created solely for that missed selection.",
+  selectedDeath:
+    "If a selected puppy dies before transfer, later lifecycle logic may reopen selection when allowed. If no qualifying replacement remains, return service applies only when the separately selected surviving-litter threshold itself is satisfied.",
+} as const;
+
+const NO_LITTER_RETURN_OPTIONS: ReadonlyArray<{
+  value: boolean;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: true,
+    label: RETURN_SERVICE_COPY.offered,
+    description: RETURN_SERVICE_COPY.appliesWhenNoLitter,
+  },
+  {
+    value: false,
+    label: RETURN_SERVICE_COPY.notOffered,
+    description: "Do not offer return service solely because this breeding does not produce a litter.",
+  },
+];
+
+const SMALL_LITTER_RETURN_OPTIONS: ReadonlyArray<{
+  value: number | null;
+  label: string;
+  description: string;
+}> = [
+  { value: null, label: RETURN_SERVICE_COPY.none, description: "Do not offer small-litter return service." },
+  { value: 1, label: "1 or fewer", description: "Offer return service when the qualifying surviving litter contains 1 or fewer puppies." },
+  { value: 2, label: "2 or fewer", description: "Offer return service when the qualifying surviving litter contains 2 or fewer puppies." },
+  { value: 3, label: "3 or fewer", description: "Offer return service when the qualifying surviving litter contains 3 or fewer puppies." },
+];
+
 export const STUD_OFFER_WORKSHEET_STEPS: readonly WorksheetStep[] = [
   {
     id: "compensation",
@@ -201,11 +254,20 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
   const [furthestReachedStepIndex, setFurthestReachedStepIndex] = useState(0);
   const [showCompensationErrors, setShowCompensationErrors] = useState(false);
   const [showPuppyBackErrors, setShowPuppyBackErrors] = useState(false);
+  const [showReturnServiceErrors, setShowReturnServiceErrors] = useState(false);
+  const [returnServiceAnswers, setReturnServiceAnswers] = useState({
+    noLitterReturnServiceAnswered: false,
+    smallLitterReturnThresholdAnswered: false,
+  });
   const [cashInputError, setCashInputError] = useState<string | null>(null);
   const activeSteps = useMemo(() => getActiveSteps(terms), [terms]);
   const currentStep = activeSteps[currentStepIndex] ?? activeSteps[0];
   const compensationValidation = validateStudOfferCompensationStep(terms);
   const puppyBackValidation = validateStudOfferPuppyBackTermsStep(terms);
+  const returnServiceValidation = validateStudOfferReturnServiceStep(
+    terms,
+    returnServiceAnswers
+  );
   const cashValidation = validateStudContractCashAmount(terms.cashAmount);
   const cashError =
     cashInputError ??
@@ -228,16 +290,27 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
   ): void;
   function updateTerm(field: "minimumLitterSize", value: number | null): void;
   function updateTerm(
+    field: "noLitterReturnService",
+    value: boolean
+  ): void;
+  function updateTerm(
+    field: "smallLitterReturnThreshold",
+    value: number | null
+  ): void;
+  function updateTerm(
     field:
       | "compensationType"
       | "puppyPickPosition"
       | "cashAmount"
       | "puppySex"
-      | "minimumLitterSize",
+      | "minimumLitterSize"
+      | "noLitterReturnService"
+      | "smallLitterReturnThreshold",
     value:
       | StudCompensationType
       | StudPuppyPickPosition
       | StudPuppySexRequirement
+      | boolean
       | number
       | null
   ) {
@@ -273,6 +346,20 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
         return {
           ...previousTerms,
           puppySex: value as StudPuppySexRequirement | null,
+        };
+      }
+
+      if (field === "noLitterReturnService") {
+        return {
+          ...previousTerms,
+          noLitterReturnService: value as boolean,
+        };
+      }
+
+      if (field === "smallLitterReturnThreshold") {
+        return {
+          ...previousTerms,
+          smallLitterReturnThreshold: value as number | null,
         };
       }
 
@@ -325,6 +412,10 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
     }
     if (currentStep.id === "puppy-back" && !puppyBackValidation.valid) {
       setShowPuppyBackErrors(true);
+      return;
+    }
+    if (currentStep.id === "return-service" && !returnServiceValidation.valid) {
+      setShowReturnServiceErrors(true);
       return;
     }
 
@@ -683,6 +774,143 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
                 <p>{PUPPY_BACK_COPY.unavailableSex}</p>
                 <p>{PUPPY_BACK_COPY.selectedDeath}</p>
                 <p>{PUPPY_BACK_COPY.returnService}</p>
+              </div>
+            </section>
+          </div>
+        ) : currentStep.id === "return-service" ? (
+          <div className="mt-5 grid gap-6">
+            <fieldset
+              aria-describedby={
+                returnServiceFieldError("noLitterReturnService")
+                  ? "no-litter-return-error"
+                  : undefined
+              }
+            >
+              <legend className="theme-heading text-lg font-semibold">
+                {RETURN_SERVICE_COPY.noLitterLegend}
+              </legend>
+              <div className="mt-3 grid gap-3">
+                {NO_LITTER_RETURN_OPTIONS.map((option) => (
+                  <label
+                    key={String(option.value)}
+                    className="theme-card flex cursor-pointer items-start gap-3 rounded-xl border p-4 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2"
+                  >
+                    <input
+                      type="radio"
+                      name="noLitterReturnService"
+                      checked={
+                        returnServiceAnswers.noLitterReturnServiceAnswered &&
+                        terms.noLitterReturnService === option.value
+                      }
+                      onChange={() => {
+                        setShowReturnServiceErrors(false);
+                        setReturnServiceAnswers((answers) => ({
+                          ...answers,
+                          noLitterReturnServiceAnswered: true,
+                        }));
+                        updateTerm("noLitterReturnService", option.value);
+                      }}
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="theme-heading block text-base font-semibold">
+                        {option.label}
+                      </span>
+                      <span className="theme-copy mt-1 block text-sm">
+                        {option.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {returnServiceFieldError("noLitterReturnService") ? (
+                <p
+                  id="no-litter-return-error"
+                  className="theme-status-danger mt-3 rounded-xl p-3 text-sm"
+                  role="alert"
+                >
+                  {returnServiceFieldError("noLitterReturnService")}
+                </p>
+              ) : null}
+            </fieldset>
+
+            <fieldset
+              aria-describedby={
+                returnServiceFieldError("smallLitterReturnThreshold")
+                  ? "small-litter-return-error"
+                  : undefined
+              }
+            >
+              <legend className="theme-heading text-lg font-semibold">
+                {RETURN_SERVICE_COPY.smallLitterLegend}
+              </legend>
+              <p className="theme-copy mt-2 text-sm">
+                {RETURN_SERVICE_COPY.threshold}
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {SMALL_LITTER_RETURN_OPTIONS.map((option) => (
+                  <label
+                    key={option.label}
+                    className="theme-card flex cursor-pointer items-start gap-3 rounded-xl border p-4 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2"
+                  >
+                    <input
+                      type="radio"
+                      name="smallLitterReturnThreshold"
+                      checked={
+                        returnServiceAnswers.smallLitterReturnThresholdAnswered &&
+                        terms.smallLitterReturnThreshold === option.value
+                      }
+                      onChange={() => {
+                        if (!isValidSmallLitterReturnThreshold(option.value)) {
+                          return;
+                        }
+                        setShowReturnServiceErrors(false);
+                        setReturnServiceAnswers((answers) => ({
+                          ...answers,
+                          smallLitterReturnThresholdAnswered: true,
+                        }));
+                        updateTerm("smallLitterReturnThreshold", option.value);
+                      }}
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="theme-heading block text-base font-semibold">
+                        {option.label}
+                      </span>
+                      <span className="theme-copy mt-1 block text-sm">
+                        {option.description}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {returnServiceFieldError("smallLitterReturnThreshold") ? (
+                <p
+                  id="small-litter-return-error"
+                  className="theme-status-danger mt-3 rounded-xl p-3 text-sm"
+                  role="alert"
+                >
+                  {returnServiceFieldError("smallLitterReturnThreshold")}
+                </p>
+              ) : null}
+            </fieldset>
+
+            <section
+              className="theme-status-info rounded-xl p-4"
+              aria-labelledby="return-service-rules-title"
+            >
+              <h3
+                id="return-service-rules-title"
+                className="theme-heading text-lg font-semibold"
+              >
+                {RETURN_SERVICE_COPY.exclusionsTitle}
+              </h3>
+              <div className="theme-copy mt-3 grid gap-3 text-sm leading-6">
+                <p>{RETURN_SERVICE_COPY.exclusions}</p>
+                <p>{RETURN_SERVICE_COPY.unavailableSex}</p>
+                <p>{RETURN_SERVICE_COPY.priorPick}</p>
+                <p>{RETURN_SERVICE_COPY.missedSelection}</p>
+                <p>{RETURN_SERVICE_COPY.selectedDeath}</p>
               </div>
             </section>
           </div>
