@@ -5,6 +5,7 @@ import {
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
 import { deleteLitterRunIfEmpty } from "@/server/services/kennelRun.service";
+import { assertDogsNotProtectedByStudContractSelection } from "@/server/services/studContractPuppyProtection.service";
 
 export type CloseUserAccountResult = {
   alreadyClosed: boolean;
@@ -90,6 +91,11 @@ export async function closeUserAccountForKennel(args: {
     const activeDogIds = ownedDogs
       .filter((dog) => dog.lifecycleState === "ALIVE")
       .map((dog) => dog.id);
+    await assertDogsNotProtectedByStudContractSelection({
+      dogIds: activeDogIds,
+      action: "removed",
+      client: tx,
+    });
     const existingDogRemovalAudit = await tx.moderationAudit.findFirst({
       where: { targetType: "KENNEL", targetId: kennel.id, action: "CLOSED_KENNEL_DOGS_RETIRED" },
       select: { id: true },

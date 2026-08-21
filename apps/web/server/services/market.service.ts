@@ -3,6 +3,7 @@ import type { PersistedDogTraitRecord } from "@/server/services/phenotypePersist
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
+import { assertDogNotProtectedByStudContractSelection } from "@/server/services/studContractPuppyProtection.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   deleteLitterRunIfEmpty,
@@ -332,6 +333,7 @@ export async function listDogForSale(args: {
     }
 
     await assertDogHasNoPendingVeterinaryCare(dog.id, tx);
+    await assertDogNotProtectedByStudContractSelection({ dogId: dog.id, action: "listed for sale", client: tx });
 
     if (!canSellPuppy(currentEpoch, dog.birthEpoch, dog.lifecycleState)) {
       throw new Error("Dogs cannot be offered for sale until 8 weeks of game age.");
@@ -458,6 +460,7 @@ export async function buyPlayerDogListing(args: {
     }
 
     await assertDogHasNoPendingVeterinaryCare(listing.dog.id, tx);
+    await assertDogNotProtectedByStudContractSelection({ dogId: listing.dog.id, action: "transferred", client: tx });
 
     const [buyer, seller] = await Promise.all([
       tx.kennel.findUnique({

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { hasPendingVeterinaryCareForDogs } from "@/server/services/emergencyVetCare.service";
 import { deleteEmptyLitterRuns } from "@/server/services/kennelRun.service";
+import { assertDogsNotProtectedByStudContractSelection } from "@/server/services/studContractPuppyProtection.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -91,6 +92,12 @@ export async function rehomeOwnedDogsWithClient(
 
     if (await hasPendingVeterinaryCareForDogs(dogIds, tx)) {
       throw new RehomeError("This dog is awaiting emergency veterinary care.");
+    }
+
+    try {
+      await assertDogsNotProtectedByStudContractSelection({ dogIds, action: "rehomed", client: tx });
+    } catch (error) {
+      throw new RehomeError(error instanceof Error ? error.message : "This puppy cannot be rehomed yet.");
     }
 
     const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
