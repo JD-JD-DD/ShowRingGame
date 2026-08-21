@@ -5,6 +5,7 @@ import { getProjectedDogDeath } from "@/server/services/lifecycle.service";
 import { NEONATAL_PUPPY_DEATH_WINDOW_HOURS } from "@showring/rules";
 
 const DEFAULT_BATCH_LIMIT = 50;
+const PUPPY_SELECTION_TURN_MS = 24 * 60 * 60 * 1000;
 
 export function evaluateStudContractLitterQualification(args: {
   compensationType: "CASH" | "PUPPY_BACK" | "CASH_AND_PUPPY_BACK";
@@ -86,6 +87,101 @@ export async function processStudContractLitterQualifications(args: {
     }
   }
   return { checkedCount: candidates.length, qualifiedCount, failedCount };
+}
+
+export async function openQualifiedStudContractPuppySelections(args?: {
+  now?: Date;
+  currentEpoch?: number;
+  limit?: number;
+}) {
+  const now = args?.now ?? new Date();
+  const currentEpoch = args?.currentEpoch ?? Math.floor(Date.now() / 1000);
+  const limit = Math.max(1, Math.min(args?.limit ?? DEFAULT_BATCH_LIMIT, 100));
+  const candidates = await db.studContract.findMany({
+    where: {
+      status: "ACCEPTED",
+      compensationType: { in: ["PUPPY_BACK", "CASH_AND_PUPPY_BACK"] },
+      litterId: { not: null },
+      qualificationCheckpointAt: { not: null },
+      puppyBackMinimumMet: true,
+    },
+    orderBy: [{ qualificationCheckpointAt: "asc" }, { id: "asc" }],
+    take: limit,
+    select: {
+      id: true,
+      litterId: true,
+      puppyPickPosition: true,
+      sireKennelId: true,
+      damKennelId: true,
+      sireDogId: true,
+      damDogId: true,
+    },
+  });
+  let openedCount = 0;
+  let failedCount = 0;
+  for (const contract of candidates) {
+    try {
+      if (!contract.litterId || !contract.puppyPickPosition) continue;
+      const state = contract.puppyPickPosition === "FIRST" ? "STUD_PICK" : "DAM_FIRST_PICK";
+      const currentActor = contract.puppyPickPosition === "FIRST" ? "STUD_OWNER" : "DAM_OWNER";
+      const deadline = new Date(now.getTime() + PUPPY_SELECTION_TURN_MS);
+      const opened = await db.$transaction(async (tx) => {
+        const selection = await tx.studContractPuppySelection.upsert({
+          where: { contractId: contract.id },
+          create: { contractId: contract.id, litterId: contract.litterId },
+          update: {},
+          select: { id: true },
+        });
+        const update = await tx.studContractPuppySelection.updateMany({
+          where: { id: selection.id, status: "WAITING" },
+          data: { status: state, currentActor, turnStartedAt: now, turnDeadlineAt: deadline },
+        });
+        if (update.count !== 1) return false;
+        if (state === "STUD_PICK") {
+          await createKennelNotice({
+            client: tx,
+            kennelId: contract.sireKennelId,
+            sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:STUD_PICK`,
+            type: "KENNEL_SERVICE",
+            title: "Puppy Back selection is ready",
+            body: "Your First Pick Puppy Back selection is ready. You have 24 real hours to choose; no puppy will be selected automatically.",
+            currentEpoch,
+            linkedDogId: contract.sireDogId,
+            linkedLitterId: contract.litterId,
+          });
+        } else {
+          await createKennelNotice({
+            client: tx,
+            kennelId: contract.damKennelId,
+            sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:DAM_FIRST_PICK`,
+            type: "KENNEL_SERVICE",
+            title: "Protected first puppy selection is ready",
+            body: "Your protected first selection is ready. You have 24 real hours to choose from the qualifying litter without the stud owner's sex restriction; no puppy will be selected automatically.",
+            currentEpoch,
+            linkedDogId: contract.damDogId,
+            linkedLitterId: contract.litterId,
+          });
+          await createKennelNotice({
+            client: tx,
+            kennelId: contract.sireKennelId,
+            sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:SECOND_PICK_INFO`,
+            type: "KENNEL_SERVICE",
+            title: "Second Pick Puppy Back workflow has begun",
+            body: "The dam owner has the protected first selection. Your selection turn will begin after that pick is resolved or forfeited.",
+            currentEpoch,
+            linkedDogId: contract.sireDogId,
+            linkedLitterId: contract.litterId,
+          });
+        }
+        return true;
+      });
+      if (opened) openedCount += 1;
+    } catch (error) {
+      failedCount += 1;
+      console.error("Stud Contract Puppy Back selection opening failed", { contractId: contract.id, error });
+    }
+  }
+  return { checkedCount: candidates.length, openedCount, failedCount };
 }
 
 export async function processExpiredStudContractRequests(args?: {

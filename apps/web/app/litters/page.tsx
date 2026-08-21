@@ -5,6 +5,7 @@ import { LittersListClient } from "@/components/litters/LittersListClient";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { formatRealDurationHoursLong } from "@/lib/gameTimeFormat";
 import { getSessionUserId } from "@/lib/session";
+import { db } from "@/lib/db";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import {
   getLitterManagementOptions,
@@ -46,6 +47,12 @@ type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
+function formatSelectionDeadline(deadline: Date | null): string {
+  return deadline
+    ? deadline.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+    : "Not yet scheduled";
+}
+
 export default async function LittersPage({ searchParams }: PageProps) {
   const userId = await getSessionUserId();
 
@@ -75,6 +82,18 @@ export default async function LittersPage({ searchParams }: PageProps) {
     filters,
   });
   const managementOptions = await getLitterManagementOptions({ kennelId: kennel.id });
+  const puppySelections = await db.studContractPuppySelection.findMany({
+    where: { contract: { OR: [{ sireKennelId: kennel.id }, { damKennelId: kennel.id }] } },
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      status: true,
+      currentActor: true,
+      turnDeadlineAt: true,
+      litter: { select: { serial7: true } },
+      contract: { select: { puppyPickPosition: true, puppySex: true, sireKennelId: true, damKennelId: true } },
+    },
+  });
 
   const pregnantBreedings = activeBreedings.filter(
     (attempt) => attempt.status === "PREGNANT"
@@ -199,6 +218,45 @@ export default async function LittersPage({ searchParams }: PageProps) {
                   ) : null}
                 </article>
               ))}
+            </div>
+          </section>
+        ) : null}
+
+        {puppySelections.length > 0 ? (
+          <section className="mb-8">
+            <h2 className="theme-heading mb-4 text-2xl font-semibold">Stud Contract Selection</h2>
+            <div className="grid gap-4 lg:grid-cols-2">
+              {puppySelections.map((selection) => {
+                const isStudOwner = selection.contract.sireKennelId === kennel.id;
+                const isActive = selection.status === "STUD_PICK" || selection.status === "DAM_FIRST_PICK";
+                const deadlinePassed = selection.turnDeadlineAt !== null && selection.turnDeadlineAt.getTime() <= Date.now();
+                const title = selection.status === "DAM_FIRST_PICK"
+                  ? "Dam owner first selection"
+                  : selection.status === "STUD_PICK"
+                    ? "Stud owner selection"
+                    : statusLabel(selection.status);
+                return (
+                  <article key={selection.id} className="theme-panel rounded-2xl p-5">
+                    <div className="theme-label text-xs uppercase tracking-wide">{title}</div>
+                    <h3 className="theme-heading mt-2 text-lg font-semibold">Litter {selection.litter.serial7}</h3>
+                    <p className="theme-copy mt-2 text-sm">
+                      {selection.contract.puppyPickPosition === "FIRST" ? "First Pick" : "Second Pick"}
+                      {selection.status === "DAM_FIRST_PICK" && isStudOwner
+                        ? " — the dam owner currently has the protected first selection."
+                        : ""}
+                    </p>
+                    {selection.status === "DAM_FIRST_PICK" ? (
+                      <p className="theme-copy mt-2 text-sm">The dam owner’s protected first selection is not restricted by the stud owner’s sex requirement.</p>
+                    ) : null}
+                    {selection.status === "STUD_PICK" ? (
+                      <p className="theme-copy mt-2 text-sm">Puppy sex requirement: {selection.contract.puppySex ?? "EITHER"}. No puppy will be selected automatically.</p>
+                    ) : null}
+                    {isActive && (!isStudOwner || selection.currentActor === "STUD_OWNER") ? (
+                      <p className="theme-copy mt-3 text-sm">{deadlinePassed ? "Selection deadline passed — awaiting processing." : `Selection deadline: ${formatSelectionDeadline(selection.turnDeadlineAt)}`}</p>
+                    ) : null}
+                  </article>
+                );
+              })}
             </div>
           </section>
         ) : null}
