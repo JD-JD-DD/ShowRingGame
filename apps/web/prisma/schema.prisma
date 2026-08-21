@@ -899,6 +899,7 @@ model Litter {
   dam             Dog              @relation("LitterDam", fields: [damId], references: [id])
   bredByKennel    Kennel?          @relation("LitterBredByKennel", fields: [bredByKennelId], references: [id])
   breedingAttempt BreedingAttempt? @relation("BreedingAttemptLitter")
+  studContract    StudContract?    @relation("StudContractLitter")
   reproductiveEmergency ReproductiveEmergencyEvent?
   sourceKennelRun KennelRun?
 
@@ -1570,6 +1571,11 @@ model StudContract {
   declinedAt                  DateTime?
   expiredAt                   DateTime?
   breedingAttemptId           String?              @unique
+  litterId                    String?              @unique
+  qualificationCheckpointAt   DateTime?
+  qualifyingSurvivingPuppyCount Int?
+  puppyBackMinimumMet         Boolean?
+  smallLitterReturnServiceMet Boolean?
   createdAt                   DateTime              @default(now())
   updatedAt                   DateTime              @updatedAt
 
@@ -1579,6 +1585,7 @@ model StudContract {
   sireKennel         Kennel                          @relation("StudContractSireKennel", fields: [sireKennelId], references: [id], onDelete: Restrict)
   damKennel          Kennel                          @relation("StudContractDamKennel", fields: [damKennelId], references: [id], onDelete: Restrict)
   breedingAttempt    BreedingAttempt?                @relation("StudContractBreedingAttempt", fields: [breedingAttemptId], references: [id], onDelete: Restrict)
+  litter             Litter?                         @relation("StudContractLitter", fields: [litterId], references: [id], onDelete: Restrict)
   healthRequirements StudContractHealthRequirement[]
 
   @@index([sourceOfferId])
