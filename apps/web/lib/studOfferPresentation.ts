@@ -6,7 +6,7 @@ export type StudOfferPresentationSnapshot = {
   puppyPickPosition: "FIRST" | "SECOND" | null;
   puppySex: "EITHER" | "MALE" | "FEMALE" | null;
   brucellosisNegativeRequired: boolean;
-  titleRequirement: "NONE" | "CH_OR_HIGHER" | "GCH";
+  titleRequirement: "NONE" | "CH_OR_HIGHER" | "GCH_OR_HIGHER";
   approvalMode: "AUTOMATIC" | "MANUAL";
   healthRequirements: Array<{
     healthTestCode: string;
@@ -50,7 +50,7 @@ export function formatCompactStudOfferSummary(
   });
   if (offer.brucellosisNegativeRequired) restrictions.push("Brucellosis negative");
   if (offer.titleRequirement === "CH_OR_HIGHER") restrictions.push("CH or higher");
-  if (offer.titleRequirement === "GCH") restrictions.push("GCH");
+  if (offer.titleRequirement === "GCH_OR_HIGHER") restrictions.push("GCH or higher");
 
   return {
     compensationSummary,

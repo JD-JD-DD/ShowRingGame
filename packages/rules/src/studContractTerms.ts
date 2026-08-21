@@ -32,7 +32,7 @@ export const STUD_HEALTH_REQUIREMENT_LEVELS = [
 export type StudHealthRequirementLevel =
   (typeof STUD_HEALTH_REQUIREMENT_LEVELS)[number];
 
-export const STUD_TITLE_REQUIREMENTS = ["NONE", "CH_OR_HIGHER", "GCH"] as const;
+export const STUD_TITLE_REQUIREMENTS = ["NONE", "CH_OR_HIGHER", "GCH_OR_HIGHER"] as const;
 export type StudTitleRequirement = (typeof STUD_TITLE_REQUIREMENTS)[number];
 
 export const STUD_MINIMUM_LITTER_SIZES = [1, 2, 3] as const;

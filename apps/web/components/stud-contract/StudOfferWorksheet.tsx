@@ -255,7 +255,7 @@ const TITLE_REQUIREMENT_OPTIONS: ReadonlyArray<{
 }> = [
   { value: "NONE", label: DAM_REQUIREMENTS_COPY.noRestriction, description: DAM_REQUIREMENTS_COPY.noTitleRestriction },
   { value: "CH_OR_HIGHER", label: DAM_REQUIREMENTS_COPY.chOrHigher, description: DAM_REQUIREMENTS_COPY.chOrHigherRequired },
-  { value: "GCH", label: "GCH", description: DAM_REQUIREMENTS_COPY.gchRequired },
+  { value: "GCH_OR_HIGHER", label: "GCH or higher", description: DAM_REQUIREMENTS_COPY.gchRequired },
 ];
 
 const APPROVAL_COPY = {

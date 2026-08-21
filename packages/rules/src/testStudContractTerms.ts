@@ -100,7 +100,7 @@ assertError(terms({ healthRequirements: [
   { healthTestCode: "FUTURE_TEST", requirementLevel: "NONE" },
   { healthTestCode: "FUTURE_TEST", requirementLevel: "GREEN_ONLY" },
 ] }), "DUPLICATE_HEALTH_TEST_REQUIREMENT", "duplicate health test rejected");
-for (const titleRequirement of ["NONE", "CH_OR_HIGHER", "GCH"] as const) {
+for (const titleRequirement of ["NONE", "CH_OR_HIGHER", "GCH_OR_HIGHER"] as const) {
   assertValid(terms({ titleRequirement }), `${titleRequirement} is valid`);
 }
 assertValid(terms({ approvalMode: "MANUAL" }), "MANUAL is valid");
@@ -148,7 +148,7 @@ assert.ok(validateStudOfferDamRequirementsStep(damRequirementTerms, applicableHe
 assert.ok(validateStudOfferDamRequirementsStep(terms({ healthRequirements: [{ healthTestCode: "HIP_DYSPLASIA", requirementLevel: "NONE" }] }), applicableHealthTestCodes, answeredDamRequirements).errors.some((error) => error.code === "HEALTH_REQUIREMENT_REQUIRED"), "Dam Requirements rejects a missing applicable health test");
 assert.ok(validateStudOfferDamRequirementsStep(terms({ healthRequirements: [{ healthTestCode: "HIP_DYSPLASIA", requirementLevel: "NONE" }, { healthTestCode: "HIP_DYSPLASIA", requirementLevel: "GREEN_ONLY" }, { healthTestCode: "CARDIAC", requirementLevel: "GREEN_ONLY" }] }), applicableHealthTestCodes, answeredDamRequirements).errors.some((error) => error.code === "DUPLICATE_HEALTH_TEST_REQUIREMENT"), "Dam Requirements rejects duplicate health tests");
 assert.ok(validateStudOfferDamRequirementsStep(terms({ healthRequirements: [{ healthTestCode: "HIP_DYSPLASIA", requirementLevel: "NONE" }, { healthTestCode: "CARDIAC", requirementLevel: "GREEN_ONLY" }, { healthTestCode: "EXTRA_TEST", requirementLevel: "NONE" }] }), applicableHealthTestCodes, answeredDamRequirements).errors.some((error) => error.code === "UNEXPECTED_HEALTH_TEST_REQUIREMENT"), "Dam Requirements rejects unexpected health tests");
-assert.equal(validateStudOfferDamRequirementsStep(terms({ brucellosisNegativeRequired: true, titleRequirement: "GCH" }), [], { brucellosisNegativeRequiredAnswered: true, titleRequirementAnswered: true, healthRequirementAnsweredCodes: [] }).valid, true, "Dam Requirements accepts an empty applicable health-test set");
+assert.equal(validateStudOfferDamRequirementsStep(terms({ brucellosisNegativeRequired: true, titleRequirement: "GCH_OR_HIGHER" }), [], { brucellosisNegativeRequiredAnswered: true, titleRequirementAnswered: true, healthRequirementAnsweredCodes: [] }).valid, true, "Dam Requirements accepts an empty applicable health-test set");
 
 assert.equal(validateStudOfferApprovalStep(terms({ approvalMode: null })).errors[0]?.code, "APPROVAL_MODE_REQUIRED", "Approval step requires an explicit choice");
 assert.equal(validateStudOfferApprovalStep(terms({ approvalMode: "AUTOMATIC" })).valid, true, "AUTOMATIC approval is valid");
@@ -162,7 +162,7 @@ const upstreamTerms = puppyBackTerms({
   noLitterReturnService: true,
   smallLitterReturnThreshold: 3,
   brucellosisNegativeRequired: true,
-  titleRequirement: "GCH",
+  titleRequirement: "GCH_OR_HIGHER",
   approvalMode: "MANUAL",
 });
 const cashNormalized = normalizeStudOfferTermsAfterChange(upstreamTerms, "compensationType", "CASH");

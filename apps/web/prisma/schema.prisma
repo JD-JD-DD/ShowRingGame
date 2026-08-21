@@ -176,7 +176,7 @@ enum StudHealthRequirementLevel {
 enum StudTitleRequirement {
   NONE
   CH_OR_HIGHER
-  GCH
+  GCH_OR_HIGHER
 }
 
 enum StudOfferStatus {

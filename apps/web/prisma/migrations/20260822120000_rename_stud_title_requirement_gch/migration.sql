@@ -1,0 +1,1 @@
+ALTER TYPE "StudTitleRequirement" RENAME VALUE 'GCH' TO 'GCH_OR_HIGHER';
