@@ -302,22 +302,9 @@ The contract remains immutable; the game does not rewrite the guarantee after se
 
 Initial Stud Contract dam requirements are deliberately limited to requirements the game can evaluate authoritatively.
 
-They are:
+Per-test health requirements: Every canonical health test made available to the Stud Contract worksheet is configured independently. For each test, the stud owner chooses No restriction, Green or Yellow, or Green only. No restriction means that test is ignored for Stud Contract qualification and no completed result is required. Green or Yellow requires a completed current result of Green or Yellow for that specific test. Green only requires a completed current Green result for that specific test. A missing result fails only when that specific test has a Green-or-Yellow or Green-only requirement. Results on other tests do not affect that requirement. Adding new canonical health tests later does not change this rule; they simply become additional configurable tests in the worksheet.
 
-Brucellosis
-Negative required
-No restriction
-Breed-specific health testing
-
-The worksheet loads the health tests applicable to that sire's breed from the canonical breed health configuration.
-
-For each applicable test, the stud owner chooses:
-
-No restriction
-Green or Yellow
-Green only
-
-Do not hard-code a universal set of health tests because breed-specific health testing will vary.
+Health-status independence: Aggregate health indicators, including any game UI indicator that a dog has completed all tests with Green results, are not Stud Contract eligibility authority. Stud Contract health eligibility is evaluated only from the per-test requirements stored in the contract snapshot.
 
 Titles
 
@@ -325,7 +312,7 @@ The stud owner chooses:
 
 No restriction
 CH or higher
-GCH
+GCH or higher
 
 No trait minimum/maximum requirements are part of the initial Stud Contract system.
 

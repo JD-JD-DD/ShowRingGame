@@ -1167,3 +1167,117 @@ Cutover
 Closeout
 33. Full regression
 34. Documentation
+
+
+
+
+| Stage                                      | Change needed                                                                                                                                                                                                          |              Size |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------: |
+| **14**                                     | Rewrite before implementation: flat per-test health evaluator; `NONE` bypasses that specific test; G/Y and Green apply only to that test; aggregate green-check status is irrelevant; use `GCH_OR_HIGHER`.             |     **Important** |
+| **15 Automatic Approval**                  | Clarify that acceptance evaluates the **exact published offer snapshot**, including each individual health-test requirement. Once accepted, the resulting StudContract snapshot is immutable.                          |             Small |
+| **16 Manual Request**                      | Already says “immutable requested terms.” Add explicitly that all per-test health rows and title requirement are snapshotted. Later offer edits cannot change the pending request.                                     |             Small |
+| **17 Pending Requests**                    | No business-rule change. Contract summary should naturally summarize only meaningful per-test restrictions.                                                                                                            |              Tiny |
+| **18 Approve/Decline**                     | Approval must re-evaluate the dam against the **immutable request snapshot**, not the sire’s newest public offer. After approval, accepted contract terms are frozen. Use `GCH_OR_HIGHER`.                             | Important wording |
+| **19 Expiry**                              | No change.                                                                                                                                                                                                             |              None |
+| **20 Contract ↔ Breeding ↔ Litter**        | Add one explicit sentence: accepted contract terms are not re-derived or re-evaluated from later public offers/configuration.                                                                                          |             Small |
+| **21 Outcome Classification**              | No health/title change.                                                                                                                                                                                                |              None |
+| **22–27 Puppy Selection**                  | No changes from these health/title decisions. They operate from the accepted immutable contract.                                                                                                                       |              None |
+| **28 Return Service Decision Gate**        | **Expand this decision gate.** This is where death/sale/permanent unavailability and return-breeding reevaluation rules need to be decided.                                                                            |         Important |
+| **29 Puppy Transfer**                      | No change.                                                                                                                                                                                                             |              None |
+| **30 Replace Put Dog At Stud**             | No conceptual change.                                                                                                                                                                                                  |              None |
+| **31 Legacy Listing Deactivation**         | No change.                                                                                                                                                                                                             |              None |
+| **32 Remove Legacy Requirement Authority** | Strengthen wording: remove legacy aggregate “all green / green-or-yellow / champion” authority; the per-test contract snapshot becomes the only contract-health authority. Aggregate green-check UI remains unrelated. | Important wording |
+| **33 Full Regression**                     | Add per-test independence, extensibility, aggregate-health independence, `GCH_OR_HIGHER`, and immutable-snapshot regressions.                                                                                          |         Important |
+| **34 Documentation**                       | Document those source-of-truth distinctions.                                                                                                                                                                           |             Small |
+
+
+Stage 15 and Stage 18 need one precise distinction
+
+There are really three different things:
+
+Public offer terms can change through versioning.
+
+Pending manual request terms cannot change after the dam owner submits the request. A V2 request remains a V2 request even if V3 is published.
+
+Accepted contract terms cannot change after acceptance, whether acceptance was Automatic or Manual.
+
+However, for a manual request, Stage 18 should still evaluate the dam at the moment the stud owner approves it. The immutable request says what standards apply; approval checks whether the dam still meets those exact standards.
+
+After acceptance, we do not go look at V3, V4, newly added PATELLA requirements, etc.
+
+So:
+
+Offer V2
+→ dam submits Manual Request using V2
+→ owner publishes Offer V3
+→ request still uses V2
+→ approval evaluates against V2
+→ accepted contract permanently contains V2 terms.
+
+That distinction should be explicit in 15/16/18.
+
+Stage 28 now becomes the only real unresolved area
+
+Your existing Stage 28 already correctly flags several questions, including what happens if the sire dies/sells/retires. I would expand it before reaching that stage to include:
+
+Original sire
+
+dies;
+is sold;
+retires/permanently becomes breeding unavailable.
+
+Original dam
+
+dies;
+is sold;
+retires/permanently becomes breeding unavailable.
+
+Ownership
+
+does the return-service right belong to the original kennel or travel with the dam?
+can a new owner exercise it?
+
+And one distinction that we should explicitly decide there:
+
+Does exercising a return service re-check current biological/health conditions, while keeping the contract terms themselves immutable?
+
+I think the answer should almost certainly be yes for current biological safety/availability, because contract immutability cannot make a dead, pregnant, recovering, breeding-inactive, or medically ineligible dog breedable.
+
+There is also brucellosis. Unlike a permanent hip result or a championship title, brucellosis status can be time-sensitive. So we should not accidentally write a rule now that says “nothing whatsoever is re-evaluated on a return breeding.” Better wording is:
+
+The accepted contract's requirements never change. Whether the dogs are currently able to perform a later return breeding is a separate ordinary eligibility question.
+
+Then Stage 28 decides exactly which current statuses must be rechecked and what happens to the credit if the original pairing becomes permanently impossible.
+
+Stage 32 should become very explicit
+
+I would change its intent from merely “remove old flags” to:
+
+The new contract path must never consult aggregate health-status indicators or legacy DogListing health requirement flags. Contract health qualification is determined solely from the immutable per-test requirement snapshot.
+
+The existing green checkmark can absolutely remain elsewhere in the game. It answers:
+
+“How is this dog's overall health-testing status?”
+
+It does not answer:
+
+“Does this dog meet this particular stud contract?”
+
+Those are now intentionally separate systems.
+
+Stage 33 should gain a few specific regression locks
+
+The final regression suite should include cases equivalent to:
+
+HIP Green only + HIP Green → pass.
+HIP Green only + HIP missing → fail.
+HIP Green only + HIP Green + CARDIAC Red where CARDIAC is No restriction → pass.
+HIP No restriction + HIP Red → pass contract health requirement.
+CARDIAC Green/Yellow + Yellow → pass.
+CARDIAC Green/Yellow + Red → fail.
+newly introduced PATELLA can be configured without evaluator changes.
+overall “all-health-tests-green” checkmark does not affect contract qualification.
+CH_OR_HIGHER accepts CH/GCH/GCHS/GCHP/etc.
+GCH_OR_HIGHER rejects CH but accepts all recognized GCH tiers.
+V2 pending request remains V2 after V3 publishes.
+accepted V2 contract remains V2 after V3/V4 publishes.
