@@ -52,3 +52,27 @@ export function isChampionOfRecordDog(dog: ChampionOfRecordDogLike): boolean {
     isChampionOfRecordTitleCode(dog.visibleTitleSuffix)
   );
 }
+
+export function getChampionOfRecordTitleLevel(
+  dog: ChampionOfRecordDogLike
+): "NONE" | "CH_OR_HIGHER" | "GCH_OR_HIGHER" {
+  const titleCodes = [
+    dog.titleProgress?.currentTitleCode ?? dog.currentTitleCode,
+    dog.visibleTitlePrefix,
+    dog.visibleTitleSuffix,
+  ];
+
+  if (
+    titleCodes.some(
+      (titleCode) =>
+        isChampionOfRecordTitleCode(titleCode) &&
+        normalizeTitleCode(titleCode) !== "CH"
+    )
+  ) {
+    return "GCH_OR_HIGHER";
+  }
+
+  return titleCodes.some(isChampionOfRecordTitleCode)
+    ? "CH_OR_HIGHER"
+    : "NONE";
+}

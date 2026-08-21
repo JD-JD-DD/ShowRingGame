@@ -83,8 +83,11 @@ type DogCardDto = {
   coiPercent: number | null;
   lastLitterEpoch: number | null;
   healthTests: Array<{
+    id: string;
     testTypeCode: string;
     resultCode: string;
+    testedAtEpoch: number | null;
+    createdAtEpoch: number;
   }>;
   visibleCategories: VisibleCategories;
 };
@@ -487,8 +490,11 @@ export default async function BreedingPlannerPage({
               },
               orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
               select: {
+                id: true,
                 testTypeCode: true,
                 resultCode: true,
+                testedAtEpoch: true,
+                createdAt: true,
               },
             },
             infectiousDiseaseStatuses: {
@@ -663,8 +669,11 @@ export default async function BreedingPlannerPage({
                   },
                   orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
                   select: {
+                    id: true,
                     testTypeCode: true,
                     resultCode: true,
+                    testedAtEpoch: true,
+                    createdAt: true,
                   },
                 },
                 infectiousDiseaseStatuses: {
@@ -852,7 +861,13 @@ export default async function BreedingPlannerPage({
           studOfferSummary: null,
           coiPercent: dog.coiPercent,
           lastLitterEpoch,
-          healthTests: dog.healthTests,
+          healthTests: dog.healthTests.map((test) => ({
+            id: test.id,
+            testTypeCode: test.testTypeCode,
+            resultCode: test.resultCode,
+            testedAtEpoch: test.testedAtEpoch,
+            createdAtEpoch: test.createdAt.getTime(),
+          })),
           visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
             storedTraits: dog,
             phenotypeHealthTruths:
@@ -942,7 +957,13 @@ export default async function BreedingPlannerPage({
           studOfferSummary: offerSummaryByDogId.get(dog.id) ?? null,
           coiPercent: dog.coiPercent,
           lastLitterEpoch: null,
-          healthTests: dog.healthTests,
+          healthTests: dog.healthTests.map((test) => ({
+            id: test.id,
+            testTypeCode: test.testTypeCode,
+            resultCode: test.resultCode,
+            testedAtEpoch: test.testedAtEpoch,
+            createdAtEpoch: test.createdAt.getTime(),
+          })),
           visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
             storedTraits: dog,
             phenotypeHealthTruths:

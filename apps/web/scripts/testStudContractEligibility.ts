@@ -1,0 +1,77 @@
+import assert from "node:assert/strict";
+import { evaluateDamAgainstStudContractRequirements } from "../lib/studContractEligibility";
+
+const requirements = (level: "NONE" | "GREEN_OR_YELLOW" | "GREEN_ONLY") => ({
+  brucellosisNegativeRequired: false,
+  titleRequirement: "NONE" as const,
+  healthRequirements: [{ healthTestCode: "HIP_DYSPLASIA", requirementLevel: level }],
+});
+const dam = (resultCode: string | null, testedAtEpoch = 1) => ({
+  hasValidNegativeBrucellosis: true,
+  healthResults: resultCode
+    ? [{ healthTestCode: "HIP_DYSPLASIA", resultCode, testedAtEpoch, createdAtEpoch: testedAtEpoch, id: resultCode }]
+    : [],
+  titleDog: {},
+});
+const eligible = (level: "NONE" | "GREEN_OR_YELLOW" | "GREEN_ONLY", result: string | null) =>
+  evaluateDamAgainstStudContractRequirements(requirements(level), dam(result)).eligible;
+
+for (const result of [null, "EXCELLENT", "BORDERLINE", "SEVERE"]) {
+  assert.equal(eligible("NONE", result), true, "NONE never requires a result");
+}
+assert.equal(eligible("GREEN_OR_YELLOW", "EXCELLENT"), true);
+assert.equal(eligible("GREEN_OR_YELLOW", "BORDERLINE"), true);
+assert.equal(eligible("GREEN_OR_YELLOW", "SEVERE"), false);
+assert.equal(eligible("GREEN_OR_YELLOW", null), false);
+assert.equal(eligible("GREEN_ONLY", "EXCELLENT"), true);
+assert.equal(eligible("GREEN_ONLY", "BORDERLINE"), false);
+assert.equal(eligible("GREEN_ONLY", "SEVERE"), false);
+assert.equal(eligible("GREEN_ONLY", null), false);
+
+const current = evaluateDamAgainstStudContractRequirements(requirements("GREEN_ONLY"), {
+  ...dam("SEVERE", 1),
+  healthResults: [
+    { healthTestCode: "HIP_DYSPLASIA", resultCode: "SEVERE", testedAtEpoch: 1, createdAtEpoch: 1, id: "old" },
+    { healthTestCode: "HIP_DYSPLASIA", resultCode: "EXCELLENT", testedAtEpoch: 2, createdAtEpoch: 2, id: "new" },
+  ],
+});
+assert.equal(current.eligible, true, "newer completed result is authoritative");
+assert.equal(current.health[0]?.currentResult?.resultCode, "EXCELLENT");
+assert.equal(
+  evaluateDamAgainstStudContractRequirements(
+    { ...requirements("NONE"), brucellosisNegativeRequired: true },
+    dam(null)
+  ).eligible,
+  true,
+  "a valid current negative satisfies brucellosis"
+);
+assert.equal(
+  evaluateDamAgainstStudContractRequirements(
+    { ...requirements("NONE"), brucellosisNegativeRequired: true },
+    { ...dam(null), hasValidNegativeBrucellosis: false }
+  ).brucellosis.failureCode,
+  "BRUCELLOSIS_NEGATIVE_REQUIRED"
+);
+assert.equal(
+  evaluateDamAgainstStudContractRequirements(
+    {
+      ...requirements("NONE"),
+      healthRequirements: [{ healthTestCode: "PATELLA", requirementLevel: "NONE" }],
+    },
+    dam(null)
+  ).eligible,
+  true,
+  "unrestricted future codes do not require evaluator changes"
+);
+
+const title = (titleRequirement: "CH_OR_HIGHER" | "GCH_OR_HIGHER", prefix: string) =>
+  evaluateDamAgainstStudContractRequirements(
+    { ...requirements("NONE"), titleRequirement },
+    { ...dam(null), titleDog: { visibleTitlePrefix: prefix } }
+  ).eligible;
+assert.equal(title("CH_OR_HIGHER", "CH"), true);
+assert.equal(title("CH_OR_HIGHER", "GCHP"), true);
+assert.equal(title("GCH_OR_HIGHER", "CH"), false);
+assert.equal(title("GCH_OR_HIGHER", "GCHS"), true);
+
+console.log("Stud Contract unified eligibility regression passed.");

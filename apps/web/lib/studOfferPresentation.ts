@@ -19,6 +19,7 @@ export type CompactStudOfferSummary = {
   puppyTermsSummary: string | null;
   restrictionsSummary: string | null;
   approvalSummary: "Automatic Approval" | "Manual Approval";
+  requirements: Pick<StudOfferPresentationSnapshot, "brucellosisNegativeRequired" | "healthRequirements" | "titleRequirement">;
 };
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -58,5 +59,10 @@ export function formatCompactStudOfferSummary(
     restrictionsSummary: restrictions.length > 0 ? restrictions.join(" • ") : null,
     approvalSummary:
       offer.approvalMode === "MANUAL" ? "Manual Approval" : "Automatic Approval",
+    requirements: {
+      brucellosisNegativeRequired: offer.brucellosisNegativeRequired,
+      healthRequirements: offer.healthRequirements,
+      titleRequirement: offer.titleRequirement,
+    },
   };
 }

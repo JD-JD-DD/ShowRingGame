@@ -28,7 +28,7 @@ assert.ok(worksheet.includes("No breed-specific health tests are currently confi
 for (const value of ["NONE", "GREEN_OR_YELLOW", "GREEN_ONLY"]) {
   assert.ok(worksheet.includes(`value: "${value}"`), `health requirement includes ${value}`);
 }
-for (const value of ["NONE", "CH_OR_HIGHER", "GCH"]) {
+for (const value of ["NONE", "CH_OR_HIGHER", "GCH_OR_HIGHER"]) {
   assert.ok(worksheet.includes(`value: "${value}"`), `title requirement includes ${value}`);
 }
 assert.ok(worksheet.includes('name="brucellosisNegativeRequired"'));

@@ -17,6 +17,7 @@ import {
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { formatGeneticCategoryValue } from "@/lib/phenotypeFormat";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
+import { evaluateDamAgainstStudContractRequirements } from "@/lib/studContractEligibility";
 import { formatGameAge, formatUtcDateTime } from "@/lib/gameTimeFormat";
 import type { CompactStudOfferSummary } from "@/lib/studOfferPresentation";
 import { PENDING_VETERINARY_CARE_BREEDING_MESSAGE } from "@/lib/breedingAvailability";
@@ -38,8 +39,11 @@ import {
 type VisibleCategories = Record<string, number>;
 
 type HealthTest = {
+  id: string;
   testTypeCode: string;
   resultCode: string;
+  testedAtEpoch: number | null;
+  createdAtEpoch: number;
 };
 
 type PlannerPedigreeDog = PedigreeDog & {
@@ -260,6 +264,23 @@ function isFinishedChampion(dog: DogCardDto) {
 function damMeetsStudRequirements(dam: DogCardDto | null, stud: DogCardDto) {
   if (stud.isOwnedByCurrentKennel || !dam) {
     return true;
+  }
+
+  if (stud.studOfferSummary) {
+    return evaluateDamAgainstStudContractRequirements(
+      stud.studOfferSummary.requirements,
+      {
+        hasValidNegativeBrucellosis: dam.brucellosisValidUntilEpoch !== null,
+        healthResults: dam.healthTests.map((test) => ({
+          healthTestCode: test.testTypeCode,
+          resultCode: test.resultCode,
+          testedAtEpoch: test.testedAtEpoch,
+          createdAtEpoch: test.createdAtEpoch,
+          id: test.id,
+        })),
+        titleDog: dam,
+      }
+    ).eligible;
   }
 
   if (
