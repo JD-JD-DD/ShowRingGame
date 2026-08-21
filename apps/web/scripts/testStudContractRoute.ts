@@ -16,24 +16,37 @@ const plannerClient = readFileSync(
   "utf8"
 );
 
-assert.ok(source.includes('args.source === "public-stud") return "/studs"'));
-assert.ok(source.includes('args.source === "plan-a-litter") return "/plan-a-litter"'));
-assert.ok(source.includes('return `/breed?studListingId=${encodeURIComponent(args.studListingId)}`'));
-assert.ok(source.includes('return `/breed?dogId=${encodeURIComponent(args.damDogId)}`'));
-assert.ok(source.includes('return "/breed"'));
-assert.ok(source.includes('return "/studs"'));
 assert.ok(source.includes('redirect("/login")'));
-assert.ok(source.includes("Stud contract details will be available here."));
+assert.ok(source.includes('redirect("/onboarding")'));
+assert.ok(source.includes("getKennelForUser(userId)"));
+assert.ok(source.includes("db.dogListing.findFirst"));
+assert.ok(source.includes("id: listingId, dogId: sireId"));
+assert.ok(source.includes("listingType: PLAYER_STUD_LISTING_TYPE"));
+assert.ok(source.includes('status: "ACTIVE"'));
+assert.ok(source.includes("getCurrentPublishedStudOffersForSires([sireId])"));
+assert.ok(source.includes("id: damId, ownerKennelId: kennel.id"));
+assert.ok(source.includes("if (damId && !dam) notFound()"));
+assert.ok(source.includes("evaluateCurrentDamAgainstStudContractRequirements"));
+assert.ok(source.includes('first(q.source) === "plan-a-litter" ? "/plan-a-litter"'));
+assert.ok(source.includes('first(q.source) === "breed-dog" ? "/breed" : "/studs"'));
 assert.ok(source.includes("Go Back"));
 assert.ok(!source.includes("returnTo"));
-assert.ok(!source.includes("db."));
 assert.ok(!source.includes("fetch("));
+for (const mutation of [
+  "StudContract.create",
+  "breedingAttempt.create",
+  "db.breedingAttempt.create",
+  "db.studOffer.create",
+  "fetch(",
+]) {
+  assert.equal(source.includes(mutation), false, `route remains read-only: ${mutation}`);
+}
 
 for (const parameter of [
-  "studListingId?: string | string[];",
-  "sireDogId?: string | string[];",
-  "damDogId?: string | string[];",
-  "source?: string | string[];",
+  "studListingId?: string | string[]",
+  "sireDogId?: string | string[]",
+  "damDogId?: string | string[]",
+  "source?: string | string[]",
 ]) {
   assert.ok(source.includes(parameter), `route accepts canonical ${parameter}`);
 }
