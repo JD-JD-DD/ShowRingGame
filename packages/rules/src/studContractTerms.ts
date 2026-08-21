@@ -56,7 +56,6 @@ export type StudContractOutcomeClassification = {
 const NO_LITTER_BREEDING_ATTEMPT_STATUSES = new Set<StudContractBreedingAttemptStatus>([
   "CHECKED_NOT_PREGNANT",
   "FAILED",
-  "CANCELLED",
 ]);
 
 /**

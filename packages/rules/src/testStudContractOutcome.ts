@@ -42,14 +42,20 @@ assert.deepEqual(noLitter, {
   puppyBackApplicable: true,
   puppyBackLitterSizeOutcome: "NO_QUALIFYING_LITTER",
 });
-assert.equal(
-  classifyStudContractOutcome({
-    ...baseInput,
-    breedingAttemptStatus: "FAILED",
-    noLitterReturnService: false,
-  }).returnServiceConditionTriggered,
-  false
-);
+const failed = classifyStudContractOutcome({
+  ...baseInput,
+  breedingAttemptStatus: "FAILED",
+  noLitterReturnService: false,
+});
+assert.equal(failed.litterOutcome, "NO_LITTER");
+assert.equal(failed.returnServiceConditionTriggered, false);
+
+const cancelled = classifyStudContractOutcome({
+  ...baseInput,
+  breedingAttemptStatus: "CANCELLED",
+});
+assert.equal(cancelled.outcomeReady, false);
+assert.equal(cancelled.litterOutcome, "PENDING");
 
 const qualified = classifyStudContractOutcome({
   ...baseInput,
