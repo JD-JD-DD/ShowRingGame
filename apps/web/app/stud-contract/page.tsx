@@ -1,81 +1,36 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-
+import { notFound, redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
+import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import { getBreedingEligibilityMessage, getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
+import { getKennelForUser } from "@/server/services/kennel.service";
+import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
+import { getCurrentPublishedStudOffersForSires } from "@/server/services/studOffer.service";
+import { PHENOTYPE_HEALTH_TESTS } from "@showring/rules";
 
-type PageProps = {
-  searchParams?: Promise<{
-    studListingId?: string | string[];
-    sireDogId?: string | string[];
-    damDogId?: string | string[];
-    source?: string | string[];
-  }>;
-};
-
-function firstQueryValue(value: string | string[] | undefined): string | null {
-  const candidate = (Array.isArray(value) ? value[0] : value)?.trim();
-  return candidate || null;
-}
-
-function backHref(args: {
-  source: string | null;
-  studListingId: string | null;
-  damDogId: string | null;
-}) {
-  if (args.source === "public-stud") return "/studs";
-  if (args.source === "plan-a-litter") return "/plan-a-litter";
-
-  if (args.source === "breed-dog") {
-    if (args.studListingId) {
-      return `/breed?studListingId=${encodeURIComponent(args.studListingId)}`;
-    }
-
-    if (args.damDogId) {
-      return `/breed?dogId=${encodeURIComponent(args.damDogId)}`;
-    }
-
-    return "/breed";
-  }
-
-  return "/studs";
-}
+type PageProps = { searchParams?: Promise<{ studListingId?: string | string[]; sireDogId?: string | string[]; damDogId?: string | string[]; source?: string | string[] }> };
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() || null;
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 export default async function StudContractPage({ searchParams }: PageProps) {
-  const userId = await getSessionUserId();
-
-  if (!userId) {
-    redirect("/login");
-  }
-
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const backLink = backHref({
-    source: firstQueryValue(resolvedSearchParams.source),
-    studListingId: firstQueryValue(resolvedSearchParams.studListingId),
-    damDogId: firstQueryValue(resolvedSearchParams.damDogId),
-  });
-
-  return (
-    <main className="min-h-screen px-6 py-8">
-      <section className="theme-panel mx-auto max-w-3xl rounded-[28px] px-6 py-8">
-        <p className="theme-label text-sm uppercase tracking-[0.22em]">
-          Stud Contract
-        </p>
-        <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">
-          Stud Contract
-        </h1>
-        <div className="theme-status-info mt-5 inline-flex rounded-2xl px-4 py-2 text-sm font-semibold">
-          In progress
-        </div>
-        <p className="theme-copy mt-5 text-sm leading-7">
-          Stud contract details will be available here.
-        </p>
-        <Link
-          href={backLink}
-          className="theme-secondary-button mt-8 inline-flex rounded-2xl px-5 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-ring)] focus:ring-offset-2 focus:ring-offset-[var(--color-surface)]"
-        >
-          Go Back
-        </Link>
-      </section>
-    </main>
-  );
+  const userId = await getSessionUserId(); if (!userId) redirect("/login");
+  const kennel = await getKennelForUser(userId); if (!kennel) redirect("/onboarding");
+  const q = searchParams ? await searchParams : {}; const listingId = first(q.studListingId); const sireId = first(q.sireDogId); const damId = first(q.damDogId);
+  if (!listingId || !sireId) notFound();
+  const listing = await db.dogListing.findFirst({ where: { id: listingId, dogId: sireId, sellerType: "PLAYER", listingType: PLAYER_STUD_LISTING_TYPE, status: "ACTIVE", sellerKennelId: { not: kennel.id } }, select: { dog: { select: { id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true, breedCode2: true, sex: true, birthEpoch: true, lifecycleState: true, isBreedingActive: true, breed: { select: { name: true } }, ownerKennel: { select: { name: true } } } } } });
+  if (!listing || listing.dog.sex !== "M") notFound();
+  const offer = (await getCurrentPublishedStudOffersForSires([sireId]))[0] ?? null;
+  const latest = await db.breedingAttempt.findFirst({ where: { sireId }, orderBy: [{ createdEpoch: "desc" }, { id: "desc" }], select: { createdEpoch: true } });
+  const availability = getIndividualBreedingEligibility({ currentEpoch: getCurrentEpoch(), birthEpoch: listing.dog.birthEpoch, lifecycleState: listing.dog.lifecycleState, sex: listing.dog.sex, latestSireAttemptCreatedEpoch: latest?.createdEpoch ?? null });
+  const dam = damId ? await db.dog.findFirst({ where: { id: damId, ownerKennelId: kennel.id }, select: { id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true, breedCode2: true, sex: true } }) : null;
+  if (damId && !dam) notFound();
+  const mismatch = dam && (dam.sex !== "F" || dam.breedCode2 !== listing.dog.breedCode2 || dam.id === sireId);
+  const back = first(q.source) === "plan-a-litter" ? "/plan-a-litter" : first(q.source) === "breed-dog" ? "/breed" : "/studs";
+  return <main className="min-h-screen px-6 py-8"><section className="theme-panel mx-auto max-w-3xl rounded-[28px] px-6 py-8"><p className="theme-label text-sm uppercase tracking-[0.22em]">Stud Contract</p><h1 className="theme-heading mt-2 text-4xl font-bold">Stud Contract Terms</h1>
+    <section className="theme-card mt-6 rounded-2xl p-4"><h2 className="theme-heading text-lg font-semibold">Sire</h2><p className="theme-copy mt-2">{formatDogDisplayName(listing.dog)} · {listing.dog.breed.name} · {listing.dog.regNumber}</p><p className="theme-copy mt-2 text-sm">Sire availability: {!listing.dog.isBreedingActive ? "Breeding Inactive" : availability.isEligible ? "Available" : availability.reasonCode === "STUD_RECOVERY" ? `Stud Recovery — ${availability.remainingHours} real hours remaining` : getBreedingEligibilityMessage(availability) ?? "Currently unavailable"}</p><Link href={`/dogs/${sireId}`} className="theme-secondary-button mt-3 inline-flex rounded-xl px-3 py-2 text-sm font-semibold">View Dog</Link></section>
+    {dam ? <section className="theme-card mt-4 rounded-2xl p-4"><h2 className="theme-heading text-lg font-semibold">Selected Dam</h2><p className="theme-copy mt-2">{formatDogDisplayName(dam)} · {dam.regNumber}</p><p className="theme-copy mt-2 text-sm">{mismatch ? "This dam cannot be paired with this sire." : "Final contract eligibility will be checked before submission."}</p></section> : <section className="theme-status-info mt-4 rounded-2xl p-4"><p>Choose an eligible owned dam in the existing planner to see pairing context.</p><Link href="/plan-a-litter" className="theme-secondary-button mt-3 inline-flex rounded-xl px-3 py-2 text-sm font-semibold">Choose a Dam</Link></section>}
+    {!offer ? <p className="theme-status-danger mt-4 rounded-2xl p-4" role="status">Stud contract terms are not currently published for this sire.</p> : <section className="theme-card mt-4 rounded-2xl p-4"><h2 className="theme-heading text-lg font-semibold">Published Terms</h2><div className="theme-copy mt-3 grid gap-3 text-sm"><p><b>Compensation:</b> {offer.compensationType === "PUPPY_BACK" ? "Puppy Back" : offer.compensationType === "CASH" ? money.format(offer.cashAmount ?? 0) : `${money.format(offer.cashAmount ?? 0)} + Puppy Back`}</p>{offer.compensationType !== "CASH" ? <><p><b>Puppy-Back Terms:</b> {offer.puppyPickPosition === "SECOND" ? "Second Pick" : "First Pick"} · Required Sex: {offer.puppySex === "MALE" ? "Male" : offer.puppySex === "FEMALE" ? "Female" : "Either"} · Minimum qualifying litter: {offer.minimumLitterSize} surviving puppies</p><p>Selection begins after the Week 1 neonatal window. Each active selection turn lasts 24 real hours. The game never chooses a puppy automatically; missed rights are forfeited. Required sex is mandatory, with no automatic alternate-sex or cash substitution. Puppy-back failure alone does not create return service.</p></> : null}<p><b>Return Service:</b> No-litter: {offer.noLitterReturnService ? "Offered" : "Not offered"}. Small-litter: {offer.smallLitterReturnThreshold === null ? "Not offered" : `${offer.smallLitterReturnThreshold} or fewer surviving puppies`}.</p><p><b>Dam Requirements:</b> Brucellosis: {offer.brucellosisNegativeRequired ? "Negative required" : "No restriction"}. Title: {offer.titleRequirement === "CH_OR_HIGHER" ? "CH or higher" : offer.titleRequirement === "GCH" ? "GCH" : "No restriction"}. {offer.healthRequirements.map((r) => `${PHENOTYPE_HEALTH_TESTS[r.healthTestCode as keyof typeof PHENOTYPE_HEALTH_TESTS]?.label ?? r.healthTestCode}: ${r.requirementLevel === "GREEN_ONLY" ? "Green only" : r.requirementLevel === "GREEN_OR_YELLOW" ? "Green or Yellow" : "No restriction"}`).join(" · ")}</p><p><b>Approval:</b> {offer.approvalMode === "MANUAL" ? "Manual Approval — individual approval is required; future requests remain open for 24 real hours and do not reserve the sire." : "Automatic Approval — qualifying breedings do not require individual approval from the stud owner."}</p></div></section>}
+    <Link href={back} className="theme-secondary-button mt-8 inline-flex rounded-2xl px-5 py-3 text-sm font-semibold">Go Back</Link></section></main>;
 }
