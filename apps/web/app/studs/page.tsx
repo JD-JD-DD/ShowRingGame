@@ -8,6 +8,7 @@ import {
 } from "@/components/breeds/BreedSelectOptions";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { formatCompactStudOfferSummary } from "@/lib/studOfferPresentation";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
@@ -16,6 +17,7 @@ import {
   PENDING_VETERINARY_CARE_BREEDING_MESSAGE,
 } from "@/server/services/emergencyVetCare.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
+import { getCurrentPublishedStudOffersForSires } from "@/server/services/studOffer.service";
 import {
   getBreedingEligibilityMessage,
   getIndividualBreedingEligibility,
@@ -357,6 +359,13 @@ export default async function StudsPage({ searchParams }: PageProps) {
   })
     : [];
   const dogIds = listings.map((listing) => listing.dog.id);
+  const currentOffers = await getCurrentPublishedStudOffersForSires(dogIds);
+  const offerSummaryByDogId = new Map(
+    currentOffers.map((offer) => [
+      offer.sireDogId,
+      formatCompactStudOfferSummary(offer),
+    ])
+  );
 
   const latestSireAttempts = dogIds.length
     ? await db.breedingAttempt.findMany({
@@ -508,25 +517,6 @@ export default async function StudsPage({ searchParams }: PageProps) {
           <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {listings.map((listing) => {
               const dog = listing.dog;
-              const requirements = [
-                listing.requiresBrucellosisNegativeDam
-                  ? "Negative brucellosis test"
-                  : null,
-                listing.requiresDamHealthTestsCompleted
-                  ? "All required health tests completed"
-                  : null,
-                listing.requiresDamHealthAllGreen
-                  ? "All-green health results"
-                  : null,
-                listing.requiresDamHealthGreenOrYellow
-                  ? "No red health results"
-                  : null,
-                listing.requiresDamChampionTitle
-                  ? "Finished champion"
-                  : null,
-              ].filter((requirement): requirement is string =>
-                Boolean(requirement)
-              );
               const brucellosisValidUntil = validBrucellosisUntil(
                 dog,
                 currentEpoch
@@ -553,6 +543,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                   dog.healthConditionTruths,
                 phenotypeHealthResults: dog.healthTests,
               });
+              const studOfferSummary = offerSummaryByDogId.get(dog.id) ?? null;
 
               return (
                 <article
@@ -640,9 +631,14 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           Stud Terms
                         </div>
                         <div className="theme-heading mt-1 font-medium">
-                          {requirements.length > 0
-                            ? requirements.join(", ")
-                            : "No minimums set"}
+                          {studOfferSummary ? (
+                            <span className="grid gap-1">
+                              <span>Compensation: {studOfferSummary.compensationSummary}</span>
+                              {studOfferSummary.puppyTermsSummary ? <span>Puppy Terms: {studOfferSummary.puppyTermsSummary}</span> : null}
+                              {studOfferSummary.restrictionsSummary ? <span>Dam Requirements: {studOfferSummary.restrictionsSummary}</span> : null}
+                              <span>{studOfferSummary.approvalSummary}</span>
+                            </span>
+                          ) : "Stud contract terms not yet published."}
                         </div>
                       </div>
                     </div>

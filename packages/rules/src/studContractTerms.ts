@@ -172,7 +172,7 @@ export function validateStudContractCashAmount(
     };
   }
 
-  if (!Number.isSafeInteger(value) || value < 1) {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 1) {
     return {
       valid: false,
       error: {

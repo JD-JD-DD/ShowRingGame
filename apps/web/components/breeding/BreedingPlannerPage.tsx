@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { createPerfTimer } from "@/lib/perf";
 import { getSessionUserId } from "@/lib/session";
 import BreedPageClient from "@/components/breeding/BreedPageClient";
+import { formatCompactStudOfferSummary } from "@/lib/studOfferPresentation";
+import { getCurrentPublishedStudOffersForSires } from "@/server/services/studOffer.service";
 import { BRUCELLOSIS_DISEASE_CODE } from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -77,6 +79,7 @@ type DogCardDto = {
   requiresDamHealthAllGreen: boolean;
   requiresDamHealthGreenOrYellow: boolean;
   requiresDamChampionTitle: boolean;
+  studOfferSummary: ReturnType<typeof formatCompactStudOfferSummary>;
   coiPercent: number | null;
   lastLitterEpoch: number | null;
   healthTests: Array<{
@@ -846,6 +849,7 @@ export default async function BreedingPlannerPage({
           requiresDamHealthAllGreen: false,
           requiresDamHealthGreenOrYellow: false,
           requiresDamChampionTitle: false,
+          studOfferSummary: null,
           coiPercent: dog.coiPercent,
           lastLitterEpoch,
           healthTests: dog.healthTests,
@@ -868,8 +872,17 @@ export default async function BreedingPlannerPage({
     route,
     operation: "public_stud_dto_mapping",
     execution: "sequential",
-    action: async () =>
-      publicStudListings.map((listing) => {
+    action: async () => {
+      const offers = await getCurrentPublishedStudOffersForSires(
+        publicStudListings.map((listing) => listing.dog.id)
+      );
+      const offerSummaryByDogId = new Map(
+        offers.map((offer) => [
+          offer.sireDogId,
+          formatCompactStudOfferSummary(offer),
+        ])
+      );
+      return publicStudListings.map((listing) => {
         const dog = listing.dog;
         const ageHours = currentEpoch - dog.birthEpoch;
         const breedingEligibility = getIndividualBreedingEligibility({
@@ -926,6 +939,7 @@ export default async function BreedingPlannerPage({
           requiresDamHealthGreenOrYellow:
             listing.requiresDamHealthGreenOrYellow,
           requiresDamChampionTitle: listing.requiresDamChampionTitle,
+          studOfferSummary: offerSummaryByDogId.get(dog.id) ?? null,
           coiPercent: dog.coiPercent,
           lastLitterEpoch: null,
           healthTests: dog.healthTests,
@@ -937,7 +951,8 @@ export default async function BreedingPlannerPage({
             phenotypeHealthResults: dog.healthTests,
           }),
         };
-      }),
+      });
+    },
     details: (rows) => ({
       rowCount: rows.length,
     }),

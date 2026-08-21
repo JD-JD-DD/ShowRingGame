@@ -41,6 +41,14 @@ export async function getCurrentPublishedStudOfferForOwnedDog(args: {
   });
 }
 
+export async function getCurrentPublishedStudOffersForSires(sireDogIds: string[]) {
+  if (sireDogIds.length === 0) return [];
+  return db.studOffer.findMany({
+    where: { sireDogId: { in: sireDogIds }, status: "PUBLISHED" },
+    include: { healthRequirements: true },
+  });
+}
+
 export async function publishStudOffer(args: {
   dogId: string;
   ownerKennelId: string;

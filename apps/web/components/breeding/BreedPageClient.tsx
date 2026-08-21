@@ -18,6 +18,7 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { formatGeneticCategoryValue } from "@/lib/phenotypeFormat";
 import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import { formatGameAge, formatUtcDateTime } from "@/lib/gameTimeFormat";
+import type { CompactStudOfferSummary } from "@/lib/studOfferPresentation";
 import { PENDING_VETERINARY_CARE_BREEDING_MESSAGE } from "@/lib/breedingAvailability";
 import {
   BREEDING_FEE,
@@ -84,6 +85,7 @@ type DogCardDto = {
   requiresDamHealthAllGreen: boolean;
   requiresDamHealthGreenOrYellow: boolean;
   requiresDamChampionTitle: boolean;
+  studOfferSummary: CompactStudOfferSummary | null;
   coiPercent: number | null;
   lastLitterEpoch: number | null;
   healthTests: HealthTest[];
@@ -253,28 +255,6 @@ function hasOnlyGreenOrYellowPhenotypeHealthTests(dog: DogCardDto) {
 
 function isFinishedChampion(dog: DogCardDto) {
   return isChampionOfRecordDog(dog);
-}
-
-function studRequirementLabels(stud: DogCardDto) {
-  const labels: string[] = [];
-
-  if (stud.requiresBrucellosisNegativeDam) {
-    labels.push("negative brucellosis test");
-  }
-  if (stud.requiresDamHealthTestsCompleted) {
-    labels.push("all required health tests completed");
-  }
-  if (stud.requiresDamHealthAllGreen) {
-    labels.push("all-green health results");
-  }
-  if (stud.requiresDamHealthGreenOrYellow) {
-    labels.push("no red health results");
-  }
-  if (stud.requiresDamChampionTitle) {
-    labels.push("finished champion");
-  }
-
-  return labels;
 }
 
 function damMeetsStudRequirements(dam: DogCardDto | null, stud: DogCardDto) {
@@ -709,12 +689,12 @@ function DogOptionCard({
       {outsideSire ? (
         <div className="mt-3 rounded-xl border border-sky-300/20 bg-sky-500/5 p-3 text-xs text-sky-100">
           <div className="font-semibold uppercase tracking-wide">Stud Terms</div>
-          <div className="mt-1">Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</div>
-          <div className="mt-1">
-            {studRequirementLabels(dog).length > 0
-              ? `Bitch requirements: ${studRequirementLabels(dog).join(", ")}`
-              : "No minimums set"}
-          </div>
+          {dog.studOfferSummary ? <>
+            <div className="mt-1">Compensation: {dog.studOfferSummary.compensationSummary}</div>
+            {dog.studOfferSummary.puppyTermsSummary ? <div className="mt-1">Puppy Terms: {dog.studOfferSummary.puppyTermsSummary}</div> : null}
+            {dog.studOfferSummary.restrictionsSummary ? <div className="mt-1">Dam Requirements: {dog.studOfferSummary.restrictionsSummary}</div> : null}
+            <div className="mt-1">{dog.studOfferSummary.approvalSummary}</div>
+          </> : <div className="mt-1">Stud contract terms not yet published.</div>}
         </div>
       ) : null}
 
@@ -895,12 +875,12 @@ function FreeMateCard({
         {outsideSire ? (
           <div className="mt-3 rounded-xl border border-sky-300/20 bg-sky-500/5 p-3 text-xs text-sky-100">
             <div className="font-semibold uppercase tracking-wide">Stud Terms</div>
-            <div className="mt-1">Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</div>
-            <div className="mt-1">
-              {studRequirementLabels(dog).length > 0
-                ? `Bitch requirements: ${studRequirementLabels(dog).join(", ")}`
-                : "No minimums set"}
-            </div>
+            {dog.studOfferSummary ? <>
+              <div className="mt-1">Compensation: {dog.studOfferSummary.compensationSummary}</div>
+              {dog.studOfferSummary.puppyTermsSummary ? <div className="mt-1">Puppy Terms: {dog.studOfferSummary.puppyTermsSummary}</div> : null}
+              {dog.studOfferSummary.restrictionsSummary ? <div className="mt-1">Dam Requirements: {dog.studOfferSummary.restrictionsSummary}</div> : null}
+              <div className="mt-1">{dog.studOfferSummary.approvalSummary}</div>
+            </> : <div className="mt-1">Stud contract terms not yet published.</div>}
           </div>
         ) : null}
         <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-3">
@@ -1651,6 +1631,10 @@ function Shortlist({
               <th className="px-3 py-2">Source</th>
               <th className="px-3 py-2 text-right">Litter COI</th>
               <th className="px-3 py-2 text-right">Stud Fee</th>
+              <th className="px-3 py-2">Contract Compensation</th>
+              <th className="px-3 py-2">Puppy Terms</th>
+              <th className="px-3 py-2">Approval</th>
+              <th className="px-3 py-2">Dam Requirements</th>
               <th className="px-3 py-2 text-right">Complements</th>
             </tr>
           </thead>
@@ -1671,6 +1655,18 @@ function Shortlist({
                   </td>
                   <td className="px-3 py-2 text-right text-purple-100/80">
                     {formatMoney(sire.studFeeAmount ?? 0)}
+                  </td>
+                  <td className="px-3 py-2 text-purple-100/80">
+                    {sire.studOfferSummary?.compensationSummary ?? "—"}
+                  </td>
+                  <td className="px-3 py-2 text-purple-100/80">
+                    {sire.studOfferSummary?.puppyTermsSummary ?? "—"}
+                  </td>
+                  <td className="px-3 py-2 text-purple-100/80">
+                    {sire.studOfferSummary?.approvalSummary ?? "—"}
+                  </td>
+                  <td className="px-3 py-2 text-purple-100/80">
+                    {sire.studOfferSummary?.restrictionsSummary ?? "None"}
                   </td>
                   <td className="px-3 py-2 text-right text-sky-100">
                     {complementCount(dam, sire)}
