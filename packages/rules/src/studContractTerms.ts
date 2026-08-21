@@ -79,11 +79,15 @@ export type StudOfferTermsErrorCode =
   | "SMALL_LITTER_RETURN_SERVICE_REQUIRED"
   | "INVALID_NO_LITTER_RETURN_SERVICE"
   | "INVALID_BRUCELLOSIS_REQUIREMENT"
+  | "BRUCELLOSIS_REQUIREMENT_REQUIRED"
   | "INVALID_TITLE_REQUIREMENT"
+  | "TITLE_REQUIREMENT_REQUIRED"
   | "INVALID_APPROVAL_MODE"
   | "HEALTH_TEST_CODE_REQUIRED"
   | "INVALID_HEALTH_REQUIREMENT_LEVEL"
-  | "DUPLICATE_HEALTH_TEST_REQUIREMENT";
+  | "DUPLICATE_HEALTH_TEST_REQUIREMENT"
+  | "HEALTH_REQUIREMENT_REQUIRED"
+  | "UNEXPECTED_HEALTH_TEST_REQUIREMENT";
 
 export type StudOfferTermsValidationError = {
   field: string;
@@ -317,6 +321,95 @@ export function validateStudOfferReturnServiceStep(
       "INVALID_SMALL_LITTER_RETURN_THRESHOLD",
       "Small-litter return threshold must be 1, 2, 3, or omitted."
     );
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+export type StudOfferDamRequirementsAnswers = {
+  brucellosisNegativeRequiredAnswered: boolean;
+  titleRequirementAnswered: boolean;
+  healthRequirementAnsweredCodes: readonly string[];
+};
+
+export function validateStudOfferDamRequirementsStep(
+  terms: Pick<
+    EditableStudOfferTerms,
+    | "brucellosisNegativeRequired"
+    | "healthRequirements"
+    | "titleRequirement"
+  >,
+  applicableHealthTestCodes: readonly string[],
+  answers: StudOfferDamRequirementsAnswers
+): StudOfferTermsValidationResult {
+  const errors: StudOfferTermsValidationError[] = [];
+  const applicableCodes = new Set(applicableHealthTestCodes);
+  const answeredCodes = new Set(answers.healthRequirementAnsweredCodes);
+  const seenCodes = new Set<string>();
+
+  if (!answers.brucellosisNegativeRequiredAnswered) {
+    addError(
+      errors,
+      "brucellosisNegativeRequired",
+      "BRUCELLOSIS_REQUIREMENT_REQUIRED",
+      "Choose whether a negative brucellosis result is required."
+    );
+  } else if (typeof terms.brucellosisNegativeRequired !== "boolean") {
+    addError(
+      errors,
+      "brucellosisNegativeRequired",
+      "INVALID_BRUCELLOSIS_REQUIREMENT",
+      "Brucellosis requirement must be on or off."
+    );
+  }
+
+  if (!answers.titleRequirementAnswered) {
+    addError(
+      errors,
+      "titleRequirement",
+      "TITLE_REQUIREMENT_REQUIRED",
+      "Choose a title requirement."
+    );
+  } else if (!includesValue(STUD_TITLE_REQUIREMENTS, terms.titleRequirement)) {
+    addError(
+      errors,
+      "titleRequirement",
+      "INVALID_TITLE_REQUIREMENT",
+      "Choose a valid title requirement."
+    );
+  }
+
+  for (const requirement of terms.healthRequirements) {
+    const code = requirement.healthTestCode;
+    const field = `healthRequirements.${code || "unknown"}`;
+
+    if (!code || code.trim() !== code) {
+      addError(errors, `${field}.healthTestCode`, "HEALTH_TEST_CODE_REQUIRED", "Health test code is required.");
+      continue;
+    }
+    if (seenCodes.has(code)) {
+      addError(errors, `${field}.healthTestCode`, "DUPLICATE_HEALTH_TEST_REQUIREMENT", "Each health test may have only one requirement.");
+      continue;
+    }
+    seenCodes.add(code);
+
+    if (!applicableCodes.has(code)) {
+      addError(errors, `${field}.healthTestCode`, "UNEXPECTED_HEALTH_TEST_REQUIREMENT", "Health requirement is not applicable to this breed.");
+    }
+    if (!includesValue(STUD_HEALTH_REQUIREMENT_LEVELS, requirement.requirementLevel)) {
+      addError(errors, `${field}.requirementLevel`, "INVALID_HEALTH_REQUIREMENT_LEVEL", "Choose a valid health requirement level.");
+    }
+  }
+
+  for (const code of applicableHealthTestCodes) {
+    if (!seenCodes.has(code) || !answeredCodes.has(code)) {
+      addError(
+        errors,
+        `healthRequirements.${code}`,
+        "HEALTH_REQUIREMENT_REQUIRED",
+        "Choose a health requirement for this test."
+      );
+    }
   }
 
   return { valid: errors.length === 0, errors };

@@ -6,6 +6,7 @@ import {
   type EditableStudOfferTerms,
   validateStudContractCashAmount,
   validateStudOfferCompensationStep,
+  validateStudOfferDamRequirementsStep,
   validateStudOfferPuppyBackTermsStep,
   validateStudOfferReturnServiceStep,
   validateStudOfferTerms,
@@ -123,6 +124,29 @@ assert.equal(validateStudOfferPuppyBackTermsStep(puppyBackTerms({ puppyPickPosit
 assert.equal(validateStudOfferReturnServiceStep(terms(), { noLitterReturnServiceAnswered: false, smallLitterReturnThresholdAnswered: false }).valid, false, "Return Service requires explicit answers");
 assert.equal(validateStudOfferReturnServiceStep(terms(), { noLitterReturnServiceAnswered: true, smallLitterReturnThresholdAnswered: true }).valid, true, "false and null are valid explicit Return Service answers");
 assert.equal(validateStudOfferReturnServiceStep(terms({ noLitterReturnService: false, smallLitterReturnThreshold: 3 }), { noLitterReturnServiceAnswered: true, smallLitterReturnThresholdAnswered: true }).valid, true, "independent no-litter and small-litter answers are valid");
+
+const applicableHealthTestCodes = ["HIP_DYSPLASIA", "CARDIAC"];
+const damRequirementTerms = terms({
+  brucellosisNegativeRequired: false,
+  titleRequirement: "NONE",
+  healthRequirements: [
+    { healthTestCode: "HIP_DYSPLASIA", requirementLevel: "NONE" },
+    { healthTestCode: "CARDIAC", requirementLevel: "GREEN_OR_YELLOW" },
+  ],
+});
+const answeredDamRequirements = {
+  brucellosisNegativeRequiredAnswered: true,
+  titleRequirementAnswered: true,
+  healthRequirementAnsweredCodes: applicableHealthTestCodes,
+};
+assert.equal(validateStudOfferDamRequirementsStep(damRequirementTerms, applicableHealthTestCodes, answeredDamRequirements).valid, true, "explicit false/NONE Dam Requirements answers are valid");
+assert.equal(validateStudOfferDamRequirementsStep(damRequirementTerms, applicableHealthTestCodes, { ...answeredDamRequirements, brucellosisNegativeRequiredAnswered: false }).errors[0]?.code, "BRUCELLOSIS_REQUIREMENT_REQUIRED", "Dam Requirements requires an explicit brucellosis answer");
+assert.equal(validateStudOfferDamRequirementsStep(damRequirementTerms, applicableHealthTestCodes, { ...answeredDamRequirements, titleRequirementAnswered: false }).errors[0]?.code, "TITLE_REQUIREMENT_REQUIRED", "Dam Requirements requires an explicit title answer");
+assert.ok(validateStudOfferDamRequirementsStep(damRequirementTerms, applicableHealthTestCodes, { ...answeredDamRequirements, healthRequirementAnsweredCodes: ["HIP_DYSPLASIA"] }).errors.some((error) => error.code === "HEALTH_REQUIREMENT_REQUIRED"), "Dam Requirements requires every health-test answer");
+assert.ok(validateStudOfferDamRequirementsStep(terms({ healthRequirements: [{ healthTestCode: "HIP_DYSPLASIA", requirementLevel: "NONE" }] }), applicableHealthTestCodes, answeredDamRequirements).errors.some((error) => error.code === "HEALTH_REQUIREMENT_REQUIRED"), "Dam Requirements rejects a missing applicable health test");
+assert.ok(validateStudOfferDamRequirementsStep(terms({ healthRequirements: [{ healthTestCode: "HIP_DYSPLASIA", requirementLevel: "NONE" }, { healthTestCode: "HIP_DYSPLASIA", requirementLevel: "GREEN_ONLY" }, { healthTestCode: "CARDIAC", requirementLevel: "GREEN_ONLY" }] }), applicableHealthTestCodes, answeredDamRequirements).errors.some((error) => error.code === "DUPLICATE_HEALTH_TEST_REQUIREMENT"), "Dam Requirements rejects duplicate health tests");
+assert.ok(validateStudOfferDamRequirementsStep(terms({ healthRequirements: [{ healthTestCode: "HIP_DYSPLASIA", requirementLevel: "NONE" }, { healthTestCode: "CARDIAC", requirementLevel: "GREEN_ONLY" }, { healthTestCode: "EXTRA_TEST", requirementLevel: "NONE" }] }), applicableHealthTestCodes, answeredDamRequirements).errors.some((error) => error.code === "UNEXPECTED_HEALTH_TEST_REQUIREMENT"), "Dam Requirements rejects unexpected health tests");
+assert.equal(validateStudOfferDamRequirementsStep(terms({ brucellosisNegativeRequired: true, titleRequirement: "GCH" }), [], { brucellosisNegativeRequiredAnswered: true, titleRequirementAnswered: true, healthRequirementAnsweredCodes: [] }).valid, true, "Dam Requirements accepts an empty applicable health-test set");
 
 const upstreamTerms = puppyBackTerms({
   cashAmount: 50,

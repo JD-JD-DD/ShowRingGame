@@ -5,6 +5,10 @@ import StudOfferWorksheet from "@/components/stud-contract/StudOfferWorksheet";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
+import {
+  getRequiredHealthTestsForBreed,
+  PHENOTYPE_HEALTH_TESTS,
+} from "@showring/rules";
 
 type PageProps = {
   params: Promise<{ dogId: string }>;
@@ -28,12 +32,19 @@ export default async function StudOfferWorksheetPage({ params }: PageProps) {
       callName: true,
       registeredName: true,
       regNumber: true,
+      breedCode2: true,
     },
   });
 
   if (!dog) notFound();
 
   const dogName = dog.registeredName?.trim() || dog.callName?.trim() || dog.regNumber;
+  const applicableHealthTests = getRequiredHealthTestsForBreed(dog.breedCode2).map(
+    (code) => ({
+      code,
+      label: PHENOTYPE_HEALTH_TESTS[code].label,
+    })
+  );
 
   return (
     <main className="min-h-screen px-6 py-8">
@@ -44,7 +55,10 @@ export default async function StudOfferWorksheetPage({ params }: PageProps) {
         >
           Back to Dog
         </Link>
-        <StudOfferWorksheet dogName={dogName} />
+        <StudOfferWorksheet
+          dogName={dogName}
+          applicableHealthTests={applicableHealthTests}
+        />
       </div>
     </main>
   );

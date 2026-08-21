@@ -10,16 +10,23 @@ import {
   requiresCash,
   validateStudContractCashAmount,
   validateStudOfferCompensationStep,
+  validateStudOfferDamRequirementsStep,
   validateStudOfferPuppyBackTermsStep,
   validateStudOfferReturnServiceStep,
   type EditableStudOfferTerms,
   type StudCompensationType,
   type StudPuppyPickPosition,
   type StudPuppySexRequirement,
+  type StudHealthRequirementLevel,
+  type StudTitleRequirement,
 } from "@showring/rules";
 
 type StudOfferWorksheetProps = {
   dogName: string;
+  applicableHealthTests: ReadonlyArray<{
+    code: string;
+    label: string;
+  }>;
 };
 
 type WorksheetStepId =
@@ -188,6 +195,56 @@ const SMALL_LITTER_RETURN_OPTIONS: ReadonlyArray<{
   { value: 3, label: "3 or fewer", description: "Offer return service when the qualifying surviving litter contains 3 or fewer puppies." },
 ];
 
+const DAM_REQUIREMENTS_COPY = {
+  brucellosisLegend: "Brucellosis",
+  healthTestsLegend: "Health Tests",
+  titleLegend: "Title Requirement",
+  noRestriction: "No restriction",
+  negativeRequired: "Negative required",
+  greenOrYellow: "Green or Yellow",
+  greenOnly: "Green only",
+  chOrHigher: "CH or higher",
+  noBrucellosisRestriction: "The dam is not required by this Stud Offer to have a negative brucellosis result.",
+  negativeBrucellosisRequired: "The dam must have a negative brucellosis result under this Stud Offer.",
+  noHealthRestriction: "The dam is not required by this Stud Offer to meet a result level for this test.",
+  greenOrYellowRequired: "The dam must have an acceptable current result of Green or Yellow for this test.",
+  greenOnlyRequired: "The dam must have an acceptable current Green result for this test.",
+  noTitleRestriction: "The dam does not need a championship title under this Stud Offer.",
+  chOrHigherRequired: "The dam must hold CH or a qualifying higher championship title.",
+  gchRequired: "The dam must satisfy the canonical GCH-level requirement.",
+  requirementOnly: "This step records the requirement only. Dam eligibility is evaluated later.",
+  noHealthTests: "No breed-specific health tests are currently configured for this breed.",
+} as const;
+
+const BRUCELLOSIS_OPTIONS: ReadonlyArray<{
+  value: boolean;
+  label: string;
+  description: string;
+}> = [
+  { value: false, label: DAM_REQUIREMENTS_COPY.noRestriction, description: DAM_REQUIREMENTS_COPY.noBrucellosisRestriction },
+  { value: true, label: DAM_REQUIREMENTS_COPY.negativeRequired, description: DAM_REQUIREMENTS_COPY.negativeBrucellosisRequired },
+];
+
+const HEALTH_REQUIREMENT_OPTIONS: ReadonlyArray<{
+  value: StudHealthRequirementLevel;
+  label: string;
+  description: string;
+}> = [
+  { value: "NONE", label: DAM_REQUIREMENTS_COPY.noRestriction, description: DAM_REQUIREMENTS_COPY.noHealthRestriction },
+  { value: "GREEN_OR_YELLOW", label: DAM_REQUIREMENTS_COPY.greenOrYellow, description: DAM_REQUIREMENTS_COPY.greenOrYellowRequired },
+  { value: "GREEN_ONLY", label: DAM_REQUIREMENTS_COPY.greenOnly, description: DAM_REQUIREMENTS_COPY.greenOnlyRequired },
+];
+
+const TITLE_REQUIREMENT_OPTIONS: ReadonlyArray<{
+  value: StudTitleRequirement;
+  label: string;
+  description: string;
+}> = [
+  { value: "NONE", label: DAM_REQUIREMENTS_COPY.noRestriction, description: DAM_REQUIREMENTS_COPY.noTitleRestriction },
+  { value: "CH_OR_HIGHER", label: DAM_REQUIREMENTS_COPY.chOrHigher, description: DAM_REQUIREMENTS_COPY.chOrHigherRequired },
+  { value: "GCH", label: "GCH", description: DAM_REQUIREMENTS_COPY.gchRequired },
+];
+
 export const STUD_OFFER_WORKSHEET_STEPS: readonly WorksheetStep[] = [
   {
     id: "compensation",
@@ -246,7 +303,10 @@ function adjustIndexAfterPuppyBackRemoval(index: number): number {
   return index - 1;
 }
 
-export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps) {
+export default function StudOfferWorksheet({
+  dogName,
+  applicableHealthTests,
+}: StudOfferWorksheetProps) {
   const [terms, setTerms] = useState<EditableStudOfferTerms>(
     INITIAL_STUD_OFFER_TERMS
   );
@@ -255,11 +315,17 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
   const [showCompensationErrors, setShowCompensationErrors] = useState(false);
   const [showPuppyBackErrors, setShowPuppyBackErrors] = useState(false);
   const [showReturnServiceErrors, setShowReturnServiceErrors] = useState(false);
+  const [showDamRequirementsErrors, setShowDamRequirementsErrors] = useState(false);
   const [returnServiceAnswers, setReturnServiceAnswers] = useState({
     noLitterReturnServiceAnswered: false,
     smallLitterReturnThresholdAnswered: false,
   });
   const [cashInputError, setCashInputError] = useState<string | null>(null);
+  const [damRequirementsAnswers, setDamRequirementsAnswers] = useState({
+    brucellosisNegativeRequiredAnswered: false,
+    titleRequirementAnswered: false,
+    healthRequirementAnsweredCodes: [] as string[],
+  });
   const activeSteps = useMemo(() => getActiveSteps(terms), [terms]);
   const currentStep = activeSteps[currentStepIndex] ?? activeSteps[0];
   const compensationValidation = validateStudOfferCompensationStep(terms);
@@ -267,6 +333,11 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
   const returnServiceValidation = validateStudOfferReturnServiceStep(
     terms,
     returnServiceAnswers
+  );
+  const damRequirementsValidation = validateStudOfferDamRequirementsStep(
+    terms,
+    applicableHealthTests.map((test) => test.code),
+    damRequirementsAnswers
   );
   const cashValidation = validateStudContractCashAmount(terms.cashAmount);
   const cashError =
@@ -297,6 +368,11 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
     field: "smallLitterReturnThreshold",
     value: number | null
   ): void;
+  function updateTerm(field: "brucellosisNegativeRequired", value: boolean): void;
+  function updateTerm(
+    field: "titleRequirement",
+    value: StudTitleRequirement | null
+  ): void;
   function updateTerm(
     field:
       | "compensationType"
@@ -305,11 +381,14 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
       | "puppySex"
       | "minimumLitterSize"
       | "noLitterReturnService"
-      | "smallLitterReturnThreshold",
+      | "smallLitterReturnThreshold"
+      | "brucellosisNegativeRequired"
+      | "titleRequirement",
     value:
       | StudCompensationType
       | StudPuppyPickPosition
       | StudPuppySexRequirement
+      | StudTitleRequirement
       | boolean
       | number
       | null
@@ -363,11 +442,56 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
         };
       }
 
+      if (field === "brucellosisNegativeRequired") {
+        return {
+          ...previousTerms,
+          brucellosisNegativeRequired: value as boolean,
+        };
+      }
+
+      if (field === "titleRequirement") {
+        return {
+          ...previousTerms,
+          titleRequirement: value as StudTitleRequirement | null,
+        };
+      }
+
       return {
         ...previousTerms,
         minimumLitterSize: value as number | null,
       };
     });
+  }
+
+  function updateHealthRequirement(
+    healthTestCode: string,
+    requirementLevel: StudHealthRequirementLevel
+  ) {
+    setTerms((previousTerms) => {
+      const existingRequirement = previousTerms.healthRequirements.find(
+        (requirement) => requirement.healthTestCode === healthTestCode
+      );
+      const healthRequirements = existingRequirement
+        ? previousTerms.healthRequirements.map((requirement) =>
+            requirement.healthTestCode === healthTestCode
+              ? { ...requirement, requirementLevel }
+              : requirement
+          )
+        : [
+            ...previousTerms.healthRequirements,
+            { healthTestCode, requirementLevel },
+          ];
+
+      return { ...previousTerms, healthRequirements };
+    });
+    setDamRequirementsAnswers((answers) => ({
+      ...answers,
+      healthRequirementAnsweredCodes: answers.healthRequirementAnsweredCodes.includes(
+        healthTestCode
+      )
+        ? answers.healthRequirementAnsweredCodes
+        : [...answers.healthRequirementAnsweredCodes, healthTestCode],
+    }));
   }
 
   function handleCashAmountChange(rawValue: string) {
@@ -418,6 +542,10 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
       setShowReturnServiceErrors(true);
       return;
     }
+    if (currentStep.id === "dam-requirements" && !damRequirementsValidation.valid) {
+      setShowDamRequirementsErrors(true);
+      return;
+    }
 
     setCurrentStepIndex((index) => {
       const nextIndex = Math.min(activeSteps.length - 1, index + 1);
@@ -436,6 +564,22 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
     if (!showPuppyBackErrors) return null;
     return (
       puppyBackValidation.errors.find((error) => error.field === field)
+        ?.message ?? null
+    );
+  }
+
+  function returnServiceFieldError(field: string): string | null {
+    if (!showReturnServiceErrors) return null;
+    return (
+      returnServiceValidation.errors.find((error) => error.field === field)
+        ?.message ?? null
+    );
+  }
+
+  function damRequirementsFieldError(field: string): string | null {
+    if (!showDamRequirementsErrors) return null;
+    return (
+      damRequirementsValidation.errors.find((error) => error.field === field)
         ?.message ?? null
     );
   }
@@ -913,6 +1057,159 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
                 <p>{RETURN_SERVICE_COPY.selectedDeath}</p>
               </div>
             </section>
+          </div>
+        ) : currentStep.id === "dam-requirements" ? (
+          <div className="mt-5 grid gap-6">
+            <fieldset
+              aria-describedby={
+                damRequirementsFieldError("brucellosisNegativeRequired")
+                  ? "brucellosis-requirement-error"
+                  : "brucellosis-requirement-help"
+              }
+            >
+              <legend className="theme-heading text-lg font-semibold">
+                {DAM_REQUIREMENTS_COPY.brucellosisLegend}
+              </legend>
+              <p id="brucellosis-requirement-help" className="theme-copy mt-2 text-sm">
+                {DAM_REQUIREMENTS_COPY.requirementOnly}
+              </p>
+              <div className="mt-3 grid gap-3">
+                {BRUCELLOSIS_OPTIONS.map((option) => (
+                  <label key={String(option.value)} className="theme-card flex cursor-pointer items-start gap-3 rounded-xl border p-4 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2">
+                    <input
+                      type="radio"
+                      name="brucellosisNegativeRequired"
+                      checked={
+                        damRequirementsAnswers.brucellosisNegativeRequiredAnswered &&
+                        terms.brucellosisNegativeRequired === option.value
+                      }
+                      onChange={() => {
+                        setShowDamRequirementsErrors(false);
+                        setDamRequirementsAnswers((answers) => ({
+                          ...answers,
+                          brucellosisNegativeRequiredAnswered: true,
+                        }));
+                        updateTerm("brucellosisNegativeRequired", option.value);
+                      }}
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="theme-heading block text-base font-semibold">{option.label}</span>
+                      <span className="theme-copy mt-1 block text-sm">{option.description}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {damRequirementsFieldError("brucellosisNegativeRequired") ? (
+                <p id="brucellosis-requirement-error" className="theme-status-danger mt-3 rounded-xl p-3 text-sm" role="alert">
+                  {damRequirementsFieldError("brucellosisNegativeRequired")}
+                </p>
+              ) : null}
+            </fieldset>
+
+            <section aria-labelledby="dam-health-tests-title">
+              <h3 id="dam-health-tests-title" className="theme-heading text-lg font-semibold">
+                {DAM_REQUIREMENTS_COPY.healthTestsLegend}
+              </h3>
+              <p className="theme-copy mt-2 text-sm">{DAM_REQUIREMENTS_COPY.requirementOnly}</p>
+              {applicableHealthTests.length === 0 ? (
+                <p className="theme-status-info mt-3 rounded-xl p-3 text-sm">
+                  {DAM_REQUIREMENTS_COPY.noHealthTests}
+                </p>
+              ) : (
+                <div className="mt-3 grid gap-4">
+                  {applicableHealthTests.map((test) => {
+                    const field = `healthRequirements.${test.code}`;
+                    const error = damRequirementsFieldError(field);
+                    const requirement = terms.healthRequirements.find(
+                      (item) => item.healthTestCode === test.code
+                    );
+                    const answered = damRequirementsAnswers.healthRequirementAnsweredCodes.includes(test.code);
+
+                    return (
+                      <fieldset key={test.code} aria-describedby={error ? `dam-health-${test.code}-error` : undefined} className="theme-card rounded-xl border p-4">
+                        <legend className="theme-heading px-1 text-base font-semibold">{test.label}</legend>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                          {HEALTH_REQUIREMENT_OPTIONS.map((option) => (
+                            <label key={option.value} className="flex cursor-pointer items-start gap-3 rounded-lg p-2 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2">
+                              <input
+                                id={`dam-health-${test.code}-${option.value}`}
+                                type="radio"
+                                name={`damHealthRequirement-${test.code}`}
+                                value={option.value}
+                                checked={answered && requirement?.requirementLevel === option.value}
+                                onChange={() => {
+                                  setShowDamRequirementsErrors(false);
+                                  updateHealthRequirement(test.code, option.value);
+                                }}
+                                className="mt-1"
+                              />
+                              <span>
+                                <span className="theme-heading block text-sm font-semibold">{option.label}</span>
+                                <span className="theme-copy mt-1 block text-xs">{option.description}</span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                        {error ? (
+                          <p id={`dam-health-${test.code}-error`} className="theme-status-danger mt-3 rounded-xl p-3 text-sm" role="alert">
+                            {error}
+                          </p>
+                        ) : null}
+                      </fieldset>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <fieldset
+              aria-describedby={
+                damRequirementsFieldError("titleRequirement")
+                  ? "title-requirement-error"
+                  : "title-requirement-help"
+              }
+            >
+              <legend className="theme-heading text-lg font-semibold">
+                {DAM_REQUIREMENTS_COPY.titleLegend}
+              </legend>
+              <p id="title-requirement-help" className="theme-copy mt-2 text-sm">
+                {DAM_REQUIREMENTS_COPY.requirementOnly}
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                {TITLE_REQUIREMENT_OPTIONS.map((option) => (
+                  <label key={option.value} className="theme-card flex cursor-pointer items-start gap-3 rounded-xl border p-4 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2">
+                    <input
+                      type="radio"
+                      name="titleRequirement"
+                      value={option.value}
+                      checked={
+                        damRequirementsAnswers.titleRequirementAnswered &&
+                        terms.titleRequirement === option.value
+                      }
+                      onChange={() => {
+                        setShowDamRequirementsErrors(false);
+                        setDamRequirementsAnswers((answers) => ({
+                          ...answers,
+                          titleRequirementAnswered: true,
+                        }));
+                        updateTerm("titleRequirement", option.value);
+                      }}
+                      className="mt-1"
+                    />
+                    <span>
+                      <span className="theme-heading block text-base font-semibold">{option.label}</span>
+                      <span className="theme-copy mt-1 block text-sm">{option.description}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {damRequirementsFieldError("titleRequirement") ? (
+                <p id="title-requirement-error" className="theme-status-danger mt-3 rounded-xl p-3 text-sm" role="alert">
+                  {damRequirementsFieldError("titleRequirement")}
+                </p>
+              ) : null}
+            </fieldset>
           </div>
         ) : currentStep.id === "review" ? (
           <p className="theme-status-info mt-5 rounded-xl p-4 text-sm font-semibold">

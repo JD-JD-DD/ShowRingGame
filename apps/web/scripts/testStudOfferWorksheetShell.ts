@@ -17,7 +17,9 @@ assert.ok(route.includes('redirect("/login")'));
 assert.ok(route.includes('redirect("/onboarding")'));
 assert.ok(route.includes("ownerKennelId: kennel.id"));
 assert.ok(route.includes("if (!dog) notFound()"));
-assert.ok(route.includes("<StudOfferWorksheet dogName={dogName} />"));
+assert.ok(route.includes("<StudOfferWorksheet"));
+assert.ok(route.includes("dogName={dogName}"));
+assert.ok(route.includes("applicableHealthTests={applicableHealthTests}"));
 assert.equal(route.includes("StudOffer"), true, "route names the UI component only");
 assert.equal(route.includes("studOffer."), false, "route does not query StudOffer persistence");
 
