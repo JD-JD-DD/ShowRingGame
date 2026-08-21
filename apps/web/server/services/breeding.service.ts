@@ -1300,6 +1300,14 @@ export async function createBreedingAttemptForKennel(args: {
     throw new Error("That dam already has an active breeding in progress.");
   }
 
+  const pendingStudApproval = await db.studContract.findFirst({
+    where: { damDogId: dam.id, status: "PENDING" },
+    select: { id: true },
+  });
+  if (pendingStudApproval) {
+    throw new Error("This dam has a Stud approval pending.");
+  }
+
   const resolvedReproductiveEmergencies = await db.reproductiveEmergencyEvent.findMany({
     where: { damId: dam.id, status: { in: ["RESOLVED_TREATED", "RESOLVED_UNTREATED"] } },
     select: { id: true, status: true, resolvedEpoch: true, reproductiveConsequence: true },
