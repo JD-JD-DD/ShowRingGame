@@ -10,11 +10,13 @@ import {
   requiresCash,
   validateStudContractCashAmount,
   validateStudOfferCompensationStep,
+  validateStudOfferApprovalStep,
   validateStudOfferDamRequirementsStep,
   validateStudOfferPuppyBackTermsStep,
   validateStudOfferReturnServiceStep,
   type EditableStudOfferTerms,
   type StudCompensationType,
+  type StudApprovalMode,
   type StudPuppyPickPosition,
   type StudPuppySexRequirement,
   type StudHealthRequirementLevel,
@@ -245,6 +247,37 @@ const TITLE_REQUIREMENT_OPTIONS: ReadonlyArray<{
   { value: "GCH", label: "GCH", description: DAM_REQUIREMENTS_COPY.gchRequired },
 ];
 
+const APPROVAL_COPY = {
+  legend: "Choose approval policy",
+  automaticLabel: "Automatic Approval",
+  manualLabel: "Manual Approval",
+  automaticDescription:
+    "Qualifying breedings do not require individual approval from the stud owner. The dam must still satisfy this Stud Offer, and normal breeding eligibility and Stud Recovery still apply.",
+  automaticMeaning:
+    "Automatic Approval allows a qualifying dam owner to proceed without waiting for you to approve that individual request. It does not create a breeding or reserve the sire.",
+  manualDescription:
+    "Manual Approval requires you to approve each breeding request. Requests remain open for 24 real hours.",
+  manualRules:
+    "A pending request does not reserve the sire or block other breeding activity. Approval is only available while the sire is currently eligible to breed, and a request may expire while the sire is in Stud Recovery.",
+} as const;
+
+const APPROVAL_OPTIONS: ReadonlyArray<{
+  value: StudApprovalMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "AUTOMATIC",
+    label: APPROVAL_COPY.automaticLabel,
+    description: APPROVAL_COPY.automaticDescription,
+  },
+  {
+    value: "MANUAL",
+    label: APPROVAL_COPY.manualLabel,
+    description: APPROVAL_COPY.manualDescription,
+  },
+];
+
 export const STUD_OFFER_WORKSHEET_STEPS: readonly WorksheetStep[] = [
   {
     id: "compensation",
@@ -316,6 +349,7 @@ export default function StudOfferWorksheet({
   const [showPuppyBackErrors, setShowPuppyBackErrors] = useState(false);
   const [showReturnServiceErrors, setShowReturnServiceErrors] = useState(false);
   const [showDamRequirementsErrors, setShowDamRequirementsErrors] = useState(false);
+  const [showApprovalErrors, setShowApprovalErrors] = useState(false);
   const [returnServiceAnswers, setReturnServiceAnswers] = useState({
     noLitterReturnServiceAnswered: false,
     smallLitterReturnThresholdAnswered: false,
@@ -339,6 +373,7 @@ export default function StudOfferWorksheet({
     applicableHealthTests.map((test) => test.code),
     damRequirementsAnswers
   );
+  const approvalValidation = validateStudOfferApprovalStep(terms);
   const cashValidation = validateStudContractCashAmount(terms.cashAmount);
   const cashError =
     cashInputError ??
@@ -373,6 +408,7 @@ export default function StudOfferWorksheet({
     field: "titleRequirement",
     value: StudTitleRequirement | null
   ): void;
+  function updateTerm(field: "approvalMode", value: StudApprovalMode | null): void;
   function updateTerm(
     field:
       | "compensationType"
@@ -383,12 +419,14 @@ export default function StudOfferWorksheet({
       | "noLitterReturnService"
       | "smallLitterReturnThreshold"
       | "brucellosisNegativeRequired"
-      | "titleRequirement",
+      | "titleRequirement"
+      | "approvalMode",
     value:
       | StudCompensationType
       | StudPuppyPickPosition
       | StudPuppySexRequirement
       | StudTitleRequirement
+      | StudApprovalMode
       | boolean
       | number
       | null
@@ -453,6 +491,13 @@ export default function StudOfferWorksheet({
         return {
           ...previousTerms,
           titleRequirement: value as StudTitleRequirement | null,
+        };
+      }
+
+      if (field === "approvalMode") {
+        return {
+          ...previousTerms,
+          approvalMode: value as StudApprovalMode | null,
         };
       }
 
@@ -546,6 +591,10 @@ export default function StudOfferWorksheet({
       setShowDamRequirementsErrors(true);
       return;
     }
+    if (currentStep.id === "approval" && !approvalValidation.valid) {
+      setShowApprovalErrors(true);
+      return;
+    }
 
     setCurrentStepIndex((index) => {
       const nextIndex = Math.min(activeSteps.length - 1, index + 1);
@@ -582,6 +631,11 @@ export default function StudOfferWorksheet({
       damRequirementsValidation.errors.find((error) => error.field === field)
         ?.message ?? null
     );
+  }
+
+  function approvalFieldError(): string | null {
+    if (!showApprovalErrors) return null;
+    return approvalValidation.errors.find((error) => error.field === "approvalMode")?.message ?? null;
   }
 
   return (
@@ -1211,6 +1265,62 @@ export default function StudOfferWorksheet({
               ) : null}
             </fieldset>
           </div>
+        ) : currentStep.id === "approval" ? (
+          <fieldset
+            className="mt-5 grid gap-3"
+            aria-describedby={approvalFieldError() ? "approval-mode-error" : "approval-mode-help"}
+          >
+            <legend className="theme-heading text-lg font-semibold">
+              {APPROVAL_COPY.legend}
+            </legend>
+            <p id="approval-mode-help" className="theme-copy text-sm">
+              Choose how future qualifying breeding requests will be handled. Normal eligibility and Stud Recovery remain authoritative.
+            </p>
+            {APPROVAL_OPTIONS.map((option) => (
+              <label
+                key={option.value}
+                className="theme-card flex cursor-pointer items-start gap-3 rounded-xl border p-4 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2"
+              >
+                <input
+                  type="radio"
+                  name="approvalMode"
+                  value={option.value}
+                  checked={terms.approvalMode === option.value}
+                  onChange={() => {
+                    setShowApprovalErrors(false);
+                    updateTerm("approvalMode", option.value);
+                  }}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="theme-heading block text-base font-semibold">
+                    {option.label}
+                  </span>
+                  <span className="theme-copy mt-1 block text-sm">
+                    {option.description}
+                  </span>
+                  {option.value === "AUTOMATIC" ? (
+                    <span className="theme-copy mt-2 block text-sm">
+                      {APPROVAL_COPY.automaticMeaning}
+                    </span>
+                  ) : (
+                    <span className="theme-copy mt-2 block text-sm">
+                      {APPROVAL_COPY.manualRules}
+                    </span>
+                  )}
+                </span>
+              </label>
+            ))}
+            {approvalFieldError() ? (
+              <p
+                id="approval-mode-error"
+                className="theme-status-danger rounded-xl p-3 text-sm"
+                role="alert"
+              >
+                {approvalFieldError()}
+              </p>
+            ) : null}
+          </fieldset>
         ) : currentStep.id === "review" ? (
           <p className="theme-status-info mt-5 rounded-xl p-4 text-sm font-semibold">
             {STUD_OFFER_WORKSHEET_COPY.publishingLater}

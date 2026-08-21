@@ -6,6 +6,7 @@ import {
   type EditableStudOfferTerms,
   validateStudContractCashAmount,
   validateStudOfferCompensationStep,
+  validateStudOfferApprovalStep,
   validateStudOfferDamRequirementsStep,
   validateStudOfferPuppyBackTermsStep,
   validateStudOfferReturnServiceStep,
@@ -147,6 +148,11 @@ assert.ok(validateStudOfferDamRequirementsStep(terms({ healthRequirements: [{ he
 assert.ok(validateStudOfferDamRequirementsStep(terms({ healthRequirements: [{ healthTestCode: "HIP_DYSPLASIA", requirementLevel: "NONE" }, { healthTestCode: "HIP_DYSPLASIA", requirementLevel: "GREEN_ONLY" }, { healthTestCode: "CARDIAC", requirementLevel: "GREEN_ONLY" }] }), applicableHealthTestCodes, answeredDamRequirements).errors.some((error) => error.code === "DUPLICATE_HEALTH_TEST_REQUIREMENT"), "Dam Requirements rejects duplicate health tests");
 assert.ok(validateStudOfferDamRequirementsStep(terms({ healthRequirements: [{ healthTestCode: "HIP_DYSPLASIA", requirementLevel: "NONE" }, { healthTestCode: "CARDIAC", requirementLevel: "GREEN_ONLY" }, { healthTestCode: "EXTRA_TEST", requirementLevel: "NONE" }] }), applicableHealthTestCodes, answeredDamRequirements).errors.some((error) => error.code === "UNEXPECTED_HEALTH_TEST_REQUIREMENT"), "Dam Requirements rejects unexpected health tests");
 assert.equal(validateStudOfferDamRequirementsStep(terms({ brucellosisNegativeRequired: true, titleRequirement: "GCH" }), [], { brucellosisNegativeRequiredAnswered: true, titleRequirementAnswered: true, healthRequirementAnsweredCodes: [] }).valid, true, "Dam Requirements accepts an empty applicable health-test set");
+
+assert.equal(validateStudOfferApprovalStep(terms({ approvalMode: null })).errors[0]?.code, "APPROVAL_MODE_REQUIRED", "Approval step requires an explicit choice");
+assert.equal(validateStudOfferApprovalStep(terms({ approvalMode: "AUTOMATIC" })).valid, true, "AUTOMATIC approval is valid");
+assert.equal(validateStudOfferApprovalStep(terms({ approvalMode: "MANUAL" })).valid, true, "MANUAL approval is valid");
+assert.equal(validateStudOfferApprovalStep(terms({ approvalMode: "CUSTOM" as never })).errors[0]?.code, "INVALID_APPROVAL_MODE", "unknown approval mode is rejected");
 
 const upstreamTerms = puppyBackTerms({
   cashAmount: 50,

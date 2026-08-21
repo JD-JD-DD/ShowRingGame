@@ -83,6 +83,7 @@ export type StudOfferTermsErrorCode =
   | "INVALID_TITLE_REQUIREMENT"
   | "TITLE_REQUIREMENT_REQUIRED"
   | "INVALID_APPROVAL_MODE"
+  | "APPROVAL_MODE_REQUIRED"
   | "HEALTH_TEST_CODE_REQUIRED"
   | "INVALID_HEALTH_REQUIREMENT_LEVEL"
   | "DUPLICATE_HEALTH_TEST_REQUIREMENT"
@@ -410,6 +411,30 @@ export function validateStudOfferDamRequirementsStep(
         "Choose a health requirement for this test."
       );
     }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateStudOfferApprovalStep(
+  terms: Pick<EditableStudOfferTerms, "approvalMode">
+): StudOfferTermsValidationResult {
+  const errors: StudOfferTermsValidationError[] = [];
+
+  if (terms.approvalMode === null) {
+    addError(
+      errors,
+      "approvalMode",
+      "APPROVAL_MODE_REQUIRED",
+      "Choose Automatic Approval or Manual Approval."
+    );
+  } else if (!includesValue(STUD_APPROVAL_MODES, terms.approvalMode)) {
+    addError(
+      errors,
+      "approvalMode",
+      "INVALID_APPROVAL_MODE",
+      "Choose a valid approval mode."
+    );
   }
 
   return { valid: errors.length === 0, errors };
