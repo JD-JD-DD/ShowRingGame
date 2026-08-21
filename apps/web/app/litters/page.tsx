@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LittersListClient } from "@/components/litters/LittersListClient";
+import { StudContractPuppySelectionActions } from "@/components/litters/StudContractPuppySelectionActions";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { formatRealDurationHoursLong } from "@/lib/gameTimeFormat";
 import { getSessionUserId } from "@/lib/session";
@@ -90,7 +91,8 @@ export default async function LittersPage({ searchParams }: PageProps) {
       status: true,
       currentActor: true,
       turnDeadlineAt: true,
-      litter: { select: { serial7: true } },
+      damFirstPickDogId: true,
+      litter: { select: { serial7: true, puppies: { where: { lifecycleState: "ALIVE" }, orderBy: { litterOrder: "asc" }, select: { id: true, callName: true, registeredName: true, regNumber: true, sex: true } } } },
       contract: { select: { puppyPickPosition: true, puppySex: true, sireKennelId: true, damKennelId: true } },
     },
   });
@@ -253,6 +255,15 @@ export default async function LittersPage({ searchParams }: PageProps) {
                     ) : null}
                     {isActive && (!isStudOwner || selection.currentActor === "STUD_OWNER") ? (
                       <p className="theme-copy mt-3 text-sm">{deadlinePassed ? "Selection deadline passed — awaiting processing." : `Selection deadline: ${formatSelectionDeadline(selection.turnDeadlineAt)}`}</p>
+                    ) : null}
+                    {isActive && !deadlinePassed && ((selection.currentActor === "DAM_OWNER" && !isStudOwner) || (selection.currentActor === "STUD_OWNER" && isStudOwner)) ? (
+                      <StudContractPuppySelectionActions
+                        selectionId={selection.id}
+                        action={selection.currentActor === "DAM_OWNER" ? "DAM_PROTECTED_PICK" : "STUD_PICK"}
+                        puppies={selection.litter.puppies
+                          .filter((puppy) => selection.currentActor === "DAM_OWNER" || (puppy.id !== selection.damFirstPickDogId && (selection.contract.puppySex === "EITHER" || selection.contract.puppySex === null || (selection.contract.puppySex === "MALE" ? puppy.sex === "M" : puppy.sex === "F"))))
+                          .map((puppy) => ({ id: puppy.id, label: puppy.callName ?? puppy.registeredName ?? puppy.regNumber }))}
+                      />
                     ) : null}
                   </article>
                 );

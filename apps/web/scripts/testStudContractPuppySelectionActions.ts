@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+const root = resolve(__dirname, "..", "..", "..");
+const service = readFileSync(join(root, "apps/web/server/services/studContractPuppySelection.service.ts"), "utf8");
+const route = readFileSync(join(root, "apps/web/app/api/stud-contract-puppy-selection/route.ts"), "utf8");
+const page = readFileSync(join(root, "apps/web/app/litters/page.tsx"), "utf8");
+const actions = readFileSync(join(root, "apps/web/components/litters/StudContractPuppySelectionActions.tsx"), "utf8");
+for (const fragment of ["selectDamProtectedPuppy", "selectStudContractPuppy", 'status: "DAM_FIRST_PICK"', 'status: "STUD_PICK"', "turnDeadlineAt: { gt: now }", "damFirstPickDogId", "selectedDogId", 'status: "SELECTED"']) assert.ok(service.includes(fragment), fragment);
+assert.ok(route.includes("getSessionUserId"));
+assert.ok(route.includes("selectedDogId") === false);
+assert.ok(page.includes("StudContractPuppySelectionActions"));
+assert.ok(actions.includes("Select Puppy"));
+console.log("Stud Contract puppy selection action checks passed.");
