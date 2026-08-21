@@ -4,6 +4,8 @@ import {
   MAX_STUD_CONTRACT_CASH_AMOUNT,
   normalizeStudOfferTermsAfterChange,
   type EditableStudOfferTerms,
+  validateStudContractCashAmount,
+  validateStudOfferCompensationStep,
   validateStudOfferTerms,
 } from "../src/index";
 
@@ -102,6 +104,15 @@ assertValid(terms({ cashAmount: MAX_STUD_CONTRACT_CASH_AMOUNT }), "maximum cash 
 assertError(terms({ cashAmount: MAX_STUD_CONTRACT_CASH_AMOUNT + 1 }), "CASH_AMOUNT_TOO_HIGH", "cash above maximum rejected");
 assertError(terms({ cashAmount: Number.MAX_VALUE }), "INVALID_CASH_AMOUNT", "extremely large cash rejected safely");
 assertError(terms({ cashAmount: Number.POSITIVE_INFINITY }), "INVALID_CASH_AMOUNT", "non-finite cash rejected safely");
+
+assert.equal(validateStudContractCashAmount(1).valid, true, "cash helper accepts minimum");
+assert.equal(validateStudContractCashAmount(MAX_STUD_CONTRACT_CASH_AMOUNT).valid, true, "cash helper accepts maximum");
+assert.equal(validateStudContractCashAmount(MAX_STUD_CONTRACT_CASH_AMOUNT + 1).error?.code, "CASH_AMOUNT_TOO_HIGH", "cash helper rejects above maximum");
+assert.equal(validateStudContractCashAmount(Number.MAX_VALUE).valid, false, "cash helper rejects unsafe values");
+assert.equal(validateStudOfferCompensationStep(terms()).valid, true, "CASH compensation step accepts valid cash");
+assert.equal(validateStudOfferCompensationStep(terms({ cashAmount: null })).errors[0]?.code, "CASH_AMOUNT_REQUIRED", "CASH compensation step requires cash");
+assert.equal(validateStudOfferCompensationStep(puppyBackTerms()).valid, true, "PUPPY_BACK compensation step defers puppy fields to its later step");
+assert.equal(validateStudOfferCompensationStep(combinedTerms).valid, true, "combined compensation step accepts valid cash");
 
 const upstreamTerms = puppyBackTerms({
   cashAmount: 50,

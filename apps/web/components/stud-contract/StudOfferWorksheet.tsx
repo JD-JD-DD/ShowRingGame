@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import {
   hasPuppyBack,
+  MAX_STUD_CONTRACT_CASH_AMOUNT,
   normalizeStudOfferTermsAfterChange,
+  requiresCash,
+  validateStudContractCashAmount,
+  validateStudOfferCompensationStep,
   type EditableStudOfferTerms,
   type StudCompensationType,
   type StudPuppyPickPosition,
@@ -35,7 +39,39 @@ export const STUD_OFFER_WORKSHEET_COPY = {
   next: "Next",
   futureStep: "This section will be added in a later worksheet stage.",
   publishingLater: "Publishing will be added in a later stage.",
+  compensationLegend: "Choose compensation",
+  cashLabel: "Stud fee",
+  cashHelp: "Enter a whole-dollar amount from $1 to $1,000,000.",
+  cashMaximum: "Maximum cash compensation",
 } as const;
+
+const COMPENSATION_OPTIONS: ReadonlyArray<{
+  value: StudCompensationType;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "CASH",
+    label: "Cash",
+    description: "The dam owner pays a stud fee when the breeding is accepted and attempted.",
+  },
+  {
+    value: "PUPPY_BACK",
+    label: "Puppy Back",
+    description: "The stud owner receives one puppy under the contract's later puppy-back terms.",
+  },
+  {
+    value: "CASH_AND_PUPPY_BACK",
+    label: "Cash + Puppy Back",
+    description: "The dam owner pays a stud fee and the stud owner also receives one puppy under the later puppy-back terms.",
+  },
+];
+
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
 
 export const STUD_OFFER_WORKSHEET_STEPS: readonly WorksheetStep[] = [
   {
@@ -101,8 +137,17 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
   );
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [furthestReachedStepIndex, setFurthestReachedStepIndex] = useState(0);
+  const [showCompensationErrors, setShowCompensationErrors] = useState(false);
+  const [cashInputError, setCashInputError] = useState<string | null>(null);
   const activeSteps = useMemo(() => getActiveSteps(terms), [terms]);
   const currentStep = activeSteps[currentStepIndex] ?? activeSteps[0];
+  const compensationValidation = validateStudOfferCompensationStep(terms);
+  const cashValidation = validateStudContractCashAmount(terms.cashAmount);
+  const cashError =
+    cashInputError ??
+    (showCompensationErrors && requiresCash(terms.compensationType)
+      ? cashValidation.error?.message ?? null
+      : null);
 
   function updateTerm(
     field: "compensationType",
@@ -112,9 +157,10 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
     field: "puppyPickPosition",
     value: StudPuppyPickPosition | null
   ): void;
+  function updateTerm(field: "cashAmount", value: number | null): void;
   function updateTerm(
-    field: "compensationType" | "puppyPickPosition",
-    value: StudCompensationType | StudPuppyPickPosition | null
+    field: "compensationType" | "puppyPickPosition" | "cashAmount",
+    value: StudCompensationType | StudPuppyPickPosition | number | null
   ) {
     if (field === "compensationType" && !hasPuppyBack(value as StudCompensationType | null)) {
       setCurrentStepIndex((index) => adjustIndexAfterPuppyBackRemoval(index));
@@ -132,12 +178,47 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
         );
       }
 
-      return normalizeStudOfferTermsAfterChange(
-        previousTerms,
-        field,
-        value as StudPuppyPickPosition | null
-      );
+      if (field === "puppyPickPosition") {
+        return normalizeStudOfferTermsAfterChange(
+          previousTerms,
+          field,
+          value as StudPuppyPickPosition | null
+        );
+      }
+
+      return { ...previousTerms, cashAmount: value as number | null };
     });
+  }
+
+  function handleCashAmountChange(rawValue: string) {
+    if (rawValue === "") {
+      setCashInputError(null);
+      updateTerm("cashAmount", null);
+      return;
+    }
+
+    if (!/^\d+$/.test(rawValue)) {
+      setCashInputError("Enter a whole-dollar amount.");
+      return;
+    }
+
+    const amount = Number(rawValue);
+    const validation = validateStudContractCashAmount(amount);
+    if (!Number.isSafeInteger(amount)) {
+      setCashInputError(
+        validation.error?.message ?? "Enter a whole-dollar amount."
+      );
+      return;
+    }
+
+    if (!validation.valid) {
+      setCashInputError(validation.error?.message ?? "Enter a valid stud fee.");
+      updateTerm("cashAmount", amount);
+      return;
+    }
+
+    setCashInputError(null);
+    updateTerm("cashAmount", amount);
   }
 
   function goBack() {
@@ -145,6 +226,11 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
   }
 
   function goNext() {
+    if (currentStep.id === "compensation" && !compensationValidation.valid) {
+      setShowCompensationErrors(true);
+      return;
+    }
+
     setCurrentStepIndex((index) => {
       const nextIndex = Math.min(activeSteps.length - 1, index + 1);
       setFurthestReachedStepIndex((furthest) => Math.max(furthest, nextIndex));
@@ -205,7 +291,105 @@ export default function StudOfferWorksheet({ dogName }: StudOfferWorksheetProps)
           {currentStep.name}
         </h2>
         <p className="theme-copy mt-3">{currentStep.description}</p>
-        {currentStep.id === "review" ? (
+        {currentStep.id === "compensation" ? (
+          <fieldset
+            className="mt-5 grid gap-3"
+            aria-describedby={
+              showCompensationErrors && !compensationValidation.valid
+                ? "compensation-error"
+                : undefined
+            }
+          >
+            <legend className="theme-heading text-lg font-semibold">
+              {STUD_OFFER_WORKSHEET_COPY.compensationLegend}
+            </legend>
+            {COMPENSATION_OPTIONS.map((option) => (
+              <label
+                key={option.value}
+                className="theme-card flex cursor-pointer items-start gap-3 rounded-xl border p-4 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2"
+              >
+                <input
+                  type="radio"
+                  name="compensationType"
+                  value={option.value}
+                  checked={terms.compensationType === option.value}
+                  onChange={() => {
+                    setShowCompensationErrors(false);
+                    setCashInputError(null);
+                    updateTerm("compensationType", option.value);
+                  }}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="theme-heading block text-base font-semibold">
+                    {option.label}
+                  </span>
+                  <span className="theme-copy mt-1 block text-sm">
+                    {option.description}
+                  </span>
+                </span>
+              </label>
+            ))}
+            {showCompensationErrors &&
+            !compensationValidation.valid &&
+            !terms.compensationType ? (
+              <p
+                id="compensation-error"
+                className="theme-status-danger rounded-xl p-3 text-sm"
+                role="alert"
+              >
+                Choose a compensation type before continuing.
+              </p>
+            ) : null}
+
+            {requiresCash(terms.compensationType) ? (
+              <div className="mt-2 max-w-md">
+                <label
+                  htmlFor="stud-contract-cash-amount"
+                  className="theme-heading block text-sm font-semibold"
+                >
+                  {STUD_OFFER_WORKSHEET_COPY.cashLabel}
+                </label>
+                <input
+                  id="stud-contract-cash-amount"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={terms.cashAmount ?? ""}
+                  onChange={(event) => handleCashAmountChange(event.target.value)}
+                  aria-invalid={cashError ? true : undefined}
+                  aria-describedby={
+                    cashError
+                      ? "stud-contract-cash-error"
+                      : "stud-contract-cash-help"
+                  }
+                  className="dog-control mt-2 w-full rounded-xl px-3 py-2 text-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                />
+                <p
+                  id="stud-contract-cash-help"
+                  className="theme-copy mt-2 text-xs"
+                >
+                  {STUD_OFFER_WORKSHEET_COPY.cashHelp}{" "}
+                  {STUD_OFFER_WORKSHEET_COPY.cashMaximum}: {currencyFormatter.format(MAX_STUD_CONTRACT_CASH_AMOUNT)}.
+                </p>
+                {terms.cashAmount !== null && cashValidation.valid ? (
+                  <p className="theme-copy mt-2 text-sm">
+                    Current stud fee: {currencyFormatter.format(terms.cashAmount)}.
+                  </p>
+                ) : null}
+                {cashError ? (
+                  <p
+                    id="stud-contract-cash-error"
+                    className="theme-status-danger mt-2 rounded-xl p-3 text-sm"
+                    role="alert"
+                  >
+                    {cashError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </fieldset>
+        ) : currentStep.id === "review" ? (
           <p className="theme-status-info mt-5 rounded-xl p-4 text-sm font-semibold">
             {STUD_OFFER_WORKSHEET_COPY.publishingLater}
           </p>

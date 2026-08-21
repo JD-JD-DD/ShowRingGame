@@ -94,6 +94,11 @@ export type StudOfferTermsValidationResult = {
   errors: StudOfferTermsValidationError[];
 };
 
+export type StudContractCashAmountValidationResult = {
+  valid: boolean;
+  error: StudOfferTermsValidationError | null;
+};
+
 export type StudOfferTermsChangedField =
   | "compensationType"
   | "puppyPickPosition";
@@ -146,6 +151,60 @@ export function isValidSmallLitterReturnThreshold(
   );
 }
 
+export function validateStudContractCashAmount(
+  value: unknown
+): StudContractCashAmountValidationResult {
+  if (value === null || value === undefined) {
+    return {
+      valid: false,
+      error: {
+        field: "cashAmount",
+        code: "CASH_AMOUNT_REQUIRED",
+        message: "Cash compensation requires a whole-dollar amount of at least $1.",
+      },
+    };
+  }
+
+  if (!Number.isSafeInteger(value) || value < 1) {
+    return {
+      valid: false,
+      error: {
+        field: "cashAmount",
+        code: "INVALID_CASH_AMOUNT",
+        message: "Cash compensation must be a whole-dollar amount of at least $1.",
+      },
+    };
+  }
+
+  if (value > MAX_STUD_CONTRACT_CASH_AMOUNT) {
+    return {
+      valid: false,
+      error: {
+        field: "cashAmount",
+        code: "CASH_AMOUNT_TOO_HIGH",
+        message: "Stud contract cash compensation cannot exceed $1,000,000.",
+      },
+    };
+  }
+
+  return { valid: true, error: null };
+}
+
+export function validateStudOfferCompensationStep(
+  terms: Pick<EditableStudOfferTerms, "compensationType" | "cashAmount">
+): StudOfferTermsValidationResult {
+  const errors: StudOfferTermsValidationError[] = [];
+
+  if (!includesValue(STUD_COMPENSATION_TYPES, terms.compensationType)) {
+    addError(errors, "compensationType", "INVALID_COMPENSATION_TYPE", "Choose a valid compensation type.");
+  } else if (requiresCash(terms.compensationType)) {
+    const cashValidation = validateStudContractCashAmount(terms.cashAmount);
+    if (cashValidation.error) errors.push(cashValidation.error);
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
 export function validateStudOfferTerms(
   terms: EditableStudOfferTerms
 ): StudOfferTermsValidationResult {
@@ -167,15 +226,9 @@ export function validateStudOfferTerms(
   const cashRequired = requiresCash(terms.compensationType);
   const puppyBackRequired = hasPuppyBack(terms.compensationType);
 
-  if (cashRequired && terms.cashAmount === null) {
-    addError(errors, "cashAmount", "CASH_AMOUNT_REQUIRED", "Cash compensation requires a whole-dollar amount of at least $1.");
-  } else if (terms.cashAmount !== null && (!Number.isSafeInteger(terms.cashAmount) || terms.cashAmount < 1)) {
-    addError(errors, "cashAmount", "INVALID_CASH_AMOUNT", "Cash compensation must be a whole-dollar amount of at least $1.");
-  } else if (
-    terms.cashAmount !== null &&
-    terms.cashAmount > MAX_STUD_CONTRACT_CASH_AMOUNT
-  ) {
-    addError(errors, "cashAmount", "CASH_AMOUNT_TOO_HIGH", "Stud contract cash compensation cannot exceed $1,000,000.");
+  if (cashRequired) {
+    const cashValidation = validateStudContractCashAmount(terms.cashAmount);
+    if (cashValidation.error) errors.push(cashValidation.error);
   } else if (!cashRequired && terms.cashAmount !== null) {
     addError(errors, "cashAmount", "CASH_AMOUNT_NOT_ALLOWED", "Cash compensation is not allowed for Puppy Back terms.");
   }
