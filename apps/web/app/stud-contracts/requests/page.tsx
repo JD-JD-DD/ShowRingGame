@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PendingStudRequestActions } from "@/components/stud-contract/PendingStudRequestActions";
 import { redirect } from "next/navigation";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { formatRealDuration } from "@/lib/gameTimeFormat";
@@ -72,7 +73,7 @@ export default async function PendingStudRequestsPage() {
         return <article key={request.id} className="theme-card rounded-2xl p-5">
           <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="theme-heading text-xl font-semibold">{formatDogDisplayName(request.sireDog)} <span className="theme-copy text-sm">· {request.sireDog.breed.name}</span></h2><p className="theme-copy mt-1 text-sm">Request from {request.damKennel.name} for {formatDogDisplayName(request.damDog)}.</p></div><span className="theme-status-info rounded-full px-3 py-1 text-sm font-semibold">Pending</span></div>
           <dl className="theme-copy mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4"><div><dt className="theme-label">Contract</dt><dd className="mt-1">{summary?.compensationSummary}{summary?.puppyTermsSummary ? ` · ${summary.puppyTermsSummary}` : ""}{summary?.restrictionsSummary ? ` · ${summary.restrictionsSummary}` : ""}</dd></div><div><dt className="theme-label">Requested</dt><dd className="mt-1">{formatRequestedAt(request.requestedAt)}</dd></div><div><dt className="theme-label">Time remaining</dt><dd className="mt-1">{remaining > 0 ? `${formatRealDuration(remaining)} remaining` : "Deadline passed"}</dd></div><div><dt className="theme-label">Stud availability</dt><dd className="mt-1">{availability.isEligible ? "Available" : availability.reasonCode === "STUD_RECOVERY" ? `Stud Recovery — ${availability.remainingHours}h remaining` : getBreedingEligibilityMessage(availability) ?? "Currently unavailable"}</dd></div></dl>
-          <div className="mt-4 flex flex-wrap gap-2"><Link href={`/dogs/${request.sireDog.id}`} className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold">View Stud</Link><Link href={`/dogs/${request.damDog.id}`} className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold">View Dam</Link><span className="theme-copy rounded-xl px-3 py-2 text-sm">Approve/Decline available later</span></div>
+          <div className="mt-4 flex flex-wrap gap-2"><Link href={`/dogs/${request.sireDog.id}`} className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold">View Stud</Link><Link href={`/dogs/${request.damDog.id}`} className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold">View Dam</Link><PendingStudRequestActions contractId={request.id} canApprove={remaining > 0 && availability.isEligible} /></div>
         </article>;
       })}
     </div>}

@@ -1219,6 +1219,7 @@ export async function createBreedingAttemptForKennel(args: {
   testDamBrucellosis?: boolean;
   testSireBrucellosis?: boolean;
   automaticStudContract?: boolean;
+  manualApprovedContractId?: string;
 }) {
   const {
     kennelId,
@@ -1301,7 +1302,7 @@ export async function createBreedingAttemptForKennel(args: {
   }
 
   const pendingStudApproval = await db.studContract.findFirst({
-    where: { damDogId: dam.id, status: "PENDING" },
+    where: { damDogId: dam.id, status: "PENDING", ...(args.manualApprovedContractId ? { id: { not: args.manualApprovedContractId } } : {}) },
     select: { id: true },
   });
   if (pendingStudApproval) {
@@ -1349,6 +1350,7 @@ export async function createBreedingAttemptForKennel(args: {
     let studSellerBalanceAfter: number | null = null;
     let requiresBrucellosisNegativeDam = false;
     let automaticOffer: Awaited<ReturnType<typeof tx.studOffer.findFirst>> = null;
+    let manualContract: Awaited<ReturnType<typeof tx.studContract.findFirst>> = null;
 
     if (args.automaticStudContract) {
       await tx.$queryRaw`
@@ -1488,7 +1490,18 @@ export async function createBreedingAttemptForKennel(args: {
       studSellerKennelId = studListing.sellerKennelId;
       requiresBrucellosisNegativeDam =
         studListing.requiresBrucellosisNegativeDam;
-      if (args.automaticStudContract) {
+      if (args.manualApprovedContractId) {
+        await tx.$queryRaw`SELECT "id" FROM "StudContract" WHERE "id" = ${args.manualApprovedContractId} FOR UPDATE`;
+        manualContract = await tx.studContract.findFirst({
+          where: { id: args.manualApprovedContractId, status: "PENDING", sireDogId: sire.id, damDogId: dam.id, sireKennelId: studListing.sellerKennelId, damKennelId: kennelId },
+          include: { healthRequirements: true },
+        });
+        if (!manualContract) throw new Error("This Stud approval request is no longer pending.");
+        if (!manualContract.approvalDeadlineAt || new Date() >= manualContract.approvalDeadlineAt) throw new Error("This Stud approval request deadline has passed.");
+        await assertDamMeetsStudContractRequirements({ client: tx, damDogId: dam.id, currentEpoch, requirements: { brucellosisNegativeRequired: manualContract.brucellosisNegativeRequired, healthRequirements: manualContract.healthRequirements, titleRequirement: manualContract.titleRequirement } });
+        studFeeAmount = manualContract.compensationType === "PUPPY_BACK" ? 0 : manualContract.cashAmount ?? 0;
+        requiresBrucellosisNegativeDam = false;
+      } else if (args.automaticStudContract) {
         automaticOffer = await tx.studOffer.findFirst({
           where: { sireDogId: sire.id, status: "PUBLISHED" },
           include: { healthRequirements: true },
@@ -1733,6 +1746,13 @@ export async function createBreedingAttemptForKennel(args: {
         },
       });
     }
+    if (manualContract) {
+      const accepted = await tx.studContract.updateMany({
+        where: { id: manualContract.id, status: "PENDING" },
+        data: { status: "ACCEPTED", acceptedAt: new Date(), breedingAttemptId: createdAttempt.id },
+      });
+      if (accepted.count !== 1) throw new Error("This Stud approval request is no longer pending.");
+    }
 
     await tx.ledgerTransaction.create({
       data: {
@@ -1866,5 +1886,20 @@ export async function createAutomaticStudContractBreedingForKennel(args: {
     studListingId: args.studListingId,
     currentEpoch: args.currentEpoch,
     automaticStudContract: true,
+  });
+}
+
+export async function approveManualStudContractForKennel(args: {
+  contractId: string;
+  damKennelId: string;
+  sireDogId: string;
+  damDogId: string;
+  studListingId: string;
+  currentEpoch: number;
+}) {
+  return createBreedingAttemptForKennel({
+    kennelId: args.damKennelId, primaryDogId: args.sireDogId, mateDogId: args.damDogId,
+    studListingId: args.studListingId, currentEpoch: args.currentEpoch,
+    manualApprovedContractId: args.contractId,
   });
 }
