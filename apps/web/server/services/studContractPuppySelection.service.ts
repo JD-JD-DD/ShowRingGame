@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
+import { epochToDate } from "@/lib/gameClock";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import type { Prisma } from "@prisma/client";
+import { PUPPY_SALE_MIN_AGE_HOURS } from "@showring/rules";
+import type { Prisma, PrismaClient } from "@prisma/client";
 
 const PUPPY_SELECTION_TURN_MS = 24 * 60 * 60 * 1000;
 
@@ -43,7 +45,7 @@ async function loadSelectablePuppy(args: { client: Prisma.TransactionClient; lit
 }
 
 export async function hasSelectableStudContractPuppy(args: {
-  client: Prisma.TransactionClient;
+  client: Pick<PrismaClient, "dog">;
   litterId: string;
   damFirstPickDogId: string | null;
   puppySex: "MALE" | "FEMALE" | "EITHER" | null;
@@ -58,6 +60,54 @@ export async function hasSelectableStudContractPuppy(args: {
     select: { id: true },
   });
   return puppy !== null;
+}
+
+export async function reconcileSelectedStudContractPuppyDeath(args: {
+  client: typeof db | Prisma.TransactionClient;
+  dogId: string;
+  currentEpoch: number;
+  now?: Date;
+}) {
+  const now = args.now ?? new Date();
+  const selection = await args.client.studContractPuppySelection.findFirst({
+    where: { status: "SELECTED", selectedDogId: args.dogId },
+    select: {
+      id: true,
+      litterId: true,
+      selectedDogId: true,
+      damFirstPickDogId: true,
+      contract: { select: { puppySex: true, sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true } },
+      selectedDog: { select: { birthEpoch: true, lifecycleState: true } },
+    },
+  });
+  if (!selection || !selection.selectedDogId || selection.selectedDog?.lifecycleState !== "DECEASED") return "skipped";
+
+  const windowClosesAtEpoch = selection.selectedDog.birthEpoch + PUPPY_SALE_MIN_AGE_HOURS;
+  const windowOpen = args.currentEpoch < windowClosesAtEpoch;
+  const hasReplacement = windowOpen && await hasSelectableStudContractPuppy({
+    client: args.client,
+    litterId: selection.litterId,
+    damFirstPickDogId: selection.damFirstPickDogId,
+    puppySex: selection.contract.puppySex,
+  });
+  const deadline = new Date(Math.min(now.getTime() + PUPPY_SELECTION_TURN_MS, epochToDate(windowClosesAtEpoch).getTime()));
+  const update = await args.client.studContractPuppySelection.updateMany({
+    where: { id: selection.id, status: "SELECTED", selectedDogId: args.dogId },
+    data: hasReplacement
+      ? { selectedDogId: null, status: "STUD_PICK", currentActor: "STUD_OWNER", turnStartedAt: now, turnDeadlineAt: deadline, completedAt: null }
+      : { status: "UNFULFILLABLE", currentActor: "NONE", turnStartedAt: null, turnDeadlineAt: null, completedAt: now },
+  });
+  if (update.count !== 1) return "skipped";
+
+  if (hasReplacement) {
+    await createKennelNotice({ client: args.client, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_REOPENED:${selection.id}:${args.dogId}`, type: "KENNEL_SERVICE", title: "Puppy Back selection reopened", body: `The puppy selected under the Stud Contract has died. Your Puppy Back selection has reopened with the same sex requirement. The new selection deadline is ${deadline.toLocaleString()}. The game will not select a puppy automatically.`, currentEpoch: args.currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
+    await createKennelNotice({ client: args.client, kennelId: selection.contract.damKennelId, sourceKey: `STUD_PUPPY_SELECTION_REOPENED_DAM_INFO:${selection.id}:${args.dogId}`, type: "KENNEL_SERVICE", title: "Puppy Back selection reopened", body: "The selected contract puppy died. The stud owner's replacement-selection turn has reopened under the existing contract terms.", currentEpoch: args.currentEpoch, linkedDogId: selection.contract.damDogId, linkedLitterId: selection.litterId });
+    return "reopened";
+  }
+  for (const kennelId of [selection.contract.sireKennelId, selection.contract.damKennelId]) {
+    await createKennelNotice({ client: args.client, kennelId, sourceKey: `STUD_PUPPY_SELECTION_UNFULFILLABLE_DEATH:${selection.id}:${args.dogId}:${kennelId}`, type: "KENNEL_SERVICE", title: "Puppy Back cannot be fulfilled", body: "The selected contract puppy died and no qualifying replacement is available. The Puppy Back portion of this contract cannot be fulfilled.", currentEpoch: args.currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
+  }
+  return "unfulfillable";
 }
 
 export async function selectDamProtectedPuppy(args: { kennelId: string; selectionId: string; puppyId: string; currentEpoch: number; now?: Date }) {

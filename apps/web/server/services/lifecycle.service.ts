@@ -6,6 +6,7 @@ import {
   getEmergencyVetCareNoticeSourceKey,
 } from "@/server/services/emergencyVetCare.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
+import { reconcileSelectedStudContractPuppyDeath } from "@/server/services/studContractPuppySelection.service";
 import {
   ACCIDENT_ILLNESS_LIFETIME_DEATH_RATE,
   AGE_DEATH_START_HOURS,
@@ -354,6 +355,12 @@ export async function markDogDeceased(args: {
   if (update.count === 0) {
     return false;
   }
+
+  await reconcileSelectedStudContractPuppyDeath({
+    client,
+    dogId,
+    currentEpoch: deathEpoch,
+  });
 
   await client.dogListing.updateMany({
     where: {

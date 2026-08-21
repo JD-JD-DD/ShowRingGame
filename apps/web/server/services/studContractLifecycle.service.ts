@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { epochToDate } from "@/lib/gameClock";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { getProjectedDogDeath } from "@/server/services/lifecycle.service";
-import { hasSelectableStudContractPuppy } from "@/server/services/studContractPuppySelection.service";
+import { hasSelectableStudContractPuppy, reconcileSelectedStudContractPuppyDeath } from "@/server/services/studContractPuppySelection.service";
 import { NEONATAL_PUPPY_DEATH_WINDOW_HOURS } from "@showring/rules";
 
 const DEFAULT_BATCH_LIMIT = 50;
@@ -274,6 +274,42 @@ export async function processExpiredStudContractPuppySelectionTurns(args?: {
     }
   }
   return { checkedCount: candidates.length, damForfeitedCount, studForfeitedCount, skippedCount, failedCount };
+}
+
+export async function reconcileSelectedStudContractPuppyDeaths(args?: {
+  currentEpoch?: number;
+  now?: Date;
+  limit?: number;
+}) {
+  const currentEpoch = args?.currentEpoch ?? Math.floor(Date.now() / 1000);
+  const now = args?.now ?? new Date();
+  const limit = Math.max(1, Math.min(args?.limit ?? DEFAULT_BATCH_LIMIT, 100));
+  const candidates = await db.studContractPuppySelection.findMany({
+    where: { status: "SELECTED", selectedDogId: { not: null }, selectedDog: { lifecycleState: "DECEASED" } },
+    orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+    take: limit,
+    select: { id: true, selectedDogId: true },
+  });
+  let reopenedCount = 0;
+  let unfulfillableCount = 0;
+  let skippedCount = 0;
+  let failedCount = 0;
+  for (const candidate of candidates) {
+    try {
+      if (!candidate.selectedDogId) {
+        skippedCount += 1;
+        continue;
+      }
+      const result = await reconcileSelectedStudContractPuppyDeath({ client: db, dogId: candidate.selectedDogId, currentEpoch, now });
+      if (result === "reopened") reopenedCount += 1;
+      else if (result === "unfulfillable") unfulfillableCount += 1;
+      else skippedCount += 1;
+    } catch (error) {
+      failedCount += 1;
+      console.error("Stud Contract selected puppy death reconciliation failed", { selectionId: candidate.id, error });
+    }
+  }
+  return { checkedCount: candidates.length, reopenedCount, unfulfillableCount, skippedCount, failedCount };
 }
 
 export async function processExpiredStudContractRequests(args?: {
