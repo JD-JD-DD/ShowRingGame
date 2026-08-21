@@ -191,6 +191,22 @@ enum StudContractStatus {
   EXPIRED
 }
 
+enum StudContractPuppySelectionStatus {
+  WAITING
+  DAM_FIRST_PICK
+  STUD_PICK
+  SELECTED
+  FORFEITED
+  UNFULFILLABLE
+  COMPLETED
+}
+
+enum StudContractPuppySelectionActor {
+  NONE
+  DAM_OWNER
+  STUD_OWNER
+}
+
 enum BulletinThreadSource {
   PLAYER
   SYSTEM
@@ -723,6 +739,8 @@ model Dog {
   studOffersAsSire           StudOffer[]           @relation("StudOfferSire")
   studContractsAsSire        StudContract[]        @relation("StudContractSire")
   studContractsAsDam         StudContract[]        @relation("StudContractDam")
+  studContractSelectedPuppySelection StudContractPuppySelection? @relation("StudContractPuppySelectionSelectedDog")
+  studContractDamFirstPickSelection StudContractPuppySelection? @relation("StudContractPuppySelectionDamFirstPickDog")
   titleProgress              DogTitleProgress?
   healthTests                HealthTestRecord[]
   healthConditionTruths      DogHealthConditionTruth[]
@@ -900,6 +918,7 @@ model Litter {
   bredByKennel    Kennel?          @relation("LitterBredByKennel", fields: [bredByKennelId], references: [id])
   breedingAttempt BreedingAttempt? @relation("BreedingAttemptLitter")
   studContract    StudContract?    @relation("StudContractLitter")
+  studContractPuppySelection StudContractPuppySelection? @relation("StudContractPuppySelectionLitter")
   reproductiveEmergency ReproductiveEmergencyEvent?
   sourceKennelRun KennelRun?
 
@@ -1586,6 +1605,7 @@ model StudContract {
   damKennel          Kennel                          @relation("StudContractDamKennel", fields: [damKennelId], references: [id], onDelete: Restrict)
   breedingAttempt    BreedingAttempt?                @relation("StudContractBreedingAttempt", fields: [breedingAttemptId], references: [id], onDelete: Restrict)
   litter             Litter?                         @relation("StudContractLitter", fields: [litterId], references: [id], onDelete: Restrict)
+  puppySelection     StudContractPuppySelection?     @relation("StudContractPuppySelectionContract")
   healthRequirements StudContractHealthRequirement[]
 
   @@index([sourceOfferId])
@@ -1594,6 +1614,28 @@ model StudContract {
   @@index([sireKennelId])
   @@index([damKennelId])
   @@index([status])
+}
+
+model StudContractPuppySelection {
+  id                       String                          @id @default(cuid())
+  contractId               String                          @unique
+  litterId                 String                          @unique
+  status                   StudContractPuppySelectionStatus @default(WAITING)
+  currentActor             StudContractPuppySelectionActor  @default(NONE)
+  turnStartedAt            DateTime?
+  turnDeadlineAt           DateTime?
+  damFirstPickDogId        String?                         @unique
+  selectedDogId            String?                         @unique
+  damFirstPickForfeitedAt  DateTime?
+  studSelectionForfeitedAt DateTime?
+  completedAt              DateTime?
+  createdAt                DateTime                        @default(now())
+  updatedAt                DateTime                        @updatedAt
+
+  contract         StudContract @relation("StudContractPuppySelectionContract", fields: [contractId], references: [id], onDelete: Restrict)
+  litter           Litter       @relation("StudContractPuppySelectionLitter", fields: [litterId], references: [id], onDelete: Restrict)
+  damFirstPickDog  Dog?         @relation("StudContractPuppySelectionDamFirstPickDog", fields: [damFirstPickDogId], references: [id], onDelete: Restrict)
+  selectedDog      Dog?         @relation("StudContractPuppySelectionSelectedDog", fields: [selectedDogId], references: [id], onDelete: Restrict)
 }
 
 model StudContractHealthRequirement {
