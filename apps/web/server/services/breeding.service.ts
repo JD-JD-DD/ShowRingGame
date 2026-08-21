@@ -1349,7 +1349,6 @@ export async function createBreedingAttemptForKennel(args: {
     let studSellerKennelId: string | null = null;
     let studSellerBalanceAfter: number | null = null;
     let requiresBrucellosisNegativeDam = false;
-    let manualContract: Awaited<ReturnType<typeof tx.studContract.findFirst>> = null;
 
     if (args.automaticStudContract) {
       await tx.$queryRaw`
@@ -1446,6 +1445,15 @@ export async function createBreedingAttemptForKennel(args: {
           include: { healthRequirements: true },
         })
       : null;
+    if (args.manualApprovedContractId) {
+      await tx.$queryRaw`SELECT "id" FROM "StudContract" WHERE "id" = ${args.manualApprovedContractId} FOR UPDATE`;
+    }
+    const manualContract = args.manualApprovedContractId
+      ? await tx.studContract.findFirst({
+          where: { id: args.manualApprovedContractId, status: "PENDING" },
+          include: { healthRequirements: true },
+        })
+      : null;
 
     if (usesPublicStud) {
       const studListing = await tx.dogListing.findFirst({
@@ -1497,12 +1505,7 @@ export async function createBreedingAttemptForKennel(args: {
       requiresBrucellosisNegativeDam =
         studListing.requiresBrucellosisNegativeDam;
       if (args.manualApprovedContractId) {
-        await tx.$queryRaw`SELECT "id" FROM "StudContract" WHERE "id" = ${args.manualApprovedContractId} FOR UPDATE`;
-        manualContract = await tx.studContract.findFirst({
-          where: { id: args.manualApprovedContractId, status: "PENDING", sireDogId: sire.id, damDogId: dam.id, sireKennelId: studListing.sellerKennelId, damKennelId: kennelId },
-          include: { healthRequirements: true },
-        });
-        if (!manualContract) throw new Error("This Stud approval request is no longer pending.");
+        if (!manualContract || manualContract.sireDogId !== sire.id || manualContract.damDogId !== dam.id || manualContract.sireKennelId !== studListing.sellerKennelId || manualContract.damKennelId !== kennelId) throw new Error("This Stud approval request is no longer pending.");
         if (!manualContract.approvalDeadlineAt || new Date() >= manualContract.approvalDeadlineAt) throw new Error("This Stud approval request deadline has passed.");
         await assertDamMeetsStudContractRequirements({ client: tx, damDogId: dam.id, currentEpoch, requirements: { brucellosisNegativeRequired: manualContract.brucellosisNegativeRequired, healthRequirements: manualContract.healthRequirements, titleRequirement: manualContract.titleRequirement } });
         studFeeAmount = manualContract.compensationType === "PUPPY_BACK" ? 0 : manualContract.cashAmount ?? 0;
