@@ -16,6 +16,7 @@ import {
   createReproductiveEmergencyNotice,
 } from "@/server/services/kennelNotice.service";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
+import { assertDamMeetsStudContractRequirements } from "@/server/services/studContractEligibility.service";
 import { getBreedingEligibilityMessage, getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
@@ -1217,6 +1218,7 @@ export async function createBreedingAttemptForKennel(args: {
   currentEpoch: number;
   testDamBrucellosis?: boolean;
   testSireBrucellosis?: boolean;
+  automaticStudContract?: boolean;
 }) {
   const {
     kennelId,
@@ -1338,6 +1340,50 @@ export async function createBreedingAttemptForKennel(args: {
     let studSellerKennelId: string | null = null;
     let studSellerBalanceAfter: number | null = null;
     let requiresBrucellosisNegativeDam = false;
+    let automaticOffer: Awaited<ReturnType<typeof tx.studOffer.findFirst>> = null;
+
+    if (args.automaticStudContract) {
+      await tx.$queryRaw`
+        SELECT "id"
+        FROM "Dog"
+        WHERE "id" = ${dam.id}
+        FOR UPDATE
+      `;
+      const freshDamConflict = await tx.breedingAttempt.findFirst({
+        where: {
+          damId: dam.id,
+          status: {
+            in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"],
+          },
+        },
+        select: { id: true },
+      });
+      if (freshDamConflict) {
+        throw new Error("That dam already has an active breeding in progress.");
+      }
+      const freshDam = await tx.dog.findUnique({
+        where: { id: dam.id },
+        select: {
+          ownerKennelId: true,
+          breedCode2: true,
+          sex: true,
+          lifecycleState: true,
+          birthEpoch: true,
+          isBreedingActive: true,
+        },
+      });
+      if (
+        !freshDam ||
+        freshDam.ownerKennelId !== kennelId ||
+        freshDam.breedCode2 !== sire.breedCode2 ||
+        freshDam.sex !== "F" ||
+        freshDam.lifecycleState !== "ALIVE" ||
+        !freshDam.isBreedingActive ||
+        !isBreedAgeEligible({ ...dam, ...freshDam }, currentEpoch)
+      ) {
+        throw new Error("This dam is no longer eligible to breed.");
+      }
+    }
 
     await tx.$queryRaw`
       SELECT "id"
@@ -1434,10 +1480,42 @@ export async function createBreedingAttemptForKennel(args: {
       studSellerKennelId = studListing.sellerKennelId;
       requiresBrucellosisNegativeDam =
         studListing.requiresBrucellosisNegativeDam;
-      assertDamMeetsStudListingRequirements({
-        dam,
-        listing: studListing,
-      });
+      if (args.automaticStudContract) {
+        automaticOffer = await tx.studOffer.findFirst({
+          where: { sireDogId: sire.id, status: "PUBLISHED" },
+          include: { healthRequirements: true },
+        });
+        if (!automaticOffer) {
+          throw new Error("This Stud Offer is no longer published.");
+        }
+        if (automaticOffer.ownerKennelId !== studListing.sellerKennelId) {
+          throw new Error("This Stud Offer is no longer available.");
+        }
+        if (automaticOffer.approvalMode !== "AUTOMATIC") {
+          throw new Error("This Stud Offer requires Manual Approval.");
+        }
+        await assertDamMeetsStudContractRequirements({
+          client: tx,
+          damDogId: dam.id,
+          currentEpoch,
+          requirements: {
+            brucellosisNegativeRequired:
+              automaticOffer.brucellosisNegativeRequired,
+            healthRequirements: automaticOffer.healthRequirements,
+            titleRequirement: automaticOffer.titleRequirement,
+          },
+        });
+        studFeeAmount =
+          automaticOffer.compensationType === "PUPPY_BACK"
+            ? 0
+            : automaticOffer.cashAmount ?? 0;
+        requiresBrucellosisNegativeDam = false;
+      } else {
+        assertDamMeetsStudListingRequirements({
+          dam,
+          listing: studListing,
+        });
+      }
     }
 
     const publicStudRequiresDamNegative =
@@ -1614,6 +1692,40 @@ export async function createBreedingAttemptForKennel(args: {
       },
     });
 
+    if (automaticOffer) {
+      await tx.studContract.create({
+        data: {
+          sourceOfferId: automaticOffer.id,
+          sourceOfferVersion: automaticOffer.version,
+          sireDogId: sire.id,
+          damDogId: dam.id,
+          sireKennelId: automaticOffer.ownerKennelId,
+          damKennelId: kennelId,
+          status: "ACCEPTED",
+          compensationType: automaticOffer.compensationType,
+          cashAmount: automaticOffer.cashAmount,
+          puppyPickPosition: automaticOffer.puppyPickPosition,
+          puppySex: automaticOffer.puppySex,
+          minimumLitterSize: automaticOffer.minimumLitterSize,
+          noLitterReturnService: automaticOffer.noLitterReturnService,
+          smallLitterReturnThreshold: automaticOffer.smallLitterReturnThreshold,
+          brucellosisNegativeRequired:
+            automaticOffer.brucellosisNegativeRequired,
+          titleRequirement: automaticOffer.titleRequirement,
+          approvalMode: automaticOffer.approvalMode,
+          requestedAt: new Date(),
+          acceptedAt: new Date(),
+          breedingAttemptId: createdAttempt.id,
+          healthRequirements: {
+            create: automaticOffer.healthRequirements.map((requirement) => ({
+              healthTestCode: requirement.healthTestCode,
+              requirementLevel: requirement.requirementLevel,
+            })),
+          },
+        },
+      });
+    }
+
     await tx.ledgerTransaction.create({
       data: {
         kennelId: kennel.id,
@@ -1730,4 +1842,21 @@ export async function createBreedingAttemptForKennel(args: {
     hoursUntilPregCheck: Math.max(0, attempt.attempt.pregCheckEpoch! - currentEpoch),
     hoursUntilDue: Math.max(0, attempt.attempt.dueEpoch! - currentEpoch),
   };
+}
+
+export async function createAutomaticStudContractBreedingForKennel(args: {
+  kennelId: string;
+  sireDogId: string;
+  damDogId: string;
+  studListingId: string;
+  currentEpoch: number;
+}) {
+  return createBreedingAttemptForKennel({
+    kennelId: args.kennelId,
+    primaryDogId: args.sireDogId,
+    mateDogId: args.damDogId,
+    studListingId: args.studListingId,
+    currentEpoch: args.currentEpoch,
+    automaticStudContract: true,
+  });
 }

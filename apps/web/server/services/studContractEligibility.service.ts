@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import {
   evaluateDamAgainstStudContractRequirements,
   type StudContractRequirementSnapshot,
@@ -9,9 +10,11 @@ export async function evaluateCurrentDamAgainstStudContractRequirements(args: {
   damDogId: string;
   currentEpoch: number;
   requirements: StudContractRequirementSnapshot;
+  client?: Prisma.TransactionClient;
 }) {
+  const client = args.client ?? db;
   const [dam, validNegative] = await Promise.all([
-    db.dog.findUnique({
+    client.dog.findUnique({
       where: { id: args.damDogId },
       select: {
         visibleTitlePrefix: true,
@@ -28,7 +31,7 @@ export async function evaluateCurrentDamAgainstStudContractRequirements(args: {
         },
       },
     }),
-    getValidNegativeBrucellosisTest(db, {
+    getValidNegativeBrucellosisTest(client, {
       dogId: args.damDogId,
       currentEpoch: args.currentEpoch,
     }),
@@ -52,6 +55,7 @@ export async function assertDamMeetsStudContractRequirements(args: {
   damDogId: string;
   currentEpoch: number;
   requirements: StudContractRequirementSnapshot;
+  client?: Prisma.TransactionClient;
 }) {
   const result = await evaluateCurrentDamAgainstStudContractRequirements(args);
   if (!result.eligible) {
