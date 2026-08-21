@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentEpoch } from "@/lib/gameClock";
-import { processExpiredStudContractRequests } from "@/server/services/studContractLifecycle.service";
+import { processExpiredStudContractRequests, processStudContractLitterQualifications } from "@/server/services/studContractLifecycle.service";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +10,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorized." }, { status: 401 });
   }
   try {
-    const summary = await processExpiredStudContractRequests({ currentEpoch: getCurrentEpoch() });
+    const currentEpoch = getCurrentEpoch();
+    const [summary, qualifications] = await Promise.all([processExpiredStudContractRequests({ currentEpoch }), processStudContractLitterQualifications({ currentEpoch })]);
     console.info("process-stud-contract-lifecycle cron summary", summary);
-    return NextResponse.json({ ok: true, ...summary });
+    return NextResponse.json({ ok: true, ...summary, qualifications });
   } catch (error) {
     console.error("GET /api/cron/process-stud-contract-lifecycle failed", { error });
     return NextResponse.json({ ok: false, error: "Stud Contract lifecycle cron failed." }, { status: 500 });

@@ -912,6 +912,15 @@ async function resolveWhelpingAttempt(args: {
       breedingAttemptId: fresh.id,
     });
 
+    await tx.studContract.updateMany({
+      where: {
+        breedingAttemptId: fresh.id,
+        status: "ACCEPTED",
+        litterId: null,
+      },
+      data: { litterId: persistedLitter.id },
+    });
+
     await tx.breedingAttempt.update({
       where: { id: fresh.id },
       data: {
