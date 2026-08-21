@@ -145,6 +145,52 @@ enum DogListingStatus {
   CANCELLED
 }
 
+enum StudCompensationType {
+  CASH
+  PUPPY_BACK
+  CASH_AND_PUPPY_BACK
+}
+
+enum StudPuppyPickPosition {
+  FIRST
+  SECOND
+}
+
+enum StudPuppySexRequirement {
+  EITHER
+  MALE
+  FEMALE
+}
+
+enum StudApprovalMode {
+  AUTOMATIC
+  MANUAL
+}
+
+enum StudHealthRequirementLevel {
+  NONE
+  GREEN_OR_YELLOW
+  GREEN_ONLY
+}
+
+enum StudTitleRequirement {
+  NONE
+  CH_OR_HIGHER
+  GCH
+}
+
+enum StudOfferStatus {
+  PUBLISHED
+  RETIRED
+}
+
+enum StudContractStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
 enum BulletinThreadSource {
   PLAYER
   SYSTEM
@@ -422,6 +468,9 @@ model Kennel {
   counterpartyLedger       LedgerTransaction[]     @relation("CounterpartyKennelLedger")
   dogListings              DogListing[]            @relation("SellerKennelListings")
   purchasedListings        DogListing[]            @relation("BuyerKennelListings")
+  ownedStudOffers          StudOffer[]             @relation("StudOfferOwnerKennel")
+  sireStudContracts        StudContract[]          @relation("StudContractSireKennel")
+  damStudContracts         StudContract[]          @relation("StudContractDamKennel")
   showWeekendPlans         KennelShowWeekendPlan[]
   bulletinThreads          BulletinThread[]
   bulletinPosts            BulletinPost[]
@@ -671,6 +720,9 @@ model Dog {
   yearlyPrestigeStats        DogYearlyPrestigeStat[]
   ledgerTransactions         LedgerTransaction[]
   listings                   DogListing[]
+  studOffersAsSire           StudOffer[]           @relation("StudOfferSire")
+  studContractsAsSire        StudContract[]        @relation("StudContractSire")
+  studContractsAsDam         StudContract[]        @relation("StudContractDam")
   titleProgress              DogTitleProgress?
   healthTests                HealthTestRecord[]
   healthConditionTruths      DogHealthConditionTruth[]
@@ -822,6 +874,7 @@ model BreedingAttempt {
   litter                 Litter?                       @relation("BreedingAttemptLitter", fields: [litterId], references: [id])
   infectiousDiseaseTests InfectiousDiseaseTestRecord[]
   reproductiveEmergency  ReproductiveEmergencyEvent?
+  studContract           StudContract? @relation("StudContractBreedingAttempt")
 
   @@index([sireId])
   @@index([damId])
@@ -1448,6 +1501,104 @@ model DogListing {
   @@index([buyerKennelId])
   @@index([status])
   @@index([sellerType])
+}
+
+model StudOffer {
+  id                          String               @id @default(cuid())
+  sireDogId                   String
+  ownerKennelId               String
+  status                      StudOfferStatus
+  version                     Int
+  compensationType            StudCompensationType
+  cashAmount                  Int?
+  puppyPickPosition           StudPuppyPickPosition?
+  puppySex                    StudPuppySexRequirement?
+  minimumLitterSize           Int?
+  noLitterReturnService       Boolean              @default(false)
+  smallLitterReturnThreshold  Int?
+  brucellosisNegativeRequired Boolean              @default(false)
+  titleRequirement            StudTitleRequirement @default(NONE)
+  approvalMode                StudApprovalMode
+  publishedAt                 DateTime
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+
+  sireDog            Dog                         @relation("StudOfferSire", fields: [sireDogId], references: [id], onDelete: Restrict)
+  ownerKennel        Kennel                      @relation("StudOfferOwnerKennel", fields: [ownerKennelId], references: [id], onDelete: Restrict)
+  healthRequirements StudOfferHealthRequirement[]
+  sourceContracts    StudContract[]
+
+  @@unique([sireDogId, version])
+  @@index([sireDogId, status])
+  @@index([ownerKennelId])
+}
+
+model StudOfferHealthRequirement {
+  id               String                     @id @default(cuid())
+  offerId          String
+  healthTestCode   String
+  requirementLevel StudHealthRequirementLevel
+
+  offer StudOffer @relation(fields: [offerId], references: [id], onDelete: Restrict)
+
+  @@unique([offerId, healthTestCode])
+  @@index([healthTestCode])
+}
+
+model StudContract {
+  id                          String               @id @default(cuid())
+  sourceOfferId               String
+  sourceOfferVersion          Int
+  sireDogId                   String
+  damDogId                    String
+  sireKennelId                String
+  damKennelId                 String
+  status                      StudContractStatus
+  compensationType            StudCompensationType
+  cashAmount                  Int?
+  puppyPickPosition           StudPuppyPickPosition?
+  puppySex                    StudPuppySexRequirement?
+  minimumLitterSize           Int?
+  noLitterReturnService       Boolean
+  smallLitterReturnThreshold  Int?
+  brucellosisNegativeRequired Boolean
+  titleRequirement            StudTitleRequirement
+  approvalMode                StudApprovalMode
+  requestedAt                 DateTime
+  approvalDeadlineAt          DateTime?
+  acceptedAt                  DateTime?
+  declinedAt                  DateTime?
+  expiredAt                   DateTime?
+  breedingAttemptId           String?              @unique
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+
+  sourceOffer        StudOffer                       @relation(fields: [sourceOfferId], references: [id], onDelete: Restrict)
+  sireDog            Dog                             @relation("StudContractSire", fields: [sireDogId], references: [id], onDelete: Restrict)
+  damDog             Dog                             @relation("StudContractDam", fields: [damDogId], references: [id], onDelete: Restrict)
+  sireKennel         Kennel                          @relation("StudContractSireKennel", fields: [sireKennelId], references: [id], onDelete: Restrict)
+  damKennel          Kennel                          @relation("StudContractDamKennel", fields: [damKennelId], references: [id], onDelete: Restrict)
+  breedingAttempt    BreedingAttempt?                @relation("StudContractBreedingAttempt", fields: [breedingAttemptId], references: [id], onDelete: Restrict)
+  healthRequirements StudContractHealthRequirement[]
+
+  @@index([sourceOfferId])
+  @@index([sireDogId])
+  @@index([damDogId])
+  @@index([sireKennelId])
+  @@index([damKennelId])
+  @@index([status])
+}
+
+model StudContractHealthRequirement {
+  id               String                     @id @default(cuid())
+  contractId       String
+  healthTestCode   String
+  requirementLevel StudHealthRequirementLevel
+
+  contract StudContract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+
+  @@unique([contractId, healthTestCode])
+  @@index([healthTestCode])
 }
 
 model DogInfectiousDiseaseStatus {
