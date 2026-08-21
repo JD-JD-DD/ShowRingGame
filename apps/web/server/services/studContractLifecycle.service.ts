@@ -121,14 +121,15 @@ export async function openQualifiedStudContractPuppySelections(args?: {
   let failedCount = 0;
   for (const contract of candidates) {
     try {
-      if (!contract.litterId || !contract.puppyPickPosition) continue;
+      const litterId = contract.litterId;
+      if (!litterId || !contract.puppyPickPosition) continue;
       const state = contract.puppyPickPosition === "FIRST" ? "STUD_PICK" : "DAM_FIRST_PICK";
       const currentActor = contract.puppyPickPosition === "FIRST" ? "STUD_OWNER" : "DAM_OWNER";
       const deadline = new Date(now.getTime() + PUPPY_SELECTION_TURN_MS);
       const opened = await db.$transaction(async (tx) => {
         const selection = await tx.studContractPuppySelection.upsert({
           where: { contractId: contract.id },
-          create: { contractId: contract.id, litterId: contract.litterId },
+          create: { contractId: contract.id, litterId },
           update: {},
           select: { id: true },
         });
