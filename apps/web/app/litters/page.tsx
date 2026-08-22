@@ -94,7 +94,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
       turnDeadlineAt: true,
       damFirstPickDogId: true,
       damFirstPickForfeitedAt: true,
-      litter: { select: { serial7: true, bornEpoch: true, puppies: { where: { lifecycleState: "ALIVE" }, orderBy: { litterOrder: "asc" }, select: { id: true, callName: true, registeredName: true, regNumber: true, sex: true, litterOrder: true } } } },
+      litter: { select: { id: true, serial7: true, bornEpoch: true, puppies: { where: { lifecycleState: "ALIVE" }, orderBy: { litterOrder: "asc" }, select: { id: true, callName: true, registeredName: true, regNumber: true, sex: true, litterOrder: true } } } },
       selectedDog: { select: { id: true, callName: true, registeredName: true, regNumber: true } },
       contract: { select: { puppyPickPosition: true, puppySex: true, sireKennelId: true, damKennelId: true } },
     },
@@ -243,7 +243,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
                     : statusLabel(selection.status);
                 const canAct = isActive && !deadlinePassed && ((selection.currentActor === "DAM_OWNER" && !isStudOwner) || (selection.currentActor === "STUD_OWNER" && isStudOwner));
                 return (
-                  <article key={selection.id} className="theme-panel rounded-2xl p-5">
+                  <article id={`stud-contract-selection-${selection.litter.id}`} key={selection.id} className="theme-panel rounded-2xl p-5">
                     <div className="theme-label text-xs uppercase tracking-wide">{title}</div>
                     <h3 className="theme-heading mt-2 text-lg font-semibold">Litter {selection.litter.serial7}</h3>
                     <p className="theme-copy mt-2 text-sm">

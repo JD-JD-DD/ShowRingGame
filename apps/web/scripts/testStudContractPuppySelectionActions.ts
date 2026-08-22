@@ -10,6 +10,8 @@ for (const fragment of ["selectDamProtectedPuppy", "selectStudContractPuppy", 's
 assert.ok(route.includes("getSessionUserId"));
 assert.ok(route.includes("selectedDogId") === false);
 assert.ok(page.includes("StudContractPuppySelectionActions"));
+assert.ok(page.includes("stud-contract-selection-${selection.litter.id}"));
+assert.ok(page.includes("litter: { select: { id: true"));
 assert.ok(actions.includes("Pick Puppy"));
 assert.ok(actions.includes("submittingRef"));
 assert.ok(actions.includes("router.refresh()"));

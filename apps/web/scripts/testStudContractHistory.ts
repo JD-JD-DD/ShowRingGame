@@ -50,6 +50,7 @@ for (const fragment of [
   'actions.push("PUPPY_SELECTION")',
   'actions.push("RETURN_SERVICE")',
   "actions, manualApproval",
+  "litterId: true",
 ]) assert.ok(service.includes(fragment), fragment);
 assert.ok(list.includes("StudContractHistoryClient"));
 assert.ok(detail.includes("getStudContractHistoryDetail"));
@@ -67,6 +68,8 @@ assert.ok(client.includes("No contracts match these filters"));
 assert.ok(client.includes("PendingStudRequestActions"));
 assert.ok(client.includes('item.actions.includes("MANUAL_APPROVAL")'));
 assert.ok(client.includes("item.actions.length === 0"));
+assert.ok(client.includes('item.actions.includes("PUPPY_SELECTION")'));
+assert.ok(client.includes("stud-contract-selection-${item.puppySelection.litterId}"));
 assert.equal(client.includes("Attempt Return Service"), false);
 assert.ok(route.includes("getSessionUserId"));
 assert.ok(route.includes("parseStudContractHistoryFilters"));
