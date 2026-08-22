@@ -43,6 +43,19 @@ export async function openInitialStudContractPuppySelection(args: {
     where: { id: selection.id, status: "WAITING" },
     data: { status: turn.status, currentActor: turn.currentActor, turnStartedAt: args.turnStartedAt, turnDeadlineAt: turn.turnDeadlineAt },
   });
+  if (update.count === 1) {
+    const contract = await args.client.studContract.findUnique({
+      where: { id: args.contractId },
+      select: { sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true },
+    });
+    if (contract && turn.status === "STUD_PICK") {
+      await createKennelNotice({ client: args.client, kennelId: contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:STUD_PICK`, type: "KENNEL_SERVICE", title: "First Pick puppy selection is open", body: `Your First Pick puppy selection is open. Select a qualifying puppy by ${turn.turnDeadlineAt.toLocaleString()}. The game will not select a puppy automatically.`, currentEpoch: args.bornEpoch, linkedDogId: contract.sireDogId, linkedLitterId: args.litterId });
+    }
+    if (contract && turn.status === "DAM_FIRST_PICK") {
+      await createKennelNotice({ client: args.client, kennelId: contract.damKennelId, sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:DAM_FIRST_PICK`, type: "KENNEL_SERVICE", title: "Protected first puppy selection is open", body: `Your protected first pick is open and is not restricted by the stud owner's puppy-sex requirement. Select by ${turn.turnDeadlineAt.toLocaleString()}. The game will not select a puppy automatically.`, currentEpoch: args.bornEpoch, linkedDogId: contract.damDogId, linkedLitterId: args.litterId });
+      await createKennelNotice({ client: args.client, kennelId: contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:SECOND_PICK_INFO`, type: "KENNEL_SERVICE", title: "Second Pick puppy selection has begun", body: `The dam owner currently has the protected first pick. Your turn becomes available when that resolves; your fixed ordinary deadline is ${turn.secondPickStudDeadlineAt.toLocaleString()}.`, currentEpoch: args.bornEpoch, linkedDogId: contract.sireDogId, linkedLitterId: args.litterId });
+    }
+  }
   return { selectionId: selection.id, opened: update.count === 1, ...turn };
 }
 
