@@ -32,7 +32,14 @@ export async function createManualStudContractRequest(args: {
       tx.dogListing.findFirst({
         where: { id: args.studListingId, ...activePublicStudListingWhere({ dogId: args.sireDogId }) },
         select: {
+          id: true,
           sellerKennelId: true,
+          askingPrice: true,
+          requiresBrucellosisNegativeDam: true,
+          requiresDamHealthTestsCompleted: true,
+          requiresDamHealthAllGreen: true,
+          requiresDamHealthGreenOrYellow: true,
+          requiresDamChampionTitle: true,
           dog: { select: { id: true, ownerKennelId: true, breedCode2: true, sex: true, lifecycleState: true, isBreedingActive: true } },
         },
       }),
