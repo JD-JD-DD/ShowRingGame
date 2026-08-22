@@ -2398,9 +2398,9 @@ export default function BreedPageClient({
                           pedigree={pedigree}
                           shortlisted={shortlistedSireIds.includes(dog.id)}
                           contractHref={
-                            !dog.isOwnedByCurrentKennel &&
-                            dog.sex === "M" &&
-                            publicStudContractHref(dog, selectedDam.id, "plan-a-litter")
+                            !dog.isOwnedByCurrentKennel && dog.sex === "M"
+                              ? publicStudContractHref(dog, selectedDam.id, "plan-a-litter")
+                              : null
                           }
                           onSelect={() => {
                             setSuccessMessage("");
