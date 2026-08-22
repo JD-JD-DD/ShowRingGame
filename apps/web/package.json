@@ -76,6 +76,7 @@
     "snapshot:breed-genetic-background": "tsx scripts/createBreedGeneticBackgroundSnapshots.ts",
     "reset:kennel-runs-to-uncategorized": "tsx scripts/resetKennelRunsToUncategorized.ts",
     "cleanup:inactive-breed-foundation-listings": "tsx scripts/cleanupInactiveBreedFoundationListings.ts",
+    "cutover:deactivate-legacy-player-stud": "tsx scripts/deactivateLegacyPlayerStudListings.ts",
     "report:duplicate-breed-migration": "tsx scripts/reportDuplicateBreedMigration.ts",
     "migrate:duplicate-breed-codes": "tsx scripts/migrateDuplicateBreedCodes.ts",
     "verify:duplicate-breed-migration": "tsx scripts/verifyDuplicateBreedMigration.ts",
