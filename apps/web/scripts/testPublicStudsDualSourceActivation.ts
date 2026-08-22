@@ -30,8 +30,9 @@ assert.ok(
   "legacy contract routing uses discriminated source narrowing"
 );
 assert.ok(
-  page.includes("Stud Contract action coming soon"),
-  "StudOffer cards avoid a broken legacy listing action before dam-route activation"
+  page.includes("Review Stud Contract") &&
+    page.includes("`/stud-contract?sireDogId=${dog.id}&source=public-stud`"),
+  "StudOffer cards open the contract route by sire identity without a listing ID"
 );
 assert.equal(
   page.includes("getCurrentPublishedStudOffersForSires"),

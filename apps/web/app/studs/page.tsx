@@ -704,12 +704,12 @@ export default async function StudsPage({ searchParams }: PageProps) {
                         </div>
                       ) : null}
                       {publicStud.source === "STUD_OFFER" ? (
-                        <span
-                          aria-disabled="true"
-                          className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
+                        <Link
+                          href={`/stud-contract?sireDogId=${dog.id}&source=public-stud`}
+                          className="theme-primary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
                         >
-                          Stud Contract action coming soon
-                        </span>
+                          Review Stud Contract
+                        </Link>
                       ) : !dog.isBreedingActive ? (
                         <span
                           aria-disabled="true"
@@ -744,14 +744,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                         >
                           Contract Terms
                         </Link>
-                      ) : (
-                        <span
-                          aria-disabled="true"
-                          className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
-                        >
-                          Contract Terms shown above
-                        </span>
-                      )}
+                      ) : null}
 
                       <Link
                         href={`/dogs/${dog.id}`}

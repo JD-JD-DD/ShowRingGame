@@ -19,16 +19,17 @@ const plannerClient = readFileSync(
 assert.ok(source.includes('redirect("/login")'));
 assert.ok(source.includes('redirect("/onboarding")'));
 assert.ok(source.includes("getKennelForUser(userId)"));
-assert.ok(source.includes("db.dogListing.findFirst"));
-assert.ok(source.includes("id: listingId, dogId: sireId"));
-assert.ok(source.includes("listingType: PLAYER_STUD_LISTING_TYPE"));
-assert.ok(source.includes('status: "ACTIVE"'));
+assert.ok(source.includes("resolvePublicStudForSire"));
+assert.ok(source.includes("sireDogId: sireId"));
+assert.ok(source.includes("legacyListingId: listingId"));
+assert.ok(source.includes('publicStud.source === "STUD_OFFER"'));
+assert.ok(source.includes('publicStud.source === "LEGACY_PLAYER_STUD"'));
 assert.ok(source.includes("getCurrentPublishedStudOffersForSires([sireId])"));
 assert.ok(source.includes("id: damId, ownerKennelId: kennel.id"));
 assert.ok(source.includes("if (damId && !dam) notFound()"));
 assert.ok(source.includes("evaluateCurrentDamAgainstStudContractRequirements"));
-assert.ok(source.includes('first(q.source) === "plan-a-litter" ? "/plan-a-litter"'));
-assert.ok(source.includes('first(q.source) === "breed-dog" ? "/breed" : "/studs"'));
+assert.ok(source.includes('first(query.source) === "plan-a-litter"'));
+assert.ok(source.includes('first(query.source) === "breed-dog"'));
 assert.ok(source.includes("Go Back"));
 assert.ok(!source.includes("returnTo"));
 assert.ok(!source.includes("fetch("));
@@ -56,6 +57,12 @@ assert.ok(
   ) &&
     publicStudPage.includes('publicStud.source === "LEGACY_PLAYER_STUD"'),
   "legacy Public Stud uses the canonical listing, sire, and public-stud source context"
+);
+assert.ok(
+  publicStudPage.includes(
+    "`/stud-contract?sireDogId=${dog.id}&source=public-stud`"
+  ),
+  "StudOffer public cards route by real sire identity without a listing ID"
 );
 assert.equal(
   publicStudPage.includes("damDogId"),
