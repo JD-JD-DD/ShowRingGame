@@ -11,8 +11,8 @@ const baseInput: StudContractOutcomeInput = {
   minimumLitterSize: 3,
   breedingAttemptStatus: "PREGNANT",
   hasLinkedLitter: false,
-  qualificationCheckpointAt: null,
-  qualifyingSurvivingPuppyCount: null,
+  whelpQualificationAt: null,
+  liveBornPuppyCount: null,
   puppyBackMinimumMet: null,
   smallLitterReturnServiceMet: null,
 };
@@ -61,8 +61,8 @@ const qualified = classifyStudContractOutcome({
   ...baseInput,
   breedingAttemptStatus: "WHELPED",
   hasLinkedLitter: true,
-  qualificationCheckpointAt: new Date(),
-  qualifyingSurvivingPuppyCount: 2,
+  whelpQualificationAt: new Date(),
+  liveBornPuppyCount: 2,
   puppyBackMinimumMet: false,
   smallLitterReturnServiceMet: true,
 });
@@ -76,8 +76,8 @@ const potentiallyFulfillable = classifyStudContractOutcome({
   ...baseInput,
   breedingAttemptStatus: "WHELPED",
   hasLinkedLitter: true,
-  qualificationCheckpointAt: new Date(),
-  qualifyingSurvivingPuppyCount: 3,
+  whelpQualificationAt: new Date(),
+  liveBornPuppyCount: 3,
   puppyBackMinimumMet: true,
   smallLitterReturnServiceMet: null,
 });
@@ -89,8 +89,8 @@ const cash = classifyStudContractOutcome({
   compensationType: "CASH",
   breedingAttemptStatus: "WHELPED",
   hasLinkedLitter: true,
-  qualificationCheckpointAt: new Date(),
-  qualifyingSurvivingPuppyCount: 2,
+  whelpQualificationAt: new Date(),
+  liveBornPuppyCount: 2,
   puppyBackMinimumMet: null,
   smallLitterReturnServiceMet: false,
 });

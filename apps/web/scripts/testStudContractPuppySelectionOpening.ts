@@ -10,7 +10,7 @@ const page = readFileSync(join(root, "apps/web/app/litters/page.tsx"), "utf8");
 for (const fragment of [
   "openQualifiedStudContractPuppySelections",
   'compensationType: { in: ["PUPPY_BACK", "CASH_AND_PUPPY_BACK"] }',
-  "qualificationCheckpointAt: { not: null }",
+  "whelpQualificationAt: { not: null }",
   "puppyBackMinimumMet: true",
   "PUPPY_SELECTION_TURN_MS",
   'status: "WAITING"',
@@ -18,7 +18,7 @@ for (const fragment of [
   "STUD_PUPPY_SELECTION_OPEN:",
 ]) assert.ok(lifecycle.includes(fragment), fragment);
 assert.ok(!lifecycle.includes("studOffer.find"));
-assert.ok(route.includes("openQualifiedStudContractPuppySelections"));
+assert.ok(!route.includes("openQualifiedStudContractPuppySelections"));
 assert.ok(page.includes("Stud Contract Selection"));
 assert.ok(page.includes("turnDeadlineAt"));
 assert.ok(!page.includes("Select Puppy"));

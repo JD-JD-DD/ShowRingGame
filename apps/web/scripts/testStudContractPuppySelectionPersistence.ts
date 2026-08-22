@@ -30,7 +30,7 @@ assert.ok(migration.includes('CREATE TABLE "StudContractPuppySelection"'));
 assert.ok(migration.includes('"status" "StudContractPuppySelectionStatus" NOT NULL DEFAULT \'WAITING\''));
 assert.ok(migration.includes('"currentActor" "StudContractPuppySelectionActor" NOT NULL DEFAULT \'NONE\''));
 assert.ok(service.includes('contract.litterId !== args.litterId'));
-assert.ok(service.includes('contract.qualificationCheckpointAt === null'));
+assert.ok(service.includes('contract.whelpQualificationAt === null'));
 assert.ok(service.includes('compensationType === "CASH"'));
 assert.ok(service.includes('data: { contractId: args.contractId, litterId: args.litterId }'));
 console.log("Stud Contract puppy selection persistence checks passed.");

@@ -10,13 +10,11 @@ function expect(value: boolean, message: string) {
   if (!value) throw new Error(message);
 }
 
-expect(breedingSource.includes('status: "ACCEPTED"') && breedingSource.includes("data: { litterId: persistedLitter.id }"), "Whelping must link only an accepted StudContract to its new litter.");
+expect(breedingSource.includes('status: "ACCEPTED"') && breedingSource.includes("litterId: persistedLitter.id") && breedingSource.includes("whelpQualificationAt: new Date()"), "Whelping must link and qualify only an accepted StudContract at litter creation.");
 expect(breedingSource.includes("litterId: null"), "Whelping must not overwrite an existing StudContract litter link.");
-expect(lifecycleSource.includes("NEONATAL_PUPPY_DEATH_WINDOW_HOURS"), "Qualification must use the canonical neonatal-window constant.");
-expect(lifecycleSource.includes("epochToDate(contract.litter.bornEpoch + NEONATAL_PUPPY_DEATH_WINDOW_HOURS)"), "Qualification must persist the canonical game-time checkpoint.");
-expect(lifecycleSource.includes("getProjectedDogDeath(puppy).deathEpoch > checkpointEpoch"), "Qualification must count survival at the checkpoint, not arbitrary current state.");
-expect(lifecycleSource.includes("qualificationCheckpointAt: null"), "Qualification writes must be guarded against retries.");
-expect(!lifecycleSource.includes("studOffer.find"), "Qualification must not consult the current StudOffer.");
-expect(cronSource.includes("processStudContractLitterQualifications"), "The existing Stud Contract lifecycle route must process qualifications.");
+expect(breedingSource.includes("persistedLitter.puppies.length"), "Live-born count must come from puppies created in the whelping transaction.");
+expect(breedingSource.includes("puppyBackMinimumMet") && breedingSource.includes("smallLitterReturnServiceMet"), "Both frozen whelp-time results must be persisted.");
+expect(!lifecycleSource.includes("processStudContractLitterQualifications"), "No Day-8 contract qualification pass may remain.");
+expect(!cronSource.includes("processStudContractLitterQualifications"), "Cron must not run Day-8 contract qualification.");
 
 console.log("STUD-CONTRACT-20B lifecycle regression passed.");
