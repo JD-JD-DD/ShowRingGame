@@ -8,6 +8,7 @@ import { formatRealDurationHoursLong } from "@/lib/gameTimeFormat";
 import { getSessionUserId } from "@/lib/session";
 import { db } from "@/lib/db";
 import { getKennelForUser } from "@/server/services/kennel.service";
+import { getStudContractPuppySelectionDeadlines } from "@/server/services/studContractPuppySelection.service";
 import {
   getLitterManagementOptions,
   listLittersForKennel,
@@ -93,7 +94,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
       turnDeadlineAt: true,
       damFirstPickDogId: true,
       damFirstPickForfeitedAt: true,
-      litter: { select: { serial7: true, puppies: { where: { lifecycleState: "ALIVE" }, orderBy: { litterOrder: "asc" }, select: { id: true, callName: true, registeredName: true, regNumber: true, sex: true } } } },
+      litter: { select: { serial7: true, bornEpoch: true, puppies: { where: { lifecycleState: "ALIVE" }, orderBy: { litterOrder: "asc" }, select: { id: true, callName: true, registeredName: true, regNumber: true, sex: true } } } },
       contract: { select: { puppyPickPosition: true, puppySex: true, sireKennelId: true, damKennelId: true } },
     },
   });
@@ -233,6 +234,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
                 const isStudOwner = selection.contract.sireKennelId === kennel.id;
                 const isActive = selection.status === "STUD_PICK" || selection.status === "DAM_FIRST_PICK";
                 const deadlinePassed = selection.turnDeadlineAt !== null && selection.turnDeadlineAt.getTime() <= Date.now();
+                const secondPickStudDeadline = getStudContractPuppySelectionDeadlines(selection.litter.bornEpoch).secondPickStudDeadlineAt;
                 const title = selection.status === "DAM_FIRST_PICK"
                   ? "Dam owner first selection"
                   : selection.status === "STUD_PICK"
@@ -250,6 +252,9 @@ export default async function LittersPage({ searchParams }: PageProps) {
                     </p>
                     {selection.status === "DAM_FIRST_PICK" ? (
                       <p className="theme-copy mt-2 text-sm">The dam owner’s protected first selection is not restricted by the stud owner’s sex requirement.</p>
+                    ) : null}
+                    {selection.status === "DAM_FIRST_PICK" && isStudOwner ? (
+                      <p className="theme-copy mt-2 text-sm">Waiting for the dam owner’s protected first pick. Your turn becomes available when that resolves; your fixed final deadline is {formatSelectionDeadline(secondPickStudDeadline)}.</p>
                     ) : null}
                     {selection.status === "STUD_PICK" ? (
                       <p className="theme-copy mt-2 text-sm">Puppy sex requirement: {selection.contract.puppySex ?? "EITHER"}. No puppy will be selected automatically.</p>
