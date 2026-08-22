@@ -1585,6 +1585,7 @@ export async function createBreedingAttemptForKennel(args: {
             ? 0
             : automaticOffer.cashAmount ?? 0;
         studSellerKennelId = automaticOffer.ownerKennelId;
+      }
     }
 
     const [validDamBrucellosisTest, validSireBrucellosisTest] =
