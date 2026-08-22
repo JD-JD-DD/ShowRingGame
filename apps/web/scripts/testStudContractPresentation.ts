@@ -23,7 +23,8 @@ assert.equal(formatter.includes("HIP_DYSPLASIA"), false, "formatter does not har
 
 assert.ok(service.includes("getCurrentPublishedStudOffersForSires"));
 assert.ok(service.includes('status: "PUBLISHED"'));
-assert.ok(publicStuds.includes("getCurrentPublishedStudOffersForSires(dogIds)"));
+assert.ok(publicStuds.includes("resolvePublicStudInventory(dogIds)"));
+assert.ok(publicStuds.includes('publicStud.source === "STUD_OFFER"'));
 assert.ok(planner.includes("getCurrentPublishedStudOffersForSires("));
 assert.ok(publicStuds.includes("Stud contract terms not yet published."));
 assert.ok(cards.includes("Stud contract terms not yet published."));

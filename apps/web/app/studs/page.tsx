@@ -8,7 +8,6 @@ import {
 } from "@/components/breeds/BreedSelectOptions";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { formatCompactStudOfferSummary } from "@/lib/studOfferPresentation";
 import { epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
@@ -16,9 +15,7 @@ import {
   hasPendingVeterinaryCareFromRecords,
   PENDING_VETERINARY_CARE_BREEDING_MESSAGE,
 } from "@/server/services/emergencyVetCare.service";
-import { activePublicStudListingWhere } from "@/server/services/publicStud.service";
-import { adaptLegacyPublicStudListing } from "@/server/services/publicStud.service";
-import { getCurrentPublishedStudOffersForSires } from "@/server/services/studOffer.service";
+import { resolvePublicStudInventory } from "@/server/services/publicStud.service";
 import {
   getBreedingEligibilityMessage,
   getIndividualBreedingEligibility,
@@ -216,158 +213,157 @@ export default async function StudsPage({ searchParams }: PageProps) {
     selectedGroup || nameSearch || selectedBreedCode2
   );
 
-  const listings = hasDiscoveryCriteria
-    ? await db.dogListing.findMany({
+  const dogs = hasDiscoveryCriteria
+    ? await db.dog.findMany({
     where: {
-      ...activePublicStudListingWhere({ excludeKennelId: kennel.id }),
-      dog: {
-        ...(selectedBreedCode2
-          ? { breedCode2: selectedBreedCode2 }
-          : selectedGroup
-            ? { breedCode2: { in: groupBreeds.map((breed) => breed.code2) } }
-            : {}),
-        ...(nameSearch
-          ? {
-              OR: [
-                { callName: { contains: nameSearch, mode: "insensitive" } },
-                {
-                  registeredName: {
-                    contains: nameSearch,
-                    mode: "insensitive",
-                  },
-                },
-              ],
-            }
+      ...(selectedBreedCode2
+        ? { breedCode2: selectedBreedCode2 }
+        : selectedGroup
+          ? { breedCode2: { in: groupBreeds.map((breed) => breed.code2) } }
           : {}),
-        lifecycleState: "ALIVE",
-        isPlayerVisible: true,
-        sex: "M",
-        birthEpoch: {
-          lte: currentEpoch - MIN_BREED_AGE_HOURS,
-        },
-        ownerKennelId: {
-          not: null,
-        },
+      ...(nameSearch
+        ? {
+            OR: [
+              { callName: { contains: nameSearch, mode: "insensitive" } },
+              {
+                registeredName: {
+                  contains: nameSearch,
+                  mode: "insensitive",
+                },
+              },
+            ],
+          }
+        : {}),
+      lifecycleState: "ALIVE",
+      isPlayerVisible: true,
+      sex: "M",
+      birthEpoch: {
+        lte: currentEpoch - MIN_BREED_AGE_HOURS,
       },
+      ownerKennelId: {
+        not: kennel.id,
+      },
+      AND: [
+        { ownerKennelId: { not: null } },
+        {
+          OR: [
+            { studOffersAsSire: { some: { status: "PUBLISHED" } } },
+            {
+              listings: {
+                some: {
+                  sellerType: "PLAYER",
+                  listingType: "PLAYER_STUD",
+                  status: "ACTIVE",
+                  sellerKennelId: { not: kennel.id },
+                },
+              },
+            },
+          ],
+        },
+      ],
     },
     orderBy: [
-      { dog: { breedCode2: "asc" } },
-      { askingPrice: "asc" },
-      { listedAtEpoch: "desc" },
+      { breedCode2: "asc" },
+      { regNumber: "asc" },
     ],
     take: 60,
     select: {
       id: true,
-      sellerKennelId: true,
-      askingPrice: true,
-      requiresBrucellosisNegativeDam: true,
-      requiresDamHealthTestsCompleted: true,
-      requiresDamHealthAllGreen: true,
-      requiresDamHealthGreenOrYellow: true,
-      requiresDamChampionTitle: true,
-      dog: {
+      ownerKennelId: true,
+      callName: true,
+      registeredName: true,
+      regNumber: true,
+      visibleTitlePrefix: true,
+      visibleTitleSuffix: true,
+      breedCode2: true,
+      birthEpoch: true,
+      lifecycleState: true,
+      sex: true,
+      isBreedingActive: true,
+      breed: {
         select: {
-          id: true,
-          ownerKennelId: true,
-          callName: true,
-          registeredName: true,
-          regNumber: true,
-          visibleTitlePrefix: true,
-          visibleTitleSuffix: true,
-          breedCode2: true,
-          birthEpoch: true,
-          lifecycleState: true,
-          sex: true,
-          isBreedingActive: true,
-          breed: {
-            select: {
-              name: true,
-            },
-          },
-          ownerKennel: {
-            select: {
-              name: true,
-            },
-          },
-          traitHead: true,
-          traitForequarters: true,
-          traitHindquarters: true,
-          traitGait: true,
-          traitCoat: true,
-          traitSize: true,
-          traitTemperament: true,
-          traitShowShine: true,
-          traitFeet: true,
-          traitTopline: true,
-          healthConditionTruths: {
-            where: {
-              conditionCode: {
-                in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
-              },
-            },
-            select: {
-              conditionCode: true,
-              geneticLiability: true,
-              environmentModifier: true,
-            },
-          },
-          healthTests: {
-            where: {
-              isPublic: true,
-            },
-            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
-            select: {
-              testTypeCode: true,
-              resultCode: true,
-            },
-          },
-          infectiousDiseaseStatuses: {
-            where: {
-              diseaseCode: BRUCELLOSIS_DISEASE_CODE,
-            },
-            select: {
-              diseaseCode: true,
-              status: true,
-            },
-          },
-          infectiousDiseaseTests: {
-            where: {
-              diseaseCode: BRUCELLOSIS_DISEASE_CODE,
-            },
-            orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
-            select: {
-              diseaseCode: true,
-              resultCode: true,
-              validUntilEpoch: true,
-            },
-          },
-          emergencyCareEvents: {
-            where: { status: "PENDING" },
-            take: 1,
-            select: { status: true },
-          },
-          reproductiveEmergencies: {
-            where: { status: { in: ["PENDING", "TREATMENT_AUTHORIZED"] } },
-            take: 1,
-            select: { status: true },
+          name: true,
+        },
+      },
+      ownerKennel: {
+        select: {
+          name: true,
+        },
+      },
+      traitHead: true,
+      traitForequarters: true,
+      traitHindquarters: true,
+      traitGait: true,
+      traitCoat: true,
+      traitSize: true,
+      traitTemperament: true,
+      traitShowShine: true,
+      traitFeet: true,
+      traitTopline: true,
+      healthConditionTruths: {
+        where: {
+          conditionCode: {
+            in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
           },
         },
+        select: {
+          conditionCode: true,
+          geneticLiability: true,
+          environmentModifier: true,
+        },
+      },
+      healthTests: {
+        where: {
+          isPublic: true,
+        },
+        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+        select: {
+          testTypeCode: true,
+          resultCode: true,
+        },
+      },
+      infectiousDiseaseStatuses: {
+        where: {
+          diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+        },
+        select: {
+          diseaseCode: true,
+          status: true,
+        },
+      },
+      infectiousDiseaseTests: {
+        where: {
+          diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+        },
+        orderBy: [{ testedAtEpoch: "desc" }, { createdAt: "desc" }],
+        select: {
+          diseaseCode: true,
+          resultCode: true,
+          validUntilEpoch: true,
+        },
+      },
+      emergencyCareEvents: {
+        where: { status: "PENDING" },
+        take: 1,
+        select: { status: true },
+      },
+      reproductiveEmergencies: {
+        where: { status: { in: ["PENDING", "TREATMENT_AUTHORIZED"] } },
+        take: 1,
+        select: { status: true },
       },
     },
   })
     : [];
-  const dogIds = listings.map((listing) => listing.dog.id);
-  const publicStuds = listings.flatMap((listing) => {
-    const publicStud = adaptLegacyPublicStudListing(listing);
-    return publicStud ? [{ publicStud, dog: listing.dog }] : [];
-  });
-  const currentOffers = await getCurrentPublishedStudOffersForSires(dogIds);
-  const offerSummaryByDogId = new Map(
-    currentOffers.map((offer) => [
-      offer.sireDogId,
-      formatCompactStudOfferSummary(offer),
-    ])
+  const dogIds = dogs.map((dog) => dog.id);
+  const resolvedPublicStuds = await resolvePublicStudInventory(dogIds);
+  const publicStudBySireDogId = new Map(
+    resolvedPublicStuds.map((publicStud) => [publicStud.sireDogId, publicStud])
   );
+  const publicStuds = dogs.flatMap((dog) => {
+    const publicStud = publicStudBySireDogId.get(dog.id);
+    return publicStud ? [{ publicStud, dog }] : [];
+  });
 
   const latestSireAttempts = dogIds.length
     ? await db.breedingAttempt.findMany({
@@ -544,8 +540,6 @@ export default async function StudsPage({ searchParams }: PageProps) {
                   dog.healthConditionTruths,
                 phenotypeHealthResults: dog.healthTests,
               });
-              const studOfferSummary = offerSummaryByDogId.get(dog.id) ?? null;
-
               return (
                 <article
                   key={publicStud.sireDogId}
@@ -568,14 +562,33 @@ export default async function StudsPage({ searchParams }: PageProps) {
                         </div>
                       </div>
 
-                      <div className="theme-status-info rounded-2xl px-4 py-2 text-right">
-                        <div className="text-xs uppercase tracking-wide">
-                          Stud Fee
+                      {publicStud.source === "STUD_OFFER" ? (
+                        <div className="theme-status-info rounded-2xl px-4 py-2 text-right">
+                          <div className="text-xs uppercase tracking-wide">
+                            Stud Terms
+                          </div>
+                          <div className="mt-1 text-xl font-bold">
+                            {publicStud.terms.compensationType === "CASH"
+                              ? publicStud.terms.cashAmount === null
+                                ? "Cash"
+                                : formatMoney(publicStud.terms.cashAmount)
+                              : publicStud.terms.compensationType === "PUPPY_BACK"
+                                ? "Puppy Back"
+                                : `${publicStud.terms.cashAmount === null ? "Cash" : formatMoney(publicStud.terms.cashAmount)} + Puppy Back`}
+                          </div>
                         </div>
-                        <div className="mt-1 text-xl font-bold">
-                          {formatMoney(publicStud.legacyFeeAmount ?? 0)}
+                      ) : (
+                        <div className="theme-status-info rounded-2xl px-4 py-2 text-right">
+                          <div className="text-xs uppercase tracking-wide">
+                            Stud Fee
+                          </div>
+                          <div className="mt-1 text-xl font-bold">
+                            {publicStud.legacyFeeAmount === null
+                              ? "Fee unavailable"
+                              : formatMoney(publicStud.legacyFeeAmount)}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
 
@@ -632,12 +645,28 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           Stud Terms
                         </div>
                         <div className="theme-heading mt-1 font-medium">
-                          {studOfferSummary ? (
+                          {publicStud.source === "STUD_OFFER" ? (
                             <span className="grid gap-1">
-                              <span>Compensation: {studOfferSummary.compensationSummary}</span>
-                              {studOfferSummary.puppyTermsSummary ? <span>Puppy Terms: {studOfferSummary.puppyTermsSummary}</span> : null}
-                              {studOfferSummary.restrictionsSummary ? <span>Dam Requirements: {studOfferSummary.restrictionsSummary}</span> : null}
-                              <span>{studOfferSummary.approvalSummary}</span>
+                              <span>
+                                Compensation: {publicStud.terms.compensationType === "CASH"
+                                  ? publicStud.terms.cashAmount === null
+                                    ? "Cash"
+                                    : formatMoney(publicStud.terms.cashAmount)
+                                  : publicStud.terms.compensationType === "PUPPY_BACK"
+                                    ? "Puppy Back"
+                                    : `${publicStud.terms.cashAmount === null ? "Cash" : formatMoney(publicStud.terms.cashAmount)} + Puppy Back`}
+                              </span>
+                              {publicStud.terms.puppyBackSummary ? (
+                                <span>Puppy Terms: {publicStud.terms.puppyBackSummary}</span>
+                              ) : null}
+                              {publicStud.terms.requirementsSummary ? (
+                                <span>Dam Requirements: {publicStud.terms.requirementsSummary}</span>
+                              ) : null}
+                              <span>
+                                {publicStud.terms.approvalMode === "MANUAL"
+                                  ? "Manual Approval"
+                                  : "Automatic Approval"}
+                              </span>
                             </span>
                           ) : "Stud contract terms not yet published."}
                         </div>
@@ -674,7 +703,14 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           {PENDING_VETERINARY_CARE_BREEDING_MESSAGE}
                         </div>
                       ) : null}
-                      {!dog.isBreedingActive ? (
+                      {publicStud.source === "STUD_OFFER" ? (
+                        <span
+                          aria-disabled="true"
+                          className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
+                        >
+                          Stud Contract action coming soon
+                        </span>
+                      ) : !dog.isBreedingActive ? (
                         <span
                           aria-disabled="true"
                           className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
@@ -701,12 +737,21 @@ export default async function StudsPage({ searchParams }: PageProps) {
                         </span>
                       )}
 
-                      <Link
-                        href={`/stud-contract?studListingId=${publicStud.legacyListingId}&sireDogId=${dog.id}&source=public-stud`}
-                        className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
-                      >
-                        Contract Terms
-                      </Link>
+                      {publicStud.source === "LEGACY_PLAYER_STUD" ? (
+                        <Link
+                          href={`/stud-contract?studListingId=${publicStud.legacyListingId}&sireDogId=${dog.id}&source=public-stud`}
+                          className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
+                        >
+                          Contract Terms
+                        </Link>
+                      ) : (
+                        <span
+                          aria-disabled="true"
+                          className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
+                        >
+                          Contract Terms shown above
+                        </span>
+                      )}
 
                       <Link
                         href={`/dogs/${dog.id}`}

@@ -51,10 +51,11 @@ assert.ok(
 );
 assert.ok(
   studsPage.includes(
-    "`/stud-contract?studListingId=${listing.id}&sireDogId=${dog.id}&source=public-stud`"
+    "`/stud-contract?studListingId=${publicStud.legacyListingId}&sireDogId=${dog.id}&source=public-stud`"
   ) &&
+    studsPage.includes('publicStud.source === "LEGACY_PLAYER_STUD"') &&
     studsPage.includes("Contract Terms"),
-  "public stud cards link Contract Terms with the active listing and sire context only"
+  "legacy public stud cards retain Contract Terms with the active listing and sire context only"
 );
 assert.ok(
   studsPage.includes("href={`/breed?studListingId=${listing.id}`}") &&

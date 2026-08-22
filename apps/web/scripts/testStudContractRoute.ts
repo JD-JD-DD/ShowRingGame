@@ -52,9 +52,10 @@ for (const parameter of [
 }
 assert.ok(
   publicStudPage.includes(
-    "`/stud-contract?studListingId=${listing.id}&sireDogId=${dog.id}&source=public-stud`"
-  ),
-  "Public Stud uses the canonical listing, sire, and public-stud source context"
+    "`/stud-contract?studListingId=${publicStud.legacyListingId}&sireDogId=${dog.id}&source=public-stud`"
+  ) &&
+    publicStudPage.includes('publicStud.source === "LEGACY_PLAYER_STUD"'),
+  "legacy Public Stud uses the canonical listing, sire, and public-stud source context"
 );
 assert.equal(
   publicStudPage.includes("damDogId"),

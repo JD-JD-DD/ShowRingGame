@@ -85,7 +85,7 @@ assert.ok(
   "inactive direct owned and public anchors are excluded into existing unavailable behavior"
 );
 
-const publicStudQuery = section(studsPage, "const listings =", "const dogIds =");
+const publicStudQuery = section(studsPage, "const dogs =", "const dogIds =");
 const publicStudWhere = section(publicStudQuery, "where: {", "select: {");
 assert.equal(
   publicStudWhere.includes("isBreedingActive"),
