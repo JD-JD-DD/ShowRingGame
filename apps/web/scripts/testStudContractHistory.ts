@@ -25,6 +25,16 @@ for (const fragment of [
   "Permanently ended — sire died",
   "currentActor",
   "currentDeadline",
+  "getStudContractCurrentState",
+  "secondaryStates",
+  "returnServiceCurrentState",
+  "puppySelectionCurrentState",
+  "Awaiting dam's protected pick",
+  "Awaiting stud owner's puppy selection",
+  "Puppy Back unfulfilled",
+  "Return Service no longer available",
+  "No litter — Return Service available",
+  "No litter — contract complete",
   "MANUAL_APPROVAL",
   "PUPPY_SELECTION",
   "RETURN_SERVICE",
@@ -59,6 +69,8 @@ assert.ok(detail.includes("Completed:"));
 assert.ok(client.includes("Load More"));
 assert.ok(client.includes(">Open<span"));
 assert.ok(client.includes("Current state"));
+assert.ok(client.includes("Additional contract states"));
+assert.ok(client.includes("item.secondaryStates"));
 assert.ok(client.includes("Status:"));
 assert.ok(client.includes("Needs Action"));
 assert.ok(client.includes("Approve Request"));

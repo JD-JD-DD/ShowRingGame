@@ -97,6 +97,62 @@ function attemptState(status: string | undefined) {
   return labels[status ?? ""] ?? "Breeding attempted";
 }
 
+function returnServiceCurrentState(status: "AVAILABLE" | "USED" | "EXPIRED" | "EXTINGUISHED") {
+  const labels: Record<typeof status, string> = {
+    AVAILABLE: "Return Service available",
+    USED: "Return Service used",
+    EXPIRED: "Return Service expired",
+    EXTINGUISHED: "Return Service no longer available",
+  };
+  return labels[status];
+}
+
+function puppySelectionCurrentState(args: { selection: ContractHistoryRecord["puppySelection"]; isStudOwner: boolean; canSelectPuppy: boolean }) {
+  const selection = args.selection;
+  if (!selection) return null;
+  if (args.canSelectPuppy) return "Puppy selection due";
+  if (selection.status === "DAM_FIRST_PICK" && args.isStudOwner) return "Awaiting dam's protected pick";
+  if (selection.status === "STUD_PICK" && !args.isStudOwner) return "Awaiting stud owner's puppy selection";
+  if (selection.status === "SELECTED") return "Puppy selected";
+  if (selection.status === "FORFEITED") return "Puppy selection forfeited";
+  if (selection.status === "UNFULFILLABLE") return "Puppy Back unfulfilled";
+  if (selection.status === "COMPLETED") return "Puppy transfer complete";
+  return selectionIsActive(selection) ? "Puppy selection in progress" : null;
+}
+
+type StudContractCurrentState = { currentState: string; secondaryStates: string[] };
+
+function getStudContractCurrentState(args: {
+  contract: ContractHistoryRecord;
+  isStudOwner: boolean;
+  manualApproval: { availabilityReason: string } | null;
+  canSelectPuppy: boolean;
+  returnServiceAvailability: { canApprove: boolean; reason: string | null } | null;
+}): StudContractCurrentState {
+  const { contract } = args;
+  if (contract.status === "PENDING") return { currentState: args.manualApproval?.availabilityReason ?? "Pending approval", secondaryStates: [] };
+  if (contract.status === "DECLINED") return { currentState: "Declined", secondaryStates: [] };
+  if (contract.status === "EXPIRED") return { currentState: "Expired", secondaryStates: [] };
+
+  const puppyState = puppySelectionCurrentState({ selection: contract.puppySelection, isStudOwner: args.isStudOwner, canSelectPuppy: args.canSelectPuppy });
+  const returnServiceState = contract.returnService ? returnServiceCurrentState(contract.returnService.status) : null;
+  const noLitter = contract.breedingAttempt?.status === "CHECKED_NOT_PREGNANT";
+  const availableReturnServiceState = returnServiceState === "Return Service available"
+    ? args.returnServiceAvailability?.canApprove === false && args.returnServiceAvailability.reason
+      ? `${noLitter ? "No litter — Return Service available" : "Return Service available"} — ${args.returnServiceAvailability.reason}`
+      : noLitter ? "No litter — Return Service available" : returnServiceState
+    : returnServiceState;
+
+  if (args.canSelectPuppy) return { currentState: "Puppy selection due", secondaryStates: availableReturnServiceState ? [availableReturnServiceState] : [] };
+  if (returnServiceState === "Return Service available") {
+    return { currentState: availableReturnServiceState, secondaryStates: puppyState ? [puppyState] : [] };
+  }
+  if (contractIsComplete(contract)) return { currentState: noLitter ? "No litter — contract complete" : "Contract complete", secondaryStates: [] };
+  if (puppyState) return { currentState: puppyState, secondaryStates: returnServiceState ? [returnServiceState] : [] };
+  if (returnServiceState) return { currentState: returnServiceState, secondaryStates: [] };
+  return { currentState: attemptState(contract.breedingAttempt?.status), secondaryStates: [] };
+}
+
 function completeContractWhere(): Prisma.StudContractWhereInput {
   return {
     status: "ACCEPTED",
@@ -204,21 +260,13 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
       : contract.returnService?.status === "AVAILABLE"
         ? { kind: "RETURN_SERVICE" as const, at: contract.returnService.expiresAt.toISOString() }
         : null;
-  const currentState = contract.status === "PENDING"
-    ? manualApproval?.availabilityReason ?? "Pending approval"
-    : contract.status === "DECLINED" ? "Declined"
-      : contract.status === "EXPIRED" ? "Expired"
-        : canSelectPuppy ? "Puppy selection due"
-          : selectionIsActive(contract.puppySelection) ? "Puppy selection in progress"
-            : contract.puppySelection?.status === "SELECTED" ? "Puppy selected"
-              : contract.puppySelection?.status === "COMPLETED" ? "Puppy selection complete"
-                : contract.puppySelection?.status === "FORFEITED" ? "Puppy selection forfeited"
-                  : contract.puppySelection?.status === "UNFULFILLABLE" ? "Puppy Back cannot be fulfilled"
-                    : contract.returnService?.status === "AVAILABLE" ? "Return Service available"
-                      : contract.returnService?.status === "USED" ? "Return Service used"
-                        : contract.returnService?.status === "EXPIRED" ? "Return Service expired"
-                          : contractIsComplete(contract) ? "Contract complete"
-                            : attemptState(contract.breedingAttempt?.status);
+  const currentStatePresentation = getStudContractCurrentState({
+    contract,
+    isStudOwner,
+    manualApproval: manualApproval ? { availabilityReason: manualApproval.availabilityReason } : null,
+    canSelectPuppy,
+    returnServiceAvailability,
+  });
   return {
     id: contract.id,
     requestedAt: contract.requestedAt.toISOString(), acceptedAt: contract.acceptedAt?.toISOString() ?? null,
@@ -226,7 +274,7 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
     dam: { id: contract.damDog.id, name: formatDogDisplayName(contract.damDog) },
     role, otherKennel, compensationSummary: summary?.compensationSummary ?? "Contract terms unavailable",
     puppyTermsSummary: summary?.puppyTermsSummary ?? null, restrictionsSummary: summary?.restrictionsSummary ?? null,
-    lifecycleLabel: contractLabel(contract), currentState, currentDeadline, actions, manualApproval,
+    lifecycleLabel: contractLabel(contract), currentState: currentStatePresentation.currentState, secondaryStates: currentStatePresentation.secondaryStates, currentDeadline, actions, manualApproval,
     returnService: contract.returnService ? {
       id: contract.returnService.id, status: contract.returnService.status, label: returnServiceLabel(contract.returnService),
       expiresAt: contract.returnService.expiresAt.toISOString(), availableAt: contract.returnService.availableAt.toISOString(),
