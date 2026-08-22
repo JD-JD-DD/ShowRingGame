@@ -94,7 +94,8 @@ export default async function LittersPage({ searchParams }: PageProps) {
       turnDeadlineAt: true,
       damFirstPickDogId: true,
       damFirstPickForfeitedAt: true,
-      litter: { select: { serial7: true, bornEpoch: true, puppies: { where: { lifecycleState: "ALIVE" }, orderBy: { litterOrder: "asc" }, select: { id: true, callName: true, registeredName: true, regNumber: true, sex: true } } } },
+      litter: { select: { serial7: true, bornEpoch: true, puppies: { where: { lifecycleState: "ALIVE" }, orderBy: { litterOrder: "asc" }, select: { id: true, callName: true, registeredName: true, regNumber: true, sex: true, litterOrder: true } } } },
+      selectedDog: { select: { id: true, callName: true, registeredName: true, regNumber: true } },
       contract: { select: { puppyPickPosition: true, puppySex: true, sireKennelId: true, damKennelId: true } },
     },
   });
@@ -240,6 +241,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
                   : selection.status === "STUD_PICK"
                     ? "Stud owner selection"
                     : statusLabel(selection.status);
+                const canAct = isActive && !deadlinePassed && ((selection.currentActor === "DAM_OWNER" && !isStudOwner) || (selection.currentActor === "STUD_OWNER" && isStudOwner));
                 return (
                   <article key={selection.id} className="theme-panel rounded-2xl p-5">
                     <div className="theme-label text-xs uppercase tracking-wide">{title}</div>
@@ -268,16 +270,34 @@ export default async function LittersPage({ searchParams }: PageProps) {
                     {selection.status === "UNFULFILLABLE" ? (
                       <p className="theme-copy mt-2 text-sm">Puppy Back cannot be fulfilled because no living puppy satisfies the contract sex requirement.</p>
                     ) : null}
+                    {selection.status === "SELECTED" && selection.selectedDog ? (
+                      <p className="theme-status-success mt-3 rounded-xl px-3 py-2 text-sm">{selection.selectedDog.callName ?? selection.selectedDog.registeredName ?? selection.selectedDog.regNumber} is selected under the Stud Contract and will transfer automatically to the stud owner&apos;s kennel at 8 weeks of age.</p>
+                    ) : null}
                     {isActive && (!isStudOwner || selection.currentActor === "STUD_OWNER") ? (
                       <p className="theme-copy mt-3 text-sm">{deadlinePassed ? "Selection deadline passed — awaiting processing." : `Selection deadline: ${formatSelectionDeadline(selection.turnDeadlineAt)}`}</p>
                     ) : null}
-                    {isActive && !deadlinePassed && ((selection.currentActor === "DAM_OWNER" && !isStudOwner) || (selection.currentActor === "STUD_OWNER" && isStudOwner)) ? (
+                    {canAct ? (
                       <StudContractPuppySelectionActions
                         selectionId={selection.id}
                         action={selection.currentActor === "DAM_OWNER" ? "DAM_PROTECTED_PICK" : "STUD_PICK"}
-                        puppies={selection.litter.puppies
-                          .filter((puppy) => selection.currentActor === "DAM_OWNER" || (puppy.id !== selection.damFirstPickDogId && (selection.contract.puppySex === "EITHER" || selection.contract.puppySex === null || (selection.contract.puppySex === "MALE" ? puppy.sex === "M" : puppy.sex === "F"))))
-                          .map((puppy) => ({ id: puppy.id, label: puppy.callName ?? puppy.registeredName ?? puppy.regNumber }))}
+                        puppies={selection.litter.puppies.map((puppy) => {
+                          const protectedDamPick = selection.currentActor === "STUD_OWNER" && puppy.id === selection.damFirstPickDogId;
+                          const matchesStudSex = selection.contract.puppySex === "EITHER" || selection.contract.puppySex === null || (selection.contract.puppySex === "MALE" ? puppy.sex === "M" : puppy.sex === "F");
+                          const canPick = selection.currentActor === "DAM_OWNER" || (!protectedDamPick && matchesStudSex);
+                          return {
+                            id: puppy.id,
+                            displayName: puppy.callName ?? puppy.registeredName ?? puppy.regNumber,
+                            regNumber: puppy.regNumber,
+                            sex: puppy.sex,
+                            litterOrder: puppy.litterOrder,
+                            canPick,
+                            disabledReason: protectedDamPick
+                              ? "Already selected as the dam owner’s protected first pick."
+                              : !matchesStudSex
+                                ? "Does not match this contract’s required puppy sex."
+                                : null,
+                          };
+                        })}
                       />
                     ) : null}
                   </article>

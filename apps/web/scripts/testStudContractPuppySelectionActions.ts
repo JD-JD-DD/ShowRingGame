@@ -10,5 +10,17 @@ for (const fragment of ["selectDamProtectedPuppy", "selectStudContractPuppy", 's
 assert.ok(route.includes("getSessionUserId"));
 assert.ok(route.includes("selectedDogId") === false);
 assert.ok(page.includes("StudContractPuppySelectionActions"));
-assert.ok(actions.includes("Select Puppy"));
+assert.ok(actions.includes("Pick Puppy"));
+assert.ok(actions.includes("submittingRef"));
+assert.ok(actions.includes("router.refresh()"));
+assert.ok(actions.includes('type="button"'));
+assert.ok(actions.includes("disabled={disabled}"));
+assert.ok(actions.includes("sm:flex-row"));
+assert.ok(page.includes("selection.litter.puppies.map"));
+assert.ok(page.includes("Already selected as the dam owner’s protected first pick."));
+assert.ok(page.includes("Does not match this contract’s required puppy sex."));
+assert.ok(page.includes("selectedDog: { select:"));
+assert.equal(actions.includes("Transfer Puppy"), false);
+assert.equal(actions.includes("Claim Puppy"), false);
+assert.equal(actions.includes("ledgerTransaction"), false);
 console.log("Stud Contract puppy selection action checks passed.");
