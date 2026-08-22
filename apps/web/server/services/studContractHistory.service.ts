@@ -1,6 +1,11 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
+import { getCurrentEpoch } from "@/lib/gameClock";
+import { evaluateDamAgainstStudContractRequirements } from "@/lib/studContractEligibility";
 import { formatCompactStudOfferSummary } from "@/lib/studOfferPresentation";
+import { getBreedingEligibilityMessage, getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
+import { hasPendingVeterinaryCareFromRecords } from "@/server/services/emergencyVetCare.service";
+import { BRUCELLOSIS_DISEASE_CODE } from "@showring/rules";
 import type { Prisma } from "@prisma/client";
 
 const PAGE_SIZE = 10;
@@ -25,9 +30,22 @@ export function parseStudContractHistoryFilters(args: { status?: string | null; 
   };
 }
 
+const currentDogSelect = {
+  id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true,
+  ownerKennelId: true, breedCode2: true, sex: true, lifecycleState: true, isBreedingActive: true, birthEpoch: true,
+  breedingAttemptsAsSire: { orderBy: [{ createdEpoch: "desc" }, { id: "desc" }], take: 1, select: { createdEpoch: true } },
+  breedingAttemptsAsDam: { where: { status: { in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"] } }, take: 1, select: { status: true } },
+  dammedLitters: { orderBy: { bornEpoch: "desc" }, take: 1, select: { bornEpoch: true } },
+  reproductiveEmergencies: { select: { id: true, status: true, resolvedEpoch: true, reproductiveConsequence: true } },
+  emergencyCareEvents: { select: { status: true } },
+  healthTests: { where: { isPublic: true }, select: { id: true, testTypeCode: true, resultCode: true, testedAtEpoch: true, createdAt: true } },
+  infectiousDiseaseStatuses: { select: { diseaseCode: true, status: true } },
+  infectiousDiseaseTests: { select: { diseaseCode: true, resultCode: true, validUntilEpoch: true } },
+} as const;
+
 const contractInclude = {
-  sireDog: { select: { id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true } },
-  damDog: { select: { id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true } },
+  sireDog: { select: currentDogSelect },
+  damDog: { select: currentDogSelect },
   sireKennel: { select: { id: true, name: true } },
   damKennel: { select: { id: true, name: true } },
   healthRequirements: { select: { healthTestCode: true, requirementLevel: true } },
@@ -115,7 +133,38 @@ function historyWhere(args: { kennelId: string; statusFilter: StudContractStatus
   return { AND: conditions };
 }
 
-function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = new Date()) {
+function approvalAvailability(contract: ContractHistoryRecord, currentEpoch: number) {
+  const sire = contract.sireDog;
+  const dam = contract.damDog;
+  if (sire.ownerKennelId !== contract.sireKennelId || sire.lifecycleState !== "ALIVE" || sire.sex !== "M" || sire.breedCode2 !== dam.breedCode2) return { canApprove: false, reason: "The original sire is no longer eligible for this request." };
+  if (!sire.isBreedingActive) return { canApprove: false, reason: "Breeding inactive." };
+  const sireEligibility = getIndividualBreedingEligibility({ currentEpoch, birthEpoch: sire.birthEpoch, lifecycleState: sire.lifecycleState, sex: sire.sex, latestSireAttemptCreatedEpoch: sire.breedingAttemptsAsSire[0]?.createdEpoch ?? null });
+  if (!sireEligibility.isEligible) return { canApprove: false, reason: getBreedingEligibilityMessage(sireEligibility) ?? "The sire is not currently breeding eligible." };
+  if (hasPendingVeterinaryCareFromRecords({ emergencyCareEvents: sire.emergencyCareEvents, reproductiveEmergencies: sire.reproductiveEmergencies })) return { canApprove: false, reason: "Pending veterinary care." };
+  if (dam.ownerKennelId !== contract.damKennelId || dam.lifecycleState !== "ALIVE" || dam.sex !== "F" || dam.breedCode2 !== sire.breedCode2) return { canApprove: false, reason: "The original dam is no longer eligible for this request." };
+  if (!dam.isBreedingActive) return { canApprove: false, reason: "Breeding inactive." };
+  const damEligibility = getIndividualBreedingEligibility({
+    currentEpoch, birthEpoch: dam.birthEpoch, lifecycleState: dam.lifecycleState, sex: dam.sex,
+    activeBreedingAttemptStatus: dam.breedingAttemptsAsDam[0]?.status ?? null,
+    lastWhelpedEpoch: dam.dammedLitters[0]?.bornEpoch ?? null,
+    resolvedReproductiveEmergencies: dam.reproductiveEmergencies.filter((event) => ["RESOLVED_TREATED", "RESOLVED_UNTREATED"].includes(event.status)),
+  });
+  if (!damEligibility.isEligible) return { canApprove: false, reason: getBreedingEligibilityMessage(damEligibility) ?? "The dam is not currently breeding eligible." };
+  if (hasPendingVeterinaryCareFromRecords({ emergencyCareEvents: dam.emergencyCareEvents, reproductiveEmergencies: dam.reproductiveEmergencies })) return { canApprove: false, reason: "Pending veterinary care." };
+  const requirementCheck = evaluateDamAgainstStudContractRequirements({
+    brucellosisNegativeRequired: contract.brucellosisNegativeRequired,
+    healthRequirements: contract.healthRequirements,
+    titleRequirement: contract.titleRequirement,
+  }, {
+    hasValidNegativeBrucellosis: !dam.infectiousDiseaseStatuses.some((status) => status.diseaseCode === BRUCELLOSIS_DISEASE_CODE && status.status === "INFECTED") && dam.infectiousDiseaseTests.some((test) => test.diseaseCode === BRUCELLOSIS_DISEASE_CODE && test.resultCode === "NEGATIVE" && (test.validUntilEpoch ?? -1) >= currentEpoch),
+    healthResults: dam.healthTests.map((test) => ({ healthTestCode: test.testTypeCode, resultCode: test.resultCode, testedAtEpoch: test.testedAtEpoch, createdAtEpoch: test.createdAt.getTime(), id: test.id })),
+    titleDog: dam,
+  });
+  const requirementFailure = [requirementCheck.brucellosis, ...requirementCheck.health, requirementCheck.title].find((result) => !result.eligible);
+  return requirementFailure?.message ? { canApprove: false, reason: requirementFailure.message } : { canApprove: true, reason: null };
+}
+
+function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = new Date(), currentEpoch = getCurrentEpoch()) {
   if (!contract) return null;
   const summary = formatCompactStudOfferSummary({
     compensationType: contract.compensationType,
@@ -132,11 +181,12 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
   const otherKennel = isStudOwner ? contract.damKennel.name : contract.sireKennel.name;
   const approvalDeadline = contract.approvalDeadlineAt;
   const approvalDeadlineAt = approvalDeadline?.toISOString() ?? null;
+  const availability = contract.status === "PENDING" && contract.approvalMode === "MANUAL" ? approvalAvailability(contract, currentEpoch) : null;
   const manualApproval = contract.status === "PENDING" && contract.approvalMode === "MANUAL" && approvalDeadlineAt
-    ? { deadlineAt: approvalDeadlineAt, isAvailable: isStudOwner && approvalDeadline !== null && approvalDeadline > now, availabilityReason: !isStudOwner ? "Awaiting stud-owner decision" : approvalDeadline !== null && approvalDeadline > now ? "Approval required" : "Approval deadline passed" }
+    ? { deadlineAt: approvalDeadlineAt, isActionable: isStudOwner && approvalDeadline !== null && approvalDeadline > now, canApprove: isStudOwner && approvalDeadline !== null && approvalDeadline > now && availability?.canApprove === true, availabilityReason: !isStudOwner ? "Awaiting stud-owner decision" : approvalDeadline !== null && approvalDeadline > now ? availability?.reason ?? "Approval required" : "Approval deadline passed" }
     : null;
   const canSelectPuppy = Boolean(contract.puppySelection && selectionIsActive(contract.puppySelection) && contract.puppySelection.turnDeadlineAt && contract.puppySelection.turnDeadlineAt > now && ((contract.puppySelection.currentActor === "STUD_OWNER" && isStudOwner) || (contract.puppySelection.currentActor === "DAM_OWNER" && !isStudOwner)));
-  const action = manualApproval?.isAvailable
+  const action = manualApproval?.isActionable
     ? { kind: "MANUAL_APPROVAL" as const, label: "Review request", deadlineAt: manualApproval.deadlineAt }
     : canSelectPuppy && contract.puppySelection?.turnDeadlineAt
       ? { kind: "PUPPY_SELECTION" as const, label: "Choose puppy", selectionId: contract.puppySelection.id, deadlineAt: contract.puppySelection.turnDeadlineAt.toISOString() }
@@ -190,6 +240,7 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
 
 export async function listStudContractsForKennel(args: { kennelId: string; cursor?: string | null; statusFilter?: StudContractStatusFilter; actionFilter?: StudContractActionFilter; sortOrder?: StudContractSortOrder }) {
   const now = new Date();
+  const currentEpoch = getCurrentEpoch();
   const statusFilter = args.statusFilter ?? "all";
   const actionFilter = args.actionFilter ?? "all";
   const sortOrder = args.sortOrder ?? "newest";
@@ -200,7 +251,7 @@ export async function listStudContractsForKennel(args: { kennelId: string; curso
   });
   const hasMore = rows.length > PAGE_SIZE;
   const items = rows.slice(0, PAGE_SIZE).flatMap((row) => {
-    const item = toItem(row, args.kennelId, now);
+    const item = toItem(row, args.kennelId, now, currentEpoch);
     return item ? [item] : [];
   });
   return { items, nextCursor: hasMore ? rows[PAGE_SIZE - 1]?.id ?? null : null, hasMore };
@@ -208,5 +259,5 @@ export async function listStudContractsForKennel(args: { kennelId: string; curso
 
 export async function getStudContractHistoryDetail(args: { kennelId: string; contractId: string }) {
   const contract = await db.studContract.findFirst({ where: { id: args.contractId, OR: [{ sireKennelId: args.kennelId }, { damKennelId: args.kennelId }] }, include: contractInclude });
-  return toItem(contract, args.kennelId);
+  return toItem(contract, args.kennelId, new Date(), getCurrentEpoch());
 }

@@ -177,7 +177,7 @@ The following ideas remain intentionally outside the implemented system:
 
 ### The core UI contract
 
-I’d document the target row model approximately as:
+the target row model approximately as:
 
 | Open     | Status   | Breeding   | Current state                 | Action                 |
 | -------- | -------- | ---------- | ----------------------------- | ---------------------- |
@@ -195,5 +195,3 @@ The important architectural rule is:
 They do not become a new database authority.
 
 That fits the existing implementation because the contract lifecycle, Puppy Back lifecycle, Return Service lifecycle, breeding attempt, pregnancy, and litter states already exist independently. 
-
-I would put this into the implementation source before starting HUB-01, so Codex has one locked target rather than reconstructing the page design from conversation history.

@@ -9,6 +9,8 @@ const approve = source("apps/web/app/api/stud-contracts/[contractId]/approve/rou
 const decline = source("apps/web/app/api/stud-contracts/[contractId]/decline/route.ts");
 const page = source("apps/web/app/stud-contracts/requests/page.tsx");
 const actions = source("apps/web/components/stud-contract/PendingStudRequestActions.tsx");
+const hub = source("apps/web/components/stud-contract/StudContractHistoryClient.tsx");
+const history = source("apps/web/server/services/studContractHistory.service.ts");
 
 for (const fragment of [
   "manualApprovedContractId",
@@ -54,5 +56,14 @@ assert.ok(actions.includes('act("approve")'));
 assert.ok(actions.includes('act("decline")'));
 assert.ok(actions.includes("router.refresh()"));
 assert.ok(actions.includes("disabled={pending || !canApprove}"));
+assert.ok(actions.includes("approveDisabledReason"));
+assert.ok(actions.includes('act("decline")'));
+assert.ok(hub.includes("PendingStudRequestActions"));
+assert.ok(hub.includes('item.action.kind === "MANUAL_APPROVAL"'));
+assert.equal(hub.includes("StudContractPuppySelectionActions"), false);
+assert.equal(hub.includes("StudContractReturnServiceAction"), false);
+assert.ok(history.includes("approvalAvailability"));
+assert.ok(history.includes("hasPendingVeterinaryCareFromRecords"));
+assert.ok(history.includes("evaluateDamAgainstStudContractRequirements"));
 
 console.log("Stud Contract Manual Approve/Decline checks passed.");

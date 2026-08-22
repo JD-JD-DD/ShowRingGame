@@ -166,9 +166,6 @@ The following historical design ideas remain intentionally unimplemented:
 
 
 
-Yes. I’d lock this as a **new implementation source/addendum** for the unified Stud Contract hub, and stage it so we preserve the working history page while gradually absorbing the actionable request/lifecycle work.
-
-The source already supports the underlying pieces: permanent both-party contract history, durable detail, separate lifecycle and Return Service state, immutable contract authority, and actionable request/selection/return-service phases.  
 
 ## Proposed staged implementation
 
