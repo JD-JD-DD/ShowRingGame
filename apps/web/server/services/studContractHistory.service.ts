@@ -41,19 +41,21 @@ const currentDogSelect = {
   healthTests: { where: { isPublic: true }, select: { id: true, testTypeCode: true, resultCode: true, testedAtEpoch: true, createdAt: true } },
   infectiousDiseaseStatuses: { select: { diseaseCode: true, status: true } },
   infectiousDiseaseTests: { select: { diseaseCode: true, resultCode: true, validUntilEpoch: true } },
-} as const;
+} satisfies Prisma.DogSelect;
 
-const contractInclude = {
-  sireDog: { select: currentDogSelect },
-  damDog: { select: currentDogSelect },
-  sireKennel: { select: { id: true, name: true } },
-  damKennel: { select: { id: true, name: true } },
-  healthRequirements: { select: { healthTestCode: true, requirementLevel: true } },
-  breedingAttempt: { select: { id: true, status: true, createdEpoch: true } },
-  puppySelection: { select: { id: true, status: true, currentActor: true, turnDeadlineAt: true, completedAt: true, selectedDog: { select: { id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true } } } },
-  returnService: { include: { returnBreedingAttempt: { select: { id: true, status: true, createdEpoch: true } } } },
-} as const;
-type ContractHistoryRecord = Prisma.StudContractGetPayload<{ include: typeof contractInclude }>;
+const studContractHistoryArgs = {
+  include: {
+    sireDog: { select: currentDogSelect },
+    damDog: { select: currentDogSelect },
+    sireKennel: { select: { id: true, name: true } },
+    damKennel: { select: { id: true, name: true } },
+    healthRequirements: { select: { healthTestCode: true, requirementLevel: true } },
+    breedingAttempt: { select: { id: true, status: true, createdEpoch: true } },
+    puppySelection: { select: { id: true, status: true, currentActor: true, turnDeadlineAt: true, completedAt: true, selectedDog: { select: { id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true } } } },
+    returnService: { include: { returnBreedingAttempt: { select: { id: true, status: true, createdEpoch: true } } } },
+  },
+} satisfies Prisma.StudContractDefaultArgs;
+type ContractHistoryRecord = Prisma.StudContractGetPayload<typeof studContractHistoryArgs>;
 
 function returnServiceLabel(value: { status: "AVAILABLE" | "USED" | "EXPIRED" | "EXTINGUISHED"; expiresAt: Date; extinguishmentReason: string | null }) {
   if (value.status === "AVAILABLE") return "Available";
@@ -247,7 +249,7 @@ export async function listStudContractsForKennel(args: { kennelId: string; curso
   const rows = await db.studContract.findMany({
     where: historyWhere({ kennelId: args.kennelId, statusFilter, actionFilter, now }),
     orderBy: [{ requestedAt: sortOrder === "newest" ? "desc" : "asc" }, { id: sortOrder === "newest" ? "desc" : "asc" }], take: PAGE_SIZE + 1,
-    ...(args.cursor ? { cursor: { id: args.cursor }, skip: 1 } : {}), include: contractInclude,
+    ...(args.cursor ? { cursor: { id: args.cursor }, skip: 1 } : {}), include: studContractHistoryArgs.include,
   });
   const hasMore = rows.length > PAGE_SIZE;
   const items = rows.slice(0, PAGE_SIZE).flatMap((row) => {
@@ -258,6 +260,6 @@ export async function listStudContractsForKennel(args: { kennelId: string; curso
 }
 
 export async function getStudContractHistoryDetail(args: { kennelId: string; contractId: string }) {
-  const contract = await db.studContract.findFirst({ where: { id: args.contractId, OR: [{ sireKennelId: args.kennelId }, { damKennelId: args.kennelId }] }, include: contractInclude });
+  const contract = await db.studContract.findFirst({ where: { id: args.contractId, OR: [{ sireKennelId: args.kennelId }, { damKennelId: args.kennelId }] }, include: studContractHistoryArgs.include });
   return toItem(contract, args.kennelId, new Date(), getCurrentEpoch());
 }
