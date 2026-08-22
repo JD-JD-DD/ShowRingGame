@@ -6,6 +6,46 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 
 const PUPPY_SELECTION_TURN_MS = 24 * 60 * 60 * 1000;
 
+export function getStudContractPuppySelectionDeadlines(bornEpoch: number) {
+  return {
+    firstPickDeadlineAt: epochToDate(bornEpoch + 24),
+    secondPickDamDeadlineAt: epochToDate(bornEpoch + 24),
+    secondPickStudDeadlineAt: epochToDate(bornEpoch + 48),
+  };
+}
+
+export function getInitialStudContractPuppySelectionTurn(args: {
+  puppyPickPosition: "FIRST" | "SECOND";
+  bornEpoch: number;
+}) {
+  const deadlines = getStudContractPuppySelectionDeadlines(args.bornEpoch);
+  return args.puppyPickPosition === "FIRST"
+    ? { status: "STUD_PICK" as const, currentActor: "STUD_OWNER" as const, turnDeadlineAt: deadlines.firstPickDeadlineAt, secondPickStudDeadlineAt: deadlines.secondPickStudDeadlineAt }
+    : { status: "DAM_FIRST_PICK" as const, currentActor: "DAM_OWNER" as const, turnDeadlineAt: deadlines.secondPickDamDeadlineAt, secondPickStudDeadlineAt: deadlines.secondPickStudDeadlineAt };
+}
+
+export async function openInitialStudContractPuppySelection(args: {
+  client: Prisma.TransactionClient;
+  contractId: string;
+  litterId: string;
+  puppyPickPosition: "FIRST" | "SECOND";
+  bornEpoch: number;
+  turnStartedAt: Date;
+}) {
+  const turn = getInitialStudContractPuppySelectionTurn(args);
+  const selection = await args.client.studContractPuppySelection.upsert({
+    where: { contractId: args.contractId },
+    create: { contractId: args.contractId, litterId: args.litterId },
+    update: {},
+    select: { id: true },
+  });
+  const update = await args.client.studContractPuppySelection.updateMany({
+    where: { id: selection.id, status: "WAITING" },
+    data: { status: turn.status, currentActor: turn.currentActor, turnStartedAt: args.turnStartedAt, turnDeadlineAt: turn.turnDeadlineAt },
+  });
+  return { selectionId: selection.id, opened: update.count === 1, ...turn };
+}
+
 export async function createStudContractPuppySelection(args: {
   contractId: string;
   litterId: string;
