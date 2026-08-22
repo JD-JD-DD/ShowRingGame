@@ -6,6 +6,10 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 
 const PUPPY_SELECTION_TURN_MS = 24 * 60 * 60 * 1000;
 
+export function getStudContractPuppySelectionCutoffEpoch(bornEpoch: number) {
+  return bornEpoch + PUPPY_SALE_MIN_AGE_HOURS;
+}
+
 export function getStudContractPuppySelectionDeadlines(bornEpoch: number) {
   return {
     firstPickDeadlineAt: epochToDate(bornEpoch + 24),
@@ -137,7 +141,7 @@ export async function reconcileSelectedStudContractPuppyDeath(args: {
   if (!selection || !selection.litter || !selection.selectedDogId || selection.selectedDog?.lifecycleState !== "DECEASED") return "skipped";
 
   const bornEpoch = selection.litter.bornEpoch;
-  const windowClosesAtEpoch = bornEpoch + PUPPY_SALE_MIN_AGE_HOURS;
+  const windowClosesAtEpoch = getStudContractPuppySelectionCutoffEpoch(bornEpoch);
   const windowOpen = args.currentEpoch < windowClosesAtEpoch;
   const hasReplacement = windowOpen && await hasSelectableStudContractPuppy({
     client: args.client,

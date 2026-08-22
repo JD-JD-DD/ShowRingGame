@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import { getStudContractPuppySelectionDeadlines, hasSelectableStudContractPuppy, openInitialStudContractPuppySelection, reconcileSelectedStudContractPuppyDeath } from "@/server/services/studContractPuppySelection.service";
+import { deleteLitterRunIfEmpty, ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
+import { getStudContractPuppySelectionCutoffEpoch, getStudContractPuppySelectionDeadlines, hasSelectableStudContractPuppy, openInitialStudContractPuppySelection, reconcileSelectedStudContractPuppyDeath } from "@/server/services/studContractPuppySelection.service";
+import { PUPPY_SALE_MIN_AGE_HOURS } from "@showring/rules";
 
 const DEFAULT_BATCH_LIMIT = 50;
 export function evaluateStudContractWhelpQualification(args: {
@@ -229,6 +231,122 @@ export async function reconcileSelectedStudContractPuppyDeaths(args?: {
     }
   }
   return { checkedCount: candidates.length, reopenedCount, unfulfillableCount, skippedCount, failedCount };
+}
+
+export async function processDueStudContractPuppyTransfers(args?: {
+  currentEpoch?: number;
+  now?: Date;
+  limit?: number;
+}) {
+  const currentEpoch = args?.currentEpoch ?? Math.floor(Date.now() / 1000);
+  const now = args?.now ?? new Date();
+  const limit = Math.max(1, Math.min(args?.limit ?? DEFAULT_BATCH_LIMIT, 100));
+  const dueBeforeEpoch = currentEpoch - PUPPY_SALE_MIN_AGE_HOURS;
+  const candidates = await db.studContractPuppySelection.findMany({
+    where: {
+      status: "SELECTED",
+      selectedDogId: { not: null },
+      selectedDog: { lifecycleState: "ALIVE" },
+      litter: { bornEpoch: { lte: dueBeforeEpoch } },
+    },
+    orderBy: [{ litter: { bornEpoch: "asc" } }, { id: "asc" }],
+    take: limit,
+    select: { id: true },
+  });
+  let transferredCount = 0;
+  let skippedCount = 0;
+  let failedCount = 0;
+
+  for (const candidate of candidates) {
+    try {
+      const result = await db.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "StudContractPuppySelection" WHERE "id" = ${candidate.id} FOR UPDATE`;
+        const selection = await tx.studContractPuppySelection.findUnique({
+          where: { id: candidate.id },
+          select: {
+            id: true,
+            litterId: true,
+            status: true,
+            selectedDogId: true,
+            damFirstPickDogId: true,
+            litter: { select: { bornEpoch: true } },
+            selectedDog: { select: { id: true, litterId: true, lifecycleState: true, ownerKennelId: true, kennelRunId: true, callName: true, registeredName: true, regNumber: true } },
+            contract: { select: { sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true } },
+          },
+        });
+        if (!selection || selection.status !== "SELECTED" || !selection.selectedDogId || !selection.litter || !selection.selectedDog) return "skipped";
+
+        const selectedDogId = selection.selectedDogId;
+        const selectedDog = selection.selectedDog;
+        const bornEpoch = selection.litter.bornEpoch;
+        if (selectedDog.id !== selectedDogId || selectedDog.litterId !== selection.litterId || selectedDog.lifecycleState !== "ALIVE" || currentEpoch < getStudContractPuppySelectionCutoffEpoch(bornEpoch)) return "skipped";
+        if (selectedDog.ownerKennelId !== selection.contract.damKennelId) {
+          throw new Error("Selected Stud Contract puppy ownership no longer matches the original dam kennel.");
+        }
+
+        const destinationKennel = await tx.kennel.findUnique({
+          where: { id: selection.contract.sireKennelId },
+          select: { id: true },
+        });
+        if (!destinationKennel) {
+          throw new Error("Original stud contracting kennel is unavailable for Puppy Back transfer.");
+        }
+        const destinationRun = await ensureUncategorizedKennelRun({
+          kennelId: destinationKennel.id,
+          client: tx,
+        });
+        const transfer = await tx.dog.updateMany({
+          where: {
+            id: selectedDogId,
+            litterId: selection.litterId,
+            lifecycleState: "ALIVE",
+            ownerKennelId: selection.contract.damKennelId,
+          },
+          data: { ownerKennelId: destinationKennel.id, kennelRunId: destinationRun.id },
+        });
+        if (transfer.count !== 1) return "skipped";
+
+        const completion = await tx.studContractPuppySelection.updateMany({
+          where: { id: selection.id, status: "SELECTED", selectedDogId },
+          data: { status: "COMPLETED", currentActor: "NONE", turnStartedAt: null, turnDeadlineAt: null, completedAt: now },
+        });
+        if (completion.count !== 1) {
+          throw new Error("Stud Contract Puppy Back selection changed before transfer completion.");
+        }
+
+        await deleteLitterRunIfEmpty({ priorRunId: selectedDog.kennelRunId, client: tx });
+        await createKennelNotice({
+          client: tx,
+          kennelId: selection.contract.damKennelId,
+          sourceKey: `STUD_PUPPY_TRANSFER_DAM:${selection.id}`,
+          type: "KENNEL_SERVICE",
+          title: "Selected Stud Contract puppy transferred",
+          body: `${selectedDog.callName ?? selectedDog.registeredName ?? selectedDog.regNumber} transferred to the stud owner's kennel at 8 weeks of age.`,
+          currentEpoch,
+          linkedDogId: selectedDogId,
+          linkedLitterId: selection.litterId,
+        });
+        await createKennelNotice({
+          client: tx,
+          kennelId: destinationKennel.id,
+          sourceKey: `STUD_PUPPY_TRANSFER_STUD:${selection.id}`,
+          type: "KENNEL_SERVICE",
+          title: "Selected Stud Contract puppy transferred",
+          body: `${selectedDog.callName ?? selectedDog.registeredName ?? selectedDog.regNumber} transferred to your kennel at 8 weeks of age and was placed in Uncategorized.`,
+          currentEpoch,
+          linkedDogId: selectedDogId,
+          linkedLitterId: selection.litterId,
+        });
+        return "transferred";
+      });
+      if (result === "transferred") transferredCount += 1;
+      else skippedCount += 1;
+    } catch (error) {
+      failedCount += 1;
+      console.error("Stud Contract selected puppy transfer failed", { selectionId: candidate.id, error });
+    }
+  }
+  return { checkedCount: candidates.length, transferredCount, skippedCount, failedCount };
 }
 
 export async function processExpiredStudContractRequests(args?: {
