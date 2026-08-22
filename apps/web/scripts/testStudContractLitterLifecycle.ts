@@ -10,7 +10,7 @@ function expect(value: boolean, message: string) {
   if (!value) throw new Error(message);
 }
 
-expect(breedingSource.includes('status: "ACCEPTED"') && breedingSource.includes("litterId: persistedLitter.id") && breedingSource.includes("whelpQualificationAt: new Date()"), "Whelping must link and qualify only an accepted StudContract at litter creation.");
+expect(breedingSource.includes('status: "ACCEPTED"') && breedingSource.includes("litterId: persistedLitter.id") && breedingSource.includes("const whelpQualificationAt = new Date()") && breedingSource.includes("whelpQualificationAt,"), "Whelping must link and qualify only an accepted StudContract at litter creation.");
 expect(breedingSource.includes("litterId: null"), "Whelping must not overwrite an existing StudContract litter link.");
 expect(breedingSource.includes("persistedLitter.puppies.length"), "Live-born count must come from puppies created in the whelping transaction.");
 expect(breedingSource.includes("puppyBackMinimumMet") && breedingSource.includes("smallLitterReturnServiceMet"), "Both frozen whelp-time results must be persisted.");

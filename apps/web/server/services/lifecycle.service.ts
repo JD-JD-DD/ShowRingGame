@@ -7,6 +7,7 @@ import {
 } from "@/server/services/emergencyVetCare.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { reconcileSelectedStudContractPuppyDeath } from "@/server/services/studContractPuppySelection.service";
+import { createStudContractReturnService } from "@/server/services/studContractReturnService.service";
 import {
   ACCIDENT_ILLNESS_LIFETIME_DEATH_RATE,
   AGE_DEATH_START_HOURS,
@@ -388,6 +389,18 @@ export async function markDogDeceased(args: {
     },
   });
 
+  const returnServiceContracts = await client.studContract.findMany({
+    where: {
+      status: "ACCEPTED",
+      noLitterReturnService: true,
+      breedingAttempt: {
+        damId: dogId,
+        status: { in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"] },
+      },
+    },
+    select: { id: true },
+  });
+  const failureAt = new Date();
   await client.breedingAttempt.updateMany({
     where: {
       damId: dogId,
@@ -402,6 +415,14 @@ export async function markDogDeceased(args: {
       notes: breedingFailureNote(regNumber, cause),
     },
   });
+  for (const contract of returnServiceContracts) {
+    await createStudContractReturnService({
+      client,
+      contractId: contract.id,
+      trigger: "NO_LITTER",
+      availableAt: failureAt,
+    });
+  }
 
   if (ownerKennelId) {
     const noticeBody = isNeonatalLoss

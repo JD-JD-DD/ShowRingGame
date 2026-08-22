@@ -25,6 +25,7 @@ import {
 import { markDogDeceased } from "@/server/services/lifecycle.service";
 import { evaluateStudContractWhelpQualification } from "@/server/services/studContractLifecycle.service";
 import { openInitialStudContractPuppySelection } from "@/server/services/studContractPuppySelection.service";
+import { createStudContractReturnService } from "@/server/services/studContractReturnService.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
@@ -580,10 +581,22 @@ async function resolvePregnancyCheckAttempt(args: {
       },
     });
 
-    if (
-      resolved.status === "CHECKED_NOT_PREGNANT" &&
-      fresh.createdByKennelId
-    ) {
+    if (resolved.status === "CHECKED_NOT_PREGNANT") {
+      const contract = await tx.studContract.findFirst({
+        where: { breedingAttemptId: fresh.id, status: "ACCEPTED", noLitterReturnService: true },
+        select: { id: true },
+      });
+      if (contract) {
+        await createStudContractReturnService({
+          client: tx,
+          contractId: contract.id,
+          trigger: "NO_LITTER",
+          availableAt: new Date(),
+        });
+      }
+    }
+
+    if (resolved.status === "CHECKED_NOT_PREGNANT" && fresh.createdByKennelId) {
       await createKennelNotice({
         client: tx,
         kennelId: fresh.createdByKennelId,
@@ -925,10 +938,19 @@ async function resolveWhelpingAttempt(args: {
         smallLitterReturnThreshold: acceptedContract.smallLitterReturnThreshold,
         liveBornPuppyCount: persistedLitter.puppies.length,
       });
+      const whelpQualificationAt = new Date();
       const qualificationUpdate = await tx.studContract.updateMany({
         where: { id: acceptedContract.id, status: "ACCEPTED", litterId: null, whelpQualificationAt: null },
-        data: { litterId: persistedLitter.id, whelpQualificationAt: new Date(), liveBornPuppyCount: persistedLitter.puppies.length, ...qualification },
+        data: { litterId: persistedLitter.id, whelpQualificationAt, liveBornPuppyCount: persistedLitter.puppies.length, ...qualification },
       });
+      if (qualificationUpdate.count === 1 && qualification.smallLitterReturnServiceMet === true) {
+        await createStudContractReturnService({
+          client: tx,
+          contractId: acceptedContract.id,
+          trigger: "SMALL_LITTER",
+          availableAt: whelpQualificationAt,
+        });
+      }
       if (qualificationUpdate.count === 1 && qualification.puppyBackMinimumMet === true && acceptedContract.puppyPickPosition) {
         await openInitialStudContractPuppySelection({
           client: tx,

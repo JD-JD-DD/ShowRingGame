@@ -145,6 +145,24 @@ enum DogListingStatus {
   CANCELLED
 }
 
+enum StudContractReturnServiceStatus {
+  AVAILABLE
+  USED
+  EXPIRED
+  EXTINGUISHED
+}
+
+enum StudContractReturnServiceTrigger {
+  NO_LITTER
+  SMALL_LITTER
+}
+
+enum StudContractReturnServiceExtinguishmentReason {
+  OWNERSHIP_TRANSFER
+  DOG_DEATH
+  PERMANENT_BREEDING_INELIGIBILITY
+}
+
 enum StudCompensationType {
   CASH
   PUPPY_BACK
@@ -893,6 +911,7 @@ model BreedingAttempt {
   infectiousDiseaseTests InfectiousDiseaseTestRecord[]
   reproductiveEmergency  ReproductiveEmergencyEvent?
   studContract           StudContract? @relation("StudContractBreedingAttempt")
+  returnService          StudContractReturnService? @relation("StudContractReturnServiceBreedingAttempt")
 
   @@index([sireId])
   @@index([damId])
@@ -1606,6 +1625,7 @@ model StudContract {
   breedingAttempt    BreedingAttempt?                @relation("StudContractBreedingAttempt", fields: [breedingAttemptId], references: [id], onDelete: Restrict)
   litter             Litter?                         @relation("StudContractLitter", fields: [litterId], references: [id], onDelete: Restrict)
   puppySelection     StudContractPuppySelection?     @relation("StudContractPuppySelectionContract")
+  returnService      StudContractReturnService?      @relation("StudContractReturnServiceContract")
   healthRequirements StudContractHealthRequirement[]
 
   @@index([sourceOfferId])
@@ -1614,6 +1634,26 @@ model StudContract {
   @@index([sireKennelId])
   @@index([damKennelId])
   @@index([status])
+}
+
+model StudContractReturnService {
+  id                      String                                       @id @default(cuid())
+  contractId              String                                       @unique
+  status                  StudContractReturnServiceStatus              @default(AVAILABLE)
+  trigger                 StudContractReturnServiceTrigger
+  availableAt             DateTime
+  expiresAt               DateTime
+  usedAt                  DateTime?
+  extinguishedAt          DateTime?
+  extinguishmentReason    StudContractReturnServiceExtinguishmentReason?
+  returnBreedingAttemptId String?                                      @unique
+  createdAt               DateTime                                     @default(now())
+  updatedAt               DateTime                                     @updatedAt
+
+  contract              StudContract     @relation("StudContractReturnServiceContract", fields: [contractId], references: [id], onDelete: Restrict)
+  returnBreedingAttempt BreedingAttempt? @relation("StudContractReturnServiceBreedingAttempt", fields: [returnBreedingAttemptId], references: [id], onDelete: Restrict)
+
+  @@index([status, expiresAt])
 }
 
 model StudContractPuppySelection {
