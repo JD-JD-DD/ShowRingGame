@@ -46,6 +46,7 @@ type RosterDogRecord = PersistedDogTraitRecord & {
   birthEpoch: number;
   lifecycleState: string;
   marketState: string;
+  ownerKennelId: string | null;
   kennelRunId: string | null;
   kennelRun: {
     id: string;
@@ -59,6 +60,10 @@ type RosterDogRecord = PersistedDogTraitRecord & {
     conditionCode: string;
     geneticLiability: number;
     environmentModifier: number;
+  }>;
+  studOffersAsSire: Array<{
+    id: string;
+    ownerKennelId: string;
   }>;
   ringObedience: number;
   muscleTone: number;
