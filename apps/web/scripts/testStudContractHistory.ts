@@ -23,12 +23,22 @@ for (const fragment of [
   "completedAt",
   "SIRE_OWNERSHIP_CHANGED",
   "Permanently ended — sire died",
+  "currentActor",
+  "currentDeadline",
+  "MANUAL_APPROVAL",
+  "PUPPY_SELECTION",
+  "RETURN_SERVICE",
+  "Approval required",
+  "Awaiting stud-owner decision",
 ]) assert.ok(service.includes(fragment), fragment);
 assert.ok(list.includes("StudContractHistoryClient"));
 assert.ok(detail.includes("getStudContractHistoryDetail"));
 assert.ok(detail.includes("Puppies born alive at whelping"));
 assert.ok(detail.includes("Completed:"));
 assert.ok(client.includes("Load More"));
+assert.ok(client.includes(">Open<span"));
+assert.ok(client.includes("Current state"));
+assert.ok(client.includes("Status:"));
 assert.equal(client.includes("Attempt Return Service"), false);
 assert.ok(route.includes("getSessionUserId"));
 assert.ok(nav.includes('label: "My Stud Contracts"'));

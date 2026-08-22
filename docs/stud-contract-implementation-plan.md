@@ -163,3 +163,142 @@ The following historical design ideas remain intentionally unimplemented:
 - negotiation/counteroffers, arbitrary custom terms, trait or COI
   requirements, private/restricted access lists, and messaging;
 - contract-specific naming rights or prefix/suffix concessions.
+
+
+
+Yes. I’d lock this as a **new implementation source/addendum** for the unified Stud Contract hub, and stage it so we preserve the working history page while gradually absorbing the actionable request/lifecycle work.
+
+The source already supports the underlying pieces: permanent both-party contract history, durable detail, separate lifecycle and Return Service state, immutable contract authority, and actionable request/selection/return-service phases.  
+
+## Proposed staged implementation
+
+1. **HUB-01 — Unified Read Model**
+
+   * Expand `/stud-contracts` so every row has:
+
+     * persistent **Open**
+     * derived **Status**
+     * **Breeding** (`Dam × Stud`)
+     * derived **Current state**
+     * derived **Needs Action** metadata
+   * Preserve newest-first history and 10/+10 pagination.
+   * No action buttons move yet.
+   * No new stored status enum.
+
+2. **HUB-02 — Filters and Sorting**
+
+   * Add top controls:
+
+     * **All**
+     * **Needs Action**
+     * **Pending**
+     * **Active**
+     * **Complete**
+     * **Declined / Expired**
+   * Make filtering work correctly with pagination; server-side if necessary.
+   * Optionally add simple sort if useful, but default remains newest-first.
+   * `Needs Action` derives from existing persisted states, not a new DB flag.
+
+3. **HUB-03 — Manual Approval Actions**
+
+   * Move **Approve / Decline** behavior from `/stud-contracts/requests` into the appropriate rows on `/stud-contracts`.
+   * Sire owner sees action buttons.
+   * Dam owner sees “Awaiting stud owner.”
+   * Use existing approval/decline APIs and immutable request authority.
+   * Include accurate deadline and current sire/dam availability messaging.
+   * This also fixes the incomplete Pending Requests UI identified in Audit 01.
+
+4. **HUB-04 — Puppy Back Actions**
+
+   * Surface **Pick Puppy** only when the active kennel currently owns the selection turn.
+   * Use the existing Puppy Back selection state/deadlines.
+   * Do not duplicate selection logic.
+   * Row states can distinguish:
+
+     * waiting for dam pick
+     * stud pick available
+     * puppy selected
+     * selection forfeited/completed
+
+5. **HUB-05 — Return Service Actions**
+
+   * Surface **Use Return Service** only when an entitlement is actually available to the active kennel.
+   * Show the existing 60-real-day deadline/availability.
+   * Preserve same sire/dam/original kennel rules and existing transaction path.
+   * Keep Return Service state separate from the main contract lifecycle status. 
+
+6. **HUB-06 — Current-State Refinement**
+
+   * Finish the player-facing lifecycle descriptions across all contract phases, for example:
+
+     * Approval required
+     * Awaiting stud owner
+     * Breeding attempted
+     * Pregnancy pending
+     * Pregnant
+     * Whelped
+     * Puppy selection due
+     * Puppy selected
+     * Return Service available
+     * Complete
+     * Declined
+     * Expired
+   * Derive each from existing authoritative state.
+   * No new simulation state or lifecycle enum.
+
+7. **HUB-07 — Contract Detail Completion**
+
+   * Keep `/stud-contracts/[contractId]` as the permanent detailed record.
+   * Fill the audit gaps:
+
+     * pending approval deadline
+     * declined timestamp
+     * expired timestamp
+     * any missing lifecycle/selection/Return Service dates already persisted
+   * Preserve immutable contract terms as detail authority.
+
+8. **HUB-08 — Navigation Consolidation**
+
+   * Make **My Stud Contracts** / **Stud Contracts** a prominent normal navigation destination rather than buried under Account.
+   * Remove the separate **Stud Requests** navigation item.
+   * Add appropriate low-friction links from Stud Owner Worksheet / relevant breeding surfaces where useful.
+   * Keep one obvious answer to “where do I manage my stud contracts?”
+
+9. **HUB-09 — Retire `/stud-contracts/requests`**
+
+   * Only after Approve/Decline and request-state presentation work correctly on the hub.
+   * Remove the separate player-facing requests page or redirect it safely to `/stud-contracts` with an appropriate Needs Action/Pending view.
+   * Remove obsolete placeholder copy/components only when no callers remain.
+   * Do not touch the underlying manual-request transaction services.
+
+10. **HUB-10 — Notices and Deep Links**
+
+    * Update Stud Contract notices so relevant notices link directly to:
+
+      * `/stud-contracts/[contractId]`, or
+      * `/stud-contracts` when the workspace is more appropriate.
+    * Manual approval request → actionable contract.
+    * Puppy pick → relevant contract/litter action.
+    * Return Service → relevant contract.
+    * Preserve dog/litter links where they are still useful secondary navigation.
+
+11. **HUB-11 — Unified Regression Closeout**
+
+    * Lock:
+
+      * both kennel roles
+      * historical records
+      * Open link
+      * Status derivation
+      * Current-state derivation
+      * Needs Action filtering
+      * Approve/Decline
+      * Puppy Pick
+      * Return Service
+      * pagination/filter interaction
+      * durable detail
+      * requests route retirement/redirect
+      * notice deep links
+    * Confirm no new stored lifecycle authority was introduced.
+
+

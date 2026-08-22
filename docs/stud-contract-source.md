@@ -173,3 +173,27 @@ The following ideas remain intentionally outside the implemented system:
   requirements, private access lists, and messaging;
 - contract-specific naming-prefix/suffix concessions or other naming rights
   beyond ordinary ownership behavior.
+
+
+### The core UI contract
+
+I’d document the target row model approximately as:
+
+| Open     | Status   | Breeding   | Current state                 | Action                 |
+| -------- | -------- | ---------- | ----------------------------- | ---------------------- |
+| **Open** | Pending  | Dam × Stud | Approval expires in 14h       | **Approve / Decline**  |
+| **Open** | Pending  | Dam × Stud | Awaiting stud owner           | —                      |
+| **Open** | Active   | Dam × Stud | Breeding attempted            | —                      |
+| **Open** | Active   | Dam × Stud | Pregnant                      | —                      |
+| **Open** | Active   | Dam × Stud | Whelped — puppy selection due | **Pick Puppy**         |
+| **Open** | Active   | Dam × Stud | Return Service available      | **Use Return Service** |
+| **Open** | Complete | Dam × Stud | Contract complete             | —                      |
+
+The important architectural rule is:
+
+**Status, Current state, and Action are derived presentation.**
+They do not become a new database authority.
+
+That fits the existing implementation because the contract lifecycle, Puppy Back lifecycle, Return Service lifecycle, breeding attempt, pregnancy, and litter states already exist independently. 
+
+I would put this into the implementation source before starting HUB-01, so Codex has one locked target rather than reconstructing the page design from conversation history.
