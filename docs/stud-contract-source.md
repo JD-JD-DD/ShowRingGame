@@ -174,10 +174,11 @@ Protected puppies cannot be:
 sold;
 rehomed;
 transferred;
-removed from the game;
-named.
+removed from the game.
 
 This prevents either kennel from altering the available selection pool before required picks are completed.
+
+Naming follows ordinary current ownership and does not affect selection eligibility, `selectedDogId`, `damFirstPickDogId`, deadlines, mortality/reselection, or the Day-56 transfer. Before that transfer, the dam kennel remains the owner and may name the puppy normally; the stud kennel has no pre-transfer naming authority. The existing name transfers with the puppy, and after transfer the stud kennel may name an unnamed dog under ordinary naming rules.
 
 Once all required selections are made or forfeited, unnecessary protections are released.
 
@@ -566,7 +567,7 @@ pending-request page layout;
 puppy transfer mechanics after selection;
 exact ledger implementation for contract-backed breeding;
 return-service credit storage/lifecycle;
-naming prefix/suffix obligations;
+naming prefix/suffix obligations or contract-specific naming concessions;
 resale/show/breeding restrictions on puppy-back dogs.
 
 Those should remain out of scope until separately designed.

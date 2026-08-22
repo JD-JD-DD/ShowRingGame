@@ -830,7 +830,6 @@ Until required selections are completed or forfeited, every puppy that could aff
 
 Add authoritative server guards to:
 
-naming;
 sale listing;
 rehome;
 ownership transfer;
@@ -838,9 +837,7 @@ any remove-from-game path.
 
 UI disabling alone is insufficient.
 
-Messages should state the actual reason, for example:
-
-This puppy is part of an active Stud Contract selection and cannot be named yet.
+Naming remains ordinary current-owner behavior. It does not alter selection eligibility, selected-puppy records, deadlines, mortality/reselection, or the Day-56 transfer; do not create cross-kennel or contract-specific naming authority.
 
 Once the relevant selection is resolved, release unnecessary holds.
 
@@ -1027,7 +1024,7 @@ Either/Male/Female;
 unavailable sex;
 minimum litter rules;
 selected puppy death/reselection;
-contract protection on naming/sale/rehome/transfer.
+current-owner naming plus contract protection on sale/rehome/transfer.
 Return classification
 no litter;
 1-or-fewer;
