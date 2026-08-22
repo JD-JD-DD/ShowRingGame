@@ -15,11 +15,9 @@ for (const field of [
   'studContract    StudContract?    @relation("StudContractLitter")',
 ]) assert.ok(schema.includes(field), field);
 for (const column of [
-  '"litterId" TEXT',
-  '"whelpQualificationAt" TIMESTAMP(3)',
-  '"liveBornPuppyCount" INTEGER',
-  '"puppyBackMinimumMet" BOOLEAN',
-  '"smallLitterReturnServiceMet" BOOLEAN',
+  'DROP COLUMN "qualificationCheckpointAt"',
+  'DROP COLUMN "qualifyingSurvivingPuppyCount"',
 ]) assert.ok(migration.includes(column), column);
-assert.ok(migration.includes('CREATE UNIQUE INDEX "StudContract_litterId_key"'));
+assert.equal(schema.includes("qualificationCheckpointAt"), false);
+assert.equal(schema.includes("qualifyingSurvivingPuppyCount"), false);
 console.log("Stud Contract litter qualification persistence checks passed.");
