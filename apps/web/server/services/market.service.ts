@@ -4,6 +4,7 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
 import { assertDogNotProtectedByStudContractSelection } from "@/server/services/studContractPuppyProtection.service";
+import { extinguishStudContractReturnServicesForDog } from "@/server/services/studContractReturnService.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   deleteLitterRunIfEmpty,
@@ -536,6 +537,13 @@ export async function buyPlayerDogListing(args: {
         marketState: "NOT_FOR_SALE",
         isBreedingActive: true,
       },
+    });
+    await extinguishStudContractReturnServicesForDog({
+      client: tx,
+      dogId: listing.dog.id,
+      extinguishedAt: new Date(),
+      sireReason: "SIRE_OWNERSHIP_CHANGED",
+      damReason: "DAM_OWNERSHIP_CHANGED",
     });
     await deleteLitterRunIfEmpty({
       priorRunId: listing.dog.kennelRunId,

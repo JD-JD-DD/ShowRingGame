@@ -7,7 +7,7 @@ import {
 } from "@/server/services/emergencyVetCare.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { reconcileSelectedStudContractPuppyDeath } from "@/server/services/studContractPuppySelection.service";
-import { createStudContractReturnService } from "@/server/services/studContractReturnService.service";
+import { createStudContractReturnService, extinguishStudContractReturnServicesForDog } from "@/server/services/studContractReturnService.service";
 import {
   ACCIDENT_ILLNESS_LIFETIME_DEATH_RATE,
   AGE_DEATH_START_HOURS,
@@ -361,6 +361,13 @@ export async function markDogDeceased(args: {
     client,
     dogId,
     currentEpoch: deathEpoch,
+  });
+  await extinguishStudContractReturnServicesForDog({
+    client,
+    dogId,
+    extinguishedAt: new Date(),
+    sireReason: "SIRE_DIED",
+    damReason: "DAM_DIED",
   });
 
   await client.dogListing.updateMany({

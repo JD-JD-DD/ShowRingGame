@@ -73,6 +73,37 @@ export async function openQualifiedStudContractPuppySelections(args?: {
   return { checkedCount: candidates.length, openedCount, failedCount };
 }
 
+export async function processExpiredStudContractReturnServices(args?: {
+  now?: Date;
+  limit?: number;
+}) {
+  const now = args?.now ?? new Date();
+  const limit = Math.max(1, Math.min(args?.limit ?? DEFAULT_BATCH_LIMIT, 100));
+  const candidates = await db.studContractReturnService.findMany({
+    where: { status: "AVAILABLE", expiresAt: { lte: now } },
+    orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+    take: limit,
+    select: { id: true },
+  });
+  let expiredCount = 0;
+  let skippedCount = 0;
+  let failedCount = 0;
+  for (const candidate of candidates) {
+    try {
+      const update = await db.studContractReturnService.updateMany({
+        where: { id: candidate.id, status: "AVAILABLE", expiresAt: { lte: now } },
+        data: { status: "EXPIRED" },
+      });
+      if (update.count === 1) expiredCount += 1;
+      else skippedCount += 1;
+    } catch (error) {
+      failedCount += 1;
+      console.error("Stud Contract Return Service expiration failed", { returnServiceId: candidate.id, error });
+    }
+  }
+  return { checkedCount: candidates.length, expiredCount, skippedCount, failedCount };
+}
+
 export async function processExpiredStudContractPuppySelectionTurns(args?: {
   now?: Date;
   currentEpoch?: number;

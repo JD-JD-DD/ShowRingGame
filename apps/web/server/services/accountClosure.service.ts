@@ -6,6 +6,7 @@ import {
 } from "@/server/services/market.service";
 import { deleteLitterRunIfEmpty } from "@/server/services/kennelRun.service";
 import { assertDogsNotProtectedByStudContractSelection } from "@/server/services/studContractPuppyProtection.service";
+import { extinguishStudContractReturnServicesForDog } from "@/server/services/studContractReturnService.service";
 
 export type CloseUserAccountResult = {
   alreadyClosed: boolean;
@@ -132,6 +133,15 @@ export async function closeUserAccountForKennel(args: {
         where: { id: { in: activeDogIds }, ownerKennelId: kennel.id, lifecycleState: "ALIVE" },
         data: { lifecycleState: "RETIRED", marketState: "NOT_FOR_SALE", kennelRunId: null },
       });
+      for (const dogId of activeDogIds) {
+        await extinguishStudContractReturnServicesForDog({
+          client: tx,
+          dogId,
+          extinguishedAt: new Date(),
+          sireReason: "PERMANENT_BREEDING_INELIGIBILITY",
+          damReason: "PERMANENT_BREEDING_INELIGIBILITY",
+        });
+      }
       await Promise.all(
         [...new Set(
           ownedDogs

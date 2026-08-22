@@ -161,6 +161,10 @@ enum StudContractReturnServiceExtinguishmentReason {
   OWNERSHIP_TRANSFER
   DOG_DEATH
   PERMANENT_BREEDING_INELIGIBILITY
+  SIRE_OWNERSHIP_CHANGED
+  DAM_OWNERSHIP_CHANGED
+  SIRE_DIED
+  DAM_DIED
 }
 
 enum StudCompensationType {

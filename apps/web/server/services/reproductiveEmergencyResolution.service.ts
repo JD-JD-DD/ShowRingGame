@@ -13,6 +13,7 @@ import {
 import { createLitterWithCollisionRetry } from "@/server/services/litterPersistence.service";
 import { createPuppyGeneticsRandom01ForLitter } from "@/server/services/puppyGenetics.service";
 import { markDogDeceased } from "@/server/services/lifecycle.service";
+import { extinguishStudContractReturnServicesForDog } from "@/server/services/studContractReturnService.service";
 import { calculatePedigreeCoi, resolveReproductiveEmergencyOutcome, resolveWhelp } from "@showring/rules";
 
 export type ReproductiveEmergencyResolutionMode = "TREATED" | "UNTREATED";
@@ -78,6 +79,14 @@ export async function resolveReproductiveEmergencyEvent(args: { eventId: string;
     const consequence = outcome.damOutcome === "DIED" ? "NONE" : outcome.reproductiveConsequence;
     const recoveryUntilEpoch = consequence === "EXTENDED_RECOVERY" ? args.currentEpoch + outcome.recoveryHours : null;
     await tx.reproductiveEmergencyEvent.update({ where: { id: event.id }, data: { litterId, survivingPuppyCount: outcome.survivingPuppyCount, damOutcome: outcome.damOutcome, puppyOutcome: outcome.puppyOutcome, reproductiveConsequence: consequence, recoveryUntilEpoch, damOutcomeRoll: outcome.rolls.damSurvivalRoll, puppyOutcomeRoll: outcome.rolls.puppyOutcomeRoll, reproductiveConsequenceRoll: outcome.rolls.reproductiveConsequenceRoll, outcomeMetadataJson: { ...outcome, resolutionMode: args.resolutionMode, untreatedReason: args.untreatedReason ?? null } } });
+    if (consequence === "PERMANENT_BREEDING_RESTRICTION") {
+      await extinguishStudContractReturnServicesForDog({
+        client: tx,
+        dogId: event.damId,
+        extinguishedAt: new Date(),
+        damReason: "PERMANENT_BREEDING_INELIGIBILITY",
+      });
+    }
     if (outcome.damOutcome === "DIED") await markDogDeceased({ client: tx, dogId: event.dam.id, regNumber: event.dam.regNumber, ownerKennelId: event.dam.ownerKennelId, displayName: formatDogDisplayName(event.dam), deathEpoch: args.currentEpoch, cause: "WHELPING_DAM" });
     await createKennelNotice({ client: tx, kennelId: event.kennelIdAtEvent, sourceKey: getReproductiveEmergencyOutcomeNoticeSourceKey(event.id), type: "KENNEL_SERVICE", title: "Whelping emergency resolved", body: outcomeNotice({ name: formatDogDisplayName(event.dam), treated, intended: event.intendedPuppyCount, survived: outcome.survivingPuppyCount, damOutcome: outcome.damOutcome, consequence }), currentEpoch: args.currentEpoch, linkedDogId: event.damId, linkedLitterId: litterId, metadataJson: { reproductiveEmergencyEventId: event.id, resolutionMode: args.resolutionMode } });
     console.info("reproductive emergency resolved", { eventId: event.id, breedingAttemptId: event.breedingAttemptId, damId: event.damId, treated, intendedPuppyCount: event.intendedPuppyCount, survivingPuppyCount: outcome.survivingPuppyCount, damOutcome: outcome.damOutcome, puppyOutcome: outcome.puppyOutcome, reproductiveConsequence: consequence, litterId, resolvedEpoch: args.currentEpoch, rulesetVersion: event.rulesetVersion });
