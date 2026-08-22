@@ -145,7 +145,7 @@ function getStudContractCurrentState(args: {
 
   if (args.canSelectPuppy) return { currentState: "Puppy selection due", secondaryStates: availableReturnServiceState ? [availableReturnServiceState] : [] };
   if (returnServiceState === "Return Service available") {
-    return { currentState: availableReturnServiceState, secondaryStates: puppyState ? [puppyState] : [] };
+    return { currentState: returnServiceState, secondaryStates: puppyState ? [puppyState] : [] };
   }
   if (contractIsComplete(contract)) return { currentState: noLitter ? "No litter — contract complete" : "Contract complete", secondaryStates: [] };
   if (puppyState) return { currentState: puppyState, secondaryStates: returnServiceState ? [returnServiceState] : [] };
