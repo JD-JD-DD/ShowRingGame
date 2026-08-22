@@ -610,6 +610,7 @@ export default async function BreedingPlannerPage({
           take: isDirectStudSelection ? 1 : 200,
           select: {
             id: true,
+            sellerKennelId: true,
             askingPrice: true,
             requiresBrucellosisNegativeDam: true,
             requiresDamHealthTestsCompleted: true,
