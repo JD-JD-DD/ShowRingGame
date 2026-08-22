@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
+import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import {
   getRequiredHealthTestsForBreed,
   areStudOfferTermsEqual,
@@ -100,7 +101,11 @@ export async function publishStudOffer(args: {
     }
 
     const activeListing = await tx.dogListing.findFirst({
-      where: { dogId: sire.id, status: "ACTIVE" },
+      where: {
+        dogId: sire.id,
+        status: "ACTIVE",
+        listingType: { not: PLAYER_STUD_LISTING_TYPE },
+      },
       select: { id: true },
     });
     if (activeListing) {
