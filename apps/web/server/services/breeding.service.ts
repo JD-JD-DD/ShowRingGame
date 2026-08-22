@@ -1271,6 +1271,7 @@ export async function createBreedingAttemptForKennel(args: {
   testSireBrucellosis?: boolean;
   automaticStudContract?: boolean;
   manualApprovedContractId?: string;
+  returnServiceId?: string;
 }) {
   const {
     kennelId,
@@ -1323,12 +1324,13 @@ export async function createBreedingAttemptForKennel(args: {
   const sire = primaryDog.sex === "M" ? primaryDog : mateDog;
   const dam = primaryDog.sex === "F" ? primaryDog : mateDog;
   const usesPublicStud = sire.ownerKennelId !== kennelId;
+  const isReturnServiceAttempt = Boolean(args.returnServiceId);
 
   if (dam.ownerKennelId !== kennelId) {
     throw new Error("You may only breed dams owned by your kennel.");
   }
 
-  if (usesPublicStud && !studListingId) {
+  if (usesPublicStud && !studListingId && !isReturnServiceAttempt) {
     throw new Error("Choose an active public stud listing for that sire.");
   }
 
@@ -1400,8 +1402,44 @@ export async function createBreedingAttemptForKennel(args: {
     let studSellerKennelId: string | null = null;
     let studSellerBalanceAfter: number | null = null;
     let requiresBrucellosisNegativeDam = false;
+    let returnServiceContract: Prisma.StudContractGetPayload<{
+      include: { healthRequirements: true };
+    }> | null = null;
 
-    if (args.automaticStudContract) {
+    if (args.returnServiceId) {
+      await tx.$queryRaw`SELECT "id" FROM "StudContractReturnService" WHERE "id" = ${args.returnServiceId} FOR UPDATE`;
+      const returnService = await tx.studContractReturnService.findUnique({
+        where: { id: args.returnServiceId },
+        include: { contract: { include: { healthRequirements: true } } },
+      });
+      if (!returnService) throw new Error("Return Service not found.");
+      if (returnService.status === "USED") throw new Error("This Return Service has already been used.");
+      if (returnService.status === "EXPIRED") throw new Error("This Return Service has expired.");
+      if (returnService.status === "EXTINGUISHED") {
+        if (returnService.extinguishmentReason === "SIRE_OWNERSHIP_CHANGED") throw new Error("This Return Service ended because the sire changed kennels.");
+        if (returnService.extinguishmentReason === "DAM_OWNERSHIP_CHANGED") throw new Error("This Return Service ended because the dam changed kennels.");
+        if (returnService.extinguishmentReason === "SIRE_DIED") throw new Error("This Return Service ended because the sire died.");
+        if (returnService.extinguishmentReason === "DAM_DIED") throw new Error("This Return Service ended because the dam died.");
+        if (returnService.extinguishmentReason === "PERMANENT_BREEDING_INELIGIBILITY") throw new Error("This Return Service ended because a required dog is permanently ineligible for breeding.");
+        throw new Error("This Return Service is no longer available.");
+      }
+      if (returnService.expiresAt <= new Date()) {
+        await tx.studContractReturnService.updateMany({
+          where: { id: returnService.id, status: "AVAILABLE", expiresAt: { lte: new Date() } },
+          data: { status: "EXPIRED" },
+        });
+        throw new Error("This Return Service has expired.");
+      }
+      if (returnService.contract.status !== "ACCEPTED" || returnService.contract.damKennelId !== kennelId) {
+        throw new Error("Only the original dam-owning kennel may use this Return Service.");
+      }
+      if (returnService.contract.sireDogId !== sire.id || returnService.contract.damDogId !== dam.id) {
+        throw new Error("Return Service dog identity no longer matches the original contract.");
+      }
+      returnServiceContract = returnService.contract;
+    }
+
+    if (args.automaticStudContract || isReturnServiceAttempt) {
       await tx.$queryRaw`
         SELECT "id"
         FROM "Dog"
@@ -1433,7 +1471,7 @@ export async function createBreedingAttemptForKennel(args: {
       });
       if (
         !freshDam ||
-        freshDam.ownerKennelId !== kennelId ||
+        freshDam.ownerKennelId !== (returnServiceContract?.damKennelId ?? kennelId) ||
         freshDam.breedCode2 !== sire.breedCode2 ||
         freshDam.sex !== "F" ||
         freshDam.lifecycleState !== "ALIVE" ||
@@ -1441,6 +1479,30 @@ export async function createBreedingAttemptForKennel(args: {
         !isBreedAgeEligible({ ...dam, ...freshDam }, currentEpoch)
       ) {
         throw new Error("This dam is no longer eligible to breed.");
+      }
+      if (isReturnServiceAttempt) {
+        const [freshDamEmergencyEvents, freshDamWhelpedAttempt] = await Promise.all([
+          tx.reproductiveEmergencyEvent.findMany({
+            where: { damId: dam.id, status: { in: ["RESOLVED_TREATED", "RESOLVED_UNTREATED"] } },
+            select: { id: true, status: true, resolvedEpoch: true, reproductiveConsequence: true },
+          }),
+          tx.breedingAttempt.findFirst({
+            where: { damId: dam.id, status: "WHELPED", whelpedEpoch: { not: null } },
+            orderBy: { whelpedEpoch: "desc" },
+            select: { whelpedEpoch: true },
+          }),
+        ]);
+        const freshDamEligibility = getIndividualBreedingEligibility({
+          currentEpoch,
+          birthEpoch: freshDam.birthEpoch,
+          lifecycleState: freshDam.lifecycleState,
+          sex: freshDam.sex,
+          lastWhelpedEpoch: freshDamWhelpedAttempt?.whelpedEpoch ?? null,
+          resolvedReproductiveEmergencies: freshDamEmergencyEvents,
+        });
+        if (!freshDamEligibility.isEligible) {
+          throw new Error(getBreedingEligibilityMessage(freshDamEligibility) ?? "This dam is no longer eligible to breed.");
+        }
       }
     }
 
@@ -1455,6 +1517,11 @@ export async function createBreedingAttemptForKennel(args: {
       where: { id: sire.id },
       select: {
         isBreedingActive: true,
+        ownerKennelId: true,
+        lifecycleState: true,
+        breedCode2: true,
+        sex: true,
+        birthEpoch: true,
         callName: true,
         registeredName: true,
         regNumber: true,
@@ -1466,6 +1533,16 @@ export async function createBreedingAttemptForKennel(args: {
     }
 
     assertBreedingParticipationActive(freshSire);
+
+    if (returnServiceContract && (
+      freshSire.ownerKennelId !== returnServiceContract.sireKennelId ||
+      freshSire.lifecycleState !== "ALIVE" ||
+      freshSire.sex !== "M" ||
+      freshSire.breedCode2 !== dam.breedCode2 ||
+      !isBreedAgeEligible({ ...sire, ...freshSire }, currentEpoch)
+    )) {
+      throw new Error("The original sire is no longer eligible for this Return Service.");
+    }
 
     const latestSireAttempt = await tx.breedingAttempt.findFirst({
       where: { sireId: sire.id },
@@ -1506,7 +1583,18 @@ export async function createBreedingAttemptForKennel(args: {
         })
       : null;
 
-    if (usesPublicStud) {
+    if (returnServiceContract) {
+      await assertDamMeetsStudContractRequirements({
+        client: tx,
+        damDogId: dam.id,
+        currentEpoch,
+        requirements: {
+          brucellosisNegativeRequired: returnServiceContract.brucellosisNegativeRequired,
+          healthRequirements: returnServiceContract.healthRequirements,
+          titleRequirement: returnServiceContract.titleRequirement,
+        },
+      });
+    } else if (usesPublicStud) {
       const studListing = await tx.dogListing.findFirst({
         where: {
           id: studListingId,
@@ -1615,6 +1703,9 @@ export async function createBreedingAttemptForKennel(args: {
       !usesPublicStud &&
       Boolean(args.testSireBrucellosis) &&
       !validSireBrucellosisTest;
+    if (returnServiceContract?.brucellosisNegativeRequired && !validDamBrucellosisTest) {
+      throw new Error("The dam does not currently meet the brucellosis requirement from this contract.");
+    }
     const brucellosisTestCost =
       (shouldTestDamBrucellosis ? BRUCELLOSIS_TEST_FEE : 0) +
       (shouldTestSireBrucellosis ? BRUCELLOSIS_TEST_FEE : 0);
@@ -1752,9 +1843,11 @@ export async function createBreedingAttemptForKennel(args: {
         status: "INITIATED",
         createdByKennelId: kennelId,
         rngSeed,
-        studFeeAmount,
+        studFeeAmount: returnServiceContract ? 0 : studFeeAmount,
         notes: usesPublicStud
-          ? "Beta breeding attempt created with a public stud listing."
+          ? returnServiceContract
+            ? "Return Service breeding attempt created from the original Stud Contract."
+            : "Beta breeding attempt created with a public stud listing."
           : "Beta breeding attempt created from breeding page.",
       },
       select: {
@@ -1808,6 +1901,14 @@ export async function createBreedingAttemptForKennel(args: {
         data: { status: "ACCEPTED", acceptedAt: new Date(), breedingAttemptId: createdAttempt.id },
       });
       if (accepted.count !== 1) throw new Error("This Stud approval request is no longer pending.");
+    }
+    if (returnServiceContract && args.returnServiceId) {
+      const usedAt = new Date();
+      const consumed = await tx.studContractReturnService.updateMany({
+        where: { id: args.returnServiceId, status: "AVAILABLE", expiresAt: { gt: usedAt } },
+        data: { status: "USED", usedAt, returnBreedingAttemptId: createdAttempt.id },
+      });
+      if (consumed.count !== 1) throw new Error("This Return Service is no longer available.");
     }
 
     await tx.ledgerTransaction.create({
@@ -1942,6 +2043,25 @@ export async function createAutomaticStudContractBreedingForKennel(args: {
     studListingId: args.studListingId,
     currentEpoch: args.currentEpoch,
     automaticStudContract: true,
+  });
+}
+
+export async function attemptStudContractReturnService(args: {
+  kennelId: string;
+  returnServiceId: string;
+  currentEpoch: number;
+}) {
+  const returnService = await db.studContractReturnService.findUnique({
+    where: { id: args.returnServiceId },
+    select: { contract: { select: { sireDogId: true, damDogId: true } } },
+  });
+  if (!returnService) throw new Error("Return Service not found.");
+  return createBreedingAttemptForKennel({
+    kennelId: args.kennelId,
+    primaryDogId: returnService.contract.sireDogId,
+    mateDogId: returnService.contract.damDogId,
+    currentEpoch: args.currentEpoch,
+    returnServiceId: args.returnServiceId,
   });
 }
 
