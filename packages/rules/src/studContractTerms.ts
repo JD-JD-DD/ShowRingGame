@@ -87,7 +87,12 @@ export function classifyStudContractOutcome(
     };
   }
 
-  if (!input.hasLinkedLitter || input.whelpQualificationAt === null) {
+  const whelpQualificationComplete =
+    input.hasLinkedLitter &&
+    input.whelpQualificationAt !== null &&
+    input.liveBornPuppyCount !== null &&
+    (!puppyBackApplicable || input.puppyBackMinimumMet !== null);
+  if (!whelpQualificationComplete) {
     return {
       ...base,
       outcomeReady: false,

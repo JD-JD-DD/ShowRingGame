@@ -28,6 +28,15 @@ const preQualificationLitter = classifyStudContractOutcome({
 });
 assert.equal(preQualificationLitter.outcomeReady, false);
 
+const incompleteWhelpFacts = classifyStudContractOutcome({
+  ...baseInput,
+  breedingAttemptStatus: "WHELPED",
+  hasLinkedLitter: true,
+  whelpQualificationAt: new Date(),
+  liveBornPuppyCount: 3,
+});
+assert.equal(incompleteWhelpFacts.outcomeReady, false);
+
 const noLitter = classifyStudContractOutcome({
   ...baseInput,
   breedingAttemptStatus: "CHECKED_NOT_PREGNANT",
@@ -71,6 +80,18 @@ assert.equal(qualified.litterOutcome, "QUALIFIED_LITTER");
 assert.equal(qualified.puppyBackLitterSizeOutcome, "NOT_FULFILLABLE_LITTER_SIZE");
 assert.equal(qualified.smallLitterReturnServiceTriggered, true);
 assert.equal(qualified.returnServiceConditionTriggered, true);
+
+const neonatalDeathsDoNotChangeQualification = classifyStudContractOutcome({
+  ...baseInput,
+  breedingAttemptStatus: "WHELPED",
+  hasLinkedLitter: true,
+  whelpQualificationAt: new Date(),
+  liveBornPuppyCount: 2,
+  puppyBackMinimumMet: false,
+  smallLitterReturnServiceMet: true,
+});
+assert.equal(neonatalDeathsDoNotChangeQualification.puppyBackLitterSizeOutcome, "NOT_FULFILLABLE_LITTER_SIZE");
+assert.equal(neonatalDeathsDoNotChangeQualification.returnServiceConditionTriggered, true);
 
 const potentiallyFulfillable = classifyStudContractOutcome({
   ...baseInput,
