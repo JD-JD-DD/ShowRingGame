@@ -57,12 +57,13 @@ export async function openQualifiedStudContractPuppySelections(args?: {
       const litterId = contract.litterId;
       if (!litterId || !contract.litter || (contract.puppyPickPosition !== "FIRST" && contract.puppyPickPosition !== "SECOND")) continue;
       const puppyPickPosition = contract.puppyPickPosition;
+      const bornEpoch = contract.litter.bornEpoch;
       const opened = await db.$transaction((tx) => openInitialStudContractPuppySelection({
         client: tx,
         contractId: contract.id,
         litterId,
         puppyPickPosition,
-        bornEpoch: contract.litter.bornEpoch,
+        bornEpoch,
         turnStartedAt: now,
       }));
       if (opened.opened) openedCount += 1;
