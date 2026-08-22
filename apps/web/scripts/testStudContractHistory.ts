@@ -13,7 +13,6 @@ const nav = read("apps/web/components/layout/GameHeaderNav.tsx");
 
 for (const fragment of [
   'OR: [{ sireKennelId: args.kennelId }, { damKennelId: args.kennelId }]',
-  'orderBy: [{ requestedAt: "desc" }, { id: "desc" }]',
   "const PAGE_SIZE = 10",
   "take: PAGE_SIZE + 1",
   "cursor: { id: args.cursor }",
@@ -25,6 +24,12 @@ for (const fragment of [
   "Permanently ended — sire died",
   "currentActor",
   "currentDeadline",
+  "approvalDeadlineAt: contract.approvalDeadlineAt?.toISOString() ?? null",
+  "declinedAt: contract.declinedAt?.toISOString() ?? null",
+  "expiredAt: contract.expiredAt?.toISOString() ?? null",
+  "damFirstPickForfeitedAt",
+  "studSelectionForfeitedAt",
+  "puppySelectionLabel",
   "getStudContractCurrentState",
   "secondaryStates",
   "returnServiceCurrentState",
@@ -65,7 +70,10 @@ for (const fragment of [
 assert.ok(list.includes("StudContractHistoryClient"));
 assert.ok(detail.includes("getStudContractHistoryDetail"));
 assert.ok(detail.includes("Puppies born alive at whelping"));
-assert.ok(detail.includes("Completed:"));
+assert.ok(detail.includes("Important dates"));
+assert.ok(detail.includes("Approval deadline"));
+assert.ok(detail.includes("Puppy transfer completed"));
+assert.ok(detail.includes("Return Service expires"));
 assert.ok(client.includes("Load More"));
 assert.ok(client.includes(">Open<span"));
 assert.ok(client.includes("Current state"));

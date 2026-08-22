@@ -51,8 +51,8 @@ const studContractHistoryArgs = {
     sireKennel: { select: { id: true, name: true } },
     damKennel: { select: { id: true, name: true } },
     healthRequirements: { select: { healthTestCode: true, requirementLevel: true } },
-    breedingAttempt: { select: { id: true, status: true, createdEpoch: true } },
-    puppySelection: { select: { id: true, litterId: true, status: true, currentActor: true, turnDeadlineAt: true, completedAt: true, selectedDog: { select: { id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true } } } },
+    breedingAttempt: { select: { id: true, status: true, createdEpoch: true, checkedEpoch: true, whelpedEpoch: true } },
+    puppySelection: { select: { id: true, litterId: true, status: true, currentActor: true, turnStartedAt: true, turnDeadlineAt: true, damFirstPickForfeitedAt: true, studSelectionForfeitedAt: true, completedAt: true, selectedDog: { select: { id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true } } } },
     returnService: { include: { returnBreedingAttempt: { select: { id: true, status: true, createdEpoch: true } } } },
   },
 } satisfies Prisma.StudContractDefaultArgs;
@@ -74,6 +74,19 @@ function returnServiceLabel(value: { status: "AVAILABLE" | "USED" | "EXPIRED" | 
 
 function selectionIsActive(value: { status: string } | null) {
   return value?.status === "DAM_FIRST_PICK" || value?.status === "STUD_PICK";
+}
+
+function puppySelectionLabel(status: string) {
+  const labels: Record<string, string> = {
+    WAITING: "Waiting to open",
+    DAM_FIRST_PICK: "Dam's protected pick",
+    STUD_PICK: "Stud puppy selection",
+    SELECTED: "Puppy selected",
+    FORFEITED: "Puppy selection forfeited",
+    UNFULFILLABLE: "Puppy Back unfulfilled",
+    COMPLETED: "Puppy transfer complete",
+  };
+  return labels[status] ?? "Puppy Back history recorded";
 }
 
 function contractIsComplete(contract: ContractHistoryRecord) {
@@ -269,7 +282,8 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
   });
   return {
     id: contract.id,
-    requestedAt: contract.requestedAt.toISOString(), acceptedAt: contract.acceptedAt?.toISOString() ?? null,
+    requestedAt: contract.requestedAt.toISOString(), approvalDeadlineAt: contract.approvalDeadlineAt?.toISOString() ?? null,
+    acceptedAt: contract.acceptedAt?.toISOString() ?? null, declinedAt: contract.declinedAt?.toISOString() ?? null, expiredAt: contract.expiredAt?.toISOString() ?? null,
     sire: { id: contract.sireDog.id, name: formatDogDisplayName(contract.sireDog) },
     dam: { id: contract.damDog.id, name: formatDogDisplayName(contract.damDog) },
     role, otherKennel, compensationSummary: summary?.compensationSummary ?? "Contract terms unavailable",
@@ -286,8 +300,8 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
       returnAttempt: contract.returnService.returnBreedingAttempt,
     } : null,
     isDamContractingKennel: contract.damKennelId === kennelId,
-    puppySelection: contract.puppySelection ? { id: contract.puppySelection.id, litterId: contract.puppySelection.litterId, status: contract.puppySelection.status, currentActor: contract.puppySelection.currentActor, deadlineAt: contract.puppySelection.turnDeadlineAt?.toISOString() ?? null, completedAt: contract.puppySelection.completedAt?.toISOString() ?? null, selectedDog: contract.puppySelection.selectedDog ? { id: contract.puppySelection.selectedDog.id, name: formatDogDisplayName(contract.puppySelection.selectedDog) } : null } : null,
-    outcome: { originalAttempt: contract.breedingAttempt, liveBornPuppyCount: contract.liveBornPuppyCount, puppyBackMinimumMet: contract.puppyBackMinimumMet, smallLitterReturnServiceMet: contract.smallLitterReturnServiceMet },
+    puppySelection: contract.puppySelection ? { id: contract.puppySelection.id, litterId: contract.puppySelection.litterId, status: contract.puppySelection.status, label: puppySelectionLabel(contract.puppySelection.status), currentActor: contract.puppySelection.currentActor, openedAt: contract.puppySelection.turnStartedAt?.toISOString() ?? null, deadlineAt: contract.puppySelection.turnDeadlineAt?.toISOString() ?? null, damFirstPickForfeitedAt: contract.puppySelection.damFirstPickForfeitedAt?.toISOString() ?? null, studSelectionForfeitedAt: contract.puppySelection.studSelectionForfeitedAt?.toISOString() ?? null, completedAt: contract.puppySelection.completedAt?.toISOString() ?? null, selectedDog: contract.puppySelection.selectedDog ? { id: contract.puppySelection.selectedDog.id, name: formatDogDisplayName(contract.puppySelection.selectedDog) } : null } : null,
+    outcome: { originalAttempt: contract.breedingAttempt ? { id: contract.breedingAttempt.id, status: contract.breedingAttempt.status, createdEpoch: contract.breedingAttempt.createdEpoch, checkedEpoch: contract.breedingAttempt.checkedEpoch, whelpedEpoch: contract.breedingAttempt.whelpedEpoch } : null, liveBornPuppyCount: contract.liveBornPuppyCount, puppyBackMinimumMet: contract.puppyBackMinimumMet, smallLitterReturnServiceMet: contract.smallLitterReturnServiceMet },
     terms: { approvalMode: summary?.approvalSummary ?? contract.approvalMode, noLitterReturnService: contract.noLitterReturnService, smallLitterReturnThreshold: contract.smallLitterReturnThreshold, brucellosisNegativeRequired: contract.brucellosisNegativeRequired, titleRequirement: contract.titleRequirement, healthRequirements: contract.healthRequirements, puppyPickPosition: contract.puppyPickPosition, puppySex: contract.puppySex, minimumLitterSize: contract.minimumLitterSize },
     kennels: { sire: contract.sireKennel, dam: contract.damKennel },
   };
