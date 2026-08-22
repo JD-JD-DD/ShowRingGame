@@ -1,20 +1,21 @@
 import { PrismaClient, type Prisma } from "@prisma/client";
+// @ts-expect-error Next provides this runtime package without a declaration entrypoint.
+import { loadEnvConfig } from "@next/env";
 
-import { PLAYER_STUD_LISTING_TYPE } from "../server/services/market.service";
-
+loadEnvConfig(process.cwd());
 const db = new PrismaClient();
 const shouldApply = process.argv.includes("--apply");
 
-const activePlayerStudWhere = {
-  listingType: PLAYER_STUD_LISTING_TYPE,
-  status: "ACTIVE",
-} satisfies Prisma.DogListingWhereInput;
-
-async function countActivePlayerStudListings() {
-  return db.dogListing.count({ where: activePlayerStudWhere });
-}
-
 async function main() {
+  const { PLAYER_STUD_LISTING_TYPE } = await import(
+    "../server/services/market.service"
+  );
+  const activePlayerStudWhere = {
+    listingType: PLAYER_STUD_LISTING_TYPE,
+    status: "ACTIVE",
+  } satisfies Prisma.DogListingWhereInput;
+  const countActivePlayerStudListings = () =>
+    db.dogListing.count({ where: activePlayerStudWhere });
   const activePlayerStudBefore = await countActivePlayerStudListings();
   const transitionedToCancelled = shouldApply
     ? (
