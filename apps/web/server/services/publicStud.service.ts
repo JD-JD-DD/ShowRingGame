@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { formatCompactStudOfferSummary } from "@/lib/studOfferPresentation";
