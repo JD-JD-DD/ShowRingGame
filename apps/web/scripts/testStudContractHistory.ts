@@ -20,12 +20,14 @@ for (const fragment of [
   "healthRequirements",
   "returnBreedingAttempt",
   "puppySelection",
+  "completedAt",
   "SIRE_OWNERSHIP_CHANGED",
   "Permanently ended — sire died",
 ]) assert.ok(service.includes(fragment), fragment);
 assert.ok(list.includes("StudContractHistoryClient"));
 assert.ok(detail.includes("getStudContractHistoryDetail"));
 assert.ok(detail.includes("Puppies born alive at whelping"));
+assert.ok(detail.includes("Completed:"));
 assert.ok(client.includes("Load More"));
 assert.equal(client.includes("Attempt Return Service"), false);
 assert.ok(route.includes("getSessionUserId"));

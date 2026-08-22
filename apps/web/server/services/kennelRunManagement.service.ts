@@ -10,7 +10,6 @@ import {
   validateCallName,
   validateRegisteredDogName,
 } from "@/server/validation/dogName.validation";
-import { assertDogsNotProtectedByStudContractSelection } from "@/server/services/studContractPuppyProtection.service";
 
 const MAX_KENNEL_RUN_NAME_LENGTH = 60;
 
@@ -610,18 +609,6 @@ export async function updateKennelRunDogCallNames(args: {
       throw new KennelRunServiceError(
         "A dog is no longer in this kennel run. Refresh and try again.",
         409
-      );
-    }
-
-    try {
-      await assertDogsNotProtectedByStudContractSelection({
-        dogIds: updates.map((update) => update.dogId),
-        action: "named",
-        client: tx,
-      });
-    } catch (error) {
-      throw new KennelRunServiceError(
-        error instanceof Error ? error.message : "This puppy cannot be named yet."
       );
     }
 

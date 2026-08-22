@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import { validateCallName } from "@/server/validation/dogName.validation";
-import { assertDogNotProtectedByStudContractSelection } from "@/server/services/studContractPuppyProtection.service";
 
 export async function POST(
   request: Request,
@@ -48,7 +47,6 @@ export async function POST(
     }
 
     const updatedDog = await db.$transaction(async (tx) => {
-      await assertDogNotProtectedByStudContractSelection({ dogId, action: "named", client: tx });
       return tx.dog.update({
         where: { id: dogId },
         data: { callName: validation.name || null },
@@ -60,6 +58,6 @@ export async function POST(
   } catch (error) {
     console.error("POST /api/dogs/[dogId]/call-name failed:", error);
 
-    return NextResponse.json({ error: error instanceof Error && error.message.includes("Stud Contract") ? error.message : "Failed to update call name." }, { status: error instanceof Error && error.message.includes("Stud Contract") ? 400 : 500 });
+    return NextResponse.json({ error: "Failed to update call name." }, { status: 500 });
   }
 }

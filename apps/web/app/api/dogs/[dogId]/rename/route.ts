@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { buildDogPageUrl, redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { getSessionUserId } from "@/lib/session";
 import { validateRegisteredDogName } from "@/server/validation/dogName.validation";
-import { assertDogNotProtectedByStudContractSelection } from "@/server/services/studContractPuppyProtection.service";
 
 export async function POST(
   request: Request,
@@ -92,7 +91,6 @@ export async function POST(
     }
 
     await db.$transaction(async (tx) => {
-      await assertDogNotProtectedByStudContractSelection({ dogId, action: "named", client: tx });
       await tx.dog.update({
         where: { id: dogId },
         data: { registeredName: validation.name },
@@ -103,6 +101,6 @@ export async function POST(
   } catch (error) {
     console.error("POST /api/dogs/[dogId]/rename failed:", error);
 
-    return NextResponse.json({ error: error instanceof Error && error.message.includes("Stud Contract") ? error.message : "Failed to rename dog." }, { status: error instanceof Error && error.message.includes("Stud Contract") ? 400 : 500 });
+    return NextResponse.json({ error: "Failed to rename dog." }, { status: 500 });
   }
 }

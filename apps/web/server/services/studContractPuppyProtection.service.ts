@@ -27,12 +27,12 @@ export async function getStudContractPuppyProtection(args: { dogId: string; clie
   return { protected: false, reasonCode: null, selectionId: null, selectionState: null, contractId: null };
 }
 
-export async function assertDogNotProtectedByStudContractSelection(args: { dogId: string; action: "named" | "listed for sale" | "rehomed" | "transferred" | "removed"; client?: StudContractPuppyProtectionClient }) {
+export async function assertDogNotProtectedByStudContractSelection(args: { dogId: string; action: "listed for sale" | "rehomed" | "transferred" | "removed"; client?: StudContractPuppyProtectionClient }) {
   const protection = await getStudContractPuppyProtection(args);
   if (protection.protected) throw new Error(protection.reasonCode === "SELECTED_CLAIM" ? `This puppy has been selected under an active Stud Contract and cannot be ${args.action} yet.` : `This puppy is part of an active Stud Contract selection and cannot be ${args.action} yet.`);
 }
 
-export async function assertDogsNotProtectedByStudContractSelection(args: { dogIds: string[]; action: "named" | "listed for sale" | "rehomed" | "transferred" | "removed"; client?: StudContractPuppyProtectionClient }) {
+export async function assertDogsNotProtectedByStudContractSelection(args: { dogIds: string[]; action: "listed for sale" | "rehomed" | "transferred" | "removed"; client?: StudContractPuppyProtectionClient }) {
   const client = args.client ?? db;
   const dogs = await client.dog.findMany({ where: { id: { in: args.dogIds }, litterId: { not: null }, lifecycleState: "ALIVE" }, select: { id: true, litterId: true, sex: true } });
   const litterIds = [...new Set(dogs.flatMap((dog) => dog.litterId ? [dog.litterId] : []))];

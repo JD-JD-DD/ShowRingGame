@@ -25,14 +25,20 @@ assert.ok(!protection.includes('Day 8'));
 assert.ok(lifecycle.includes('turnDeadlineAt: { not: null, lte: now }'));
 
 for (const path of [
-  "apps/web/app/api/dogs/[dogId]/call-name/route.ts",
-  "apps/web/app/api/dogs/[dogId]/rename/route.ts",
   "apps/web/server/services/market.service.ts",
   "apps/web/server/services/rehome.service.ts",
-  "apps/web/server/services/kennelRunManagement.service.ts",
   "apps/web/server/services/accountClosure.service.ts",
 ]) {
   assert.ok(read(path).includes("ProtectedByStudContractSelection"), path);
 }
+
+for (const path of [
+  "apps/web/app/api/dogs/[dogId]/call-name/route.ts",
+  "apps/web/app/api/dogs/[dogId]/rename/route.ts",
+  "apps/web/server/services/kennelRunManagement.service.ts",
+]) {
+  assert.equal(read(path).includes("ProtectedByStudContractSelection"), false, path);
+}
+assert.equal(protection.includes('action: "named"'), false);
 
 console.log("Stud Contract puppy protection checks passed.");

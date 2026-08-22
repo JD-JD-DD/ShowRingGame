@@ -12,7 +12,7 @@ const contractInclude = {
   damKennel: { select: { id: true, name: true } },
   healthRequirements: { select: { healthTestCode: true, requirementLevel: true } },
   breedingAttempt: { select: { id: true, status: true, createdEpoch: true } },
-  puppySelection: { select: { status: true, turnDeadlineAt: true, selectedDog: { select: { id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true } } } },
+  puppySelection: { select: { status: true, turnDeadlineAt: true, completedAt: true, selectedDog: { select: { id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true } } } },
   returnService: { include: { returnBreedingAttempt: { select: { id: true, status: true, createdEpoch: true } } } },
 } as const;
 type ContractHistoryRecord = Prisma.StudContractGetPayload<{ include: typeof contractInclude }>;
@@ -69,7 +69,7 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string) {
       returnAttempt: contract.returnService.returnBreedingAttempt,
     } : null,
     isDamContractingKennel: contract.damKennelId === kennelId,
-    puppySelection: contract.puppySelection ? { status: contract.puppySelection.status, deadlineAt: contract.puppySelection.turnDeadlineAt?.toISOString() ?? null, selectedDog: contract.puppySelection.selectedDog ? { id: contract.puppySelection.selectedDog.id, name: formatDogDisplayName(contract.puppySelection.selectedDog) } : null } : null,
+    puppySelection: contract.puppySelection ? { status: contract.puppySelection.status, deadlineAt: contract.puppySelection.turnDeadlineAt?.toISOString() ?? null, completedAt: contract.puppySelection.completedAt?.toISOString() ?? null, selectedDog: contract.puppySelection.selectedDog ? { id: contract.puppySelection.selectedDog.id, name: formatDogDisplayName(contract.puppySelection.selectedDog) } : null } : null,
     outcome: { originalAttempt: contract.breedingAttempt, liveBornPuppyCount: contract.liveBornPuppyCount, puppyBackMinimumMet: contract.puppyBackMinimumMet, smallLitterReturnServiceMet: contract.smallLitterReturnServiceMet },
     terms: { approvalMode: summary?.approvalSummary ?? contract.approvalMode, noLitterReturnService: contract.noLitterReturnService, smallLitterReturnThreshold: contract.smallLitterReturnThreshold, brucellosisNegativeRequired: contract.brucellosisNegativeRequired, titleRequirement: contract.titleRequirement, healthRequirements: contract.healthRequirements, puppyPickPosition: contract.puppyPickPosition, puppySex: contract.puppySex, minimumLitterSize: contract.minimumLitterSize },
     kennels: { sire: contract.sireKennel, dam: contract.damKennel },
