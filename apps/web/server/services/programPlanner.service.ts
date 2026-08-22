@@ -908,6 +908,7 @@ async function fetchProgramPlannerDogs(args: {
     orderBy: [{ breedCode2: "asc" }, { birthEpoch: "asc" }],
     select: {
       id: true,
+      ownerKennelId: true,
       callName: true,
       registeredName: true,
       regNumber: true,
