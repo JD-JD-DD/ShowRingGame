@@ -50,14 +50,14 @@ export async function openInitialStudContractPuppySelection(args: {
   if (update.count === 1) {
     const contract = await args.client.studContract.findUnique({
       where: { id: args.contractId },
-      select: { sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true },
+      select: { id: true, sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true },
     });
     if (contract && turn.status === "STUD_PICK") {
-      await createKennelNotice({ client: args.client, kennelId: contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:STUD_PICK`, type: "KENNEL_SERVICE", title: "First Pick puppy selection is open", body: `Your First Pick puppy selection is open. Select a qualifying puppy by ${turn.turnDeadlineAt.toLocaleString()}. The game will not select a puppy automatically.`, currentEpoch: args.bornEpoch, linkedDogId: contract.sireDogId, linkedLitterId: args.litterId });
+      await createKennelNotice({ client: args.client, kennelId: contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:STUD_PICK`, type: "KENNEL_SERVICE", title: "First Pick puppy selection is open", body: `Your First Pick puppy selection is open. Select a qualifying puppy by ${turn.turnDeadlineAt.toLocaleString()}. The game will not select a puppy automatically.`, currentEpoch: args.bornEpoch, linkedDogId: contract.sireDogId, linkedLitterId: args.litterId, metadataJson: { studContractId: contract.id } });
     }
     if (contract && turn.status === "DAM_FIRST_PICK") {
-      await createKennelNotice({ client: args.client, kennelId: contract.damKennelId, sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:DAM_FIRST_PICK`, type: "KENNEL_SERVICE", title: "Protected first puppy selection is open", body: `Your protected first pick is open and is not restricted by the stud owner's puppy-sex requirement. Select by ${turn.turnDeadlineAt.toLocaleString()}. The game will not select a puppy automatically.`, currentEpoch: args.bornEpoch, linkedDogId: contract.damDogId, linkedLitterId: args.litterId });
-      await createKennelNotice({ client: args.client, kennelId: contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:SECOND_PICK_INFO`, type: "KENNEL_SERVICE", title: "Second Pick puppy selection has begun", body: `The dam owner currently has the protected first pick. Your turn becomes available when that resolves; your fixed ordinary deadline is ${turn.secondPickStudDeadlineAt.toLocaleString()}.`, currentEpoch: args.bornEpoch, linkedDogId: contract.sireDogId, linkedLitterId: args.litterId });
+      await createKennelNotice({ client: args.client, kennelId: contract.damKennelId, sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:DAM_FIRST_PICK`, type: "KENNEL_SERVICE", title: "Protected first puppy selection is open", body: `Your protected first pick is open and is not restricted by the stud owner's puppy-sex requirement. Select by ${turn.turnDeadlineAt.toLocaleString()}. The game will not select a puppy automatically.`, currentEpoch: args.bornEpoch, linkedDogId: contract.damDogId, linkedLitterId: args.litterId, metadataJson: { studContractId: contract.id } });
+      await createKennelNotice({ client: args.client, kennelId: contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_OPEN:${selection.id}:SECOND_PICK_INFO`, type: "KENNEL_SERVICE", title: "Second Pick puppy selection has begun", body: `The dam owner currently has the protected first pick. Your turn becomes available when that resolves; your fixed ordinary deadline is ${turn.secondPickStudDeadlineAt.toLocaleString()}.`, currentEpoch: args.bornEpoch, linkedDogId: contract.sireDogId, linkedLitterId: args.litterId, metadataJson: { studContractId: contract.id } });
     }
   }
   return { selectionId: selection.id, opened: update.count === 1, ...turn };
@@ -133,7 +133,7 @@ export async function reconcileSelectedStudContractPuppyDeath(args: {
       litterId: true,
       selectedDogId: true,
       damFirstPickDogId: true,
-      contract: { select: { puppySex: true, sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true } },
+      contract: { select: { id: true, puppySex: true, sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true } },
       litter: { select: { bornEpoch: true } },
       selectedDog: { select: { lifecycleState: true } },
     },
@@ -159,12 +159,12 @@ export async function reconcileSelectedStudContractPuppyDeath(args: {
   if (update.count !== 1) return "skipped";
 
   if (hasReplacement) {
-    await createKennelNotice({ client: args.client, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_REOPENED:${selection.id}:${args.dogId}`, type: "KENNEL_SERVICE", title: "Puppy Back selection reopened", body: `The puppy selected under the Stud Contract has died. Your Puppy Back selection has reopened with the same sex requirement. The new selection deadline is ${deadline.toLocaleString()}. The game will not select a puppy automatically.`, currentEpoch: args.currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
-    await createKennelNotice({ client: args.client, kennelId: selection.contract.damKennelId, sourceKey: `STUD_PUPPY_SELECTION_REOPENED_DAM_INFO:${selection.id}:${args.dogId}`, type: "KENNEL_SERVICE", title: "Puppy Back selection reopened", body: "The selected contract puppy died. The stud owner's replacement-selection turn has reopened under the existing contract terms.", currentEpoch: args.currentEpoch, linkedDogId: selection.contract.damDogId, linkedLitterId: selection.litterId });
+    await createKennelNotice({ client: args.client, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_REOPENED:${selection.id}:${args.dogId}`, type: "KENNEL_SERVICE", title: "Puppy Back selection reopened", body: `The puppy selected under the Stud Contract has died. Your Puppy Back selection has reopened with the same sex requirement. The new selection deadline is ${deadline.toLocaleString()}. The game will not select a puppy automatically.`, currentEpoch: args.currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId, metadataJson: { studContractId: selection.contract.id } });
+    await createKennelNotice({ client: args.client, kennelId: selection.contract.damKennelId, sourceKey: `STUD_PUPPY_SELECTION_REOPENED_DAM_INFO:${selection.id}:${args.dogId}`, type: "KENNEL_SERVICE", title: "Puppy Back selection reopened", body: "The selected contract puppy died. The stud owner's replacement-selection turn has reopened under the existing contract terms.", currentEpoch: args.currentEpoch, linkedDogId: selection.contract.damDogId, linkedLitterId: selection.litterId, metadataJson: { studContractId: selection.contract.id } });
     return "reopened";
   }
   for (const kennelId of [selection.contract.sireKennelId, selection.contract.damKennelId]) {
-    await createKennelNotice({ client: args.client, kennelId, sourceKey: `STUD_PUPPY_SELECTION_UNFULFILLABLE_DEATH:${selection.id}:${args.dogId}:${kennelId}`, type: "KENNEL_SERVICE", title: "Puppy Back cannot be fulfilled", body: "The selected contract puppy died and no qualifying replacement is available. The Puppy Back portion of this contract cannot be fulfilled.", currentEpoch: args.currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
+    await createKennelNotice({ client: args.client, kennelId, sourceKey: `STUD_PUPPY_SELECTION_UNFULFILLABLE_DEATH:${selection.id}:${args.dogId}:${kennelId}`, type: "KENNEL_SERVICE", title: "Puppy Back cannot be fulfilled", body: "The selected contract puppy died and no qualifying replacement is available. The Puppy Back portion of this contract cannot be fulfilled.", currentEpoch: args.currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId, metadataJson: { studContractId: selection.contract.id } });
   }
   return "unfulfillable";
 }
@@ -174,7 +174,7 @@ export async function selectDamProtectedPuppy(args: { kennelId: string; selectio
   return db.$transaction(async (tx) => {
     const selection = await tx.studContractPuppySelection.findUnique({
       where: { id: args.selectionId },
-      select: { id: true, litterId: true, status: true, currentActor: true, turnDeadlineAt: true, damFirstPickDogId: true, litter: { select: { bornEpoch: true } }, contract: { select: { damKennelId: true, sireKennelId: true, sireDogId: true } } },
+      select: { id: true, litterId: true, status: true, currentActor: true, turnDeadlineAt: true, damFirstPickDogId: true, litter: { select: { bornEpoch: true } }, contract: { select: { id: true, damKennelId: true, sireKennelId: true, sireDogId: true } } },
     });
     if (!selection || selection.status !== "DAM_FIRST_PICK" || selection.currentActor !== "DAM_OWNER" || selection.contract.damKennelId !== args.kennelId || !selection.turnDeadlineAt || now >= selection.turnDeadlineAt || selection.damFirstPickDogId) throw new Error("This protected first-pick turn is not available.");
     await loadSelectablePuppy({ client: tx, litterId: selection.litterId, puppyId: args.puppyId });
@@ -183,7 +183,7 @@ export async function selectDamProtectedPuppy(args: { kennelId: string; selectio
       data: { damFirstPickDogId: args.puppyId, status: "STUD_PICK", currentActor: "STUD_OWNER", turnStartedAt: now, turnDeadlineAt: getStudContractPuppySelectionDeadlines(selection.litter.bornEpoch).secondPickStudDeadlineAt },
     });
     if (update.count !== 1) throw new Error("This protected first-pick turn is no longer available.");
-    await createKennelNotice({ client: tx, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_PICK:${selection.id}`, type: "KENNEL_SERVICE", title: "Stud puppy selection is ready", body: "The dam owner made the protected first pick. Your Second Pick selection turn is now open for 24 real hours.", currentEpoch: args.currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
+    await createKennelNotice({ client: tx, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_PICK:${selection.id}`, type: "KENNEL_SERVICE", title: "Stud puppy selection is ready", body: "The dam owner made the protected first pick. Your Second Pick selection turn is now open for 24 real hours.", currentEpoch: args.currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId, metadataJson: { studContractId: selection.contract.id } });
     return { selectionId: selection.id, state: "STUD_PICK" };
   });
 }
@@ -193,7 +193,7 @@ export async function selectStudContractPuppy(args: { kennelId: string; selectio
   return db.$transaction(async (tx) => {
     const selection = await tx.studContractPuppySelection.findUnique({
       where: { id: args.selectionId },
-      select: { id: true, litterId: true, status: true, currentActor: true, turnDeadlineAt: true, damFirstPickDogId: true, selectedDogId: true, contract: { select: { sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true, puppySex: true } } },
+      select: { id: true, litterId: true, status: true, currentActor: true, turnDeadlineAt: true, damFirstPickDogId: true, selectedDogId: true, contract: { select: { id: true, sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true, puppySex: true } } },
     });
     if (!selection || selection.status !== "STUD_PICK" || selection.currentActor !== "STUD_OWNER" || selection.contract.sireKennelId !== args.kennelId || !selection.turnDeadlineAt || now >= selection.turnDeadlineAt || selection.selectedDogId) throw new Error("This stud selection turn is not available.");
     const puppy = await loadSelectablePuppy({ client: tx, litterId: selection.litterId, puppyId: args.puppyId });
@@ -205,7 +205,7 @@ export async function selectStudContractPuppy(args: { kennelId: string; selectio
       data: { selectedDogId: puppy.id, status: "SELECTED", currentActor: "NONE", turnStartedAt: null, turnDeadlineAt: null },
     });
     if (update.count !== 1) throw new Error("This stud selection turn is no longer available.");
-    for (const kennelId of [selection.contract.sireKennelId, selection.contract.damKennelId]) await createKennelNotice({ client: tx, kennelId, sourceKey: `STUD_PUPPY_SELECTION_STUD_PICK:${selection.id}:${kennelId}`, type: "KENNEL_SERVICE", title: "Puppy Back selection recorded", body: "The Puppy Back selection has been recorded. Ownership transfer is not part of this step.", currentEpoch: args.currentEpoch, linkedDogId: puppy.id, linkedLitterId: selection.litterId });
+    for (const kennelId of [selection.contract.sireKennelId, selection.contract.damKennelId]) await createKennelNotice({ client: tx, kennelId, sourceKey: `STUD_PUPPY_SELECTION_STUD_PICK:${selection.id}:${kennelId}`, type: "KENNEL_SERVICE", title: "Puppy Back selection recorded", body: "The Puppy Back selection has been recorded. Ownership transfer is not part of this step.", currentEpoch: args.currentEpoch, linkedDogId: puppy.id, linkedLitterId: selection.litterId, metadataJson: { studContractId: selection.contract.id } });
     return { selectionId: selection.id, state: "SELECTED" };
   });
 }

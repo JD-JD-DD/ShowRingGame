@@ -144,7 +144,7 @@ export async function processExpiredStudContractPuppySelectionTurns(args?: {
             damFirstPickForfeitedAt: true,
             studSelectionForfeitedAt: true,
             litter: { select: { bornEpoch: true } },
-            contract: { select: { puppySex: true, sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true } },
+            contract: { select: { id: true, puppySex: true, sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true } },
           },
         });
         if (!selection || !selection.litter || !selection.turnDeadlineAt || selection.turnDeadlineAt > now) return "skipped";
@@ -164,11 +164,11 @@ export async function processExpiredStudContractPuppySelectionTurns(args?: {
               : { damFirstPickForfeitedAt: now, status: "UNFULFILLABLE", currentActor: "NONE", turnStartedAt: null, turnDeadlineAt: null, completedAt: now },
           });
           if (update.count !== 1) return "skipped";
-          await createKennelNotice({ client: tx, kennelId: selection.contract.damKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_FORFEITED:${selection.id}`, type: "KENNEL_SERVICE", title: "Protected first-pick right forfeited", body: "Your protected first-pick deadline passed. That selection right was forfeited. No puppy was selected.", currentEpoch, linkedDogId: selection.contract.damDogId, linkedLitterId: selection.litterId });
+          await createKennelNotice({ client: tx, kennelId: selection.contract.damKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_FORFEITED:${selection.id}`, type: "KENNEL_SERVICE", title: "Protected first-pick right forfeited", body: "Your protected first-pick deadline passed. That selection right was forfeited. No puppy was selected.", currentEpoch, linkedDogId: selection.contract.damDogId, linkedLitterId: selection.litterId, metadataJson: { studContractId: selection.contract.id } });
           if (hasCandidate) {
-            await createKennelNotice({ client: tx, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_FORFEITED_STUD_OPEN:${selection.id}`, type: "KENNEL_SERVICE", title: "Stud puppy selection is ready", body: `The dam owner's protected first-pick right was forfeited. Your Puppy Back selection is now open. Your fixed deadline is ${studDeadline.toLocaleString()}.`, currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
+            await createKennelNotice({ client: tx, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_FORFEITED_STUD_OPEN:${selection.id}`, type: "KENNEL_SERVICE", title: "Stud puppy selection is ready", body: `The dam owner's protected first-pick right was forfeited. Your Puppy Back selection is now open. Your fixed deadline is ${studDeadline.toLocaleString()}.`, currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId, metadataJson: { studContractId: selection.contract.id } });
           } else {
-            await createKennelNotice({ client: tx, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_FORFEITED_UNFULFILLABLE:${selection.id}`, type: "KENNEL_SERVICE", title: "Puppy Back cannot be fulfilled", body: "The dam owner's protected first-pick right was forfeited, and no living puppy satisfies the contract sex requirement. No puppy was selected.", currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
+            await createKennelNotice({ client: tx, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_FORFEITED_UNFULFILLABLE:${selection.id}`, type: "KENNEL_SERVICE", title: "Puppy Back cannot be fulfilled", body: "The dam owner's protected first-pick right was forfeited, and no living puppy satisfies the contract sex requirement. No puppy was selected.", currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId, metadataJson: { studContractId: selection.contract.id } });
           }
           return "damForfeited";
         }
@@ -180,7 +180,7 @@ export async function processExpiredStudContractPuppySelectionTurns(args?: {
           });
           if (update.count !== 1) return "skipped";
           for (const kennelId of [selection.contract.sireKennelId, selection.contract.damKennelId]) {
-            await createKennelNotice({ client: tx, kennelId, sourceKey: `STUD_PUPPY_SELECTION_STUD_FORFEITED:${selection.id}:${kennelId}`, type: "KENNEL_SERVICE", title: "Puppy Back selection right forfeited", body: "Puppy Back selection deadline missed. The stud owner's puppy-selection right was forfeited. No puppy was selected.", currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
+            await createKennelNotice({ client: tx, kennelId, sourceKey: `STUD_PUPPY_SELECTION_STUD_FORFEITED:${selection.id}:${kennelId}`, type: "KENNEL_SERVICE", title: "Puppy Back selection right forfeited", body: "Puppy Back selection deadline missed. The stud owner's puppy-selection right was forfeited. No puppy was selected.", currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId, metadataJson: { studContractId: selection.contract.id } });
           }
           return "studForfeited";
         }
@@ -271,7 +271,7 @@ export async function processDueStudContractPuppyTransfers(args?: {
             damFirstPickDogId: true,
             litter: { select: { bornEpoch: true } },
             selectedDog: { select: { id: true, litterId: true, lifecycleState: true, ownerKennelId: true, kennelRunId: true, callName: true, registeredName: true, regNumber: true } },
-            contract: { select: { sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true } },
+            contract: { select: { id: true, sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true } },
           },
         });
         if (!selection || selection.status !== "SELECTED" || !selection.selectedDogId || !selection.litter || !selection.selectedDog) return "skipped";
@@ -325,6 +325,7 @@ export async function processDueStudContractPuppyTransfers(args?: {
           currentEpoch,
           linkedDogId: selectedDogId,
           linkedLitterId: selection.litterId,
+          metadataJson: { studContractId: selection.contract.id },
         });
         await createKennelNotice({
           client: tx,
@@ -336,6 +337,7 @@ export async function processDueStudContractPuppyTransfers(args?: {
           currentEpoch,
           linkedDogId: selectedDogId,
           linkedLitterId: selection.litterId,
+          metadataJson: { studContractId: selection.contract.id },
         });
         return "transferred";
       });

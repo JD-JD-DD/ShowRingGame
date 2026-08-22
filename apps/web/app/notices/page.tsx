@@ -48,12 +48,34 @@ function getNoticeMetadataString(
     return null;
   }
 
-  const value = (metadata as Record<string, unknown>)[key];
-  return typeof value === "string" ? value : null;
+  for (const [metadataKey, value] of Object.entries(metadata)) {
+    if (metadataKey === key && typeof value === "string") return value;
+  }
+
+  return null;
+}
+
+function isPuppySelectionActionNotice(sourceKey: string): boolean {
+  return (
+    (sourceKey.includes("STUD_PUPPY_SELECTION_OPEN") && !sourceKey.includes("SECOND_PICK_INFO")) ||
+    (sourceKey.includes("STUD_PUPPY_SELECTION_REOPENED") && !sourceKey.includes("DAM_INFO")) ||
+    sourceKey.includes("STUD_PUPPY_SELECTION_DAM_PICK") ||
+    sourceKey.includes("STUD_PUPPY_SELECTION_DAM_FORFEITED_STUD_OPEN")
+  );
 }
 
 function getNoticeHref(notice: KennelNotice): string | null {
   const communityTopicPath = getNoticeMetadataString(notice, "topicPath");
+  const studContractId = getNoticeMetadataString(notice, "studContractId");
+  const sourceKey = notice.sourceKey ?? "";
+  const isStudContractNotice = sourceKey.startsWith("STUD_");
+  const isPuppySelectionAction = isPuppySelectionActionNotice(sourceKey);
+
+  if (notice.sourceKey?.startsWith("STUD_MANUAL_REQUEST_OWNER")) return "/stud-contracts?action=manual-approval";
+  if (notice.sourceKey?.startsWith("STUD_RETURN_SERVICE_AVAILABLE")) return "/stud-contracts?action=return-service";
+  if (isPuppySelectionAction && notice.linkedLitterId) return `/litters#stud-contract-selection-${notice.linkedLitterId}`;
+  if (notice.sourceKey?.startsWith("STUD_PUPPY_TRANSFER") && notice.linkedDogId) return `/dogs/${notice.linkedDogId}`;
+  if (isStudContractNotice && studContractId) return `/stud-contracts/${studContractId}`;
 
   if (
     notice.linkedThreadId &&
@@ -77,6 +99,19 @@ function getNoticeHref(notice: KennelNotice): string | null {
   if (notice.linkedShowId) return `/shows/${notice.linkedShowId}`;
   if (notice.linkedListingId) return "/market";
   return null;
+}
+
+function getNoticeLinkLabel(notice: KennelNotice): string {
+  const sourceKey = notice.sourceKey ?? "";
+
+  if (sourceKey.startsWith("STUD_MANUAL_REQUEST_OWNER")) return "Review Request";
+  if (sourceKey.startsWith("STUD_RETURN_SERVICE_AVAILABLE")) return "View Return Service";
+  if (isPuppySelectionActionNotice(sourceKey)) {
+    return "Pick Puppy";
+  }
+  if (sourceKey.startsWith("STUD_")) return "Open Contract";
+
+  return "Open";
 }
 
 export default async function NoticesPage({
@@ -193,7 +228,7 @@ export default async function NoticesPage({
                           href={href}
                           className="theme-secondary-button rounded-lg px-4 py-2 text-sm font-semibold"
                         >
-                          Open
+                          {getNoticeLinkLabel(notice)}
                         </Link>
                       ) : null}
                       {isUnread ? (
