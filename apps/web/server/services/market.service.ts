@@ -16,7 +16,6 @@ import {
 } from "@/server/services/dogVisibleCategories.service";
 import {
   canSellPuppy,
-  MIN_BREED_AGE_HOURS,
   type VisibleCategories,
 } from "@showring/rules";
 
@@ -683,121 +682,6 @@ export async function cancelPlayerDogListing(args: {
     });
 
     return listing.dog.id;
-  });
-}
-
-export async function listDogAtStud(args: {
-  dogId: string;
-  sellerKennelId: string;
-  currentEpoch: number;
-  studFeeAmount: number;
-  requiresBrucellosisNegativeDam?: boolean;
-  requiresDamHealthTestsCompleted?: boolean;
-  requiresDamHealthAllGreen?: boolean;
-  requiresDamHealthGreenOrYellow?: boolean;
-  requiresDamChampionTitle?: boolean;
-}): Promise<string> {
-  const {
-    dogId,
-    sellerKennelId,
-    currentEpoch,
-    studFeeAmount,
-    requiresBrucellosisNegativeDam,
-    requiresDamHealthTestsCompleted,
-    requiresDamHealthAllGreen,
-    requiresDamHealthGreenOrYellow,
-    requiresDamChampionTitle,
-  } = args;
-
-  assertWholeDollarAmount(studFeeAmount, "Stud fee");
-  return db.$transaction(async (tx) => {
-    const dog = await tx.dog.findUnique({
-      where: { id: dogId },
-      select: {
-        id: true,
-        regNumber: true,
-        callName: true,
-        registeredName: true,
-        ownerKennelId: true,
-        sex: true,
-        birthEpoch: true,
-        lifecycleState: true,
-        marketState: true,
-        isBreedingActive: true,
-      },
-    });
-
-    if (!dog) {
-      throw new Error("Dog not found.");
-    }
-
-    if (dog.ownerKennelId !== sellerKennelId) {
-      throw new Error("You do not own this dog.");
-    }
-
-    if (!dog.isBreedingActive) {
-      throw new Error(
-        `${formatDogDisplayName(dog)} is not currently active for breeding.`
-      );
-    }
-
-    if (dog.lifecycleState !== "ALIVE") {
-      throw new Error("Only active dogs can be offered at stud.");
-    }
-
-    await assertDogHasNoPendingVeterinaryCare(dog.id, tx);
-
-    if (dog.sex !== "M") {
-      throw new Error("Only male dogs can be offered at stud.");
-    }
-
-    if (currentEpoch - dog.birthEpoch < MIN_BREED_AGE_HOURS) {
-      throw new Error("Dogs must be breeding age before they can be offered at stud.");
-    }
-
-    if (dog.marketState !== "NOT_FOR_SALE") {
-      throw new Error("Dogs listed for sale cannot be offered at stud.");
-    }
-
-    const activeListing = await tx.dogListing.findFirst({
-      where: {
-        dogId: dog.id,
-        status: "ACTIVE",
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (activeListing) {
-      throw new Error("This dog already has an active listing.");
-    }
-
-    const listing = await tx.dogListing.create({
-      data: {
-        dogId: dog.id,
-        sellerKennelId,
-        sellerType: "PLAYER",
-        askingPrice: studFeeAmount,
-        listingType: PLAYER_STUD_LISTING_TYPE,
-        status: "ACTIVE",
-        listedAtEpoch: currentEpoch,
-        requiresBrucellosisNegativeDam:
-          requiresBrucellosisNegativeDam ?? false,
-        requiresDamHealthTestsCompleted:
-          requiresDamHealthTestsCompleted ?? false,
-        requiresDamHealthAllGreen: requiresDamHealthAllGreen ?? false,
-        requiresDamHealthGreenOrYellow:
-          requiresDamHealthGreenOrYellow ?? false,
-        requiresDamChampionTitle: requiresDamChampionTitle ?? false,
-        descriptionPublic: `Stud listing for ${dog.regNumber}.`,
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    return listing.id;
   });
 }
 

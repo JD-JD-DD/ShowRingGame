@@ -9,8 +9,6 @@ import DogProfileKennelRunMove from "@/components/dogs/DogProfileKennelRunMove";
 import DogProfileDashboard from "@/components/dogs/DogProfileDashboard";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
-import ManageDogStudListingForm from "@/components/dogs/ManageDogStudListingForm";
-import OfferDogAtStudForm from "@/components/dogs/OfferDogAtStudForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
 import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
 import RehomeDogForm from "@/components/dogs/RehomeDogForm";
@@ -220,6 +218,12 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     profile.snapshot.canShow;
   const saleListing = profile.breedingAndProduction.activeSaleListing;
   const studListing = profile.breedingAndProduction.activeStudListing;
+  const canConfigureStudOffer =
+    actions.canOfferAtStud ||
+    (Boolean(studListing) &&
+      actions.canEditStudFee &&
+      header.lifecycleState === "ALIVE" &&
+      actions.isBreedingActive);
   const marketSaleListing =
     openedFromMarket && actions.canBuyActiveListing && saleListing
       ? saleListing
@@ -521,19 +525,13 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </Link>
                 ) : null}
 
-                {actions.canOfferAtStud ? (
-                  <OfferDogAtStudForm
-                    action={`/api/dogs/${header.dogId}/list-at-stud${dogPageMutationContext}`}
-                  />
-                ) : (actions.canEditStudFee ||
-                    actions.canCancelStudListing) && studListing ? (
-                  <ManageDogStudListingForm
-                    dogId={header.dogId}
-                    listingId={studListing.listingId}
-                    currentPrice={studListing.studFee}
-                    updateAction={`/api/stud-listings/${studListing.listingId}/update-price${dogPageMutationContext}`}
-                    cancelAction={`/api/stud-listings/${studListing.listingId}/cancel${dogPageMutationContext}`}
-                  />
+                {canConfigureStudOffer ? (
+                  <Link
+                    href={`/dogs/${header.dogId}/stud-contract`}
+                    className="theme-secondary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"
+                  >
+                    Stud Owner Worksheet
+                  </Link>
                 ) : null}
               </div>
 

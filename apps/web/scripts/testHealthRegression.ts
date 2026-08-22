@@ -91,9 +91,6 @@ const healthTestingPanel = source(
   "apps/web/components/dogs/HealthTestingPanel.tsx"
 );
 const healthClearBadge = source("apps/web/components/dogs/HealthClearBadge.tsx");
-const offerDogAtStudForm = source(
-  "apps/web/components/dogs/OfferDogAtStudForm.tsx"
-);
 const faqPage = source("apps/web/app/faq/page.tsx");
 const foundationDogService = source(
   "apps/web/server/services/foundationDog.service.ts"
@@ -872,7 +869,7 @@ assertIncludes(
   "server-side stud green requirement uses required-test clearance"
 );
 assertDoesNotIncludeAny(
-  `${healthClearBadge}\n${offerDogAtStudForm}\n${breedingService}\n${faqPage}`,
+  `${healthClearBadge}\n${breedingService}\n${faqPage}`,
   ["all " + "four", "All " + "four", "all " + "five", "All " + "five"],
   "player-facing health requirement copy should avoid hardcoded test counts"
 );

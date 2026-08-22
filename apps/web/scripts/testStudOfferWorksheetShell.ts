@@ -11,7 +11,6 @@ const worksheet = source(
   "apps/web/components/stud-contract/StudOfferWorksheet.tsx"
 );
 const damSideRoute = source("apps/web/app/stud-contract/page.tsx");
-const legacyStudForm = source("apps/web/components/dogs/OfferDogAtStudForm.tsx");
 
 assert.ok(route.includes('redirect("/login")'));
 assert.ok(route.includes('redirect("/onboarding")'));
@@ -68,7 +67,5 @@ assert.equal(worksheet.includes("db."), false);
 
 assert.ok(damSideRoute.includes("Stud contract details will be available here."));
 assert.equal(damSideRoute.includes("StudOfferWorksheet"), false);
-assert.ok(legacyStudForm.includes("Offer Dog At Stud"));
-assert.ok(legacyStudForm.includes('name="studFeeAmount"'));
 
 console.log("Stud offer worksheet shell checks passed.");

@@ -26,9 +26,7 @@ const moveComponent = source(
 const profileFormSources = [
   "apps/web/components/dogs/RegisterDogNameForm.tsx",
   "apps/web/components/dogs/OfferDogForSaleForm.tsx",
-  "apps/web/components/dogs/OfferDogAtStudForm.tsx",
   "apps/web/components/dogs/ManageDogListingForm.tsx",
-  "apps/web/components/dogs/ManageDogStudListingForm.tsx",
   "apps/web/components/dogs/RehomeDogForm.tsx",
   "apps/web/components/dogs/HealthTestingPanel.tsx",
   "apps/web/components/dogs/DogPrivateNotesEditor.tsx",
@@ -38,7 +36,6 @@ const dogProfileRouteSources = [
   "apps/web/app/api/dogs/[dogId]/rename/route.ts",
   "apps/web/app/api/dogs/[dogId]/notes/route.ts",
   "apps/web/app/api/dogs/[dogId]/list-for-sale/route.ts",
-  "apps/web/app/api/dogs/[dogId]/list-at-stud/route.ts",
   "apps/web/app/api/dogs/[dogId]/health-tests/route.ts",
   "apps/web/app/api/dogs/[dogId]/health-tests/[testTypeCode]/route.ts",
   "apps/web/app/api/dogs/[dogId]/brucellosis-screening/route.ts",
