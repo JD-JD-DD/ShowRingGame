@@ -258,6 +258,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
     take: 60,
     select: {
       id: true,
+      sellerKennelId: true,
       askingPrice: true,
       requiresBrucellosisNegativeDam: true,
       requiresDamHealthTestsCompleted: true,
