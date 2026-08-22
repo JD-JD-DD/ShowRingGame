@@ -20,7 +20,6 @@ import { PHENOTYPE_HEALTH_TESTS } from "@showring/rules";
 
 type PageProps = {
   searchParams?: Promise<{
-    studListingId?: string | string[];
     sireDogId?: string | string[];
     damDogId?: string | string[];
     source?: string | string[];
@@ -42,21 +41,15 @@ export default async function StudContractPage({ searchParams }: PageProps) {
   if (!kennel) redirect("/onboarding");
 
   const query = searchParams ? await searchParams : {};
-  const listingId = first(query.studListingId);
   const sireId = first(query.sireDogId);
   const damId = first(query.damDogId);
   if (!sireId) notFound();
 
-  const publicStud = await resolvePublicStudForSire({
-    sireDogId: sireId,
-    ...(listingId ? { legacyListingId: listingId } : {}),
-  });
+  const publicStud = await resolvePublicStudForSire({ sireDogId: sireId });
   if (
     !publicStud ||
     publicStud.sireDogId !== sireId ||
-    publicStud.ownerKennelId === kennel.id ||
-    (publicStud.source === "LEGACY_PLAYER_STUD" &&
-      (!listingId || publicStud.legacyListingId !== listingId))
+    publicStud.ownerKennelId === kennel.id
   ) {
     notFound();
   }
@@ -83,11 +76,8 @@ export default async function StudContractPage({ searchParams }: PageProps) {
     notFound();
   }
 
-  const offer =
-    publicStud.source === "STUD_OFFER"
-      ? (await getCurrentPublishedStudOffersForSires([sireId]))[0] ?? null
-      : null;
-  if (publicStud.source === "STUD_OFFER" && !offer) notFound();
+  const offer = (await getCurrentPublishedStudOffersForSires([sireId]))[0] ?? null;
+  if (!offer) notFound();
 
   const currentEpoch = getCurrentEpoch();
   const latest = await db.breedingAttempt.findFirst({
@@ -250,8 +240,8 @@ export default async function StudContractPage({ searchParams }: PageProps) {
         )}
 
         {offer ? <section className="theme-card mt-4 rounded-2xl p-4"><h2 className="theme-heading text-lg font-semibold">Return Service and availability</h2><p className="theme-copy mt-2 text-sm">{RETURN_SERVICE_FINE_PRINT}</p></section> : null}
-        {dam && actionAvailable && offer?.approvalMode === "AUTOMATIC" ? publicStud.source === "LEGACY_PLAYER_STUD" ? <AutomaticStudContractConfirmation source="LEGACY_PLAYER_STUD" studListingId={publicStud.legacyListingId} sireDogId={sireId} damDogId={dam.id} /> : <AutomaticStudContractConfirmation source="STUD_OFFER" sireDogId={sireId} damDogId={dam.id} /> : null}
-        {pendingManualRequest ? <section className="theme-status-info mt-4 rounded-2xl p-4" role="status"><p className="font-semibold">Stud approval pending</p><p className="mt-1 text-sm">No breeding or payment has occurred. Decision deadline: {pendingManualRequest.approvalDeadlineAt?.toLocaleString() ?? "Unavailable"}.</p></section> : dam && actionAvailable && offer?.approvalMode === "MANUAL" ? publicStud.source === "LEGACY_PLAYER_STUD" ? <ManualStudContractRequest source="LEGACY_PLAYER_STUD" studListingId={publicStud.legacyListingId} sireDogId={sireId} damDogId={dam.id} /> : <ManualStudContractRequest source="STUD_OFFER" sireDogId={sireId} damDogId={dam.id} /> : null}
+        {dam && actionAvailable && offer?.approvalMode === "AUTOMATIC" ? <AutomaticStudContractConfirmation sireDogId={sireId} damDogId={dam.id} /> : null}
+        {pendingManualRequest ? <section className="theme-status-info mt-4 rounded-2xl p-4" role="status"><p className="font-semibold">Stud approval pending</p><p className="mt-1 text-sm">No breeding or payment has occurred. Decision deadline: {pendingManualRequest.approvalDeadlineAt?.toLocaleString() ?? "Unavailable"}.</p></section> : dam && actionAvailable && offer?.approvalMode === "MANUAL" ? <ManualStudContractRequest sireDogId={sireId} damDogId={dam.id} /> : null}
         <Link href={back} className="theme-secondary-button mt-8 inline-flex rounded-2xl px-5 py-3 text-sm font-semibold">Go Back</Link>
       </section>
     </main>

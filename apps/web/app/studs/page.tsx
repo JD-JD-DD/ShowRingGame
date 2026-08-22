@@ -245,21 +245,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
       },
       AND: [
         { ownerKennelId: { not: null } },
-        {
-          OR: [
-            { studOffersAsSire: { some: { status: "PUBLISHED" } } },
-            {
-              listings: {
-                some: {
-                  sellerType: "PLAYER",
-                  listingType: "PLAYER_STUD",
-                  status: "ACTIVE",
-                  sellerKennelId: { not: kennel.id },
-                },
-              },
-            },
-          ],
-        },
+        { studOffersAsSire: { some: { status: "PUBLISHED" } } },
       ],
     },
     orderBy: [
@@ -562,33 +548,20 @@ export default async function StudsPage({ searchParams }: PageProps) {
                         </div>
                       </div>
 
-                      {publicStud.source === "STUD_OFFER" ? (
-                        <div className="theme-status-info rounded-2xl px-4 py-2 text-right">
-                          <div className="text-xs uppercase tracking-wide">
-                            Stud Terms
-                          </div>
-                          <div className="mt-1 text-xl font-bold">
-                            {publicStud.terms.compensationType === "CASH"
-                              ? publicStud.terms.cashAmount === null
-                                ? "Cash"
-                                : formatMoney(publicStud.terms.cashAmount)
-                              : publicStud.terms.compensationType === "PUPPY_BACK"
-                                ? "Puppy Back"
-                                : `${publicStud.terms.cashAmount === null ? "Cash" : formatMoney(publicStud.terms.cashAmount)} + Puppy Back`}
-                          </div>
+                      <div className="theme-status-info rounded-2xl px-4 py-2 text-right">
+                        <div className="text-xs uppercase tracking-wide">
+                          Stud Terms
                         </div>
-                      ) : (
-                        <div className="theme-status-info rounded-2xl px-4 py-2 text-right">
-                          <div className="text-xs uppercase tracking-wide">
-                            Stud Fee
-                          </div>
-                          <div className="mt-1 text-xl font-bold">
-                            {publicStud.legacyFeeAmount === null
-                              ? "Fee unavailable"
-                              : formatMoney(publicStud.legacyFeeAmount)}
-                          </div>
+                        <div className="mt-1 text-xl font-bold">
+                          {publicStud.terms.compensationType === "CASH"
+                            ? publicStud.terms.cashAmount === null
+                              ? "Cash"
+                              : formatMoney(publicStud.terms.cashAmount)
+                            : publicStud.terms.compensationType === "PUPPY_BACK"
+                              ? "Puppy Back"
+                              : `${publicStud.terms.cashAmount === null ? "Cash" : formatMoney(publicStud.terms.cashAmount)} + Puppy Back`}
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
 
@@ -645,30 +618,28 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           Stud Terms
                         </div>
                         <div className="theme-heading mt-1 font-medium">
-                          {publicStud.source === "STUD_OFFER" ? (
-                            <span className="grid gap-1">
-                              <span>
-                                Compensation: {publicStud.terms.compensationType === "CASH"
-                                  ? publicStud.terms.cashAmount === null
-                                    ? "Cash"
-                                    : formatMoney(publicStud.terms.cashAmount)
-                                  : publicStud.terms.compensationType === "PUPPY_BACK"
-                                    ? "Puppy Back"
-                                    : `${publicStud.terms.cashAmount === null ? "Cash" : formatMoney(publicStud.terms.cashAmount)} + Puppy Back`}
-                              </span>
-                              {publicStud.terms.puppyBackSummary ? (
-                                <span>Puppy Terms: {publicStud.terms.puppyBackSummary}</span>
-                              ) : null}
-                              {publicStud.terms.requirementsSummary ? (
-                                <span>Dam Requirements: {publicStud.terms.requirementsSummary}</span>
-                              ) : null}
-                              <span>
-                                {publicStud.terms.approvalMode === "MANUAL"
-                                  ? "Manual Approval"
-                                  : "Automatic Approval"}
-                              </span>
+                          <span className="grid gap-1">
+                            <span>
+                              Compensation: {publicStud.terms.compensationType === "CASH"
+                                ? publicStud.terms.cashAmount === null
+                                  ? "Cash"
+                                  : formatMoney(publicStud.terms.cashAmount)
+                                : publicStud.terms.compensationType === "PUPPY_BACK"
+                                  ? "Puppy Back"
+                                  : `${publicStud.terms.cashAmount === null ? "Cash" : formatMoney(publicStud.terms.cashAmount)} + Puppy Back`}
                             </span>
-                          ) : "Stud contract terms not yet published."}
+                            {publicStud.terms.puppyBackSummary ? (
+                              <span>Puppy Terms: {publicStud.terms.puppyBackSummary}</span>
+                            ) : null}
+                            {publicStud.terms.requirementsSummary ? (
+                              <span>Dam Requirements: {publicStud.terms.requirementsSummary}</span>
+                            ) : null}
+                            <span>
+                              {publicStud.terms.approvalMode === "MANUAL"
+                                ? "Manual Approval"
+                                : "Automatic Approval"}
+                            </span>
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -703,48 +674,12 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           {PENDING_VETERINARY_CARE_BREEDING_MESSAGE}
                         </div>
                       ) : null}
-                      {publicStud.source === "STUD_OFFER" ? (
-                        <Link
-                          href={`/stud-contract?sireDogId=${dog.id}&source=public-stud`}
-                          className="theme-primary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
-                        >
-                          Review Stud Contract
-                        </Link>
-                      ) : !dog.isBreedingActive ? (
-                        <span
-                          aria-disabled="true"
-                          className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
-                        >
-                          Breeding Inactive
-                        </span>
-                      ) : breedingEligibility.isEligible ? (
-                        <Link
-                          href={`/breed?studListingId=${publicStud.legacyListingId}`}
-                          className={`flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold ${
-                            hasPendingVeterinaryCare
-                              ? "theme-secondary-button"
-                              : "theme-primary-button"
-                          }`}
-                        >
-                          {hasPendingVeterinaryCare ? "Review Availability" : "Use At Stud"}
-                        </Link>
-                      ) : (
-                        <span
-                          aria-disabled="true"
-                          className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
-                        >
-                          Stud in Recovery
-                        </span>
-                      )}
-
-                      {publicStud.source === "LEGACY_PLAYER_STUD" ? (
-                        <Link
-                          href={`/stud-contract?studListingId=${publicStud.legacyListingId}&sireDogId=${dog.id}&source=public-stud`}
-                          className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
-                        >
-                          Contract Terms
-                        </Link>
-                      ) : null}
+                      <Link
+                        href={`/stud-contract?sireDogId=${dog.id}&source=public-stud`}
+                        className="theme-primary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
+                      >
+                        Review Stud Contract
+                      </Link>
 
                       <Link
                         href={`/dogs/${dog.id}`}

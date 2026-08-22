@@ -12,23 +12,12 @@ const MANUAL_APPROVAL_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export async function createManualStudContractRequest(args: {
   kennelId: string;
-  studListingId?: string;
   sireDogId: string;
   damDogId: string;
-  source: "STUD_OFFER" | "LEGACY_PLAYER_STUD";
   currentEpoch: number;
 }) {
-  const publicStud = await resolvePublicStudForSire({
-    sireDogId: args.sireDogId,
-    ...(args.studListingId ? { legacyListingId: args.studListingId } : {}),
-  });
+  const publicStud = await resolvePublicStudForSire({ sireDogId: args.sireDogId });
   if (!publicStud || publicStud.sireDogId !== args.sireDogId) {
-    throw new Error("This stud and dam are no longer eligible for a request.");
-  }
-  if (
-    publicStud.source === "LEGACY_PLAYER_STUD" &&
-    (!args.studListingId || publicStud.legacyListingId !== args.studListingId)
-  ) {
     throw new Error("This stud and dam are no longer eligible for a request.");
   }
 
@@ -176,7 +165,7 @@ export async function createManualStudContractRequest(args: {
         body: `A Manual Stud Approval request is awaiting your review until ${approvalDeadlineAt.toLocaleString()}.`,
         currentEpoch: args.currentEpoch,
         linkedDogId: sire.id,
-        linkedListingId: args.studListingId ?? null,
+        linkedListingId: null,
         metadataJson: { studContractId: contract.id, damDogId: dam.id, approvalDeadlineAt: approvalDeadlineAt.toISOString() },
       }),
       createKennelNotice({
@@ -188,7 +177,7 @@ export async function createManualStudContractRequest(args: {
         body: "Your request was submitted. No breeding or payment has occurred.",
         currentEpoch: args.currentEpoch,
         linkedDogId: dam.id,
-        linkedListingId: args.studListingId ?? null,
+        linkedListingId: null,
         metadataJson: { studContractId: contract.id, sireDogId: sire.id, approvalDeadlineAt: approvalDeadlineAt.toISOString() },
       }),
     ]);

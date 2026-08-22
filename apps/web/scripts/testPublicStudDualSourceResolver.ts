@@ -31,55 +31,17 @@ function publishedOffer(
   };
 }
 
-const legacyListing = {
-  id: "listing-1",
-  askingPrice: 350,
-  sellerKennelId: "kennel-1",
-  requiresBrucellosisNegativeDam: true,
-  requiresDamHealthTestsCompleted: false,
-  requiresDamHealthAllGreen: false,
-  requiresDamHealthGreenOrYellow: false,
-  requiresDamChampionTitle: false,
-  dog: {
-    id: "sire-1",
-    ownerKennelId: "kennel-1",
-    breedCode2: "PUG",
-  },
-} as const;
-
 const studOfferOnly = resolvePublicStudFromCandidates({
   sireDogId: "sire-1",
   publishedOffers: [publishedOffer()],
-  legacyListings: [],
 });
 assert.ok(studOfferOnly && studOfferOnly.source === "STUD_OFFER");
 assert.equal(studOfferOnly.studOfferId, "offer-1");
-assert.equal(studOfferOnly.legacyFeeAmount, null);
-assert.equal(studOfferOnly.legacyRequirements, null);
 
-const legacyOnly = resolvePublicStudFromCandidates({
+assert.equal(resolvePublicStudFromCandidates({
   sireDogId: "sire-1",
   publishedOffers: [],
-  legacyListings: [legacyListing],
-});
-assert.ok(legacyOnly && legacyOnly.source === "LEGACY_PLAYER_STUD");
-assert.equal(legacyOnly.legacyListingId, "listing-1");
-
-const dualSource = resolvePublicStudFromCandidates({
-  sireDogId: "sire-1",
-  publishedOffers: [publishedOffer()],
-  legacyListings: [legacyListing],
-});
-assert.equal(dualSource?.source, "STUD_OFFER");
-
-assert.equal(
-  resolvePublicStudFromCandidates({
-    sireDogId: "sire-1",
-    publishedOffers: [],
-    legacyListings: [],
-  }),
-  null
-);
+}), null);
 
 const staleOffer = publishedOffer({
   sireDog: { id: "sire-1", ownerKennelId: "other-kennel", breedCode2: "PUG" },
@@ -89,9 +51,8 @@ assert.equal(
   resolvePublicStudFromCandidates({
     sireDogId: "sire-1",
     publishedOffers: [staleOffer],
-    legacyListings: [legacyListing],
-  })?.source,
-  "LEGACY_PLAYER_STUD"
+  }),
+  null
 );
 
 const puppyBack = adaptPublishedStudOfferToPublicStud(
@@ -103,7 +64,6 @@ const puppyBack = adaptPublishedStudOfferToPublicStud(
   })
 );
 assert.equal(puppyBack?.terms.cashAmount, null);
-assert.equal(puppyBack?.legacyFeeAmount, null);
 assert.equal(puppyBack?.terms.puppyBackSummary, "First Pick • Female");
 
 const cashAndPuppyBack = adaptPublishedStudOfferToPublicStud(
@@ -130,4 +90,4 @@ assert.match(structuredRequirements?.terms.requirementsSummary ?? "", /Brucellos
 assert.match(structuredRequirements?.terms.requirementsSummary ?? "", /CH or higher/);
 assert.match(structuredRequirements?.terms.requirementsSummary ?? "", /Green only/);
 
-console.log("Public Stud dual-source resolver checks passed.");
+console.log("Public Stud offer-only resolver checks passed.");

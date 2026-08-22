@@ -61,8 +61,6 @@ export async function POST(request: Request) {
       typeof body.primaryDogId === "string" ? body.primaryDogId.trim() : "";
     const mateDogId =
       typeof body.mateDogId === "string" ? body.mateDogId.trim() : "";
-    const studListingId =
-      typeof body.studListingId === "string" ? body.studListingId.trim() : "";
     const testDamBrucellosis = body.testDamBrucellosis === true;
     const testSireBrucellosis = body.testSireBrucellosis === true;
 
@@ -76,7 +74,6 @@ export async function POST(request: Request) {
       kennelId: kennel.id,
       primaryDogId,
       mateDogId,
-      studListingId: studListingId || undefined,
       currentEpoch,
       testDamBrucellosis,
       testSireBrucellosis,

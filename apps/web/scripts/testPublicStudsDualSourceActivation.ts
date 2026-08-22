@@ -18,17 +18,14 @@ assert.ok(
   "published StudOffer-only sires are candidate dogs"
 );
 assert.ok(
-  page.includes('listingType: "PLAYER_STUD"') && page.includes('status: "ACTIVE"'),
-  "active legacy PLAYER_STUD rows remain candidate fallback sources"
+  page.includes('studOffersAsSire: { some: { status: "PUBLISHED" } }'),
+  "published StudOffer rows are the only public candidate authority"
 );
 assert.ok(
-  page.includes('publicStud.source === "STUD_OFFER"'),
-  "StudOffer card terms use discriminated source narrowing"
+  page.includes("Review Stud Contract"),
+  "StudOffer card terms retain the public contract action"
 );
-assert.ok(
-  page.includes('publicStud.source === "LEGACY_PLAYER_STUD"'),
-  "legacy contract routing uses discriminated source narrowing"
-);
+assert.equal(page.includes('LEGACY_PLAYER_STUD'), false);
 assert.ok(
   page.includes("Review Stud Contract") &&
     page.includes("`/stud-contract?sireDogId=${dog.id}&source=public-stud`"),
@@ -45,4 +42,4 @@ assert.equal(
   "/studs no longer independently adapts legacy listings"
 );
 
-console.log("Public Stud /studs dual-source activation checks passed.");
+console.log("Public Stud /studs StudOffer-only activation checks passed.");

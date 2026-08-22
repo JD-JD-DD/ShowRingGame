@@ -11,12 +11,10 @@ import {
   getPhenotypeHealthBadgeStatus,
   getPhenotypeHealthSeverity,
   hasAllGreenRequiredPhenotypeHealthTests,
-  hasCompletedRequiredPhenotypeHealthTests,
   type PhenotypeHealthSeverity,
 } from "@/lib/dogHealth";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { formatGeneticCategoryValue } from "@/lib/phenotypeFormat";
-import { isChampionOfRecordDog } from "@/lib/dogTitles";
 import { evaluateDamAgainstStudContractRequirements } from "@/lib/studContractEligibility";
 import { formatGameAge, formatUtcDateTime } from "@/lib/gameTimeFormat";
 import type { CompactStudOfferSummary } from "@/lib/studOfferPresentation";
@@ -31,7 +29,6 @@ import {
   PREG_CHECK_HOURS,
   WHELPING_COOLDOWN_HOURS,
   getPhenotypeHealthResultLabel,
-  getRequiredHealthTestsForBreed,
   type PedigreeDog,
   type PhenotypeHealthTestCode,
 } from "@showring/rules";
@@ -81,16 +78,10 @@ type DogCardDto = {
   breedingEligibleAtEpoch: number | null;
   breedingRemainingHours: number;
   breedingCooldownUntilEpoch: number | null;
-  publicStudSource?: "STUD_OFFER" | "LEGACY_PLAYER_STUD";
+  publicStudSource?: "STUD_OFFER";
   studOfferId?: string;
-  studListingId: string | null;
   studFeeAmount: number | null;
   brucellosisValidUntilEpoch: number | null;
-  requiresBrucellosisNegativeDam: boolean;
-  requiresDamHealthTestsCompleted: boolean;
-  requiresDamHealthAllGreen: boolean;
-  requiresDamHealthGreenOrYellow: boolean;
-  requiresDamChampionTitle: boolean;
   studOfferSummary: CompactStudOfferSummary | null;
   coiPercent: number | null;
   lastLitterEpoch: number | null;
@@ -116,8 +107,6 @@ type Props = {
   dogs: DogCardDto[];
   kennelRuns: KennelRunOptionDto[];
   initialDogId: string | null;
-  initialStudListingId: string | null;
-  initialPublicSireDogId: string | null;
   initialNotice: {
     message: string;
     tone: "warning" | "error";
@@ -157,28 +146,11 @@ function publicStudContractHref(
     damDogId,
     source,
   });
-  if (sire.publicStudSource === "LEGACY_PLAYER_STUD" && sire.studListingId) {
-    params.set("studListingId", sire.studListingId);
-  }
   return `/stud-contract?${params.toString()}`;
 }
 
 function publicStudCompensationLabel(sire: DogCardDto) {
-  if (sire.publicStudSource === "STUD_OFFER") {
-    return sire.studOfferSummary?.compensationSummary ?? "Stud Contract";
-  }
-  return formatMoney(sire.studFeeAmount ?? 0);
-}
-
-function legacyStudRequirementsLabel(sire: DogCardDto) {
-  const requirements = [
-    sire.requiresBrucellosisNegativeDam ? "Brucellosis negative" : null,
-    sire.requiresDamHealthTestsCompleted ? "Health tests complete" : null,
-    sire.requiresDamHealthAllGreen ? "All health tests green" : null,
-    sire.requiresDamHealthGreenOrYellow ? "Health tests green/yellow" : null,
-    sire.requiresDamChampionTitle ? "Champion title" : null,
-  ].filter((requirement): requirement is string => Boolean(requirement));
-  return requirements.length > 0 ? requirements.join(" • ") : "No legacy requirements";
+  return sire.studOfferSummary?.compensationSummary ?? "Stud Contract";
 }
 
 function brucellosisStatusLabel(dog: DogCardDto | null) {
@@ -187,19 +159,6 @@ function brucellosisStatusLabel(dog: DogCardDto | null) {
   return dog.brucellosisValidUntilEpoch === null
     ? "No valid negative test"
     : `Negative through ${formatUtcDateTime(dog.brucellosisValidUntilEpoch)}`;
-}
-
-function requiresDamBrucellosisTest(
-  dam: DogCardDto | null,
-  sire: DogCardDto | null
-) {
-  return Boolean(
-    dam &&
-      sire &&
-      !sire.isOwnedByCurrentKennel &&
-      sire.requiresBrucellosisNegativeDam &&
-      dam.brucellosisValidUntilEpoch === null
-  );
 }
 
 function shouldChargeDamBrucellosisTest(args: {
@@ -211,10 +170,7 @@ function shouldChargeDamBrucellosisTest(args: {
     return false;
   }
 
-  return (
-    args.testDamBrucellosis ||
-    requiresDamBrucellosisTest(args.dam, args.sire)
-  );
+  return args.testDamBrucellosis;
 }
 
 function shouldChargeSireBrucellosisTest(args: {
@@ -275,40 +231,12 @@ function latestHealthTests(dog: DogCardDto) {
   }));
 }
 
-function hasCompletedAllPhenotypeHealthTests(dog: DogCardDto) {
-  return hasCompletedRequiredPhenotypeHealthTests(
-    dog.healthTests,
-    dog.breedCode2
-  );
-}
-
-function hasOnlyGreenOrYellowPhenotypeHealthTests(dog: DogCardDto) {
-  const requiredCodes = new Set<string>(
-    getRequiredHealthTestsForBreed(dog.breedCode2)
-  );
-
-  return (
-    hasCompletedAllPhenotypeHealthTests(dog) &&
-    dog.healthTests
-      .filter((test) => requiredCodes.has(test.testTypeCode))
-      .every(
-        (test) =>
-          getPhenotypeHealthSeverity(test.testTypeCode, test.resultCode) !==
-          "red"
-      )
-  );
-}
-
-function isFinishedChampion(dog: DogCardDto) {
-  return isChampionOfRecordDog(dog);
-}
-
 function damMeetsStudRequirements(dam: DogCardDto | null, stud: DogCardDto) {
   if (stud.isOwnedByCurrentKennel || !dam) {
     return true;
   }
 
-  if (stud.publicStudSource === "STUD_OFFER" && stud.studOfferSummary) {
+  if (stud.studOfferSummary) {
     return evaluateDamAgainstStudContractRequirements(
       stud.studOfferSummary.requirements,
       {
@@ -325,29 +253,7 @@ function damMeetsStudRequirements(dam: DogCardDto | null, stud: DogCardDto) {
     ).eligible;
   }
 
-  if (
-    stud.requiresDamHealthTestsCompleted &&
-    !hasCompletedAllPhenotypeHealthTests(dam)
-  ) {
-    return false;
-  }
-  if (
-    stud.requiresDamHealthAllGreen &&
-    !hasAllGreenRequiredPhenotypeHealthTests(dam.healthTests, dam.breedCode2)
-  ) {
-    return false;
-  }
-  if (
-    stud.requiresDamHealthGreenOrYellow &&
-    !hasOnlyGreenOrYellowPhenotypeHealthTests(dam)
-  ) {
-    return false;
-  }
-  if (stud.requiresDamChampionTitle && !isFinishedChampion(dam)) {
-    return false;
-  }
-
-  return true;
+  return false;
 }
 
 function traitNumberTone(value: number) {
@@ -723,7 +629,7 @@ function DogOptionCard({
           <div className="mt-1 text-xs text-purple-100/55">{dog.regNumber}</div>
         </div>
         <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[0.68rem] font-semibold text-purple-100/75">
-          {dog.isOwnedByCurrentKennel ? "My Kennel" : dog.publicStudSource === "STUD_OFFER" ? "Stud Offer" : "Legacy Stud"}
+          {dog.isOwnedByCurrentKennel ? "My Kennel" : "Stud Offer"}
         </span>
       </div>
 
@@ -757,7 +663,7 @@ function DogOptionCard({
             {dog.studOfferSummary.puppyTermsSummary ? <div className="mt-1">Puppy Terms: {dog.studOfferSummary.puppyTermsSummary}</div> : null}
             {dog.studOfferSummary.restrictionsSummary ? <div className="mt-1">Dam Requirements: {dog.studOfferSummary.restrictionsSummary}</div> : null}
             <div className="mt-1">{dog.studOfferSummary.approvalSummary}</div>
-          </> : <><div className="mt-1">Stud Fee: {publicStudCompensationLabel(dog)}</div><div className="mt-1">Legacy Requirements: {legacyStudRequirementsLabel(dog)}</div></>}
+          </> : null}
         </div>
       ) : null}
 
@@ -926,7 +832,7 @@ function FreeMateCard({
                 : "border-white/10 bg-white/5 text-purple-100/75"
             }`}
           >
-            {outsideKennel ? dog.publicStudSource === "STUD_OFFER" ? "Stud Offer" : "Legacy Stud" : "My Kennel"}
+            {outsideKennel ? "Stud Offer" : "My Kennel"}
           </span>
         </div>
         <div className="mt-3 grid gap-1 text-xs text-purple-100/70 sm:grid-cols-2">
@@ -938,12 +844,12 @@ function FreeMateCard({
         {outsideSire ? (
           <div className="mt-3 rounded-xl border border-sky-300/20 bg-sky-500/5 p-3 text-xs text-sky-100">
             <div className="font-semibold uppercase tracking-wide">Stud Terms</div>
-            {dog.studOfferSummary ? <>
+          {dog.studOfferSummary ? <>
               <div className="mt-1">Compensation: {dog.studOfferSummary.compensationSummary}</div>
               {dog.studOfferSummary.puppyTermsSummary ? <div className="mt-1">Puppy Terms: {dog.studOfferSummary.puppyTermsSummary}</div> : null}
               {dog.studOfferSummary.restrictionsSummary ? <div className="mt-1">Dam Requirements: {dog.studOfferSummary.restrictionsSummary}</div> : null}
               <div className="mt-1">{dog.studOfferSummary.approvalSummary}</div>
-            </> : <><div className="mt-1">Stud Fee: {publicStudCompensationLabel(dog)}</div><div className="mt-1">Legacy Requirements: {legacyStudRequirementsLabel(dog)}</div></>}
+          </> : null}
           </div>
         ) : null}
         <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-3">
@@ -996,7 +902,7 @@ function FreeBreedingSummary({
     testSireBrucellosis,
   });
   const totalCost = BREEDING_FEE + (sire?.studFeeAmount ?? 0) + diseaseTestCost;
-  const damTestRequired = requiresDamBrucellosisTest(dam, sire);
+  const damTestRequired = false;
   const canSubmit =
     sire !== null &&
     dam !== null &&
@@ -1367,7 +1273,7 @@ function PairingAnalysis({
     testSireBrucellosis,
   });
   const totalCost = BREEDING_FEE + (sire.studFeeAmount ?? 0) + diseaseTestCost;
-  const damTestRequired = requiresDamBrucellosisTest(dam, sire);
+  const damTestRequired = false;
   const bothHealthClear =
     hasAllGreenRequiredPhenotypeHealthTests(dam.healthTests, dam.breedCode2) &&
     hasAllGreenRequiredPhenotypeHealthTests(sire.healthTests, sire.breedCode2);
@@ -1517,11 +1423,6 @@ function PairingAnalysis({
                   : ""}
               </span>
             </label>
-            {sire.requiresBrucellosisNegativeDam ? (
-              <div className="mt-2 font-semibold text-sky-100">
-                This stud owner requires a negative bitch test.
-              </div>
-            ) : null}
           </div>
 
         </aside>
@@ -1711,7 +1612,7 @@ function Shortlist({
                     <DogName dog={sire} />
                   </td>
                   <td className="px-3 py-2 text-purple-100/70">
-                    {sire.isOwnedByCurrentKennel ? "My Kennel" : sire.publicStudSource === "STUD_OFFER" ? "Stud Offer" : "Legacy Stud"}
+                    {sire.isOwnedByCurrentKennel ? "My Kennel" : "Stud Offer"}
                   </td>
                   <td className={`px-3 py-2 text-right ${coiTone(coi?.coiPercent ?? null)}`}>
                     {coi ? `${coi.coiPercent.toFixed(2)}%` : "Pending"}
@@ -1755,8 +1656,6 @@ export default function BreedPageClient({
   dogs,
   kennelRuns,
   initialDogId,
-  initialStudListingId,
-  initialPublicSireDogId,
   initialNotice,
 }: Props) {
   const router = useRouter();
@@ -1771,18 +1670,11 @@ export default function BreedPageClient({
         dog.isEligibleToBreed
     ) ??
     null;
-  const initialStud =
-    dogs.find(
-      (dog) =>
-        (dog.id === initialPublicSireDogId || dog.studListingId === initialStudListingId) &&
-        isPublicSire(dog) &&
-        dog.isEligibleToBreed
-    ) ?? null;
-  const anchorDog = initialDog ?? initialStud;
+  const anchorDog = initialDog;
   const initialBreedCode =
     experience === "worksheet"
       ? initialBreedCode2 ?? ""
-      : initialDog?.breedCode2 ?? initialStud?.breedCode2 ?? "";
+      : initialDog?.breedCode2 ?? "";
   const [breedCode2, setBreedCode2] = useState(initialBreedCode);
   const [worksheetSelectionMode, setWorksheetSelectionMode] =
     useState<WorksheetSelectionMode>(
@@ -1797,7 +1689,7 @@ export default function BreedPageClient({
       ? ""
       : initialDog?.sex === "M"
         ? initialDog.id
-        : initialStud?.id ?? ""
+        : ""
   );
   const [sireSource, setSireSource] = useState<SireSource>("ALL");
   const [sireSort, setSireSort] = useState<SireSort>("RECOMMENDED");
@@ -2057,7 +1949,7 @@ export default function BreedPageClient({
     let unlockSubmit = true;
 
     try {
-      if (selectedSire.publicStudSource === "STUD_OFFER") {
+      if (isPublicSire(selectedSire)) {
         const contractHref = publicStudContractHref(
           selectedSire,
           selectedDam.id,
@@ -2078,7 +1970,6 @@ export default function BreedPageClient({
         body: JSON.stringify({
           primaryDogId: selectedSire.id,
           mateDogId: selectedDam.id,
-          studListingId: selectedSire.studListingId,
           testDamBrucellosis: shouldChargeDamBrucellosisTest({
             dam: selectedDam,
             sire: selectedSire,

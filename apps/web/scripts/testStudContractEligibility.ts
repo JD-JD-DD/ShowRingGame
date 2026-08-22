@@ -28,6 +28,30 @@ assert.equal(eligible("GREEN_ONLY", "BORDERLINE"), false);
 assert.equal(eligible("GREEN_ONLY", "SEVERE"), false);
 assert.equal(eligible("GREEN_ONLY", null), false);
 
+const hipGreenWithUnrestrictedCardiacRed =
+  evaluateDamAgainstStudContractRequirements(
+    {
+      brucellosisNegativeRequired: false,
+      titleRequirement: "NONE",
+      healthRequirements: [
+        { healthTestCode: "HIP_DYSPLASIA", requirementLevel: "GREEN_ONLY" },
+        { healthTestCode: "CARDIAC", requirementLevel: "NONE" },
+      ],
+    },
+    {
+      ...dam("EXCELLENT"),
+      healthResults: [
+        { healthTestCode: "HIP_DYSPLASIA", resultCode: "EXCELLENT", testedAtEpoch: 2, createdAtEpoch: 2, id: "hip" },
+        { healthTestCode: "CARDIAC", resultCode: "SEVERE", testedAtEpoch: 2, createdAtEpoch: 2, id: "cardiac" },
+      ],
+    }
+  );
+assert.equal(
+  hipGreenWithUnrestrictedCardiacRed.eligible,
+  true,
+  "an unrelated Red result does not affect a configured per-test requirement"
+);
+
 const current = evaluateDamAgainstStudContractRequirements(requirements("GREEN_ONLY"), {
   ...dam("SEVERE", 1),
   healthResults: [
@@ -56,12 +80,15 @@ assert.equal(
   evaluateDamAgainstStudContractRequirements(
     {
       ...requirements("NONE"),
-      healthRequirements: [{ healthTestCode: "PATELLA", requirementLevel: "NONE" }],
+      healthRequirements: [{ healthTestCode: "PATELLA", requirementLevel: "GREEN_ONLY" }],
     },
-    dam(null)
+    {
+      ...dam(null),
+      healthResults: [{ healthTestCode: "PATELLA", resultCode: "NORMAL", testedAtEpoch: 1, createdAtEpoch: 1, id: "patella" }],
+    }
   ).eligible,
   true,
-  "unrestricted future codes do not require evaluator changes"
+  "configured canonical test codes do not require evaluator changes"
 );
 
 const title = (titleRequirement: "CH_OR_HIGHER" | "GCH_OR_HIGHER", prefix: string) =>

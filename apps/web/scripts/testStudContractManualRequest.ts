@@ -10,7 +10,7 @@ const page = source("apps/web/app/stud-contract/page.tsx");
 const client = source("apps/web/components/stud-contract/ManualStudContractRequest.tsx");
 
 for (const fragment of [
-  "resolvePublicStudForSire", "publicStud.source === \"LEGACY_PLAYER_STUD\"",
+  "resolvePublicStudForSire",
   'status: "PUBLISHED"', 'approvalMode !== "MANUAL"',
   "assertDamMeetsStudContractRequirements", 'status: "PENDING"',
   "approvalDeadlineAt", "MANUAL_APPROVAL_WINDOW_MS",
@@ -20,13 +20,12 @@ for (const fragment of [
 assert.equal(service.includes("breedingAttempt.create"), false);
 assert.equal(service.includes("ledgerTransaction"), false);
 assert.ok(route.includes("createManualStudContractRequest"));
-assert.ok(route.includes('body.source === "STUD_OFFER"'));
-assert.ok(route.includes('body.source === "LEGACY_PLAYER_STUD"'));
-assert.ok(route.includes('source === "STUD_OFFER" && suppliedStudListingId'));
+assert.equal(route.includes("LEGACY_PLAYER_STUD"), false);
+assert.equal(route.includes("studListingId"), false);
 assert.equal(route.includes("cashAmount"), false);
 assert.ok(page.includes("pendingManualRequest"));
-assert.ok(page.includes('source="STUD_OFFER"'));
-assert.ok(client.includes('source: "STUD_OFFER"'));
+assert.equal(page.includes('LEGACY_PLAYER_STUD'), false);
+assert.equal(client.includes('source:'), false);
 assert.ok(client.includes("Request Stud Approval"));
 assert.ok(client.includes("24 real hours"));
 assert.ok(client.includes("aria-busy={pending}"));

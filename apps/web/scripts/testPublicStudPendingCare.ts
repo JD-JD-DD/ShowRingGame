@@ -49,19 +49,8 @@ assert.ok(
   studsPage.includes("Stud Terms"),
   "public stud cards present current listing requirements as Stud Terms"
 );
-assert.ok(
-  studsPage.includes(
-    "`/stud-contract?studListingId=${publicStud.legacyListingId}&sireDogId=${dog.id}&source=public-stud`"
-  ) &&
-    studsPage.includes('publicStud.source === "LEGACY_PLAYER_STUD"') &&
-    studsPage.includes("Contract Terms"),
-  "legacy public stud cards retain Contract Terms with the active listing and sire context only"
-);
-assert.ok(
-  studsPage.includes("href={`/breed?studListingId=${listing.id}`}") &&
-    studsPage.includes("Use At Stud"),
-  "Use At Stud retains its current destination and label"
-);
+assert.equal(studsPage.includes('LEGACY_PLAYER_STUD'), false);
+assert.equal(studsPage.includes("studListingId"), false);
 assert.ok(
   studsPage.includes("href={`/dogs/${dog.id}`}") && studsPage.includes("View Dog"),
   "View Dog retains its current destination and label"

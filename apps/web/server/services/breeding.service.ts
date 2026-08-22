@@ -5,12 +5,6 @@ import {
   type PersistedDogTraitRecord,
 } from "@/server/services/phenotypePersistence.service";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { isChampionOfRecordDog } from "@/lib/dogTitles";
-import {
-  getPhenotypeHealthSeverity,
-  hasAllGreenRequiredPhenotypeHealthTests,
-  hasCompletedRequiredPhenotypeHealthTests,
-} from "@/lib/dogHealth";
 import {
   createKennelNotice,
   createReproductiveEmergencyNotice,
@@ -26,11 +20,7 @@ import { markDogDeceased } from "@/server/services/lifecycle.service";
 import { evaluateStudContractWhelpQualification } from "@/server/services/studContractLifecycle.service";
 import { openInitialStudContractPuppySelection } from "@/server/services/studContractPuppySelection.service";
 import { createStudContractReturnService } from "@/server/services/studContractReturnService.service";
-import {
-  activePublicStudListingWhere,
-  adaptLegacyPublicStudListing,
-  resolvePublicStudForSire,
-} from "@/server/services/publicStud.service";
+import { resolvePublicStudForSire } from "@/server/services/publicStud.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   ensureLitterKennelRun,
@@ -49,7 +39,6 @@ import {
   calculatePedigreeCoi,
   COI_CALCULATION_MAX_GENERATIONS,
   DAM_MAX_BREED_AGE_HOURS,
-  getRequiredHealthTestsForBreed,
   MIN_BREED_AGE_HOURS,
   rollBreedingTiming,
   rollLitterSize,
@@ -377,75 +366,6 @@ function assertBreedingParticipationActive(dog: {
 
 function formatCurrency(amount: number) {
   return `$${amount.toLocaleString()}`;
-}
-
-function hasOnlyGreenOrYellowRequiredPhenotypeHealthTests(
-  tests: DogForBreeding["healthTests"],
-  breedCode?: string | null
-): boolean {
-  const requiredCodes = new Set<string>(
-    getRequiredHealthTestsForBreed(breedCode)
-  );
-
-  return (
-    hasCompletedRequiredPhenotypeHealthTests(tests, breedCode) &&
-    tests
-      .filter((test) => requiredCodes.has(test.testTypeCode))
-      .every(
-        (test) =>
-          getPhenotypeHealthSeverity(test.testTypeCode, test.resultCode) !==
-          "red"
-      )
-  );
-}
-
-function isFinishedChampion(dog: {
-  visibleTitlePrefix?: string | null;
-  visibleTitleSuffix?: string | null;
-}): boolean {
-  return isChampionOfRecordDog(dog);
-}
-
-function assertDamMeetsStudListingRequirements(args: {
-  dam: DogForBreeding;
-  listing: {
-    requiresDamHealthTestsCompleted: boolean;
-    requiresDamHealthAllGreen: boolean;
-    requiresDamHealthGreenOrYellow: boolean;
-    requiresDamChampionTitle: boolean;
-  };
-}) {
-  const { dam, listing } = args;
-
-  if (
-    listing.requiresDamHealthTestsCompleted &&
-    !hasCompletedRequiredPhenotypeHealthTests(dam.healthTests, dam.breedCode2)
-  ) {
-    throw new Error(
-      "This stud requires bitches to have all required health tests completed."
-    );
-  }
-
-  if (
-    listing.requiresDamHealthAllGreen &&
-    !hasAllGreenRequiredPhenotypeHealthTests(dam.healthTests, dam.breedCode2)
-  ) {
-    throw new Error("This stud requires bitches to have all-green health test results.");
-  }
-
-  if (
-    listing.requiresDamHealthGreenOrYellow &&
-    !hasOnlyGreenOrYellowRequiredPhenotypeHealthTests(
-      dam.healthTests,
-      dam.breedCode2
-    )
-  ) {
-    throw new Error("This stud requires bitches to have no red health test results.");
-  }
-
-  if (listing.requiresDamChampionTitle && !isFinishedChampion(dam)) {
-    throw new Error("This stud requires bitches to be finished champions.");
-  }
 }
 
 async function getDogForBreeding(dogId: string): Promise<DogForBreeding | null> {
@@ -1269,12 +1189,10 @@ export async function createBreedingAttemptForKennel(args: {
   kennelId: string;
   primaryDogId: string;
   mateDogId: string;
-  studListingId?: string;
   currentEpoch: number;
   testDamBrucellosis?: boolean;
   testSireBrucellosis?: boolean;
   automaticStudContract?: boolean;
-  publicStudSource?: "STUD_OFFER" | "LEGACY_PLAYER_STUD";
   manualApprovedContractId?: string;
   returnServiceId?: string;
 }) {
@@ -1282,7 +1200,6 @@ export async function createBreedingAttemptForKennel(args: {
     kennelId,
     primaryDogId,
     mateDogId,
-    studListingId,
     currentEpoch,
   } = args;
 
@@ -1337,16 +1254,11 @@ export async function createBreedingAttemptForKennel(args: {
 
   if (
     usesPublicStud &&
-    !studListingId &&
     !isReturnServiceAttempt &&
-    !(args.automaticStudContract && args.publicStudSource === "STUD_OFFER") &&
+    !args.automaticStudContract &&
     !args.manualApprovedContractId
   ) {
-    throw new Error("Choose an active public stud listing for that sire.");
-  }
-
-  if (!usesPublicStud && studListingId) {
-    throw new Error("Stud listings are only needed for sires outside your kennel.");
+    throw new Error("Outside stud breedings require an accepted Stud Contract.");
   }
 
   const conflictingAttempt = await db.breedingAttempt.findFirst({
@@ -1412,7 +1324,6 @@ export async function createBreedingAttemptForKennel(args: {
     let studFeeAmount = 0;
     let studSellerKennelId: string | null = null;
     let studSellerBalanceAfter: number | null = null;
-    let requiresBrucellosisNegativeDam = false;
     let returnServiceContract: Prisma.StudContractGetPayload<{
       include: { healthRequirements: true };
     }> | null = null;
@@ -1644,7 +1555,7 @@ export async function createBreedingAttemptForKennel(args: {
             ? 0
             : manualContract.cashAmount ?? 0;
         studSellerKennelId = manualContract.sireKennelId;
-      } else if (args.automaticStudContract && args.publicStudSource === "STUD_OFFER") {
+      } else if (args.automaticStudContract) {
         if (!automaticOffer) {
           throw new Error("This Stud Offer is no longer published.");
         }
@@ -1674,91 +1585,8 @@ export async function createBreedingAttemptForKennel(args: {
             ? 0
             : automaticOffer.cashAmount ?? 0;
         studSellerKennelId = automaticOffer.ownerKennelId;
-      } else {
-      const studListing = await tx.dogListing.findFirst({
-        where: { id: studListingId, ...activePublicStudListingWhere({ dogId: sire.id }) },
-        select: {
-          id: true,
-          askingPrice: true,
-          sellerKennelId: true,
-          requiresBrucellosisNegativeDam: true,
-          requiresDamHealthTestsCompleted: true,
-          requiresDamHealthAllGreen: true,
-          requiresDamHealthGreenOrYellow: true,
-          requiresDamChampionTitle: true,
-          dog: {
-            select: {
-              id: true,
-              ownerKennelId: true,
-              breedCode2: true,
-              lifecycleState: true,
-              sex: true,
-            },
-          },
-        },
-      });
-
-      if (!studListing || !studListing.sellerKennelId) {
-        throw new Error("Public stud listing not found.");
-      }
-      const publicStud = adaptLegacyPublicStudListing(studListing);
-      if (!publicStud || publicStud.legacyListingId !== studListingId || publicStud.sireDogId !== sire.id) {
-        throw new Error("Public stud listing not found.");
-      }
-
-      if (studListing.sellerKennelId === kennelId) {
-        throw new Error("You already own that stud.");
-      }
-
-      if (
-        studListing.dog.ownerKennelId !== studListing.sellerKennelId ||
-        studListing.dog.lifecycleState !== "ALIVE" ||
-        studListing.dog.sex !== "M"
-      ) {
-        throw new Error("That stud is no longer available.");
-      }
-
-      studFeeAmount = studListing.askingPrice;
-      studSellerKennelId = studListing.sellerKennelId;
-      requiresBrucellosisNegativeDam =
-        studListing.requiresBrucellosisNegativeDam;
-      if (args.automaticStudContract) {
-        if (!automaticOffer) {
-          throw new Error("This Stud Offer is no longer published.");
-        }
-        if (automaticOffer.ownerKennelId !== studListing.sellerKennelId) {
-          throw new Error("This Stud Offer is no longer available.");
-        }
-        if (automaticOffer.approvalMode !== "AUTOMATIC") {
-          throw new Error("This Stud Offer requires Manual Approval.");
-        }
-        await assertDamMeetsStudContractRequirements({
-          client: tx,
-          damDogId: dam.id,
-          currentEpoch,
-          requirements: {
-            brucellosisNegativeRequired:
-              automaticOffer.brucellosisNegativeRequired,
-            healthRequirements: automaticOffer.healthRequirements,
-            titleRequirement: automaticOffer.titleRequirement,
-          },
-        });
-        studFeeAmount =
-          automaticOffer.compensationType === "PUPPY_BACK"
-            ? 0
-            : automaticOffer.cashAmount ?? 0;
-        requiresBrucellosisNegativeDam = false;
-      } else {
-        assertDamMeetsStudListingRequirements({
-          dam,
-          listing: studListing,
-        });
-      }
-      }
     }
 
-    const publicStudRequiresDamNegative =
-      usesPublicStud && Boolean(requiresBrucellosisNegativeDam);
     const [validDamBrucellosisTest, validSireBrucellosisTest] =
       await Promise.all([
         getValidNegativeBrucellosisTest(tx, {
@@ -1770,9 +1598,7 @@ export async function createBreedingAttemptForKennel(args: {
           currentEpoch,
         }),
       ]);
-    const shouldTestDamBrucellosis =
-      Boolean(args.testDamBrucellosis) ||
-      (publicStudRequiresDamNegative && !validDamBrucellosisTest);
+    const shouldTestDamBrucellosis = Boolean(args.testDamBrucellosis);
     const shouldTestSireBrucellosis =
       !usesPublicStud &&
       Boolean(args.testSireBrucellosis) &&
@@ -1998,7 +1824,7 @@ export async function createBreedingAttemptForKennel(args: {
           sireId: sire.id,
           damId: dam.id,
           breedingAttemptId: createdAttempt.id,
-          studListingId: studListingId ?? null,
+          studListingId: null,
           brucellosisTestCost,
         },
       },
@@ -2026,7 +1852,7 @@ export async function createBreedingAttemptForKennel(args: {
             sireId: sire.id,
             damId: dam.id,
             breedingAttemptId: createdAttempt.id,
-            studListingId: studListingId ?? null,
+            studListingId: null,
           },
         },
       });
@@ -2045,7 +1871,7 @@ export async function createBreedingAttemptForKennel(args: {
             sireId: sire.id,
             damId: dam.id,
             breedingAttemptId: createdAttempt.id,
-            studListingId: studListingId ?? null,
+            studListingId: null,
           },
         },
       });
@@ -2066,7 +1892,7 @@ export async function createBreedingAttemptForKennel(args: {
         )}. Stud fee of ${formatCurrency(studFeeAmount)} was paid to you.`,
         currentEpoch,
         linkedDogId: sire.id,
-        linkedListingId: studListingId ?? null,
+        linkedListingId: null,
       });
     }
 
@@ -2107,31 +1933,18 @@ export async function createAutomaticStudContractBreedingForKennel(args: {
   kennelId: string;
   sireDogId: string;
   damDogId: string;
-  studListingId?: string;
-  source: "STUD_OFFER" | "LEGACY_PLAYER_STUD";
   currentEpoch: number;
 }) {
-  const publicStud = await resolvePublicStudForSire({
-    sireDogId: args.sireDogId,
-    ...(args.studListingId ? { legacyListingId: args.studListingId } : {}),
-  });
+  const publicStud = await resolvePublicStudForSire({ sireDogId: args.sireDogId });
   if (!publicStud || publicStud.sireDogId !== args.sireDogId) {
     throw new Error("This Stud Offer is no longer available.");
-  }
-  if (
-    publicStud.source === "LEGACY_PLAYER_STUD" &&
-    (!args.studListingId || publicStud.legacyListingId !== args.studListingId)
-  ) {
-    throw new Error("Public stud listing not found.");
   }
   return createBreedingAttemptForKennel({
     kennelId: args.kennelId,
     primaryDogId: args.sireDogId,
     mateDogId: args.damDogId,
-    studListingId: args.studListingId,
     currentEpoch: args.currentEpoch,
     automaticStudContract: true,
-    publicStudSource: publicStud.source,
   });
 }
 

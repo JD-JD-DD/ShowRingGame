@@ -33,7 +33,6 @@ type BreedingPlannerPageProps = {
   returnMode: "damPage" | "stayOnPlanner";
   searchParams?: Promise<{
     dogId?: string | string[];
-    studListingId?: string | string[];
     breedCode2?: string | string[];
   }>;
 };
@@ -74,16 +73,10 @@ type DogCardDto = {
   breedingEligibleAtEpoch: number | null;
   breedingRemainingHours: number;
   breedingCooldownUntilEpoch: number | null;
-  publicStudSource?: "STUD_OFFER" | "LEGACY_PLAYER_STUD";
+  publicStudSource?: "STUD_OFFER";
   studOfferId?: string;
-  studListingId: string | null;
   studFeeAmount: number | null;
   brucellosisValidUntilEpoch: number | null;
-  requiresBrucellosisNegativeDam: boolean;
-  requiresDamHealthTestsCompleted: boolean;
-  requiresDamHealthAllGreen: boolean;
-  requiresDamHealthGreenOrYellow: boolean;
-  requiresDamChampionTitle: boolean;
   studOfferSummary: ReturnType<typeof formatCompactStudOfferSummary>;
   coiPercent: number | null;
   lastLitterEpoch: number | null;
@@ -112,8 +105,6 @@ type DirectBreedingRouteContext = {
   anchorBreedCode2: string;
   anchorSex: "M" | "F";
   selectedDogId: string | null;
-  selectedStudListingId: string | null;
-  selectedPublicSireDogId: string | null;
 };
 
 async function measureBreedingRouteStage<T>(args: {
@@ -304,9 +295,6 @@ export default async function BreedingPlannerPage({
   const initialDogId = experience === "worksheet"
     ? null
     : firstQueryValue(resolvedSearchParams.dogId);
-  const initialStudListingId = experience === "worksheet"
-    ? null
-    : firstQueryValue(resolvedSearchParams.studListingId);
   const initialBreedCode2 =
     experience === "worksheet"
       ? firstQueryValue(resolvedSearchParams.breedCode2)?.trim().toUpperCase() ||
@@ -343,59 +331,10 @@ export default async function BreedingPlannerPage({
                 anchorBreedCode2: dog.breedCode2,
                 anchorSex: dog.sex,
                 selectedDogId: dog.id,
-                selectedStudListingId: null,
-                selectedPublicSireDogId: null,
               }
             : null
         )
-      : experience === "breed-dog" && initialStudListingId
-        ? await measureBreedingRouteStage({
-            timer,
-            route,
-            operation: "selected_stud_lookup",
-            execution: "sequential",
-            action: () =>
-              db.dogListing.findFirst({
-                where: {
-                  id: initialStudListingId,
-                  sellerType: "PLAYER",
-                  listingType: PLAYER_STUD_LISTING_TYPE,
-                  status: "ACTIVE",
-                  sellerKennelId: {
-                    not: kennel.id,
-                  },
-                  dog: {
-                    lifecycleState: "ALIVE",
-                    sex: "M",
-                    isBreedingActive: true,
-                  },
-                },
-                select: {
-                  id: true,
-                  dog: {
-                    select: {
-                      id: true,
-                      breedCode2: true,
-                      sex: true,
-                    },
-                  },
-                },
-              }),
-            details: (listing) => ({
-              rowCount: listing?.dog ? 1 : 0,
-            }),
-          }).then((listing) =>
-            listing?.dog
-              ? {
-                  anchorBreedCode2: listing.dog.breedCode2,
-                  anchorSex: listing.dog.sex,
-                  selectedDogId: null,
-                  selectedStudListingId: listing.id,
-                  selectedPublicSireDogId: listing.dog.id,
-                }
-              : null
-          )
-        : null;
+      : null;
   const useOptimizedDirectRoute =
     experience === "breed-dog" && directRouteContext !== null;
 
@@ -561,14 +500,7 @@ export default async function BreedingPlannerPage({
       return [];
     }
 
-    const publicStudBreedCode2 =
-      directRouteContext?.selectedStudListingId
-        ? directRouteContext.anchorBreedCode2
-        : initialBreedCode2;
-    const isDirectStudSelection = Boolean(
-      directRouteContext?.selectedStudListingId
-    );
-    const directPublicSireDogId = directRouteContext?.selectedPublicSireDogId;
+    const publicStudBreedCode2 = initialBreedCode2;
 
     if (!publicStudBreedCode2) {
       console.info("route-perf", {
@@ -583,13 +515,6 @@ export default async function BreedingPlannerPage({
       return [];
     }
 
-    if (isDirectStudSelection && !directPublicSireDogId) return [];
-
-    const directPublicSireDogWhere =
-      isDirectStudSelection && directPublicSireDogId
-        ? { id: directPublicSireDogId }
-        : {};
-
     return measureBreedingRouteStage({
       timer,
       route,
@@ -599,7 +524,6 @@ export default async function BreedingPlannerPage({
       action: async () => {
         const dogs = await db.dog.findMany({
           where: {
-            ...directPublicSireDogWhere,
             lifecycleState: "ALIVE",
             isPlayerVisible: true,
             isBreedingActive: true,
@@ -849,14 +773,8 @@ export default async function BreedingPlannerPage({
           breedingEligibleAtEpoch: breedingEligibility.eligibleAtEpoch,
           breedingRemainingHours: breedingEligibility.remainingHours,
           breedingCooldownUntilEpoch: breedingEligibility.cooldownUntilEpoch,
-          studListingId: null,
           studFeeAmount: null,
           brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
-          requiresBrucellosisNegativeDam: false,
-          requiresDamHealthTestsCompleted: false,
-          requiresDamHealthAllGreen: false,
-          requiresDamHealthGreenOrYellow: false,
-          requiresDamChampionTitle: false,
           studOfferSummary: null,
           coiPercent: dog.coiPercent,
           lastLitterEpoch,
@@ -935,29 +853,10 @@ export default async function BreedingPlannerPage({
           breedingRemainingHours: breedingEligibility.remainingHours,
           breedingCooldownUntilEpoch: breedingEligibility.cooldownUntilEpoch,
           publicStudSource: publicStud.source,
-          ...(publicStud.source === "STUD_OFFER"
-            ? { studOfferId: publicStud.studOfferId }
-            : {}),
-          studListingId:
-            publicStud.source === "LEGACY_PLAYER_STUD"
-              ? publicStud.legacyListingId
-              : null,
-          studFeeAmount:
-            publicStud.source === "LEGACY_PLAYER_STUD"
-              ? publicStud.legacyFeeAmount
-              : publicStud.terms.cashAmount,
+          studOfferId: publicStud.studOfferId,
+          studFeeAmount: publicStud.terms.cashAmount,
           brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
-          requiresBrucellosisNegativeDam:
-            publicStud.legacyRequirements?.brucellosisNegativeDam ?? false,
-          requiresDamHealthTestsCompleted:
-            publicStud.legacyRequirements?.damHealthTestsCompleted ?? false,
-          requiresDamHealthAllGreen: publicStud.legacyRequirements?.damHealthAllGreen ?? false,
-          requiresDamHealthGreenOrYellow:
-            publicStud.legacyRequirements?.damHealthGreenOrYellow ?? false,
-          requiresDamChampionTitle: publicStud.legacyRequirements?.damChampionTitle ?? false,
-          studOfferSummary:
-            publicStud.source === "STUD_OFFER"
-              ? {
+          studOfferSummary: {
                   compensationSummary:
                     publicStud.terms.compensationType === "PUPPY_BACK"
                       ? "Puppy Back"
@@ -973,8 +872,7 @@ export default async function BreedingPlannerPage({
                       ? "Manual Approval"
                       : "Automatic Approval",
                   requirements: publicStud.terms.requirements,
-                }
-              : null,
+                },
           coiPercent: dog.coiPercent,
           lastLitterEpoch: null,
           healthTests: dog.healthTests.map((test) => ({
@@ -1001,7 +899,7 @@ export default async function BreedingPlannerPage({
   let initialNotice: PlannerNotice | null = null;
 
   if (experience === "breed-dog") {
-    if (initialDogId === null && initialStudListingId === null) {
+    if (initialDogId === null) {
       initialNotice = {
         tone: "warning",
         message: "Choose a dog or public stud to start a breeding.",
@@ -1020,39 +918,11 @@ export default async function BreedingPlannerPage({
           message: "This dog is not available for breeding.",
         };
       }
-    } else if (initialStudListingId) {
-      const requestedStud =
-        publicStudCards.find(
-          (dog) =>
-            dog.id === directRouteContext?.selectedPublicSireDogId ||
-            dog.studListingId === initialStudListingId
-        ) ??
-        null;
-
-      if (!requestedStud) {
-        initialNotice = {
-          tone: "error",
-          message: "This stud is not available for breeding.",
-        };
-      } else if (!requestedStud.isEligibleToBreed) {
-        initialNotice = {
-          tone: "warning",
-          message: `${formatDogDisplayName(requestedStud)} is not available to breed right now. ${requestedStud.breedingEligibilityMessage ?? ""}`.trim(),
-        };
-      }
     }
   }
 
   const selectedAnchorCard =
-    (initialDogId
-      ? dogCards.find((dog) => dog.id === initialDogId) ?? null
-      : initialStudListingId
-        ? publicStudCards.find(
-            (dog) =>
-              dog.id === directRouteContext?.selectedPublicSireDogId ||
-              dog.studListingId === initialStudListingId
-          ) ?? null
-        : null);
+    initialDogId ? dogCards.find((dog) => dog.id === initialDogId) ?? null : null;
   await measureBreedingRouteStage({
     timer,
     route,
@@ -1155,7 +1025,7 @@ export default async function BreedingPlannerPage({
       </div>
 
       <BreedPageClient
-        key={initialDogId ?? initialStudListingId ?? experience}
+        key={initialDogId ?? experience}
         experience={experience}
         returnMode={returnMode}
         kennelId={kennel.id}
@@ -1171,8 +1041,6 @@ export default async function BreedingPlannerPage({
         currentEpoch={currentEpoch}
         initialBreedCode2={initialBreedCode2}
         initialDogId={initialDogId}
-        initialStudListingId={initialStudListingId}
-        initialPublicSireDogId={directRouteContext?.selectedPublicSireDogId ?? null}
         initialNotice={initialNotice}
       />
 

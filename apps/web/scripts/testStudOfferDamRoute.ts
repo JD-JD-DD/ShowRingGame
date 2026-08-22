@@ -7,13 +7,8 @@ const page = readFileSync(join(repoRoot, "apps/web/app/stud-contract/page.tsx"),
 
 assert.ok(page.includes("resolvePublicStudForSire"));
 assert.ok(page.includes("sireDogId: sireId"));
-assert.ok(page.includes("...(listingId ? { legacyListingId: listingId } : {})"));
-assert.ok(page.includes('publicStud.source === "STUD_OFFER"'));
-assert.ok(page.includes('publicStud.source === "LEGACY_PLAYER_STUD"'));
-assert.ok(
-  page.includes("!listingId || publicStud.legacyListingId !== listingId"),
-  "legacy fallback still requires its real listing identity"
-);
+assert.equal(page.includes("legacyListingId"), false);
+assert.equal(page.includes('LEGACY_PLAYER_STUD'), false);
 assert.equal(
   page.includes("if (!listingId || !sireId) notFound()"),
   false,
@@ -25,4 +20,4 @@ assert.equal(
   "StudOffer contract actions are active after automatic/manual activation"
 );
 
-console.log("StudOffer dam-route activation checks passed.");
+console.log("StudOffer-only dam-route activation checks passed.");
