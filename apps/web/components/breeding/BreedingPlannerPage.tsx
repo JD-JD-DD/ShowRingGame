@@ -372,6 +372,7 @@ export default async function BreedingPlannerPage({
               },
           select: {
             id: true,
+            ownerKennelId: true,
             callName: true,
             registeredName: true,
             regNumber: true,
