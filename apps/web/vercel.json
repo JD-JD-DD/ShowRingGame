@@ -32,10 +32,6 @@
     {
       "path": "/api/jobs/maintain-show-schedule",
       "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/cron/maintain-foundation-inventory",
-      "schedule": "43 */6 * * *"
     }
   ]
 }
