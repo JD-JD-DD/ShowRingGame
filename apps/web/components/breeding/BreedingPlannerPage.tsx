@@ -620,6 +620,7 @@ export default async function BreedingPlannerPage({
             dog: {
               select: {
                 id: true,
+                ownerKennelId: true,
                 callName: true,
                 registeredName: true,
                 regNumber: true,
