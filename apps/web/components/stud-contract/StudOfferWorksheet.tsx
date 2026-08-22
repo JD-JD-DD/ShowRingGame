@@ -24,6 +24,7 @@ import {
   type StudHealthRequirementLevel,
   type StudTitleRequirement,
 } from "@showring/rules";
+import { PLAYER_OBLIGATIONS, RETURN_SERVICE_FINE_PRINT } from "@/lib/studContractDisclosures";
 
 type StudOfferWorksheetProps = {
   dogName: string;
@@ -108,12 +109,12 @@ const PUPPY_BACK_COPY = {
   male: "Male",
   female: "Female",
   secondPickMinimum:
-    "Second Pick requires at least 2 surviving puppies because the dam owner receives the first protected selection.",
+    "Second Pick requires at least 2 puppies born alive at whelping because the dam owner receives the first protected selection.",
   litterDefinition:
-    "Minimum litter size is the number of surviving puppies at the contract's litter-qualification checkpoint.",
+    "Minimum litter size is based on puppies born alive at whelping. Neonatal or later deaths do not change that contractual result.",
   timingTitle: "How Puppy Selection Works",
   timing:
-    "Selection begins after the Week 1 neonatal mortality window closes and takes place during the puppies' first eight weeks of life. Each active selection turn lasts 24 real hours.",
+    "Selection begins after litter creation. First Pick and the Second Pick dam deadline are puppy age 24 real hours; the Second Pick stud deadline is puppy age 48 real hours. The stud turn may begin earlier when the dam selects, but the fixed birth+48 deadline never moves.",
   noAutomatic:
     "The game will never automatically select a puppy on behalf of either kennel.",
   forfeiture:
@@ -135,13 +136,13 @@ const PICK_OPTIONS: ReadonlyArray<{
     value: "FIRST",
     label: PUPPY_BACK_COPY.firstPick,
     description:
-      "The stud owner makes the first contractual puppy selection after the Week 1 neonatal window closes.",
+      "The stud owner makes the first contractual puppy selection after litter creation, with a fixed puppy-age-24-real-hour deadline.",
   },
   {
     value: "SECOND",
     label: PUPPY_BACK_COPY.secondPick,
     description:
-      "The dam owner receives one protected first selection. Their 24-real-hour turn is unrestricted by this contract's sex requirement; then the stud owner's turn opens. If the dam owner misses the deadline, that protected pick is forfeited and the stud owner's turn opens.",
+      "The dam owner receives one protected first selection until puppy age 24 real hours. The stud turn opens when that pick is made or forfeited, with a fixed puppy-age-48-real-hour deadline.",
   },
 ];
 
@@ -166,7 +167,7 @@ const RETURN_SERVICE_COPY = {
   appliesWhenNoLitter:
     "Offer one return service if this breeding does not produce a litter under the eventual breeding-lifecycle outcome.",
   threshold:
-    "Small-litter return service is based on the number of surviving puppies at the contract's qualifying litter checkpoint.",
+    "Small-litter return service is based on puppies born alive at whelping.",
   exclusionsTitle: "What Return Service Does Not Cover",
   exclusions:
     "Return service applies only under the conditions selected here. Puppy-back fulfillment problems do not automatically create a return service.",
@@ -177,7 +178,7 @@ const RETURN_SERVICE_COPY = {
   missedSelection:
     "If the stud owner misses the active selection deadline, their puppy-back right is forfeited. No puppy is assigned and no return service is created solely for that missed selection.",
   selectedDeath:
-    "If a selected puppy dies before transfer, later lifecycle logic may reopen selection when allowed. If no qualifying replacement remains, return service applies only when the separately selected surviving-litter threshold itself is satisfied.",
+    "If a selected puppy dies before Day 56, selection may reopen for the stud owner. If no qualifying replacement remains, that Puppy Back outcome does not create Return Service.",
 } as const;
 
 const NO_LITTER_RETURN_OPTIONS: ReadonlyArray<{
@@ -203,9 +204,9 @@ const SMALL_LITTER_RETURN_OPTIONS: ReadonlyArray<{
   description: string;
 }> = [
   { value: null, label: RETURN_SERVICE_COPY.none, description: "Do not offer small-litter return service." },
-  { value: 1, label: "1 or fewer", description: "Offer return service when the qualifying surviving litter contains 1 or fewer puppies." },
-  { value: 2, label: "2 or fewer", description: "Offer return service when the qualifying surviving litter contains 2 or fewer puppies." },
-  { value: 3, label: "3 or fewer", description: "Offer return service when the qualifying surviving litter contains 3 or fewer puppies." },
+  { value: 1, label: "1 or fewer", description: "Offer return service when 1 or fewer puppies are born alive at whelping." },
+  { value: 2, label: "2 or fewer", description: "Offer return service when 2 or fewer puppies are born alive at whelping." },
+  { value: 3, label: "3 or fewer", description: "Offer return service when 3 or fewer puppies are born alive at whelping." },
 ];
 
 const DAM_REQUIREMENTS_COPY = {
@@ -1466,7 +1467,7 @@ export default function StudOfferWorksheet({
                 {hasPuppyBack(terms.compensationType) ? (
                   <div>
                     <dt className="theme-label font-semibold">{REVIEW_COPY.minimumLitter}</dt>
-                    <dd className="theme-copy mt-1">{terms.minimumLitterSize} surviving {terms.minimumLitterSize === 1 ? "puppy" : "puppies"}</dd>
+                  <dd className="theme-copy mt-1">{terms.minimumLitterSize} {terms.minimumLitterSize === 1 ? "puppy" : "puppies"} born alive at whelping</dd>
                   </div>
                 ) : null}
                 <div>
@@ -1475,7 +1476,7 @@ export default function StudOfferWorksheet({
                 </div>
                 <div>
                   <dt className="theme-label font-semibold">{REVIEW_COPY.smallLitterReturn}</dt>
-                  <dd className="theme-copy mt-1">{terms.smallLitterReturnThreshold === null ? REVIEW_COPY.notOffered : `${terms.smallLitterReturnThreshold} or fewer surviving ${terms.smallLitterReturnThreshold === 1 ? "puppy" : "puppies"}`}</dd>
+                  <dd className="theme-copy mt-1">{terms.smallLitterReturnThreshold === null ? REVIEW_COPY.notOffered : `${terms.smallLitterReturnThreshold} or fewer puppies born alive at whelping`}</dd>
                 </div>
                 <div>
                   <dt className="theme-label font-semibold">{REVIEW_COPY.brucellosis}</dt>
@@ -1498,6 +1499,7 @@ export default function StudOfferWorksheet({
                   <dd className="theme-copy mt-1">{terms.approvalMode === "MANUAL" ? "Manual Approval — requests remain open for 24 real hours." : "Automatic Approval — qualifying breedings do not require individual owner approval."}</dd>
                 </div>
               </dl>
+              <section className="theme-card mt-4 rounded-xl p-4" aria-labelledby="return-service-fine-print"><h4 id="return-service-fine-print" className="theme-heading font-semibold">Return Service and Player Obligations</h4><p className="theme-copy mt-2 text-sm">{RETURN_SERVICE_FINE_PRINT}</p><p className="theme-copy mt-3 text-sm">{PLAYER_OBLIGATIONS}</p></section>
             </section>
 
             {!canPublish ? (

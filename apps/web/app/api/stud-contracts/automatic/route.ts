@@ -5,6 +5,7 @@ import {
   createAutomaticStudContractBreedingForKennel,
 } from "@/server/services/breeding.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
+import { PLAYER_OBLIGATIONS_ERROR } from "@/lib/studContractDisclosures";
 
 export async function POST(request: Request) {
   try {
@@ -16,6 +17,7 @@ export async function POST(request: Request) {
     const studListingId = typeof body.studListingId === "string" ? body.studListingId.trim() : "";
     const sireDogId = typeof body.sireDogId === "string" ? body.sireDogId.trim() : "";
     const damDogId = typeof body.damDogId === "string" ? body.damDogId.trim() : "";
+    if (body.playerObligationsAcknowledged !== true) return fail(PLAYER_OBLIGATIONS_ERROR, 400);
     if (!studListingId || !sireDogId || !damDogId) {
       return fail("Stud listing, sire, and dam are required.", 400);
     }
