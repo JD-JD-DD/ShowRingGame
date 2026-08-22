@@ -44,6 +44,12 @@ for (const fragment of [
   "evaluateDamAgainstStudContractRequirements",
   "BRUCELLOSIS_DISEASE_CODE",
   "canApprove",
+  "StudContractHubAction",
+  "const actions: StudContractHubAction[] = []",
+  'actions.push("MANUAL_APPROVAL")',
+  'actions.push("PUPPY_SELECTION")',
+  'actions.push("RETURN_SERVICE")',
+  "actions, manualApproval",
 ]) assert.ok(service.includes(fragment), fragment);
 assert.ok(list.includes("StudContractHistoryClient"));
 assert.ok(detail.includes("getStudContractHistoryDetail"));
@@ -59,7 +65,8 @@ assert.ok(client.includes("Pick Puppy"));
 assert.ok(client.includes("Newest first"));
 assert.ok(client.includes("No contracts match these filters"));
 assert.ok(client.includes("PendingStudRequestActions"));
-assert.ok(client.includes('item.action.kind === "MANUAL_APPROVAL"'));
+assert.ok(client.includes('item.actions.includes("MANUAL_APPROVAL")'));
+assert.ok(client.includes("item.actions.length === 0"));
 assert.equal(client.includes("Attempt Return Service"), false);
 assert.ok(route.includes("getSessionUserId"));
 assert.ok(route.includes("parseStudContractHistoryFilters"));

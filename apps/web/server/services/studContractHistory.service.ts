@@ -16,6 +16,7 @@ const sortOrderValues = ["newest", "oldest"] as const;
 export type StudContractStatusFilter = (typeof statusFilterValues)[number];
 export type StudContractActionFilter = (typeof actionFilterValues)[number];
 export type StudContractSortOrder = (typeof sortOrderValues)[number];
+export type StudContractHubAction = "MANUAL_APPROVAL" | "PUPPY_SELECTION" | "RETURN_SERVICE";
 
 function parseFilter<T extends readonly string[]>(value: string | null | undefined, allowed: T, fallback: T[number]): T[number] {
   if (typeof value !== "string") return fallback;
@@ -188,13 +189,10 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
     ? { deadlineAt: approvalDeadlineAt, isActionable: isStudOwner && approvalDeadline !== null && approvalDeadline > now, canApprove: isStudOwner && approvalDeadline !== null && approvalDeadline > now && availability?.canApprove === true, availabilityReason: !isStudOwner ? "Awaiting stud-owner decision" : approvalDeadline !== null && approvalDeadline > now ? availability?.reason ?? "Approval required" : "Approval deadline passed" }
     : null;
   const canSelectPuppy = Boolean(contract.puppySelection && selectionIsActive(contract.puppySelection) && contract.puppySelection.turnDeadlineAt && contract.puppySelection.turnDeadlineAt > now && ((contract.puppySelection.currentActor === "STUD_OWNER" && isStudOwner) || (contract.puppySelection.currentActor === "DAM_OWNER" && !isStudOwner)));
-  const action = manualApproval?.isActionable
-    ? { kind: "MANUAL_APPROVAL" as const, label: "Review request", deadlineAt: manualApproval.deadlineAt }
-    : canSelectPuppy && contract.puppySelection?.turnDeadlineAt
-      ? { kind: "PUPPY_SELECTION" as const, label: "Choose puppy", selectionId: contract.puppySelection.id, deadlineAt: contract.puppySelection.turnDeadlineAt.toISOString() }
-      : contract.returnService?.status === "AVAILABLE" && !isStudOwner
-        ? { kind: "RETURN_SERVICE" as const, label: "Use Return Service", returnServiceId: contract.returnService.id, expiresAt: contract.returnService.expiresAt.toISOString() }
-        : { kind: "NONE" as const, label: "No action available" };
+  const actions: StudContractHubAction[] = [];
+  if (manualApproval?.isActionable) actions.push("MANUAL_APPROVAL");
+  if (canSelectPuppy) actions.push("PUPPY_SELECTION");
+  if (contract.returnService?.status === "AVAILABLE" && !isStudOwner) actions.push("RETURN_SERVICE");
   const currentDeadline = manualApproval
     ? { kind: "APPROVAL" as const, at: manualApproval.deadlineAt }
     : selectionIsActive(contract.puppySelection) && contract.puppySelection?.turnDeadlineAt
@@ -206,7 +204,7 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
     ? manualApproval?.availabilityReason ?? "Pending approval"
     : contract.status === "DECLINED" ? "Declined"
       : contract.status === "EXPIRED" ? "Expired"
-        : action.kind === "PUPPY_SELECTION" ? "Puppy selection due"
+        : canSelectPuppy ? "Puppy selection due"
           : selectionIsActive(contract.puppySelection) ? "Puppy selection in progress"
             : contract.puppySelection?.status === "SELECTED" ? "Puppy selected"
               : contract.puppySelection?.status === "COMPLETED" ? "Puppy selection complete"
@@ -224,7 +222,7 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
     dam: { id: contract.damDog.id, name: formatDogDisplayName(contract.damDog) },
     role, otherKennel, compensationSummary: summary?.compensationSummary ?? "Contract terms unavailable",
     puppyTermsSummary: summary?.puppyTermsSummary ?? null, restrictionsSummary: summary?.restrictionsSummary ?? null,
-    lifecycleLabel: contractLabel(contract), currentState, currentDeadline, action, manualApproval,
+    lifecycleLabel: contractLabel(contract), currentState, currentDeadline, actions, manualApproval,
     returnService: contract.returnService ? {
       id: contract.returnService.id, status: contract.returnService.status, label: returnServiceLabel(contract.returnService),
       expiresAt: contract.returnService.expiresAt.toISOString(), availableAt: contract.returnService.availableAt.toISOString(),
