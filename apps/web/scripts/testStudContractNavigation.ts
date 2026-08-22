@@ -13,7 +13,8 @@ const manual = read("apps/web/components/stud-contract/ManualStudContractRequest
 assert.equal((header.match(/href: "\/stud-contracts"/g) ?? []).length, 1);
 assert.ok(header.includes('label: "Stud Contracts", href: "/stud-contracts"'));
 assert.equal(header.includes('href: "/stud-contracts/requests"'), false);
-assert.ok(requests.includes('href="/stud-contracts"'));
+assert.ok(requests.includes('redirect("/stud-contracts?action=manual-approval")'));
+assert.equal(requests.includes("studContract.findMany"), false);
 assert.ok(detail.includes('href="/stud-contracts"'));
 assert.ok(worksheet.includes('href="/stud-contracts"'));
 assert.ok(manual.includes("Open Contract"));

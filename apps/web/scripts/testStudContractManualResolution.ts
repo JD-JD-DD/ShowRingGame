@@ -50,8 +50,8 @@ for (const fragment of [
 ]) assert.ok(decline.includes(fragment), `decline route contains ${fragment}`);
 assert.equal(decline.includes("breedingAttempt.create"), false);
 assert.equal(decline.includes("ledgerTransaction"), false);
-assert.ok(page.includes("canApprove={remaining > 0 && availability.isEligible}"));
-assert.ok(page.includes('availability.reasonCode === "STUD_RECOVERY"'));
+assert.ok(page.includes('redirect("/stud-contracts?action=manual-approval")'));
+assert.equal(page.includes("studContract.findMany"), false);
 assert.ok(actions.includes('act("approve")'));
 assert.ok(actions.includes('act("decline")'));
 assert.ok(actions.includes("router.refresh()"));
@@ -59,10 +59,10 @@ assert.ok(actions.includes("disabled={pending || !canApprove}"));
 assert.ok(actions.includes("approveDisabledReason"));
 assert.ok(actions.includes('act("decline")'));
 assert.ok(hub.includes("PendingStudRequestActions"));
-assert.ok(hub.includes('item.action.kind === "MANUAL_APPROVAL"'));
+assert.ok(hub.includes('item.actions.includes("MANUAL_APPROVAL")'));
 assert.equal(hub.includes("StudContractPuppySelectionActions"), false);
-assert.equal(hub.includes("StudContractReturnServiceAction"), false);
-assert.ok(history.includes("approvalAvailability"));
+assert.ok(hub.includes("StudContractReturnServiceAction"));
+assert.ok(history.includes("contractBreedingAvailability"));
 assert.ok(history.includes("hasPendingVeterinaryCareFromRecords"));
 assert.ok(history.includes("evaluateDamAgainstStudContractRequirements"));
 
