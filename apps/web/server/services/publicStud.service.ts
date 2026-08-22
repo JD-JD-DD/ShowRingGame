@@ -35,6 +35,14 @@ export type PublicStudReadModel = {
         puppyBackSummary: string | null;
         approvalMode: "AUTOMATIC" | "MANUAL";
         requirementsSummary: string | null;
+        requirements: {
+          brucellosisNegativeRequired: boolean;
+          healthRequirements: Array<{
+            healthTestCode: string;
+            requirementLevel: "NONE" | "GREEN_OR_YELLOW" | "GREEN_ONLY";
+          }>;
+          titleRequirement: "NONE" | "CH_OR_HIGHER" | "GCH_OR_HIGHER";
+        };
       };
     }
 );
@@ -138,6 +146,11 @@ export function adaptPublishedStudOfferToPublicStud(
       puppyBackSummary: summary?.puppyTermsSummary ?? null,
       approvalMode: offer.approvalMode,
       requirementsSummary: summary?.restrictionsSummary ?? null,
+      requirements: {
+        brucellosisNegativeRequired: offer.brucellosisNegativeRequired,
+        healthRequirements: offer.healthRequirements,
+        titleRequirement: offer.titleRequirement,
+      },
     },
   };
 }

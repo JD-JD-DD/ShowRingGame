@@ -5,7 +5,6 @@ import { createPerfTimer } from "@/lib/perf";
 import { getSessionUserId } from "@/lib/session";
 import BreedPageClient from "@/components/breeding/BreedPageClient";
 import { formatCompactStudOfferSummary } from "@/lib/studOfferPresentation";
-import { getCurrentPublishedStudOffersForSires } from "@/server/services/studOffer.service";
 import { BRUCELLOSIS_DISEASE_CODE } from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -20,8 +19,8 @@ import {
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
 import {
-  activePublicStudListingWhere,
-  adaptLegacyPublicStudListing,
+  resolvePublicStudInventory,
+  type PublicStudReadModel,
 } from "@/server/services/publicStud.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
@@ -75,6 +74,8 @@ type DogCardDto = {
   breedingEligibleAtEpoch: number | null;
   breedingRemainingHours: number;
   breedingCooldownUntilEpoch: number | null;
+  publicStudSource?: "STUD_OFFER" | "LEGACY_PLAYER_STUD";
+  studOfferId?: string;
   studListingId: string | null;
   studFeeAmount: number | null;
   brucellosisValidUntilEpoch: number | null;
@@ -112,6 +113,7 @@ type DirectBreedingRouteContext = {
   anchorSex: "M" | "F";
   selectedDogId: string | null;
   selectedStudListingId: string | null;
+  selectedPublicSireDogId: string | null;
 };
 
 async function measureBreedingRouteStage<T>(args: {
@@ -342,6 +344,7 @@ export default async function BreedingPlannerPage({
                 anchorSex: dog.sex,
                 selectedDogId: dog.id,
                 selectedStudListingId: null,
+                selectedPublicSireDogId: null,
               }
             : null
         )
@@ -388,6 +391,7 @@ export default async function BreedingPlannerPage({
                   anchorSex: listing.dog.sex,
                   selectedDogId: null,
                   selectedStudListingId: listing.id,
+                  selectedPublicSireDogId: listing.dog.id,
                 }
               : null
           )
@@ -584,41 +588,22 @@ export default async function BreedingPlannerPage({
       operation: "public_stud_listing_query",
       execution:
         experience === "breed-dog" ? "concurrent" : "sequential",
-      action: () =>
-        db.dogListing.findMany({
+      action: async () => {
+        const dogs = await db.dog.findMany({
           where: {
-            ...activePublicStudListingWhere({ excludeKennelId: kennel.id }),
             ...(isDirectStudSelection
-              ? { id: directRouteContext!.selectedStudListingId! }
+              ? { id: directRouteContext?.selectedPublicSireDogId }
               : {}),
-            dog: {
-              lifecycleState: "ALIVE",
-              isPlayerVisible: true,
-              isBreedingActive: true,
-              sex: "M",
-              ownerKennelId: {
-                not: null,
-              },
-              breedCode2: publicStudBreedCode2,
-            },
+            lifecycleState: "ALIVE",
+            isPlayerVisible: true,
+            isBreedingActive: true,
+            sex: "M",
+            ownerKennelId: { not: kennel.id },
+            breedCode2: publicStudBreedCode2,
           },
-          orderBy: [
-            { dog: { breedCode2: "asc" } },
-            { askingPrice: "asc" },
-            { listedAtEpoch: "desc" },
-          ],
+          orderBy: [{ breedCode2: "asc" }, { birthEpoch: "asc" }],
           take: isDirectStudSelection ? 1 : 200,
           select: {
-            id: true,
-            sellerKennelId: true,
-            askingPrice: true,
-            requiresBrucellosisNegativeDam: true,
-            requiresDamHealthTestsCompleted: true,
-            requiresDamHealthAllGreen: true,
-            requiresDamHealthGreenOrYellow: true,
-            requiresDamChampionTitle: true,
-            dog: {
-              select: {
                 id: true,
                 ownerKennelId: true,
                 callName: true,
@@ -707,10 +692,17 @@ export default async function BreedingPlannerPage({
                   take: 1,
                   select: { status: true },
                 },
-              },
-            },
           },
-        }),
+        });
+        const publicStuds = await resolvePublicStudInventory(dogs.map((dog) => dog.id));
+        const publicStudByDogId = new Map(publicStuds.map((stud) => [stud.sireDogId, stud]));
+        return dogs.flatMap((dog) => {
+          const publicStud = publicStudByDogId.get(dog.id);
+          return publicStud && publicStud.ownerKennelId === dog.ownerKennelId
+            ? [{ dog, publicStud }]
+            : [];
+        });
+      },
       details: (rows) => ({
         rowCount: rows.length,
       }),
@@ -889,21 +881,9 @@ export default async function BreedingPlannerPage({
     operation: "public_stud_dto_mapping",
     execution: "sequential",
     action: async () => {
-      const offers = await getCurrentPublishedStudOffersForSires(
-        publicStudListings.map((listing) => listing.dog.id)
-      );
-      const offerSummaryByDogId = new Map(
-        offers.map((offer) => [
-          offer.sireDogId,
-          formatCompactStudOfferSummary(offer),
-        ])
-      );
       return publicStudListings.map((listing) => {
-        const publicStud = adaptLegacyPublicStudListing(listing);
-        if (!publicStud) {
-          throw new Error("Public stud listing is no longer valid.");
-        }
         const dog = listing.dog;
+        const publicStud = listing.publicStud;
         const ageHours = currentEpoch - dog.birthEpoch;
         const breedingEligibility = getIndividualBreedingEligibility({
           currentEpoch,
@@ -948,8 +928,18 @@ export default async function BreedingPlannerPage({
           breedingEligibleAtEpoch: breedingEligibility.eligibleAtEpoch,
           breedingRemainingHours: breedingEligibility.remainingHours,
           breedingCooldownUntilEpoch: breedingEligibility.cooldownUntilEpoch,
-          studListingId: publicStud.legacyListingId,
-          studFeeAmount: publicStud.legacyFeeAmount,
+          publicStudSource: publicStud.source,
+          ...(publicStud.source === "STUD_OFFER"
+            ? { studOfferId: publicStud.studOfferId }
+            : {}),
+          studListingId:
+            publicStud.source === "LEGACY_PLAYER_STUD"
+              ? publicStud.legacyListingId
+              : null,
+          studFeeAmount:
+            publicStud.source === "LEGACY_PLAYER_STUD"
+              ? publicStud.legacyFeeAmount
+              : publicStud.terms.cashAmount,
           brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
           requiresBrucellosisNegativeDam:
             publicStud.legacyRequirements?.brucellosisNegativeDam ?? false,
@@ -959,7 +949,26 @@ export default async function BreedingPlannerPage({
           requiresDamHealthGreenOrYellow:
             publicStud.legacyRequirements?.damHealthGreenOrYellow ?? false,
           requiresDamChampionTitle: publicStud.legacyRequirements?.damChampionTitle ?? false,
-          studOfferSummary: offerSummaryByDogId.get(dog.id) ?? null,
+          studOfferSummary:
+            publicStud.source === "STUD_OFFER"
+              ? {
+                  compensationSummary:
+                    publicStud.terms.compensationType === "PUPPY_BACK"
+                      ? "Puppy Back"
+                      : publicStud.terms.compensationType === "CASH_AND_PUPPY_BACK"
+                        ? `${publicStud.terms.cashAmount === null ? "Cash" : `$${publicStud.terms.cashAmount.toLocaleString()}`} + Puppy Back`
+                        : publicStud.terms.cashAmount === null
+                          ? "Cash"
+                          : `$${publicStud.terms.cashAmount.toLocaleString()}`,
+                  puppyTermsSummary: publicStud.terms.puppyBackSummary,
+                  restrictionsSummary: publicStud.terms.requirementsSummary,
+                  approvalSummary:
+                    publicStud.terms.approvalMode === "MANUAL"
+                      ? "Manual Approval"
+                      : "Automatic Approval",
+                  requirements: publicStud.terms.requirements,
+                }
+              : null,
           coiPercent: dog.coiPercent,
           lastLitterEpoch: null,
           healthTests: dog.healthTests.map((test) => ({
@@ -1007,7 +1016,11 @@ export default async function BreedingPlannerPage({
       }
     } else if (initialStudListingId) {
       const requestedStud =
-        publicStudCards.find((dog) => dog.studListingId === initialStudListingId) ??
+        publicStudCards.find(
+          (dog) =>
+            dog.id === directRouteContext?.selectedPublicSireDogId ||
+            dog.studListingId === initialStudListingId
+        ) ??
         null;
 
       if (!requestedStud) {
@@ -1028,7 +1041,11 @@ export default async function BreedingPlannerPage({
     (initialDogId
       ? dogCards.find((dog) => dog.id === initialDogId) ?? null
       : initialStudListingId
-        ? publicStudCards.find((dog) => dog.studListingId === initialStudListingId) ?? null
+        ? publicStudCards.find(
+            (dog) =>
+              dog.id === directRouteContext?.selectedPublicSireDogId ||
+              dog.studListingId === initialStudListingId
+          ) ?? null
         : null);
   await measureBreedingRouteStage({
     timer,
@@ -1141,7 +1158,7 @@ export default async function BreedingPlannerPage({
         dogs={[...dogCards, ...publicStudCards].filter(
           (dog) =>
             dog.isEligibleToBreed ||
-            (Boolean(dog.studListingId) && dog.hasPendingVeterinaryCare)
+            (dog.publicStudSource !== undefined && dog.hasPendingVeterinaryCare)
         )}
         kennelRuns={kennelRuns}
         pedigree={pedigree}
@@ -1149,6 +1166,7 @@ export default async function BreedingPlannerPage({
         initialBreedCode2={initialBreedCode2}
         initialDogId={initialDogId}
         initialStudListingId={initialStudListingId}
+        initialPublicSireDogId={directRouteContext?.selectedPublicSireDogId ?? null}
         initialNotice={initialNotice}
       />
 

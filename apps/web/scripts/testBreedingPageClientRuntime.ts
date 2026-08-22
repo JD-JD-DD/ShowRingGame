@@ -42,7 +42,7 @@ for (const expected of [
   "hasPendingVeterinaryCare: false,",
   "hasPendingVeterinaryCare,",
   "dog.isEligibleToBreed ||",
-  "Boolean(dog.studListingId) && dog.hasPendingVeterinaryCare",
+  "dog.publicStudSource !== undefined && dog.hasPendingVeterinaryCare",
   "kennelRunId: dog.kennelRunId,",
   "kennelRuns={kennelRuns}",
 ]) {
@@ -128,17 +128,15 @@ assert.ok(
 );
 assert.ok(
   client.includes(
-    '!dog.isOwnedByCurrentKennel && dog.sex === "M" && dog.studListingId !== null;'
+    'dog.sex === "M" && isPublicSire(dog);'
   ) &&
     client.includes("Stud Terms"),
   "only outside public sire cards expose current listing information as Stud Terms"
 );
 assert.ok(
-  client.includes(
-    "`/stud-contract?studListingId=${dog.studListingId}&sireDogId=${dog.id}&damDogId=${selectedDam.id}&source=plan-a-litter`"
-  ) &&
+  client.includes("publicStudContractHref(dog, selectedDam.id, \"plan-a-litter\")") &&
     client.includes("Open Contract"),
-  "worksheet outside sire cards link to the contract destination with their listing, sire, selected dam, and source context"
+  "worksheet outside sire cards use source-aware contract routing"
 );
 assert.ok(
   client.includes("contractHref?: string | null;") &&

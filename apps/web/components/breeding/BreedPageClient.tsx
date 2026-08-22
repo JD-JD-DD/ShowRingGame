@@ -81,6 +81,8 @@ type DogCardDto = {
   breedingEligibleAtEpoch: number | null;
   breedingRemainingHours: number;
   breedingCooldownUntilEpoch: number | null;
+  publicStudSource?: "STUD_OFFER" | "LEGACY_PLAYER_STUD";
+  studOfferId?: string;
   studListingId: string | null;
   studFeeAmount: number | null;
   brucellosisValidUntilEpoch: number | null;
@@ -115,6 +117,7 @@ type Props = {
   kennelRuns: KennelRunOptionDto[];
   initialDogId: string | null;
   initialStudListingId: string | null;
+  initialPublicSireDogId: string | null;
   initialNotice: {
     message: string;
     tone: "warning" | "error";
@@ -137,6 +140,45 @@ function dogDisplayName(dog: DogCardDto) {
 
 function formatMoney(amount: number) {
   return `$${amount.toLocaleString()}`;
+}
+
+function isPublicSire(dog: DogCardDto) {
+  return !dog.isOwnedByCurrentKennel && dog.publicStudSource !== undefined;
+}
+
+function publicStudContractHref(
+  sire: DogCardDto,
+  damDogId: string,
+  source: "breed-dog" | "plan-a-litter"
+) {
+  if (!isPublicSire(sire)) return null;
+  const params = new URLSearchParams({
+    sireDogId: sire.id,
+    damDogId,
+    source,
+  });
+  if (sire.publicStudSource === "LEGACY_PLAYER_STUD" && sire.studListingId) {
+    params.set("studListingId", sire.studListingId);
+  }
+  return `/stud-contract?${params.toString()}`;
+}
+
+function publicStudCompensationLabel(sire: DogCardDto) {
+  if (sire.publicStudSource === "STUD_OFFER") {
+    return sire.studOfferSummary?.compensationSummary ?? "Stud Contract";
+  }
+  return formatMoney(sire.studFeeAmount ?? 0);
+}
+
+function legacyStudRequirementsLabel(sire: DogCardDto) {
+  const requirements = [
+    sire.requiresBrucellosisNegativeDam ? "Brucellosis negative" : null,
+    sire.requiresDamHealthTestsCompleted ? "Health tests complete" : null,
+    sire.requiresDamHealthAllGreen ? "All health tests green" : null,
+    sire.requiresDamHealthGreenOrYellow ? "Health tests green/yellow" : null,
+    sire.requiresDamChampionTitle ? "Champion title" : null,
+  ].filter((requirement): requirement is string => Boolean(requirement));
+  return requirements.length > 0 ? requirements.join(" • ") : "No legacy requirements";
 }
 
 function brucellosisStatusLabel(dog: DogCardDto | null) {
@@ -266,7 +308,7 @@ function damMeetsStudRequirements(dam: DogCardDto | null, stud: DogCardDto) {
     return true;
   }
 
-  if (stud.studOfferSummary) {
+  if (stud.publicStudSource === "STUD_OFFER" && stud.studOfferSummary) {
     return evaluateDamAgainstStudContractRequirements(
       stud.studOfferSummary.requirements,
       {
@@ -575,7 +617,7 @@ function DogName({ dog }: { dog: DogCardDto }) {
           dog.breedCode2
         )}
         isListedForSale={dog.isListedForSale}
-        isListedAtStud={dog.isListedAtStud || Boolean(dog.studListingId)}
+        isListedAtStud={dog.isListedAtStud || isPublicSire(dog)}
       />
     </div>
   );
@@ -657,7 +699,7 @@ function DogOptionCard({
 }) {
   const unavailable = reasonDogUnavailable(dog, currentEpoch);
   const outsideSire =
-    !dog.isOwnedByCurrentKennel && dog.sex === "M" && dog.studListingId !== null;
+    dog.sex === "M" && isPublicSire(dog);
   const projectedCoi =
     dog.sex === "M" && pairingDam ? pairingCoi(dog, pairingDam, pedigree) : null;
   const traitNotes = visibleTraitNotes(dog);
@@ -681,7 +723,7 @@ function DogOptionCard({
           <div className="mt-1 text-xs text-purple-100/55">{dog.regNumber}</div>
         </div>
         <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[0.68rem] font-semibold text-purple-100/75">
-          {dog.isOwnedByCurrentKennel ? "My Kennel" : "Outside Stud"}
+          {dog.isOwnedByCurrentKennel ? "My Kennel" : dog.publicStudSource === "STUD_OFFER" ? "Stud Offer" : "Legacy Stud"}
         </span>
       </div>
 
@@ -715,7 +757,7 @@ function DogOptionCard({
             {dog.studOfferSummary.puppyTermsSummary ? <div className="mt-1">Puppy Terms: {dog.studOfferSummary.puppyTermsSummary}</div> : null}
             {dog.studOfferSummary.restrictionsSummary ? <div className="mt-1">Dam Requirements: {dog.studOfferSummary.restrictionsSummary}</div> : null}
             <div className="mt-1">{dog.studOfferSummary.approvalSummary}</div>
-          </> : <div className="mt-1">Stud contract terms not yet published.</div>}
+          </> : <><div className="mt-1">Stud Fee: {publicStudCompensationLabel(dog)}</div><div className="mt-1">Legacy Requirements: {legacyStudRequirementsLabel(dog)}</div></>}
         </div>
       ) : null}
 
@@ -831,7 +873,7 @@ function FreeAnchorCard({ dog }: { dog: DogCardDto }) {
         {!dog.isOwnedByCurrentKennel ? (
           <>
             <span>Owner: {dog.ownerKennelName ?? "Player Kennel"}</span>
-            <span>Stud fee: {formatMoney(dog.studFeeAmount ?? 0)}</span>
+            <span>Stud terms: {publicStudCompensationLabel(dog)}</span>
           </>
         ) : null}
       </div>
@@ -855,7 +897,7 @@ function FreeMateCard({
 }) {
   const outsideKennel = !dog.isOwnedByCurrentKennel;
   const outsideSire =
-    outsideKennel && dog.sex === "M" && dog.studListingId !== null;
+    outsideKennel && dog.sex === "M" && isPublicSire(dog);
 
   return (
     <article
@@ -884,7 +926,7 @@ function FreeMateCard({
                 : "border-white/10 bg-white/5 text-purple-100/75"
             }`}
           >
-            {outsideKennel ? "Outside Stud" : "My Kennel"}
+            {outsideKennel ? dog.publicStudSource === "STUD_OFFER" ? "Stud Offer" : "Legacy Stud" : "My Kennel"}
           </span>
         </div>
         <div className="mt-3 grid gap-1 text-xs text-purple-100/70 sm:grid-cols-2">
@@ -901,7 +943,7 @@ function FreeMateCard({
               {dog.studOfferSummary.puppyTermsSummary ? <div className="mt-1">Puppy Terms: {dog.studOfferSummary.puppyTermsSummary}</div> : null}
               {dog.studOfferSummary.restrictionsSummary ? <div className="mt-1">Dam Requirements: {dog.studOfferSummary.restrictionsSummary}</div> : null}
               <div className="mt-1">{dog.studOfferSummary.approvalSummary}</div>
-            </> : <div className="mt-1">Stud contract terms not yet published.</div>}
+            </> : <><div className="mt-1">Stud Fee: {publicStudCompensationLabel(dog)}</div><div className="mt-1">Legacy Requirements: {legacyStudRequirementsLabel(dog)}</div></>}
           </div>
         ) : null}
         <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-3">
@@ -989,7 +1031,7 @@ function FreeBreedingSummary({
             <span>Breeding fee</span><span>{formatMoney(BREEDING_FEE)}</span>
           </div>
           <div className="mt-2 flex justify-between gap-3">
-            <span>Stud fee</span><span>{formatMoney(sire?.studFeeAmount ?? 0)}</span>
+            <span>Stud terms</span><span>{sire ? publicStudCompensationLabel(sire) : "Select a sire"}</span>
           </div>
           <div className="mt-2 flex justify-between gap-3">
             <span>Brucellosis tests</span><span>{formatMoney(diseaseTestCost)}</span>
@@ -1362,7 +1404,7 @@ function PairingAnalysis({
     {
       label: sire.isOwnedByCurrentKennel
         ? "Owned sire: no stud fee"
-        : `Public stud fee: ${formatMoney(sire.studFeeAmount ?? 0)}`,
+        : `Public stud terms: ${publicStudCompensationLabel(sire)}`,
       tone: "text-purple-100/80",
     },
   ];
@@ -1405,7 +1447,7 @@ function PairingAnalysis({
               <span>Breeding fee</span><span>{formatMoney(BREEDING_FEE)}</span>
             </div>
             <div className="flex justify-between gap-3">
-              <span>Stud fee</span><span>{formatMoney(sire.studFeeAmount ?? 0)}</span>
+              <span>Stud terms</span><span>{publicStudCompensationLabel(sire)}</span>
             </div>
             <div className="flex justify-between gap-3">
               <span>Brucellosis tests</span><span>{formatMoney(diseaseTestCost)}</span>
@@ -1669,13 +1711,13 @@ function Shortlist({
                     <DogName dog={sire} />
                   </td>
                   <td className="px-3 py-2 text-purple-100/70">
-                    {sire.isOwnedByCurrentKennel ? "My Kennel" : "Outside Stud"}
+                    {sire.isOwnedByCurrentKennel ? "My Kennel" : sire.publicStudSource === "STUD_OFFER" ? "Stud Offer" : "Legacy Stud"}
                   </td>
                   <td className={`px-3 py-2 text-right ${coiTone(coi?.coiPercent ?? null)}`}>
                     {coi ? `${coi.coiPercent.toFixed(2)}%` : "Pending"}
                   </td>
                   <td className="px-3 py-2 text-right text-purple-100/80">
-                    {formatMoney(sire.studFeeAmount ?? 0)}
+                    {publicStudCompensationLabel(sire)}
                   </td>
                   <td className="px-3 py-2 text-purple-100/80">
                     {sire.studOfferSummary?.compensationSummary ?? "—"}
@@ -1714,6 +1756,7 @@ export default function BreedPageClient({
   kennelRuns,
   initialDogId,
   initialStudListingId,
+  initialPublicSireDogId,
   initialNotice,
 }: Props) {
   const router = useRouter();
@@ -1731,7 +1774,9 @@ export default function BreedPageClient({
   const initialStud =
     dogs.find(
       (dog) =>
-        dog.studListingId === initialStudListingId && dog.isEligibleToBreed
+        (dog.id === initialPublicSireDogId || dog.studListingId === initialStudListingId) &&
+        isPublicSire(dog) &&
+        dog.isEligibleToBreed
     ) ?? null;
   const anchorDog = initialDog ?? initialStud;
   const initialBreedCode =
@@ -1777,7 +1822,7 @@ export default function BreedPageClient({
     () =>
       dogs.filter(
         (dog) =>
-          Boolean(dog.studListingId) &&
+          isPublicSire(dog) &&
           dog.isEligibleToBreed &&
           dog.hasPendingVeterinaryCare
       ),
@@ -1827,7 +1872,7 @@ export default function BreedPageClient({
       (dog) =>
         dog.sex === "M" &&
         dog.breedCode2 === breedCode2 &&
-        (dog.isOwnedByCurrentKennel || Boolean(dog.studListingId)) &&
+        (dog.isOwnedByCurrentKennel || isPublicSire(dog)) &&
         (dog.isOwnedByCurrentKennel ||
           damMeetsStudRequirements(selectedDam, dog)) &&
         (sireSource === "ALL" ||
@@ -1882,7 +1927,7 @@ export default function BreedPageClient({
               damMeetsStudRequirements(dog, anchorDog)
             : dog.sex === "M" &&
               (dog.isOwnedByCurrentKennel ||
-                (Boolean(dog.studListingId) &&
+                (isPublicSire(dog) &&
                   damMeetsStudRequirements(anchorDog, dog))))
       )
       .sort((a, b) => {
@@ -2012,6 +2057,21 @@ export default function BreedPageClient({
     let unlockSubmit = true;
 
     try {
+      if (selectedSire.publicStudSource === "STUD_OFFER") {
+        const contractHref = publicStudContractHref(
+          selectedSire,
+          selectedDam.id,
+          effectiveReturnMode === "stayOnPlanner" ? "plan-a-litter" : "breed-dog"
+        );
+        if (!contractHref) {
+          setErrorMessage("Stud Contract routing is unavailable for this sire.");
+          return;
+        }
+        setRedirecting(true);
+        unlockSubmit = false;
+        router.push(contractHref);
+        return;
+      }
       const response = await fetch("/api/breedings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2116,15 +2176,14 @@ export default function BreedPageClient({
               {freeMates.length > 0 ? (
                 freeMates.map((dog) => (
                   <FreeMateCard
-                    key={`${dog.id}-${dog.studListingId ?? "owned"}`}
+                    key={`${dog.id}-${dog.publicStudSource ?? "owned"}`}
                     dog={dog}
                     selected={dog.id === selectedMate?.id}
                     contractHref={
                       !dog.isOwnedByCurrentKennel &&
                       dog.sex === "M" &&
-                      dog.studListingId &&
                       selectedDam
-                        ? `/stud-contract?studListingId=${dog.studListingId}&sireDogId=${dog.id}&damDogId=${selectedDam.id}&source=breed-dog`
+                        ? publicStudContractHref(dog, selectedDam.id, "breed-dog")
                         : null
                     }
                     onSelect={() => {
@@ -2331,7 +2390,7 @@ export default function BreedPageClient({
                     ) : sires.length > 0 ? (
                       sires.map((dog) => (
                         <DogOptionCard
-                          key={`${dog.id}-${dog.studListingId ?? "owned"}`}
+                          key={`${dog.id}-${dog.publicStudSource ?? "owned"}`}
                           dog={dog}
                           currentEpoch={currentEpoch}
                           selected={dog.id === sireId}
@@ -2341,9 +2400,7 @@ export default function BreedPageClient({
                           contractHref={
                             !dog.isOwnedByCurrentKennel &&
                             dog.sex === "M" &&
-                            dog.studListingId
-                              ? `/stud-contract?studListingId=${dog.studListingId}&sireDogId=${dog.id}&damDogId=${selectedDam.id}&source=plan-a-litter`
-                              : null
+                            publicStudContractHref(dog, selectedDam.id, "plan-a-litter")
                           }
                           onSelect={() => {
                             setSuccessMessage("");

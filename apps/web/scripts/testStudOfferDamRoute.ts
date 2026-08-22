@@ -19,9 +19,10 @@ assert.equal(
   false,
   "StudOffer routes require sire identity but not a legacy listing ID"
 );
-assert.ok(
+assert.equal(
   page.includes("This Stud Contract is available to review, but submission is not yet available from this offer."),
-  "StudOffer submission is not fabricated before automatic/manual activation"
+  false,
+  "StudOffer contract actions are active after automatic/manual activation"
 );
 
 console.log("StudOffer dam-route activation checks passed.");
