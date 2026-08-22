@@ -12,6 +12,7 @@ const actions = source("apps/web/components/stud-contract/PendingStudRequestActi
 
 for (const fragment of [
   "manualApprovedContractId",
+  "freshSire.ownerKennelId !== manualContract.sireKennelId",
   'id: { not: args.manualApprovedContractId }',
   'FROM "StudContract"',
   'status: "PENDING"',
@@ -33,8 +34,10 @@ for (const fragment of [
   'sireKennelId: kennel.id',
   'status: "PENDING"',
   "approveManualStudContractForKennel",
-  "PLAYER_STUD_LISTING_TYPE",
 ]) assert.ok(approve.includes(fragment), `approve route contains ${fragment}`);
+assert.equal(approve.includes("PLAYER_STUD_LISTING_TYPE"), false);
+assert.equal(approve.includes("dogListing.findFirst"), false);
+assert.equal(approve.includes("studOffer"), false);
 for (const fragment of [
   'sireKennelId: kennel.id',
   'status: "PENDING"',

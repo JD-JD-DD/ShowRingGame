@@ -1339,7 +1339,8 @@ export async function createBreedingAttemptForKennel(args: {
     usesPublicStud &&
     !studListingId &&
     !isReturnServiceAttempt &&
-    !(args.automaticStudContract && args.publicStudSource === "STUD_OFFER")
+    !(args.automaticStudContract && args.publicStudSource === "STUD_OFFER") &&
+    !args.manualApprovedContractId
   ) {
     throw new Error("Choose an active public stud listing for that sire.");
   }
@@ -1449,7 +1450,7 @@ export async function createBreedingAttemptForKennel(args: {
       returnServiceContract = returnService.contract;
     }
 
-    if (args.automaticStudContract || isReturnServiceAttempt) {
+    if (args.automaticStudContract || isReturnServiceAttempt || args.manualApprovedContractId) {
       await tx.$queryRaw`
         SELECT "id"
         FROM "Dog"
@@ -1490,7 +1491,7 @@ export async function createBreedingAttemptForKennel(args: {
       ) {
         throw new Error("This dam is no longer eligible to breed.");
       }
-      if (isReturnServiceAttempt) {
+      if (isReturnServiceAttempt || args.manualApprovedContractId) {
         const [freshDamEmergencyEvents, freshDamWhelpedAttempt] = await Promise.all([
           tx.reproductiveEmergencyEvent.findMany({
             where: { damId: dam.id, status: { in: ["RESOLVED_TREATED", "RESOLVED_UNTREATED"] } },
@@ -1605,7 +1606,45 @@ export async function createBreedingAttemptForKennel(args: {
         },
       });
     } else if (usesPublicStud) {
-      if (args.automaticStudContract && args.publicStudSource === "STUD_OFFER") {
+      if (args.manualApprovedContractId) {
+        if (
+          !manualContract ||
+          manualContract.sireDogId !== sire.id ||
+          manualContract.damDogId !== dam.id ||
+          manualContract.damKennelId !== kennelId
+        ) {
+          throw new Error("This Stud approval request is no longer pending.");
+        }
+        if (!manualContract.approvalDeadlineAt || new Date() >= manualContract.approvalDeadlineAt) {
+          throw new Error("This Stud approval request deadline has passed.");
+        }
+        if (manualContract.approvalMode !== "MANUAL") {
+          throw new Error("This Stud approval request is not a Manual Approval contract.");
+        }
+        if (
+          freshSire.ownerKennelId !== manualContract.sireKennelId ||
+          freshSire.lifecycleState !== "ALIVE" ||
+          freshSire.sex !== "M" ||
+          freshSire.breedCode2 !== dam.breedCode2
+        ) {
+          throw new Error("The original sire is no longer eligible for this Stud approval request.");
+        }
+        await assertDamMeetsStudContractRequirements({
+          client: tx,
+          damDogId: dam.id,
+          currentEpoch,
+          requirements: {
+            brucellosisNegativeRequired: manualContract.brucellosisNegativeRequired,
+            healthRequirements: manualContract.healthRequirements,
+            titleRequirement: manualContract.titleRequirement,
+          },
+        });
+        studFeeAmount =
+          manualContract.compensationType === "PUPPY_BACK"
+            ? 0
+            : manualContract.cashAmount ?? 0;
+        studSellerKennelId = manualContract.sireKennelId;
+      } else if (args.automaticStudContract && args.publicStudSource === "STUD_OFFER") {
         if (!automaticOffer) {
           throw new Error("This Stud Offer is no longer published.");
         }
@@ -1683,13 +1722,7 @@ export async function createBreedingAttemptForKennel(args: {
       studSellerKennelId = studListing.sellerKennelId;
       requiresBrucellosisNegativeDam =
         studListing.requiresBrucellosisNegativeDam;
-      if (args.manualApprovedContractId) {
-        if (!manualContract || manualContract.sireDogId !== sire.id || manualContract.damDogId !== dam.id || manualContract.sireKennelId !== studListing.sellerKennelId || manualContract.damKennelId !== kennelId) throw new Error("This Stud approval request is no longer pending.");
-        if (!manualContract.approvalDeadlineAt || new Date() >= manualContract.approvalDeadlineAt) throw new Error("This Stud approval request deadline has passed.");
-        await assertDamMeetsStudContractRequirements({ client: tx, damDogId: dam.id, currentEpoch, requirements: { brucellosisNegativeRequired: manualContract.brucellosisNegativeRequired, healthRequirements: manualContract.healthRequirements, titleRequirement: manualContract.titleRequirement } });
-        studFeeAmount = manualContract.compensationType === "PUPPY_BACK" ? 0 : manualContract.cashAmount ?? 0;
-        requiresBrucellosisNegativeDam = false;
-      } else if (args.automaticStudContract) {
+      if (args.automaticStudContract) {
         if (!automaticOffer) {
           throw new Error("This Stud Offer is no longer published.");
         }
@@ -2123,15 +2156,25 @@ export async function attemptStudContractReturnService(args: {
 
 export async function approveManualStudContractForKennel(args: {
   contractId: string;
-  damKennelId: string;
-  sireDogId: string;
-  damDogId: string;
-  studListingId: string;
+  sireKennelId: string;
   currentEpoch: number;
 }) {
+  const contract = await db.studContract.findFirst({
+    where: {
+      id: args.contractId,
+      status: "PENDING",
+      sireKennelId: args.sireKennelId,
+    },
+    select: { sireDogId: true, damDogId: true, damKennelId: true },
+  });
+  if (!contract) {
+    throw new Error("This Stud approval request is no longer pending.");
+  }
   return createBreedingAttemptForKennel({
-    kennelId: args.damKennelId, primaryDogId: args.sireDogId, mateDogId: args.damDogId,
-    studListingId: args.studListingId, currentEpoch: args.currentEpoch,
+    kennelId: contract.damKennelId,
+    primaryDogId: contract.sireDogId,
+    mateDogId: contract.damDogId,
+    currentEpoch: args.currentEpoch,
     manualApprovedContractId: args.contractId,
   });
 }
