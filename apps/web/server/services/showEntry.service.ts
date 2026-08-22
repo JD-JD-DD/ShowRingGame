@@ -9,6 +9,7 @@ import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
+import { hasValidPublishedStudOffer } from "@/server/services/studOfferPresentation.service";
 import { listKennelRuns } from "@/server/services/kennelRunManagement.service";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
 import { assertCanCreateOwnerHandledEntriesForCluster } from "@/server/services/kennelService.service";
@@ -90,6 +91,10 @@ const dogForEntryArgs = Prisma.validator<Prisma.DogDefaultArgs>()({
       select: {
         listingType: true,
       },
+    },
+    studOffersAsSire: {
+      where: { status: "PUBLISHED" },
+      select: { id: true, ownerKennelId: true },
     },
     emergencyCareEvents: {
       where: { status: "PENDING" },
@@ -1517,9 +1522,10 @@ export async function listEligibleDogsByShowBlock(args: {
           isListedForSale: dog.listings.some(
             (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
           ),
-          isListedAtStud: dog.listings.some(
-            (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
-          ),
+          isListedAtStud: hasValidPublishedStudOffer({
+            ownerKennelId: dog.ownerKennelId,
+            publishedStudOffers: dog.studOffersAsSire,
+          }),
         })),
     ])
   );
@@ -1583,9 +1589,10 @@ export async function listEligibleDogsForShowBlock(args: {
       isListedForSale: dog.listings.some(
         (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
       ),
-      isListedAtStud: dog.listings.some(
-        (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
-      ),
+      isListedAtStud: hasValidPublishedStudOffer({
+        ownerKennelId: dog.ownerKennelId,
+        publishedStudOffers: dog.studOffersAsSire,
+      }),
     }));
 }
 
@@ -2151,9 +2158,10 @@ export async function getShowEntryPlanner(args: {
           isListedForSale: dog.listings.some(
             (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
           ),
-          isListedAtStud: dog.listings.some(
-            (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
-          ),
+          isListedAtStud: hasValidPublishedStudOffer({
+            ownerKennelId: dog.ownerKennelId,
+            publishedStudOffers: dog.studOffersAsSire,
+          }),
           eligibleShowDayIds,
           alreadyEnteredShowDayIds,
           hasPendingEmergencyCare,

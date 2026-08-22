@@ -22,6 +22,7 @@ import {
   resolvePublicStudInventory,
   type PublicStudReadModel,
 } from "@/server/services/publicStud.service";
+import { hasValidPublishedStudOffer } from "@/server/services/studOfferPresentation.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
@@ -475,6 +476,10 @@ export default async function BreedingPlannerPage({
                 listingType: true,
               },
             },
+            studOffersAsSire: {
+              where: { status: "PUBLISHED" },
+              select: { id: true, ownerKennelId: true },
+            },
           },
           orderBy: [{ breedCode2: "asc" }, { birthEpoch: "asc" }],
         }),
@@ -760,9 +765,10 @@ export default async function BreedingPlannerPage({
           isListedForSale: dog.listings.some(
             (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
           ),
-          isListedAtStud: dog.listings.some(
-            (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
-          ),
+          isListedAtStud: hasValidPublishedStudOffer({
+            ownerKennelId: dog.ownerKennelId,
+            publishedStudOffers: dog.studOffersAsSire,
+          }),
           isEligibleToBreed: breedingEligibility.isEligible,
           hasPendingVeterinaryCare: false,
           inBreedingConflict:

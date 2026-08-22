@@ -23,6 +23,7 @@ import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
+import { hasValidPublishedStudOffer } from "@/server/services/studOfferPresentation.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
@@ -420,6 +421,7 @@ export async function GET(request: Request) {
           birthEpoch: true,
           lifecycleState: true,
           marketState: true,
+          ownerKennelId: true,
           kennelRunId: true,
           kennelRun: {
             select: {
@@ -454,6 +456,10 @@ export async function GET(request: Request) {
               geneticLiability: true,
               environmentModifier: true,
             },
+          },
+          studOffersAsSire: {
+            where: { status: "PUBLISHED" },
+            select: { id: true, ownerKennelId: true },
           },
           ringObedience: true,
           muscleTone: true,
@@ -700,7 +706,10 @@ export async function GET(request: Request) {
             dog.breedCode2
           ),
           isListedForSale: activeListingTypes.has(PLAYER_SALE_LISTING_TYPE),
-          isListedAtStud: activeListingTypes.has(PLAYER_STUD_LISTING_TYPE),
+          isListedAtStud: hasValidPublishedStudOffer({
+            ownerKennelId: dog.ownerKennelId,
+            publishedStudOffers: dog.studOffersAsSire,
+          }),
           kennelRunId: dog.kennelRunId,
           currentRun: dog.kennelRun
             ? {

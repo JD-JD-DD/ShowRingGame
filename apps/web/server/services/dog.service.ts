@@ -40,6 +40,7 @@ import {
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
 import { getStoredProducerMeritForDog } from "@/server/services/producerMerit.service";
+import { hasValidPublishedStudOffer } from "@/server/services/studOfferPresentation.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
 import type { Dog as EngineDog } from "@showring/rules";
 import {
@@ -1197,6 +1198,10 @@ export async function getDogProfile(args: {
           status: true,
         },
       },
+      studOffersAsSire: {
+        where: { status: "PUBLISHED" },
+        select: { id: true, ownerKennelId: true },
+      },
       sireOf: {
         where: { isPlayerVisible: true },
         orderBy: [{ birthEpoch: "desc" }, { regNumber: "asc" }],
@@ -1307,6 +1312,10 @@ export async function getDogProfile(args: {
     dog.listings.find(
       (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
     ) ?? null;
+  const isListedAtStud = hasValidPublishedStudOffer({
+    ownerKennelId: dog.ownerKennelId,
+    publishedStudOffers: dog.studOffersAsSire,
+  });
   const hasActiveListing = dog.listings.length > 0;
   const showEligible =
     isAlive && ageHours >= MIN_SHOW_AGE_HOURS && ageHours <= MAX_SHOW_AGE_HOURS;
@@ -1532,7 +1541,7 @@ export async function getDogProfile(args: {
   if (activeSaleListing) {
     badges.push({ code: "for-sale", label: "Listed for Sale", tone: "green" });
   }
-  if (activeStudListing) {
+  if (isListedAtStud) {
     badges.push({ code: "at-stud", label: "At Stud", tone: "blue" });
   }
   if (dog.breedingAttemptsAsDam.some((attempt) => attempt.status === "PREGNANT")) {
@@ -1783,8 +1792,9 @@ export async function getDogProfile(args: {
       marketLabel: formatMarketLabel({
         marketState: dog.marketState,
         isListedForSale: Boolean(activeSaleListing),
-        isListedAtStud: Boolean(activeStudListing),
+        isListedAtStud,
       }),
+      isListedAtStud,
       canShow: showEligible,
       canBreed: breedingEligible,
       showEligibilityLabel: formatEligibilityLabel(showEligible),

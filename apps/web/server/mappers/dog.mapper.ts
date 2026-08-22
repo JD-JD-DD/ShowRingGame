@@ -97,6 +97,7 @@ export type DogProfileSnapshotDto = {
   dam: DogProfileDogLinkDto | null;
   originLabel: string;
   marketLabel: string;
+  isListedAtStud: boolean;
   canShow: boolean;
   canBreed: boolean;
   showEligibilityLabel: string;
@@ -528,6 +529,7 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
         : null,
       originLabel: input.snapshot.originLabel,
       marketLabel: input.snapshot.marketLabel,
+      isListedAtStud: input.snapshot.isListedAtStud,
       canShow: input.snapshot.canShow,
       canBreed: input.snapshot.canBreed,
       showEligibilityLabel: input.snapshot.showEligibilityLabel,

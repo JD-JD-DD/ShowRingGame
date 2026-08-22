@@ -274,7 +274,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     profile.snapshot.healthTestingSummary.hasFullClearance
                   }
                   isListedForSale={Boolean(saleListing)}
-                  isListedAtStud={Boolean(studListing)}
+                  isListedAtStud={profile.snapshot.isListedAtStud}
                   isPregnant={
                     profile.activeBreedingAttempt?.breedingStatus === "PREGNANT"
                   }

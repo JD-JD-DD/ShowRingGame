@@ -123,6 +123,7 @@ export const exampleDogProfile: DogProfileDto = {
     },
     originLabel: "Foundation Dog",
     marketLabel: "Not for sale",
+    isListedAtStud: false,
     canShow: true,
     canBreed: true,
     showEligibilityLabel: "Eligible",

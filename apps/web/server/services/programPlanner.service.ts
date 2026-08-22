@@ -24,6 +24,7 @@ import {
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
+import { hasValidPublishedStudOffer } from "@/server/services/studOfferPresentation.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
@@ -1042,6 +1043,10 @@ async function fetchProgramPlannerDogs(args: {
           listingType: true,
         },
       },
+      studOffersAsSire: {
+        where: { status: "PUBLISHED" },
+        select: { id: true, ownerKennelId: true },
+      },
       plannerTags: {
         where: {
           kennelId: args.kennelId,
@@ -1245,9 +1250,10 @@ export async function getProgramPlannerData(args: {
     const isListedForSale = dog.listings.some(
       (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
     );
-    const isListedAtStud = dog.listings.some(
-      (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
-    );
+    const isListedAtStud = hasValidPublishedStudOffer({
+      ownerKennelId: dog.ownerKennelId,
+      publishedStudOffers: dog.studOffersAsSire,
+    });
 
     return {
       dogId: dog.id,
