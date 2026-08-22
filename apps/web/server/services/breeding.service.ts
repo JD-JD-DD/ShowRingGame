@@ -27,6 +27,7 @@ import { evaluateStudContractWhelpQualification } from "@/server/services/studCo
 import { openInitialStudContractPuppySelection } from "@/server/services/studContractPuppySelection.service";
 import { createStudContractReturnService } from "@/server/services/studContractReturnService.service";
 import { activePublicStudListingWhere } from "@/server/services/publicStud.service";
+import { adaptLegacyPublicStudListing } from "@/server/services/publicStud.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   ensureLitterKennelRun,
@@ -1610,6 +1611,7 @@ export async function createBreedingAttemptForKennel(args: {
             select: {
               id: true,
               ownerKennelId: true,
+              breedCode2: true,
               lifecycleState: true,
               sex: true,
             },
@@ -1618,6 +1620,10 @@ export async function createBreedingAttemptForKennel(args: {
       });
 
       if (!studListing || !studListing.sellerKennelId) {
+        throw new Error("Public stud listing not found.");
+      }
+      const publicStud = adaptLegacyPublicStudListing(studListing);
+      if (!publicStud || publicStud.legacyListingId !== studListingId || publicStud.sireDogId !== sire.id) {
         throw new Error("Public stud listing not found.");
       }
 

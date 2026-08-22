@@ -4,6 +4,7 @@ import { getBreedingEligibilityMessage, getIndividualBreedingEligibility } from 
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { activePublicStudListingWhere } from "@/server/services/publicStud.service";
+import { adaptLegacyPublicStudListing } from "@/server/services/publicStud.service";
 import { assertDamMeetsStudContractRequirements } from "@/server/services/studContractEligibility.service";
 
 const MANUAL_APPROVAL_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -37,6 +38,8 @@ export async function createManualStudContractRequest(args: {
       }),
     ]);
     if (!dam || dam.ownerKennelId !== args.kennelId) throw new Error("You no longer own that dam.");
+    const publicStud = listing ? adaptLegacyPublicStudListing(listing) : null;
+    if (!publicStud || publicStud.legacyListingId !== args.studListingId || publicStud.sireDogId !== args.sireDogId) throw new Error("This stud and dam are no longer eligible for a request.");
     if (!listing?.sellerKennelId || listing.sellerKennelId === args.kennelId ||
       listing.dog.ownerKennelId !== listing.sellerKennelId ||
       listing.dog.sex !== "M" || listing.dog.lifecycleState !== "ALIVE" ||
