@@ -25,6 +25,7 @@ const accountItems = [
   { label: "In Memoriam", href: "/memorium" },
   { label: "Ledger", href: "/ledger" },
   { label: "Stud Requests", href: "/stud-contracts/requests" },
+  { label: "My Stud Contracts", href: "/stud-contracts" },
   { label: "FAQ", href: "/faq" },
   { label: "Map", href: "/travel-map" },
   { label: "Point Schedules", href: "/point-schedules" },
