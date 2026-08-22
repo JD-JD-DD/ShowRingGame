@@ -13,6 +13,9 @@ for (const fragment of [
   "reconcileSelectedStudContractPuppyDeath",
   'where: { status: "SELECTED", selectedDogId: args.dogId }',
   'selectedDog?.lifecycleState !== "DECEASED"',
+  'litter: { select: { bornEpoch: true } }',
+  'const bornEpoch = selection.litter.bornEpoch',
+  'bornEpoch + PUPPY_SALE_MIN_AGE_HOURS',
   "PUPPY_SALE_MIN_AGE_HOURS",
   "hasSelectableStudContractPuppy",
   'status: "STUD_PICK"',
@@ -22,8 +25,18 @@ for (const fragment of [
   "STUD_PUPPY_SELECTION_UNFULFILLABLE_DEATH:",
 ]) assert.ok(selection.includes(fragment), fragment);
 
+const selectedDeath = selection.slice(
+  selection.indexOf("export async function reconcileSelectedStudContractPuppyDeath"),
+  selection.indexOf("export async function selectDamProtectedPuppy"),
+);
+assert.equal(selectedDeath.includes("selectedDog.birthEpoch"), false);
+assert.equal(selectedDeath.includes("whelpQualificationAt"), false);
+assert.equal(selectedDeath.includes("liveBornPuppyCount"), false);
+assert.equal(selectedDeath.includes("puppyBackMinimumMet"), false);
+assert.equal(selectedDeath.includes("smallLitterReturnServiceMet"), false);
 assert.ok(lifecycle.includes("reconcileSelectedStudContractPuppyDeath"));
-assert.ok(lifecycle.indexOf('lifecycleState: "DECEASED"') < lifecycle.indexOf("reconcileSelectedStudContractPuppyDeath"));
+const mortality = lifecycle.slice(lifecycle.indexOf("export async function markDogDeceased"));
+assert.ok(mortality.indexOf('lifecycleState: "DECEASED"') < mortality.indexOf("reconcileSelectedStudContractPuppyDeath"));
 assert.ok(contractLifecycle.includes("reconcileSelectedStudContractPuppyDeaths"));
 assert.ok(route.includes("reconcileSelectedStudContractPuppyDeaths"));
 assert.equal(selection.includes("studOffer.find"), false);

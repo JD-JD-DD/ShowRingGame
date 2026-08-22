@@ -130,12 +130,14 @@ export async function reconcileSelectedStudContractPuppyDeath(args: {
       selectedDogId: true,
       damFirstPickDogId: true,
       contract: { select: { puppySex: true, sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true } },
-      selectedDog: { select: { birthEpoch: true, lifecycleState: true } },
+      litter: { select: { bornEpoch: true } },
+      selectedDog: { select: { lifecycleState: true } },
     },
   });
-  if (!selection || !selection.selectedDogId || selection.selectedDog?.lifecycleState !== "DECEASED") return "skipped";
+  if (!selection || !selection.litter || !selection.selectedDogId || selection.selectedDog?.lifecycleState !== "DECEASED") return "skipped";
 
-  const windowClosesAtEpoch = selection.selectedDog.birthEpoch + PUPPY_SALE_MIN_AGE_HOURS;
+  const bornEpoch = selection.litter.bornEpoch;
+  const windowClosesAtEpoch = bornEpoch + PUPPY_SALE_MIN_AGE_HOURS;
   const windowOpen = args.currentEpoch < windowClosesAtEpoch;
   const hasReplacement = windowOpen && await hasSelectableStudContractPuppy({
     client: args.client,
