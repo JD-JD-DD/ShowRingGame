@@ -16,7 +16,7 @@ import {
   hasPendingVeterinaryCareFromRecords,
   PENDING_VETERINARY_CARE_BREEDING_MESSAGE,
 } from "@/server/services/emergencyVetCare.service";
-import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
+import { activePublicStudListingWhere } from "@/server/services/publicStud.service";
 import { getCurrentPublishedStudOffersForSires } from "@/server/services/studOffer.service";
 import {
   getBreedingEligibilityMessage,
@@ -218,12 +218,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
   const listings = hasDiscoveryCriteria
     ? await db.dogListing.findMany({
     where: {
-      sellerType: "PLAYER",
-      listingType: PLAYER_STUD_LISTING_TYPE,
-      status: "ACTIVE",
-      sellerKennelId: {
-        not: kennel.id,
-      },
+      ...activePublicStudListingWhere({ excludeKennelId: kennel.id }),
       dog: {
         ...(selectedBreedCode2
           ? { breedCode2: selectedBreedCode2 }

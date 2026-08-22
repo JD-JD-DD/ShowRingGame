@@ -19,6 +19,7 @@ import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
+import { activePublicStudListingWhere } from "@/server/services/publicStud.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
@@ -583,12 +584,7 @@ export default async function BreedingPlannerPage({
       action: () =>
         db.dogListing.findMany({
           where: {
-            sellerType: "PLAYER",
-            listingType: PLAYER_STUD_LISTING_TYPE,
-            status: "ACTIVE",
-            sellerKennelId: {
-              not: kennel.id,
-            },
+            ...activePublicStudListingWhere({ excludeKennelId: kennel.id }),
             ...(isDirectStudSelection
               ? { id: directRouteContext!.selectedStudListingId! }
               : {}),

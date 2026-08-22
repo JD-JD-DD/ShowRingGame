@@ -3,7 +3,7 @@ import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergency
 import { getBreedingEligibilityMessage, getIndividualBreedingEligibility } from "@/server/services/breedingEligibility.service";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
+import { activePublicStudListingWhere } from "@/server/services/publicStud.service";
 import { assertDamMeetsStudContractRequirements } from "@/server/services/studContractEligibility.service";
 
 const MANUAL_APPROVAL_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -29,10 +29,7 @@ export async function createManualStudContractRequest(args: {
         },
       }),
       tx.dogListing.findFirst({
-        where: {
-          id: args.studListingId, dogId: args.sireDogId, sellerType: "PLAYER",
-          listingType: PLAYER_STUD_LISTING_TYPE, status: "ACTIVE",
-        },
+        where: { id: args.studListingId, ...activePublicStudListingWhere({ dogId: args.sireDogId }) },
         select: {
           sellerKennelId: true,
           dog: { select: { id: true, ownerKennelId: true, breedCode2: true, sex: true, lifecycleState: true, isBreedingActive: true } },

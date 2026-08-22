@@ -26,7 +26,7 @@ import { markDogDeceased } from "@/server/services/lifecycle.service";
 import { evaluateStudContractWhelpQualification } from "@/server/services/studContractLifecycle.service";
 import { openInitialStudContractPuppySelection } from "@/server/services/studContractPuppySelection.service";
 import { createStudContractReturnService } from "@/server/services/studContractReturnService.service";
-import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
+import { activePublicStudListingWhere } from "@/server/services/publicStud.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   ensureLitterKennelRun,
@@ -1596,13 +1596,7 @@ export async function createBreedingAttemptForKennel(args: {
       });
     } else if (usesPublicStud) {
       const studListing = await tx.dogListing.findFirst({
-        where: {
-          id: studListingId,
-          dogId: sire.id,
-          sellerType: "PLAYER",
-          listingType: PLAYER_STUD_LISTING_TYPE,
-          status: "ACTIVE",
-        },
+        where: { id: studListingId, ...activePublicStudListingWhere({ dogId: sire.id }) },
         select: {
           id: true,
           askingPrice: true,
