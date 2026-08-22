@@ -36,9 +36,9 @@ for (const fragment of [
   "needs-action",
   'status: "STUD_PICK"',
   'currentActor: "DAM_OWNER"',
-  'returnService: { is: { status: "AVAILABLE" } }',
+  'returnService: { is: { status: "AVAILABLE", expiresAt: { gt: now } } }',
   "sortOrder === \"newest\" ? \"desc\" : \"asc\"",
-  "approvalAvailability",
+  "contractBreedingAvailability",
   "isBreedingActive",
   "hasPendingVeterinaryCareFromRecords",
   "evaluateDamAgainstStudContractRequirements",
@@ -70,6 +70,9 @@ assert.ok(client.includes('item.actions.includes("MANUAL_APPROVAL")'));
 assert.ok(client.includes("item.actions.length === 0"));
 assert.ok(client.includes('item.actions.includes("PUPPY_SELECTION")'));
 assert.ok(client.includes("stud-contract-selection-${item.puppySelection.litterId}"));
+assert.ok(client.includes('item.actions.includes("RETURN_SERVICE")'));
+assert.ok(client.includes("StudContractReturnServiceAction"));
+assert.ok(client.includes("canAttempt={item.returnService.canAttempt}"));
 assert.equal(client.includes("Attempt Return Service"), false);
 assert.ok(route.includes("getSessionUserId"));
 assert.ok(route.includes("parseStudContractHistoryFilters"));

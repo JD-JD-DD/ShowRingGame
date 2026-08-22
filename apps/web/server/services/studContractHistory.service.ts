@@ -116,7 +116,7 @@ function actionWhere(kennelId: string, now: Date, actionFilter: StudContractActi
       { damKennelId: kennelId, puppySelection: { is: { status: "DAM_FIRST_PICK", currentActor: "DAM_OWNER", turnDeadlineAt: { gt: now } } } },
     ],
   };
-  const returnService: Prisma.StudContractWhereInput = { damKennelId: kennelId, returnService: { is: { status: "AVAILABLE" } } };
+  const returnService: Prisma.StudContractWhereInput = { damKennelId: kennelId, returnService: { is: { status: "AVAILABLE", expiresAt: { gt: now } } } };
   if (actionFilter === "manual-approval") return manualApproval;
   if (actionFilter === "puppy-selection") return puppySelection;
   if (actionFilter === "return-service") return returnService;
@@ -136,16 +136,16 @@ function historyWhere(args: { kennelId: string; statusFilter: StudContractStatus
   return { AND: conditions };
 }
 
-function approvalAvailability(contract: ContractHistoryRecord, currentEpoch: number) {
+function contractBreedingAvailability(contract: ContractHistoryRecord, currentEpoch: number) {
   const sire = contract.sireDog;
   const dam = contract.damDog;
   if (sire.ownerKennelId !== contract.sireKennelId || sire.lifecycleState !== "ALIVE" || sire.sex !== "M" || sire.breedCode2 !== dam.breedCode2) return { canApprove: false, reason: "The original sire is no longer eligible for this request." };
-  if (!sire.isBreedingActive) return { canApprove: false, reason: "Breeding inactive." };
+  if (!sire.isBreedingActive) return { canApprove: false, reason: "Sire is not currently active for breeding." };
   const sireEligibility = getIndividualBreedingEligibility({ currentEpoch, birthEpoch: sire.birthEpoch, lifecycleState: sire.lifecycleState, sex: sire.sex, latestSireAttemptCreatedEpoch: sire.breedingAttemptsAsSire[0]?.createdEpoch ?? null });
   if (!sireEligibility.isEligible) return { canApprove: false, reason: getBreedingEligibilityMessage(sireEligibility) ?? "The sire is not currently breeding eligible." };
   if (hasPendingVeterinaryCareFromRecords({ emergencyCareEvents: sire.emergencyCareEvents, reproductiveEmergencies: sire.reproductiveEmergencies })) return { canApprove: false, reason: "Pending veterinary care." };
   if (dam.ownerKennelId !== contract.damKennelId || dam.lifecycleState !== "ALIVE" || dam.sex !== "F" || dam.breedCode2 !== sire.breedCode2) return { canApprove: false, reason: "The original dam is no longer eligible for this request." };
-  if (!dam.isBreedingActive) return { canApprove: false, reason: "Breeding inactive." };
+  if (!dam.isBreedingActive) return { canApprove: false, reason: "Dam is not currently active for breeding." };
   const damEligibility = getIndividualBreedingEligibility({
     currentEpoch, birthEpoch: dam.birthEpoch, lifecycleState: dam.lifecycleState, sex: dam.sex,
     activeBreedingAttemptStatus: dam.breedingAttemptsAsDam[0]?.status ?? null,
@@ -184,7 +184,11 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
   const otherKennel = isStudOwner ? contract.damKennel.name : contract.sireKennel.name;
   const approvalDeadline = contract.approvalDeadlineAt;
   const approvalDeadlineAt = approvalDeadline?.toISOString() ?? null;
-  const availability = contract.status === "PENDING" && contract.approvalMode === "MANUAL" ? approvalAvailability(contract, currentEpoch) : null;
+  const availability = contract.status === "PENDING" && contract.approvalMode === "MANUAL" ? contractBreedingAvailability(contract, currentEpoch) : null;
+  const returnServiceIsActionable = contract.returnService?.status === "AVAILABLE" && contract.returnService.expiresAt > now;
+  const returnServiceAvailability = returnServiceIsActionable
+    ? contractBreedingAvailability(contract, currentEpoch)
+    : null;
   const manualApproval = contract.status === "PENDING" && contract.approvalMode === "MANUAL" && approvalDeadlineAt
     ? { deadlineAt: approvalDeadlineAt, isActionable: isStudOwner && approvalDeadline !== null && approvalDeadline > now, canApprove: isStudOwner && approvalDeadline !== null && approvalDeadline > now && availability?.canApprove === true, availabilityReason: !isStudOwner ? "Awaiting stud-owner decision" : approvalDeadline !== null && approvalDeadline > now ? availability?.reason ?? "Approval required" : "Approval deadline passed" }
     : null;
@@ -192,7 +196,7 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
   const actions: StudContractHubAction[] = [];
   if (manualApproval?.isActionable) actions.push("MANUAL_APPROVAL");
   if (canSelectPuppy) actions.push("PUPPY_SELECTION");
-  if (contract.returnService?.status === "AVAILABLE" && !isStudOwner) actions.push("RETURN_SERVICE");
+  if (returnServiceIsActionable && !isStudOwner) actions.push("RETURN_SERVICE");
   const currentDeadline = manualApproval
     ? { kind: "APPROVAL" as const, at: manualApproval.deadlineAt }
     : selectionIsActive(contract.puppySelection) && contract.puppySelection?.turnDeadlineAt
@@ -226,6 +230,9 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
     returnService: contract.returnService ? {
       id: contract.returnService.id, status: contract.returnService.status, label: returnServiceLabel(contract.returnService),
       expiresAt: contract.returnService.expiresAt.toISOString(), availableAt: contract.returnService.availableAt.toISOString(),
+      isActionable: returnServiceIsActionable,
+      canAttempt: returnServiceAvailability?.canApprove ?? false,
+      unavailableReason: returnServiceAvailability?.reason ?? null,
       usedAt: contract.returnService.usedAt?.toISOString() ?? null, extinguishedAt: contract.returnService.extinguishedAt?.toISOString() ?? null,
       trigger: contract.returnService.trigger === "NO_LITTER" ? "No Litter" : "Small Litter",
       returnAttempt: contract.returnService.returnBreedingAttempt,
