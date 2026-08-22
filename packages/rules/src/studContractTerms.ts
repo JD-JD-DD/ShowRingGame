@@ -37,8 +37,8 @@ export type StudContractOutcomeInput = {
   minimumLitterSize: number | null;
   breedingAttemptStatus: StudContractBreedingAttemptStatus;
   hasLinkedLitter: boolean;
-  qualificationCheckpointAt: Date | string | null;
-  qualifyingSurvivingPuppyCount: number | null;
+  whelpQualificationAt: Date | string | null;
+  liveBornPuppyCount: number | null;
   puppyBackMinimumMet: boolean | null;
   smallLitterReturnServiceMet: boolean | null;
 };
@@ -87,7 +87,7 @@ export function classifyStudContractOutcome(
     };
   }
 
-  if (!input.hasLinkedLitter || input.qualificationCheckpointAt === null) {
+  if (!input.hasLinkedLitter || input.whelpQualificationAt === null) {
     return {
       ...base,
       outcomeReady: false,

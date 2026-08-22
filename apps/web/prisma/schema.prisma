@@ -1591,8 +1591,8 @@ model StudContract {
   expiredAt                   DateTime?
   breedingAttemptId           String?              @unique
   litterId                    String?              @unique
-  qualificationCheckpointAt   DateTime?
-  qualifyingSurvivingPuppyCount Int?
+  whelpQualificationAt        DateTime?
+  liveBornPuppyCount          Int?
   puppyBackMinimumMet         Boolean?
   smallLitterReturnServiceMet Boolean?
   createdAt                   DateTime              @default(now())

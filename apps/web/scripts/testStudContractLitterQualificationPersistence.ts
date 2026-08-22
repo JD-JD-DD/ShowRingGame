@@ -4,11 +4,11 @@ import { join, resolve } from "node:path";
 
 const root = resolve(__dirname, "..", "..", "..");
 const schema = readFileSync(join(root, "apps/web/prisma/schema.prisma"), "utf8");
-const migration = readFileSync(join(root, "apps/web/prisma/migrations/20260823120000_add_stud_contract_litter_qualification/migration.sql"), "utf8");
+const migration = readFileSync(join(root, "apps/web/prisma/migrations/20260825120000_replace_stud_contract_day8_qualification/migration.sql"), "utf8");
 for (const field of [
   "litterId                    String?              @unique",
-  "qualificationCheckpointAt   DateTime?",
-  "qualifyingSurvivingPuppyCount Int?",
+  "whelpQualificationAt        DateTime?",
+  "liveBornPuppyCount          Int?",
   "puppyBackMinimumMet         Boolean?",
   "smallLitterReturnServiceMet Boolean?",
   'litter             Litter?                         @relation("StudContractLitter"',
@@ -16,8 +16,8 @@ for (const field of [
 ]) assert.ok(schema.includes(field), field);
 for (const column of [
   '"litterId" TEXT',
-  '"qualificationCheckpointAt" TIMESTAMP(3)',
-  '"qualifyingSurvivingPuppyCount" INTEGER',
+  '"whelpQualificationAt" TIMESTAMP(3)',
+  '"liveBornPuppyCount" INTEGER',
   '"puppyBackMinimumMet" BOOLEAN',
   '"smallLitterReturnServiceMet" BOOLEAN',
 ]) assert.ok(migration.includes(column), column);

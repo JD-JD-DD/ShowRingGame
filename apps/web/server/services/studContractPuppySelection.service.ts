@@ -17,7 +17,7 @@ export async function createStudContractPuppySelection(args: {
         status: true,
         compensationType: true,
         litterId: true,
-        qualificationCheckpointAt: true,
+        whelpQualificationAt: true,
       },
     });
     if (!contract || contract.status !== "ACCEPTED") {
@@ -26,7 +26,7 @@ export async function createStudContractPuppySelection(args: {
     if (contract.compensationType === "CASH") {
       throw new Error("Cash-only StudContracts do not have Puppy Back selection persistence.");
     }
-    if (contract.litterId !== args.litterId || contract.qualificationCheckpointAt === null) {
+    if (contract.litterId !== args.litterId || contract.whelpQualificationAt === null) {
       throw new Error("Puppy Back selection persistence must use the qualified StudContract litter.");
     }
     return tx.studContractPuppySelection.create({

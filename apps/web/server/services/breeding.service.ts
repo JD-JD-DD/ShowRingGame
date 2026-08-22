@@ -23,6 +23,7 @@ import {
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
 } from "@/server/services/dogVisibleCategories.service";
 import { markDogDeceased } from "@/server/services/lifecycle.service";
+import { evaluateStudContractWhelpQualification } from "@/server/services/studContractLifecycle.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
@@ -912,14 +913,22 @@ async function resolveWhelpingAttempt(args: {
       breedingAttemptId: fresh.id,
     });
 
-    await tx.studContract.updateMany({
-      where: {
-        breedingAttemptId: fresh.id,
-        status: "ACCEPTED",
-        litterId: null,
-      },
-      data: { litterId: persistedLitter.id },
+    const acceptedContract = await tx.studContract.findFirst({
+      where: { breedingAttemptId: fresh.id, status: "ACCEPTED", litterId: null },
+      select: { id: true, compensationType: true, minimumLitterSize: true, smallLitterReturnThreshold: true },
     });
+    if (acceptedContract) {
+      const qualification = evaluateStudContractWhelpQualification({
+        compensationType: acceptedContract.compensationType,
+        minimumLitterSize: acceptedContract.minimumLitterSize,
+        smallLitterReturnThreshold: acceptedContract.smallLitterReturnThreshold,
+        liveBornPuppyCount: persistedLitter.puppies.length,
+      });
+      await tx.studContract.updateMany({
+        where: { id: acceptedContract.id, status: "ACCEPTED", litterId: null, whelpQualificationAt: null },
+        data: { litterId: persistedLitter.id, whelpQualificationAt: new Date(), liveBornPuppyCount: persistedLitter.puppies.length, ...qualification },
+      });
+    }
 
     await tx.breedingAttempt.update({
       where: { id: fresh.id },
