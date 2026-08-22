@@ -16,6 +16,12 @@ for (const fragment of [
   "const PAGE_SIZE = 10",
   "take: PAGE_SIZE + 1",
   "cursor: { id: args.cursor }",
+  'const statusFilterValues = ["all", "pending", "active", "complete", "declined", "expired"]',
+  'const actionFilterValues = ["all", "needs-action", "manual-approval", "puppy-selection", "return-service"]',
+  'const sortOrderValues = ["newest", "oldest"]',
+  'statusFilter: parseFilter(args.status, statusFilterValues, "all")',
+  'actionFilter: parseFilter(args.action, actionFilterValues, "all")',
+  'sortOrder: parseFilter(args.sort, sortOrderValues, "newest")',
   "healthRequirements",
   "returnBreedingAttempt",
   "puppySelection",
@@ -33,6 +39,7 @@ for (const fragment of [
   "getStudContractCurrentState",
   "secondaryStates",
   "returnServiceCurrentState",
+  'EXPIRED: "Return Service expired"',
   "puppySelectionCurrentState",
   "Awaiting dam's protected pick",
   "Awaiting stud owner's puppy selection",
@@ -47,6 +54,8 @@ for (const fragment of [
   "Awaiting stud-owner decision",
   "parseStudContractHistoryFilters",
   "completeContractWhere",
+  "contractIsComplete(contract)",
+  'contract.returnService?.status === "AVAILABLE"',
   "actionWhere",
   "needs-action",
   'status: "STUD_PICK"',
@@ -65,9 +74,12 @@ for (const fragment of [
   'actions.push("PUPPY_SELECTION")',
   'actions.push("RETURN_SERVICE")',
   "actions, manualApproval",
+  "returnServiceIsActionable && !isStudOwner",
   "litterId: true",
 ]) assert.ok(service.includes(fragment), fragment);
+assert.equal(service.includes('StudContractHubAction = "NONE"'), false);
 assert.ok(list.includes("StudContractHistoryClient"));
+assert.ok(list.includes('key={filterKey}'));
 assert.ok(detail.includes("getStudContractHistoryDetail"));
 assert.ok(detail.includes("Puppies born alive at whelping"));
 assert.ok(detail.includes("Important dates"));
@@ -75,6 +87,14 @@ assert.ok(detail.includes("Approval deadline"));
 assert.ok(detail.includes("Puppy transfer completed"));
 assert.ok(detail.includes("Return Service expires"));
 assert.ok(client.includes("Load More"));
+assert.ok(client.includes("payload.items.filter"));
+assert.ok(client.includes("existing.id === item.id"));
+assert.ok(client.includes("status: props.filters.statusFilter"));
+assert.ok(client.includes("action: props.filters.actionFilter"));
+assert.ok(client.includes("sort: props.filters.sortOrder"));
+assert.ok(client.includes('params.set("action", next.actionFilter)'));
+assert.ok(client.includes('params.set("status", next.statusFilter)'));
+assert.ok(client.includes('params.set("sort", next.sortOrder)'));
 assert.ok(client.includes(">Open<span"));
 assert.ok(client.includes("Current state"));
 assert.ok(client.includes("Additional contract states"));
@@ -91,6 +111,8 @@ assert.ok(client.includes("item.actions.length === 0"));
 assert.ok(client.includes('item.actions.includes("PUPPY_SELECTION")'));
 assert.ok(client.includes("stud-contract-selection-${item.puppySelection.litterId}"));
 assert.ok(client.includes('item.actions.includes("RETURN_SERVICE")'));
+assert.ok(client.includes('item.actions.includes("PUPPY_SELECTION") && item.puppySelection'));
+assert.ok(client.includes('item.actions.includes("RETURN_SERVICE") && item.returnService'));
 assert.ok(client.includes("StudContractReturnServiceAction"));
 assert.ok(client.includes("canAttempt={item.returnService.canAttempt}"));
 assert.equal(client.includes("Attempt Return Service"), false);
