@@ -11,6 +11,9 @@ const confirmation = source("apps/web/components/stud-contract/AutomaticStudCont
 
 for (const fragment of [
   "createAutomaticStudContractBreedingForKennel",
+  "resolvePublicStudForSire",
+  'publicStudSource: publicStud.source',
+  'args.publicStudSource === "STUD_OFFER"',
   "automaticStudContract: true",
   'status: "PUBLISHED"',
   'approvalMode !== "AUTOMATIC"',
@@ -30,9 +33,14 @@ for (const fragment of [
 assert.ok(route.includes("getSessionUserId"));
 assert.ok(route.includes("getKennelForUser"));
 assert.ok(route.includes("createAutomaticStudContractBreedingForKennel"));
+assert.ok(route.includes('body.source === "STUD_OFFER"'));
+assert.ok(route.includes('body.source === "LEGACY_PLAYER_STUD"'));
+assert.ok(route.includes('source === "STUD_OFFER" && suppliedStudListingId'));
 assert.equal(route.includes("cashAmount"), false, "client cannot submit a cash amount");
 assert.equal(route.includes("approvalMode"), false, "client cannot submit approval mode");
 assert.ok(page.includes("AutomaticStudContractConfirmation"));
+assert.ok(page.includes('source="STUD_OFFER"'));
+assert.ok(confirmation.includes('source: "STUD_OFFER"'));
 assert.ok(confirmation.includes("Accept Terms and Breed"));
 assert.ok(confirmation.includes("aria-busy={pending}"));
 assert.equal(confirmation.includes("StudContract.create"), false);

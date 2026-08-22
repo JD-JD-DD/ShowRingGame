@@ -175,9 +175,6 @@ export default async function StudContractPage({ searchParams }: PageProps) {
   const actionAvailable =
     dam && offer && !mismatch && contractEligibility?.eligible && damAvailability?.isEligible && availability.isEligible;
 
-  const actionUnavailableMessage =
-    "This Stud Contract is available to review, but submission is not yet available from this offer.";
-
   return (
     <main className="min-h-screen px-6 py-8">
       <section className="theme-panel mx-auto max-w-3xl rounded-[28px] px-6 py-8">
@@ -253,8 +250,8 @@ export default async function StudContractPage({ searchParams }: PageProps) {
         )}
 
         {offer ? <section className="theme-card mt-4 rounded-2xl p-4"><h2 className="theme-heading text-lg font-semibold">Return Service and availability</h2><p className="theme-copy mt-2 text-sm">{RETURN_SERVICE_FINE_PRINT}</p></section> : null}
-        {dam && actionAvailable && offer?.approvalMode === "AUTOMATIC" ? publicStud.source === "LEGACY_PLAYER_STUD" ? <AutomaticStudContractConfirmation studListingId={publicStud.legacyListingId} sireDogId={sireId} damDogId={dam.id} /> : <p className="theme-status-info mt-4 rounded-2xl p-4" role="status">{actionUnavailableMessage}</p> : null}
-        {pendingManualRequest ? <section className="theme-status-info mt-4 rounded-2xl p-4" role="status"><p className="font-semibold">Stud approval pending</p><p className="mt-1 text-sm">No breeding or payment has occurred. Decision deadline: {pendingManualRequest.approvalDeadlineAt?.toLocaleString() ?? "Unavailable"}.</p></section> : dam && actionAvailable && offer?.approvalMode === "MANUAL" ? publicStud.source === "LEGACY_PLAYER_STUD" ? <ManualStudContractRequest studListingId={publicStud.legacyListingId} sireDogId={sireId} damDogId={dam.id} /> : <p className="theme-status-info mt-4 rounded-2xl p-4" role="status">{actionUnavailableMessage}</p> : null}
+        {dam && actionAvailable && offer?.approvalMode === "AUTOMATIC" ? publicStud.source === "LEGACY_PLAYER_STUD" ? <AutomaticStudContractConfirmation source="LEGACY_PLAYER_STUD" studListingId={publicStud.legacyListingId} sireDogId={sireId} damDogId={dam.id} /> : <AutomaticStudContractConfirmation source="STUD_OFFER" sireDogId={sireId} damDogId={dam.id} /> : null}
+        {pendingManualRequest ? <section className="theme-status-info mt-4 rounded-2xl p-4" role="status"><p className="font-semibold">Stud approval pending</p><p className="mt-1 text-sm">No breeding or payment has occurred. Decision deadline: {pendingManualRequest.approvalDeadlineAt?.toLocaleString() ?? "Unavailable"}.</p></section> : dam && actionAvailable && offer?.approvalMode === "MANUAL" ? publicStud.source === "LEGACY_PLAYER_STUD" ? <ManualStudContractRequest source="LEGACY_PLAYER_STUD" studListingId={publicStud.legacyListingId} sireDogId={sireId} damDogId={dam.id} /> : <ManualStudContractRequest source="STUD_OFFER" sireDogId={sireId} damDogId={dam.id} /> : null}
         <Link href={back} className="theme-secondary-button mt-8 inline-flex rounded-2xl px-5 py-3 text-sm font-semibold">Go Back</Link>
       </section>
     </main>

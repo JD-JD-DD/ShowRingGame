@@ -14,18 +14,27 @@ export async function POST(request: Request) {
     const kennel = await getKennelForUser(userId);
     if (!kennel) return fail("Kennel not found.", 404);
     const body = await request.json();
-    const studListingId = typeof body.studListingId === "string" ? body.studListingId.trim() : "";
+    const suppliedStudListingId = typeof body.studListingId === "string" ? body.studListingId.trim() : "";
+    const studListingId = suppliedStudListingId || undefined;
     const sireDogId = typeof body.sireDogId === "string" ? body.sireDogId.trim() : "";
     const damDogId = typeof body.damDogId === "string" ? body.damDogId.trim() : "";
+    const source = body.source === "STUD_OFFER" || body.source === "LEGACY_PLAYER_STUD" ? body.source : null;
     if (body.playerObligationsAcknowledged !== true) return fail(PLAYER_OBLIGATIONS_ERROR, 400);
-    if (!studListingId || !sireDogId || !damDogId) {
-      return fail("Stud listing, sire, and dam are required.", 400);
+    if (
+      !source ||
+      !sireDogId ||
+      !damDogId ||
+      (source === "LEGACY_PLAYER_STUD" && !studListingId) ||
+      (source === "STUD_OFFER" && suppliedStudListingId)
+    ) {
+      return fail("Stud source, sire, and dam are required.", 400);
     }
     const attempt = await createAutomaticStudContractBreedingForKennel({
       kennelId: kennel.id,
       studListingId,
       sireDogId,
       damDogId,
+      source,
       currentEpoch: getCurrentEpoch(),
     });
     return ok({ attempt, message: "Terms accepted and breeding initiated." });
