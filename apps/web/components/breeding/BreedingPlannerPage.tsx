@@ -19,7 +19,10 @@ import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
 } from "@/server/services/market.service";
-import { activePublicStudListingWhere } from "@/server/services/publicStud.service";
+import {
+  activePublicStudListingWhere,
+  adaptLegacyPublicStudListing,
+} from "@/server/services/publicStud.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
@@ -894,6 +897,10 @@ export default async function BreedingPlannerPage({
         ])
       );
       return publicStudListings.map((listing) => {
+        const publicStud = adaptLegacyPublicStudListing(listing);
+        if (!publicStud) {
+          throw new Error("Public stud listing is no longer valid.");
+        }
         const dog = listing.dog;
         const ageHours = currentEpoch - dog.birthEpoch;
         const breedingEligibility = getIndividualBreedingEligibility({
@@ -939,17 +946,17 @@ export default async function BreedingPlannerPage({
           breedingEligibleAtEpoch: breedingEligibility.eligibleAtEpoch,
           breedingRemainingHours: breedingEligibility.remainingHours,
           breedingCooldownUntilEpoch: breedingEligibility.cooldownUntilEpoch,
-          studListingId: listing.id,
-          studFeeAmount: listing.askingPrice,
+          studListingId: publicStud.legacyListingId,
+          studFeeAmount: publicStud.legacyFeeAmount,
           brucellosisValidUntilEpoch: validBrucellosisUntil(dog, currentEpoch),
           requiresBrucellosisNegativeDam:
-            listing.requiresBrucellosisNegativeDam,
+            publicStud.legacyRequirements?.brucellosisNegativeDam ?? false,
           requiresDamHealthTestsCompleted:
-            listing.requiresDamHealthTestsCompleted,
-          requiresDamHealthAllGreen: listing.requiresDamHealthAllGreen,
+            publicStud.legacyRequirements?.damHealthTestsCompleted ?? false,
+          requiresDamHealthAllGreen: publicStud.legacyRequirements?.damHealthAllGreen ?? false,
           requiresDamHealthGreenOrYellow:
-            listing.requiresDamHealthGreenOrYellow,
-          requiresDamChampionTitle: listing.requiresDamChampionTitle,
+            publicStud.legacyRequirements?.damHealthGreenOrYellow ?? false,
+          requiresDamChampionTitle: publicStud.legacyRequirements?.damChampionTitle ?? false,
           studOfferSummary: offerSummaryByDogId.get(dog.id) ?? null,
           coiPercent: dog.coiPercent,
           lastLitterEpoch: null,
