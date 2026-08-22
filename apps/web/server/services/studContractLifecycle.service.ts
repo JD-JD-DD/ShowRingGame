@@ -55,7 +55,7 @@ export async function openQualifiedStudContractPuppySelections(args?: {
   for (const contract of candidates) {
     try {
       const litterId = contract.litterId;
-      if (!litterId || !contract.litter || !contract.puppyPickPosition) continue;
+      if (!litterId || !contract.litter || (contract.puppyPickPosition !== "FIRST" && contract.puppyPickPosition !== "SECOND")) continue;
       const opened = await db.$transaction((tx) => openInitialStudContractPuppySelection({
         client: tx,
         contractId: contract.id,

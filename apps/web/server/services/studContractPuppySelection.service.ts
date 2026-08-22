@@ -165,17 +165,16 @@ export async function reconcileSelectedStudContractPuppyDeath(args: {
 
 export async function selectDamProtectedPuppy(args: { kennelId: string; selectionId: string; puppyId: string; currentEpoch: number; now?: Date }) {
   const now = args.now ?? new Date();
-  const deadline = new Date(now.getTime() + PUPPY_SELECTION_TURN_MS);
   return db.$transaction(async (tx) => {
     const selection = await tx.studContractPuppySelection.findUnique({
       where: { id: args.selectionId },
-      select: { id: true, litterId: true, status: true, currentActor: true, turnDeadlineAt: true, damFirstPickDogId: true, contract: { select: { damKennelId: true, sireKennelId: true, sireDogId: true } } },
+      select: { id: true, litterId: true, status: true, currentActor: true, turnDeadlineAt: true, damFirstPickDogId: true, litter: { select: { bornEpoch: true } }, contract: { select: { damKennelId: true, sireKennelId: true, sireDogId: true } } },
     });
     if (!selection || selection.status !== "DAM_FIRST_PICK" || selection.currentActor !== "DAM_OWNER" || selection.contract.damKennelId !== args.kennelId || !selection.turnDeadlineAt || now >= selection.turnDeadlineAt || selection.damFirstPickDogId) throw new Error("This protected first-pick turn is not available.");
     await loadSelectablePuppy({ client: tx, litterId: selection.litterId, puppyId: args.puppyId });
     const update = await tx.studContractPuppySelection.updateMany({
       where: { id: selection.id, status: "DAM_FIRST_PICK", currentActor: "DAM_OWNER", damFirstPickDogId: null, turnDeadlineAt: { gt: now } },
-      data: { damFirstPickDogId: args.puppyId, status: "STUD_PICK", currentActor: "STUD_OWNER", turnStartedAt: now, turnDeadlineAt: deadline },
+      data: { damFirstPickDogId: args.puppyId, status: "STUD_PICK", currentActor: "STUD_OWNER", turnStartedAt: now, turnDeadlineAt: getStudContractPuppySelectionDeadlines(selection.litter.bornEpoch).secondPickStudDeadlineAt },
     });
     if (update.count !== 1) throw new Error("This protected first-pick turn is no longer available.");
     await createKennelNotice({ client: tx, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_PICK:${selection.id}`, type: "KENNEL_SERVICE", title: "Stud puppy selection is ready", body: "The dam owner made the protected first pick. Your Second Pick selection turn is now open for 24 real hours.", currentEpoch: args.currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
