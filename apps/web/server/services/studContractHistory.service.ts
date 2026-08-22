@@ -4,6 +4,26 @@ import { formatCompactStudOfferSummary } from "@/lib/studOfferPresentation";
 import type { Prisma } from "@prisma/client";
 
 const PAGE_SIZE = 10;
+const statusFilterValues = ["all", "pending", "active", "complete", "declined", "expired"] as const;
+const actionFilterValues = ["all", "needs-action", "manual-approval", "puppy-selection", "return-service"] as const;
+const sortOrderValues = ["newest", "oldest"] as const;
+
+export type StudContractStatusFilter = (typeof statusFilterValues)[number];
+export type StudContractActionFilter = (typeof actionFilterValues)[number];
+export type StudContractSortOrder = (typeof sortOrderValues)[number];
+
+function parseFilter<T extends readonly string[]>(value: string | null | undefined, allowed: T, fallback: T[number]): T[number] {
+  if (typeof value !== "string") return fallback;
+  return allowed.find((candidate) => candidate === value) ?? fallback;
+}
+
+export function parseStudContractHistoryFilters(args: { status?: string | null; action?: string | null; sort?: string | null }) {
+  return {
+    statusFilter: parseFilter(args.status, statusFilterValues, "all"),
+    actionFilter: parseFilter(args.action, actionFilterValues, "all"),
+    sortOrder: parseFilter(args.sort, sortOrderValues, "newest"),
+  };
+}
 
 const contractInclude = {
   sireDog: { select: { id: true, callName: true, registeredName: true, regNumber: true, visibleTitlePrefix: true, visibleTitleSuffix: true } },
@@ -54,6 +74,45 @@ function attemptState(status: string | undefined) {
     REPRODUCTIVE_EMERGENCY: "Breeding ended", FAILED: "Breeding ended", CANCELLED: "Breeding ended",
   };
   return labels[status ?? ""] ?? "Breeding attempted";
+}
+
+function completeContractWhere(): Prisma.StudContractWhereInput {
+  return {
+    status: "ACCEPTED",
+    breedingAttempt: { is: { status: { in: ["CHECKED_NOT_PREGNANT", "WHELPED", "FAILED", "CANCELLED", "REPRODUCTIVE_EMERGENCY"] } } },
+    AND: [
+      { OR: [{ returnService: { is: null } }, { returnService: { is: { status: { not: "AVAILABLE" } } } }] },
+      { OR: [{ puppySelection: { is: null } }, { puppySelection: { is: { status: { in: ["FORFEITED", "UNFULFILLABLE", "COMPLETED"] } } } }] },
+    ],
+  };
+}
+
+function actionWhere(kennelId: string, now: Date, actionFilter: StudContractActionFilter): Prisma.StudContractWhereInput | null {
+  const manualApproval: Prisma.StudContractWhereInput = { sireKennelId: kennelId, status: "PENDING", approvalMode: "MANUAL", approvalDeadlineAt: { gt: now } };
+  const puppySelection: Prisma.StudContractWhereInput = {
+    OR: [
+      { sireKennelId: kennelId, puppySelection: { is: { status: "STUD_PICK", currentActor: "STUD_OWNER", turnDeadlineAt: { gt: now } } } },
+      { damKennelId: kennelId, puppySelection: { is: { status: "DAM_FIRST_PICK", currentActor: "DAM_OWNER", turnDeadlineAt: { gt: now } } } },
+    ],
+  };
+  const returnService: Prisma.StudContractWhereInput = { damKennelId: kennelId, returnService: { is: { status: "AVAILABLE" } } };
+  if (actionFilter === "manual-approval") return manualApproval;
+  if (actionFilter === "puppy-selection") return puppySelection;
+  if (actionFilter === "return-service") return returnService;
+  if (actionFilter === "needs-action") return { OR: [manualApproval, puppySelection, returnService] };
+  return null;
+}
+
+function historyWhere(args: { kennelId: string; statusFilter: StudContractStatusFilter; actionFilter: StudContractActionFilter; now: Date }): Prisma.StudContractWhereInput {
+  const conditions: Prisma.StudContractWhereInput[] = [{ OR: [{ sireKennelId: args.kennelId }, { damKennelId: args.kennelId }] }];
+  if (args.statusFilter === "pending") conditions.push({ status: "PENDING" });
+  if (args.statusFilter === "declined") conditions.push({ status: "DECLINED" });
+  if (args.statusFilter === "expired") conditions.push({ status: "EXPIRED" });
+  if (args.statusFilter === "complete") conditions.push(completeContractWhere());
+  if (args.statusFilter === "active") conditions.push({ status: "ACCEPTED", NOT: completeContractWhere() });
+  const action = actionWhere(args.kennelId, args.now, args.actionFilter);
+  if (action) conditions.push(action);
+  return { AND: conditions };
 }
 
 function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = new Date()) {
@@ -129,14 +188,17 @@ function toItem(contract: ContractHistoryRecord | null, kennelId: string, now = 
   };
 }
 
-export async function listStudContractsForKennel(args: { kennelId: string; cursor?: string | null }) {
+export async function listStudContractsForKennel(args: { kennelId: string; cursor?: string | null; statusFilter?: StudContractStatusFilter; actionFilter?: StudContractActionFilter; sortOrder?: StudContractSortOrder }) {
+  const now = new Date();
+  const statusFilter = args.statusFilter ?? "all";
+  const actionFilter = args.actionFilter ?? "all";
+  const sortOrder = args.sortOrder ?? "newest";
   const rows = await db.studContract.findMany({
-    where: { OR: [{ sireKennelId: args.kennelId }, { damKennelId: args.kennelId }] },
-    orderBy: [{ requestedAt: "desc" }, { id: "desc" }], take: PAGE_SIZE + 1,
+    where: historyWhere({ kennelId: args.kennelId, statusFilter, actionFilter, now }),
+    orderBy: [{ requestedAt: sortOrder === "newest" ? "desc" : "asc" }, { id: sortOrder === "newest" ? "desc" : "asc" }], take: PAGE_SIZE + 1,
     ...(args.cursor ? { cursor: { id: args.cursor }, skip: 1 } : {}), include: contractInclude,
   });
   const hasMore = rows.length > PAGE_SIZE;
-  const now = new Date();
   const items = rows.slice(0, PAGE_SIZE).flatMap((row) => {
     const item = toItem(row, args.kennelId, now);
     return item ? [item] : [];

@@ -30,6 +30,14 @@ for (const fragment of [
   "RETURN_SERVICE",
   "Approval required",
   "Awaiting stud-owner decision",
+  "parseStudContractHistoryFilters",
+  "completeContractWhere",
+  "actionWhere",
+  "needs-action",
+  'status: "STUD_PICK"',
+  'currentActor: "DAM_OWNER"',
+  'returnService: { is: { status: "AVAILABLE" } }',
+  "sortOrder === \"newest\" ? \"desc\" : \"asc\"",
 ]) assert.ok(service.includes(fragment), fragment);
 assert.ok(list.includes("StudContractHistoryClient"));
 assert.ok(detail.includes("getStudContractHistoryDetail"));
@@ -39,7 +47,14 @@ assert.ok(client.includes("Load More"));
 assert.ok(client.includes(">Open<span"));
 assert.ok(client.includes("Current state"));
 assert.ok(client.includes("Status:"));
+assert.ok(client.includes("Needs Action"));
+assert.ok(client.includes("Approve Request"));
+assert.ok(client.includes("Pick Puppy"));
+assert.ok(client.includes("Newest first"));
+assert.ok(client.includes("No contracts match these filters"));
 assert.equal(client.includes("Attempt Return Service"), false);
 assert.ok(route.includes("getSessionUserId"));
+assert.ok(route.includes("parseStudContractHistoryFilters"));
+assert.ok(route.includes("status: typeof body.status"));
 assert.ok(nav.includes('label: "My Stud Contracts"'));
 console.log("Stud Contract history read-model checks passed.");
