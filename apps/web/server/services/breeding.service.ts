@@ -24,6 +24,7 @@ import {
 } from "@/server/services/dogVisibleCategories.service";
 import { markDogDeceased } from "@/server/services/lifecycle.service";
 import { evaluateStudContractWhelpQualification } from "@/server/services/studContractLifecycle.service";
+import { openInitialStudContractPuppySelection } from "@/server/services/studContractPuppySelection.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
@@ -915,7 +916,7 @@ async function resolveWhelpingAttempt(args: {
 
     const acceptedContract = await tx.studContract.findFirst({
       where: { breedingAttemptId: fresh.id, status: "ACCEPTED", litterId: null },
-      select: { id: true, compensationType: true, minimumLitterSize: true, smallLitterReturnThreshold: true },
+      select: { id: true, compensationType: true, minimumLitterSize: true, smallLitterReturnThreshold: true, puppyPickPosition: true },
     });
     if (acceptedContract) {
       const qualification = evaluateStudContractWhelpQualification({
@@ -924,10 +925,20 @@ async function resolveWhelpingAttempt(args: {
         smallLitterReturnThreshold: acceptedContract.smallLitterReturnThreshold,
         liveBornPuppyCount: persistedLitter.puppies.length,
       });
-      await tx.studContract.updateMany({
+      const qualificationUpdate = await tx.studContract.updateMany({
         where: { id: acceptedContract.id, status: "ACCEPTED", litterId: null, whelpQualificationAt: null },
         data: { litterId: persistedLitter.id, whelpQualificationAt: new Date(), liveBornPuppyCount: persistedLitter.puppies.length, ...qualification },
       });
+      if (qualificationUpdate.count === 1 && qualification.puppyBackMinimumMet === true && acceptedContract.puppyPickPosition) {
+        await openInitialStudContractPuppySelection({
+          client: tx,
+          contractId: acceptedContract.id,
+          litterId: persistedLitter.id,
+          puppyPickPosition: acceptedContract.puppyPickPosition,
+          bornEpoch: outcome.litter.bornEpoch,
+          turnStartedAt: new Date(),
+        });
+      }
     }
 
     await tx.breedingAttempt.update({

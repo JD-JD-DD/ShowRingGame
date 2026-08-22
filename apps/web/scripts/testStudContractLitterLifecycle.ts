@@ -14,6 +14,9 @@ expect(breedingSource.includes('status: "ACCEPTED"') && breedingSource.includes(
 expect(breedingSource.includes("litterId: null"), "Whelping must not overwrite an existing StudContract litter link.");
 expect(breedingSource.includes("persistedLitter.puppies.length"), "Live-born count must come from puppies created in the whelping transaction.");
 expect(breedingSource.includes("puppyBackMinimumMet") && breedingSource.includes("smallLitterReturnServiceMet"), "Both frozen whelp-time results must be persisted.");
+expect(breedingSource.includes("openInitialStudContractPuppySelection"), "Qualifying Puppy Back selection must open in the whelping transaction.");
+expect(breedingSource.includes("bornEpoch: outcome.litter.bornEpoch"), "Whelp-time opening must use canonical litter birth timing.");
+expect(!breedingSource.includes("PUPPY_SELECTION_TURN_MS"), "Whelping must not calculate a rolling selection deadline.");
 expect(!lifecycleSource.includes("processStudContractLitterQualifications"), "No Day-8 contract qualification pass may remain.");
 expect(!cronSource.includes("processStudContractLitterQualifications"), "Cron must not run Day-8 contract qualification.");
 
