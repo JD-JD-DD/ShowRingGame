@@ -568,6 +568,7 @@ export default async function BreedingPlannerPage({
     const isDirectStudSelection = Boolean(
       directRouteContext?.selectedStudListingId
     );
+    const directPublicSireDogId = directRouteContext?.selectedPublicSireDogId;
 
     if (!publicStudBreedCode2) {
       console.info("route-perf", {
@@ -582,6 +583,13 @@ export default async function BreedingPlannerPage({
       return [];
     }
 
+    if (isDirectStudSelection && !directPublicSireDogId) return [];
+
+    const directPublicSireDogWhere =
+      isDirectStudSelection && directPublicSireDogId
+        ? { id: directPublicSireDogId }
+        : {};
+
     return measureBreedingRouteStage({
       timer,
       route,
@@ -591,9 +599,7 @@ export default async function BreedingPlannerPage({
       action: async () => {
         const dogs = await db.dog.findMany({
           where: {
-            ...(isDirectStudSelection
-              ? { id: directRouteContext?.selectedPublicSireDogId }
-              : {}),
+            ...directPublicSireDogWhere,
             lifecycleState: "ALIVE",
             isPlayerVisible: true,
             isBreedingActive: true,
