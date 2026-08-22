@@ -37,6 +37,11 @@ export type PublicStudReadModel = {
     }
 );
 
+export type LegacyPublicStudReadModel = Extract<
+  PublicStudReadModel,
+  { source: "LEGACY_PLAYER_STUD" }
+>;
+
 export function adaptLegacyPublicStudListing(listing: {
   id: string;
   askingPrice: number;
@@ -47,7 +52,7 @@ export function adaptLegacyPublicStudListing(listing: {
   requiresDamHealthGreenOrYellow: boolean;
   requiresDamChampionTitle: boolean;
   dog: { id: string; ownerKennelId: string | null; breedCode2: string };
-}): PublicStudReadModel | null {
+}): LegacyPublicStudReadModel | null {
   if (!listing.sellerKennelId || listing.dog.ownerKennelId !== listing.sellerKennelId) {
     return null;
   }

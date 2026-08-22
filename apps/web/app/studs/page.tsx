@@ -17,6 +17,7 @@ import {
   PENDING_VETERINARY_CARE_BREEDING_MESSAGE,
 } from "@/server/services/emergencyVetCare.service";
 import { activePublicStudListingWhere } from "@/server/services/publicStud.service";
+import { adaptLegacyPublicStudListing } from "@/server/services/publicStud.service";
 import { getCurrentPublishedStudOffersForSires } from "@/server/services/studOffer.service";
 import {
   getBreedingEligibilityMessage,
@@ -266,6 +267,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
       dog: {
         select: {
           id: true,
+          ownerKennelId: true,
           callName: true,
           registeredName: true,
           regNumber: true,
@@ -354,6 +356,10 @@ export default async function StudsPage({ searchParams }: PageProps) {
   })
     : [];
   const dogIds = listings.map((listing) => listing.dog.id);
+  const publicStuds = listings.flatMap((listing) => {
+    const publicStud = adaptLegacyPublicStudListing(listing);
+    return publicStud ? [{ publicStud, dog: listing.dog }] : [];
+  });
   const currentOffers = await getCurrentPublishedStudOffersForSires(dogIds);
   const offerSummaryByDogId = new Map(
     currentOffers.map((offer) => [
@@ -504,14 +510,13 @@ export default async function StudsPage({ searchParams }: PageProps) {
           <section className="theme-panel theme-copy rounded-[28px] p-8 text-sm">
             Choose a group, enter a name, or select a breed to find a stud.
           </section>
-        ) : listings.length === 0 ? (
+        ) : publicStuds.length === 0 ? (
           <section className="theme-panel theme-copy rounded-[28px] p-8 text-sm">
             No public studs match the current filter.
           </section>
         ) : (
           <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {listings.map((listing) => {
-              const dog = listing.dog;
+            {publicStuds.map(({ publicStud, dog }) => {
               const brucellosisValidUntil = validBrucellosisUntil(
                 dog,
                 currentEpoch
@@ -542,7 +547,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
 
               return (
                 <article
-                  key={listing.id}
+                  key={publicStud.sireDogId}
                   className="theme-panel overflow-hidden rounded-[24px]"
                 >
                   <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-6 py-5">
@@ -567,7 +572,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           Stud Fee
                         </div>
                         <div className="mt-1 text-xl font-bold">
-                          {formatMoney(listing.askingPrice)}
+                          {formatMoney(publicStud.legacyFeeAmount ?? 0)}
                         </div>
                       </div>
                     </div>
@@ -677,7 +682,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                         </span>
                       ) : breedingEligibility.isEligible ? (
                         <Link
-                          href={`/breed?studListingId=${listing.id}`}
+                          href={`/breed?studListingId=${publicStud.legacyListingId}`}
                           className={`flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold ${
                             hasPendingVeterinaryCare
                               ? "theme-secondary-button"
@@ -696,7 +701,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                       )}
 
                       <Link
-                        href={`/stud-contract?studListingId=${listing.id}&sireDogId=${dog.id}&source=public-stud`}
+                        href={`/stud-contract?studListingId=${publicStud.legacyListingId}&sireDogId=${dog.id}&source=public-stud`}
                         className="theme-secondary-button flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold"
                       >
                         Contract Terms
