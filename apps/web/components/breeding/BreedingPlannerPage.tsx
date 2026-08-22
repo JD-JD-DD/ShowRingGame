@@ -532,7 +532,7 @@ export default async function BreedingPlannerPage({
             breedCode2: publicStudBreedCode2,
           },
           orderBy: [{ breedCode2: "asc" }, { birthEpoch: "asc" }],
-          take: isDirectStudSelection ? 1 : 200,
+          take: 200,
           select: {
                 id: true,
                 ownerKennelId: true,
