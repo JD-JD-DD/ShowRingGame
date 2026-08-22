@@ -1,10 +1,8 @@
 import { db } from "@/lib/db";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import { hasSelectableStudContractPuppy, openInitialStudContractPuppySelection, reconcileSelectedStudContractPuppyDeath } from "@/server/services/studContractPuppySelection.service";
+import { getStudContractPuppySelectionDeadlines, hasSelectableStudContractPuppy, openInitialStudContractPuppySelection, reconcileSelectedStudContractPuppyDeath } from "@/server/services/studContractPuppySelection.service";
 
 const DEFAULT_BATCH_LIMIT = 50;
-const PUPPY_SELECTION_TURN_MS = 24 * 60 * 60 * 1000;
-
 export function evaluateStudContractWhelpQualification(args: {
   compensationType: "CASH" | "PUPPY_BACK" | "CASH_AND_PUPPY_BACK";
   minimumLitterSize: number | null;
@@ -112,10 +110,11 @@ export async function processExpiredStudContractPuppySelectionTurns(args?: {
             selectedDogId: true,
             damFirstPickForfeitedAt: true,
             studSelectionForfeitedAt: true,
+            litter: { select: { bornEpoch: true } },
             contract: { select: { puppySex: true, sireKennelId: true, damKennelId: true, sireDogId: true, damDogId: true } },
           },
         });
-        if (!selection || !selection.turnDeadlineAt || selection.turnDeadlineAt > now) return "skipped";
+        if (!selection || !selection.litter || !selection.turnDeadlineAt || selection.turnDeadlineAt > now) return "skipped";
 
         if (selection.status === "DAM_FIRST_PICK" && selection.currentActor === "DAM_OWNER" && !selection.damFirstPickDogId && !selection.damFirstPickForfeitedAt) {
           const hasCandidate = await hasSelectableStudContractPuppy({
@@ -124,7 +123,7 @@ export async function processExpiredStudContractPuppySelectionTurns(args?: {
             damFirstPickDogId: null,
             puppySex: selection.contract.puppySex,
           });
-          const studDeadline = new Date(now.getTime() + PUPPY_SELECTION_TURN_MS);
+          const studDeadline = getStudContractPuppySelectionDeadlines(selection.litter.bornEpoch).secondPickStudDeadlineAt;
           const update = await tx.studContractPuppySelection.updateMany({
             where: { id: selection.id, status: "DAM_FIRST_PICK", currentActor: "DAM_OWNER", turnDeadlineAt: { lte: now }, damFirstPickDogId: null, damFirstPickForfeitedAt: null },
             data: hasCandidate
@@ -134,7 +133,7 @@ export async function processExpiredStudContractPuppySelectionTurns(args?: {
           if (update.count !== 1) return "skipped";
           await createKennelNotice({ client: tx, kennelId: selection.contract.damKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_FORFEITED:${selection.id}`, type: "KENNEL_SERVICE", title: "Protected first-pick right forfeited", body: "Your protected first-pick deadline passed. That selection right was forfeited. No puppy was selected.", currentEpoch, linkedDogId: selection.contract.damDogId, linkedLitterId: selection.litterId });
           if (hasCandidate) {
-            await createKennelNotice({ client: tx, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_FORFEITED_STUD_OPEN:${selection.id}`, type: "KENNEL_SERVICE", title: "Stud puppy selection is ready", body: "The dam owner's protected first-pick right was forfeited. Your Puppy Back selection is now open for 24 real hours.", currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
+            await createKennelNotice({ client: tx, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_FORFEITED_STUD_OPEN:${selection.id}`, type: "KENNEL_SERVICE", title: "Stud puppy selection is ready", body: `The dam owner's protected first-pick right was forfeited. Your Puppy Back selection is now open. Your fixed deadline is ${studDeadline.toLocaleString()}.`, currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
           } else {
             await createKennelNotice({ client: tx, kennelId: selection.contract.sireKennelId, sourceKey: `STUD_PUPPY_SELECTION_DAM_FORFEITED_UNFULFILLABLE:${selection.id}`, type: "KENNEL_SERVICE", title: "Puppy Back cannot be fulfilled", body: "The dam owner's protected first-pick right was forfeited, and no living puppy satisfies the contract sex requirement. No puppy was selected.", currentEpoch, linkedDogId: selection.contract.sireDogId, linkedLitterId: selection.litterId });
           }

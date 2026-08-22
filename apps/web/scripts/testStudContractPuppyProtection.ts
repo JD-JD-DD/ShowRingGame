@@ -32,7 +32,7 @@ for (const path of [
   "apps/web/server/services/kennelRunManagement.service.ts",
   "apps/web/server/services/accountClosure.service.ts",
 ]) {
-  assert.ok(read(path).includes("StudContractPuppyProtection"), path);
+  assert.ok(read(path).includes("ProtectedByStudContractSelection"), path);
 }
 
 console.log("Stud Contract puppy protection checks passed.");

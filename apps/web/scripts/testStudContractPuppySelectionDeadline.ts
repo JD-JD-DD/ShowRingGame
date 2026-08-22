@@ -16,6 +16,8 @@ for (const fragment of [
   "take: limit",
   "damFirstPickForfeitedAt: now",
   'status: "STUD_PICK"',
+  "litter: { select: { bornEpoch: true } }",
+  "getStudContractPuppySelectionDeadlines(selection.litter.bornEpoch).secondPickStudDeadlineAt",
   "turnDeadlineAt: studDeadline",
   "hasSelectableStudContractPuppy",
   'status: "UNFULFILLABLE"',
@@ -26,6 +28,9 @@ for (const fragment of [
   "STUD_PUPPY_SELECTION_DAM_FORFEITED:",
   "STUD_PUPPY_SELECTION_STUD_FORFEITED:",
 ]) assert.ok(lifecycle.includes(fragment), fragment);
+
+assert.equal(lifecycle.includes("new Date(now.getTime() + PUPPY_SELECTION_TURN_MS)"), false);
+assert.ok(lifecycle.includes("Your fixed deadline is ${studDeadline.toLocaleString()}"));
 
 assert.ok(selection.includes("hasSelectableStudContractPuppy"));
 assert.ok(route.includes("processExpiredStudContractPuppySelectionTurns"));
