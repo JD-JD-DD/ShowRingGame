@@ -97,5 +97,6 @@ assert.equal(client.includes("Attempt Return Service"), false);
 assert.ok(route.includes("getSessionUserId"));
 assert.ok(route.includes("parseStudContractHistoryFilters"));
 assert.ok(route.includes("status: typeof body.status"));
-assert.ok(nav.includes('label: "My Stud Contracts"'));
+assert.ok(nav.includes('label: "Stud Contracts", href: "/stud-contracts"'));
+assert.equal(nav.includes('href: "/stud-contracts/requests"'), false);
 console.log("Stud Contract history read-model checks passed.");

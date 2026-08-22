@@ -55,12 +55,12 @@ export default async function StudOfferWorksheetPage({ params }: PageProps) {
   return (
     <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-4xl">
-        <Link
+        <div className="flex flex-wrap gap-2"><Link
           href={`/dogs/${dog.id}`}
           className="theme-secondary-button inline-flex rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           Back to Dog
-        </Link>
+        </Link><Link href="/stud-contracts" className="theme-secondary-button inline-flex rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">My Stud Contracts</Link></div>
         <StudOfferWorksheet
           dogName={dogName}
           applicableHealthTests={applicableHealthTests}

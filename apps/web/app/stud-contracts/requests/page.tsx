@@ -48,6 +48,7 @@ export default async function PendingStudRequestsPage() {
   return <main className="min-h-screen px-6 py-8"><section className="theme-panel mx-auto max-w-6xl rounded-[28px] px-6 py-8">
     <p className="theme-label text-sm uppercase tracking-[0.22em]">Stud Contracts</p>
     <h1 className="theme-heading mt-2 text-4xl font-bold">Pending Stud Requests</h1>
+    <Link href="/stud-contracts" className="theme-secondary-button mt-4 inline-flex rounded-xl px-3 py-2 text-sm font-semibold">My Stud Contracts</Link>
     <p className="theme-copy mt-3">Requests are independent and do not reserve a sire. Approval actions will be available in a later stage.</p>
     {requests.length === 0 ? <p className="theme-copy mt-6 rounded-2xl border border-white/10 p-4">No pending Manual Approval requests.</p> : <div className="mt-6 grid gap-4">
       {requests.map((request) => {
