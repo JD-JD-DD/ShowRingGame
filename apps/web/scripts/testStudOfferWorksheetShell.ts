@@ -60,12 +60,13 @@ assert.ok(worksheet.includes('aria-label="Stud offer worksheet progress"'));
 assert.ok(worksheet.includes("<h1 id=\"stud-offer-worksheet-title\""));
 assert.ok(worksheet.includes("type=\"button\""));
 assert.ok(worksheet.includes("focus-visible:outline"));
-assert.ok(worksheet.includes("Publishing will be added in a later stage."));
+assert.ok(worksheet.includes("const canPublish"));
+assert.ok(worksheet.includes("fetch(`/api/dogs/${sireIdentity.dogId}/stud-offer`"));
 assert.equal(worksheet.includes("localStorage"), false);
 assert.equal(worksheet.includes("sessionStorage"), false);
 assert.equal(worksheet.includes("db."), false);
 
-assert.ok(damSideRoute.includes("Stud contract details will be available here."));
+assert.ok(damSideRoute.includes("Stud Contract Terms"));
 assert.equal(damSideRoute.includes("StudOfferWorksheet"), false);
 
 console.log("Stud offer worksheet shell checks passed.");

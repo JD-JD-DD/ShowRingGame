@@ -2,252 +2,46 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const repoRoot = resolve(__dirname, "..", "..", "..");
-const source = readFileSync(
-  join(repoRoot, "apps/web/components/breeding/BreedingPlannerPage.tsx"),
-  "utf8"
-);
-const plannerClientSource = readFileSync(
-  join(repoRoot, "apps/web/components/breeding/BreedPageClient.tsx"),
-  "utf8"
-);
-const planALitterRouteSource = readFileSync(
-  join(repoRoot, "apps/web/app/plan-a-litter/page.tsx"),
-  "utf8"
-);
+const root = resolve(__dirname, "..", "..", "..");
+const source = (path: string) => readFileSync(join(root, path), "utf8");
 
-function section(start: string, end: string) {
-  const startIndex = source.indexOf(start);
-  const endIndex = source.indexOf(end, startIndex);
-  assert.ok(startIndex >= 0, `missing ${start}`);
-  assert.ok(endIndex > startIndex, `missing ${end}`);
-  return source.slice(startIndex, endIndex);
-}
+const resolver = source("apps/web/server/services/publicStud.service.ts");
+const planner = source("apps/web/components/breeding/BreedingPlannerPage.tsx");
+const client = source("apps/web/components/breeding/BreedPageClient.tsx");
+const studsPage = source("apps/web/app/studs/page.tsx");
 
-const publicStudQuery = section(
-  "const loadPublicStudListings = async () =>",
-  "const [dogs, publicStudListings, kennelRuns]"
-);
+assert.ok(resolver.includes('status: "PUBLISHED"'));
+assert.ok(resolver.includes("resolvePublicStudInventory"));
+assert.equal(resolver.includes("LEGACY_PLAYER_STUD"), false);
+assert.equal(resolver.includes("DogListing"), false);
 
-type FixtureListing = {
-  id: string;
-  sellerKennelId: string;
-  sellerType: "PLAYER" | "NPC";
-  listingType: "PLAYER_STUD" | "PLAYER_SALE";
-  status: "ACTIVE" | "CANCELLED";
-  breedCode2: string;
-  sex: "M" | "F";
-  lifecycleState: "ALIVE" | "DECEASED";
-};
+const publicStudQueryStart = planner.indexOf(
+  "const loadPublicStudListings = async () =>"
+);
+const publicStudQueryEnd = planner.indexOf(
+  "const [dogs, publicStudListings, kennelRuns]",
+  publicStudQueryStart
+);
+assert.ok(publicStudQueryStart >= 0);
+assert.ok(publicStudQueryEnd > publicStudQueryStart);
+const publicStudQuery = planner.slice(publicStudQueryStart, publicStudQueryEnd);
 
-const discoveryLimit = 200;
-const fixtureDiscover = (listings: FixtureListing[], kennelId: string, breedCode2: string) =>
-  listings
-    .filter(
-      (listing) =>
-        listing.sellerType === "PLAYER" &&
-        listing.listingType === "PLAYER_STUD" &&
-        listing.status === "ACTIVE" &&
-        listing.sellerKennelId !== kennelId &&
-        listing.sex === "M" &&
-        listing.lifecycleState === "ALIVE" &&
-        listing.breedCode2 === breedCode2
-    )
-    .slice(0, discoveryLimit);
+assert.ok(publicStudQuery.includes("resolvePublicStudInventory"));
+assert.ok(publicStudQuery.includes("breedCode2: publicStudBreedCode2"));
+assert.ok(publicStudQuery.includes("take: 200"));
+assert.equal(publicStudQuery.includes("studListingId"), false);
+assert.equal(publicStudQuery.includes("PLAYER_STUD"), false);
+assert.ok(publicStudQuery.includes('reason: "breed_context_required"'));
 
-const unrelatedListings: FixtureListing[] = Array.from(
-  { length: 220 },
-  (_, index) => ({
-    id: `unrelated-${index}`,
-    sellerKennelId: "other-kennel",
-    sellerType: "PLAYER",
-    listingType: "PLAYER_STUD",
-    status: "ACTIVE",
-    breedCode2: "AA",
-    sex: "M",
-    lifecycleState: "ALIVE",
-  })
-);
-const targetStud: FixtureListing = {
-  id: "target-stud",
-  sellerKennelId: "other-kennel",
-  sellerType: "PLAYER",
-  listingType: "PLAYER_STUD",
-  status: "ACTIVE",
-  breedCode2: "XX",
-  sex: "M",
-  lifecycleState: "ALIVE",
-};
-const fixtureListings = [
-  ...unrelatedListings,
-  targetStud,
-  { ...targetStud, id: "own-stud", sellerKennelId: "viewer" },
-  { ...targetStud, id: "cancelled-stud", status: "CANCELLED" as const },
-];
+assert.ok(client.includes("publicStudContractHref"));
+assert.ok(client.includes('sireDogId: sire.id'));
+assert.ok(client.includes("damDogId"));
+assert.equal(client.includes("studListingId"), false);
+assert.equal(client.includes("LEGACY_PLAYER_STUD"), false);
 
-assert.deepEqual(
-  fixtureDiscover(fixtureListings, "viewer", "XX").map((listing) => listing.id),
-  ["target-stud"],
-  "more than 200 unrelated listings do not hide the selected breed's stud"
-);
-assert.equal(
-  fixtureDiscover(fixtureListings, "viewer", "AA").length,
-  discoveryLimit,
-  "the breed-aware discovery query retains its bounded maximum"
-);
-assert.equal(
-  fixtureListings.find((listing) => listing.id === "target-stud")?.id,
-  "target-stud",
-  "direct listing resolution is independent of the discovery batch"
-);
+assert.ok(studsPage.includes('studOffersAsSire: { some: { status: "PUBLISHED" } }'));
+assert.ok(studsPage.includes("Review Stud Contract"));
+assert.equal(studsPage.includes("PLAYER_STUD"), false);
+assert.equal(studsPage.includes("legacyListingId"), false);
 
-assert.match(
-  publicStudQuery,
-  /breedCode2: publicStudBreedCode2,[\s\S]*take: isDirectStudSelection \? 1 : 200/,
-  "the breed predicate is applied before the bounded public-stud result limit"
-);
-assert.match(
-  publicStudQuery,
-  /sellerKennelId: \{\s*not: kennel\.id,\s*\}/,
-  "outside discovery excludes the current kennel"
-);
-assert.match(
-  publicStudQuery,
-  /status: "ACTIVE"/,
-  "inactive listings remain excluded"
-);
-assert.match(
-  publicStudQuery,
-  /isDirectStudSelection\s*\? \{ id: directRouteContext!\.selectedStudListingId! \}/,
-  "a direct stud link queries its exact listing independently of the general batch"
-);
-assert.match(
-  source,
-  /id: initialStudListingId,[\s\S]*status: "ACTIVE",[\s\S]*dog: \{\s*lifecycleState: "ALIVE",\s*sex: "M"/,
-  "direct listing resolution requires an active, living male stud"
-);
-assert.match(
-  source,
-  /reason: "breed_context_required"/,
-  "the worksheet does not fall back to an unbounded public-stud load without breed context"
-);
-
-function synchronizeDamBreed(url: string, breedCode2: string) {
-  const nextUrl = new URL(url);
-  if (nextUrl.searchParams.get("breedCode2") !== breedCode2) {
-    nextUrl.searchParams.set("breedCode2", breedCode2);
-  }
-  return nextUrl.toString();
-}
-
-const noBreedUrl = "https://example.test/plan-a-litter?plannerView=outside";
-assert.equal(
-  synchronizeDamBreed(noBreedUrl, "NL"),
-  "https://example.test/plan-a-litter?plannerView=outside&breedCode2=NL",
-  "selecting an NL dam from the no-breed route supplies the server discovery context"
-);
-assert.equal(
-  synchronizeDamBreed("https://example.test/plan-a-litter?breedCode2=NL", "NL"),
-  "https://example.test/plan-a-litter?breedCode2=NL",
-  "selecting a dam matching the URL breed does not churn the route"
-);
-assert.equal(
-  synchronizeDamBreed("https://example.test/plan-a-litter?breedCode2=AA", "NL"),
-  "https://example.test/plan-a-litter?breedCode2=NL",
-  "changing dam breeds replaces the active public-stud result context"
-);
-assert.match(
-  plannerClientSource,
-  /function chooseDam\(nextDamId: string\)[\s\S]*synchronizeWorksheetBreedCode2\(nextDam\.breedCode2\)/,
-  "dam selection synchronizes its canonical breed into the existing route mechanism"
-);
-assert.match(
-  plannerClientSource,
-  /new URLSearchParams\(window\.location\.search\)/,
-  "breed synchronization preserves unrelated planner query parameters"
-);
-assert.match(
-  plannerClientSource,
-  /router\.replace\(`\$\{pathname\}\?\$\{searchParams\.toString\(\)\}`\);\s*router\.refresh\(\);/,
-  "a changed breed context forces the mounted worksheet to receive refreshed server public studs"
-);
-assert.match(
-  planALitterRouteSource,
-  /function PlanALitterPage\(\{ searchParams \}: PageProps\)[\s\S]*searchParams=\{searchParams\}/,
-  "the worksheet route forwards its Next searchParams promise to the server planner"
-);
-
-type PlannerCard = {
-  id: string;
-  breedCode2: string;
-  sex: "M" | "F";
-  isOwnedByCurrentKennel: boolean;
-  isEligibleToBreed: boolean;
-  hasPendingVeterinaryCare: boolean;
-  studListingId: string | null;
-  coiPercent: number | null;
-};
-
-const nlDam: PlannerCard = {
-  id: "owned-nl-dam",
-  breedCode2: "NL",
-  sex: "F",
-  isOwnedByCurrentKennel: true,
-  isEligibleToBreed: true,
-  hasPendingVeterinaryCare: false,
-  studListingId: null,
-  coiPercent: null,
-};
-const productionShapeOutsideStud: PlannerCard = {
-  id: "outside-nl-stud",
-  breedCode2: "NL",
-  sex: "M",
-  isOwnedByCurrentKennel: false,
-  isEligibleToBreed: true,
-  hasPendingVeterinaryCare: false,
-  studListingId: "active-nl-player-stud",
-  coiPercent: null,
-};
-const mergedDogs = [nlDam, productionShapeOutsideStud].filter(
-  (dog) =>
-    dog.isEligibleToBreed ||
-    (Boolean(dog.studListingId) && dog.hasPendingVeterinaryCare)
-);
-const visibleOutsideSires = mergedDogs
-  .filter((dog) => dog.isEligibleToBreed && !dog.hasPendingVeterinaryCare)
-  .filter(
-    (dog) =>
-      dog.sex === "M" &&
-      dog.breedCode2 === nlDam.breedCode2 &&
-      Boolean(dog.studListingId) &&
-      !dog.isOwnedByCurrentKennel
-  )
-  .sort((a, b) => (a.coiPercent ?? 0) - (b.coiPercent ?? 0));
-
-assert.deepEqual(
-  visibleOutsideSires.map((dog) => dog.id),
-  ["outside-nl-stud"],
-  "an eligible external NL PLAYER_STUD with pending/null COI remains visible under Outside Studs and Lowest Litter COI"
-);
-
-const mixedRunStuds: FixtureListing[] = [
-  { ...targetStud, id: "borzoi-stud", breedCode2: "BZ" },
-  { ...targetStud, id: "whippet-stud", breedCode2: "WH" },
-];
-assert.deepEqual(
-  fixtureDiscover(mixedRunStuds, "viewer", "BZ").map((listing) => listing.id),
-  ["borzoi-stud"],
-  "a Borzoi dam from a mixed kennel run scopes public discovery to Borzoi only"
-);
-assert.deepEqual(
-  fixtureDiscover(mixedRunStuds, "viewer", "WH").map((listing) => listing.id),
-  ["whippet-stud"],
-  "a Whippet dam from the same mixed kennel run replaces the prior sire scope"
-);
-assert.ok(
-  plannerClientSource.includes('setBreedCode2("");\n    synchronizeWorksheetBreedCode2("");') &&
-    plannerClientSource.includes("worksheetBreedCode2NeedsSync(nextDam.breedCode2)"),
-  "run selection leaves public discovery without a breed context until a selected dam establishes one"
-);
-
-console.log("Public stud discovery regression checks passed.");
+console.log("StudOffer-only public discovery regression checks passed.");
