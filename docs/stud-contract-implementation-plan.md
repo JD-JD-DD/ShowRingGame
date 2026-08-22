@@ -1281,3 +1281,511 @@ CH_OR_HIGHER accepts CH/GCH/GCHS/GCHP/etc.
 GCH_OR_HIGHER rejects CH but accepts all recognized GCH tiers.
 V2 pending request remains V2 after V3 publishes.
 accepted V2 contract remains V2 after V3/V4 publishes.
+
+# STUD CONTRACT IMPLEMENTATION PLAN — WHELP-TIME RULE REVISION
+
+This section supersedes conflicting Stud Contract implementation-plan instructions written before the whelp-time contract rule revision.
+
+The existing implementation through STUD-CONTRACT-27 was originally built around:
+
+- Day-8 neonatal qualification;
+- surviving-puppy litter counts;
+- selection opening after neonatal Week 1;
+- rolling 24-real-hour selection windows.
+
+Those assumptions are now superseded.
+
+The implementation must be corrected beginning with the Stage 20 lifecycle before STUD-CONTRACT-28 is implemented.
+
+---
+
+## Revised authoritative timing and qualification model
+
+### Whelping is the contract litter-qualification event
+
+When the canonical litter is created:
+
+persist the number of puppies born alive.
+
+This live-born count becomes the immutable contractual litter-size fact.
+
+Use that same fact for:
+
+- Puppy Back minimum qualifying litter;
+- Small-Litter Return Service threshold.
+
+Do not wait until Day 8.
+
+Do not recompute contractual litter size after neonatal deaths.
+
+Do not use later surviving puppy count for either contract threshold.
+
+Neonatal mortality remains unchanged as biological simulation.
+
+### Puppy selection opens from litter creation
+
+Puppy Back selection no longer waits for the neonatal mortality window.
+
+If Puppy Back applies and the immutable minimum live-born litter size was met:
+
+create/open the selection workflow from the litter-creation lifecycle.
+
+### Fixed age-anchored ordinary deadlines
+
+First Pick:
+
+- stud turn available after litter creation;
+- deadline = litter birth timestamp + 24 real hours.
+
+Second Pick:
+
+Dam protected first pick:
+
+- available after litter creation;
+- deadline = litter birth timestamp + 24 real hours.
+
+Stud second pick:
+
+- becomes actionable when dam selects or the dam right is forfeited;
+- deadline is ALWAYS litter birth timestamp + 48 real hours.
+
+Do not calculate:
+
+`stud turn start + 24 hours`
+
+for normal Second Pick.
+
+If the dam chooses early:
+
+- stud may act immediately;
+- deadline remains birth + 48 hours.
+
+If dam selection expires:
+
+- stud turn opens;
+- deadline remains birth + 48 hours.
+
+These deadlines are predictable from puppy age.
+
+### Absolute selection/reselection boundary
+
+Day 56 / beginning of Week 8 remains the absolute outer contract puppy-selection boundary.
+
+Normal picks use their 24h/48h age-anchored deadlines.
+
+The broader Day-56 window is principally relevant to selected-puppy death/reselection.
+
+A death-driven stud reselection may receive up to 24 real hours but cannot extend beyond Day 56.
+
+Use the earlier of:
+
+- reselection opened + 24 real hours;
+- canonical Day-56 cutoff.
+
+---
+
+## Revised Stage 20
+
+STUD-CONTRACT-20 must now make litter creation the authoritative contract qualification event.
+
+Required authoritative facts:
+
+- linked StudContract ↔ Litter;
+- litter creation/birth timing;
+- immutable live-born puppy count;
+- Puppy Back minimum result;
+- Small-Litter Return Service result.
+
+Existing Day-8 qualification fields/semantics must be audited.
+
+Do not leave an active second definition of contract qualification.
+
+If existing field names are no longer semantically accurate, use the smallest safe schema/data migration needed to establish one clear source of truth.
+
+Do not repurpose historically ambiguous fields silently.
+
+No-litter remains a separate breeding terminal outcome.
+
+---
+
+## Revised Stage 21
+
+Outcome classification remains derived and multi-dimensional.
+
+Change its authority so:
+
+- no-litter comes from canonical terminal no-litter BreedingAttempt states;
+- qualified litter uses frozen whelp-time live-born facts;
+- Puppy Back minimum uses live-born litter count;
+- Small-Litter Return Service uses live-born litter count.
+
+Puppy Back failure continues NOT to generate Return Service.
+
+`CANCELLED` remains excluded from canonical no-litter states until production semantics explicitly define otherwise.
+
+---
+
+## Revised Stage 22
+
+Existing selection-obligation persistence remains appropriate unless audit proves otherwise.
+
+Preserve:
+
+- WAITING
+- DAM_FIRST_PICK
+- STUD_PICK
+- SELECTED
+- FORFEITED
+- UNFULFILLABLE
+- COMPLETED
+- currentActor
+- turnStartedAt
+- turnDeadlineAt
+- damFirstPickDogId
+- selectedDogId
+- forfeiture timestamps
+- completedAt
+
+Do not redesign merely because the opening milestone changed.
+
+---
+
+## Revised Stage 23
+
+Supersede:
+
+`Open selection after neonatal window`
+
+with:
+
+`Open selection after litter creation / whelp-time qualification`
+
+First Pick:
+
+- state → STUD_PICK;
+- actor → STUD_OWNER;
+- deadline = litter birth + 24 real hours.
+
+Second Pick:
+
+- state → DAM_FIRST_PICK;
+- actor → DAM_OWNER;
+- deadline = litter birth + 24 real hours.
+
+The selection workflow should open event-driven from litter creation where practical, with centralized lifecycle reconciliation as an idempotent safety net.
+
+Do not wait for Day 8.
+
+---
+
+## Revised Stage 24
+
+Existing candidate and selection rules remain authoritative:
+
+First Pick:
+
+- EITHER = all qualifying living puppies;
+- MALE = qualifying males;
+- FEMALE = qualifying females.
+
+Second Pick dam turn:
+
+- dam may select any current eligible puppy;
+- stud sex restriction does not apply.
+
+After dam selects:
+
+- record damFirstPickDogId;
+- immediately activate stud's turn;
+- preserve the fixed stud deadline = birth + 48 real hours.
+
+Do NOT replace that deadline with `selection time + 24 hours`.
+
+If the dam selects immediately after birth, the stud can act immediately but retains the fixed birth+48h deadline.
+
+---
+
+## Revised Stage 25
+
+Protection rules remain derived from outstanding selection state.
+
+Timing changes do not alter core protection semantics.
+
+Protection now begins earlier because Puppy Back selection begins at litter creation.
+
+Natural neonatal mortality remains unblocked.
+
+A selected puppy may die during the neonatal period.
+
+---
+
+## Revised Stage 26
+
+Deadline processor must use persisted fixed age-based deadlines.
+
+Dam timeout:
+
+at birth + 24 real hours:
+
+- dam protected first-pick right forfeited;
+- damFirstPickDogId remains null;
+- record forfeiture;
+- if qualifying stud candidate exists, activate STUD_PICK;
+- stud deadline remains the precomputed birth + 48 real-hour deadline;
+- do NOT create a fresh 24-hour deadline.
+
+Stud timeout:
+
+at the persisted birth + 24h First Pick deadline
+or birth + 48h Second Pick deadline:
+
+- Puppy Back selection right forfeited;
+- no puppy selected;
+- no cash substitute;
+- no penalty;
+- no Return Service solely from timeout.
+
+The lifecycle processor advances only rows whose exact persisted deadline is due.
+
+---
+
+## Revised Stage 27
+
+Selected-puppy death/reselection remains event-driven from canonical mortality.
+
+Changes:
+
+- selected puppy may now die during neonatal Week 1 because selection can occur immediately after whelping;
+- neonatal death is not blocked;
+- neonatal death does not alter the frozen contractual live-born count;
+- neonatal death does not create or revive Return Service.
+
+If selected puppy dies before Day 56 and another qualifying replacement exists:
+
+- reopen stud selection;
+- preserve immutable pick/sex terms;
+- preserve prior Second Pick dam selection/forfeiture;
+- player action required;
+- deadline = min(reselection open + 24 real hours, Day-56 cutoff).
+
+If no candidate exists or Day 56 has been reached:
+
+- Puppy Back → UNFULFILLABLE;
+- no cash substitute;
+- no Return Service caused by the death.
+
+---
+
+# Revised STUD-CONTRACT-28 — Return Service Lifecycle
+
+The Return Service decision gate is now resolved.
+
+Return Service is one remaining entitlement under the original accepted Stud Contract.
+
+It is NOT a new Stud Contract.
+
+Implement:
+
+### Trigger
+
+At most one Return Service per original contract.
+
+Trigger only from:
+
+- canonical no-litter outcome when No-Litter Return Service was offered;
+- whelp-time live-born count satisfying configured Small-Litter Return Service threshold.
+
+Never trigger from Puppy Back failure.
+
+### Duration
+
+- 60 real days;
+- fixed expiration;
+- temporary unavailability does not pause/extend it.
+
+### Identity
+
+Requires:
+
+- same sire;
+- same dam;
+- same original sire-owning kennel;
+- same original dam-owning kennel.
+
+Ownership transfer of either dog immediately extinguishes outstanding Return Service.
+
+Death or canonical permanent breeding ineligibility of either dog also extinguishes it.
+
+### Temporary unavailability
+
+Does not extinguish:
+
+- Stud Recovery;
+- Breeding Inactive;
+- temporary reproductive restriction;
+- temporary/current health deficiency.
+
+Attempt action should return actual current failure reason.
+
+### Exercise
+
+Player action:
+
+`Attempt Return Service`
+
+No:
+- sire reservation;
+- priority;
+- Stud Recovery bypass;
+- new Manual Approval;
+- current public Stud Offer requirement.
+
+Use original immutable agreement.
+
+Recheck current biological/safety eligibility.
+
+Time-sensitive requirements from the original agreement, especially brucellosis where required, must be current.
+
+### Money
+
+Do NOT charge stud-owner compensation again.
+
+Normal non-stud breeding/system expenses remain applicable.
+
+### Consumption
+
+Return Service is consumed only when the replacement BreedingAttempt is successfully created.
+
+Once created:
+
+- Return Service is permanently USED;
+- original contract cannot create another Return Service;
+- outcome of return breeding can never generate another return.
+
+### Event-driven extinction
+
+Ownership change, death, permanent ineligibility, and expiration should update the entitlement when the event occurs rather than waiting for the player to attempt use.
+
+Temporary eligibility remains derived/current-state presentation.
+
+### Contract history
+
+Add a durable My Stud Contracts player surface.
+
+Requirements:
+
+- both contracting kennels;
+- newest first;
+- 10 initially;
+- Load More +10;
+- historical resolved contracts retained;
+- View Contract detail;
+- separate contract lifecycle status from current Return Service availability.
+
+### Required acknowledgment
+
+The dam-owner acceptance flow must include the Player Obligations warning.
+
+Confirm remains disabled until explicitly acknowledged.
+
+Do not store this as a customizable contract term.
+
+The acknowledgment confirms the player saw the fixed game-rule disclosure.
+
+---
+
+# Revised worksheet copy requirements
+
+STUD-CONTRACT-06 Puppy Back must no longer say:
+
+`selection begins after the Week 1 neonatal window`
+
+It must explain:
+
+- litter-size qualification uses puppies born alive at whelping;
+- neonatal deaths do not alter contractual litter-size results;
+- First Pick deadline is puppy age 24 real hours;
+- Second Pick dam deadline is puppy age 24 real hours;
+- Second Pick stud deadline is puppy age 48 real hours;
+- the next player may act as soon as the prior selection is completed/forfeited;
+- the fixed age-based deadline does not move;
+- selected-puppy death may reopen the stud selection before Day 56;
+- puppy-selection failure does not independently create Return Service.
+
+STUD-CONTRACT-07 Return Service must explain:
+
+- no-litter and Small-Litter Return Service only;
+- Small-Litter threshold uses puppies born alive at whelping;
+- neonatal/later deaths do not create Return Service;
+- Puppy Back problems do not create Return Service;
+- maximum one Return Service;
+- 60-real-day expiration;
+- same sire/dam/original kennels;
+- ownership change/death/permanent ineligibility extinguishes it;
+- temporary unavailability does not pause expiration;
+- no reservation or priority;
+- no second stud compensation;
+- one successful Return Service BreedingAttempt consumes the entitlement permanently.
+
+STUD-CONTRACT-10 Review & Publish must include the fixed fine print.
+
+Dam-owner confirmation must include required Player Obligations acknowledgment.
+
+---
+
+# Revised cron architecture
+
+Continue using one idempotent:
+
+`/api/cron/process-stud-contract-lifecycle`
+
+It may reconcile:
+
+- manual approval expiry;
+- whelp-time contract qualification missed by event-driven processing;
+- selection opening missed by event-driven processing;
+- due fixed puppy-selection deadlines;
+- selected-puppy death/reselection recovery;
+- Return Service expiration/reconciliation.
+
+Event-driven transitions remain preferred when the triggering transaction already exists:
+
+- litter creation → qualify contract/open initial Puppy Back selection;
+- dam selection → activate stud Second Pick immediately;
+- puppy death → reconcile selected claim;
+- dog ownership transfer → extinguish Return Service;
+- dog death/permanent ineligibility → extinguish Return Service;
+- successful Return Service breeding → consume entitlement.
+
+The cron remains deadline/reconciliation safety infrastructure.
+
+---
+
+# Corrective implementation order
+
+Before implementing Return Service lifecycle, revisit the existing implementation in this order:
+
+20R — Whelp-time qualification authority
+21R — Outcome classifier authority
+23R — Selection opening at litter creation
+24R — Fixed Second Pick birth+48h deadline
+25R — Protection regression after earlier opening
+26R — Fixed age-based timeout processing
+27R — Neonatal selected-puppy death/reselection regression
+
+Stage 22 persistence should be audited but is not expected to require redesign.
+
+After 20R–27R pass:
+
+28 — Return Service lifecycle
+28A — Return Service event-driven extinction
+28B — Attempt Return Service action
+28C — My Stud Contracts/history UI and required fine print/acknowledgment
+
+Then resume:
+
+29 — Selected puppy transfer decision gate
+30–34 — legacy cutover and closeout.
+
+Do not implement Stage 28 against the obsolete Day-8 qualification model.
+
