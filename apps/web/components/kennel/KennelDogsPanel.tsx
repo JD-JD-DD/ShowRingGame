@@ -155,7 +155,8 @@ type SortKey =
   | "temperamentRingBehavior"
   | "conditioningHandling";
 
-type BulkAction = "" | "show-entry" | "rehome";
+type BulkAction = "" | "show-entry" | "rehome" | "move-dogs";
+type ConfigurableBulkWorkspace = "move-dogs";
 type GroomingStateFilter = "" | "groomed" | "ungroomed";
 type OptionalColumnId =
   | "dog"
@@ -363,6 +364,8 @@ export default function KennelDogsPanel() {
     useState<GroomingSummaryDto | null>(null);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<BulkAction>("");
+  const [activeBulkWorkspace, setActiveBulkWorkspace] =
+    useState<ConfigurableBulkWorkspace | null>(null);
   const [confirmingBulkAction, setConfirmingBulkAction] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [moveDogsLoading, setMoveDogsLoading] = useState(false);
@@ -531,6 +534,8 @@ export default function KennelDogsPanel() {
     if (selectedDogIds.length === 0) {
       setBulkAction("");
       setConfirmingBulkAction(false);
+      setActiveBulkWorkspace(null);
+      setSelectedMoveRunId("");
     }
   }, [selectedDogIds.length]);
 
@@ -736,8 +741,14 @@ export default function KennelDogsPanel() {
   function clearSelection() {
     setSelectedDogIds([]);
     setBulkAction("");
+    setActiveBulkWorkspace(null);
     setSelectedMoveRunId("");
     setConfirmingBulkAction(false);
+  }
+
+  function closeActiveBulkWorkspace() {
+    setActiveBulkWorkspace(null);
+    setSelectedMoveRunId("");
   }
 
   function hasColumn(columnId: OptionalColumnId) {
@@ -791,8 +802,17 @@ export default function KennelDogsPanel() {
   }
 
   function updateBulkAction(action: BulkAction) {
+    if (action === "move-dogs") {
+      setBulkAction("");
+      setConfirmingBulkAction(false);
+      setActiveBulkWorkspace("move-dogs");
+      setSelectedMoveRunId("");
+      return;
+    }
+
     setBulkAction(action);
     setConfirmingBulkAction(false);
+    closeActiveBulkWorkspace();
   }
 
   function applyBulkAction() {
@@ -1650,58 +1670,7 @@ export default function KennelDogsPanel() {
 
       {selectedDogIds.length > 0 ? (
         <div className="theme-card mb-4 rounded-2xl p-4">
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <div className="theme-heading text-sm font-semibold">
-                  Move selected dogs
-                </div>
-                <div className="theme-copy mt-1 text-xs">
-                  Selected: {selectedDogIds.length}
-                </div>
-              </div>
-
-              <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto_auto]">
-                <label className="grid gap-1.5">
-                  <span className="theme-label text-[0.68rem] uppercase tracking-wide">
-                    Move to
-                  </span>
-                  <select
-                    value={selectedMoveRunId}
-                    onChange={(event) => setSelectedMoveRunId(event.target.value)}
-                    className="theme-control rounded-xl px-3 py-2 text-sm outline-none"
-                  >
-                    <option value="">Choose Kennel Run...</option>
-                    {runs.map((run) => (
-                      <option key={run.id} value={run.id}>
-                        {run.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <button
-                  type="button"
-                  onClick={clearSelection}
-                  disabled={moveDogsLoading}
-                  className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 sm:self-end"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={moveSelectedDogs}
-                  disabled={!canMoveSelectedDogs}
-                  className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 sm:self-end"
-                >
-                  {moveDogsLoading ? "Moving..." : "Move Dogs"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="theme-heading text-sm font-semibold">
                 {selectedDogIds.length} selected
@@ -1720,6 +1689,7 @@ export default function KennelDogsPanel() {
                 className="theme-control rounded-xl px-3 py-2 text-sm outline-none"
               >
                 <option value="">Bulk action...</option>
+                <option value="move-dogs">Move Dogs</option>
                 <option value="show-entry">Show Entry</option>
                 <option value="rehome">Re-Home</option>
               </select>
@@ -1746,6 +1716,59 @@ export default function KennelDogsPanel() {
               </button>
             </div>
           </div>
+
+          {activeBulkWorkspace === "move-dogs" ? (
+            <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <div className="theme-heading text-sm font-semibold">
+                    Move selected dogs
+                  </div>
+                  <div className="theme-copy mt-1 text-xs">
+                    Selected: {selectedDogIds.length}
+                  </div>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto_auto]">
+                  <label className="grid gap-1.5">
+                    <span className="theme-label text-[0.68rem] uppercase tracking-wide">
+                      Move to
+                    </span>
+                    <select
+                      value={selectedMoveRunId}
+                      onChange={(event) => setSelectedMoveRunId(event.target.value)}
+                      className="theme-control rounded-xl px-3 py-2 text-sm outline-none"
+                    >
+                      <option value="">Choose Kennel Run...</option>
+                      {runs.map((run) => (
+                        <option key={run.id} value={run.id}>
+                          {run.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={closeActiveBulkWorkspace}
+                    disabled={moveDogsLoading}
+                    className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 sm:self-end"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={moveSelectedDogs}
+                    disabled={!canMoveSelectedDogs}
+                    className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 sm:self-end"
+                  >
+                    {moveDogsLoading ? "Moving..." : "Move Dogs"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {bulkAction === "rehome" && !canBulkRehome ? (
             <div className="theme-status-warning mt-3 rounded-xl px-4 py-3 text-sm">

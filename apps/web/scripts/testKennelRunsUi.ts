@@ -38,6 +38,10 @@ const kennelRunFiltering = source(
 const kennelDogSearch = source("apps/web/components/kennel/kennelDogSearch.ts");
 const mineDogsRoute = source("apps/web/app/api/dogs/mine/route.ts");
 const bulkCallNameEditor = source("apps/web/components/kennel/BulkCallNameEditor.tsx");
+const closeActiveBulkWorkspaceSection = kennelPanel.slice(
+  kennelPanel.indexOf("function closeActiveBulkWorkspace()"),
+  kennelPanel.indexOf("\n  function hasColumn")
+);
 
 assertIncludes(
   kennelPanel,
@@ -293,6 +297,51 @@ assertIncludes(
   kennelPanel,
   "Move selected dogs",
   "kennel roster renders the move-selected panel"
+);
+assertIncludes(
+  kennelPanel,
+  'type ConfigurableBulkWorkspace = "move-dogs";',
+  "kennel roster has one explicit configurable bulk workspace state"
+);
+assertIncludes(
+  kennelPanel,
+  'const [activeBulkWorkspace, setActiveBulkWorkspace] =',
+  "kennel roster tracks the active configurable workspace locally"
+);
+assertIncludes(
+  kennelPanel,
+  '<option value="move-dogs">Move Dogs</option>',
+  "Move Dogs opens from the normal bulk action controls"
+);
+assertIncludes(
+  kennelPanel,
+  'activeBulkWorkspace === "move-dogs"',
+  "only the active Move Dogs workspace renders"
+);
+assertIncludes(
+  kennelPanel,
+  "function closeActiveBulkWorkspace()",
+  "Move Dogs has a narrowly scoped workspace close helper"
+);
+assertIncludes(
+  kennelPanel,
+  "onClick={closeActiveBulkWorkspace}",
+  "Move Dogs Cancel closes the workspace without clearing dog selection"
+);
+assertExcludes(
+  closeActiveBulkWorkspaceSection,
+  "setSelectedDogIds",
+  "Move Dogs Cancel preserves the current dog selection"
+);
+assertIncludes(
+  kennelPanel,
+  "setSelectedMoveRunId(\"\");",
+  "closing the Move Dogs workspace resets its target run"
+);
+assertIncludes(
+  kennelPanel,
+  "setActiveBulkWorkspace(null);",
+  "clearing selection and empty-selection state close stale workspaces"
 );
 assertIncludes(
   kennelPanel,
