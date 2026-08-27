@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { ConversationReplyForm } from "@/components/messages/ConversationReplyForm";
+import { ConversationBlockControl } from "@/components/messages/ConversationBlockControl";
 import { formatFriendlyTimestamp } from "@/lib/friendlyTimestamp";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -9,6 +10,7 @@ import {
   KennelMessagingError,
   type KennelConversationHistoryDto,
   loadKennelConversationHistory,
+  getKennelMessagingBlockState,
   markKennelConversationRead,
   MAX_KENNEL_MESSAGE_LENGTH,
 } from "@/server/services/kennelMessaging.service";
@@ -44,6 +46,10 @@ export default async function ConversationPage({
   const otherKennel = conversation.firstKennel.id === kennel.id
     ? conversation.secondKennel
     : conversation.firstKennel;
+  const blockState = await getKennelMessagingBlockState({
+    requestingKennelId: kennel.id,
+    otherKennelId: otherKennel.id,
+  });
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">
@@ -78,7 +84,20 @@ export default async function ConversationPage({
           })}
         </ol>
 
-        <ConversationReplyForm conversationId={conversation.id} maxLength={MAX_KENNEL_MESSAGE_LENGTH} />
+        {blockState.isBlocked ? (
+          <div className="theme-card mt-6 rounded-xl p-5">
+            <p className="theme-copy text-sm">Messaging is currently unavailable for this conversation.</p>
+            {blockState.isRequesterBlocker ? (
+              <p className="theme-copy mt-2 text-sm">You have blocked this kennel.</p>
+            ) : null}
+          </div>
+        ) : (
+          <ConversationReplyForm conversationId={conversation.id} maxLength={MAX_KENNEL_MESSAGE_LENGTH} />
+        )}
+        <ConversationBlockControl
+          conversationId={conversation.id}
+          isRequesterBlocker={blockState.isRequesterBlocker}
+        />
       </section>
     </main>
   );

@@ -20,7 +20,8 @@ function main() {
   assert.ok(publicKennelPage.includes("currentKennel.id !== kennel.id"), "own kennel does not render a self-message action");
   assert.ok(publicKennelPage.includes("isMessageableKennel(kennel)"), "public action reuses canonical messageability logic");
   assert.ok(publicKennelPage.includes("/inbox/messages/start/${kennel.slug}"), "public action uses the canonical start route");
-  assert.ok(!publicKennelPage.includes("kennelBlock"), "public action does not introduce blocks");
+  assert.ok(publicKennelPage.includes("getKennelMessagingBlockState"), "public action checks canonical block state");
+  assert.ok(publicKennelPage.includes("!blockState?.isBlocked"), "public action is unavailable in either block direction");
 
   assert.ok(messagingService.includes("export function isMessageableKennel"), "messageability rule is reusable from the messaging service");
   assert.ok(messagingService.includes("export async function getMessageableKennelBySlug"), "target lookup centralizes eligibility filtering");
@@ -28,11 +29,14 @@ function main() {
   assert.ok(messagingService.includes('moderationStatus: "ACTIVE"'), "canonical target lookup requires active moderation state");
 
   assert.ok(startPage.includes("findKennelConversation"), "start route performs a read-only existing conversation lookup");
+  assert.ok(startPage.includes("getKennelMessagingBlockState"), "manual start routes check block state");
+  assert.ok(startPage.includes("if (blockState.isBlocked) notFound()"), "manual start routes cannot bypass a block");
   assert.ok(startPage.includes("/inbox/messages/${conversation.id}"), "existing canonical conversations are reused");
   assert.ok(startPage.includes("/inbox/messages/new/${targetKennel.slug}"), "new conversations route to a fixed-target composer");
   assert.ok(newPage.includes("Message {targetKennel.name}"), "composer names the target kennel");
   assert.ok(newPage.includes("targetKennelSlug={targetKennel.slug}"), "composer fixes its known recipient");
   assert.ok(newPage.includes("MAX_KENNEL_MESSAGE_LENGTH"), "composer uses the canonical message maximum");
+  assert.ok(newPage.includes("getKennelMessagingBlockState"), "manual new composer routes check block state");
   assert.ok(!newPage.includes("recipient search"), "composer does not add recipient search");
 
   assert.ok(replyForm.includes("targetKennelSlug"), "shared form supports the narrow first-message target payload");
@@ -42,7 +46,7 @@ function main() {
   assert.ok(newRoute.includes("getMessageableKennelBySlug"), "first-send route revalidates recipient eligibility");
   assert.ok(newRoute.includes("sendKennelMessage"), "first-send route delegates creation/reuse to the canonical service");
   assert.ok(!newRoute.includes("senderKennelId: payload"), "client cannot supply a sender identity");
-  assert.ok(!newRoute.includes("kennelBlock"), "first-send route does not implement blocking");
+  assert.ok(newRoute.includes("sendKennelMessage"), "first-send route inherits canonical block enforcement");
   assert.ok(!newRoute.includes("kennelCommunicationReport"), "first-send route does not implement reporting");
 
   console.log("Kennel messaging entry-point checks passed.");

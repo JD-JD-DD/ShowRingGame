@@ -8,7 +8,10 @@ import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelPrestigeSummary } from "@/server/services/kennelPrestige.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
-import { isMessageableKennel } from "@/server/services/kennelMessaging.service";
+import {
+  getKennelMessagingBlockState,
+  isMessageableKennel,
+} from "@/server/services/kennelMessaging.service";
 import { getShowDistrictRegion } from "@showring/rules";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -102,11 +105,18 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
     ? getShowDistrictRegion(kennel.homeDistrict)
     : null;
   const prestige = await getKennelPrestigeSummary(kennel.id);
-  const canMessageKennel = Boolean(
+  const isPotentialMessagingPair = Boolean(
     currentKennel &&
     currentKennel.id !== kennel.id &&
     isMessageableKennel(kennel)
   );
+  const blockState = isPotentialMessagingPair && currentKennel
+    ? await getKennelMessagingBlockState({
+      requestingKennelId: currentKennel.id,
+      otherKennelId: kennel.id,
+    })
+    : null;
+  const canMessageKennel = isPotentialMessagingPair && !blockState?.isBlocked;
 
   const [dogs, activeListings] = await Promise.all([
     db.dog.findMany({

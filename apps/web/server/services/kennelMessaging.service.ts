@@ -7,6 +7,7 @@ export type KennelMessagingErrorCode =
   | "INVALID_MESSAGE"
   | "MESSAGE_TOO_LONG"
   | "KENNEL_NOT_MESSAGEABLE"
+  | "MESSAGING_UNAVAILABLE"
   | "CONVERSATION_NOT_FOUND"
   | "NOT_CONVERSATION_PARTICIPANT";
 
@@ -99,6 +100,14 @@ type MessagingClient = {
     }>;
     findFirst(args: unknown): Promise<{ id: string; createdAt: Date } | null>;
   };
+  kennelBlock: {
+    findMany(args: unknown): Promise<Array<{
+      blockerKennelId: string;
+      blockedKennelId: string;
+    }>>;
+    upsert(args: unknown): Promise<unknown>;
+    deleteMany(args: unknown): Promise<{ count: number }>;
+  };
 };
 
 type MessagingRootClient = MessagingClient & {
@@ -183,6 +192,44 @@ export function isMessageableKennel(kennel: Pick<
   );
 }
 
+export type KennelMessagingBlockState = {
+  isBlocked: boolean;
+  isRequesterBlocker: boolean;
+};
+
+export async function getKennelMessagingBlockState(args: {
+  requestingKennelId: string;
+  otherKennelId: string;
+  client?: MessagingClient;
+}): Promise<KennelMessagingBlockState> {
+  canonicalizeKennelPair(args.requestingKennelId, args.otherKennelId);
+  const client = args.client ?? (db as unknown as MessagingClient);
+  const blocks = await client.kennelBlock.findMany({
+    where: {
+      OR: [
+        {
+          blockerKennelId: args.requestingKennelId,
+          blockedKennelId: args.otherKennelId,
+        },
+        {
+          blockerKennelId: args.otherKennelId,
+          blockedKennelId: args.requestingKennelId,
+        },
+      ],
+    },
+    select: { blockerKennelId: true, blockedKennelId: true },
+  });
+
+  return {
+    isBlocked: blocks.length > 0,
+    isRequesterBlocker: blocks.some(
+      (block) =>
+        block.blockerKennelId === args.requestingKennelId &&
+        block.blockedKennelId === args.otherKennelId
+    ),
+  };
+}
+
 export async function getMessageableKennelBySlug(args: {
   slug: string;
   client?: MessagingClient;
@@ -250,6 +297,68 @@ async function requireMessageableKennels(args: {
   return [firstKennel, secondKennel];
 }
 
+export async function assertKennelsCanMessage(args: {
+  requestingKennelId: string;
+  otherKennelId: string;
+  client?: MessagingClient;
+}): Promise<void> {
+  const pair = canonicalizeKennelPair(args.requestingKennelId, args.otherKennelId);
+  const client = args.client ?? (db as unknown as MessagingClient);
+  await requireMessageableKennels({
+    client,
+    kennelIds: [pair.firstKennelId, pair.secondKennelId],
+  });
+  const blockState = await getKennelMessagingBlockState({
+    requestingKennelId: args.requestingKennelId,
+    otherKennelId: args.otherKennelId,
+    client,
+  });
+
+  if (blockState.isBlocked) {
+    throw new KennelMessagingError(
+      "MESSAGING_UNAVAILABLE",
+      "This kennel is not currently available for messaging."
+    );
+  }
+}
+
+export async function blockKennelMessaging(args: {
+  blockerKennelId: string;
+  blockedKennelId: string;
+  client?: MessagingClient;
+}): Promise<void> {
+  canonicalizeKennelPair(args.blockerKennelId, args.blockedKennelId);
+  const client = args.client ?? (db as unknown as MessagingClient);
+  await client.kennelBlock.upsert({
+    where: {
+      blockerKennelId_blockedKennelId: {
+        blockerKennelId: args.blockerKennelId,
+        blockedKennelId: args.blockedKennelId,
+      },
+    },
+    update: {},
+    create: {
+      blockerKennelId: args.blockerKennelId,
+      blockedKennelId: args.blockedKennelId,
+    },
+  });
+}
+
+export async function unblockKennelMessaging(args: {
+  blockerKennelId: string;
+  blockedKennelId: string;
+  client?: MessagingClient;
+}): Promise<void> {
+  canonicalizeKennelPair(args.blockerKennelId, args.blockedKennelId);
+  const client = args.client ?? (db as unknown as MessagingClient);
+  await client.kennelBlock.deleteMany({
+    where: {
+      blockerKennelId: args.blockerKennelId,
+      blockedKennelId: args.blockedKennelId,
+    },
+  });
+}
+
 async function ensureConversationParticipants(args: {
   client: MessagingClient;
   conversationId: string;
@@ -269,9 +378,10 @@ async function resolveConversationForMessaging(args: {
   pair: { firstKennelId: string; secondKennelId: string };
   allowCreate: boolean;
 }): Promise<ConversationRecord> {
-  await requireMessageableKennels({
+  await assertKennelsCanMessage({
+    requestingKennelId: args.pair.firstKennelId,
+    otherKennelId: args.pair.secondKennelId,
     client: args.client,
-    kennelIds: [args.pair.firstKennelId, args.pair.secondKennelId],
   });
 
   const existing = await args.client.kennelConversation.findUnique({

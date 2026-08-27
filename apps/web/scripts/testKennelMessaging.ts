@@ -6,6 +6,7 @@ import {
   KennelMessagingError,
   MAX_KENNEL_MESSAGE_LENGTH,
   canonicalizeKennelPair,
+  blockKennelMessaging,
   findKennelConversation,
   getOrCreateKennelConversation,
   getUnreadKennelConversationCount,
@@ -13,6 +14,7 @@ import {
   loadKennelConversationHistory,
   markKennelConversationRead,
   sendKennelMessage,
+  unblockKennelMessaging,
 } from "@/server/services/kennelMessaging.service";
 import { formatFriendlyTimestamp } from "@/lib/friendlyTimestamp";
 
@@ -47,6 +49,11 @@ type FakeMessage = {
   createdAt: Date;
 };
 
+type FakeBlock = {
+  blockerKennelId: string;
+  blockedKennelId: string;
+};
+
 function source(path: string): string {
   const cwd = process.cwd();
   const root = cwd.endsWith(`${join("apps", "web")}`) ? join(cwd, "..", "..") : cwd;
@@ -60,6 +67,7 @@ function createFakeClient(seed: { kennels: FakeKennel[]; raceOnFirstCreate?: boo
     raceConversations: [] as FakeConversation[],
     participants: [] as FakeParticipant[],
     messages: [] as FakeMessage[],
+    blocks: [] as FakeBlock[],
   };
   let nextId = 1;
   let racePending = seed.raceOnFirstCreate ?? false;
@@ -202,6 +210,27 @@ function createFakeClient(seed: { kennels: FakeKennel[]; raceOnFirstCreate?: boo
           .sort((left, right) =>
             right.createdAt.getTime() - left.createdAt.getTime() || right.id.localeCompare(left.id)
           )[0] ?? null;
+      },
+    },
+    kennelBlock: {
+      async findMany(args: { where: { OR: FakeBlock[] } }) {
+        return state.blocks.filter((block) => args.where.OR.some((where) =>
+          where.blockerKennelId === block.blockerKennelId && where.blockedKennelId === block.blockedKennelId
+        ));
+      },
+      async upsert(args: { where: { blockerKennelId_blockedKennelId: FakeBlock }; create: FakeBlock }) {
+        const pair = args.where.blockerKennelId_blockedKennelId;
+        if (!state.blocks.some((block) => block.blockerKennelId === pair.blockerKennelId && block.blockedKennelId === pair.blockedKennelId)) {
+          state.blocks.push(args.create);
+        }
+        return args.create;
+      },
+      async deleteMany(args: { where: FakeBlock }) {
+        const before = state.blocks.length;
+        state.blocks = state.blocks.filter((block) =>
+          block.blockerKennelId !== args.where.blockerKennelId || block.blockedKennelId !== args.where.blockedKennelId
+        );
+        return { count: before - state.blocks.length };
       },
     },
     async $transaction<T>(callback: (tx: never) => Promise<T>) {
@@ -347,9 +376,39 @@ async function main() {
   assert.equal(raceFake.state.raceConversations.length, 1, "unique-race recovery leaves one conversation");
   assert.equal(raceFake.state.participants.length, 2, "unique-race recovery ensures exactly two participants");
 
+  const blockedFake = createFakeClient({ kennels: [activeA, activeB] });
+  const blockedConversation = await sendKennelMessage({ senderKennelId: "kennel-a", recipientKennelId: "kennel-b", body: "History remains", client: blockedFake.client as never });
+  const participantsBeforeBlock = JSON.stringify(blockedFake.state.participants);
+  await blockKennelMessaging({ blockerKennelId: "kennel-a", blockedKennelId: "kennel-b", client: blockedFake.client as never });
+  await blockKennelMessaging({ blockerKennelId: "kennel-a", blockedKennelId: "kennel-b", client: blockedFake.client as never });
+  assert.equal(blockedFake.state.blocks.length, 1, "duplicate directional blocks are idempotent");
+  assert.equal(blockedFake.state.blocks[0]?.blockerKennelId, "kennel-a", "block retains its initiating kennel");
+  await expectMessagingError(() => blockKennelMessaging({ blockerKennelId: "kennel-a", blockedKennelId: "kennel-a", client: blockedFake.client as never }), "SELF_CONVERSATION");
+  await expectMessagingError(() => sendKennelMessage({ senderKennelId: "kennel-a", recipientKennelId: "kennel-b", body: "Blocked by sender", client: blockedFake.client as never }), "MESSAGING_UNAVAILABLE");
+  await expectMessagingError(() => sendKennelMessage({ senderKennelId: "kennel-b", recipientKennelId: "kennel-a", body: "Blocked by recipient", client: blockedFake.client as never }), "MESSAGING_UNAVAILABLE");
+  assert.equal(blockedFake.state.messages.length, 1, "blocked sends do not create messages");
+  assert.equal(blockedFake.state.conversations.length, 1, "blocked sends do not create conversations");
+  assert.equal(JSON.stringify(blockedFake.state.participants), participantsBeforeBlock, "blocked sends do not restore hidden state or advance read state");
+  assert.equal((await loadKennelConversationHistory({ requestingKennelId: "kennel-b", conversationId: blockedConversation.id, client: blockedFake.client as never })).messages.length, 1, "both participants retain message history after blocking");
+  await unblockKennelMessaging({ blockerKennelId: "kennel-a", blockedKennelId: "kennel-b", client: blockedFake.client as never });
+  assert.equal(blockedFake.state.blocks.length, 0, "unblock removes only the requester's directional block");
+  await sendKennelMessage({ senderKennelId: "kennel-b", recipientKennelId: "kennel-a", body: "Available again", client: blockedFake.client as never });
+  await blockKennelMessaging({ blockerKennelId: "kennel-b", blockedKennelId: "kennel-a", client: blockedFake.client as never });
+  await unblockKennelMessaging({ blockerKennelId: "kennel-a", blockedKennelId: "kennel-b", client: blockedFake.client as never });
+  await expectMessagingError(() => sendKennelMessage({ senderKennelId: "kennel-a", recipientKennelId: "kennel-b", body: "Other block remains", client: blockedFake.client as never }), "MESSAGING_UNAVAILABLE");
+
+  const blockedNewConversationFake = createFakeClient({ kennels: [activeA, activeB] });
+  await blockKennelMessaging({ blockerKennelId: "kennel-b", blockedKennelId: "kennel-a", client: blockedNewConversationFake.client as never });
+  await expectMessagingError(() => sendKennelMessage({ senderKennelId: "kennel-a", recipientKennelId: "kennel-b", body: "No first message", client: blockedNewConversationFake.client as never }), "MESSAGING_UNAVAILABLE");
+  assert.equal(blockedNewConversationFake.state.conversations.length, 0, "a block prevents first-message conversation creation");
+  await blockKennelMessaging({ blockerKennelId: "kennel-a", blockedKennelId: "kennel-b", client: blockedNewConversationFake.client as never });
+  assert.equal(blockedNewConversationFake.state.blocks.length, 2, "opposite directional blocks remain distinct");
+
   const serviceSource = source("apps/web/server/services/kennelMessaging.service.ts");
   assert.ok(serviceSource.includes('moderationStatus: "ACTIVE"'), "service applies active moderation eligibility");
-  assert.ok(!serviceSource.includes("kennelBlock"), "service does not implement blocking");
+  assert.ok(serviceSource.includes("getKennelMessagingBlockState"), "service centralizes mutual messaging block state");
+  assert.ok(serviceSource.includes("assertKennelsCanMessage"), "message mutations use one canonical eligibility and block check");
+  assert.ok(serviceSource.includes("This kennel is not currently available for messaging."), "block enforcement has neutral player-facing wording");
   assert.ok(!serviceSource.includes("kennelCommunicationReport"), "service does not implement reporting");
   assert.ok(!serviceSource.includes("createdAtEpoch"), "service does not introduce game-epoch message timestamps");
   assert.ok(serviceSource.includes("lastReadMessageId"), "persisted participant read position is the unread source of truth");

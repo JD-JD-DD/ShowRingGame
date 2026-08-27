@@ -6,6 +6,7 @@ import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import {
   getMessageableKennelBySlug,
+  getKennelMessagingBlockState,
   MAX_KENNEL_MESSAGE_LENGTH,
 } from "@/server/services/kennelMessaging.service";
 
@@ -23,6 +24,11 @@ export default async function NewKennelMessagePage({
   const { kennelSlug } = await params;
   const targetKennel = await getMessageableKennelBySlug({ slug: kennelSlug });
   if (!targetKennel || targetKennel.id === currentKennel.id) notFound();
+  const blockState = await getKennelMessagingBlockState({
+    requestingKennelId: currentKennel.id,
+    otherKennelId: targetKennel.id,
+  });
+  if (blockState.isBlocked) notFound();
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-8">

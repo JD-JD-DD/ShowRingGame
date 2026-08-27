@@ -4,6 +4,7 @@ import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import {
   findKennelConversation,
+  getKennelMessagingBlockState,
   getMessageableKennelBySlug,
   KennelMessagingError,
   type KennelConversationDto,
@@ -23,6 +24,11 @@ export default async function StartKennelMessagePage({
   const { kennelSlug } = await params;
   const targetKennel = await getMessageableKennelBySlug({ slug: kennelSlug });
   if (!targetKennel || targetKennel.id === currentKennel.id) notFound();
+  const blockState = await getKennelMessagingBlockState({
+    requestingKennelId: currentKennel.id,
+    otherKennelId: targetKennel.id,
+  });
+  if (blockState.isBlocked) notFound();
 
   let conversation: KennelConversationDto | null;
   try {
