@@ -1,0 +1,81 @@
+import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import {
+  buildMyResultsHierarchy,
+  type MyResultsQueryEntry,
+} from "../app/my-results/myResults.loader";
+
+const root = process.cwd().endsWith(join("apps", "web")) ? process.cwd() : join(process.cwd(), "apps", "web");
+
+function entry(overrides: Partial<MyResultsQueryEntry> = {}): MyResultsQueryEntry {
+  const base: MyResultsQueryEntry = {
+    id: "entry-labrador-day-2",
+    entryStatus: "JUDGED",
+    absenceReason: null,
+    dog: { id: "dog-labrador", callName: "Lab", registeredName: "Alpha Labrador", regNumber: "LAB-1", visibleTitlePrefix: null, visibleTitleSuffix: null },
+    breed: { code2: "LAB", name: "Labrador Retriever", groupName: "Sporting" },
+    judgingBlock: { judge: { name: "Block Judge", judgeCode: "BLOCK" } },
+    showDay: {
+      id: "day-2",
+      dayIndex: 2,
+      scheduledEpoch: 200,
+      judge: { name: "BIS Judge", judgeCode: "BIS" },
+      cluster: { id: "cluster-1", name: "Test Cluster", district: 1 },
+      groupJudgeAssignments: [{ groupCode: "SPORTING", judge: { name: "Scheduled Judge", judgeCode: "SCHEDULED" } }],
+    },
+    showResult: {
+      pointsAwarded: 4,
+      isMajor: true,
+      judge: { name: "Result Judge", judgeCode: "RESULT" },
+      showAwards: [{ awardCode: "WD", grandChampionCredit: { pointsAwarded: 3, isMajor: true } }],
+    },
+  };
+
+  return { ...base, ...overrides };
+}
+
+const toy = entry({
+  id: "entry-toy-day-2",
+  dog: { id: "dog-toy", callName: "Toy", registeredName: "Beta Toy", regNumber: "TOY-1", visibleTitlePrefix: null, visibleTitleSuffix: null },
+  breed: { code2: "POOD", name: "Toy Poodle", groupName: "Toy" },
+  showDay: {
+    ...entry().showDay,
+    groupJudgeAssignments: [{ groupCode: "TOY", judge: { name: "Toy Scheduled", judgeCode: "TOY-SCHEDULED" } }],
+  },
+});
+const dayOneLabrador = entry({
+  id: "entry-labrador-day-1",
+  showDay: { ...entry().showDay, id: "day-1", dayIndex: 1, scheduledEpoch: 100 },
+  showResult: null,
+  judgingBlock: null,
+  entryStatus: "ABSENT",
+  absenceReason: "LIFECYCLE_UNAVAILABLE",
+});
+const blockFallback = entry({ id: "entry-block", showResult: null });
+const scheduledFallback = entry({ id: "entry-scheduled", showResult: null, judgingBlock: null });
+
+const hierarchy = buildMyResultsHierarchy([toy, dayOneLabrador, entry(), blockFallback, scheduledFallback]);
+assert.equal(hierarchy.length, 1);
+assert.deepEqual(hierarchy[0].showDays.map((day) => day.id), ["day-1", "day-2"]);
+assert.deepEqual(hierarchy[0].showDays[1].groups.map((group) => group.code), ["SPORTING", "TOY"]);
+assert.equal(hierarchy[0].showDays[1].groups[0].breeds[0].name, "Labrador Retriever");
+assert.equal(hierarchy[0].showDays[1].groups[1].breeds[0].name, "Toy Poodle");
+assert.equal(hierarchy[0].showDays[1].bisJudge?.judgeCode, "BIS");
+const dayTwoLabradors = hierarchy[0].showDays[1].groups[0].breeds[0].dogResults;
+const resultJudgeRow = dayTwoLabradors.find((row) => row.showEntryId === "entry-labrador-day-2");
+const blockJudgeRow = dayTwoLabradors.find((row) => row.showEntryId === "entry-block");
+const scheduledJudgeRow = dayTwoLabradors.find((row) => row.showEntryId === "entry-scheduled");
+assert.equal(resultJudgeRow?.result?.championshipPointsAwarded, 4);
+assert.deepEqual(resultJudgeRow?.result?.grandChampionCredits, [{ pointsAwarded: 3, isMajor: true }]);
+assert.equal(resultJudgeRow?.breedJudge?.source, "SHOW_RESULT");
+assert.equal(blockJudgeRow?.breedJudge?.source, "SHOW_JUDGING_BLOCK");
+assert.equal(scheduledJudgeRow?.breedJudge?.source, "SCHEDULED_GROUP_ASSIGNMENT");
+
+const loader = readFileSync(join(root, "app", "my-results", "myResults.loader.ts"), "utf8");
+assert.ok(loader.includes("kennelId: args.kennelId"), "query remains historically scoped by ShowEntry.kennelId");
+assert.equal(loader.includes("take:"), false, "query has no arbitrary row limit");
+assert.equal(loader.includes("ownerKennelId"), false, "query does not use current dog ownership");
+
+console.log("My Results hierarchy checks passed.");

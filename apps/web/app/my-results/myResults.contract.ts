@@ -33,7 +33,7 @@ export type MyResultsShowDay = {
 };
 
 export type MyResultsGroup = {
-  code: CanonicalShowGroupCode;
+  code: MyResultsGroupCode;
   name: string;
   /**
    * The historical group/breed judging identity for this group. Actual
@@ -43,6 +43,9 @@ export type MyResultsGroup = {
   judge: MyResultsJudgeAttribution | null;
   breeds: NonEmptyReadonlyArray<MyResultsBreed>;
 };
+
+/** "UNMAPPED" preserves a result whose legacy breed group cannot be resolved. */
+export type MyResultsGroupCode = CanonicalShowGroupCode | "UNMAPPED";
 
 export type MyResultsBreed = {
   code2: string;
