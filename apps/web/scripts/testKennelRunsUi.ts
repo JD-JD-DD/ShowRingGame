@@ -345,6 +345,123 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
+  'type ConfigurableBulkWorkspace = "move-dogs" | "health-tests";',
+  "Health Tests is part of the single active workspace state"
+);
+assertIncludes(
+  kennelPanel,
+  '<option value="health-tests">Health Tests...</option>',
+  "Health Tests appears in the existing bulk action selector"
+);
+assertIncludes(
+  kennelPanel,
+  'setActiveBulkWorkspace("health-tests");',
+  "Health Tests opens as the active inline workspace"
+);
+assertIncludes(
+  kennelPanel,
+  'activeBulkWorkspace === "health-tests"',
+  "Health Tests renders only as the active workspace"
+);
+assertIncludes(
+  kennelPanel,
+  "resetHealthTestingWorkspaceState();",
+  "workspace switches and cancellation reset local health preview state"
+);
+assertIncludes(
+  kennelPanel,
+  'useState(true)',
+  "Health Tests defaults to All applicable"
+);
+for (const code of [
+  "HIP_DYSPLASIA",
+  "ELBOW_DYSPLASIA",
+  "CARDIAC",
+  "THYROID",
+  "CAER_EYE",
+]) {
+  assertIncludes(
+    kennelPanel,
+    `code: "${code}"`,
+    `Health Tests maps the ${code} checkbox to its canonical code`
+  );
+}
+assertIncludes(
+  kennelPanel,
+  'fetch("/api/kennel/dogs/health-tests/preview"',
+  "Health Tests posts only to the read-only preview route"
+);
+assertIncludes(
+  kennelPanel,
+  "dogIds: selectedDogIds",
+  "health previews use the current selected dog IDs"
+);
+assertIncludes(
+  kennelPanel,
+  '{ mode: "all-applicable" }',
+  "All applicable uses the preview route's canonical request shape"
+);
+assertIncludes(
+  kennelPanel,
+  '{ mode: "explicit", testTypeCodes: selectedHealthTestCodes }',
+  "explicit Health Tests uses the preview route's canonical request shape"
+);
+assertIncludes(
+  kennelPanel,
+  "selectedHealthTestCodes.length === 0",
+  "zero explicit test selections do not send invalid preview requests"
+);
+assertIncludes(
+  kennelPanel,
+  "healthTestPreviewRequestSequence",
+  "health previews use request sequencing to reject stale responses"
+);
+assertIncludes(
+  kennelPanel,
+  "Calculating health-test estimate...",
+  "Health Tests has an inline loading state"
+);
+assertIncludes(
+  kennelPanel,
+  "healthTestPreviewError",
+  "Health Tests keeps preview errors local to its workspace"
+);
+for (const field of [
+  "eligibleDogCount",
+  "runnableTestCount",
+  "estimatedTotalCost",
+]) {
+  assertIncludes(
+    kennelPanel,
+    `healthTestPreview.${field}`,
+    `Health Tests summary uses ${field}`
+  );
+}
+assertIncludes(
+  kennelPanel,
+  'aria-expanded={healthTestDetailsExpanded}',
+  "Health Test details disclosure has semantic expanded state"
+);
+assertIncludes(
+  kennelPanel,
+  'aria-controls="bulk-health-test-preview-details"',
+  "Health Test details disclosure controls its associated region"
+);
+for (const label of [
+  "Already completed",
+  "Too young",
+  "Not applicable to breed",
+  "Not currently eligible",
+  "No longer available",
+]) {
+  assertIncludes(
+    kennelPanel,
+    `label: "${label}"`,
+    `Health Test details maps skip reasons to ${label}`
+  );
+}
+assertIncludes(
+  kennelPanel,
   "Choose Kennel Run...",
   "move panel requires a real Kennel Run target"
 );

@@ -155,8 +155,29 @@ type SortKey =
   | "temperamentRingBehavior"
   | "conditioningHandling";
 
-type BulkAction = "" | "show-entry" | "rehome" | "move-dogs";
-type ConfigurableBulkWorkspace = "move-dogs";
+type BulkAction = "" | "show-entry" | "rehome" | "move-dogs" | "health-tests";
+type ConfigurableBulkWorkspace = "move-dogs" | "health-tests";
+type HealthTestCode =
+  | "HIP_DYSPLASIA"
+  | "ELBOW_DYSPLASIA"
+  | "CARDIAC"
+  | "THYROID"
+  | "CAER_EYE";
+type HealthTestPreview = {
+  selectedDogCount: number;
+  eligibleDogCount: number;
+  runnableTestCount: number;
+  estimatedTotalCost: number;
+  byTest: Record<HealthTestCode, { runnableCount: number; estimatedCost: number }>;
+  skippedByReason: Record<
+    | "ALREADY_COMPLETED"
+    | "TOO_YOUNG"
+    | "NOT_APPLICABLE_TO_BREED"
+    | "NOT_ALIVE"
+    | "NOT_OWNED_OR_NOT_FOUND",
+    number
+  >;
+};
 type GroomingStateFilter = "" | "groomed" | "ungroomed";
 type OptionalColumnId =
   | "dog"
@@ -212,6 +233,23 @@ const OPTIONAL_COLUMNS: Array<{
   { id: "healthStatus", label: "Health Tests" },
 ];
 const OPTIONAL_COLUMN_IDS = OPTIONAL_COLUMNS.map((column) => column.id);
+const HEALTH_TEST_OPTIONS: Array<{ code: HealthTestCode; label: string }> = [
+  { code: "HIP_DYSPLASIA", label: "Hips" },
+  { code: "ELBOW_DYSPLASIA", label: "Elbows" },
+  { code: "CARDIAC", label: "Cardiac" },
+  { code: "THYROID", label: "Thyroid" },
+  { code: "CAER_EYE", label: "CAER / Eye" },
+];
+const HEALTH_TEST_SKIP_LABELS: Array<{
+  reason: keyof HealthTestPreview["skippedByReason"];
+  label: string;
+}> = [
+  { reason: "ALREADY_COMPLETED", label: "Already completed" },
+  { reason: "TOO_YOUNG", label: "Too young" },
+  { reason: "NOT_APPLICABLE_TO_BREED", label: "Not applicable to breed" },
+  { reason: "NOT_ALIVE", label: "Not currently eligible" },
+  { reason: "NOT_OWNED_OR_NOT_FOUND", label: "No longer available" },
+];
 const DEFAULT_VISIBLE_COLUMNS: OptionalColumnId[] = [
   "dog",
   "breed",
@@ -321,6 +359,14 @@ function GroomingResetCountdown({ resetEpoch }: { resetEpoch: number }) {
   );
 }
 
+function formatMoney(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 function SortButton({
   active,
   direction,
@@ -366,6 +412,18 @@ export default function KennelDogsPanel() {
   const [bulkAction, setBulkAction] = useState<BulkAction>("");
   const [activeBulkWorkspace, setActiveBulkWorkspace] =
     useState<ConfigurableBulkWorkspace | null>(null);
+  const [healthTestsAllApplicable, setHealthTestsAllApplicable] = useState(true);
+  const [selectedHealthTestCodes, setSelectedHealthTestCodes] = useState<
+    HealthTestCode[]
+  >([]);
+  const [healthTestPreview, setHealthTestPreview] =
+    useState<HealthTestPreview | null>(null);
+  const [healthTestPreviewLoading, setHealthTestPreviewLoading] = useState(false);
+  const [healthTestPreviewError, setHealthTestPreviewError] = useState<
+    string | null
+  >(null);
+  const [healthTestDetailsExpanded, setHealthTestDetailsExpanded] = useState(false);
+  const healthTestPreviewRequestSequence = useRef(0);
   const [confirmingBulkAction, setConfirmingBulkAction] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [moveDogsLoading, setMoveDogsLoading] = useState(false);
@@ -536,8 +594,77 @@ export default function KennelDogsPanel() {
       setConfirmingBulkAction(false);
       setActiveBulkWorkspace(null);
       setSelectedMoveRunId("");
+      resetHealthTestingWorkspaceState();
     }
   }, [selectedDogIds.length]);
+
+  useEffect(() => {
+    if (activeBulkWorkspace !== "health-tests" || selectedDogIds.length === 0) {
+      return;
+    }
+
+    if (!healthTestsAllApplicable && selectedHealthTestCodes.length === 0) {
+      setHealthTestPreview(null);
+      setHealthTestPreviewError(null);
+      setHealthTestPreviewLoading(false);
+      return;
+    }
+
+    const requestSequence = ++healthTestPreviewRequestSequence.current;
+    setHealthTestPreviewLoading(true);
+    setHealthTestPreviewError(null);
+    setHealthTestPreview(null);
+
+    void fetch("/api/kennel/dogs/health-tests/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dogIds: selectedDogIds,
+        selection: healthTestsAllApplicable
+          ? { mode: "all-applicable" }
+          : { mode: "explicit", testTypeCodes: selectedHealthTestCodes },
+      }),
+    })
+      .then(async (response) => {
+        const data = (await response.json()) as {
+          ok?: boolean;
+          preview?: HealthTestPreview;
+          error?: string;
+        };
+
+        if (!response.ok || !data.ok || !data.preview) {
+          throw new Error(data.error || "Unable to calculate the health-test estimate.");
+        }
+
+        if (requestSequence !== healthTestPreviewRequestSequence.current) {
+          return;
+        }
+
+        setHealthTestPreview(data.preview);
+      })
+      .catch((previewError) => {
+        if (requestSequence !== healthTestPreviewRequestSequence.current) {
+          return;
+        }
+
+        setHealthTestPreview(null);
+        setHealthTestPreviewError(
+          previewError instanceof Error
+            ? previewError.message
+            : "Unable to calculate the health-test estimate."
+        );
+      })
+      .finally(() => {
+        if (requestSequence === healthTestPreviewRequestSequence.current) {
+          setHealthTestPreviewLoading(false);
+        }
+      });
+  }, [
+    activeBulkWorkspace,
+    healthTestsAllApplicable,
+    selectedDogIds,
+    selectedHealthTestCodes,
+  ]);
 
   useEffect(() => {
     if (selectedRunIds.length !== 1) {
@@ -744,11 +871,31 @@ export default function KennelDogsPanel() {
     setActiveBulkWorkspace(null);
     setSelectedMoveRunId("");
     setConfirmingBulkAction(false);
+    resetHealthTestingWorkspaceState();
   }
 
   function closeActiveBulkWorkspace() {
     setActiveBulkWorkspace(null);
     setSelectedMoveRunId("");
+    resetHealthTestingWorkspaceState();
+  }
+
+  function resetHealthTestingWorkspaceState() {
+    healthTestPreviewRequestSequence.current += 1;
+    setHealthTestsAllApplicable(true);
+    setSelectedHealthTestCodes([]);
+    setHealthTestPreview(null);
+    setHealthTestPreviewLoading(false);
+    setHealthTestPreviewError(null);
+    setHealthTestDetailsExpanded(false);
+  }
+
+  function toggleHealthTestCode(code: HealthTestCode) {
+    setSelectedHealthTestCodes((current) =>
+      current.includes(code)
+        ? current.filter((testCode) => testCode !== code)
+        : [...current, code]
+    );
   }
 
   function hasColumn(columnId: OptionalColumnId) {
@@ -807,6 +954,16 @@ export default function KennelDogsPanel() {
       setConfirmingBulkAction(false);
       setActiveBulkWorkspace("move-dogs");
       setSelectedMoveRunId("");
+      resetHealthTestingWorkspaceState();
+      return;
+    }
+
+    if (action === "health-tests") {
+      setBulkAction("");
+      setConfirmingBulkAction(false);
+      setActiveBulkWorkspace("health-tests");
+      setSelectedMoveRunId("");
+      resetHealthTestingWorkspaceState();
       return;
     }
 
@@ -1690,6 +1847,7 @@ export default function KennelDogsPanel() {
               >
                 <option value="">Bulk action...</option>
                 <option value="move-dogs">Move Dogs</option>
+                <option value="health-tests">Health Tests...</option>
                 <option value="show-entry">Show Entry</option>
                 <option value="rehome">Re-Home</option>
               </select>
@@ -1764,6 +1922,138 @@ export default function KennelDogsPanel() {
                     className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45 sm:self-end"
                   >
                     {moveDogsLoading ? "Moving..." : "Move Dogs"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeBulkWorkspace === "health-tests" ? (
+            <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3">
+              <div className="flex flex-col gap-3">
+                <div>
+                  <div className="theme-heading text-sm font-semibold">
+                    Health testing
+                  </div>
+                  <div className="theme-copy mt-1 text-xs">
+                    Configure a read-only estimate for {selectedDogIds.length} selected dog
+                    {selectedDogIds.length === 1 ? "" : "s"}.
+                  </div>
+                </div>
+
+                <label className="theme-control flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={healthTestsAllApplicable}
+                    onChange={(event) => setHealthTestsAllApplicable(event.target.checked)}
+                  />
+                  All applicable
+                </label>
+
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {HEALTH_TEST_OPTIONS.map((test) => (
+                    <label
+                      key={test.code}
+                      className="theme-control flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedHealthTestCodes.includes(test.code)}
+                        disabled={healthTestsAllApplicable}
+                        onChange={() => toggleHealthTestCode(test.code)}
+                      />
+                      {test.label}
+                    </label>
+                  ))}
+                </div>
+
+                {!healthTestsAllApplicable && selectedHealthTestCodes.length === 0 ? (
+                  <div className="theme-copy text-sm">
+                    Select at least one health test to calculate an estimate.
+                  </div>
+                ) : null}
+
+                {healthTestPreviewLoading ? (
+                  <div className="theme-copy text-sm" role="status" aria-live="polite">
+                    Calculating health-test estimate...
+                  </div>
+                ) : null}
+
+                {healthTestPreviewError ? (
+                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="status">
+                    {healthTestPreviewError}
+                  </div>
+                ) : null}
+
+                {healthTestPreview ? (
+                  <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                    {healthTestPreview.runnableTestCount > 0 ? (
+                      <div className="theme-heading text-sm font-semibold" role="status" aria-live="polite">
+                        {healthTestPreview.eligibleDogCount.toLocaleString()} dog
+                        {healthTestPreview.eligibleDogCount === 1 ? "" : "s"} eligible
+                        {" · "}
+                        {healthTestPreview.runnableTestCount.toLocaleString()} test
+                        {healthTestPreview.runnableTestCount === 1 ? "" : "s"}
+                        {" · "}
+                        {formatMoney(healthTestPreview.estimatedTotalCost)}
+                      </div>
+                    ) : (
+                      <div className="theme-copy text-sm" role="status" aria-live="polite">
+                        No selected dogs currently need the chosen health tests.
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setHealthTestDetailsExpanded((current) => !current)}
+                      aria-expanded={healthTestDetailsExpanded}
+                      aria-controls="bulk-health-test-preview-details"
+                      className="theme-secondary-button mt-2 rounded-md px-2.5 py-1.5 text-xs font-semibold"
+                    >
+                      {healthTestDetailsExpanded ? "Hide details" : "View details"}
+                    </button>
+
+                    {healthTestDetailsExpanded ? (
+                      <div
+                        id="bulk-health-test-preview-details"
+                        className="theme-copy mt-3 grid gap-3 text-xs sm:grid-cols-2"
+                      >
+                        <div>
+                          <div className="theme-label uppercase tracking-wide">Runnable tests</div>
+                          <div className="mt-1 grid gap-1">
+                            {HEALTH_TEST_OPTIONS.filter(
+                              (test) => healthTestPreview.byTest[test.code].runnableCount > 0
+                            ).map((test) => (
+                              <div key={test.code}>
+                                {test.label}: {healthTestPreview.byTest[test.code].runnableCount.toLocaleString()}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="theme-label uppercase tracking-wide">Skipped</div>
+                          <div className="mt-1 grid gap-1">
+                            {HEALTH_TEST_SKIP_LABELS.filter(
+                              ({ reason }) => healthTestPreview.skippedByReason[reason] > 0
+                            ).map(({ reason, label }) => (
+                              <div key={reason}>
+                                {label}: {healthTestPreview.skippedByReason[reason].toLocaleString()}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeActiveBulkWorkspace}
+                    className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
+                  >
+                    Cancel
                   </button>
                 </div>
               </div>
