@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ConversationReplyForm } from "@/components/messages/ConversationReplyForm";
 import { ConversationBlockControl } from "@/components/messages/ConversationBlockControl";
 import { ConversationReportControl } from "@/components/messages/ConversationReportControl";
+import { ConversationHideControl } from "@/components/messages/ConversationHideControl";
 import { formatFriendlyTimestamp } from "@/lib/friendlyTimestamp";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -110,6 +111,7 @@ export default async function ConversationPage({
           conversationId={conversation.id}
           otherKennelName={otherKennel.name}
         />
+        <ConversationHideControl conversationId={conversation.id} />
       </section>
     </main>
   );

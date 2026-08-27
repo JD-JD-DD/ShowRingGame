@@ -10,6 +10,7 @@ import {
   findKennelConversation,
   getOrCreateKennelConversation,
   getUnreadKennelConversationCount,
+  hideKennelConversation,
   listKennelConversationSummaries,
   loadKennelConversationHistory,
   markKennelConversationRead,
@@ -151,9 +152,14 @@ function createFakeClient(seed: { kennels: FakeKennel[]; raceOnFirstCreate?: boo
         }
         return { count: args.data.length };
       },
-      async updateMany(args: { where: { conversationId: string; kennelId: { in: string[] } }; data: { hiddenAt: null } }) {
+      async updateMany(args: { where: { conversationId: string; kennelId: string | { in: string[] }; hiddenAt?: null }; data: { hiddenAt: Date | null } }) {
+        const kennelIds = typeof args.where.kennelId === "string"
+          ? [args.where.kennelId]
+          : args.where.kennelId.in;
         const matching = state.participants.filter((participant) =>
-          participant.conversationId === args.where.conversationId && args.where.kennelId.in.includes(participant.kennelId)
+          participant.conversationId === args.where.conversationId &&
+          kennelIds.includes(participant.kennelId) &&
+          (args.where.hiddenAt === undefined || participant.hiddenAt === args.where.hiddenAt)
         );
         matching.forEach((participant) => { participant.hiddenAt = args.data.hiddenAt; });
         return { count: matching.length };
@@ -350,6 +356,29 @@ async function main() {
   assert.equal((await listKennelConversationSummaries({ kennelId: "kennel-b", client: fake.client as never })).length, 1, "requester-hidden conversations are excluded");
   assert.equal(await getUnreadKennelConversationCount({ kennelId: "kennel-b", client: fake.client as never }), 1, "requester-hidden conversations do not inflate the unread Inbox count");
   assert.equal((await listKennelConversationSummaries({ kennelId: "kennel-c", client: fake.client as never })).length, 1, "another participant hiding a conversation does not hide it for the requester");
+
+  const hideFake = createFakeClient({ kennels: [activeA, activeB, activeC] });
+  const hideConversation = await sendKennelMessage({ senderKennelId: "kennel-a", recipientKennelId: "kennel-b", body: "Keep this history", client: hideFake.client as never });
+  const hideParticipant = hideFake.state.participants.find((participant) => participant.conversationId === hideConversation.id && participant.kennelId === "kennel-a");
+  const otherHideParticipant = hideFake.state.participants.find((participant) => participant.conversationId === hideConversation.id && participant.kennelId === "kennel-b");
+  assert.ok(hideParticipant && otherHideParticipant, "conversation has both participant rows before hiding");
+  if (!hideParticipant || !otherHideParticipant) throw new Error("Expected hide-test participants.");
+  const readBeforeHide = hideParticipant.lastReadMessageId;
+  await hideKennelConversation({ requestingKennelId: "kennel-a", conversationId: hideConversation.id, client: hideFake.client as never });
+  assert.ok(hideParticipant.hiddenAt instanceof Date, "hide timestamps only the requesting participant");
+  assert.equal(otherHideParticipant.hiddenAt, null, "hide does not alter the other participant visibility");
+  assert.equal(hideParticipant.lastReadMessageId, readBeforeHide, "hide does not alter the requesting read position");
+  assert.equal(otherHideParticipant.lastReadMessageId, null, "hide does not alter the other read position");
+  assert.equal((await listKennelConversationSummaries({ kennelId: "kennel-a", client: hideFake.client as never })).length, 0, "hidden conversations are absent from the requester's inbox");
+  assert.equal((await listKennelConversationSummaries({ kennelId: "kennel-b", client: hideFake.client as never })).length, 1, "hide leaves the other inbox unchanged");
+  await expectMessagingError(() => hideKennelConversation({ requestingKennelId: "kennel-c", conversationId: hideConversation.id, client: hideFake.client as never }), "NOT_CONVERSATION_PARTICIPANT");
+  await hideKennelConversation({ requestingKennelId: "kennel-b", conversationId: hideConversation.id, client: hideFake.client as never });
+  await sendKennelMessage({ senderKennelId: "kennel-b", recipientKennelId: "kennel-a", body: "Restores both", client: hideFake.client as never });
+  assert.equal(hideParticipant.hiddenAt, null, "inbound activity restores the requester's hidden conversation");
+  assert.equal(otherHideParticipant.hiddenAt, null, "activity restores the other hidden participant too");
+  assert.equal(hideFake.state.conversations.length, 1, "restoration reuses the existing canonical conversation");
+  assert.equal((await loadKennelConversationHistory({ requestingKennelId: "kennel-a", conversationId: hideConversation.id, client: hideFake.client as never })).messages.length, 2, "hiding preserves history when activity restores the conversation");
+  assert.equal(await getUnreadKennelConversationCount({ kennelId: "kennel-a", client: hideFake.client as never }), 1, "restored inbound activity follows canonical unread behavior");
 
   const historyA = await loadKennelConversationHistory({ requestingKennelId: "kennel-a", conversationId: first.id, client: fake.client as never });
   const historyB = await loadKennelConversationHistory({ requestingKennelId: "kennel-b", conversationId: first.id, client: fake.client as never });

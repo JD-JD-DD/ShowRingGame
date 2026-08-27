@@ -651,6 +651,37 @@ export async function loadKennelConversationHistory(args: {
   return conversation;
 }
 
+export async function hideKennelConversation(args: {
+  requestingKennelId: string;
+  conversationId: string;
+  client?: MessagingClient;
+}): Promise<void> {
+  const client = args.client ?? (db as unknown as MessagingClient);
+  const participant = await client.kennelConversationParticipant.findUnique({
+    where: {
+      conversationId_kennelId: {
+        conversationId: args.conversationId,
+        kennelId: args.requestingKennelId,
+      },
+    },
+  });
+  if (!participant) {
+    throw new KennelMessagingError(
+      "NOT_CONVERSATION_PARTICIPANT",
+      "You are not a participant in this conversation."
+    );
+  }
+
+  await client.kennelConversationParticipant.updateMany({
+    where: {
+      conversationId: args.conversationId,
+      kennelId: args.requestingKennelId,
+      hiddenAt: null,
+    },
+    data: { hiddenAt: new Date() },
+  });
+}
+
 function getOtherKennelInConversation(
   conversation: KennelConversationHistoryDto,
   requestingKennelId: string
