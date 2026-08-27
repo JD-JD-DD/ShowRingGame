@@ -6,9 +6,17 @@ import { useRouter } from "next/navigation";
 export function ConversationReplyForm({
   conversationId,
   maxLength,
+  actionUrl,
+  redirectToConversation,
+  targetKennelSlug,
+  label = "Reply",
 }: {
-  conversationId: string;
+  conversationId?: string;
   maxLength: number;
+  actionUrl?: string;
+  redirectToConversation?: boolean;
+  targetKennelSlug?: string;
+  label?: string;
 }) {
   const router = useRouter();
   const [body, setBody] = useState("");
@@ -23,12 +31,12 @@ export function ConversationReplyForm({
     setIsSending(true);
 
     try {
-      const response = await fetch(`/api/inbox/messages/${conversationId}`, {
+      const response = await fetch(actionUrl ?? `/api/inbox/messages/${conversationId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body, ...(targetKennelSlug ? { kennelSlug: targetKennelSlug } : {}) }),
       });
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      const data = (await response.json().catch(() => null)) as { error?: string; conversationId?: string } | null;
 
       if (!response.ok) {
         setError(data?.error ?? "Unable to send your message right now.");
@@ -36,7 +44,11 @@ export function ConversationReplyForm({
       }
 
       setBody("");
-      router.refresh();
+      if (redirectToConversation && data?.conversationId) {
+        router.push(`/inbox/messages/${data.conversationId}`);
+      } else {
+        router.refresh();
+      }
     } catch {
       setError("Unable to send your message right now.");
     } finally {
@@ -47,7 +59,7 @@ export function ConversationReplyForm({
   return (
     <form className="theme-card mt-6 grid gap-3 rounded-xl p-5" onSubmit={handleSubmit} aria-describedby={error ? "message-reply-error" : undefined}>
       <label className="theme-label grid gap-2 text-sm font-semibold" htmlFor="message-reply-body">
-        Reply
+        {label}
         <textarea
           id="message-reply-body"
           value={body}

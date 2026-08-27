@@ -73,6 +73,7 @@ type ConversationRecord = {
 type MessagingClient = {
   kennel: {
     findMany(args: unknown): Promise<MessageableKennel[]>;
+    findFirst(args: unknown): Promise<MessageableKennel | null>;
   };
   kennelConversation: {
     findUnique(args: unknown): Promise<ConversationRecord | null>;
@@ -168,6 +169,39 @@ export function normalizeKennelMessageBody(body: unknown): string {
   }
 
   return normalized;
+}
+
+export function isMessageableKennel(kennel: Pick<
+  MessageableKennel,
+  "isNpc" | "userId" | "moderationStatus" | "user"
+>): boolean {
+  return (
+    !kennel.isNpc &&
+    kennel.userId !== null &&
+    kennel.moderationStatus === "ACTIVE" &&
+    kennel.user?.moderationStatus === "ACTIVE"
+  );
+}
+
+export async function getMessageableKennelBySlug(args: {
+  slug: string;
+  client?: MessagingClient;
+}): Promise<KennelIdentityDto | null> {
+  const client = args.client ?? (db as unknown as MessagingClient);
+  const kennel = await client.kennel.findFirst({
+    where: {
+      slug: args.slug,
+      isNpc: false,
+      userId: { not: null },
+      moderationStatus: "ACTIVE",
+      user: { is: { moderationStatus: "ACTIVE" } },
+    },
+    select: { id: true, name: true, slug: true, userId: true, isNpc: true, moderationStatus: true, user: { select: { moderationStatus: true } } },
+  });
+
+  return kennel && isMessageableKennel(kennel)
+    ? { id: kennel.id, name: kennel.name, slug: kennel.slug }
+    : null;
 }
 
 function isUniqueConstraintError(error: unknown): boolean {

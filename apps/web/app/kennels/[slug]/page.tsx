@@ -7,6 +7,8 @@ import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelPrestigeSummary } from "@/server/services/kennelPrestige.service";
+import { getKennelForUser } from "@/server/services/kennel.service";
+import { isMessageableKennel } from "@/server/services/kennelMessaging.service";
 import { getShowDistrictRegion } from "@showring/rules";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -41,15 +43,23 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
 
   const { slug } = await params;
   const currentEpoch = getCurrentEpoch();
-  const kennel = await db.kennel.findUnique({
+  const [kennel, currentKennel] = await Promise.all([
+    db.kennel.findUnique({
     where: { slug },
     select: {
       id: true,
       name: true,
       slug: true,
+      userId: true,
+      isNpc: true,
       homeDistrict: true,
       publicSlogan: true,
       moderationStatus: true,
+      user: {
+        select: {
+          moderationStatus: true,
+        },
+      },
       renameHistory: {
         orderBy: {
           changedAt: "desc",
@@ -60,7 +70,9 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
         },
       },
     },
-  });
+    }),
+    getKennelForUser(userId),
+  ]);
 
   if (!kennel || kennel.moderationStatus === "CLOSED") {
     const renamedKennel = await db.kennelRenameHistory.findFirst({
@@ -90,6 +102,11 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
     ? getShowDistrictRegion(kennel.homeDistrict)
     : null;
   const prestige = await getKennelPrestigeSummary(kennel.id);
+  const canMessageKennel = Boolean(
+    currentKennel &&
+    currentKennel.id !== kennel.id &&
+    isMessageableKennel(kennel)
+  );
 
   const [dogs, activeListings] = await Promise.all([
     db.dog.findMany({
@@ -195,6 +212,14 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
             </div>
 
             <div className="flex flex-wrap gap-3">
+              {canMessageKennel ? (
+                <Link
+                  href={`/inbox/messages/start/${kennel.slug}`}
+                  className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                  Message Kennel
+                </Link>
+              ) : null}
               <Link
                 href="/community"
                 className="theme-secondary-button rounded-2xl px-5 py-3 text-sm font-semibold"
