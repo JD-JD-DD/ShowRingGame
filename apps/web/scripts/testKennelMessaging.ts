@@ -13,6 +13,8 @@ import {
   listKennelConversationSummaries,
   loadKennelConversationHistory,
   markKennelConversationRead,
+  reportKennelConversation,
+  reportKennelConversationMessage,
   sendKennelMessage,
   unblockKennelMessaging,
 } from "@/server/services/kennelMessaging.service";
@@ -54,6 +56,16 @@ type FakeBlock = {
   blockedKennelId: string;
 };
 
+type FakeReport = {
+  reporterKennelId: string;
+  reportedKennelId: string;
+  conversationId: string;
+  messageId: string | null;
+  reason: string;
+  detail: string | null;
+  status: string;
+};
+
 function source(path: string): string {
   const cwd = process.cwd();
   const root = cwd.endsWith(`${join("apps", "web")}`) ? join(cwd, "..", "..") : cwd;
@@ -68,6 +80,7 @@ function createFakeClient(seed: { kennels: FakeKennel[]; raceOnFirstCreate?: boo
     participants: [] as FakeParticipant[],
     messages: [] as FakeMessage[],
     blocks: [] as FakeBlock[],
+    reports: [] as FakeReport[],
   };
   let nextId = 1;
   let racePending = seed.raceOnFirstCreate ?? false;
@@ -231,6 +244,12 @@ function createFakeClient(seed: { kennels: FakeKennel[]; raceOnFirstCreate?: boo
           block.blockerKennelId !== args.where.blockerKennelId || block.blockedKennelId !== args.where.blockedKennelId
         );
         return { count: before - state.blocks.length };
+      },
+    },
+    kennelCommunicationReport: {
+      async create(args: { data: FakeReport }) {
+        state.reports.push(args.data);
+        return { id: `report-${nextId++}` };
       },
     },
     async $transaction<T>(callback: (tx: never) => Promise<T>) {
@@ -397,6 +416,29 @@ async function main() {
   await unblockKennelMessaging({ blockerKennelId: "kennel-a", blockedKennelId: "kennel-b", client: blockedFake.client as never });
   await expectMessagingError(() => sendKennelMessage({ senderKennelId: "kennel-a", recipientKennelId: "kennel-b", body: "Other block remains", client: blockedFake.client as never }), "MESSAGING_UNAVAILABLE");
 
+  const report = await reportKennelConversationMessage({
+    requestingKennelId: "kennel-b",
+    conversationId: blockedConversation.id,
+    messageId: blockedConversation.message.id,
+    reason: "HARASSMENT",
+    detail: "  Please review this message.  ",
+    client: blockedFake.client as never,
+  });
+  assert.ok(report.id, "received-message reports are persisted");
+  assert.deepEqual(blockedFake.state.reports[0], {
+    reporterKennelId: "kennel-b",
+    reportedKennelId: "kennel-a",
+    conversationId: blockedConversation.id,
+    messageId: blockedConversation.message.id,
+    reason: "HARASSMENT",
+    detail: "Please review this message.",
+    status: "OPEN",
+  }, "message report derives both kennel identities and retains message and conversation evidence");
+  await expectMessagingError(() => reportKennelConversationMessage({ requestingKennelId: "kennel-a", conversationId: blockedConversation.id, messageId: blockedConversation.message.id, reason: "SPAM", client: blockedFake.client as never }), "MESSAGE_NOT_REPORTABLE");
+  await reportKennelConversation({ requestingKennelId: "kennel-b", conversationId: blockedConversation.id, reason: "SPAM", detail: "   ", client: blockedFake.client as never });
+  assert.equal(blockedFake.state.reports[1]?.messageId, null, "conversation reports do not require a message");
+  assert.equal(blockedFake.state.reports[1]?.detail, null, "blank report detail is normalized to null");
+
   const blockedNewConversationFake = createFakeClient({ kennels: [activeA, activeB] });
   await blockKennelMessaging({ blockerKennelId: "kennel-b", blockedKennelId: "kennel-a", client: blockedNewConversationFake.client as never });
   await expectMessagingError(() => sendKennelMessage({ senderKennelId: "kennel-a", recipientKennelId: "kennel-b", body: "No first message", client: blockedNewConversationFake.client as never }), "MESSAGING_UNAVAILABLE");
@@ -409,7 +451,8 @@ async function main() {
   assert.ok(serviceSource.includes("getKennelMessagingBlockState"), "service centralizes mutual messaging block state");
   assert.ok(serviceSource.includes("assertKennelsCanMessage"), "message mutations use one canonical eligibility and block check");
   assert.ok(serviceSource.includes("This kennel is not currently available for messaging."), "block enforcement has neutral player-facing wording");
-  assert.ok(!serviceSource.includes("kennelCommunicationReport"), "service does not implement reporting");
+  assert.ok(serviceSource.includes("reportKennelConversationMessage"), "service centralizes received-message reporting");
+  assert.ok(serviceSource.includes("reportKennelConversation"), "service centralizes conversation reporting");
   assert.ok(!serviceSource.includes("createdAtEpoch"), "service does not introduce game-epoch message timestamps");
   assert.ok(serviceSource.includes("lastReadMessageId"), "persisted participant read position is the unread source of truth");
   assert.ok(source("apps/web/lib/friendlyTimestamp.ts").includes("Intl.DateTimeFormat"), "calendar dates use locale-aware Intl formatting");

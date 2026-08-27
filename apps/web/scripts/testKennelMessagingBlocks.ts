@@ -22,7 +22,6 @@ function main() {
   assert.ok(service.includes("kennelBlock.upsert"), "block creation is idempotent");
   assert.ok(service.includes("kennelBlock.deleteMany"), "unblock removes only a directional record");
   assert.ok(!service.includes("KennelNotice"), "blocking does not create notices");
-  assert.ok(!service.includes("CommunicationReport"), "blocking does not create reports");
 
   for (const route of [blockRoute, unblockRoute]) {
     assert.ok(route.includes("getSessionUserId"), "block mutation authenticates");

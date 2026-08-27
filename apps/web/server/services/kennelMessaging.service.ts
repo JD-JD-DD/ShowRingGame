@@ -1,6 +1,12 @@
 import { db } from "@/lib/db";
+import {
+  KENNEL_COMMUNICATION_REPORT_REASONS,
+  MAX_KENNEL_REPORT_DETAIL_LENGTH,
+  type KennelCommunicationReportReason,
+} from "@/lib/kennelCommunicationReports";
 
 export const MAX_KENNEL_MESSAGE_LENGTH = 4000;
+export { MAX_KENNEL_REPORT_DETAIL_LENGTH } from "@/lib/kennelCommunicationReports";
 
 export type KennelMessagingErrorCode =
   | "SELF_CONVERSATION"
@@ -8,6 +14,9 @@ export type KennelMessagingErrorCode =
   | "MESSAGE_TOO_LONG"
   | "KENNEL_NOT_MESSAGEABLE"
   | "MESSAGING_UNAVAILABLE"
+  | "INVALID_REPORT_REASON"
+  | "REPORT_DETAIL_TOO_LONG"
+  | "MESSAGE_NOT_REPORTABLE"
   | "CONVERSATION_NOT_FOUND"
   | "NOT_CONVERSATION_PARTICIPANT";
 
@@ -108,6 +117,9 @@ type MessagingClient = {
     upsert(args: unknown): Promise<unknown>;
     deleteMany(args: unknown): Promise<{ count: number }>;
   };
+  kennelCommunicationReport: {
+    create(args: unknown): Promise<{ id: string }>;
+  };
 };
 
 type MessagingRootClient = MessagingClient & {
@@ -196,6 +208,38 @@ export type KennelMessagingBlockState = {
   isBlocked: boolean;
   isRequesterBlocker: boolean;
 };
+
+export type KennelCommunicationReportDto = {
+  id: string;
+};
+
+export function normalizeKennelCommunicationReportReason(
+  reason: unknown
+): KennelCommunicationReportReason {
+  if (
+    typeof reason !== "string" ||
+    !KENNEL_COMMUNICATION_REPORT_REASONS.some((option) => option.value === reason)
+  ) {
+    throw new KennelMessagingError("INVALID_REPORT_REASON", "Select a report reason.");
+  }
+  return reason as KennelCommunicationReportReason;
+}
+
+export function normalizeKennelCommunicationReportDetail(detail: unknown): string | null {
+  if (detail === undefined || detail === null) return null;
+  if (typeof detail !== "string") {
+    throw new KennelMessagingError("INVALID_REPORT_REASON", "Report details must be text.");
+  }
+  const normalized = detail.trim();
+  if (!normalized) return null;
+  if (normalized.length > MAX_KENNEL_REPORT_DETAIL_LENGTH) {
+    throw new KennelMessagingError(
+      "REPORT_DETAIL_TOO_LONG",
+      `Report details cannot exceed ${MAX_KENNEL_REPORT_DETAIL_LENGTH} characters.`
+    );
+  }
+  return normalized;
+}
 
 export async function getKennelMessagingBlockState(args: {
   requestingKennelId: string;
@@ -604,6 +648,91 @@ export async function loadKennelConversationHistory(args: {
   }
 
   return conversation;
+}
+
+function getOtherKennelInConversation(
+  conversation: KennelConversationHistoryDto,
+  requestingKennelId: string
+): KennelIdentityDto {
+  if (conversation.firstKennel.id === requestingKennelId) {
+    return conversation.secondKennel;
+  }
+  if (conversation.secondKennel.id === requestingKennelId) {
+    return conversation.firstKennel;
+  }
+  throw new KennelMessagingError(
+    "NOT_CONVERSATION_PARTICIPANT",
+    "You are not a participant in this conversation."
+  );
+}
+
+export async function reportKennelConversation(args: {
+  requestingKennelId: string;
+  conversationId: string;
+  reason: unknown;
+  detail?: unknown;
+  client?: MessagingClient;
+}): Promise<KennelCommunicationReportDto> {
+  const client = args.client ?? (db as unknown as MessagingClient);
+  const conversation = await loadKennelConversationHistory({
+    requestingKennelId: args.requestingKennelId,
+    conversationId: args.conversationId,
+    client,
+  });
+  const reportedKennel = getOtherKennelInConversation(conversation, args.requestingKennelId);
+  const reason = normalizeKennelCommunicationReportReason(args.reason);
+  const detail = normalizeKennelCommunicationReportDetail(args.detail);
+
+  return client.kennelCommunicationReport.create({
+    data: {
+      reporterKennelId: args.requestingKennelId,
+      reportedKennelId: reportedKennel.id,
+      conversationId: conversation.id,
+      messageId: null,
+      reason,
+      detail,
+      status: "OPEN",
+    },
+    select: { id: true },
+  });
+}
+
+export async function reportKennelConversationMessage(args: {
+  requestingKennelId: string;
+  conversationId: string;
+  messageId: string;
+  reason: unknown;
+  detail?: unknown;
+  client?: MessagingClient;
+}): Promise<KennelCommunicationReportDto> {
+  const client = args.client ?? (db as unknown as MessagingClient);
+  const conversation = await loadKennelConversationHistory({
+    requestingKennelId: args.requestingKennelId,
+    conversationId: args.conversationId,
+    client,
+  });
+  const message = conversation.messages.find((candidate) => candidate.id === args.messageId);
+  if (!message || message.senderKennel.id === args.requestingKennelId) {
+    throw new KennelMessagingError(
+      "MESSAGE_NOT_REPORTABLE",
+      "That message is not available to report."
+    );
+  }
+  const reason = normalizeKennelCommunicationReportReason(args.reason);
+  const detail = normalizeKennelCommunicationReportDetail(args.detail);
+
+  return client.kennelCommunicationReport.create({
+    data: {
+      reporterKennelId: args.requestingKennelId,
+      reportedKennelId: message.senderKennel.id,
+      conversationId: conversation.id,
+      messageId: message.id,
+      reason,
+      detail,
+      status: "OPEN",
+    },
+    select: { id: true },
+  });
 }
 
 function compareMessageOrder(

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { ConversationReplyForm } from "@/components/messages/ConversationReplyForm";
 import { ConversationBlockControl } from "@/components/messages/ConversationBlockControl";
+import { ConversationReportControl } from "@/components/messages/ConversationReportControl";
 import { formatFriendlyTimestamp } from "@/lib/friendlyTimestamp";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -78,6 +79,13 @@ export default async function ConversationPage({
                     <time dateTime={message.createdAt.toISOString()}>{formatFriendlyTimestamp(message.createdAt)}</time>
                   </div>
                   <p className="theme-copy mt-3 whitespace-pre-wrap break-words">{message.body}</p>
+                  {!isCurrentKennel ? (
+                    <ConversationReportControl
+                      conversationId={conversation.id}
+                      otherKennelName={otherKennel.name}
+                      message={{ id: message.id, body: message.body }}
+                    />
+                  ) : null}
                 </article>
               </li>
             );
@@ -97,6 +105,10 @@ export default async function ConversationPage({
         <ConversationBlockControl
           conversationId={conversation.id}
           isRequesterBlocker={blockState.isRequesterBlocker}
+        />
+        <ConversationReportControl
+          conversationId={conversation.id}
+          otherKennelName={otherKennel.name}
         />
       </section>
     </main>
