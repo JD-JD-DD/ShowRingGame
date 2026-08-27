@@ -55,11 +55,17 @@ const dayOneLabrador = entry({
 });
 const blockFallback = entry({ id: "entry-block", showResult: null });
 const scheduledFallback = entry({ id: "entry-scheduled", showResult: null, judgingBlock: null });
+const unmapped = entry({
+  id: "entry-unmapped",
+  breed: { code2: "LEGACY", name: "Legacy Breed", groupName: "Legacy Group" },
+  showResult: null,
+  judgingBlock: null,
+});
 
-const hierarchy = buildMyResultsHierarchy([toy, dayOneLabrador, entry(), blockFallback, scheduledFallback]);
+const hierarchy = buildMyResultsHierarchy([toy, dayOneLabrador, entry(), blockFallback, scheduledFallback, unmapped]);
 assert.equal(hierarchy.length, 1);
 assert.deepEqual(hierarchy[0].showDays.map((day) => day.id), ["day-1", "day-2"]);
-assert.deepEqual(hierarchy[0].showDays[1].groups.map((group) => group.code), ["SPORTING", "TOY"]);
+assert.deepEqual(hierarchy[0].showDays[1].groups.map((group) => group.code), ["SPORTING", "TOY", "UNMAPPED"]);
 assert.equal(hierarchy[0].showDays[1].groups[0].breeds[0].name, "Labrador Retriever");
 assert.equal(hierarchy[0].showDays[1].groups[1].breeds[0].name, "Toy Poodle");
 assert.equal(hierarchy[0].showDays[1].bisJudge?.judgeCode, "BIS");
@@ -72,10 +78,16 @@ assert.deepEqual(resultJudgeRow?.result?.grandChampionCredits, [{ pointsAwarded:
 assert.equal(resultJudgeRow?.breedJudge?.source, "SHOW_RESULT");
 assert.equal(blockJudgeRow?.breedJudge?.source, "SHOW_JUDGING_BLOCK");
 assert.equal(scheduledJudgeRow?.breedJudge?.source, "SCHEDULED_GROUP_ASSIGNMENT");
+assert.equal(hierarchy[0].showDays[1].groups[2].name, "Unmapped group (Legacy Group)");
 
 const loader = readFileSync(join(root, "app", "my-results", "myResults.loader.ts"), "utf8");
 assert.ok(loader.includes("kennelId: args.kennelId"), "query remains historically scoped by ShowEntry.kennelId");
 assert.equal(loader.includes("take:"), false, "query has no arbitrary row limit");
 assert.equal(loader.includes("ownerKennelId"), false, "query does not use current dog ownership");
+
+const page = readFileSync(join(root, "app", "my-results", "page.tsx"), "utf8");
+assert.equal(page.includes("buildCompatibilityShows"), false, "page does not rebuild the legacy Cluster to Breed shape");
+assert.equal(page.includes("new Map"), false, "page does not independently group hierarchy nodes");
+assert.equal(page.includes(".sort("), false, "page does not independently order hierarchy nodes");
 
 console.log("My Results hierarchy checks passed.");
