@@ -6,6 +6,10 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import BulkCallNameEditor from "@/components/kennel/BulkCallNameEditor";
+import {
+  formatBulkHealthTestCompletion,
+  formatMoney,
+} from "@/components/kennel/bulkHealthTestFeedback";
 import { filterDogsBySelectedRuns } from "@/components/kennel/kennelDogFiltering";
 import { matchesKennelDogSearch } from "@/components/kennel/kennelDogSearch";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -182,6 +186,7 @@ type HealthTestExecution = {
   testedDogCount: number;
   executedTestCount: number;
   totalCharged: number;
+  skippedByReason: HealthTestPreview["skippedByReason"];
 };
 type GroomingStateFilter = "" | "groomed" | "ungroomed";
 type OptionalColumnId =
@@ -364,14 +369,6 @@ function GroomingResetCountdown({ resetEpoch }: { resetEpoch: number }) {
   );
 }
 
-function formatMoney(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
 function healthTestConfigurationKey(args: {
   dogIds: string[];
   allApplicable: boolean;
@@ -383,6 +380,20 @@ function healthTestConfigurationKey(args: {
       ? { mode: "all-applicable" }
       : { mode: "explicit", testTypeCodes: args.testTypeCodes },
   });
+}
+
+function formatHealthTestExecutionError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (
+    message.startsWith("Insufficient funds") ||
+    message.startsWith("Choose ") ||
+    message === "That health test is not available."
+  ) {
+    return message;
+  }
+
+  return "Unable to complete health testing.";
 }
 
 function SortButton({
@@ -1064,21 +1075,9 @@ export default function KennelDogsPanel() {
       await loadDogs({ preserveLoadingState: true });
       setActiveBulkWorkspace(null);
       resetHealthTestingWorkspaceState();
-      setMessage(
-        data.result.executedTestCount > 0
-          ? `Health testing complete: ${data.result.executedTestCount.toLocaleString()} test${
-              data.result.executedTestCount === 1 ? "" : "s"
-            } run on ${data.result.testedDogCount.toLocaleString()} dog${
-              data.result.testedDogCount === 1 ? "" : "s"
-            }.`
-          : "No selected dogs currently needed the chosen health tests."
-      );
+      setMessage(formatBulkHealthTestCompletion(data.result));
     } catch (executionError) {
-      setHealthTestExecutionError(
-        executionError instanceof Error
-          ? executionError.message
-          : "Unable to run bulk health tests."
-      );
+      setHealthTestExecutionError(formatHealthTestExecutionError(executionError));
     } finally {
       setHealthTestExecutionLoading(false);
     }
@@ -1875,7 +1874,11 @@ export default function KennelDogsPanel() {
           </div>
 
       {message ? (
-        <div className="theme-status-success mb-4 rounded-2xl px-4 py-3 text-sm">
+        <div
+          className="theme-status-success mb-4 rounded-2xl px-4 py-3 text-sm"
+          role="status"
+          aria-live="polite"
+        >
           {message}
         </div>
       ) : null}

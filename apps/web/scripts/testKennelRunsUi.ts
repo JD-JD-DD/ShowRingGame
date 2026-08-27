@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { formatBulkHealthTestCompletion } from "../components/kennel/bulkHealthTestFeedback";
 
 function source(path: string): string {
   const cwd = process.cwd();
@@ -36,11 +37,22 @@ const kennelRunFiltering = source(
   "apps/web/components/kennel/kennelDogFiltering.ts"
 );
 const kennelDogSearch = source("apps/web/components/kennel/kennelDogSearch.ts");
+const bulkHealthTestFeedback = source(
+  "apps/web/components/kennel/bulkHealthTestFeedback.ts"
+);
 const mineDogsRoute = source("apps/web/app/api/dogs/mine/route.ts");
 const bulkCallNameEditor = source("apps/web/components/kennel/BulkCallNameEditor.tsx");
 const closeActiveBulkWorkspaceSection = kennelPanel.slice(
   kennelPanel.indexOf("function closeActiveBulkWorkspace()"),
   kennelPanel.indexOf("\n  function hasColumn")
+);
+const bulkHealthTestExecutionSection = kennelPanel.slice(
+  kennelPanel.indexOf("async function runBulkHealthTests()"),
+  kennelPanel.indexOf("async function moveSelectedDogs()")
+);
+const bulkHealthTestFailureSection = bulkHealthTestExecutionSection.slice(
+  bulkHealthTestExecutionSection.indexOf("} catch (executionError)"),
+  bulkHealthTestExecutionSection.indexOf("} finally")
 );
 
 assertIncludes(
@@ -483,12 +495,163 @@ assertIncludes(
   "successful Health Tests execution refreshes roster data without resetting the page"
 );
 assertExcludes(
-  kennelPanel.slice(
-    kennelPanel.indexOf("async function runBulkHealthTests()"),
-    kennelPanel.indexOf("async function moveSelectedDogs()")
-  ),
+  bulkHealthTestExecutionSection,
   "clearSelection();",
   "successful Health Tests execution preserves selected dogs"
+);
+assertIncludes(
+  bulkHealthTestExecutionSection,
+  "setMessage(formatBulkHealthTestCompletion(data.result));",
+  "Health Tests completion feedback uses the authoritative execution response"
+);
+for (const responseField of [
+  "testedDogCount",
+  "executedTestCount",
+  "totalCharged",
+  "skippedByReason",
+]) {
+  assertIncludes(
+    bulkHealthTestFeedback,
+    `result.${responseField}`,
+    `Health Tests completion feedback uses execution ${responseField}`
+  );
+}
+assertIncludes(
+  bulkHealthTestFeedback,
+  "completed tests were skipped",
+  "Health Tests completion feedback explains completed-test skips"
+);
+assertIncludes(
+  bulkHealthTestFeedback,
+  "tests were skipped because dogs are too young",
+  "Health Tests completion feedback explains maturity skips"
+);
+assertIncludes(
+  bulkHealthTestFeedback,
+  "tests were skipped because they do not apply to the breed",
+  "Health Tests completion feedback explains breed-applicability skips"
+);
+assertIncludes(
+  bulkHealthTestFeedback,
+  "tests were skipped because dogs are not currently eligible",
+  "Health Tests completion feedback explains lifecycle skips"
+);
+assertIncludes(
+  bulkHealthTestFeedback,
+  "tests were skipped because dogs are no longer available",
+  "Health Tests completion feedback explains ownership skips"
+);
+assertIncludes(
+  bulkHealthTestFeedback,
+  "No health tests were run.",
+  "zero-execution Health Tests completion has useful feedback"
+);
+const noSkips = {
+  ALREADY_COMPLETED: 0,
+  TOO_YOUNG: 0,
+  NOT_APPLICABLE_TO_BREED: 0,
+  NOT_ALIVE: 0,
+  NOT_OWNED_OR_NOT_FOUND: 0,
+};
+assert.equal(
+  formatBulkHealthTestCompletion({
+    testedDogCount: 1,
+    executedTestCount: 1,
+    totalCharged: 500,
+    skippedByReason: noSkips,
+  }),
+  "Health testing complete: 1 test run on 1 dog. Total charged: $500.",
+  "one-test completion feedback is grammatically correct"
+);
+assert.equal(
+  formatBulkHealthTestCompletion({
+    testedDogCount: 3,
+    executedTestCount: 6,
+    totalCharged: 3000,
+    skippedByReason: { ...noSkips, ALREADY_COMPLETED: 2 },
+  }),
+  "Health testing complete: 6 tests run on 3 dogs. Total charged: $3,000. 2 completed tests were skipped",
+  "plural completion feedback includes completed-test skips"
+);
+assert.equal(
+  formatBulkHealthTestCompletion({
+    testedDogCount: 4,
+    executedTestCount: 4,
+    totalCharged: 2000,
+    skippedByReason: {
+      ...noSkips,
+      TOO_YOUNG: 2,
+      NOT_APPLICABLE_TO_BREED: 3,
+    },
+  }),
+  "Health testing complete: 4 tests run on 4 dogs. Total charged: $2,000. 2 tests were skipped because dogs are too young; 3 tests were skipped because they do not apply to the breed",
+  "completion feedback explains several skip categories"
+);
+assert.equal(
+  formatBulkHealthTestCompletion({
+    testedDogCount: 0,
+    executedTestCount: 0,
+    totalCharged: 0,
+    skippedByReason: { ...noSkips, ALREADY_COMPLETED: 1 },
+  }),
+  "No health tests were run. 1 completed test was skipped",
+  "zero-execution feedback explains what was skipped"
+);
+assertIncludes(
+  bulkHealthTestExecutionSection,
+  "setActiveBulkWorkspace(null);",
+  "successful Health Tests execution closes only its workspace"
+);
+assertIncludes(
+  bulkHealthTestExecutionSection,
+  "resetHealthTestingWorkspaceState();",
+  "successful Health Tests execution resets health workspace state"
+);
+for (const stateSetter of [
+  "setSelectedRunIds(",
+  "setSearchText(",
+  "setBreedFilter(",
+  "setSexFilter(",
+  "setOnlyBreedable(",
+  "setOnlyForSale(",
+  "setOnlyAtStud(",
+  "setGroomingStateFilter(",
+  "setSortKey(",
+  "setSortDirection(",
+  "window.location",
+  "router.",
+]) {
+  assertExcludes(
+    bulkHealthTestExecutionSection,
+    stateSetter,
+    `successful Health Tests execution does not reset or navigate via ${stateSetter}`
+  );
+}
+assertIncludes(
+  bulkHealthTestExecutionSection,
+  "setHealthTestExecutionError(formatHealthTestExecutionError(executionError));",
+  "Health Tests execution errors remain local to the workspace"
+);
+for (const resetCall of [
+  "clearSelection();",
+  "setActiveBulkWorkspace(null);",
+  "resetHealthTestingWorkspaceState();",
+]) {
+  assertExcludes(
+    bulkHealthTestFailureSection,
+    resetCall,
+    `failed Health Tests execution preserves its workspace and selection without ${resetCall}`
+  );
+}
+assertIncludes(
+  kennelPanel,
+  'role="status"',
+  "Health Tests completion feedback remains in an accessible roster status area"
+);
+assertIncludes(
+  kennelPanel,
+  'aria-live="polite"',
+  "Health Tests completion feedback is announced politely"
 );
 for (const label of [
   "Already completed",
