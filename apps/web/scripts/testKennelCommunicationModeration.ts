@@ -26,7 +26,8 @@ function main() {
   assert.ok(moderationService.includes("communication-report-notice-recipient-unavailable"), "missing recipient preserves the report and logs delivery failure");
   assert.ok(moderationService.includes("orderBy: [{ createdAt: \"desc\" }, { id: \"desc\" }]"), "queue order is newest first with deterministic ties");
   assert.ok(moderationService.includes("take: COMMUNICATION_REPORT_QUEUE_LIMIT"), "queue is bounded");
-  assert.ok(moderationService.includes("take: 50"), "conversation evidence is bounded");
+  assert.ok(moderationService.includes("take: 25"), "message evidence uses a bounded surrounding context window");
+  assert.ok(moderationService.includes("take: 50"), "conversation-report evidence remains bounded");
   assert.ok(moderationService.includes('data: { status: "RESOLVED", resolvedAt: new Date() }'), "resolution updates only the existing status lifecycle");
   assert.ok(!moderationService.includes("ban"), "moderation queue adds no sanctions");
 

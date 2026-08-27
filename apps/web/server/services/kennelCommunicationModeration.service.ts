@@ -6,6 +6,12 @@ export const COMMUNICATION_MODERATION_ADMIN_KENNEL_SLUG = "devtest";
 export const COMMUNICATION_REPORT_QUEUE_LIMIT = 50;
 
 type KennelIdentity = { id: string; name: string; slug: string };
+type EvidenceMessage = {
+  id: string;
+  body: string;
+  createdAt: Date;
+  senderKennel: KennelIdentity;
+};
 
 export type CommunicationReportQueueItem = {
   id: string;
@@ -30,12 +36,7 @@ export type CommunicationReportDetail = CommunicationReportQueueItem & {
     id: string;
     firstKennel: KennelIdentity;
     secondKennel: KennelIdentity;
-    messages: Array<{
-      id: string;
-      body: string;
-      createdAt: Date;
-      senderKennel: KennelIdentity;
-    }>;
+    messages: EvidenceMessage[];
   } | null;
 };
 
@@ -51,6 +52,9 @@ type ModerationClient = {
     findMany(args: unknown): Promise<unknown[]>;
     findUnique(args: unknown): Promise<unknown | null>;
     update(args: unknown): Promise<unknown>;
+  };
+  kennelConversationMessage: {
+    findMany(args: unknown): Promise<EvidenceMessage[]>;
   };
 };
 
@@ -104,6 +108,45 @@ export async function listCommunicationReports(): Promise<CommunicationReportQue
   return reports.map(toQueueItem);
 }
 
+async function loadReportedMessageContext(args: {
+  conversationId: string;
+  message: Pick<EvidenceMessage, "id" | "createdAt">;
+}): Promise<EvidenceMessage[]> {
+  const messageSelect = {
+    id: true,
+    body: true,
+    createdAt: true,
+    senderKennel: { select: { id: true, name: true, slug: true } },
+  };
+  const [before, after] = await Promise.all([
+    client().kennelConversationMessage.findMany({
+      where: {
+        conversationId: args.conversationId,
+        OR: [
+          { createdAt: { lt: args.message.createdAt } },
+          { createdAt: args.message.createdAt, id: { lte: args.message.id } },
+        ],
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 25,
+      select: messageSelect,
+    }),
+    client().kennelConversationMessage.findMany({
+      where: {
+        conversationId: args.conversationId,
+        OR: [
+          { createdAt: { gt: args.message.createdAt } },
+          { createdAt: args.message.createdAt, id: { gt: args.message.id } },
+        ],
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      take: 25,
+      select: messageSelect,
+    }),
+  ]);
+  return [...before.reverse(), ...after];
+}
+
 export async function getCommunicationReportDetail(
   reportId: string
 ): Promise<CommunicationReportDetail | null> {
@@ -148,13 +191,20 @@ export async function getCommunicationReportDetail(
   }) as (CommunicationReportDetail & { messageId: string | null }) | null;
 
   if (!report) return null;
+  const contextMessages = report.message && report.conversation
+    ? await loadReportedMessageContext({
+      conversationId: report.conversation.id,
+      message: report.message,
+    })
+    : report.conversation?.messages ?? [];
+
   return {
     ...toQueueItem(report),
     detail: report.detail,
     resolvedAt: report.resolvedAt,
     message: report.message,
     conversation: report.conversation
-      ? { ...report.conversation, messages: [...report.conversation.messages].reverse() }
+      ? { ...report.conversation, messages: report.message ? contextMessages : [...contextMessages].reverse() }
       : null,
   };
 }
