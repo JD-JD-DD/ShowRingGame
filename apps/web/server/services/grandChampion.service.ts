@@ -26,6 +26,7 @@ type TransactionClient = Prisma.TransactionClient;
 type DbClient = typeof db | TransactionClient;
 
 const GRAND_CHAMPION_CREDIT_RULES_VERSION = "gch-v2-immutable";
+const GRAND_CHAMPION_WRITE_CONCURRENCY = 24;
 
 type GrandChampionDog = {
   id: string;
@@ -67,6 +68,15 @@ function isGrandChampionAwardCode(
   awardCode: string
 ): awardCode is GrandChampionAwardCode {
   return GCH_AWARD_CODES.includes(awardCode as GrandChampionAwardCode);
+}
+
+async function runBounded<T>(
+  values: readonly T[],
+  action: (value: T) => PromiseLike<unknown>
+) {
+  for (let index = 0; index < values.length; index += GRAND_CHAMPION_WRITE_CONCURRENCY) {
+    await Promise.all(values.slice(index, index + GRAND_CHAMPION_WRITE_CONCURRENCY).map(action));
+  }
 }
 
 export function getGrandChampionPointsForCount(countedDogs: number): number {
@@ -301,12 +311,14 @@ async function recalculateGrandChampionProgressForDogs(args: {
   dogIds: string[];
 }) {
   const dogIds = [...new Set(args.dogIds)];
+  if (dogIds.length === 0) return;
 
-  for (const dogId of dogIds) {
-    const credits = await args.client.dogGrandChampionCredit.findMany({
-      where: { dogId },
+  const [credits, existingProgresses] = await Promise.all([
+    args.client.dogGrandChampionCredit.findMany({
+      where: { dogId: { in: dogIds } },
       select: {
         id: true,
+        dogId: true,
         showDayId: true,
         pointsAwarded: true,
         isMajor: true,
@@ -315,8 +327,37 @@ async function recalculateGrandChampionProgressForDogs(args: {
         judgeId: true,
         showAward: { select: { judgeId: true } },
       },
-    });
-    for (const credit of credits) {
+    }),
+    args.client.dogTitleProgress.findMany({
+      where: { dogId: { in: dogIds } },
+      select: {
+        dogId: true,
+        grandPoints: true,
+        grandMajorCount: true,
+        grandChampionDefeatShowCount: true,
+      },
+    }),
+  ]);
+  const creditsByDogId = new Map<string, typeof credits>();
+  for (const credit of credits) {
+    const dogCredits = creditsByDogId.get(credit.dogId) ?? [];
+    dogCredits.push(credit);
+    creditsByDogId.set(credit.dogId, dogCredits);
+  }
+  const progressByDogId = new Map(
+    existingProgresses.map((progress) => [progress.dogId, progress])
+  );
+  const progressCreates: Prisma.DogTitleProgressCreateManyInput[] = [];
+  const progressUpdates: Array<{
+    dogId: string;
+    grandPoints: number;
+    grandMajorCount: number;
+    grandChampionDefeatShowCount: number;
+  }> = [];
+
+  for (const dogId of dogIds) {
+    const dogCredits = creditsByDogId.get(dogId) ?? [];
+    for (const credit of dogCredits) {
       if (credit.qualifyingChampionOpponentCount !== null && !credit.judgeId) {
         throw new Error(
           `GCH credit ${credit.id} has corrected provenance but no immutable judgeId.`
@@ -324,28 +365,43 @@ async function recalculateGrandChampionProgressForDogs(args: {
       }
     }
     const qualification = evaluateGrandChampionQualification({
-      credits: credits.map((credit) => ({
+      credits: dogCredits.map((credit) => ({
         ...credit,
         judgeId: credit.judgeId ?? credit.showAward?.judgeId ?? null,
       })),
       alreadyGrandChampion: false,
     });
+    const existingProgress = progressByDogId.get(dogId);
+    const nextProgress = {
+      grandPoints: qualification.totalPoints,
+      grandMajorCount: qualification.majorShowCount,
+      grandChampionDefeatShowCount: qualification.championDefeatShowCount,
+    };
+    if (!existingProgress) {
+      progressCreates.push({ dogId, ...nextProgress });
+    } else {
+      // Preserve the existing upsert's updatedAt behavior for an existing
+      // progress row; only the reads and creation path are batched.
+      progressUpdates.push({ dogId, ...nextProgress });
+    }
+  }
 
-    await args.client.dogTitleProgress.upsert({
-      where: { dogId },
-      update: {
-        grandPoints: qualification.totalPoints,
-        grandMajorCount: qualification.majorShowCount,
-        grandChampionDefeatShowCount: qualification.championDefeatShowCount,
-      },
-      create: {
-        dogId,
-        grandPoints: qualification.totalPoints,
-        grandMajorCount: qualification.majorShowCount,
-        grandChampionDefeatShowCount: qualification.championDefeatShowCount,
-      },
+  if (progressCreates.length > 0) {
+    await args.client.dogTitleProgress.createMany({
+      data: progressCreates,
+      skipDuplicates: true,
     });
   }
+  await runBounded(progressUpdates, (update) =>
+    args.client.dogTitleProgress.update({
+      where: { dogId: update.dogId },
+      data: {
+        grandPoints: update.grandPoints,
+        grandMajorCount: update.grandMajorCount,
+        grandChampionDefeatShowCount: update.grandChampionDefeatShowCount,
+      },
+    })
+  );
 }
 
 async function processGrandChampionCreditsForShowDayWithClient(args: {
@@ -507,21 +563,48 @@ async function processGrandChampionCreditsForShowDayWithClient(args: {
     }
   }
 
-  for (const candidate of candidates) {
-    await args.client.dogGrandChampionCredit.upsert({
-      where: {
-        dogId_showDayId_awardCode: {
-          dogId: candidate.dogId,
-          showDayId: candidate.showDayId,
-          awardCode: candidate.awardCode,
-        },
-      },
-      update: {
-        ...candidate,
-      },
-      create: candidate,
+  const candidateDogIds = [...new Set(candidates.map((candidate) => candidate.dogId))];
+  const existingCredits = await args.client.dogGrandChampionCredit.findMany({
+    where: {
+      showDayId: args.showDayId,
+      dogId: { in: candidateDogIds },
+      awardCode: { in: [...GCH_AWARD_CODES] },
+    },
+    select: { dogId: true, awardCode: true },
+  });
+  const existingCreditKeys = new Set(
+    existingCredits.map((credit) => `${credit.dogId}:${credit.awardCode}`)
+  );
+  const creditsToCreate = candidates.filter(
+    (candidate) => !existingCreditKeys.has(`${candidate.dogId}:${candidate.awardCode}`)
+  );
+  if (creditsToCreate.length > 0) {
+    await args.client.dogGrandChampionCredit.createMany({
+      data: creditsToCreate,
+      skipDuplicates: true,
     });
   }
+  // Preserve canonical upsert correction semantics for rows that already
+  // existed before this attempt; new rows take the one-query createMany path.
+  await Promise.all(
+    candidates
+      .filter((candidate) =>
+        existingCreditKeys.has(`${candidate.dogId}:${candidate.awardCode}`)
+      )
+      .map((candidate) =>
+        args.client.dogGrandChampionCredit.upsert({
+          where: {
+            dogId_showDayId_awardCode: {
+              dogId: candidate.dogId,
+              showDayId: candidate.showDayId,
+              awardCode: candidate.awardCode,
+            },
+          },
+          update: candidate,
+          create: candidate,
+        })
+      )
+  );
 
   await recalculateGrandChampionProgressForDogs({
     client: args.client,

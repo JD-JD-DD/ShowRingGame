@@ -66,6 +66,7 @@
     "test:ribbon-room-read-model": "tsx scripts/testRibbonRoomReadModel.ts",
     "test:ribbon-room-page": "tsx scripts/testRibbonRoomPage.tsx",
     "test:grand-champion-promotion": "tsx scripts/testGrandChampionPromotion.ts",
+    "test:grand-champion-batching": "tsx scripts/testGrandChampionBatching.ts",
     "test:finalizer-concurrency-safety": "tsx scripts/testFinalizerConcurrencySafety.ts",
     "test:finalizer-phase-instrumentation": "tsx scripts/testFinalizerPhaseInstrumentation.ts",
     "test:show-countdowns": "tsx scripts/testShowCountdowns.ts",
