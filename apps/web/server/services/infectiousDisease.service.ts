@@ -29,6 +29,20 @@ export class BulkBrucellosisExecutionError extends Error {
   }
 }
 
+function getSafeBulkBrucellosisErrorDetails(error: unknown) {
+  const candidate =
+    error && typeof error === "object"
+      ? (error as { code?: unknown; name?: unknown })
+      : undefined;
+
+  return {
+    errorName:
+      typeof candidate?.name === "string" ? candidate.name : "UnknownError",
+    errorCode: typeof candidate?.code === "string" ? candidate.code : undefined,
+    errorMessage: error instanceof Error ? error.message : "Unknown error.",
+  };
+}
+
 function normalizeBulkBrucellosisDogIds(dogIds: unknown): string[] {
   if (!Array.isArray(dogIds) || dogIds.length === 0) {
     throw new BulkBrucellosisPreviewError("Choose at least one dog.");
@@ -304,8 +318,23 @@ export async function runBulkBrucellosisScreeningForKennel(args: {
   currentEpoch: number;
 }) {
   const dogIds = normalizeBulkBrucellosisDogIds(args.dogIds);
+  const startedAt = Date.now();
+  let transactionStartedAt: number | undefined;
+  let phase = "transactionStart";
+  let screenableDogCount = 0;
+  let processedScreeningCount = 0;
 
-  return db.$transaction(async (tx) => {
+  console.info("Bulk brucellosis execution started", {
+    operation: "bulk-brucellosis",
+    kennelId: args.kennelId,
+    selectedDogCount: dogIds.length,
+    phase,
+  });
+
+  try {
+    const result = await db.$transaction(async (tx) => {
+      transactionStartedAt = Date.now();
+      phase = "loadCurrentState";
     const dogs = await tx.dog.findMany({
       where: { id: { in: dogIds } },
       select: {
@@ -319,6 +348,7 @@ export async function runBulkBrucellosisScreeningForKennel(args: {
         visibleTitleSuffix: true,
       },
     });
+    phase = "buildExecutionPlan";
     const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
     const skippedByReason = emptyBulkBrucellosisSkippedByReason();
     const screenableDogs: BrucellosisScreeningDog[] = [];
@@ -338,6 +368,7 @@ export async function runBulkBrucellosisScreeningForKennel(args: {
 
       screenableDogs.push(dog);
     }
+    screenableDogCount = screenableDogs.length;
 
     const kennel = await tx.kennel.findUnique({
       where: { id: args.kennelId },
@@ -350,6 +381,7 @@ export async function runBulkBrucellosisScreeningForKennel(args: {
 
     const totalCharged = screenableDogs.length * BRUCELLOSIS_TEST_FEE;
 
+    phase = "fundsCheck";
     if (kennel.balance < totalCharged) {
       throw new BulkBrucellosisExecutionError(
         "Insufficient funds for the selected brucellosis screenings."
@@ -367,6 +399,7 @@ export async function runBulkBrucellosisScreeningForKennel(args: {
       };
     }
 
+    phase = "balanceDebit";
     await tx.kennel.update({
       where: { id: kennel.id },
       data: { balance: kennel.balance - totalCharged },
@@ -374,6 +407,7 @@ export async function runBulkBrucellosisScreeningForKennel(args: {
 
     const runningBalance = { value: kennel.balance };
 
+    phase = "screeningProcessing";
     for (const dog of screenableDogs) {
       await executeBrucellosisScreeningForKennelTx(tx, {
         kennelId: kennel.id,
@@ -381,8 +415,10 @@ export async function runBulkBrucellosisScreeningForKennel(args: {
         currentEpoch: args.currentEpoch,
         runningBalance,
       });
+      processedScreeningCount += 1;
     }
 
+    phase = "transactionCommit";
     return {
       selectedDogCount: dogIds.length,
       screenedDogCount: screenableDogs.length,
@@ -391,7 +427,42 @@ export async function runBulkBrucellosisScreeningForKennel(args: {
       newBalance: runningBalance.value,
       skippedByReason,
     };
-  });
+    });
+
+    console.info("Bulk brucellosis execution completed", {
+      operation: "bulk-brucellosis",
+      outcome: "success",
+      kennelId: args.kennelId,
+      selectedDogCount: result.selectedDogCount,
+      screenableDogCount,
+      screenedDogCount: result.screenedDogCount,
+      skippedCount: result.skippedDogCount,
+      processedScreeningCount,
+      durationMs: Date.now() - startedAt,
+      transactionDurationMs: transactionStartedAt
+        ? Date.now() - transactionStartedAt
+        : undefined,
+      phase,
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Bulk brucellosis execution failed", {
+      operation: "bulk-brucellosis",
+      outcome: "failure",
+      kennelId: args.kennelId,
+      selectedDogCount: dogIds.length,
+      screenableDogCount,
+      processedScreeningCount,
+      phase,
+      durationMs: Date.now() - startedAt,
+      transactionDurationMs: transactionStartedAt
+        ? Date.now() - transactionStartedAt
+        : undefined,
+      ...getSafeBulkBrucellosisErrorDetails(error),
+    });
+    throw error;
+  }
 }
 
 export async function transmitBrucellosisThroughBreeding(

@@ -32,6 +32,20 @@ async function lockDogsForPhenotypeHealthTesting(
   );
 }
 
+function getSafeBulkHealthTestErrorDetails(error: unknown) {
+  const candidate =
+    error && typeof error === "object"
+      ? (error as { code?: unknown; name?: unknown })
+      : undefined;
+
+  return {
+    errorName:
+      typeof candidate?.name === "string" ? candidate.name : "UnknownError",
+    errorCode: typeof candidate?.code === "string" ? candidate.code : undefined,
+    errorMessage: error instanceof Error ? error.message : "Unknown error.",
+  };
+}
+
 export type BulkHealthTestSelection =
   | {
       mode: "explicit";
@@ -690,10 +704,26 @@ export async function runBulkPhenotypeHealthTestsForKennel(args: {
 }) {
   const dogIds = normalizePreviewDogIds(args.dogIds);
   const selection = normalizeBulkHealthTestSelection(args.selection);
+  const startedAt = Date.now();
+  let transactionStartedAt: number | undefined;
+  let phase = "transactionStart";
+  let plannedTestCount = 0;
+  let processedTestCount = 0;
 
-  return db.$transaction(async (tx) => {
-    await lockDogsForPhenotypeHealthTesting(tx, dogIds);
+  console.info("Bulk health test execution started", {
+    operation: "bulk-health-tests",
+    kennelId: args.kennelId,
+    selectedDogCount: dogIds.length,
+    phase,
+  });
 
+  try {
+    const result = await db.$transaction(async (tx) => {
+      transactionStartedAt = Date.now();
+      phase = "dogLock";
+      await lockDogsForPhenotypeHealthTesting(tx, dogIds);
+
+    phase = "loadCurrentState";
     const dogs = await tx.dog.findMany({
       where: { id: { in: dogIds } },
       select: {
@@ -709,6 +739,7 @@ export async function runBulkPhenotypeHealthTestsForKennel(args: {
         },
       },
     });
+    phase = "buildExecutionPlan";
     const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
     const skippedByReason = emptySkippedByReason();
     const executionPlan: Array<{
@@ -789,7 +820,12 @@ export async function runBulkPhenotypeHealthTestsForKennel(args: {
         ),
       0
     );
+    plannedTestCount = executionPlan.reduce(
+      (count, item) => count + item.testTypeCodes.length,
+      0
+    );
 
+    phase = "fundsCheck";
     if (kennel.balance < totalCharged) {
       throw new Error(
         totalCharged === 0 || executionPlan.length === 1 && executionPlan[0].testTypeCodes.length === 1
@@ -810,6 +846,7 @@ export async function runBulkPhenotypeHealthTestsForKennel(args: {
       };
     }
 
+    phase = "balanceDebit";
     await tx.kennel.update({
       where: { id: kennel.id },
       data: { balance: kennel.balance - totalCharged },
@@ -817,6 +854,7 @@ export async function runBulkPhenotypeHealthTestsForKennel(args: {
 
     const runningBalance = { value: kennel.balance };
 
+    phase = "healthResultProcessing";
     for (const item of executionPlan) {
       await executePhenotypeHealthTestsForKennelTx(tx, {
         kennelId: kennel.id,
@@ -828,9 +866,11 @@ export async function runBulkPhenotypeHealthTestsForKennel(args: {
 
       for (const testTypeCode of item.testTypeCodes) {
         executedByTest[testTypeCode] += 1;
+        processedTestCount += 1;
       }
     }
 
+    phase = "transactionCommit";
     return {
       selectedDogCount: dogIds.length,
       testedDogCount: executionPlan.length,
@@ -843,5 +883,43 @@ export async function runBulkPhenotypeHealthTestsForKennel(args: {
       executedByTest,
       skippedByReason,
     };
-  });
+    });
+
+    console.info("Bulk health test execution completed", {
+      operation: "bulk-health-tests",
+      outcome: "success",
+      kennelId: args.kennelId,
+      selectedDogCount: result.selectedDogCount,
+      runnableTestCount: plannedTestCount,
+      executedTestCount: result.executedTestCount,
+      skippedCount: Object.values(result.skippedByReason).reduce(
+        (count, skipped) => count + skipped,
+        0
+      ),
+      durationMs: Date.now() - startedAt,
+      transactionDurationMs: transactionStartedAt
+        ? Date.now() - transactionStartedAt
+        : undefined,
+      phase,
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Bulk health test execution failed", {
+      operation: "bulk-health-tests",
+      outcome: "failure",
+      kennelId: args.kennelId,
+      selectedDogCount: dogIds.length,
+      runnableTestCount: plannedTestCount,
+      plannedTestCount,
+      processedTestCount,
+      phase,
+      durationMs: Date.now() - startedAt,
+      transactionDurationMs: transactionStartedAt
+        ? Date.now() - transactionStartedAt
+        : undefined,
+      ...getSafeBulkHealthTestErrorDetails(error),
+    });
+    throw error;
+  }
 }

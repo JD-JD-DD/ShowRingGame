@@ -35,7 +35,6 @@ export async function POST(request: Request) {
       return fail(error.message, error.status);
     }
 
-    console.error("POST /api/kennel/dogs/health-tests failed:", error);
     const safeMessage =
       error instanceof Error && error.message.startsWith("Insufficient funds")
         ? error.message

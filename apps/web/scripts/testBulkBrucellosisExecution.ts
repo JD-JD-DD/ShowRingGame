@@ -74,5 +74,29 @@ assert.ok(
   standaloneRoute.includes("currentKennel.balance < BRUCELLOSIS_TEST_FEE"),
   "standalone Brucellosis screening retains its funds requirement"
 );
+for (const marker of [
+  'operation: "bulk-brucellosis"',
+  'console.info("Bulk brucellosis execution started"',
+  'console.info("Bulk brucellosis execution completed"',
+  'console.error("Bulk brucellosis execution failed"',
+  "screenableDogCount",
+  "processedScreeningCount",
+  "transactionDurationMs",
+  "errorName",
+  "errorCode",
+  "errorMessage",
+  'phase = "screeningProcessing"',
+  'phase = "transactionCommit"',
+]) {
+  assert.ok(service.includes(marker), `bulk Brucellosis diagnostics retain ${marker}`);
+}
+assert.ok(
+  !bulkExecution.includes("timeout:") && !bulkExecution.includes("maxWait:"),
+  "bulk Brucellosis observability does not change transaction timing"
+);
+assert.ok(
+  !service.includes('console.info("Bulk brucellosis execution completed", {\n      resultCode'),
+  "bulk Brucellosis success diagnostics do not log screening result values"
+);
 
 console.log("Bulk brucellosis execution source checks passed.");

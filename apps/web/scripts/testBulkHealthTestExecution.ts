@@ -23,6 +23,20 @@ for (const marker of [
   "ALREADY_COMPLETED",
   'transactionType: "HEALTH_TEST_FEE"',
   "balanceAfter: args.runningBalance.value",
+  'operation: "bulk-health-tests"',
+  'console.info("Bulk health test execution started"',
+  'console.info("Bulk health test execution completed"',
+  'console.error("Bulk health test execution failed"',
+  "runnableTestCount",
+  "plannedTestCount",
+  "processedTestCount",
+  "transactionDurationMs",
+  "errorName",
+  "errorCode",
+  "errorMessage",
+  'phase = "dogLock"',
+  'phase = "healthResultProcessing"',
+  'phase = "transactionCommit"',
 ]) {
   assert.ok(healthService.includes(marker), `bulk health execution retains ${marker}`);
 }
@@ -51,6 +65,14 @@ assert.ok(
 assert.ok(
   !executionRoute.includes("error instanceof Error ? error.message"),
   "bulk execution does not expose unexpected server errors"
+);
+assert.ok(
+  !healthService.includes("timeout:") && !healthService.includes("maxWait:"),
+  "bulk health observability does not change transaction timing"
+);
+assert.ok(
+  !healthService.includes('console.info("Bulk health test execution completed", {\n      resultCode'),
+  "bulk health success diagnostics do not log health result values"
 );
 
 console.log("Bulk health test execution source checks passed.");

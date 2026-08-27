@@ -38,7 +38,6 @@ export async function POST(request: Request) {
       return fail(error.message, error.status);
     }
 
-    console.error("POST /api/kennel/dogs/brucellosis failed:", error);
     return fail("Unable to complete brucellosis screenings.", 500);
   }
 }
