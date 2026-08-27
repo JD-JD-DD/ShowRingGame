@@ -1464,16 +1464,32 @@ export class ShowDayFinalizationPhaseError extends Error {
 }
 
 async function runShowDayFinalizationPhase<T>(
-  phaseName: string,
-  action: () => Promise<T>
+  args: {
+    showDayId: string;
+    phaseName: string;
+    action: () => Promise<T>;
+    getCompletionLogFields?: (result: T) => Record<string, unknown>;
+  }
 ): Promise<T> {
   const startedAtMs = Date.now();
+  console.info("publish-show-results finalization phase start", {
+    showDayId: args.showDayId,
+    phase: args.phaseName,
+  });
 
   try {
-    return await action();
+    const result = await args.action();
+    const durationMs = Date.now() - startedAtMs;
+    console.info("publish-show-results finalization phase complete", {
+      showDayId: args.showDayId,
+      phase: args.phaseName,
+      durationMs,
+      ...(args.getCompletionLogFields?.(result) ?? {}),
+    });
+    return result;
   } catch (error) {
     throw new ShowDayFinalizationPhaseError({
-      phaseName,
+      phaseName: args.phaseName,
       durationMs: Date.now() - startedAtMs,
       cause: error,
     });
@@ -2222,26 +2238,35 @@ export async function finalizeReadyShowDayResults(args: {
     };
   }
 
-  await runShowDayFinalizationPhase("closeEmptyShowDay", () =>
-    db.$transaction((tx) =>
-      cancelReadyEmptyShowDay({
-        tx,
-        showDayId: args.showDayId,
-        currentEpoch: args.currentEpoch,
-      })
-    )
-  );
+  await runShowDayFinalizationPhase({
+    showDayId: args.showDayId,
+    phaseName: "closeEmptyShowDay",
+    action: () =>
+      db.$transaction((tx) =>
+        cancelReadyEmptyShowDay({
+          tx,
+          showDayId: args.showDayId,
+          currentEpoch: args.currentEpoch,
+        })
+      ),
+  });
 
-  const remainingEntryBlocks = await db.showJudgingBlock.count({
-    where: {
-      showDayId: args.showDayId,
-      status: {
-        notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
-      },
-      showEntries: {
-        some: {},
-      },
-    },
+  const remainingEntryBlocks = await runShowDayFinalizationPhase({
+    showDayId: args.showDayId,
+    phaseName: "remainingJudgingBlocks",
+    action: () =>
+      db.showJudgingBlock.count({
+        where: {
+          showDayId: args.showDayId,
+          status: {
+            notIn: ["RESULTS_PUBLISHED", "CANCELLED"],
+          },
+          showEntries: {
+            some: {},
+          },
+        },
+      }),
+    getCompletionLogFields: (count) => ({ remainingEntryBlocks: count }),
   });
 
   if (remainingEntryBlocks > 0) {
@@ -2262,35 +2287,49 @@ export async function finalizeReadyShowDayResults(args: {
   }
 
   const engineJudge = toEngineJudge(showDay.judge);
-  const groupAwardsCreated = await runShowDayFinalizationPhase(
-    "groupAwards",
-    () =>
+  const groupAwardsCreated = await runShowDayFinalizationPhase({
+    showDayId: args.showDayId,
+    phaseName: "groupAwards",
+    action: () =>
       createGroupAwardsForShowDay({
         showDayId: args.showDayId,
         judgeId: showDay.judgeId,
         judge: engineJudge,
         currentEpoch: args.currentEpoch,
-      })
-  );
-  const bestInShowAwardsCreated = await runShowDayFinalizationPhase(
-    "bestInShowAwards",
-    () =>
+      }),
+    getCompletionLogFields: (created) => ({ groupAwardsCreated: created }),
+  });
+  const bestInShowAwardsCreated = await runShowDayFinalizationPhase({
+    showDayId: args.showDayId,
+    phaseName: "bestInShowAwards",
+    action: () =>
       createBestInShowAwardsForShowDay({
         showDayId: args.showDayId,
         currentEpoch: args.currentEpoch,
-      })
-  );
-  const finalsTitleProgress = await runShowDayFinalizationPhase(
-    "finalsTitleProgress",
-    () => syncFinalsTitleProgressForShowDay({ showDayId: args.showDayId })
-  );
-  const grandChampionProcessing =
-    await runShowDayFinalizationPhase("grandChampionProcessing", () =>
+      }),
+    getCompletionLogFields: (created) => ({ bestInShowAwardsCreated: created }),
+  });
+  const finalsTitleProgress = await runShowDayFinalizationPhase({
+    showDayId: args.showDayId,
+    phaseName: "finalsTitleProgress",
+    action: () => syncFinalsTitleProgressForShowDay({ showDayId: args.showDayId }),
+    getCompletionLogFields: (result) => result,
+  });
+  const grandChampionProcessing = await runShowDayFinalizationPhase({
+    showDayId: args.showDayId,
+    phaseName: "grandChampionProcessing",
+    action: () =>
       processGrandChampionCreditsForFinalizedShowDay({
         showDayId: args.showDayId,
         currentEpoch: args.currentEpoch,
-      })
-    );
+      }),
+    getCompletionLogFields: (result) => ({
+      creditsProcessed: result.creditsProcessed,
+      dogsRecalculated: result.dogsRecalculated,
+      promotionsApplied: result.promotionsApplied,
+      status: result.status,
+    }),
+  });
 
   if (grandChampionProcessing.status !== "EXECUTED") {
     throw new ShowDayFinalizationPhaseError({
@@ -2302,16 +2341,22 @@ export async function finalizeReadyShowDayResults(args: {
     });
   }
 
-  await runShowDayFinalizationPhase("prestigeRefresh", () =>
-    refreshPrestigeStatsForShowDay({
-      tx: db,
-      showDayId: args.showDayId,
-      currentEpoch: args.currentEpoch,
-    })
-  );
+  await runShowDayFinalizationPhase({
+    showDayId: args.showDayId,
+    phaseName: "prestigeRefresh",
+    action: () =>
+      refreshPrestigeStatsForShowDay({
+        tx: db,
+        showDayId: args.showDayId,
+        currentEpoch: args.currentEpoch,
+      }),
+  });
 
-  const publishStatus = await runShowDayFinalizationPhase("publishStatus", () =>
-    db.$transaction(async (tx) => {
+  const publishStatus = await runShowDayFinalizationPhase({
+    showDayId: args.showDayId,
+    phaseName: "publishStatus",
+    action: () =>
+      db.$transaction(async (tx) => {
       const publishableShowDay = await tx.showDay.findUnique({
         where: { id: args.showDayId },
         select: {
@@ -2357,10 +2402,14 @@ export async function finalizeReadyShowDayResults(args: {
       return {
         clusterCompleted,
       };
-    }, {
-      timeout: SHOW_DAY_FINALIZATION_TIMEOUT_MS,
-    })
-  );
+      }, {
+        timeout: SHOW_DAY_FINALIZATION_TIMEOUT_MS,
+      }),
+    getCompletionLogFields: (result) => ({
+      status: "RESULTS_PUBLISHED",
+      clusterCompleted: result.clusterCompleted,
+    }),
+  });
 
   if (publishStatus.clusterCompleted) {
     const invitationalClusterId = getInvitationalClusterId(showDay.cluster.year);
