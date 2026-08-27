@@ -108,5 +108,9 @@ assert.ok(accordion.includes("summarizeBreedJudge"), "accordion checks actual ju
 assert.ok(accordion.includes("Multiple judges"), "mixed judge attribution has a neutral group or breed display");
 assert.ok(accordion.includes("showDogJudge"), "mixed breed attribution is shown at the dog-result level");
 assert.equal(accordion.includes("group.judge?.judge"), false, "accordion does not display a representative group judge as universal attribution");
+assert.ok(accordion.includes('replaceAll(", ", " / ")'), "multiple stored awards render on one slash-separated line");
+assert.ok(accordion.includes("formatTitlePointsDisplay(buildTitlePointsDisplay"), "point display retains the existing title-point helper semantics");
+assert.ok(accordion.includes('replace(" major", " · Major")'), "major status is communicated in text");
+assert.equal(accordion.includes("No title points"), false, "zero-point results do not manufacture point text");
 
 console.log("My Results hierarchy checks passed.");

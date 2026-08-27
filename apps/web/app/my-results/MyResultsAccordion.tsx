@@ -73,17 +73,21 @@ function formatResult(entry: MyResultsDogResult): string {
   }
 
   return entry.result.awardCodes.length > 0
-    ? formatShowAwardLabels([...entry.result.awardCodes])
+    ? formatShowAwardLabels([...entry.result.awardCodes]).replaceAll(", ", " / ")
     : "DNP";
 }
 
 function formatTitlePoints(entry: MyResultsDogResult): string | null {
   const result = entry.result;
-  return formatTitlePointsDisplay(buildTitlePointsDisplay({
+  const display = formatTitlePointsDisplay(buildTitlePointsDisplay({
     championshipPointsAwarded: result?.championshipPointsAwarded ?? 0,
     isChampionshipMajor: result?.isChampionshipMajor ?? false,
     grandChampionCredits: result ? [...result.grandChampionCredits] : [],
   }));
+
+  return display
+    ?.replace(" pts", " points")
+    .replace(" major", " · Major") ?? null;
 }
 
 function ExpandButton(props: {
@@ -230,15 +234,17 @@ export default function MyResultsAccordion({ hierarchy }: { hierarchy: MyResults
                                                 return (
                                                   <article key={entry.showEntryId} className="theme-panel rounded-xl p-3">
                                                     <div className="flex flex-wrap items-start justify-between gap-3">
-                                                      <div>
+                                                      <div className="min-w-0">
                                                         <Link href={`/dogs/${entry.dogId}`} className="theme-heading font-semibold underline-offset-4 hover:underline">
                                                           {entry.dogDisplayName}
                                                         </Link>
                                                         <p className="theme-copy text-xs">{entry.registrationNumber}</p>
                                                       </div>
-                                                      <div className="text-right">
-                                                        <p className="theme-heading font-semibold">{formatResult(entry)}</p>
-                                                        <p className="theme-copy text-xs">{titlePoints ?? "No title points"}</p>
+                                                      <div className="max-w-full text-right">
+                                                        <p className="theme-heading break-words font-semibold">
+                                                          {formatResult(entry)}
+                                                          {titlePoints ? <span className="theme-copy font-normal"> · {titlePoints}</span> : null}
+                                                        </p>
                                                         {showDogJudge ? <p className="theme-copy text-xs">Judge: {formatJudgeName(entry.breedJudge?.judge ?? null)}</p> : null}
                                                       </div>
                                                     </div>
