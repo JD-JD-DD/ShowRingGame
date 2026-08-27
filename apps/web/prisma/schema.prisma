@@ -401,6 +401,20 @@ enum ModerationTargetType {
   IP
 }
 
+enum KennelCommunicationReportReason {
+  HARASSMENT
+  HATE_SPEECH
+  SPAM
+  SCAM
+  THREAT
+  OTHER
+}
+
+enum KennelCommunicationReportStatus {
+  OPEN
+  RESOLVED
+}
+
 model User {
   id               String               @id @default(cuid())
   email            String               @unique
@@ -513,6 +527,14 @@ model Kennel {
   bulletinThreads          BulletinThread[]
   bulletinPosts            BulletinPost[]
   notices                  KennelNotice[]
+  conversationsAsFirst       KennelConversation[]            @relation("KennelConversationFirst")
+  conversationsAsSecond      KennelConversation[]            @relation("KennelConversationSecond")
+  conversationParticipants   KennelConversationParticipant[]
+  sentMessages               KennelConversationMessage[]
+  initiatedBlocks            KennelBlock[]                   @relation("KennelBlockBlocker")
+  receivedBlocks             KennelBlock[]                   @relation("KennelBlockBlocked")
+  filedCommunicationReports  KennelCommunicationReport[]     @relation("KennelCommunicationReportReporter")
+  receivedCommunicationReports KennelCommunicationReport[] @relation("KennelCommunicationReportReported")
   privateDogNotes          KennelDogPrivateNote[]
   runs                     KennelRun[]
   serviceClaims            KennelServiceClaim[]
@@ -1853,6 +1875,92 @@ model KennelNotice {
   @@index([linkedShowId])
   @@index([linkedThreadId])
   @@index([linkedListingId])
+}
+
+model KennelConversation {
+  id             String   @id @default(cuid())
+  firstKennelId String
+  secondKennelId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  firstKennel  Kennel                         @relation("KennelConversationFirst", fields: [firstKennelId], references: [id])
+  secondKennel Kennel                         @relation("KennelConversationSecond", fields: [secondKennelId], references: [id])
+  participants KennelConversationParticipant[]
+  messages     KennelConversationMessage[]
+  reports      KennelCommunicationReport[]
+
+  @@unique([firstKennelId, secondKennelId])
+}
+
+model KennelConversationParticipant {
+  conversationId      String
+  kennelId            String
+  lastReadMessageId   String?
+  hiddenAt            DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  conversation    KennelConversation         @relation(fields: [conversationId], references: [id])
+  kennel          Kennel                     @relation(fields: [kennelId], references: [id])
+  lastReadMessage KennelConversationMessage? @relation("ConversationParticipantLastReadMessage", fields: [lastReadMessageId], references: [id], onDelete: SetNull)
+
+  @@id([conversationId, kennelId])
+  @@index([kennelId, hiddenAt])
+  @@index([lastReadMessageId])
+}
+
+model KennelConversationMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderKennelId String
+  body           String
+  createdAt      DateTime @default(now())
+
+  conversation            KennelConversation            @relation(fields: [conversationId], references: [id])
+  senderKennel            Kennel                        @relation(fields: [senderKennelId], references: [id])
+  lastReadByParticipants KennelConversationParticipant[] @relation("ConversationParticipantLastReadMessage")
+  reports                 KennelCommunicationReport[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderKennelId])
+}
+
+model KennelBlock {
+  id             String   @id @default(cuid())
+  blockerKennelId String
+  blockedKennelId String
+  createdAt      DateTime @default(now())
+
+  blockerKennel Kennel @relation("KennelBlockBlocker", fields: [blockerKennelId], references: [id])
+  blockedKennel Kennel @relation("KennelBlockBlocked", fields: [blockedKennelId], references: [id])
+
+  @@unique([blockerKennelId, blockedKennelId])
+  @@index([blockedKennelId])
+}
+
+model KennelCommunicationReport {
+  id               String                          @id @default(cuid())
+  reporterKennelId String
+  reportedKennelId String
+  messageId      String?
+  conversationId String?
+  reason         KennelCommunicationReportReason
+  detail         String?
+  status         KennelCommunicationReportStatus @default(OPEN)
+  createdAt      DateTime                      @default(now())
+  resolvedAt     DateTime?
+
+  reporterKennel Kennel                     @relation("KennelCommunicationReportReporter", fields: [reporterKennelId], references: [id])
+  reportedKennel Kennel                     @relation("KennelCommunicationReportReported", fields: [reportedKennelId], references: [id])
+  message        KennelConversationMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  conversation   KennelConversation?        @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([reporterKennelId])
+  @@index([reportedKennelId])
+  @@index([messageId])
+  @@index([conversationId])
 }
 
 model DogTitleProgress {
