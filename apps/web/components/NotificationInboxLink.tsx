@@ -9,7 +9,13 @@ type InboxUnreadCountResponse = {
   total?: number;
 };
 
-export default function NotificationInboxLink() {
+type NotificationInboxLinkProps = {
+  onUnreadCountChange?: (unreadCount: number) => void;
+};
+
+export default function NotificationInboxLink({
+  onUnreadCountChange,
+}: NotificationInboxLinkProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const shouldRefreshOnFocusRef = useRef(false);
   const isRefreshingRef = useRef(false);
@@ -34,6 +40,7 @@ export default function NotificationInboxLink() {
 
         if (isMounted && typeof data.total === "number") {
           setUnreadCount(data.total);
+          onUnreadCountChange?.(data.total);
         }
       } catch {
         // The inbox link remains useful if the unread-count request fails.
@@ -73,7 +80,7 @@ export default function NotificationInboxLink() {
       window.removeEventListener("blur", markTabInactive);
       window.removeEventListener("focus", refreshOnTabReturn);
     };
-  }, []);
+  }, [onUnreadCountChange]);
 
   return (
     <Link

@@ -6,26 +6,63 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import LogoutButton from "@/components/LogoutButton";
 import ThemeToggle from "@/components/ThemeToggle";
+import NotificationInboxLink from "@/components/NotificationInboxLink";
+import { formatInboxUnreadCount } from "@/components/NotificationInboxBadge";
 
 const primaryNavItems = [{ label: "Home", href: "/" }] as const;
 
 const primaryNavMenus = [
-  { label: "My Kennel", items: [{ label: "My Kennel", href: "/kennel" }] },
-  { label: "Shows", items: [{ label: "Shows", href: "/shows" }] },
-  { label: "Breeding", items: [{ label: "Breeding", href: "/breed" }] },
-  { label: "Market", items: [{ label: "Market", href: "/market" }] },
-  { label: "Community", items: [{ label: "Community", href: "/community" }] },
+  {
+    label: "My Kennel",
+    activeHref: "/kennel",
+    items: [
+      { label: "My Kennel", href: "/kennel" },
+      { label: "Prestige", href: "/kennel/prestige" },
+      { label: "In Memoriam", href: "/memorium" },
+      { label: "Ledger", href: "/ledger" },
+    ],
+  },
+  {
+    label: "Shows",
+    activeHref: "/shows",
+    items: [
+      { label: "Shows", href: "/shows" },
+      { label: "My Results", href: "/my-results" },
+      { label: "Point Schedules", href: "/point-schedules" },
+    ],
+  },
+  {
+    label: "Breeding",
+    activeHref: "/breed",
+    items: [
+      { label: "Plan a Litter", href: "/plan-a-litter" },
+      { label: "Litters", href: "/litters" },
+      { label: "Stud Contracts", href: "/stud-contracts" },
+    ],
+  },
+  {
+    label: "Market",
+    activeHref: "/market",
+    items: [
+      { label: "Market", href: "/market" },
+      { label: "Services", href: "/kennel/services" },
+    ],
+  },
+  {
+    label: "Community",
+    activeHref: "/community",
+    items: [
+      { label: "Community", href: "/community" },
+      { label: "Players", href: "/districts/kennels" },
+    ],
+  },
 ] as const;
 
 const accountItems = [
   { label: "Settings", href: "/account" },
-  { label: "Prestige", href: "/kennel/prestige" },
-  { label: "In Memoriam", href: "/memorium" },
-  { label: "Ledger", href: "/ledger" },
   { label: "FAQ", href: "/faq" },
   { label: "Map", href: "/travel-map" },
-  { label: "Point Schedules", href: "/point-schedules" },
-  { label: "Players", href: "/districts/kennels" },
+  { label: "Start Up Guide", href: "/start-up-guide" },
 ] as const;
 
 function isActivePath(pathname: string, href: string): boolean {
@@ -44,7 +81,6 @@ function navClass(active: boolean): string {
 type GameHeaderNavProps = {
   balance: number | null;
   gameTime: ReactNode;
-  inbox: ReactNode;
 };
 
 function formatMoney(amount: number): string {
@@ -54,11 +90,11 @@ function formatMoney(amount: number): string {
 export default function GameHeaderNav({
   balance,
   gameTime,
-  inbox,
 }: GameHeaderNavProps) {
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileCollapsed, setMobileCollapsed] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigationRef = useRef<HTMLDivElement | null>(null);
   const accountActive = accountItems.some((item) =>
     isActivePath(pathname, item.href)
@@ -122,7 +158,10 @@ export default function GameHeaderNav({
 
           {primaryNavMenus.map((menu) => {
             const isOpen = openMenu === menu.label;
-            const active = menu.items.some((item) => isActivePath(pathname, item.href));
+            const active =
+              (menu.activeHref !== undefined &&
+                isActivePath(pathname, menu.activeHref)) ||
+              menu.items.some((item) => isActivePath(pathname, item.href));
             const menuId =
               "game-header-" +
               menu.label.toLowerCase().replace(/\s+/g, "-") +
@@ -209,13 +248,34 @@ export default function GameHeaderNav({
                 </div>
               ) : null}
             </div>
-            {inbox}
+            <NotificationInboxLink onUnreadCountChange={setUnreadCount} />
           </div>
         </div>
 
         {mobileCollapsed ? (
           <div className="game-header__utilities ml-auto flex min-w-0 flex-1 items-center gap-1 lg:hidden">
+            <Link
+              href="/kennel"
+              className="game-header__link rounded-xl px-2 py-1.5 text-xs font-semibold transition"
+            >
+              My Kennel
+            </Link>
+            <Link
+              href="/shows"
+              className="game-header__link rounded-xl px-2 py-1.5 text-xs font-semibold transition"
+            >
+              Shows
+            </Link>
             {gameTime}
+            {unreadCount > 0 ? (
+              <Link
+                href="/inbox"
+                aria-label={formatInboxUnreadCount(unreadCount) + " unread messages. Open Inbox"}
+                className="theme-status-danger inline-flex min-h-7 min-w-7 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                {formatInboxUnreadCount(unreadCount)}
+              </Link>
+            ) : null}
           </div>
         ) : null}
 

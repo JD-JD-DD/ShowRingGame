@@ -1,3 +1,7 @@
+export function formatInboxUnreadCount(unreadCount: number): string {
+  return unreadCount > 99 ? "99+" : String(unreadCount);
+}
+
 export default function NotificationInboxBadge({
   unreadCount,
 }: {
@@ -12,7 +16,7 @@ export default function NotificationInboxBadge({
       className="theme-status-danger ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
       aria-label={`${unreadCount} unread Inbox items`}
     >
-      {unreadCount > 99 ? "99+" : unreadCount}
+      {formatInboxUnreadCount(unreadCount)}
     </span>
   );
 }

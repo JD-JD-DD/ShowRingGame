@@ -2,7 +2,6 @@ import { Suspense } from "react";
 
 import EmergencyCareLink from "@/components/EmergencyCareLink";
 import GlobalUtcClock from "@/components/GlobalUtcClock";
-import NotificationInboxLink from "@/components/NotificationInboxLink";
 import { db } from "@/lib/db";
 import { peekSessionUserId } from "@/lib/session";
 import GameHeaderNav from "./GameHeaderNav";
@@ -22,11 +21,6 @@ export default async function GameHeader() {
         <GameHeaderNav
           balance={kennel?.balance ?? null}
           gameTime={<GlobalUtcClock />}
-          inbox={
-            <Suspense fallback={null}>
-              <NotificationInboxLink />
-            </Suspense>
-          }
         />
       </div>
 
