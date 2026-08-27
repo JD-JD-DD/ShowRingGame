@@ -154,6 +154,10 @@ assert.equal(loader.includes("take:"), false, "query has no arbitrary row limit"
 assert.equal(loader.includes("ownerKennelId"), false, "query does not use current dog ownership");
 assert.ok(loader.includes("showDay: { clusterId: { in: page.clusterIds } }"), "selected clusters load all qualifying entries by cluster ID");
 assert.ok(loader.includes("selectMyResultsClusterPage"), "cluster selection uses a stable continuation helper");
+assert.equal((loader.match(/db\.showDay\.findMany/g) ?? []).length, 1, "Step A uses one qualifying-ShowDay metadata query per batch");
+assert.equal((loader.match(/db\.showEntry\.findMany/g) ?? []).length, 1, "Step B uses one selected-cluster entry query per batch");
+assert.ok(loader.includes("select: { clusterId: true, scheduledEpoch: true }"), "Step A does not load complete result payloads");
+assert.equal(loader.includes("db.showCluster.findMany"), false, "Step A does not load public cluster result trees");
 
 const page = readFileSync(join(root, "app", "my-results", "page.tsx"), "utf8");
 assert.equal(page.includes("buildCompatibilityShows"), false, "page does not rebuild the legacy Cluster to Breed shape");
@@ -175,6 +179,7 @@ assert.ok(accordion.includes("loadMoreMyResults"), "accordion uses the server ac
 assert.ok(accordion.includes("setHierarchy((current) => [...current, ...nextPage.hierarchy])"), "Load more appends older clusters");
 assert.ok(accordion.includes("disabled={isLoadingMore}"), "Load more prevents concurrent requests");
 assert.ok(accordion.includes('"Load more"'), "Load more uses a native button label");
+assert.equal(accordion.includes("fetch("), false, "accordion does not issue direct network requests while expanding");
 assert.ok(accordion.includes("summarizeGroupJudge"), "accordion checks actual judge uniformity across a group");
 assert.ok(accordion.includes("summarizeBreedJudge"), "accordion checks actual judge uniformity within a breed");
 assert.ok(accordion.includes("Multiple judges"), "mixed judge attribution has a neutral group or breed display");
