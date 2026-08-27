@@ -36,9 +36,10 @@ export async function POST(request: Request) {
     }
 
     console.error("POST /api/kennel/dogs/health-tests failed:", error);
-    return fail(
-      error instanceof Error ? error.message : "Unable to run bulk health tests.",
-      400
-    );
+    const safeMessage =
+      error instanceof Error && error.message.startsWith("Insufficient funds")
+        ? error.message
+        : "Unable to run bulk health tests.";
+    return fail(safeMessage, safeMessage.startsWith("Insufficient funds") ? 400 : 500);
   }
 }

@@ -12,6 +12,8 @@ for (const marker of [
   "export async function runPhenotypeHealthTestsForKennel",
   "export async function runBulkPhenotypeHealthTestsForKennel",
   "return db.$transaction(async (tx) =>",
+  "lockDogsForPhenotypeHealthTesting(tx, dogIds)",
+  "FOR UPDATE",
   "getRequiredHealthTestsForBreed(dog.breedCode2)",
   "PHENOTYPE_HEALTH_TESTS[testTypeCode].fee",
   "NOT_OWNED_OR_NOT_FOUND",
@@ -41,6 +43,14 @@ assert.ok(
 assert.ok(
   executionRoute.includes("selection: body.selection"),
   "execution route mirrors preview selection semantics"
+);
+assert.ok(
+  executionRoute.includes("error.message.startsWith(\"Insufficient funds\")"),
+  "bulk execution retains the player-safe insufficient-funds message"
+);
+assert.ok(
+  !executionRoute.includes("error instanceof Error ? error.message"),
+  "bulk execution does not expose unexpected server errors"
 );
 
 console.log("Bulk health test execution source checks passed.");

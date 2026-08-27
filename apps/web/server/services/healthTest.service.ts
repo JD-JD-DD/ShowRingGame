@@ -10,7 +10,7 @@ import {
   type PhenotypeHealthTruth,
   type PhenotypeHealthTestCode,
 } from "@showring/rules";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 type HealthClient = Pick<
   Prisma.TransactionClient,
@@ -22,6 +22,15 @@ type HealthClient = Pick<
 >;
 
 type HealthPreviewClient = Pick<Prisma.TransactionClient, "dog">;
+
+async function lockDogsForPhenotypeHealthTesting(
+  tx: Prisma.TransactionClient,
+  dogIds: string[]
+) {
+  await tx.$queryRaw(
+    Prisma.sql`SELECT "id" FROM "Dog" WHERE "id" IN (${Prisma.join(dogIds)}) ORDER BY "id" FOR UPDATE`
+  );
+}
 
 export type BulkHealthTestSelection =
   | {
@@ -581,6 +590,8 @@ export async function runPhenotypeHealthTestsForKennel(args: {
   }
 
   return db.$transaction(async (tx) => {
+    await lockDogsForPhenotypeHealthTesting(tx, [dogId]);
+
     const dog = await tx.dog.findUnique({
       where: { id: dogId },
       select: {
@@ -681,6 +692,8 @@ export async function runBulkPhenotypeHealthTestsForKennel(args: {
   const selection = normalizeBulkHealthTestSelection(args.selection);
 
   return db.$transaction(async (tx) => {
+    await lockDogsForPhenotypeHealthTesting(tx, dogIds);
+
     const dogs = await tx.dog.findMany({
       where: { id: { in: dogIds } },
       select: {
