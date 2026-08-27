@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 import {
   buildMyResultsHierarchy,
+  MY_RESULTS_CLUSTER_PAGE_SIZE,
+  selectMyResultsClusterPage,
   type MyResultsQueryEntry,
 } from "../app/my-results/myResults.loader";
 
@@ -125,16 +127,40 @@ assert.deepEqual(
   "dog result ties use registration number before ShowEntry ID"
 );
 
+const clusterCandidates = Array.from({ length: 21 }, (_, index) => ({
+  clusterId: `cluster-${String(index).padStart(2, "0")}`,
+  mostRecentShowDayEpoch: 210 - index,
+}));
+const firstClusterPage = selectMyResultsClusterPage({ candidates: clusterCandidates });
+assert.equal(MY_RESULTS_CLUSTER_PAGE_SIZE, 10, "cluster pages contain ten clusters");
+assert.deepEqual(firstClusterPage.clusterIds, clusterCandidates.slice(0, 10).map((candidate) => candidate.clusterId));
+assert.deepEqual(firstClusterPage.nextCursor, clusterCandidates[9]);
+const secondClusterPage = selectMyResultsClusterPage({
+  candidates: clusterCandidates,
+  cursor: firstClusterPage.nextCursor,
+});
+assert.deepEqual(secondClusterPage.clusterIds, clusterCandidates.slice(10, 20).map((candidate) => candidate.clusterId));
+assert.equal(secondClusterPage.clusterIds.some((clusterId) => firstClusterPage.clusterIds.includes(clusterId)), false);
+const thirdClusterPage = selectMyResultsClusterPage({
+  candidates: clusterCandidates,
+  cursor: secondClusterPage.nextCursor,
+});
+assert.deepEqual(thirdClusterPage.clusterIds, ["cluster-20"]);
+assert.equal(thirdClusterPage.nextCursor, null, "the final partial cluster page has no continuation");
+
 const loader = readFileSync(join(root, "app", "my-results", "myResults.loader.ts"), "utf8");
 assert.ok(loader.includes("kennelId: args.kennelId"), "query remains historically scoped by ShowEntry.kennelId");
 assert.equal(loader.includes("take:"), false, "query has no arbitrary row limit");
 assert.equal(loader.includes("ownerKennelId"), false, "query does not use current dog ownership");
+assert.ok(loader.includes("showDay: { clusterId: { in: page.clusterIds } }"), "selected clusters load all qualifying entries by cluster ID");
+assert.ok(loader.includes("selectMyResultsClusterPage"), "cluster selection uses a stable continuation helper");
 
 const page = readFileSync(join(root, "app", "my-results", "page.tsx"), "utf8");
 assert.equal(page.includes("buildCompatibilityShows"), false, "page does not rebuild the legacy Cluster to Breed shape");
 assert.equal(page.includes("new Map"), false, "page does not independently group hierarchy nodes");
 assert.equal(page.includes(".sort("), false, "page does not independently order hierarchy nodes");
-assert.ok(page.includes("<MyResultsAccordion hierarchy={hierarchy} />"), "page passes the loader hierarchy directly to the accordion");
+assert.ok(page.includes("initialHierarchy={resultsPage.hierarchy}"), "page passes the initial cluster page directly to the accordion");
+assert.ok(page.includes("initialNextCursor={resultsPage.nextCursor}"), "page passes the continuation cursor to the accordion");
 
 const accordion = readFileSync(join(root, "app", "my-results", "MyResultsAccordion.tsx"), "utf8");
 assert.ok(accordion.includes('"use client"'), "accordion owns presentation-only expansion state");
@@ -145,6 +171,10 @@ assert.ok(accordion.includes("focus-visible:outline"), "accordion has a visible 
 assert.equal(accordion.includes(".sort("), false, "accordion does not independently order hierarchy nodes");
 assert.equal(accordion.includes("new Map"), false, "accordion does not independently group hierarchy nodes");
 assert.equal(accordion.includes("loadMyResultsHierarchy"), false, "accordion does not fetch data on expansion");
+assert.ok(accordion.includes("loadMoreMyResults"), "accordion uses the server action only for explicit Load more pagination");
+assert.ok(accordion.includes("setHierarchy((current) => [...current, ...nextPage.hierarchy])"), "Load more appends older clusters");
+assert.ok(accordion.includes("disabled={isLoadingMore}"), "Load more prevents concurrent requests");
+assert.ok(accordion.includes('"Load more"'), "Load more uses a native button label");
 assert.ok(accordion.includes("summarizeGroupJudge"), "accordion checks actual judge uniformity across a group");
 assert.ok(accordion.includes("summarizeBreedJudge"), "accordion checks actual judge uniformity within a breed");
 assert.ok(accordion.includes("Multiple judges"), "mixed judge attribution has a neutral group or breed display");

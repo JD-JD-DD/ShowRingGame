@@ -9,6 +9,8 @@ import { formatShowEntryAbsenceReason } from "@/lib/showEntryAbsence";
 import { buildTitlePointsDisplay, formatTitlePointsDisplay } from "@/lib/titlePoints";
 
 import type { MyResultsBreed, MyResultsDogResult, MyResultsGroup, MyResultsHierarchy, MyResultsJudge } from "./myResults.contract";
+import { loadMoreMyResults } from "./actions";
+import type { MyResultsClusterCursor } from "./myResults.loader";
 
 function formatShowDate(epoch: number): string {
   return epochToDate(epoch).toLocaleDateString("en-US", {
@@ -114,8 +116,15 @@ function ExpandButton(props: {
   );
 }
 
-export default function MyResultsAccordion({ hierarchy }: { hierarchy: MyResultsHierarchy }) {
+export default function MyResultsAccordion(props: {
+  initialHierarchy: MyResultsHierarchy;
+  initialNextCursor: MyResultsClusterCursor | null;
+}) {
+  const [hierarchy, setHierarchy] = useState<MyResultsHierarchy>(props.initialHierarchy);
+  const [nextCursor, setNextCursor] = useState<MyResultsClusterCursor | null>(props.initialNextCursor);
   const [expandedBranches, setExpandedBranches] = useState<ReadonlySet<string>>(() => new Set());
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
   function toggle(branchId: string) {
     setExpandedBranches((current) => {
@@ -124,6 +133,22 @@ export default function MyResultsAccordion({ hierarchy }: { hierarchy: MyResults
       else next.add(branchId);
       return next;
     });
+  }
+
+  async function loadMore() {
+    if (!nextCursor || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const nextPage = await loadMoreMyResults(nextCursor);
+      setHierarchy((current) => [...current, ...nextPage.hierarchy]);
+      setNextCursor(nextPage.nextCursor);
+    } catch {
+      setLoadMoreError("Unable to load more results. Please try again.");
+    } finally {
+      setIsLoadingMore(false);
+    }
   }
 
   return (
@@ -272,6 +297,19 @@ export default function MyResultsAccordion({ hierarchy }: { hierarchy: MyResults
           </section>
         );
       })}
+      {nextCursor ? (
+        <div className="pt-2 text-center">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] disabled:cursor-wait disabled:opacity-60"
+          >
+            {isLoadingMore ? "Loading…" : "Load more"}
+          </button>
+          {loadMoreError ? <p role="alert" className="theme-copy mt-2 text-sm">{loadMoreError}</p> : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import MyResultsAccordion from "./MyResultsAccordion";
-import { loadMyResultsHierarchy } from "./myResults.loader";
+import { loadMyResultsPage } from "./myResults.loader";
 
 export default async function MyShowResultsPage() {
   const userId = await getSessionUserId();
@@ -22,7 +22,7 @@ export default async function MyShowResultsPage() {
     redirect("/onboarding");
   }
 
-  const hierarchy = await loadMyResultsHierarchy({
+  const resultsPage = await loadMyResultsPage({
     kennelId: kennel.id,
     currentEpoch: getCurrentEpoch(),
   });
@@ -44,12 +44,15 @@ export default async function MyShowResultsPage() {
       </section>
 
       <section className="theme-panel rounded-[28px] p-6">
-        {hierarchy.length === 0 ? (
+        {resultsPage.hierarchy.length === 0 ? (
           <div className="theme-card theme-copy rounded-2xl p-4 text-sm">
             No judged show results yet.
           </div>
         ) : (
-          <MyResultsAccordion hierarchy={hierarchy} />
+          <MyResultsAccordion
+            initialHierarchy={resultsPage.hierarchy}
+            initialNextCursor={resultsPage.nextCursor}
+          />
         )}
       </section>
     </main>

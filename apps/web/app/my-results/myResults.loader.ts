@@ -12,6 +12,18 @@ import type {
 
 type NonEmptyReadonlyArray<T> = readonly [T, ...T[]];
 
+export const MY_RESULTS_CLUSTER_PAGE_SIZE = 10;
+
+export type MyResultsClusterCursor = {
+  mostRecentShowDayEpoch: number;
+  clusterId: string;
+};
+
+export type MyResultsPage = {
+  hierarchy: MyResultsHierarchy;
+  nextCursor: MyResultsClusterCursor | null;
+};
+
 export type MyResultsQueryEntry = {
   id: string;
   entryStatus: "ENTERED" | "WITHDRAWN" | "INELIGIBLE" | "ABSENT" | "JUDGED";
@@ -188,10 +200,85 @@ export function buildMyResultsHierarchy(entries: readonly MyResultsQueryEntry[])
     .sort((left, right) => right.mostRecentShowDayEpoch - left.mostRecentShowDayEpoch);
 }
 
-export async function loadMyResultsHierarchy(args: { kennelId: string; currentEpoch: number }): Promise<MyResultsHierarchy> {
+export function selectMyResultsClusterPage(args: {
+  candidates: readonly MyResultsClusterCursor[];
+  cursor?: MyResultsClusterCursor | null;
+}): { clusterIds: string[]; nextCursor: MyResultsClusterCursor | null } {
+  const orderedCandidates = [...args.candidates]
+    .filter((candidate) =>
+      !args.cursor ||
+      candidate.mostRecentShowDayEpoch < args.cursor.mostRecentShowDayEpoch ||
+      (
+        candidate.mostRecentShowDayEpoch === args.cursor.mostRecentShowDayEpoch &&
+        candidate.clusterId.localeCompare(args.cursor.clusterId) > 0
+      )
+    )
+    .sort((left, right) =>
+      right.mostRecentShowDayEpoch - left.mostRecentShowDayEpoch ||
+      left.clusterId.localeCompare(right.clusterId)
+    );
+  const selected = orderedCandidates.slice(0, MY_RESULTS_CLUSTER_PAGE_SIZE);
+
+  return {
+    clusterIds: selected.map((candidate) => candidate.clusterId),
+    nextCursor: orderedCandidates.length > selected.length
+      ? selected[selected.length - 1] ?? null
+      : null,
+  };
+}
+
+export async function loadMyResultsPage(args: {
+  kennelId: string;
+  currentEpoch: number;
+  cursor?: MyResultsClusterCursor | null;
+}): Promise<MyResultsPage> {
+  const qualifyingShowDays = await db.showDay.findMany({
+    where: {
+      OR: [
+        {
+          showEntries: {
+            some: {
+              kennelId: args.kennelId,
+              showResult: { isNot: null },
+            },
+          },
+        },
+        {
+          scheduledEpoch: { lte: args.currentEpoch },
+          showEntries: {
+            some: {
+              kennelId: args.kennelId,
+              entryStatus: "ABSENT",
+            },
+          },
+        },
+      ],
+    },
+    select: { clusterId: true, scheduledEpoch: true },
+  });
+  const mostRecentEpochByClusterId = new Map<string, number>();
+  for (const showDay of qualifyingShowDays) {
+    const existing = mostRecentEpochByClusterId.get(showDay.clusterId);
+    if (existing == null || showDay.scheduledEpoch > existing) {
+      mostRecentEpochByClusterId.set(showDay.clusterId, showDay.scheduledEpoch);
+    }
+  }
+  const page = selectMyResultsClusterPage({
+    candidates: [...mostRecentEpochByClusterId].map(([clusterId, mostRecentShowDayEpoch]) => ({
+      clusterId,
+      mostRecentShowDayEpoch,
+    })),
+    cursor: args.cursor,
+  });
+
+  if (page.clusterIds.length === 0) {
+    return { hierarchy: [], nextCursor: null };
+  }
+
   const entries = await db.showEntry.findMany({
     where: {
       kennelId: args.kennelId,
+      showDay: { clusterId: { in: page.clusterIds } },
       OR: [
         { showResult: { isNot: null } },
         { entryStatus: "ABSENT", showDay: { scheduledEpoch: { lte: args.currentEpoch } } },
@@ -228,5 +315,8 @@ export async function loadMyResultsHierarchy(args: { kennelId: string; currentEp
     },
   });
 
-  return buildMyResultsHierarchy(entries);
+  return {
+    hierarchy: buildMyResultsHierarchy(entries),
+    nextCursor: page.nextCursor,
+  };
 }
