@@ -476,6 +476,89 @@ export async function runPhenotypeHealthTestForKennel(args: {
   return record;
 }
 
+type HealthExecutionDog = {
+  id: string;
+  regNumber: string;
+};
+
+async function executePhenotypeHealthTestsForKennelTx(
+  tx: HealthClient,
+  args: {
+    kennelId: string;
+    dog: HealthExecutionDog;
+    testTypeCodes: PhenotypeHealthTestCode[];
+    currentEpoch: number;
+    runningBalance: { value: number };
+  }
+) {
+  await ensurePhenotypeHealthTruthsForDogs(tx, [args.dog.id]);
+
+  const truths = await tx.dogHealthConditionTruth.findMany({
+    where: {
+      dogId: args.dog.id,
+      conditionCode: { in: args.testTypeCodes },
+    },
+    select: {
+      conditionCode: true,
+      geneticLiability: true,
+      environmentModifier: true,
+    },
+  });
+  const truthByCode = new Map(truths.map((truth) => [truth.conditionCode, truth]));
+
+  if (args.testTypeCodes.some((testTypeCode) => !truthByCode.has(testTypeCode))) {
+    throw new Error("Health profile could not be generated.");
+  }
+
+  const createdRecords = [];
+
+  for (const testTypeCode of args.testTypeCodes) {
+    const definition = PHENOTYPE_HEALTH_TESTS[testTypeCode];
+    const truth = truthByCode.get(testTypeCode);
+
+    if (!truth) {
+      throw new Error("Health profile could not be generated.");
+    }
+
+    const result = revealPhenotypeHealthTestResult({
+      conditionCode: testTypeCode,
+      geneticLiability: truth.geneticLiability,
+      environmentModifier: truth.environmentModifier,
+    });
+    args.runningBalance.value -= definition.fee;
+
+    await tx.ledgerTransaction.create({
+      data: {
+        kennelId: args.kennelId,
+        transactionType: "HEALTH_TEST_FEE",
+        amount: -definition.fee,
+        balanceAfter: args.runningBalance.value,
+        occurredAtEpoch: args.currentEpoch,
+        dogId: args.dog.id,
+        memo: `${definition.label} screening for ${args.dog.regNumber}.`,
+        metadataJson: { testTypeCode },
+      },
+    });
+
+    createdRecords.push(
+      await tx.healthTestRecord.create({
+        data: {
+          dogId: args.dog.id,
+          testTypeCode,
+          resultCode: result.resultCode,
+          testedAtEpoch: args.currentEpoch,
+          revealedAtEpoch: args.currentEpoch,
+          isPublic: true,
+          notes: "Phenotype screening result.",
+          detailsJson: { screeningType: "PHENOTYPE" },
+        },
+      })
+    );
+  }
+
+  return createdRecords;
+}
+
 export async function runPhenotypeHealthTestsForKennel(args: {
   kennelId: string;
   dogId: string;
@@ -571,29 +654,6 @@ export async function runPhenotypeHealthTestsForKennel(args: {
       );
     }
 
-    await ensurePhenotypeHealthTruthsForDogs(tx, [dog.id]);
-
-    const truths = await tx.dogHealthConditionTruth.findMany({
-      where: {
-        dogId,
-        conditionCode: {
-          in: testTypeCodes,
-        },
-      },
-      select: {
-        conditionCode: true,
-        geneticLiability: true,
-        environmentModifier: true,
-      },
-    });
-    const truthByCode = new Map(
-      truths.map((truth) => [truth.conditionCode, truth])
-    );
-
-    if (testTypeCodes.some((testTypeCode) => !truthByCode.has(testTypeCode))) {
-      throw new Error("Health profile could not be generated.");
-    }
-
     await tx.kennel.update({
       where: { id: kennel.id },
       data: {
@@ -601,57 +661,174 @@ export async function runPhenotypeHealthTestsForKennel(args: {
       },
     });
 
-    const createdRecords = [];
-    let runningBalance = kennel.balance;
+    return executePhenotypeHealthTestsForKennelTx(tx, {
+      kennelId: kennel.id,
+      dog,
+      testTypeCodes,
+      currentEpoch,
+      runningBalance: { value: kennel.balance },
+    });
+  });
+}
 
-    for (const testTypeCode of testTypeCodes) {
-      const definition = PHENOTYPE_HEALTH_TESTS[testTypeCode];
-      const truth = truthByCode.get(testTypeCode);
+export async function runBulkPhenotypeHealthTestsForKennel(args: {
+  kennelId: string;
+  dogIds: unknown;
+  selection: unknown;
+  currentEpoch: number;
+}) {
+  const dogIds = normalizePreviewDogIds(args.dogIds);
+  const selection = normalizeBulkHealthTestSelection(args.selection);
 
-      if (!truth) {
-        throw new Error("Health profile could not be generated.");
+  return db.$transaction(async (tx) => {
+    const dogs = await tx.dog.findMany({
+      where: { id: { in: dogIds } },
+      select: {
+        id: true,
+        regNumber: true,
+        ownerKennelId: true,
+        lifecycleState: true,
+        birthEpoch: true,
+        breedCode2: true,
+        healthTests: {
+          where: { testTypeCode: { in: [...PHENOTYPE_HEALTH_TEST_CODES] } },
+          select: { testTypeCode: true },
+        },
+      },
+    });
+    const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
+    const skippedByReason = emptySkippedByReason();
+    const executionPlan: Array<{
+      dog: HealthExecutionDog;
+      testTypeCodes: PhenotypeHealthTestCode[];
+    }> = [];
+    const executedByTest = Object.fromEntries(
+      PHENOTYPE_HEALTH_TEST_CODES.map((testTypeCode) => [testTypeCode, 0])
+    ) as Record<PhenotypeHealthTestCode, number>;
+
+    for (const dogId of dogIds) {
+      const dog = dogsById.get(dogId);
+
+      if (!dog || dog.ownerKennelId !== args.kennelId) {
+        skippedByReason.NOT_OWNED_OR_NOT_FOUND += 1;
+        continue;
       }
 
-      const result = revealPhenotypeHealthTestResult({
-        conditionCode: testTypeCode,
-        geneticLiability: truth.geneticLiability,
-        environmentModifier: truth.environmentModifier,
-      });
-      runningBalance -= definition.fee;
+      const applicableTestCodes = getRequiredHealthTestsForBreed(dog.breedCode2);
+      const requestedTestCodes =
+        selection.mode === "all-applicable"
+          ? applicableTestCodes
+          : selection.testTypeCodes;
 
-      await tx.ledgerTransaction.create({
-        data: {
-          kennelId: kennel.id,
-          transactionType: "HEALTH_TEST_FEE",
-          amount: -definition.fee,
-          balanceAfter: runningBalance,
-          occurredAtEpoch: currentEpoch,
-          dogId: dog.id,
-          memo: `${definition.label} screening for ${dog.regNumber}.`,
-          metadataJson: {
-            testTypeCode,
-          },
-        },
-      });
+      if (dog.lifecycleState !== "ALIVE") {
+        skippedByReason.NOT_ALIVE += requestedTestCodes.length;
+        continue;
+      }
 
-      createdRecords.push(
-        await tx.healthTestRecord.create({
-          data: {
-            dogId: dog.id,
-            testTypeCode,
-            resultCode: result.resultCode,
-            testedAtEpoch: currentEpoch,
-            revealedAtEpoch: currentEpoch,
-            isPublic: true,
-            notes: "Phenotype screening result.",
-            detailsJson: {
-              screeningType: "PHENOTYPE",
-            },
-          },
-        })
+      const completedTestCodes = new Set(dog.healthTests.map((test) => test.testTypeCode));
+      const currentAgeHours = getAgeHours(args.currentEpoch, dog.birthEpoch);
+      const runnableTestCodes: PhenotypeHealthTestCode[] = [];
+
+      for (const testTypeCode of requestedTestCodes) {
+        if (!applicableTestCodes.includes(testTypeCode)) {
+          skippedByReason.NOT_APPLICABLE_TO_BREED += 1;
+          continue;
+        }
+
+        const definition = PHENOTYPE_HEALTH_TESTS[testTypeCode];
+
+        if (currentAgeHours < definition.minimumAgeHours) {
+          skippedByReason.TOO_YOUNG += 1;
+          continue;
+        }
+
+        if (completedTestCodes.has(testTypeCode)) {
+          skippedByReason.ALREADY_COMPLETED += 1;
+          continue;
+        }
+
+        runnableTestCodes.push(testTypeCode);
+      }
+
+      if (runnableTestCodes.length > 0) {
+        executionPlan.push({
+          dog: { id: dog.id, regNumber: dog.regNumber },
+          testTypeCodes: runnableTestCodes,
+        });
+      }
+    }
+
+    const kennel = await tx.kennel.findUnique({
+      where: { id: args.kennelId },
+      select: { id: true, balance: true },
+    });
+
+    if (!kennel) {
+      throw new Error("Kennel not found.");
+    }
+
+    const totalCharged = executionPlan.reduce(
+      (total, item) =>
+        total + item.testTypeCodes.reduce(
+          (itemTotal, testTypeCode) =>
+            itemTotal + PHENOTYPE_HEALTH_TESTS[testTypeCode].fee,
+          0
+        ),
+      0
+    );
+
+    if (kennel.balance < totalCharged) {
+      throw new Error(
+        totalCharged === 0 || executionPlan.length === 1 && executionPlan[0].testTypeCodes.length === 1
+          ? "Insufficient funds for that health test."
+          : "Insufficient funds for the selected health tests."
       );
     }
 
-    return createdRecords;
+    if (totalCharged === 0) {
+      return {
+        selectedDogCount: dogIds.length,
+        testedDogCount: 0,
+        executedTestCount: 0,
+        totalCharged: 0,
+        newBalance: kennel.balance,
+        executedByTest,
+        skippedByReason,
+      };
+    }
+
+    await tx.kennel.update({
+      where: { id: kennel.id },
+      data: { balance: kennel.balance - totalCharged },
+    });
+
+    const runningBalance = { value: kennel.balance };
+
+    for (const item of executionPlan) {
+      await executePhenotypeHealthTestsForKennelTx(tx, {
+        kennelId: kennel.id,
+        dog: item.dog,
+        testTypeCodes: item.testTypeCodes,
+        currentEpoch: args.currentEpoch,
+        runningBalance,
+      });
+
+      for (const testTypeCode of item.testTypeCodes) {
+        executedByTest[testTypeCode] += 1;
+      }
+    }
+
+    return {
+      selectedDogCount: dogIds.length,
+      testedDogCount: executionPlan.length,
+      executedTestCount: executionPlan.reduce(
+        (count, item) => count + item.testTypeCodes.length,
+        0
+      ),
+      totalCharged,
+      newBalance: runningBalance.value,
+      executedByTest,
+      skippedByReason,
+    };
   });
 }

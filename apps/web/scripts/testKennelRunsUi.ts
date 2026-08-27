@@ -447,6 +447,49 @@ assertIncludes(
   'aria-controls="bulk-health-test-preview-details"',
   "Health Test details disclosure controls its associated region"
 );
+assertIncludes(
+  kennelPanel,
+  "Run Health Tests",
+  "Health Tests has a functional execution control"
+);
+assertIncludes(
+  kennelPanel,
+  "onClick={runBulkHealthTests}",
+  "Health Tests execution button invokes the bulk execution handler"
+);
+assertIncludes(
+  kennelPanel,
+  'fetch("/api/kennel/dogs/health-tests",',
+  "Health Tests posts to the bulk execution route"
+);
+assertIncludes(
+  kennelPanel,
+  "disabled={!canRunHealthTests}",
+  "Health Tests execution is disabled without a current runnable quote"
+);
+assertIncludes(
+  kennelPanel,
+  "healthTestExecutionLoading",
+  "Health Tests blocks duplicate execution while a request is running"
+);
+assertIncludes(
+  kennelPanel,
+  "healthTestPreviewConfigurationKey === currentHealthTestConfigurationKey",
+  "Health Tests execution requires a preview for the current cohort and configuration"
+);
+assertIncludes(
+  kennelPanel,
+  "await loadDogs({ preserveLoadingState: true });",
+  "successful Health Tests execution refreshes roster data without resetting the page"
+);
+assertExcludes(
+  kennelPanel.slice(
+    kennelPanel.indexOf("async function runBulkHealthTests()"),
+    kennelPanel.indexOf("async function moveSelectedDogs()")
+  ),
+  "clearSelection();",
+  "successful Health Tests execution preserves selected dogs"
+);
 for (const label of [
   "Already completed",
   "Too young",

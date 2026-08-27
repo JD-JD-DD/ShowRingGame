@@ -178,6 +178,11 @@ type HealthTestPreview = {
     number
   >;
 };
+type HealthTestExecution = {
+  testedDogCount: number;
+  executedTestCount: number;
+  totalCharged: number;
+};
 type GroomingStateFilter = "" | "groomed" | "ungroomed";
 type OptionalColumnId =
   | "dog"
@@ -367,6 +372,19 @@ function formatMoney(amount: number): string {
   }).format(amount);
 }
 
+function healthTestConfigurationKey(args: {
+  dogIds: string[];
+  allApplicable: boolean;
+  testTypeCodes: HealthTestCode[];
+}) {
+  return JSON.stringify({
+    dogIds: args.dogIds,
+    selection: args.allApplicable
+      ? { mode: "all-applicable" }
+      : { mode: "explicit", testTypeCodes: args.testTypeCodes },
+  });
+}
+
 function SortButton({
   active,
   direction,
@@ -418,11 +436,17 @@ export default function KennelDogsPanel() {
   >([]);
   const [healthTestPreview, setHealthTestPreview] =
     useState<HealthTestPreview | null>(null);
+  const [healthTestPreviewConfigurationKey, setHealthTestPreviewConfigurationKey] =
+    useState<string | null>(null);
   const [healthTestPreviewLoading, setHealthTestPreviewLoading] = useState(false);
   const [healthTestPreviewError, setHealthTestPreviewError] = useState<
     string | null
   >(null);
   const [healthTestDetailsExpanded, setHealthTestDetailsExpanded] = useState(false);
+  const [healthTestExecutionLoading, setHealthTestExecutionLoading] = useState(false);
+  const [healthTestExecutionError, setHealthTestExecutionError] = useState<
+    string | null
+  >(null);
   const healthTestPreviewRequestSequence = useRef(0);
   const [confirmingBulkAction, setConfirmingBulkAction] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
@@ -611,6 +635,11 @@ export default function KennelDogsPanel() {
     }
 
     const requestSequence = ++healthTestPreviewRequestSequence.current;
+    const configurationKey = healthTestConfigurationKey({
+      dogIds: selectedDogIds,
+      allApplicable: healthTestsAllApplicable,
+      testTypeCodes: selectedHealthTestCodes,
+    });
     setHealthTestPreviewLoading(true);
     setHealthTestPreviewError(null);
     setHealthTestPreview(null);
@@ -641,6 +670,7 @@ export default function KennelDogsPanel() {
         }
 
         setHealthTestPreview(data.preview);
+        setHealthTestPreviewConfigurationKey(configurationKey);
       })
       .catch((previewError) => {
         if (requestSequence !== healthTestPreviewRequestSequence.current) {
@@ -648,6 +678,7 @@ export default function KennelDogsPanel() {
         }
 
         setHealthTestPreview(null);
+        setHealthTestPreviewConfigurationKey(null);
         setHealthTestPreviewError(
           previewError instanceof Error
             ? previewError.message
@@ -800,6 +831,17 @@ export default function KennelDogsPanel() {
   const canApplyBulkAction =
     bulkAction === "show-entry" ||
     (bulkAction === "rehome" && canBulkRehome && !bulkActionLoading);
+  const currentHealthTestConfigurationKey = healthTestConfigurationKey({
+    dogIds: selectedDogIds,
+    allApplicable: healthTestsAllApplicable,
+    testTypeCodes: selectedHealthTestCodes,
+  });
+  const canRunHealthTests =
+    healthTestPreview !== null &&
+    healthTestPreviewConfigurationKey === currentHealthTestConfigurationKey &&
+    healthTestPreview.runnableTestCount > 0 &&
+    !healthTestPreviewLoading &&
+    !healthTestExecutionLoading;
   const selectedVisibleDogCount = displayedDogIds.filter((dogId) =>
     selectedDogIds.includes(dogId)
   ).length;
@@ -885,9 +927,12 @@ export default function KennelDogsPanel() {
     setHealthTestsAllApplicable(true);
     setSelectedHealthTestCodes([]);
     setHealthTestPreview(null);
+    setHealthTestPreviewConfigurationKey(null);
     setHealthTestPreviewLoading(false);
     setHealthTestPreviewError(null);
     setHealthTestDetailsExpanded(false);
+    setHealthTestExecutionLoading(false);
+    setHealthTestExecutionError(null);
   }
 
   function toggleHealthTestCode(code: HealthTestCode) {
@@ -984,6 +1029,58 @@ export default function KennelDogsPanel() {
 
     if (bulkAction === "rehome") {
       setConfirmingBulkAction(true);
+    }
+  }
+
+  async function runBulkHealthTests() {
+    if (!canRunHealthTests) {
+      return;
+    }
+
+    setHealthTestExecutionLoading(true);
+    setHealthTestExecutionError(null);
+
+    try {
+      const response = await fetch("/api/kennel/dogs/health-tests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dogIds: selectedDogIds,
+          selection: healthTestsAllApplicable
+            ? { mode: "all-applicable" }
+            : { mode: "explicit", testTypeCodes: selectedHealthTestCodes },
+        }),
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        result?: HealthTestExecution;
+        error?: string;
+      };
+
+      if (!response.ok || !data.ok || !data.result) {
+        throw new Error(data.error || "Unable to run bulk health tests.");
+      }
+
+      await loadDogs({ preserveLoadingState: true });
+      setActiveBulkWorkspace(null);
+      resetHealthTestingWorkspaceState();
+      setMessage(
+        data.result.executedTestCount > 0
+          ? `Health testing complete: ${data.result.executedTestCount.toLocaleString()} test${
+              data.result.executedTestCount === 1 ? "" : "s"
+            } run on ${data.result.testedDogCount.toLocaleString()} dog${
+              data.result.testedDogCount === 1 ? "" : "s"
+            }.`
+          : "No selected dogs currently needed the chosen health tests."
+      );
+    } catch (executionError) {
+      setHealthTestExecutionError(
+        executionError instanceof Error
+          ? executionError.message
+          : "Unable to run bulk health tests."
+      );
+    } finally {
+      setHealthTestExecutionLoading(false);
     }
   }
 
@@ -1945,6 +2042,7 @@ export default function KennelDogsPanel() {
                   <input
                     type="checkbox"
                     checked={healthTestsAllApplicable}
+                    disabled={healthTestExecutionLoading}
                     onChange={(event) => setHealthTestsAllApplicable(event.target.checked)}
                   />
                   All applicable
@@ -1959,7 +2057,7 @@ export default function KennelDogsPanel() {
                       <input
                         type="checkbox"
                         checked={selectedHealthTestCodes.includes(test.code)}
-                        disabled={healthTestsAllApplicable}
+                        disabled={healthTestsAllApplicable || healthTestExecutionLoading}
                         onChange={() => toggleHealthTestCode(test.code)}
                       />
                       {test.label}
@@ -1982,6 +2080,18 @@ export default function KennelDogsPanel() {
                 {healthTestPreviewError ? (
                   <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="status">
                     {healthTestPreviewError}
+                  </div>
+                ) : null}
+
+                {healthTestExecutionLoading ? (
+                  <div className="theme-copy text-sm" role="status" aria-live="polite">
+                    Running health tests...
+                  </div>
+                ) : null}
+
+                {healthTestExecutionError ? (
+                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="status">
+                    {healthTestExecutionError}
                   </div>
                 ) : null}
 
@@ -2051,9 +2161,18 @@ export default function KennelDogsPanel() {
                   <button
                     type="button"
                     onClick={closeActiveBulkWorkspace}
+                    disabled={healthTestExecutionLoading}
                     className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={runBulkHealthTests}
+                    disabled={!canRunHealthTests}
+                    className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Run Health Tests
                   </button>
                 </div>
               </div>
