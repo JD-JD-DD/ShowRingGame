@@ -1,5 +1,8 @@
 import { Prisma } from "@prisma/client";
-import { evaluateGrandChampionQualification } from "@showring/rules";
+import {
+  evaluateGrandChampionQualification,
+  type GrandChampionQualificationResult,
+} from "@showring/rules";
 
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
@@ -52,6 +55,17 @@ export type GrandChampionCompletionSnapshot = {
   grandPointAwardingJudgeCount?: number;
   grandCompletedAtShowDayId: string | null;
   grandCompletedAtEpoch: number | null;
+};
+
+export type GrandChampionPromotionProgressSnapshot = {
+  championshipPoints: number;
+  majorCount: number;
+  grandPoints: number;
+  grandMajorCount: number;
+  grandChampionDefeatShowCount: number;
+  grandCompletedAtShowDayId: string | null;
+  grandCompletedAtEpoch: number | null;
+  currentTitleCode: string | null;
 };
 
 type PointAward = {
@@ -187,6 +201,58 @@ export function getGrandChampionCompletionFields(args: {
       args.progress.grandCompletedAtShowDayId ?? args.showDayId,
     grandCompletedAtEpoch:
       args.progress.grandCompletedAtEpoch ?? args.currentEpoch,
+  };
+}
+
+/**
+ * Uses the canonical qualification result to decide whether title state needs
+ * an atomic reconciliation. Both the batched precheck and the transaction
+ * call this helper so title selection cannot diverge.
+ */
+export function getGrandChampionPromotionDecision(args: {
+  visibleTitlePrefix: string | null;
+  progress: GrandChampionPromotionProgressSnapshot;
+  qualification: GrandChampionQualificationResult;
+  showDayId: string;
+  currentEpoch: number;
+}) {
+  const championStatusTitleCode =
+    args.progress.currentTitleCode ??
+    (isChampionOfRecordTitleCode(args.visibleTitlePrefix)
+      ? args.visibleTitlePrefix
+      : null);
+  const promotionProgress = {
+    ...args.progress,
+    currentTitleCode: championStatusTitleCode,
+    grandPoints: args.qualification.totalPoints,
+    grandMajorCount: args.qualification.majorShowCount,
+    grandChampionDefeatShowCount: args.qualification.championDefeatShowCount,
+    grandMajorJudgeCount: args.qualification.majorJudgeCount,
+    grandPointAwardingJudgeCount: args.qualification.pointAwardingJudgeCount,
+  };
+  const nextTitleCode = getHighestConformationTitle(promotionProgress);
+
+  if (!nextTitleCode) {
+    return null;
+  }
+
+  const completionFields = getGrandChampionCompletionFields({
+    progress: promotionProgress,
+    showDayId: args.showDayId,
+    currentEpoch: args.currentEpoch,
+  });
+  const advancedGrandChampionTitle =
+    args.progress.currentTitleCode !== nextTitleCode &&
+    isGrandChampionTitleCode(nextTitleCode);
+
+  return {
+    nextTitleCode,
+    completionFields,
+    advancedGrandChampionTitle,
+    requiresAtomicReconciliation:
+      args.progress.currentTitleCode !== nextTitleCode ||
+      args.visibleTitlePrefix !== nextTitleCode ||
+      Object.keys(completionFields).length > 0,
   };
 }
 
@@ -403,8 +469,9 @@ export async function promoteGrandChampionTitleForDog(args: {
   dogId: string;
   showDayId: string;
   currentEpoch: number;
+  qualification?: GrandChampionQualificationResult;
 }) {
-  const [dog, progress, credits] = await Promise.all([
+  const [dog, progress] = await Promise.all([
     args.tx.dog.findUnique({
       where: { id: args.dogId },
       select: {
@@ -430,7 +497,16 @@ export async function promoteGrandChampionTitleForDog(args: {
         currentTitleCode: true,
       },
     }),
-    args.tx.dogGrandChampionCredit.findMany({
+  ]);
+
+  if (!dog || !progress) {
+    return null;
+  }
+
+  // Finalization passes its already-batched durable qualification snapshot.
+  // Other callers retain the standalone canonical history read.
+  const qualification = args.qualification ?? await (async () => {
+    const credits = await args.tx.dogGrandChampionCredit.findMany({
       where: { dogId: args.dogId },
       select: {
         id: true,
@@ -442,63 +518,39 @@ export async function promoteGrandChampionTitleForDog(args: {
         judgeId: true,
         showAward: { select: { judgeId: true } },
       },
-    }),
-  ]);
-
-  if (!dog || !progress) {
-    return null;
-  }
-
-  const championStatusTitleCode =
-    progress.currentTitleCode ??
-    (isChampionOfRecordTitleCode(dog.visibleTitlePrefix)
-      ? dog.visibleTitlePrefix
-      : null);
-  for (const credit of credits) {
-    if (credit.qualifyingChampionOpponentCount !== null && !credit.judgeId) {
-      throw new Error(
-        `GCH credit ${credit.id} has corrected provenance but no immutable judgeId.`
-      );
+    });
+    for (const credit of credits) {
+      if (credit.qualifyingChampionOpponentCount !== null && !credit.judgeId) {
+        throw new Error(
+          `GCH credit ${credit.id} has corrected provenance but no immutable judgeId.`
+        );
+      }
     }
-  }
-  const qualification = evaluateGrandChampionQualification({
-    credits: credits.map((credit) => ({
-      ...credit,
-      judgeId: credit.judgeId ?? credit.showAward?.judgeId ?? null,
-    })),
-    alreadyGrandChampion:
-      isGrandChampionTitleCode(progress.currentTitleCode) ||
-      isGrandChampionTitleCode(dog.visibleTitlePrefix),
-  });
-  const promotionProgress = {
-    ...progress,
-    currentTitleCode: championStatusTitleCode,
-    grandPoints: qualification.totalPoints,
-    grandMajorCount: qualification.majorShowCount,
-    grandChampionDefeatShowCount: qualification.championDefeatShowCount,
-    grandMajorJudgeCount: qualification.majorJudgeCount,
-    grandPointAwardingJudgeCount: qualification.pointAwardingJudgeCount,
-  };
-  const nextTitleCode = getHighestConformationTitle(promotionProgress);
-
-  if (!nextTitleCode) {
-    return null;
-  }
-
-  const completionFields = getGrandChampionCompletionFields({
-    progress: promotionProgress,
+    return evaluateGrandChampionQualification({
+      credits: credits.map((credit) => ({
+        ...credit,
+        judgeId: credit.judgeId ?? credit.showAward?.judgeId ?? null,
+      })),
+      alreadyGrandChampion:
+        isGrandChampionTitleCode(progress.currentTitleCode) ||
+        isGrandChampionTitleCode(dog.visibleTitlePrefix),
+    });
+  })();
+  const decision = getGrandChampionPromotionDecision({
+    visibleTitlePrefix: dog.visibleTitlePrefix,
+    progress,
+    qualification,
     showDayId: args.showDayId,
     currentEpoch: args.currentEpoch,
   });
-  const previousTitleCode = progress.currentTitleCode;
-  const advancedGrandChampionTitle =
-    previousTitleCode !== nextTitleCode && isGrandChampionTitleCode(nextTitleCode);
 
-  if (
-    previousTitleCode !== nextTitleCode ||
-    dog.visibleTitlePrefix !== nextTitleCode ||
-    Object.keys(completionFields).length > 0
-  ) {
+  if (!decision) {
+    return null;
+  }
+  const { nextTitleCode, completionFields, advancedGrandChampionTitle } = decision;
+  const previousTitleCode = progress.currentTitleCode;
+
+  if (decision.requiresAtomicReconciliation) {
     await args.tx.dogTitleProgress.update({
       where: { dogId: args.dogId },
       data: {

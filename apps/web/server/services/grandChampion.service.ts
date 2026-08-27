@@ -8,11 +8,13 @@ import {
   calculateLegacyGrandChampionPointsFromCompetition,
   evaluateGrandChampionQualification,
   getLegacyGrandChampionPointsForCount,
+  type GrandChampionQualificationResult,
 } from "@showring/rules";
 import {
   resolveGrandChampionPointSchedules,
   usesDynamicGrandChampionPointSchedule,
 } from "@/server/services/grandChampionPointSchedule.service";
+import { getGrandChampionPromotionDecision } from "@/server/services/titleProgress.service";
 
 const GCH_AWARD_CODES = [
   "BOB",
@@ -309,11 +311,14 @@ export function buildGrandChampionCompetitionSnapshot(args: {
 async function recalculateGrandChampionProgressForDogs(args: {
   client: DbClient;
   dogIds: string[];
+  showDayId: string;
+  currentEpoch: number;
+  persistProgress: boolean;
 }) {
   const dogIds = [...new Set(args.dogIds)];
-  if (dogIds.length === 0) return;
+  if (dogIds.length === 0) return [];
 
-  const [credits, existingProgresses] = await Promise.all([
+  const [credits, existingProgresses, dogs] = await Promise.all([
     args.client.dogGrandChampionCredit.findMany({
       where: { dogId: { in: dogIds } },
       select: {
@@ -332,10 +337,19 @@ async function recalculateGrandChampionProgressForDogs(args: {
       where: { dogId: { in: dogIds } },
       select: {
         dogId: true,
+        championshipPoints: true,
+        majorCount: true,
         grandPoints: true,
         grandMajorCount: true,
         grandChampionDefeatShowCount: true,
+        grandCompletedAtShowDayId: true,
+        grandCompletedAtEpoch: true,
+        currentTitleCode: true,
       },
+    }),
+    args.client.dog.findMany({
+      where: { id: { in: dogIds } },
+      select: { id: true, visibleTitlePrefix: true },
     }),
   ]);
   const creditsByDogId = new Map<string, typeof credits>();
@@ -347,12 +361,17 @@ async function recalculateGrandChampionProgressForDogs(args: {
   const progressByDogId = new Map(
     existingProgresses.map((progress) => [progress.dogId, progress])
   );
+  const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
   const progressCreates: Prisma.DogTitleProgressCreateManyInput[] = [];
   const progressUpdates: Array<{
     dogId: string;
     grandPoints: number;
     grandMajorCount: number;
     grandChampionDefeatShowCount: number;
+  }> = [];
+  const promotionCandidates: Array<{
+    dogId: string;
+    qualification: GrandChampionQualificationResult;
   }> = [];
 
   for (const dogId of dogIds) {
@@ -377,6 +396,29 @@ async function recalculateGrandChampionProgressForDogs(args: {
       grandMajorCount: qualification.majorShowCount,
       grandChampionDefeatShowCount: qualification.championDefeatShowCount,
     };
+    const promotionProgress = existingProgress ?? {
+      championshipPoints: 0,
+      majorCount: 0,
+      grandPoints: 0,
+      grandMajorCount: 0,
+      grandChampionDefeatShowCount: 0,
+      grandCompletedAtShowDayId: null,
+      grandCompletedAtEpoch: null,
+      currentTitleCode: null,
+    };
+    const dog = dogsById.get(dogId);
+    const decision = dog
+      ? getGrandChampionPromotionDecision({
+          visibleTitlePrefix: dog.visibleTitlePrefix,
+          progress: promotionProgress,
+          qualification,
+          showDayId: args.showDayId,
+          currentEpoch: args.currentEpoch,
+        })
+      : null;
+    if (decision?.requiresAtomicReconciliation) {
+      promotionCandidates.push({ dogId, qualification });
+    }
     if (!existingProgress) {
       progressCreates.push({ dogId, ...nextProgress });
     } else {
@@ -386,29 +428,39 @@ async function recalculateGrandChampionProgressForDogs(args: {
     }
   }
 
-  if (progressCreates.length > 0) {
-    await args.client.dogTitleProgress.createMany({
-      data: progressCreates,
-      skipDuplicates: true,
-    });
+  if (args.persistProgress) {
+    if (progressCreates.length > 0) {
+      await args.client.dogTitleProgress.createMany({
+        data: progressCreates,
+        skipDuplicates: true,
+      });
+    }
+    await runBounded(progressUpdates, (update) =>
+      args.client.dogTitleProgress.update({
+        where: { dogId: update.dogId },
+        data: {
+          grandPoints: update.grandPoints,
+          grandMajorCount: update.grandMajorCount,
+          grandChampionDefeatShowCount: update.grandChampionDefeatShowCount,
+        },
+      })
+    );
   }
-  await runBounded(progressUpdates, (update) =>
-    args.client.dogTitleProgress.update({
-      where: { dogId: update.dogId },
-      data: {
-        grandPoints: update.grandPoints,
-        grandMajorCount: update.grandMajorCount,
-        grandChampionDefeatShowCount: update.grandChampionDefeatShowCount,
-      },
-    })
-  );
+  return promotionCandidates;
 }
 
 async function processGrandChampionCreditsForShowDayWithClient(args: {
   client: DbClient;
   showDayId: string;
   currentEpoch: number;
-}): Promise<{ creditsProcessed: number; dogIds: string[] }> {
+}): Promise<{
+  creditsProcessed: number;
+  dogIds: string[];
+  promotionCandidates: Array<{
+    dogId: string;
+    qualification: GrandChampionQualificationResult;
+  }>;
+}> {
   const showDay = await args.client.showDay.findUnique({
     where: { id: args.showDayId },
     select: {
@@ -425,7 +477,15 @@ async function processGrandChampionCreditsForShowDayWithClient(args: {
       where: { showDayId: args.showDayId },
       select: { dogId: true },
     });
-    return { creditsProcessed: credits.length, dogIds: [...new Set(credits.map((credit) => credit.dogId))] };
+    const dogIds = [...new Set(credits.map((credit) => credit.dogId))];
+    const promotionCandidates = await recalculateGrandChampionProgressForDogs({
+      client: args.client,
+      dogIds,
+      showDayId: args.showDayId,
+      currentEpoch: args.currentEpoch,
+      persistProgress: false,
+    });
+    return { creditsProcessed: credits.length, dogIds, promotionCandidates };
   }
 
   const [results, awards] = await Promise.all([
@@ -606,14 +666,18 @@ async function processGrandChampionCreditsForShowDayWithClient(args: {
       )
   );
 
-  await recalculateGrandChampionProgressForDogs({
+  const promotionCandidates = await recalculateGrandChampionProgressForDogs({
     client: args.client,
     dogIds: candidates.map((candidate) => candidate.dogId),
+    showDayId: args.showDayId,
+    currentEpoch: args.currentEpoch,
+    persistProgress: true,
   });
 
   return {
     creditsProcessed: candidates.length,
     dogIds: [...new Set(candidates.map((candidate) => candidate.dogId))],
+    promotionCandidates,
   };
 }
 
@@ -621,7 +685,14 @@ export async function processGrandChampionCreditsForShowDay(args: {
   tx?: TransactionClient;
   showDayId: string;
   currentEpoch: number;
-}): Promise<{ creditsProcessed: number; dogIds: string[] }> {
+}): Promise<{
+  creditsProcessed: number;
+  dogIds: string[];
+  promotionCandidates: Array<{
+    dogId: string;
+    qualification: GrandChampionQualificationResult;
+  }>;
+}> {
   if (args.tx) {
     return processGrandChampionCreditsForShowDayWithClient({
       client: args.tx,

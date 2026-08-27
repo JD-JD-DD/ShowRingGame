@@ -1543,13 +1543,17 @@ async function processGrandChampionCreditsForFinalizedShowDay(args: {
   });
   const promotions = [];
 
-  for (const dogId of [...new Set(grandChampionCredits.dogIds)]) {
+  // The batched GCH snapshot filters dogs whose persisted title state is
+  // already current. Keep actual promotions sequential to avoid interactive
+  // transaction-start contention, and revalidate each one in its transaction.
+  for (const promotionCandidate of grandChampionCredits.promotionCandidates) {
     const promotion = await db.$transaction((tx) =>
       promoteGrandChampionTitleForDog({
         tx,
-        dogId,
+        dogId: promotionCandidate.dogId,
         showDayId: args.showDayId,
         currentEpoch: args.currentEpoch,
+        qualification: promotionCandidate.qualification,
       })
     );
 
