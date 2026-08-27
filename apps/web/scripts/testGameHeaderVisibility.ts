@@ -79,6 +79,24 @@ function main() {
     headerNavigationSource.includes("unreadCount > 0"),
     "collapsed mobile navigation hides its unread badge at zero"
   );
+  assert.equal(
+    headerNavigationSource.includes('role="menu"'),
+    false,
+    "header uses normal button and link keyboard behavior rather than incomplete ARIA menus"
+  );
+  assert.equal(
+    headerNavigationSource.includes('role="menuitem"'),
+    false,
+    "header destinations remain ordinary links"
+  );
+  assert.ok(
+    headerNavigationSource.includes("trigger?.focus()"),
+    "Escape returns focus to the dropdown trigger"
+  );
+  assert.ok(
+    headerNavigationSource.includes("min-h-11 min-w-11"),
+    "collapsed Inbox badge has an adequate touch target"
+  );
 
   console.log("Game header visibility checks passed.");
 }

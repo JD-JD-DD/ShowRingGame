@@ -96,6 +96,7 @@ export default function GameHeaderNav({
   const [mobileCollapsed, setMobileCollapsed] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
   const navigationRef = useRef<HTMLDivElement | null>(null);
+  const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const accountActive = accountItems.some((item) =>
     isActivePath(pathname, item.href)
   );
@@ -120,7 +121,11 @@ export default function GameHeaderNav({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpenMenu(null);
+      if (event.key !== "Escape") return;
+
+      const trigger = triggerRefs.current[openMenu];
+      setOpenMenu(null);
+      trigger?.focus();
     }
 
     document.addEventListener("pointerdown", handlePointerDown);
@@ -170,10 +175,13 @@ export default function GameHeaderNav({
             return (
               <div key={menu.label} className="relative">
                 <button
+                  ref={(element) => {
+                    triggerRefs.current[menu.label] = element;
+                  }}
+                  id={menuId + "-trigger"}
                   type="button"
                   aria-controls={menuId}
                   aria-expanded={isOpen}
-                  aria-haspopup="menu"
                   onClick={() => setOpenMenu((current) => current === menu.label ? null : menu.label)}
                   className={navClass(active)}
                 >
@@ -181,12 +189,14 @@ export default function GameHeaderNav({
                 </button>
 
                 {isOpen ? (
-                  <div id={menuId} role="menu" className="game-header__menu absolute left-0 top-full z-[70] mt-2 min-w-48 rounded-2xl p-2 text-sm backdrop-blur">
+                  <div
+                    id={menuId}
+                    className="game-header__menu absolute left-0 top-full z-[70] mt-2 min-w-48 max-w-[calc(100vw-1.5rem)] rounded-2xl p-2 text-sm backdrop-blur"
+                  >
                     {menu.items.map((item) => (
                       <Link
                         key={item.href}
                         href={item.href}
-                        role="menuitem"
                         onClick={() => setOpenMenu(null)}
                         className={[
                           "game-header__menu-item block rounded-xl px-3 py-2 font-semibold transition",
@@ -212,10 +222,13 @@ export default function GameHeaderNav({
 
             <div className="relative">
               <button
+                ref={(element) => {
+                  triggerRefs.current.Account = element;
+                }}
+                id="game-header-account-trigger"
                 type="button"
                 aria-controls="game-header-account-menu"
                 aria-expanded={openMenu === "Account"}
-                aria-haspopup="menu"
                 onClick={() => setOpenMenu((current) => current === "Account" ? null : "Account")}
                 className={[
                   "rounded-xl px-2.5 py-1.5 text-sm font-semibold transition",
@@ -228,12 +241,14 @@ export default function GameHeaderNav({
               </button>
 
               {openMenu === "Account" ? (
-                <div id="game-header-account-menu" role="menu" className="game-header__menu absolute right-0 top-full z-[70] mt-2 min-w-48 rounded-2xl p-2 text-sm backdrop-blur">
+                <div
+                  id="game-header-account-menu"
+                  className="game-header__menu absolute right-0 top-full z-[70] mt-2 min-w-48 max-w-[calc(100vw-1.5rem)] rounded-2xl p-2 text-sm backdrop-blur"
+                >
                   {accountItems.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
-                      role="menuitem"
                       onClick={() => setOpenMenu(null)}
                       className={[
                         "game-header__menu-item block rounded-xl px-3 py-2 font-semibold transition",
@@ -253,7 +268,7 @@ export default function GameHeaderNav({
         </div>
 
         {mobileCollapsed ? (
-          <div className="game-header__utilities ml-auto flex min-w-0 flex-1 items-center gap-1 lg:hidden">
+          <div className="game-header__utilities ml-auto flex min-w-0 flex-1 flex-wrap items-center gap-1 lg:hidden">
             <Link
               href="/kennel"
               className="game-header__link rounded-xl px-2 py-1.5 text-xs font-semibold transition"
@@ -271,9 +286,11 @@ export default function GameHeaderNav({
               <Link
                 href="/inbox"
                 aria-label={formatInboxUnreadCount(unreadCount) + " unread messages. Open Inbox"}
-                className="theme-status-danger inline-flex min-h-7 min-w-7 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
               >
-                {formatInboxUnreadCount(unreadCount)}
+                <span className="theme-status-danger inline-flex min-h-7 min-w-7 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold">
+                  {formatInboxUnreadCount(unreadCount)}
+                </span>
               </Link>
             ) : null}
           </div>

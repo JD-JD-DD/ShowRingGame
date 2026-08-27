@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import NotificationInboxBadge from "./NotificationInboxBadge";
@@ -16,6 +17,7 @@ type NotificationInboxLinkProps = {
 export default function NotificationInboxLink({
   onUnreadCountChange,
 }: NotificationInboxLinkProps) {
+  const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
   const shouldRefreshOnFocusRef = useRef(false);
   const isRefreshingRef = useRef(false);
@@ -85,7 +87,12 @@ export default function NotificationInboxLink({
   return (
     <Link
       href="/inbox"
-      className="game-header__inbox rounded-xl px-2.5 py-1.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+      className={[
+        "game-header__inbox rounded-xl px-2.5 py-1.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+        pathname === "/inbox" || pathname.startsWith("/inbox/")
+          ? "game-header__link--active"
+          : "",
+      ].join(" ")}
     >
       <span>Inbox</span>
       <NotificationInboxBadge unreadCount={unreadCount} />

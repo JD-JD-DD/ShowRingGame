@@ -19,6 +19,11 @@ function main() {
   const noticesPageSource = source("apps/web/app/notices/page.tsx");
 
   assert.ok(inboxLink.includes('href="/inbox"'), "global Inbox link points to the Inbox parent");
+  assert.ok(inboxLink.includes("usePathname"), "global Inbox link reads the current route for active styling");
+  assert.ok(
+    inboxLink.includes('pathname === "/inbox" || pathname.startsWith("/inbox/")'),
+    "global Inbox link remains active across Inbox child routes"
+  );
   assert.ok(!inboxLink.includes('href="/notices"'), "global Inbox link no longer points directly to Notices");
   assert.ok(inboxLink.includes('fetch("/api/inbox/unread-count"'), "global Inbox uses one combined unread-count request");
   assert.ok(!inboxLink.includes("/api/notices/unread-count"), "global Inbox does not duplicate the notices-only request");
