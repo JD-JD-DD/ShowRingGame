@@ -8,7 +8,7 @@ import { formatShowAwardLabels } from "@/lib/showAwards";
 import { formatShowEntryAbsenceReason } from "@/lib/showEntryAbsence";
 import { buildTitlePointsDisplay, formatTitlePointsDisplay } from "@/lib/titlePoints";
 
-import type { MyResultsDogResult, MyResultsHierarchy, MyResultsJudge } from "./myResults.contract";
+import type { MyResultsBreed, MyResultsDogResult, MyResultsGroup, MyResultsHierarchy, MyResultsJudge } from "./myResults.contract";
 
 function formatShowDate(epoch: number): string {
   return epochToDate(epoch).toLocaleDateString("en-US", {
@@ -21,6 +21,41 @@ function formatShowDate(epoch: number): string {
 
 function formatJudgeName(judge: MyResultsJudge | null): string {
   return judge?.name ?? "Judge unavailable";
+}
+
+type JudgeSummary =
+  | { kind: "UNIFORM"; judge: MyResultsJudge | null }
+  | { kind: "MULTIPLE" };
+
+function summarizeJudges(entries: Iterable<MyResultsDogResult>): JudgeSummary {
+  let resolvedJudge: MyResultsJudge | null | undefined;
+
+  for (const entry of entries) {
+    const judge = entry.breedJudge?.judge ?? null;
+    if (resolvedJudge === undefined) {
+      resolvedJudge = judge;
+      continue;
+    }
+    if (resolvedJudge?.judgeCode !== judge?.judgeCode) {
+      return { kind: "MULTIPLE" };
+    }
+  }
+
+  return { kind: "UNIFORM", judge: resolvedJudge ?? null };
+}
+
+function summarizeBreedJudge(breed: MyResultsBreed): JudgeSummary {
+  return summarizeJudges(breed.dogResults);
+}
+
+function summarizeGroupJudge(group: MyResultsGroup): JudgeSummary {
+  function* dogResults(): Generator<MyResultsDogResult> {
+    for (const breed of group.breeds) {
+      yield* breed.dogResults;
+    }
+  }
+
+  return summarizeJudges(dogResults());
 }
 
 function getAbsenceReasonMessage(entry: MyResultsDogResult): string | null {
@@ -136,6 +171,7 @@ export default function MyResultsAccordion({ hierarchy }: { hierarchy: MyResults
                             const groupBranchId = `${dayBranchId}:group:${group.code}`;
                             const groupPanelId = `my-results-${groupBranchId}`;
                             const groupExpanded = expandedBranches.has(groupBranchId);
+                            const groupJudgeSummary = summarizeGroupJudge(group);
 
                             return (
                               <div key={group.code} className="rounded-xl border border-[var(--color-border)]">
@@ -147,7 +183,11 @@ export default function MyResultsAccordion({ hierarchy }: { hierarchy: MyResults
                                 >
                                   <span>
                                     <span role="heading" aria-level={4} className="theme-heading block font-semibold">{group.name}</span>
-                                    <span className="theme-copy block text-xs">Group Judge: {formatJudgeName(group.judge?.judge ?? null)}</span>
+                                    <span className="theme-copy block text-xs">
+                                      {groupJudgeSummary.kind === "UNIFORM"
+                                        ? `Judge: ${formatJudgeName(groupJudgeSummary.judge)}`
+                                        : "Multiple judges"}
+                                    </span>
                                   </span>
                                 </ExpandButton>
 
@@ -157,6 +197,9 @@ export default function MyResultsAccordion({ hierarchy }: { hierarchy: MyResults
                                       const breedBranchId = `${groupBranchId}:breed:${breed.code2}`;
                                       const breedPanelId = `my-results-${breedBranchId}`;
                                       const breedExpanded = expandedBranches.has(breedBranchId);
+                                      const breedJudgeSummary = summarizeBreedJudge(breed);
+                                      const showBreedJudge = groupJudgeSummary.kind === "MULTIPLE";
+                                      const showDogJudge = showBreedJudge && breedJudgeSummary.kind === "MULTIPLE";
 
                                       return (
                                         <div key={breed.code2} className="rounded-xl border border-[var(--color-border)]">
@@ -166,7 +209,16 @@ export default function MyResultsAccordion({ hierarchy }: { hierarchy: MyResults
                                             label={`${breed.name} breed`}
                                             onClick={() => toggle(breedBranchId)}
                                           >
-                                            <span role="heading" aria-level={5} className="theme-heading font-semibold">{breed.name}</span>
+                                            <span>
+                                              <span role="heading" aria-level={5} className="theme-heading block font-semibold">{breed.name}</span>
+                                              {showBreedJudge ? (
+                                                <span className="theme-copy block text-xs">
+                                                  {breedJudgeSummary.kind === "UNIFORM"
+                                                    ? `Judge: ${formatJudgeName(breedJudgeSummary.judge)}`
+                                                    : "Multiple judges"}
+                                                </span>
+                                              ) : null}
+                                            </span>
                                           </ExpandButton>
 
                                           {breedExpanded ? (
@@ -187,6 +239,7 @@ export default function MyResultsAccordion({ hierarchy }: { hierarchy: MyResults
                                                       <div className="text-right">
                                                         <p className="theme-heading font-semibold">{formatResult(entry)}</p>
                                                         <p className="theme-copy text-xs">{titlePoints ?? "No title points"}</p>
+                                                        {showDogJudge ? <p className="theme-copy text-xs">Judge: {formatJudgeName(entry.breedJudge?.judge ?? null)}</p> : null}
                                                       </div>
                                                     </div>
                                                     {absenceReasonMessage ? <p className="theme-copy mt-2 text-xs">{absenceReasonMessage}</p> : null}

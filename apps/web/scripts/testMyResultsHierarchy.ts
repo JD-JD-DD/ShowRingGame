@@ -78,6 +78,9 @@ assert.deepEqual(resultJudgeRow?.result?.grandChampionCredits, [{ pointsAwarded:
 assert.equal(resultJudgeRow?.breedJudge?.source, "SHOW_RESULT");
 assert.equal(blockJudgeRow?.breedJudge?.source, "SHOW_JUDGING_BLOCK");
 assert.equal(scheduledJudgeRow?.breedJudge?.source, "SCHEDULED_GROUP_ASSIGNMENT");
+assert.equal(resultJudgeRow?.breedJudge?.judge.judgeCode, "RESULT");
+assert.equal(blockJudgeRow?.breedJudge?.judge.judgeCode, "BLOCK");
+assert.equal(scheduledJudgeRow?.breedJudge?.judge.judgeCode, "SCHEDULED");
 assert.equal(hierarchy[0].showDays[1].groups[2].name, "Unmapped group (Legacy Group)");
 
 const loader = readFileSync(join(root, "app", "my-results", "myResults.loader.ts"), "utf8");
@@ -100,5 +103,10 @@ assert.ok(accordion.includes("focus-visible:outline"), "accordion has a visible 
 assert.equal(accordion.includes(".sort("), false, "accordion does not independently order hierarchy nodes");
 assert.equal(accordion.includes("new Map"), false, "accordion does not independently group hierarchy nodes");
 assert.equal(accordion.includes("loadMyResultsHierarchy"), false, "accordion does not fetch data on expansion");
+assert.ok(accordion.includes("summarizeGroupJudge"), "accordion checks actual judge uniformity across a group");
+assert.ok(accordion.includes("summarizeBreedJudge"), "accordion checks actual judge uniformity within a breed");
+assert.ok(accordion.includes("Multiple judges"), "mixed judge attribution has a neutral group or breed display");
+assert.ok(accordion.includes("showDogJudge"), "mixed breed attribution is shown at the dog-result level");
+assert.equal(accordion.includes("group.judge?.judge"), false, "accordion does not display a representative group judge as universal attribution");
 
 console.log("My Results hierarchy checks passed.");
