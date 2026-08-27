@@ -423,6 +423,7 @@ async function main() {
     reason: "HARASSMENT",
     detail: "  Please review this message.  ",
     client: blockedFake.client as never,
+    notifyAdmin: false,
   });
   assert.ok(report.id, "received-message reports are persisted");
   assert.deepEqual(blockedFake.state.reports[0], {
@@ -434,8 +435,8 @@ async function main() {
     detail: "Please review this message.",
     status: "OPEN",
   }, "message report derives both kennel identities and retains message and conversation evidence");
-  await expectMessagingError(() => reportKennelConversationMessage({ requestingKennelId: "kennel-a", conversationId: blockedConversation.id, messageId: blockedConversation.message.id, reason: "SPAM", client: blockedFake.client as never }), "MESSAGE_NOT_REPORTABLE");
-  await reportKennelConversation({ requestingKennelId: "kennel-b", conversationId: blockedConversation.id, reason: "SPAM", detail: "   ", client: blockedFake.client as never });
+  await expectMessagingError(() => reportKennelConversationMessage({ requestingKennelId: "kennel-a", conversationId: blockedConversation.id, messageId: blockedConversation.message.id, reason: "SPAM", client: blockedFake.client as never, notifyAdmin: false }), "MESSAGE_NOT_REPORTABLE");
+  await reportKennelConversation({ requestingKennelId: "kennel-b", conversationId: blockedConversation.id, reason: "SPAM", detail: "   ", client: blockedFake.client as never, notifyAdmin: false });
   assert.equal(blockedFake.state.reports[1]?.messageId, null, "conversation reports do not require a message");
   assert.equal(blockedFake.state.reports[1]?.detail, null, "blank report detail is normalized to null");
 

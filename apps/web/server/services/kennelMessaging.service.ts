@@ -4,6 +4,7 @@ import {
   MAX_KENNEL_REPORT_DETAIL_LENGTH,
   type KennelCommunicationReportReason,
 } from "@/lib/kennelCommunicationReports";
+import { createCommunicationReportAdminNotice } from "@/server/services/kennelCommunicationModeration.service";
 
 export const MAX_KENNEL_MESSAGE_LENGTH = 4000;
 export { MAX_KENNEL_REPORT_DETAIL_LENGTH } from "@/lib/kennelCommunicationReports";
@@ -672,6 +673,7 @@ export async function reportKennelConversation(args: {
   reason: unknown;
   detail?: unknown;
   client?: MessagingClient;
+  notifyAdmin?: boolean;
 }): Promise<KennelCommunicationReportDto> {
   const client = args.client ?? (db as unknown as MessagingClient);
   const conversation = await loadKennelConversationHistory({
@@ -683,7 +685,7 @@ export async function reportKennelConversation(args: {
   const reason = normalizeKennelCommunicationReportReason(args.reason);
   const detail = normalizeKennelCommunicationReportDetail(args.detail);
 
-  return client.kennelCommunicationReport.create({
+  const report = await client.kennelCommunicationReport.create({
     data: {
       reporterKennelId: args.requestingKennelId,
       reportedKennelId: reportedKennel.id,
@@ -695,6 +697,8 @@ export async function reportKennelConversation(args: {
     },
     select: { id: true },
   });
+  if (args.notifyAdmin !== false) await createCommunicationReportAdminNotice(report.id);
+  return report;
 }
 
 export async function reportKennelConversationMessage(args: {
@@ -704,6 +708,7 @@ export async function reportKennelConversationMessage(args: {
   reason: unknown;
   detail?: unknown;
   client?: MessagingClient;
+  notifyAdmin?: boolean;
 }): Promise<KennelCommunicationReportDto> {
   const client = args.client ?? (db as unknown as MessagingClient);
   const conversation = await loadKennelConversationHistory({
@@ -721,7 +726,7 @@ export async function reportKennelConversationMessage(args: {
   const reason = normalizeKennelCommunicationReportReason(args.reason);
   const detail = normalizeKennelCommunicationReportDetail(args.detail);
 
-  return client.kennelCommunicationReport.create({
+  const report = await client.kennelCommunicationReport.create({
     data: {
       reporterKennelId: args.requestingKennelId,
       reportedKennelId: message.senderKennel.id,
@@ -733,6 +738,8 @@ export async function reportKennelConversationMessage(args: {
     },
     select: { id: true },
   });
+  if (args.notifyAdmin !== false) await createCommunicationReportAdminNotice(report.id);
+  return report;
 }
 
 function compareMessageOrder(

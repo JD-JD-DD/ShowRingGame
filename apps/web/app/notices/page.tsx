@@ -65,11 +65,14 @@ function isPuppySelectionActionNotice(sourceKey: string): boolean {
 }
 
 function getNoticeHref(notice: KennelNotice): string | null {
+  const explicitHref = getNoticeMetadataString(notice, "href");
   const communityTopicPath = getNoticeMetadataString(notice, "topicPath");
   const studContractId = getNoticeMetadataString(notice, "studContractId");
   const sourceKey = notice.sourceKey ?? "";
   const isStudContractNotice = sourceKey.startsWith("STUD_");
   const isPuppySelectionAction = isPuppySelectionActionNotice(sourceKey);
+
+  if (explicitHref?.startsWith("/admin/moderation/messages/")) return explicitHref;
 
   if (notice.sourceKey?.startsWith("STUD_MANUAL_REQUEST_OWNER")) return "/stud-contracts?action=manual-approval";
   if (notice.sourceKey?.startsWith("STUD_RETURN_SERVICE_AVAILABLE")) return "/stud-contracts?action=return-service";
