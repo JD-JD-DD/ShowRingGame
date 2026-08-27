@@ -300,6 +300,7 @@ async function main() {
   if (!bParticipantInThird) throw new Error("Expected third-conversation participant.");
   bParticipantInThird.hiddenAt = new Date();
   assert.equal((await listKennelConversationSummaries({ kennelId: "kennel-b", client: fake.client as never })).length, 1, "requester-hidden conversations are excluded");
+  assert.equal(await getUnreadKennelConversationCount({ kennelId: "kennel-b", client: fake.client as never }), 1, "requester-hidden conversations do not inflate the unread Inbox count");
   assert.equal((await listKennelConversationSummaries({ kennelId: "kennel-c", client: fake.client as never })).length, 1, "another participant hiding a conversation does not hide it for the requester");
 
   const historyA = await loadKennelConversationHistory({ requestingKennelId: "kennel-a", conversationId: first.id, client: fake.client as never });

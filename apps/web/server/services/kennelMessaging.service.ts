@@ -577,7 +577,7 @@ export async function getUnreadKennelConversationCount(args: {
   const participants = await loadConversationSummaryReadModels({
     client,
     kennelId: args.kennelId,
-    visibleOnly: false,
+    visibleOnly: true,
   });
 
   return participants.filter((participant) =>
