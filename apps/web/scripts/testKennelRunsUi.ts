@@ -357,13 +357,87 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  'type ConfigurableBulkWorkspace = "move-dogs" | "health-tests";',
+  'type ConfigurableBulkWorkspace = "move-dogs" | "health-tests" | "brucellosis";',
   "Health Tests is part of the single active workspace state"
 );
 assertIncludes(
   kennelPanel,
   '<option value="health-tests">Health Tests...</option>',
   "Health Tests appears in the existing bulk action selector"
+);
+assertIncludes(
+  kennelPanel,
+  '<option value="brucellosis">Brucellosis Test</option>',
+  "Brucellosis Test appears separately in the bulk action selector"
+);
+assertIncludes(
+  kennelPanel,
+  'setActiveBulkWorkspace("brucellosis");',
+  "Brucellosis opens as the active inline workspace"
+);
+assertIncludes(
+  kennelPanel,
+  'activeBulkWorkspace === "brucellosis"',
+  "Brucellosis renders only as the active workspace"
+);
+assertIncludes(
+  kennelPanel,
+  'fetch("/api/kennel/dogs/brucellosis/preview",',
+  "Brucellosis posts only to its preview route"
+);
+assertIncludes(
+  kennelPanel,
+  'body: JSON.stringify({ dogIds: selectedDogIds })',
+  "Brucellosis preview sends only the current selected dogs"
+);
+assertIncludes(
+  kennelPanel,
+  "brucellosisPreviewRequestSequence",
+  "Brucellosis preview protects against stale responses"
+);
+assertIncludes(
+  kennelPanel,
+  "Calculating brucellosis screening estimate...",
+  "Brucellosis has a local loading state"
+);
+assertIncludes(
+  kennelPanel,
+  "Unable to calculate the brucellosis screening estimate.",
+  "Brucellosis has a safe local error fallback"
+);
+assertIncludes(
+  kennelPanel,
+  "will be tested",
+  "Brucellosis preview summarizes screenable dogs"
+);
+assertIncludes(
+  kennelPanel,
+  "bulk-brucellosis-preview-details",
+  "Brucellosis details use a controlled semantic disclosure region"
+);
+assertIncludes(
+  kennelPanel,
+  'label: "Not currently eligible"',
+  "Brucellosis lifecycle skips have player-facing copy"
+);
+assertIncludes(
+  kennelPanel,
+  'label: "No longer available"',
+  "Brucellosis ownership skips have player-facing copy"
+);
+const brucellosisWorkspaceSection = kennelPanel.slice(
+  kennelPanel.indexOf('activeBulkWorkspace === "brucellosis"'),
+  kennelPanel.indexOf('{bulkAction === "rehome"')
+);
+assertExcludes(
+  brucellosisWorkspaceSection,
+  "Run Brucellosis",
+  "Stage 7 does not add a dormant Brucellosis execution action"
+);
+assertExcludes(
+  brucellosisWorkspaceSection,
+  "clearSelection();",
+  "Brucellosis Cancel preserves selected dogs"
 );
 assertIncludes(
   kennelPanel,

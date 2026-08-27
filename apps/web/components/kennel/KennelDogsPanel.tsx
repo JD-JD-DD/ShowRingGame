@@ -159,8 +159,14 @@ type SortKey =
   | "temperamentRingBehavior"
   | "conditioningHandling";
 
-type BulkAction = "" | "show-entry" | "rehome" | "move-dogs" | "health-tests";
-type ConfigurableBulkWorkspace = "move-dogs" | "health-tests";
+type BulkAction =
+  | ""
+  | "show-entry"
+  | "rehome"
+  | "move-dogs"
+  | "health-tests"
+  | "brucellosis";
+type ConfigurableBulkWorkspace = "move-dogs" | "health-tests" | "brucellosis";
 type HealthTestCode =
   | "HIP_DYSPLASIA"
   | "ELBOW_DYSPLASIA"
@@ -187,6 +193,13 @@ type HealthTestExecution = {
   executedTestCount: number;
   totalCharged: number;
   skippedByReason: HealthTestPreview["skippedByReason"];
+};
+type BrucellosisPreview = {
+  selectedDogCount: number;
+  screenableDogCount: number;
+  skippedDogCount: number;
+  estimatedTotalCost: number;
+  skippedByReason: Record<"NOT_OWNED_OR_NOT_FOUND" | "NOT_ALIVE", number>;
 };
 type GroomingStateFilter = "" | "groomed" | "ungroomed";
 type OptionalColumnId =
@@ -257,6 +270,13 @@ const HEALTH_TEST_SKIP_LABELS: Array<{
   { reason: "ALREADY_COMPLETED", label: "Already completed" },
   { reason: "TOO_YOUNG", label: "Too young" },
   { reason: "NOT_APPLICABLE_TO_BREED", label: "Not applicable to breed" },
+  { reason: "NOT_ALIVE", label: "Not currently eligible" },
+  { reason: "NOT_OWNED_OR_NOT_FOUND", label: "No longer available" },
+];
+const BRUCELLOSIS_SKIP_LABELS: Array<{
+  reason: keyof BrucellosisPreview["skippedByReason"];
+  label: string;
+}> = [
   { reason: "NOT_ALIVE", label: "Not currently eligible" },
   { reason: "NOT_OWNED_OR_NOT_FOUND", label: "No longer available" },
 ];
@@ -459,6 +479,16 @@ export default function KennelDogsPanel() {
     string | null
   >(null);
   const healthTestPreviewRequestSequence = useRef(0);
+  const [brucellosisPreview, setBrucellosisPreview] =
+    useState<BrucellosisPreview | null>(null);
+  const [brucellosisPreviewLoading, setBrucellosisPreviewLoading] =
+    useState(false);
+  const [brucellosisPreviewError, setBrucellosisPreviewError] = useState<
+    string | null
+  >(null);
+  const [brucellosisDetailsExpanded, setBrucellosisDetailsExpanded] =
+    useState(false);
+  const brucellosisPreviewRequestSequence = useRef(0);
   const [confirmingBulkAction, setConfirmingBulkAction] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [moveDogsLoading, setMoveDogsLoading] = useState(false);
@@ -630,6 +660,7 @@ export default function KennelDogsPanel() {
       setActiveBulkWorkspace(null);
       setSelectedMoveRunId("");
       resetHealthTestingWorkspaceState();
+      resetBrucellosisWorkspaceState();
     }
   }, [selectedDogIds.length]);
 
@@ -707,6 +738,58 @@ export default function KennelDogsPanel() {
     selectedDogIds,
     selectedHealthTestCodes,
   ]);
+
+  useEffect(() => {
+    if (activeBulkWorkspace !== "brucellosis" || selectedDogIds.length === 0) {
+      return;
+    }
+
+    const requestSequence = ++brucellosisPreviewRequestSequence.current;
+    setBrucellosisPreviewLoading(true);
+    setBrucellosisPreviewError(null);
+    setBrucellosisPreview(null);
+
+    void fetch("/api/kennel/dogs/brucellosis/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dogIds: selectedDogIds }),
+    })
+      .then(async (response) => {
+        const data = (await response.json()) as {
+          ok?: boolean;
+          preview?: BrucellosisPreview;
+          error?: string;
+        };
+
+        if (!response.ok || !data.ok || !data.preview) {
+          throw new Error(
+            data.error || "Unable to calculate the brucellosis screening estimate."
+          );
+        }
+
+        if (requestSequence !== brucellosisPreviewRequestSequence.current) {
+          return;
+        }
+
+        setBrucellosisPreview(data.preview);
+      })
+      .catch((previewError) => {
+        if (requestSequence !== brucellosisPreviewRequestSequence.current) {
+          return;
+        }
+
+        setBrucellosisPreviewError(
+          previewError instanceof Error
+            ? previewError.message
+            : "Unable to calculate the brucellosis screening estimate."
+        );
+      })
+      .finally(() => {
+        if (requestSequence === brucellosisPreviewRequestSequence.current) {
+          setBrucellosisPreviewLoading(false);
+        }
+      });
+  }, [activeBulkWorkspace, selectedDogIds]);
 
   useEffect(() => {
     if (selectedRunIds.length !== 1) {
@@ -925,12 +1008,14 @@ export default function KennelDogsPanel() {
     setSelectedMoveRunId("");
     setConfirmingBulkAction(false);
     resetHealthTestingWorkspaceState();
+    resetBrucellosisWorkspaceState();
   }
 
   function closeActiveBulkWorkspace() {
     setActiveBulkWorkspace(null);
     setSelectedMoveRunId("");
     resetHealthTestingWorkspaceState();
+    resetBrucellosisWorkspaceState();
   }
 
   function resetHealthTestingWorkspaceState() {
@@ -944,6 +1029,14 @@ export default function KennelDogsPanel() {
     setHealthTestDetailsExpanded(false);
     setHealthTestExecutionLoading(false);
     setHealthTestExecutionError(null);
+  }
+
+  function resetBrucellosisWorkspaceState() {
+    brucellosisPreviewRequestSequence.current += 1;
+    setBrucellosisPreview(null);
+    setBrucellosisPreviewLoading(false);
+    setBrucellosisPreviewError(null);
+    setBrucellosisDetailsExpanded(false);
   }
 
   function toggleHealthTestCode(code: HealthTestCode) {
@@ -1011,6 +1104,7 @@ export default function KennelDogsPanel() {
       setActiveBulkWorkspace("move-dogs");
       setSelectedMoveRunId("");
       resetHealthTestingWorkspaceState();
+      resetBrucellosisWorkspaceState();
       return;
     }
 
@@ -1020,6 +1114,17 @@ export default function KennelDogsPanel() {
       setActiveBulkWorkspace("health-tests");
       setSelectedMoveRunId("");
       resetHealthTestingWorkspaceState();
+      resetBrucellosisWorkspaceState();
+      return;
+    }
+
+    if (action === "brucellosis") {
+      setBulkAction("");
+      setConfirmingBulkAction(false);
+      setActiveBulkWorkspace("brucellosis");
+      setSelectedMoveRunId("");
+      resetHealthTestingWorkspaceState();
+      resetBrucellosisWorkspaceState();
       return;
     }
 
@@ -1948,6 +2053,7 @@ export default function KennelDogsPanel() {
                 <option value="">Bulk action...</option>
                 <option value="move-dogs">Move Dogs</option>
                 <option value="health-tests">Health Tests...</option>
+                <option value="brucellosis">Brucellosis Test</option>
                 <option value="show-entry">Show Entry</option>
                 <option value="rehome">Re-Home</option>
               </select>
@@ -2176,6 +2282,89 @@ export default function KennelDogsPanel() {
                     className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     Run Health Tests
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {activeBulkWorkspace === "brucellosis" ? (
+            <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3">
+              <div className="flex flex-col gap-3">
+                <div>
+                  <div className="theme-heading text-sm font-semibold">
+                    Brucellosis test selected dogs
+                  </div>
+                  <div className="theme-copy mt-1 text-xs">
+                    Selected: {selectedDogIds.length.toLocaleString()}
+                  </div>
+                </div>
+
+                {brucellosisPreviewLoading ? (
+                  <div className="theme-copy text-sm" role="status" aria-live="polite">
+                    Calculating brucellosis screening estimate...
+                  </div>
+                ) : null}
+
+                {brucellosisPreviewError ? (
+                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="status">
+                    {brucellosisPreviewError}
+                  </div>
+                ) : null}
+
+                {brucellosisPreview ? (
+                  <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+                    {brucellosisPreview.screenableDogCount > 0 ? (
+                      <div className="theme-heading text-sm font-semibold" role="status" aria-live="polite">
+                        {brucellosisPreview.screenableDogCount.toLocaleString()} dog
+                        {brucellosisPreview.screenableDogCount === 1 ? "" : "s"} will be tested
+                        {" · "}
+                        {brucellosisPreview.skippedDogCount.toLocaleString()} skipped
+                        {" · "}
+                        {formatMoney(brucellosisPreview.estimatedTotalCost)}
+                      </div>
+                    ) : (
+                      <div className="theme-copy text-sm" role="status" aria-live="polite">
+                        No selected dogs can currently be screened for brucellosis.
+                      </div>
+                    )}
+
+                    {brucellosisPreview.skippedDogCount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setBrucellosisDetailsExpanded((current) => !current)}
+                        aria-expanded={brucellosisDetailsExpanded}
+                        aria-controls="bulk-brucellosis-preview-details"
+                        className="theme-secondary-button mt-2 rounded-md px-2.5 py-1.5 text-xs font-semibold"
+                      >
+                        {brucellosisDetailsExpanded ? "Hide details" : "View details"}
+                      </button>
+                    ) : null}
+
+                    {brucellosisDetailsExpanded ? (
+                      <div
+                        id="bulk-brucellosis-preview-details"
+                        className="theme-copy mt-3 grid gap-1 text-xs"
+                      >
+                        {BRUCELLOSIS_SKIP_LABELS.filter(
+                          ({ reason }) => brucellosisPreview.skippedByReason[reason] > 0
+                        ).map(({ reason, label }) => (
+                          <div key={reason}>
+                            {label}: {brucellosisPreview.skippedByReason[reason].toLocaleString()}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={closeActiveBulkWorkspace}
+                    className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
+                  >
+                    Cancel
                   </button>
                 </div>
               </div>

@@ -1,13 +1,100 @@
 import {
   BRUCELLOSIS_DISEASE_CODE,
   BRUCELLOSIS_FOUNDATION_INFECTION_RATE,
+  BRUCELLOSIS_TEST_FEE,
   BRUCELLOSIS_TEST_VALID_HOURS,
 } from "@showring/rules";
 import type { Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
 
 export type BrucellosisTestResultCode = "NEGATIVE" | "POSITIVE";
 
 type DiseaseClient = Prisma.TransactionClient;
+type BrucellosisPreviewClient = Pick<Prisma.TransactionClient, "dog">;
+
+export type BulkBrucellosisPreviewSkipReason =
+  | "NOT_OWNED_OR_NOT_FOUND"
+  | "NOT_ALIVE";
+
+export class BulkBrucellosisPreviewError extends Error {
+  constructor(message: string, public readonly status = 400) {
+    super(message);
+  }
+}
+
+function normalizeBulkBrucellosisDogIds(dogIds: unknown): string[] {
+  if (!Array.isArray(dogIds) || dogIds.length === 0) {
+    throw new BulkBrucellosisPreviewError("Choose at least one dog.");
+  }
+
+  const normalizedDogIds: string[] = [];
+
+  for (const dogId of dogIds) {
+    if (typeof dogId !== "string" || !dogId.trim()) {
+      throw new BulkBrucellosisPreviewError(
+        "Each dog ID must be a non-empty string."
+      );
+    }
+
+    normalizedDogIds.push(dogId.trim());
+  }
+
+  return [...new Set(normalizedDogIds)];
+}
+
+function emptyBulkBrucellosisSkippedByReason(): Record<
+  BulkBrucellosisPreviewSkipReason,
+  number
+> {
+  return {
+    NOT_OWNED_OR_NOT_FOUND: 0,
+    NOT_ALIVE: 0,
+  };
+}
+
+export async function previewBulkBrucellosisScreeningForKennel(args: {
+  kennelId: string;
+  dogIds: unknown;
+  client?: BrucellosisPreviewClient;
+}) {
+  const dogIds = normalizeBulkBrucellosisDogIds(args.dogIds);
+  const client = args.client ?? db;
+  const dogs = await client.dog.findMany({
+    where: { id: { in: dogIds } },
+    select: {
+      id: true,
+      ownerKennelId: true,
+      lifecycleState: true,
+    },
+  });
+  const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
+  const skippedByReason = emptyBulkBrucellosisSkippedByReason();
+  let screenableDogCount = 0;
+
+  for (const dogId of dogIds) {
+    const dog = dogsById.get(dogId);
+
+    if (!dog || dog.ownerKennelId !== args.kennelId) {
+      skippedByReason.NOT_OWNED_OR_NOT_FOUND += 1;
+      continue;
+    }
+
+    if (dog.lifecycleState !== "ALIVE") {
+      skippedByReason.NOT_ALIVE += 1;
+      continue;
+    }
+
+    screenableDogCount += 1;
+  }
+
+  return {
+    selectedDogCount: dogIds.length,
+    screenableDogCount,
+    skippedDogCount: dogIds.length - screenableDogCount,
+    estimatedTotalCost: screenableDogCount * BRUCELLOSIS_TEST_FEE,
+    skippedByReason,
+  };
+}
 
 type InfectionSource = {
   sourceDogId?: string | null;
