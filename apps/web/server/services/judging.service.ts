@@ -1780,6 +1780,7 @@ async function createGroupAwardsForShowDay(args: {
           judgeId: legacyFinalizationJudge?.id ?? groupAssignment!.judgeId,
           awardCode: judgedAward.awardCode,
           awardGroup: judgedAward.awardGroup,
+          finalizationKey: `${args.showDayId}:GROUP:${groupCode}:${judgedAward.awardCode}`,
           sex: judgedAward.sex,
           rank: judgedAward.rank,
           pointsAwarded,
@@ -1798,6 +1799,7 @@ async function createGroupAwardsForShowDay(args: {
 
     const created = await tx.showAward.createMany({
       data: awardsToCreate,
+      skipDuplicates: true,
     });
 
     return created.count;
@@ -2033,6 +2035,7 @@ async function createBestInShowAwardsForShowDay(args: {
         judgeId: bisJudgeId,
         awardCode: judgedAward.awardCode,
         awardGroup: judgedAward.awardGroup,
+        finalizationKey: `${args.showDayId}:BEST_IN_SHOW:${judgedAward.awardCode}`,
         sex: judgedAward.sex,
         rank: judgedAward.rank,
         pointsAwarded,
@@ -2049,6 +2052,7 @@ async function createBestInShowAwardsForShowDay(args: {
 
     const created = await tx.showAward.createMany({
       data: awardsToCreate,
+      skipDuplicates: true,
     });
 
     return created.count;

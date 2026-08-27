@@ -1167,6 +1167,9 @@ model ShowAward {
   judgeId                    String
   awardCode                  String
   awardGroup                 String
+  /// Canonical identity for newly persisted Group/BIS finals. Kept null for
+  /// breed-level awards and pre-FINALIZER-01 historical rows.
+  finalizationKey            String?  @unique
   sex                        Sex?
   rank                       Int?
   pointsAwarded              Int      @default(0)
