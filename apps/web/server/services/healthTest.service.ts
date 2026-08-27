@@ -3,6 +3,7 @@ import {
   generateFoundationPhenotypeHealthTruths,
   inheritPhenotypeHealthTruths,
   isPhenotypeHealthTestCode,
+  getRequiredHealthTestsForBreed,
   PHENOTYPE_HEALTH_TEST_CODES,
   PHENOTYPE_HEALTH_TESTS,
   revealPhenotypeHealthTestResult,
@@ -19,6 +20,195 @@ type HealthClient = Pick<
   | "kennel"
   | "ledgerTransaction"
 >;
+
+type HealthPreviewClient = Pick<Prisma.TransactionClient, "dog">;
+
+export type BulkHealthTestSelection =
+  | {
+      mode: "explicit";
+      testTypeCodes: string[];
+    }
+  | {
+      mode: "all-applicable";
+    };
+
+export type BulkHealthTestPreviewSkipReason =
+  | "NOT_OWNED_OR_NOT_FOUND"
+  | "NOT_ALIVE"
+  | "NOT_APPLICABLE_TO_BREED"
+  | "TOO_YOUNG"
+  | "ALREADY_COMPLETED";
+
+export class BulkHealthTestPreviewError extends Error {
+  constructor(message: string, public readonly status = 400) {
+    super(message);
+  }
+}
+
+function normalizePreviewDogIds(dogIds: unknown): string[] {
+  if (!Array.isArray(dogIds) || dogIds.length === 0) {
+    throw new BulkHealthTestPreviewError("Choose at least one dog.");
+  }
+
+  const normalizedDogIds: string[] = [];
+
+  for (const dogId of dogIds) {
+    if (typeof dogId !== "string" || !dogId.trim()) {
+      throw new BulkHealthTestPreviewError("Each dog ID must be a non-empty string.");
+    }
+
+    normalizedDogIds.push(dogId.trim());
+  }
+
+  return [...new Set(normalizedDogIds)];
+}
+
+function normalizeBulkHealthTestSelection(
+  selection: unknown
+):
+  | { mode: "explicit"; testTypeCodes: PhenotypeHealthTestCode[] }
+  | { mode: "all-applicable" } {
+  if (!selection || typeof selection !== "object" || Array.isArray(selection)) {
+    throw new BulkHealthTestPreviewError("A health test selection is required.");
+  }
+
+  const candidate = selection as { mode?: unknown; testTypeCodes?: unknown };
+
+  if (candidate.mode === "all-applicable") {
+    return { mode: "all-applicable" };
+  }
+
+  if (candidate.mode !== "explicit" || !Array.isArray(candidate.testTypeCodes)) {
+    throw new BulkHealthTestPreviewError("Choose explicit tests or all applicable tests.");
+  }
+
+  if (candidate.testTypeCodes.length === 0) {
+    throw new BulkHealthTestPreviewError("Choose at least one health test.");
+  }
+
+  const testTypeCodes: PhenotypeHealthTestCode[] = [];
+
+  for (const testTypeCode of candidate.testTypeCodes) {
+    if (typeof testTypeCode !== "string" || !isPhenotypeHealthTestCode(testTypeCode)) {
+      throw new BulkHealthTestPreviewError("That health test is not available.");
+    }
+
+    if (!testTypeCodes.includes(testTypeCode)) {
+      testTypeCodes.push(testTypeCode);
+    }
+  }
+
+  return { mode: "explicit", testTypeCodes };
+}
+
+function emptySkippedByReason(): Record<BulkHealthTestPreviewSkipReason, number> {
+  return {
+    NOT_OWNED_OR_NOT_FOUND: 0,
+    NOT_ALIVE: 0,
+    NOT_APPLICABLE_TO_BREED: 0,
+    TOO_YOUNG: 0,
+    ALREADY_COMPLETED: 0,
+  };
+}
+
+export async function previewBulkPhenotypeHealthTestsForKennel(args: {
+  kennelId: string;
+  dogIds: unknown;
+  selection: unknown;
+  currentEpoch: number;
+  client?: HealthPreviewClient;
+}) {
+  const dogIds = normalizePreviewDogIds(args.dogIds);
+  const selection = normalizeBulkHealthTestSelection(args.selection);
+  const client = args.client ?? db;
+  const dogs = await client.dog.findMany({
+    where: { id: { in: dogIds } },
+    select: {
+      id: true,
+      ownerKennelId: true,
+      lifecycleState: true,
+      birthEpoch: true,
+      breedCode2: true,
+      healthTests: {
+        where: { testTypeCode: { in: [...PHENOTYPE_HEALTH_TEST_CODES] } },
+        select: { testTypeCode: true },
+      },
+    },
+  });
+  const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
+  const byTest = Object.fromEntries(
+    PHENOTYPE_HEALTH_TEST_CODES.map((testTypeCode) => [
+      testTypeCode,
+      { runnableCount: 0, estimatedCost: 0 },
+    ])
+  ) as Record<PhenotypeHealthTestCode, { runnableCount: number; estimatedCost: number }>;
+  const skippedByReason = emptySkippedByReason();
+  let eligibleDogCount = 0;
+  let runnableTestCount = 0;
+  let estimatedTotalCost = 0;
+
+  for (const dogId of dogIds) {
+    const dog = dogsById.get(dogId);
+
+    if (!dog || dog.ownerKennelId !== args.kennelId) {
+      skippedByReason.NOT_OWNED_OR_NOT_FOUND += 1;
+      continue;
+    }
+
+    const applicableTestCodes = getRequiredHealthTestsForBreed(dog.breedCode2);
+    const requestedTestCodes =
+      selection.mode === "all-applicable"
+        ? applicableTestCodes
+        : selection.testTypeCodes;
+
+    if (dog.lifecycleState !== "ALIVE") {
+      skippedByReason.NOT_ALIVE += requestedTestCodes.length;
+      continue;
+    }
+
+    const completedTestCodes = new Set(dog.healthTests.map((test) => test.testTypeCode));
+    const currentAgeHours = getAgeHours(args.currentEpoch, dog.birthEpoch);
+    let hasRunnableTest = false;
+
+    for (const testTypeCode of requestedTestCodes) {
+      if (!applicableTestCodes.includes(testTypeCode)) {
+        skippedByReason.NOT_APPLICABLE_TO_BREED += 1;
+        continue;
+      }
+
+      const definition = PHENOTYPE_HEALTH_TESTS[testTypeCode];
+
+      if (currentAgeHours < definition.minimumAgeHours) {
+        skippedByReason.TOO_YOUNG += 1;
+        continue;
+      }
+
+      if (completedTestCodes.has(testTypeCode)) {
+        skippedByReason.ALREADY_COMPLETED += 1;
+        continue;
+      }
+
+      hasRunnableTest = true;
+      runnableTestCount += 1;
+      estimatedTotalCost += definition.fee;
+      byTest[testTypeCode].runnableCount += 1;
+      byTest[testTypeCode].estimatedCost += definition.fee;
+    }
+
+    if (hasRunnableTest) {
+      eligibleDogCount += 1;
+    }
+  }
+
+  return {
+    selectedDogCount: dogIds.length,
+    eligibleDogCount,
+    runnableTestCount,
+    estimatedTotalCost,
+    byTest,
+    skippedByReason,
+  };
+}
 
 function seeded01(seed: string): number {
   let hash = 2166136261;
