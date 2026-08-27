@@ -33,9 +33,8 @@ function main() {
   assert.ok(inboxPage.includes("getUnreadKennelConversationCount"), "Inbox loads Messages unread conversations");
   assert.ok(inboxPage.includes("getUnreadKennelNoticeCount"), "Inbox retains canonical Notices unread counts");
 
-  assert.ok(messagesPage.includes("Kennel messages will appear here."), "Messages destination is a minimal placeholder");
-  assert.ok(!messagesPage.includes("listKennelConversationSummaries"), "Messages placeholder does not implement the conversation list early");
-  assert.ok(!messagesPage.includes("sendKennelMessage"), "Messages placeholder does not implement message sending early");
+  assert.ok(messagesPage.includes("listKennelConversationSummaries"), "Messages destination uses the canonical summary service");
+  assert.ok(messagesPage.includes("You do not have any kennel messages yet."), "Messages destination retains a clear empty state");
   assert.ok(noticesPage.includes('redirect("/notices")'), "Inbox Notices redirects to the canonical Notices page");
   assert.ok(noticesPageSource.includes("listKennelNotices"), "existing Notices page remains the canonical notice renderer");
 
