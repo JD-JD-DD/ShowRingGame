@@ -6,6 +6,7 @@ import {
 } from "@showring/rules";
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { formatDogDisplayName } from "@/lib/dogNames";
 
 export type BrucellosisTestResultCode = "NEGATIVE" | "POSITIVE";
 
@@ -17,6 +18,12 @@ export type BulkBrucellosisPreviewSkipReason =
   | "NOT_ALIVE";
 
 export class BulkBrucellosisPreviewError extends Error {
+  constructor(message: string, public readonly status = 400) {
+    super(message);
+  }
+}
+
+export class BulkBrucellosisExecutionError extends Error {
   constructor(message: string, public readonly status = 400) {
     super(message);
   }
@@ -246,6 +253,145 @@ export async function runBrucellosisTest(
     ...record,
     resultCode: record.resultCode as BrucellosisTestResultCode,
   };
+}
+
+type BrucellosisScreeningDog = {
+  id: string;
+  registeredName: string | null;
+  callName: string | null;
+  regNumber: string;
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
+};
+
+export async function executeBrucellosisScreeningForKennelTx(
+  tx: DiseaseClient,
+  args: {
+    kennelId: string;
+    dog: BrucellosisScreeningDog;
+    currentEpoch: number;
+    runningBalance: { value: number };
+  }
+) {
+  const test = await runBrucellosisTest(tx, {
+    dogId: args.dog.id,
+    currentEpoch: args.currentEpoch,
+  });
+  args.runningBalance.value -= BRUCELLOSIS_TEST_FEE;
+
+  await tx.ledgerTransaction.create({
+    data: {
+      kennelId: args.kennelId,
+      transactionType: "HEALTH_TEST_FEE",
+      amount: -BRUCELLOSIS_TEST_FEE,
+      balanceAfter: args.runningBalance.value,
+      occurredAtEpoch: args.currentEpoch,
+      dogId: args.dog.id,
+      memo: `Brucellosis screening for ${formatDogDisplayName(args.dog)}.`,
+      metadataJson: {
+        diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+        resultCode: test.resultCode,
+      },
+    },
+  });
+
+  return test;
+}
+
+export async function runBulkBrucellosisScreeningForKennel(args: {
+  kennelId: string;
+  dogIds: unknown;
+  currentEpoch: number;
+}) {
+  const dogIds = normalizeBulkBrucellosisDogIds(args.dogIds);
+
+  return db.$transaction(async (tx) => {
+    const dogs = await tx.dog.findMany({
+      where: { id: { in: dogIds } },
+      select: {
+        id: true,
+        ownerKennelId: true,
+        lifecycleState: true,
+        registeredName: true,
+        callName: true,
+        regNumber: true,
+        visibleTitlePrefix: true,
+        visibleTitleSuffix: true,
+      },
+    });
+    const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
+    const skippedByReason = emptyBulkBrucellosisSkippedByReason();
+    const screenableDogs: BrucellosisScreeningDog[] = [];
+
+    for (const dogId of dogIds) {
+      const dog = dogsById.get(dogId);
+
+      if (!dog || dog.ownerKennelId !== args.kennelId) {
+        skippedByReason.NOT_OWNED_OR_NOT_FOUND += 1;
+        continue;
+      }
+
+      if (dog.lifecycleState !== "ALIVE") {
+        skippedByReason.NOT_ALIVE += 1;
+        continue;
+      }
+
+      screenableDogs.push(dog);
+    }
+
+    const kennel = await tx.kennel.findUnique({
+      where: { id: args.kennelId },
+      select: { id: true, balance: true },
+    });
+
+    if (!kennel) {
+      throw new BulkBrucellosisExecutionError("Kennel not found.", 404);
+    }
+
+    const totalCharged = screenableDogs.length * BRUCELLOSIS_TEST_FEE;
+
+    if (kennel.balance < totalCharged) {
+      throw new BulkBrucellosisExecutionError(
+        "Insufficient funds for the selected brucellosis screenings."
+      );
+    }
+
+    if (totalCharged === 0) {
+      return {
+        selectedDogCount: dogIds.length,
+        screenedDogCount: 0,
+        skippedDogCount: dogIds.length,
+        totalCharged: 0,
+        newBalance: kennel.balance,
+        skippedByReason,
+      };
+    }
+
+    await tx.kennel.update({
+      where: { id: kennel.id },
+      data: { balance: kennel.balance - totalCharged },
+    });
+
+    const runningBalance = { value: kennel.balance };
+
+    for (const dog of screenableDogs) {
+      await executeBrucellosisScreeningForKennelTx(tx, {
+        kennelId: kennel.id,
+        dog,
+        currentEpoch: args.currentEpoch,
+        runningBalance,
+      });
+    }
+
+    return {
+      selectedDogCount: dogIds.length,
+      screenedDogCount: screenableDogs.length,
+      skippedDogCount: dogIds.length - screenableDogs.length,
+      totalCharged,
+      newBalance: runningBalance.value,
+      skippedByReason,
+    };
+  });
 }
 
 export async function transmitBrucellosisThroughBreeding(

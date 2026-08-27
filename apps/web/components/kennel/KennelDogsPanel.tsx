@@ -7,6 +7,7 @@ import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import BulkCallNameEditor from "@/components/kennel/BulkCallNameEditor";
 import {
+  formatBulkBrucellosisCompletion,
   formatBulkHealthTestCompletion,
   formatMoney,
 } from "@/components/kennel/bulkHealthTestFeedback";
@@ -200,6 +201,11 @@ type BrucellosisPreview = {
   skippedDogCount: number;
   estimatedTotalCost: number;
   skippedByReason: Record<"NOT_OWNED_OR_NOT_FOUND" | "NOT_ALIVE", number>;
+};
+type BrucellosisExecution = {
+  screenedDogCount: number;
+  totalCharged: number;
+  skippedByReason: BrucellosisPreview["skippedByReason"];
 };
 type GroomingStateFilter = "" | "groomed" | "ungroomed";
 type OptionalColumnId =
@@ -481,6 +487,8 @@ export default function KennelDogsPanel() {
   const healthTestPreviewRequestSequence = useRef(0);
   const [brucellosisPreview, setBrucellosisPreview] =
     useState<BrucellosisPreview | null>(null);
+  const [brucellosisPreviewDogIdsKey, setBrucellosisPreviewDogIdsKey] =
+    useState<string | null>(null);
   const [brucellosisPreviewLoading, setBrucellosisPreviewLoading] =
     useState(false);
   const [brucellosisPreviewError, setBrucellosisPreviewError] = useState<
@@ -488,6 +496,11 @@ export default function KennelDogsPanel() {
   >(null);
   const [brucellosisDetailsExpanded, setBrucellosisDetailsExpanded] =
     useState(false);
+  const [brucellosisExecutionLoading, setBrucellosisExecutionLoading] =
+    useState(false);
+  const [brucellosisExecutionError, setBrucellosisExecutionError] = useState<
+    string | null
+  >(null);
   const brucellosisPreviewRequestSequence = useRef(0);
   const [confirmingBulkAction, setConfirmingBulkAction] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
@@ -745,6 +758,7 @@ export default function KennelDogsPanel() {
     }
 
     const requestSequence = ++brucellosisPreviewRequestSequence.current;
+    const dogIdsKey = selectedDogIds.join(",");
     setBrucellosisPreviewLoading(true);
     setBrucellosisPreviewError(null);
     setBrucellosisPreview(null);
@@ -772,6 +786,7 @@ export default function KennelDogsPanel() {
         }
 
         setBrucellosisPreview(data.preview);
+        setBrucellosisPreviewDogIdsKey(dogIdsKey);
       })
       .catch((previewError) => {
         if (requestSequence !== brucellosisPreviewRequestSequence.current) {
@@ -783,6 +798,7 @@ export default function KennelDogsPanel() {
             ? previewError.message
             : "Unable to calculate the brucellosis screening estimate."
         );
+        setBrucellosisPreviewDogIdsKey(null);
       })
       .finally(() => {
         if (requestSequence === brucellosisPreviewRequestSequence.current) {
@@ -936,6 +952,12 @@ export default function KennelDogsPanel() {
     healthTestPreview.runnableTestCount > 0 &&
     !healthTestPreviewLoading &&
     !healthTestExecutionLoading;
+  const canRunBrucellosisTests =
+    brucellosisPreview !== null &&
+    brucellosisPreviewDogIdsKey === selectedDogIds.join(",") &&
+    brucellosisPreview.screenableDogCount > 0 &&
+    !brucellosisPreviewLoading &&
+    !brucellosisExecutionLoading;
   const selectedVisibleDogCount = displayedDogIds.filter((dogId) =>
     selectedDogIds.includes(dogId)
   ).length;
@@ -1034,9 +1056,12 @@ export default function KennelDogsPanel() {
   function resetBrucellosisWorkspaceState() {
     brucellosisPreviewRequestSequence.current += 1;
     setBrucellosisPreview(null);
+    setBrucellosisPreviewDogIdsKey(null);
     setBrucellosisPreviewLoading(false);
     setBrucellosisPreviewError(null);
     setBrucellosisDetailsExpanded(false);
+    setBrucellosisExecutionLoading(false);
+    setBrucellosisExecutionError(null);
   }
 
   function toggleHealthTestCode(code: HealthTestCode) {
@@ -1185,6 +1210,46 @@ export default function KennelDogsPanel() {
       setHealthTestExecutionError(formatHealthTestExecutionError(executionError));
     } finally {
       setHealthTestExecutionLoading(false);
+    }
+  }
+
+  async function runBulkBrucellosisTests() {
+    if (!canRunBrucellosisTests) {
+      return;
+    }
+
+    setBrucellosisExecutionLoading(true);
+    setBrucellosisExecutionError(null);
+
+    try {
+      const response = await fetch("/api/kennel/dogs/brucellosis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dogIds: selectedDogIds }),
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        result?: BrucellosisExecution;
+        error?: string;
+      };
+
+      if (!response.ok || !data.ok || !data.result) {
+        throw new Error(data.error || "Unable to complete brucellosis screenings.");
+      }
+
+      await loadDogs({ preserveLoadingState: true });
+      setActiveBulkWorkspace(null);
+      resetBrucellosisWorkspaceState();
+      setMessage(formatBulkBrucellosisCompletion(data.result));
+    } catch (executionError) {
+      const message = executionError instanceof Error ? executionError.message : "";
+      setBrucellosisExecutionError(
+        message.startsWith("Insufficient funds") || message.startsWith("Choose ")
+          ? message
+          : "Unable to complete brucellosis screenings."
+      );
+    } finally {
+      setBrucellosisExecutionLoading(false);
     }
   }
 
@@ -2312,6 +2377,18 @@ export default function KennelDogsPanel() {
                   </div>
                 ) : null}
 
+                {brucellosisExecutionLoading ? (
+                  <div className="theme-copy text-sm" role="status" aria-live="polite">
+                    Running brucellosis screenings...
+                  </div>
+                ) : null}
+
+                {brucellosisExecutionError ? (
+                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="status">
+                    {brucellosisExecutionError}
+                  </div>
+                ) : null}
+
                 {brucellosisPreview ? (
                   <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
                     {brucellosisPreview.screenableDogCount > 0 ? (
@@ -2362,9 +2439,18 @@ export default function KennelDogsPanel() {
                   <button
                     type="button"
                     onClick={closeActiveBulkWorkspace}
+                    disabled={brucellosisExecutionLoading}
                     className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={runBulkBrucellosisTests}
+                    disabled={!canRunBrucellosisTests}
+                    className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    Run Brucellosis Tests
                   </button>
                 </div>
               </div>

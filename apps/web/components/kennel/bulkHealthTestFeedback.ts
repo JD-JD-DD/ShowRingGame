@@ -12,6 +12,12 @@ export type BulkHealthTestExecutionFeedback = {
   skippedByReason: Record<HealthTestSkipReason, number>;
 };
 
+export type BulkBrucellosisExecutionFeedback = {
+  screenedDogCount: number;
+  totalCharged: number;
+  skippedByReason: Record<"NOT_OWNED_OR_NOT_FOUND" | "NOT_ALIVE", number>;
+};
+
 export function formatMoney(amount: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -78,6 +84,36 @@ export function formatBulkHealthTestCompletion(
 
   return [
     `Health testing complete: ${formatCount(result.executedTestCount, "test")} run on ${formatCount(result.testedDogCount, "dog")}.`,
+    `Total charged: ${formatMoney(result.totalCharged)}.`,
+    skippedSummary,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export function formatBulkBrucellosisCompletion(
+  result: BulkBrucellosisExecutionFeedback
+) {
+  const skippedSummary = [
+    result.skippedByReason.NOT_ALIVE > 0
+      ? `${formatCount(result.skippedByReason.NOT_ALIVE, "dog")} not currently eligible`
+      : "",
+    result.skippedByReason.NOT_OWNED_OR_NOT_FOUND > 0
+      ? `${formatCount(result.skippedByReason.NOT_OWNED_OR_NOT_FOUND, "dog")} no longer available`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
+
+  if (result.screenedDogCount === 0) {
+    return [
+      "No brucellosis screenings were run.",
+      skippedSummary || "The selected dogs are no longer eligible or available.",
+    ].join(" ");
+  }
+
+  return [
+    `Brucellosis screening complete: ${formatCount(result.screenedDogCount, "dog")} tested.`,
     `Total charged: ${formatMoney(result.totalCharged)}.`,
     skippedSummary,
   ]

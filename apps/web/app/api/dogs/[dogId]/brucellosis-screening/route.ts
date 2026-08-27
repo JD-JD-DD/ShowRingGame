@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { redirectToDogPageWithField } from "@/lib/dogPageRedirect";
-import { formatDogDisplayName } from "@/lib/dogNames";
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
-import { runBrucellosisTest } from "@/server/services/infectiousDisease.service";
-import {
-  BRUCELLOSIS_DISEASE_CODE,
-  BRUCELLOSIS_TEST_FEE,
-} from "@showring/rules";
+import { executeBrucellosisScreeningForKennelTx } from "@/server/services/infectiousDisease.service";
+import { BRUCELLOSIS_TEST_FEE } from "@showring/rules";
 
 class BrucellosisScreeningError extends Error {}
 
@@ -85,10 +81,6 @@ export async function POST(
         );
       }
 
-      const test = await runBrucellosisTest(tx, {
-        dogId: dog.id,
-        currentEpoch,
-      });
       const balanceAfter = currentKennel.balance - BRUCELLOSIS_TEST_FEE;
 
       await tx.kennel.update({
@@ -96,20 +88,11 @@ export async function POST(
         data: { balance: balanceAfter },
       });
 
-      await tx.ledgerTransaction.create({
-        data: {
-          kennelId: currentKennel.id,
-          transactionType: "HEALTH_TEST_FEE",
-          amount: -BRUCELLOSIS_TEST_FEE,
-          balanceAfter,
-          occurredAtEpoch: currentEpoch,
-          dogId: dog.id,
-          memo: `Brucellosis screening for ${formatDogDisplayName(dog)}.`,
-          metadataJson: {
-            diseaseCode: BRUCELLOSIS_DISEASE_CODE,
-            resultCode: test.resultCode,
-          },
-        },
+      const test = await executeBrucellosisScreeningForKennelTx(tx, {
+        kennelId: currentKennel.id,
+        dog,
+        currentEpoch,
+        runningBalance: { value: currentKennel.balance },
       });
 
       return {

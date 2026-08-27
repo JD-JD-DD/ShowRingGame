@@ -429,10 +429,79 @@ const brucellosisWorkspaceSection = kennelPanel.slice(
   kennelPanel.indexOf('activeBulkWorkspace === "brucellosis"'),
   kennelPanel.indexOf('{bulkAction === "rehome"')
 );
-assertExcludes(
+assertIncludes(
   brucellosisWorkspaceSection,
-  "Run Brucellosis",
-  "Stage 7 does not add a dormant Brucellosis execution action"
+  "Run Brucellosis Tests",
+  "Brucellosis has a functional execution action"
+);
+assertIncludes(
+  kennelPanel,
+  "onClick={runBulkBrucellosisTests}",
+  "Brucellosis execution control invokes its bulk handler"
+);
+assertIncludes(
+  kennelPanel,
+  'fetch("/api/kennel/dogs/brucellosis",',
+  "Brucellosis execution posts to the bulk execution route"
+);
+assertIncludes(
+  kennelPanel,
+  "disabled={!canRunBrucellosisTests}",
+  "Brucellosis execution requires a current screenable preview"
+);
+assertIncludes(
+  kennelPanel,
+  "brucellosisPreviewDogIdsKey === selectedDogIds.join(\",\")",
+  "Brucellosis execution rejects stale previews"
+);
+assertIncludes(
+  kennelPanel,
+  "Running brucellosis screenings...",
+  "Brucellosis execution has local progress feedback"
+);
+assertIncludes(
+  kennelPanel,
+  "No brucellosis screenings were run.",
+  "zero-execution Brucellosis feedback is useful"
+);
+const bulkBrucellosisExecutionSection = kennelPanel.slice(
+  kennelPanel.indexOf("async function runBulkBrucellosisTests()"),
+  kennelPanel.indexOf("async function moveSelectedDogs()")
+);
+assertExcludes(
+  bulkBrucellosisExecutionSection,
+  "clearSelection();",
+  "successful Brucellosis execution preserves selected dogs"
+);
+for (const stateSetter of [
+  "setSelectedRunIds(",
+  "setSearchText(",
+  "setBreedFilter(",
+  "setSortKey(",
+  "setSortDirection(",
+  "window.location",
+  "router.",
+]) {
+  assertExcludes(
+    bulkBrucellosisExecutionSection,
+    stateSetter,
+    `Brucellosis execution preserves roster context without ${stateSetter}`
+  );
+}
+assertIncludes(
+  bulkBrucellosisExecutionSection,
+  "setActiveBulkWorkspace(null);",
+  "successful Brucellosis execution closes its workspace"
+);
+assertIncludes(
+  bulkBrucellosisExecutionSection,
+  "setBrucellosisExecutionError(",
+  "failed Brucellosis execution keeps feedback local"
+);
+assertExcludes(
+  bulkBrucellosisExecutionSection,
+  "estimatedTotalCost",
+  "Brucellosis execution does not submit preview pricing as authority"
 );
 assertExcludes(
   brucellosisWorkspaceSection,
