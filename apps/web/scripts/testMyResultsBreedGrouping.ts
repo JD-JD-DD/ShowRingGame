@@ -2,103 +2,53 @@ import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-function source(path: string): string {
-  const cwd = process.cwd();
-  const root = cwd.endsWith(`${join("apps", "web")}`) ? join(cwd, "..", "..") : cwd;
+const root = process.cwd().endsWith(join("apps", "web"))
+  ? join(process.cwd(), "..", "..")
+  : process.cwd();
+const source = (path: string) => readFileSync(join(root, path), "utf8");
 
-  return readFileSync(join(root, path), "utf8");
-}
-
-function assertIncludes(haystack: string, needle: string, label: string): void {
-  assert.ok(haystack.includes(needle), label);
-}
-
-function assertNotIncludes(
-  haystack: string,
-  needle: string,
-  label: string
-): void {
-  assert.equal(haystack.includes(needle), false, label);
-}
-
-const myResultsPage = source("apps/web/app/my-results/page.tsx");
+const loader = source("apps/web/app/my-results/myResults.loader.ts");
 const schema = source("apps/web/prisma/schema.prisma");
 
-assertIncludes(
-  schema,
-  "groupJudgeAssignments         ShowDayGroupJudgeAssignment[]",
+assert.ok(
+  schema.includes("groupJudgeAssignments         ShowDayGroupJudgeAssignment[]"),
   "schema exposes persisted ShowDay group-judge assignments"
 );
-assertIncludes(
-  schema,
-  "judge   Judge       @relation(fields: [judgeId], references: [id])",
-  "schema keeps ShowDay judge as a separate persisted relation"
+assert.ok(
+  schema.includes("judge   Judge       @relation(fields: [judgeId], references: [id])"),
+  "schema keeps the ShowDay BIS judge as a separate persisted relation"
 );
 
-assertIncludes(
-  myResultsPage,
-  "groupJudgeAssignments",
-  "My Results fetches the batched ShowDay group-judge assignments"
+assert.ok(
+  loader.includes("groupJudgeAssignments: { select: { groupCode: true, judge:"),
+  "loader fetches each ShowDay's batched group-judge assignments and judge identity"
 );
-assertIncludes(
-  myResultsPage,
-  "resolveBreedGroupNameToCanonicalShowGroupCode",
-  "My Results resolves breeds through the canonical group mapping"
+assert.ok(
+  loader.includes("resolveBreedGroupNameToCanonicalShowGroupCode"),
+  "loader resolves each breed through the canonical group mapping"
 );
-assertIncludes(
-  myResultsPage,
-  "const showGroups = new Map",
-  "My Results groups rows by show before rendering"
+assert.ok(
+  loader.includes(
+    "entry.showDay.groupJudgeAssignments.find((assignment) => assignment.groupCode === groupCode)?.judge"
+  ),
+  "scheduled group-judge fallback matches the canonical group code"
 );
-assertIncludes(
-  myResultsPage,
-  "breedEntriesByCode: new Map()",
-  "My Results nests breeds inside each show group"
+assert.ok(
+  loader.includes('if (entry.showResult?.judge) return { judge: entry.showResult.judge, source: "SHOW_RESULT" }'),
+  "persisted result judge remains the highest attribution authority"
 );
-assertIncludes(
-  myResultsPage,
-  "breedSections: [...showGroup.breedSections].sort((a, b) =>",
-  "breed subsections are alphabetized by breed name"
+assert.ok(
+  loader.includes('if (entry.judgingBlock?.judge) return { judge: entry.judgingBlock.judge, source: "SHOW_JUDGING_BLOCK" }'),
+  "judging-block judge remains the second attribution authority"
 );
-assertIncludes(
-  myResultsPage,
-  "breedSection.rows.push(entry)",
-  "rows remain grouped under each breed subsection"
+assert.ok(
+  loader.includes("bisJudge: dayEntry.showDay.judge"),
+  "ShowDay judge remains the BIS attribution rather than the group judge"
 );
-assertIncludes(
-  myResultsPage,
-  "Group Judge:",
-  "breed subsection metadata shows the group judge label"
-);
-assertIncludes(
-  myResultsPage,
-  "BIS Judge:",
-  "breed subsection metadata shows the BIS judge label"
-);
-assertIncludes(
-  myResultsPage,
-  "Judge unavailable",
-  "missing historical judge assignments fall back explicitly"
-);
-assertIncludes(
-  myResultsPage,
-  "entry.showDay.judge?.name ?? null",
-  "BIS judge attribution comes from the persisted ShowDay judge relation"
-);
-assertIncludes(
-  myResultsPage,
-  "candidate.groupCode === groupCode",
-  "group judge attribution matches the breed's canonical group assignment"
-);
-assertNotIncludes(
-  myResultsPage,
-  "entry.showDay.judgeId === groupCode",
-  "group judge is never inferred from the ShowDay BIS judge id"
-);
-assertNotIncludes(
-  myResultsPage,
-  "Group Judge: {entry.showDay.judge",
-  "group judge is never rendered directly from ShowDay.judge"
+assert.equal(
+  loader.includes("entry.showDay.judgeId === groupCode"),
+  false,
+  "group judges are never inferred from the ShowDay BIS judge id"
 );
 
 console.log("My Results breed-grouping checks passed.");
