@@ -89,5 +89,16 @@ const page = readFileSync(join(root, "app", "my-results", "page.tsx"), "utf8");
 assert.equal(page.includes("buildCompatibilityShows"), false, "page does not rebuild the legacy Cluster to Breed shape");
 assert.equal(page.includes("new Map"), false, "page does not independently group hierarchy nodes");
 assert.equal(page.includes(".sort("), false, "page does not independently order hierarchy nodes");
+assert.ok(page.includes("<MyResultsAccordion hierarchy={hierarchy} />"), "page passes the loader hierarchy directly to the accordion");
+
+const accordion = readFileSync(join(root, "app", "my-results", "MyResultsAccordion.tsx"), "utf8");
+assert.ok(accordion.includes('"use client"'), "accordion owns presentation-only expansion state");
+assert.ok(accordion.includes("useState<ReadonlySet<string>>"), "accordion supports independently expanded branches");
+assert.ok(accordion.includes("<button"), "accordion uses semantic button controls");
+assert.ok(accordion.includes("aria-expanded={props.expanded}"), "accordion exposes expanded state");
+assert.ok(accordion.includes("focus-visible:outline"), "accordion has a visible keyboard focus treatment");
+assert.equal(accordion.includes(".sort("), false, "accordion does not independently order hierarchy nodes");
+assert.equal(accordion.includes("new Map"), false, "accordion does not independently group hierarchy nodes");
+assert.equal(accordion.includes("loadMyResultsHierarchy"), false, "accordion does not fetch data on expansion");
 
 console.log("My Results hierarchy checks passed.");
