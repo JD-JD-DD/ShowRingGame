@@ -73,6 +73,20 @@ const zeroPointAward = entry({
     showAwards: [{ awardCode: "RWD", grandChampionCredit: null }],
   },
 });
+const multiAward = entry({
+  id: "entry-multi-award",
+  dog: { id: "dog-multi", callName: "Multi", registeredName: "Multiple Award Dog", regNumber: "MULTI-1", visibleTitlePrefix: null, visibleTitleSuffix: null },
+  showResult: {
+    pointsAwarded: 3,
+    isMajor: true,
+    judge: { name: "Result Judge", judgeCode: "RESULT" },
+    showAwards: [
+      { awardCode: "WB", grandChampionCredit: null },
+      { awardCode: "BOW", grandChampionCredit: null },
+      { awardCode: "BOS", grandChampionCredit: null },
+    ],
+  },
+});
 const unresolvedJudge = entry({
   id: "entry-unresolved-judge",
   dog: { id: "dog-unresolved", callName: "Unknown", registeredName: "Unresolved Judge Dog", regNumber: "UNKNOWN-1", visibleTitlePrefix: null, visibleTitleSuffix: null },
@@ -81,7 +95,7 @@ const unresolvedJudge = entry({
   showDay: { ...entry().showDay, groupJudgeAssignments: [] },
 });
 
-const hierarchy = buildMyResultsHierarchy([toy, dayOneLabrador, entry(), blockFallback, scheduledFallback, unmapped, zeroPointAward, unresolvedJudge]);
+const hierarchy = buildMyResultsHierarchy([toy, dayOneLabrador, entry(), blockFallback, scheduledFallback, unmapped, zeroPointAward, multiAward, unresolvedJudge]);
 assert.equal(hierarchy.length, 1);
 assert.deepEqual(hierarchy[0].showDays.map((day) => day.id), ["day-1", "day-2"]);
 assert.deepEqual(hierarchy[0].showDays[1].groups.map((group) => group.code), ["SPORTING", "TOY", "UNMAPPED"]);
@@ -108,6 +122,15 @@ assert.deepEqual(
   ["RWD"],
   "zero-point awards remain present in the historical result"
 );
+assert.deepEqual(
+  hierarchy[0].showDays[1].groups[0].breeds[0].dogResults.find((row) => row.showEntryId === "entry-multi-award")?.result?.awardCodes,
+  ["WB", "BOW", "BOS"],
+  "multi-award historical paths preserve every stored award in order"
+);
+
+const dayTwoOnlyHierarchy = buildMyResultsHierarchy([entry(), toy]);
+assert.deepEqual(dayTwoOnlyHierarchy[0].showDays.map((day) => day.id), ["day-2"], "kennel entries only on Day 2 do not manufacture other days");
+assert.deepEqual(dayTwoOnlyHierarchy[0].showDays[0].groups.map((group) => group.code), ["SPORTING", "TOY"]);
 
 const sparseHierarchy = buildMyResultsHierarchy([entry()]);
 assert.equal(sparseHierarchy.length, 1, "one historical entry retains its cluster");
@@ -147,6 +170,10 @@ const thirdClusterPage = selectMyResultsClusterPage({
 });
 assert.deepEqual(thirdClusterPage.clusterIds, ["cluster-20"]);
 assert.equal(thirdClusterPage.nextCursor, null, "the final partial cluster page has no continuation");
+const fewerThanTenPage = selectMyResultsClusterPage({ candidates: clusterCandidates.slice(0, 9) });
+assert.equal(fewerThanTenPage.nextCursor, null, "fewer than ten clusters need no Load more control");
+const exactlyTenPage = selectMyResultsClusterPage({ candidates: clusterCandidates.slice(0, 10) });
+assert.equal(exactlyTenPage.nextCursor, null, "exactly ten clusters need no Load more control");
 
 const loader = readFileSync(join(root, "app", "my-results", "myResults.loader.ts"), "utf8");
 assert.ok(loader.includes("kennelId: args.kennelId"), "query remains historically scoped by ShowEntry.kennelId");
