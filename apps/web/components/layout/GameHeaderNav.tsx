@@ -121,9 +121,10 @@ export default function GameHeaderNav({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
+      const menu = openMenu;
+      if (event.key !== "Escape" || menu === null) return;
 
-      const trigger = triggerRefs.current[openMenu];
+      const trigger = triggerRefs.current[menu];
       setOpenMenu(null);
       trigger?.focus();
     }
