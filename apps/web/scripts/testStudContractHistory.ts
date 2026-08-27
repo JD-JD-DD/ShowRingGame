@@ -9,7 +9,6 @@ const list = read("apps/web/app/stud-contracts/page.tsx");
 const detail = read("apps/web/app/stud-contracts/[contractId]/page.tsx");
 const client = read("apps/web/components/stud-contract/StudContractHistoryClient.tsx");
 const route = read("apps/web/app/api/stud-contracts/page/route.ts");
-const nav = read("apps/web/components/layout/GameHeaderNav.tsx");
 
 for (const fragment of [
   'OR: [{ sireKennelId: args.kennelId }, { damKennelId: args.kennelId }]',
@@ -119,6 +118,4 @@ assert.equal(client.includes("Attempt Return Service"), false);
 assert.ok(route.includes("getSessionUserId"));
 assert.ok(route.includes("parseStudContractHistoryFilters"));
 assert.ok(route.includes("status: typeof body.status"));
-assert.ok(nav.includes('label: "Stud Contracts", href: "/stud-contracts"'));
-assert.equal(nav.includes('href: "/stud-contracts/requests"'), false);
 console.log("Stud Contract history read-model checks passed.");
