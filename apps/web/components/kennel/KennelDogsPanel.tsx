@@ -2107,13 +2107,13 @@ export default function KennelDogsPanel() {
               </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-[minmax(180px,1fr)_auto_auto]">
+            <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(180px,1fr)_auto_auto]">
               <select
                 value={bulkAction}
                 onChange={(event) =>
                   updateBulkAction(event.target.value as BulkAction)
                 }
-                className="theme-control rounded-xl px-3 py-2 text-sm outline-none"
+                className="theme-control min-w-0 rounded-xl px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"
               >
                 <option value="">Bulk action...</option>
                 <option value="move-dogs">Move Dogs</option>
@@ -2127,7 +2127,7 @@ export default function KennelDogsPanel() {
                 type="button"
                 onClick={applyBulkAction}
                 disabled={!canApplyBulkAction}
-                className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {bulkAction === "show-entry"
                   ? "Continue"
@@ -2139,7 +2139,7 @@ export default function KennelDogsPanel() {
               <button
                 type="button"
                 onClick={clearSelection}
-                className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
+                className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"
               >
                 Clear
               </button>
@@ -2200,8 +2200,8 @@ export default function KennelDogsPanel() {
           ) : null}
 
           {activeBulkWorkspace === "health-tests" ? (
-            <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3">
-              <div className="flex flex-col gap-3">
+            <div className="mt-4 min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3">
+              <div className="flex min-w-0 flex-col gap-3">
                 <div>
                   <div className="theme-heading text-sm font-semibold">
                     Health testing
@@ -2212,32 +2212,51 @@ export default function KennelDogsPanel() {
                   </div>
                 </div>
 
-                <label className="theme-control flex w-fit items-center gap-2 rounded-lg px-3 py-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={healthTestsAllApplicable}
-                    disabled={healthTestExecutionLoading}
-                    onChange={(event) => setHealthTestsAllApplicable(event.target.checked)}
-                  />
-                  All applicable
-                </label>
+                <fieldset className="grid min-w-0 gap-2">
+                  <legend className="theme-label text-[0.68rem] uppercase tracking-wide">
+                    Tests to run
+                  </legend>
+                  <label className="theme-control flex max-w-full items-center gap-2 rounded-lg px-3 py-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={healthTestsAllApplicable}
+                      disabled={healthTestExecutionLoading}
+                      onChange={(event) => setHealthTestsAllApplicable(event.target.checked)}
+                    />
+                    All applicable
+                  </label>
 
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {HEALTH_TEST_OPTIONS.map((test) => (
-                    <label
-                      key={test.code}
-                      className="theme-control flex items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                  <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {HEALTH_TEST_OPTIONS.map((test) => (
+                      <label
+                        key={test.code}
+                        className="theme-control flex min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedHealthTestCodes.includes(test.code)}
+                          disabled={healthTestsAllApplicable || healthTestExecutionLoading}
+                          aria-describedby={
+                            healthTestsAllApplicable
+                              ? "health-test-all-applicable-description"
+                              : undefined
+                          }
+                          onChange={() => toggleHealthTestCode(test.code)}
+                        />
+                        <span>{test.label}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {healthTestsAllApplicable ? (
+                    <div
+                      id="health-test-all-applicable-description"
+                      className="theme-copy text-xs"
                     >
-                      <input
-                        type="checkbox"
-                        checked={selectedHealthTestCodes.includes(test.code)}
-                        disabled={healthTestsAllApplicable || healthTestExecutionLoading}
-                        onChange={() => toggleHealthTestCode(test.code)}
-                      />
-                      {test.label}
-                    </label>
-                  ))}
-                </div>
+                      Individual test choices are unavailable while All applicable is selected.
+                    </div>
+                  ) : null}
+                </fieldset>
 
                 {!healthTestsAllApplicable && selectedHealthTestCodes.length === 0 ? (
                   <div className="theme-copy text-sm">
@@ -2252,7 +2271,7 @@ export default function KennelDogsPanel() {
                 ) : null}
 
                 {healthTestPreviewError ? (
-                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="status">
+                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="alert">
                     {healthTestPreviewError}
                   </div>
                 ) : null}
@@ -2264,7 +2283,7 @@ export default function KennelDogsPanel() {
                 ) : null}
 
                 {healthTestExecutionError ? (
-                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="status">
+                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="alert">
                     {healthTestExecutionError}
                   </div>
                 ) : null}
@@ -2292,41 +2311,42 @@ export default function KennelDogsPanel() {
                       onClick={() => setHealthTestDetailsExpanded((current) => !current)}
                       aria-expanded={healthTestDetailsExpanded}
                       aria-controls="bulk-health-test-preview-details"
-                      className="theme-secondary-button mt-2 rounded-md px-2.5 py-1.5 text-xs font-semibold"
+                      className="theme-secondary-button mt-2 rounded-md px-2.5 py-1.5 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"
                     >
                       {healthTestDetailsExpanded ? "Hide details" : "View details"}
                     </button>
 
                     {healthTestDetailsExpanded ? (
-                      <div
+                      <section
                         id="bulk-health-test-preview-details"
+                        aria-label="Health test preview details"
                         className="theme-copy mt-3 grid gap-3 text-xs sm:grid-cols-2"
                       >
                         <div>
                           <div className="theme-label uppercase tracking-wide">Runnable tests</div>
-                          <div className="mt-1 grid gap-1">
+                          <ul className="mt-1 grid gap-1">
                             {HEALTH_TEST_OPTIONS.filter(
                               (test) => healthTestPreview.byTest[test.code].runnableCount > 0
                             ).map((test) => (
-                              <div key={test.code}>
+                              <li key={test.code}>
                                 {test.label}: {healthTestPreview.byTest[test.code].runnableCount.toLocaleString()}
-                              </div>
+                              </li>
                             ))}
-                          </div>
+                          </ul>
                         </div>
                         <div>
                           <div className="theme-label uppercase tracking-wide">Skipped</div>
-                          <div className="mt-1 grid gap-1">
+                          <ul className="mt-1 grid gap-1">
                             {HEALTH_TEST_SKIP_LABELS.filter(
                               ({ reason }) => healthTestPreview.skippedByReason[reason] > 0
                             ).map(({ reason, label }) => (
-                              <div key={reason}>
+                              <li key={reason}>
                                 {label}: {healthTestPreview.skippedByReason[reason].toLocaleString()}
-                              </div>
+                              </li>
                             ))}
-                          </div>
+                          </ul>
                         </div>
-                      </div>
+                      </section>
                     ) : null}
                   </div>
                 ) : null}
@@ -2336,7 +2356,7 @@ export default function KennelDogsPanel() {
                     type="button"
                     onClick={closeActiveBulkWorkspace}
                     disabled={healthTestExecutionLoading}
-                    className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
+                    className="theme-secondary-button w-full rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] sm:w-auto"
                   >
                     Cancel
                   </button>
@@ -2344,7 +2364,7 @@ export default function KennelDogsPanel() {
                     type="button"
                     onClick={runBulkHealthTests}
                     disabled={!canRunHealthTests}
-                    className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                    className="theme-primary-button w-full rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
                   >
                     Run Health Tests
                   </button>
@@ -2354,8 +2374,8 @@ export default function KennelDogsPanel() {
           ) : null}
 
           {activeBulkWorkspace === "brucellosis" ? (
-            <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3">
-              <div className="flex flex-col gap-3">
+            <div className="mt-4 min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-3">
+              <div className="flex min-w-0 flex-col gap-3">
                 <div>
                   <div className="theme-heading text-sm font-semibold">
                     Brucellosis test selected dogs
@@ -2372,7 +2392,7 @@ export default function KennelDogsPanel() {
                 ) : null}
 
                 {brucellosisPreviewError ? (
-                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="status">
+                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="alert">
                     {brucellosisPreviewError}
                   </div>
                 ) : null}
@@ -2384,7 +2404,7 @@ export default function KennelDogsPanel() {
                 ) : null}
 
                 {brucellosisExecutionError ? (
-                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="status">
+                  <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="alert">
                     {brucellosisExecutionError}
                   </div>
                 ) : null}
@@ -2412,25 +2432,28 @@ export default function KennelDogsPanel() {
                         onClick={() => setBrucellosisDetailsExpanded((current) => !current)}
                         aria-expanded={brucellosisDetailsExpanded}
                         aria-controls="bulk-brucellosis-preview-details"
-                        className="theme-secondary-button mt-2 rounded-md px-2.5 py-1.5 text-xs font-semibold"
+                        className="theme-secondary-button mt-2 rounded-md px-2.5 py-1.5 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]"
                       >
                         {brucellosisDetailsExpanded ? "Hide details" : "View details"}
                       </button>
                     ) : null}
 
                     {brucellosisDetailsExpanded ? (
-                      <div
+                      <section
                         id="bulk-brucellosis-preview-details"
+                        aria-label="Brucellosis preview details"
                         className="theme-copy mt-3 grid gap-1 text-xs"
                       >
-                        {BRUCELLOSIS_SKIP_LABELS.filter(
-                          ({ reason }) => brucellosisPreview.skippedByReason[reason] > 0
-                        ).map(({ reason, label }) => (
-                          <div key={reason}>
-                            {label}: {brucellosisPreview.skippedByReason[reason].toLocaleString()}
-                          </div>
-                        ))}
-                      </div>
+                        <ul className="grid gap-1">
+                          {BRUCELLOSIS_SKIP_LABELS.filter(
+                            ({ reason }) => brucellosisPreview.skippedByReason[reason] > 0
+                          ).map(({ reason, label }) => (
+                            <li key={reason}>
+                              {label}: {brucellosisPreview.skippedByReason[reason].toLocaleString()}
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
                     ) : null}
                   </div>
                 ) : null}
@@ -2440,7 +2463,7 @@ export default function KennelDogsPanel() {
                     type="button"
                     onClick={closeActiveBulkWorkspace}
                     disabled={brucellosisExecutionLoading}
-                    className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold"
+                    className="theme-secondary-button w-full rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] sm:w-auto"
                   >
                     Cancel
                   </button>
@@ -2448,7 +2471,7 @@ export default function KennelDogsPanel() {
                     type="button"
                     onClick={runBulkBrucellosisTests}
                     disabled={!canRunBrucellosisTests}
-                    className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                    className="theme-primary-button w-full rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)] disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
                   >
                     Run Brucellosis Tests
                   </button>

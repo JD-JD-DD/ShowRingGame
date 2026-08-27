@@ -362,6 +362,56 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
+  "<fieldset className=\"grid min-w-0 gap-2\">",
+  "Health Tests uses a native checkbox group"
+);
+assertIncludes(
+  kennelPanel,
+  "Tests to run",
+  "Health Tests checkbox group has a visible legend"
+);
+assertIncludes(
+  kennelPanel,
+  "health-test-all-applicable-description",
+  "disabled explicit Health Tests have explanatory text"
+);
+assertIncludes(
+  kennelPanel,
+  'role="alert"',
+  "bulk workflow errors use an accessible alert pattern"
+);
+assertIncludes(
+  kennelPanel,
+  "focus-visible:ring-2",
+  "bulk workflow controls retain visible keyboard focus"
+);
+assertIncludes(
+  kennelPanel,
+  "w-full rounded-xl",
+  "bulk testing action buttons stack naturally on narrow screens"
+);
+assertIncludes(
+  kennelPanel,
+  "aria-label=\"Health test preview details\"",
+  "Health Test details region has an accessible label"
+);
+assertIncludes(
+  kennelPanel,
+  "aria-label=\"Brucellosis preview details\"",
+  "Brucellosis details region has an accessible label"
+);
+assertIncludes(
+  kennelPanel,
+  "<ul className=\"mt-1 grid gap-1\">",
+  "Health Test detail aggregates use semantic lists"
+);
+assertIncludes(
+  kennelPanel,
+  "<ul className=\"grid gap-1\">",
+  "Brucellosis detail aggregates use a semantic list"
+);
+assertIncludes(
+  kennelPanel,
   '<option value="health-tests">Health Tests...</option>',
   "Health Tests appears in the existing bulk action selector"
 );
