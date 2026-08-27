@@ -5,6 +5,7 @@ import { isChampionOfRecordDog } from "@/lib/dogTitles";
 
 type TransactionClient = Prisma.TransactionClient;
 type DbClient = typeof db | TransactionClient;
+const PRESTIGE_WRITE_CONCURRENCY = 24;
 
 type ShowEntryForPrestige = {
   id: string;
@@ -117,50 +118,65 @@ async function syncYearlyPrestigeStats(args: {
     },
   });
   const rollupByDogId = new Map(rollups.map((rollup) => [rollup.dogId, rollup]));
+  const existingRows = await args.tx.dogYearlyPrestigeStat.findMany({
+    where: { dogId: { in: dogIds }, gameYear: args.gameYear },
+    select: { dogId: true },
+  });
+  const existingDogIds = new Set(existingRows.map((row) => row.dogId));
+  const rowsToCreate: Prisma.DogYearlyPrestigeStatCreateManyInput[] = [];
+  const rowsToUpdate: Array<{
+    dogId: string;
+    breedCode2: string;
+    breedDogsBeaten: number;
+    allBreedDogsBeaten: number;
+    breedWinCount: number;
+    groupWinCount: number;
+    bestInShowWinCount: number;
+    reserveBisCount: number;
+  }> = [];
 
-  for (const dogId of dogIds) {
-    const rollup = rollupByDogId.get(dogId);
+  for (const [dogId, rollup] of rollupByDogId) {
+    const values = {
+      breedCode2: rollup.breedCode2,
+      breedDogsBeaten: rollup._sum.breedDogsBeaten ?? 0,
+      allBreedDogsBeaten: rollup._sum.allBreedDogsBeaten ?? 0,
+      breedWinCount: rollup._sum.breedWinCount ?? 0,
+      groupWinCount: rollup._sum.groupWinCount ?? 0,
+      bestInShowWinCount: rollup._sum.bestInShowWinCount ?? 0,
+      reserveBisCount: rollup._sum.reserveBisCount ?? 0,
+    };
+    if (existingDogIds.has(dogId)) rowsToUpdate.push({ dogId, ...values });
+    else rowsToCreate.push({ dogId, gameYear: args.gameYear, ...values, updatedAtEpoch: args.currentEpoch });
+  }
 
-    if (!rollup) {
-      await args.tx.dogYearlyPrestigeStat.deleteMany({
-        where: {
-          dogId,
-          gameYear: args.gameYear,
-        },
-      });
-      continue;
-    }
-
-    await args.tx.dogYearlyPrestigeStat.upsert({
-      where: {
-        dogId_gameYear: {
-          dogId,
-          gameYear: args.gameYear,
-        },
-      },
-      create: {
-        dogId,
-        gameYear: args.gameYear,
-        breedCode2: rollup.breedCode2,
-        breedDogsBeaten: rollup._sum.breedDogsBeaten ?? 0,
-        allBreedDogsBeaten: rollup._sum.allBreedDogsBeaten ?? 0,
-        breedWinCount: rollup._sum.breedWinCount ?? 0,
-        groupWinCount: rollup._sum.groupWinCount ?? 0,
-        bestInShowWinCount: rollup._sum.bestInShowWinCount ?? 0,
-        reserveBisCount: rollup._sum.reserveBisCount ?? 0,
-        updatedAtEpoch: args.currentEpoch,
-      },
-      update: {
-        breedCode2: rollup.breedCode2,
-        breedDogsBeaten: rollup._sum.breedDogsBeaten ?? 0,
-        allBreedDogsBeaten: rollup._sum.allBreedDogsBeaten ?? 0,
-        breedWinCount: rollup._sum.breedWinCount ?? 0,
-        groupWinCount: rollup._sum.groupWinCount ?? 0,
-        bestInShowWinCount: rollup._sum.bestInShowWinCount ?? 0,
-        reserveBisCount: rollup._sum.reserveBisCount ?? 0,
-        updatedAtEpoch: args.currentEpoch,
-      },
+  const dogIdsToDelete = dogIds.filter((dogId) => !rollupByDogId.has(dogId));
+  if (dogIdsToDelete.length > 0) {
+    await args.tx.dogYearlyPrestigeStat.deleteMany({
+      where: { dogId: { in: dogIdsToDelete }, gameYear: args.gameYear },
     });
+  }
+  if (rowsToCreate.length > 0) {
+    await args.tx.dogYearlyPrestigeStat.createMany({
+      data: rowsToCreate,
+      skipDuplicates: true,
+    });
+  }
+  for (let index = 0; index < rowsToUpdate.length; index += PRESTIGE_WRITE_CONCURRENCY) {
+    await Promise.all(rowsToUpdate.slice(index, index + PRESTIGE_WRITE_CONCURRENCY).map((row) =>
+      args.tx.dogYearlyPrestigeStat.update({
+        where: { dogId_gameYear: { dogId: row.dogId, gameYear: args.gameYear } },
+        data: {
+          breedCode2: row.breedCode2,
+          breedDogsBeaten: row.breedDogsBeaten,
+          allBreedDogsBeaten: row.allBreedDogsBeaten,
+          breedWinCount: row.breedWinCount,
+          groupWinCount: row.groupWinCount,
+          bestInShowWinCount: row.bestInShowWinCount,
+          reserveBisCount: row.reserveBisCount,
+          updatedAtEpoch: args.currentEpoch,
+        },
+      })
+    ));
   }
 }
 
