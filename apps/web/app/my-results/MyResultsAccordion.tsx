@@ -160,17 +160,27 @@ export default function MyResultsAccordion(props: {
 
         return (
           <section key={cluster.id} className="theme-card rounded-2xl">
-            <ExpandButton
-              expanded={clusterExpanded}
-              panelId={clusterPanelId}
-              label={`show cluster ${cluster.name}`}
-              onClick={() => toggle(clusterBranchId)}
-            >
-              <span>
-                <span role="heading" aria-level={2} className="theme-heading block font-semibold">{cluster.name}</span>
-                <span className="theme-copy block text-xs">{cluster.districtRegionName}</span>
-              </span>
-            </ExpandButton>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <ExpandButton
+                  expanded={clusterExpanded}
+                  panelId={clusterPanelId}
+                  label={`show cluster ${cluster.name}`}
+                  onClick={() => toggle(clusterBranchId)}
+                >
+                  <span>
+                    <span role="heading" aria-level={2} className="theme-heading block font-semibold">{cluster.name}</span>
+                    <span className="theme-copy block text-xs">{cluster.districtRegionName}</span>
+                  </span>
+                </ExpandButton>
+              </div>
+              <Link
+                href={`/shows/${cluster.id}/results`}
+                className="theme-secondary-button self-start rounded-xl px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] sm:self-auto"
+              >
+                View Full Results
+              </Link>
+            </div>
 
             {clusterExpanded ? (
               <div id={clusterPanelId} className="space-y-2 border-t border-[var(--color-border)] px-2 py-2 sm:ml-5">

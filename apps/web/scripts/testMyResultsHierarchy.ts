@@ -203,6 +203,18 @@ assert.equal(accordion.includes(".sort("), false, "accordion does not independen
 assert.equal(accordion.includes("new Map"), false, "accordion does not independently group hierarchy nodes");
 assert.equal(accordion.includes("loadMyResultsHierarchy"), false, "accordion does not fetch data on expansion");
 assert.ok(accordion.includes("loadMoreMyResults"), "accordion uses the server action only for explicit Load more pagination");
+const clusterActionArea = accordion.slice(
+  accordion.indexOf("<section key={cluster.id}"),
+  accordion.indexOf("{clusterExpanded ?"),
+);
+const clusterExpandButton = clusterActionArea.slice(
+  clusterActionArea.indexOf("<ExpandButton"),
+  clusterActionArea.indexOf("</ExpandButton>") + "</ExpandButton>".length,
+);
+assert.ok(clusterActionArea.includes('href={`/shows/${cluster.id}/results`}'), "each cluster links to its canonical full results route");
+assert.ok(clusterActionArea.includes("View Full Results"), "each cluster exposes a full-results link");
+assert.equal(clusterExpandButton.includes("<Link"), false, "the full-results link is not nested in the accordion button");
+assert.ok(clusterActionArea.includes("focus-visible:outline"), "the full-results link has a visible keyboard focus treatment");
 assert.ok(accordion.includes("setHierarchy((current) => [...current, ...nextPage.hierarchy])"), "Load more appends older clusters");
 assert.ok(accordion.includes("disabled={isLoadingMore}"), "Load more prevents concurrent requests");
 assert.ok(accordion.includes('"Load more"'), "Load more uses a native button label");
