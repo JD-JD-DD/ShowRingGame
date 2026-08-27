@@ -61,8 +61,25 @@ const unmapped = entry({
   showResult: null,
   judgingBlock: null,
 });
+const zeroPointAward = entry({
+  id: "entry-zero-point-award",
+  dog: { id: "dog-zero", callName: "Zero", registeredName: "Zero Point Dog", regNumber: "ZERO-1", visibleTitlePrefix: null, visibleTitleSuffix: null },
+  showResult: {
+    pointsAwarded: 0,
+    isMajor: false,
+    judge: { name: "Result Judge", judgeCode: "RESULT" },
+    showAwards: [{ awardCode: "RWD", grandChampionCredit: null }],
+  },
+});
+const unresolvedJudge = entry({
+  id: "entry-unresolved-judge",
+  dog: { id: "dog-unresolved", callName: "Unknown", registeredName: "Unresolved Judge Dog", regNumber: "UNKNOWN-1", visibleTitlePrefix: null, visibleTitleSuffix: null },
+  showResult: null,
+  judgingBlock: null,
+  showDay: { ...entry().showDay, groupJudgeAssignments: [] },
+});
 
-const hierarchy = buildMyResultsHierarchy([toy, dayOneLabrador, entry(), blockFallback, scheduledFallback, unmapped]);
+const hierarchy = buildMyResultsHierarchy([toy, dayOneLabrador, entry(), blockFallback, scheduledFallback, unmapped, zeroPointAward, unresolvedJudge]);
 assert.equal(hierarchy.length, 1);
 assert.deepEqual(hierarchy[0].showDays.map((day) => day.id), ["day-1", "day-2"]);
 assert.deepEqual(hierarchy[0].showDays[1].groups.map((group) => group.code), ["SPORTING", "TOY", "UNMAPPED"]);
@@ -82,6 +99,31 @@ assert.equal(resultJudgeRow?.breedJudge?.judge.judgeCode, "RESULT");
 assert.equal(blockJudgeRow?.breedJudge?.judge.judgeCode, "BLOCK");
 assert.equal(scheduledJudgeRow?.breedJudge?.judge.judgeCode, "SCHEDULED");
 assert.equal(hierarchy[0].showDays[1].groups[2].name, "Unmapped group (Legacy Group)");
+assert.equal(unresolvedJudge.breed.groupName, "Sporting");
+assert.equal(hierarchy[0].showDays[1].groups[0].breeds[0].dogResults.find((row) => row.showEntryId === "entry-unresolved-judge")?.breedJudge, null);
+assert.deepEqual(
+  hierarchy[0].showDays[1].groups[0].breeds[0].dogResults.find((row) => row.showEntryId === "entry-zero-point-award")?.result?.awardCodes,
+  ["RWD"],
+  "zero-point awards remain present in the historical result"
+);
+
+const sparseHierarchy = buildMyResultsHierarchy([entry()]);
+assert.equal(sparseHierarchy.length, 1, "one historical entry retains its cluster");
+assert.equal(sparseHierarchy[0].showDays.length, 1, "one historical entry retains its show day");
+assert.equal(sparseHierarchy[0].showDays[0].groups.length, 1, "one historical entry retains its group");
+assert.equal(sparseHierarchy[0].showDays[0].groups[0].breeds.length, 1, "one historical entry retains its breed");
+assert.equal(sparseHierarchy[0].showDays[0].groups[0].breeds[0].dogResults.length, 1, "one historical entry retains its dog result");
+assert.deepEqual(buildMyResultsHierarchy([]), [], "no qualifying history produces an empty hierarchy");
+
+const dogTieHierarchy = buildMyResultsHierarchy([
+  entry({ id: "entry-b", dog: { id: "dog-b", callName: "Tie", registeredName: "Tie Dog", regNumber: "REG-2", visibleTitlePrefix: null, visibleTitleSuffix: null } }),
+  entry({ id: "entry-a", dog: { id: "dog-a", callName: "Tie", registeredName: "Tie Dog", regNumber: "REG-1", visibleTitlePrefix: null, visibleTitleSuffix: null } }),
+]);
+assert.deepEqual(
+  dogTieHierarchy[0].showDays[0].groups[0].breeds[0].dogResults.map((row) => row.showEntryId),
+  ["entry-a", "entry-b"],
+  "dog result ties use registration number before ShowEntry ID"
+);
 
 const loader = readFileSync(join(root, "app", "my-results", "myResults.loader.ts"), "utf8");
 assert.ok(loader.includes("kennelId: args.kennelId"), "query remains historically scoped by ShowEntry.kennelId");
@@ -112,5 +154,10 @@ assert.ok(accordion.includes('replaceAll(", ", " / ")'), "multiple stored awards
 assert.ok(accordion.includes("formatTitlePointsDisplay(buildTitlePointsDisplay"), "point display retains the existing title-point helper semantics");
 assert.ok(accordion.includes('replace(" major", " · Major")'), "major status is communicated in text");
 assert.equal(accordion.includes("No title points"), false, "zero-point results do not manufacture point text");
+assert.ok(accordion.includes('if (entry.entryStatus === "ABSENT") return "Absent"'), "absence remains distinct from DNP");
+assert.ok(accordion.includes('if (entry.entryStatus === "INELIGIBLE") return "Ineligible"'), "ineligible status remains distinct");
+assert.ok(accordion.includes('if (entry.entryStatus === "JUDGED") return "DNP"'), "judged rows without awards remain DNP");
+assert.ok(accordion.includes("formatJudgeName"), "unresolved judges retain the player-facing unavailable label");
+assert.ok(page.includes("No judged show results yet."), "page retains a concise empty state");
 
 console.log("My Results hierarchy checks passed.");
