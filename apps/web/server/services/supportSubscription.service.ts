@@ -35,7 +35,11 @@ export class SupportSubscriptionError extends Error {
   }
 }
 
-function translatePayPalStatus(status: string): CanonicalSupportStatus {
+export function translatePayPalStatus(args: {
+  status: string;
+  nextBillingTime?: Date | null;
+}): CanonicalSupportStatus {
+  const status = args.status;
   switch (status) {
     case "APPROVAL_PENDING":
     case "APPROVED":
@@ -45,6 +49,9 @@ function translatePayPalStatus(status: string): CanonicalSupportStatus {
     case "SUSPENDED":
       return "PAYMENT_RETRY";
     case "CANCELLED":
+      return args.nextBillingTime && args.nextBillingTime > new Date()
+        ? "CANCELLATION_SCHEDULED"
+        : "ENDED";
     case "EXPIRED":
       return "ENDED";
     default:
@@ -52,7 +59,16 @@ function translatePayPalStatus(status: string): CanonicalSupportStatus {
   }
 }
 
-function verifyPayPalSubscription(args: {
+export function getSupportTierForPayPalPlan(planId: string): SupportTierValue {
+  const config = getPayPalSupportConfig();
+  const tier = (Object.entries(config.planIds) as Array<[SupportTierValue, string]>).find(
+    ([, configuredPlanId]) => configuredPlanId === planId
+  )?.[0];
+  if (!tier) throw new SupportSubscriptionError("PayPal subscription plan is not configured for ShowRing Support.", 422);
+  return tier;
+}
+
+export function verifyPayPalSubscription(args: {
   subscription: PayPalSupportSubscription;
   tier: SupportTierValue;
 }): CanonicalSupportStatus {
@@ -60,7 +76,7 @@ function verifyPayPalSubscription(args: {
   if (args.subscription.planId !== getPayPalPlanId(args.tier, config)) {
     throw new SupportSubscriptionError("PayPal subscription plan does not match the selected support tier.", 422);
   }
-  return translatePayPalStatus(args.subscription.status);
+  return translatePayPalStatus(args.subscription);
 }
 
 export type CreateSupportSubscriptionResult = {

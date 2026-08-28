@@ -10,6 +10,14 @@ export type PayPalSupportConfig = {
   planIds: Record<SupportTierValue, string>;
 };
 
+export type PayPalWebhookVerificationHeaders = {
+  authAlgo: string;
+  certUrl: string;
+  transmissionId: string;
+  transmissionSig: string;
+  transmissionTime: string;
+};
+
 export type PayPalSupportSubscription = {
   id: string;
   status: string;
@@ -49,6 +57,10 @@ export function getPayPalSupportConfig(): PayPalSupportConfig {
     productId: requiredEnvironmentValue("PAYPAL_SANDBOX_PRODUCT_ID"),
     planIds,
   };
+}
+
+export function getPayPalSandboxWebhookId(): string {
+  return requiredEnvironmentValue("PAYPAL_SANDBOX_WEBHOOK_ID");
 }
 
 export function isSupportTier(value: unknown): value is SupportTierValue {
@@ -201,6 +213,23 @@ export class PayPalSandboxClient {
       `/v1/billing/subscriptions/${encodeURIComponent(providerSubscriptionId)}`
     );
     return parsePayPalSubscription(result);
+  }
+
+  async verifyWebhookSignature(args: {
+    headers: PayPalWebhookVerificationHeaders;
+    event: unknown;
+    webhookId: string;
+  }): Promise<boolean> {
+    const result = asRecord(await this.request("POST", "/v1/notifications/verify-webhook-signature", {
+      auth_algo: args.headers.authAlgo,
+      cert_url: args.headers.certUrl,
+      transmission_id: args.headers.transmissionId,
+      transmission_sig: args.headers.transmissionSig,
+      transmission_time: args.headers.transmissionTime,
+      webhook_id: args.webhookId,
+      webhook_event: args.event,
+    }));
+    return result?.verification_status === "SUCCESS";
   }
 }
 

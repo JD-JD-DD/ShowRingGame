@@ -433,6 +433,13 @@ enum SupportStatus {
   ENDED
 }
 
+enum SupportProviderEventProcessingStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  FAILED
+}
+
 model User {
   id               String               @id @default(cuid())
   email            String               @unique
@@ -488,6 +495,22 @@ model SupportSubscriptionTierPeriod {
   supportSubscription SupportSubscription @relation(fields: [supportSubscriptionId], references: [id], onDelete: Cascade)
 
   @@index([supportSubscriptionId, startedAt])
+}
+
+model SupportProviderEvent {
+  id                     String                             @id @default(cuid())
+  provider               SupportProvider
+  providerEventId        String                             @unique
+  eventType              String
+  providerSubscriptionId String?
+  receivedAt             DateTime                           @default(now())
+  processedAt            DateTime?
+  processingStatus       SupportProviderEventProcessingStatus @default(RECEIVED)
+  createdAt              DateTime                           @default(now())
+  updatedAt              DateTime                           @updatedAt
+
+  @@index([providerSubscriptionId])
+  @@index([processingStatus, receivedAt])
 }
 
 model UserAccessAudit {
