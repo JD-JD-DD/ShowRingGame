@@ -101,7 +101,7 @@ function judgePriority(attribution: MyResultsJudgeAttribution | null): number {
 }
 
 function groupOrder(code: MyResultsGroupCode): number {
-  if (code === "UNMAPPED") return CANONICAL_SHOW_GROUP_CODES.length;
+  if (code === "UNMAPPED" || code === "MISCELLANEOUS") return CANONICAL_SHOW_GROUP_CODES.length;
   return CANONICAL_SHOW_GROUP_CODES.indexOf(code);
 }
 
