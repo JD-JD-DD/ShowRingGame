@@ -671,6 +671,7 @@ export default function StudOfferWorksheet({
       setFurthestReachedStepIndex((furthest) => Math.max(furthest, nextIndex));
       return nextIndex;
     });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function revisitStep(index: number) {
