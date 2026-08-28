@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import type { PrismaClient } from "@prisma/client";
 import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
 import { PLAYER_STUD_LISTING_TYPE } from "@/server/services/market.service";
 import {
@@ -25,6 +26,26 @@ export class StudOfferPublishError extends Error {
   ) {
     super(message);
   }
+}
+
+type StudOfferRetirementClient = Pick<PrismaClient, "studOffer">;
+
+/** Retires only the former owner's public offer when ownership changes. */
+export async function retirePublishedStudOffersForTransferredDog(args: {
+  dogId: string;
+  formerOwnerKennelId: string;
+  client?: StudOfferRetirementClient;
+}): Promise<number> {
+  const client = args.client ?? db;
+  const result = await client.studOffer.updateMany({
+    where: {
+      sireDogId: args.dogId,
+      ownerKennelId: args.formerOwnerKennelId,
+      status: "PUBLISHED",
+    },
+    data: { status: "RETIRED" },
+  });
+  return result.count;
 }
 
 export async function getCurrentPublishedStudOfferForOwnedDog(args: {

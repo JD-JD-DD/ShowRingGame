@@ -11,6 +11,7 @@ import {
   assertDogNotProtectedByStudContractSelection,
   getStudContractPuppyProtection,
 } from "@/server/services/studContractPuppyProtection.service";
+import { retirePublishedStudOffersForTransferredDog } from "@/server/services/studOffer.service";
 import { extinguishStudContractReturnServicesForDog } from "@/server/services/studContractReturnService.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
@@ -728,6 +729,11 @@ export async function buyPlayerDogListing(args: {
         marketState: "NOT_FOR_SALE",
         isBreedingActive: true,
       },
+    });
+    await retirePublishedStudOffersForTransferredDog({
+      dogId: listing.dog.id,
+      formerOwnerKennelId: seller.id,
+      client: tx,
     });
     await extinguishStudContractReturnServicesForDog({
       client: tx,
