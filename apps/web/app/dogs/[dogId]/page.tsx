@@ -33,7 +33,6 @@ type DogSearchParams = {
     showError?: string | string[];
     showMessage?: string | string[];
     kennelRunId?: string | string[];
-    from?: string | string[];
 };
 
 type PageProps = {
@@ -208,7 +207,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   const notesMessage = firstQueryValue(resolvedSearchParams.notesMessage);
   const showError = firstQueryValue(resolvedSearchParams.showError);
   const showMessage = firstQueryValue(resolvedSearchParams.showMessage);
-  const openedFromMarket = firstQueryValue(resolvedSearchParams.from) === "market";
   const { header, actions, viewerContext } = profile;
   const canMoveKennelRun =
     viewerContext.isOwnedByCurrentKennel && header.lifecycleState === "ALIVE";
@@ -224,10 +222,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
       actions.canEditStudFee &&
       header.lifecycleState === "ALIVE" &&
       actions.isBreedingActive);
-  const marketSaleListing =
-    openedFromMarket && actions.canBuyActiveListing && saleListing
-      ? saleListing
-      : null;
   const grooming = profile.groomingDetails;
   const dogPageMutationContext = navigationKennelRunId
     ? `?kennelRunId=${encodeURIComponent(navigationKennelRunId)}`
@@ -383,16 +377,16 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   />
                 ) : null}
 
-                {marketSaleListing ? (
+                {actions.canBuyActiveListing && saleListing ? (
                   <form
-                    action={`/api/market-dogs/${marketSaleListing.listingId}/buy?from=market`}
+                    action={`/api/market-dogs/${saleListing.listingId}/buy?from=profile`}
                     method="post"
                   >
                     <button
                       type="submit"
                       className="theme-primary-button w-full rounded-2xl px-5 py-3 text-sm font-semibold"
                     >
-                      Buy Dog
+                      Buy for {formatMoney(saleListing.askingPrice)}
                     </button>
                   </form>
                 ) : null}

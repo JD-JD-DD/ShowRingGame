@@ -29,11 +29,12 @@ const plans = planWeekJudgeAssignments({ year: 16, weekInYear: 1, clusters, judg
 assert(plans.length === 3, "three cluster plans");
 assert(new Set(plans.flatMap((plan) => plan.panelJudgeIds)).size === 24, "weekly judge exclusion");
 for (const plan of plans) {
-  assert(plan.panelJudgeIds.length === 8, "eight-judge panel");
+  assert(plan.panelJudgeIds.length === 7, "seven-judge panel");
   for (const day of plan.days) {
-    assert(day.assignments.length === 8, "eight group assignments per day");
-    assert(new Set(day.assignments.map((assignment) => assignment.judgeId)).size === 8, "distinct daily judges");
+    assert(day.assignments.length === 7, "seven group assignments per day");
+    assert(new Set(day.assignments.map((assignment) => assignment.judgeId)).size === 7, "distinct daily judges");
     assert(day.assignments.map((assignment) => assignment.groupCode).join(",") === CANONICAL_SHOW_GROUP_CODES.join(","), "canonical groups");
+    assert(!day.assignments.some((assignment) => assignment.groupCode === "MISCELLANEOUS"), "no Miscellaneous assignment");
     assert(plan.panelJudgeIds.includes(day.bisJudgeId), "BIS belongs to panel");
   }
   for (const judgeId of plan.panelJudgeIds) {
@@ -41,17 +42,17 @@ for (const plan of plans) {
   }
 }
 assert(
-  plans.find((plan) => plan.clusterId === "cluster-1")!.days.flatMap((day) => day.assignments).length === 16,
+  plans.find((plan) => plan.clusterId === "cluster-1")!.days.flatMap((day) => day.assignments).length === 14,
   "two-day cluster assignment count"
 );
 assert(
-  plans.find((plan) => plan.clusterId === "cluster-2")!.days.flatMap((day) => day.assignments).length === 32,
+  plans.find((plan) => plan.clusterId === "cluster-2")!.days.flatMap((day) => day.assignments).length === 28,
   "four-day cluster assignment count"
 );
 const invitationalPlan = planWeekJudgeAssignments({
   year: 16,
   weekInYear: 52,
-  judges: judges.slice(0, 8),
+  judges: judges.slice(0, 7),
   clusters: [
     {
       id: "invitational-year-16",
@@ -62,7 +63,7 @@ const invitationalPlan = planWeekJudgeAssignments({
   ],
 });
 assert(invitationalPlan.length === 1, "Week 52 permits one cluster");
-assert(invitationalPlan[0]!.days[0]!.assignments.length === 8, "Week 52 eight groups");
+assert(invitationalPlan[0]!.days[0]!.assignments.length === 7, "Week 52 seven groups");
 assert(invitationalPlan[0]!.panelJudgeIds.includes(invitationalPlan[0]!.days[0]!.bisJudgeId), "Week 52 BIS belongs to panel");
 
 const completeDay = {

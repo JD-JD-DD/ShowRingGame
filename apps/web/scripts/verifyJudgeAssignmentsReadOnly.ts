@@ -84,7 +84,7 @@ async function main(): Promise<void> {
     passed = report("stage-3-migration", migration.rowCount === 1, migration.rows) && passed;
     const schemaRow = schema.rows[0]!;
     passed = report("assignment-schema", schemaRow.columns >= 5 && schemaRow.indexes >= 3 && schemaRow.foreign_keys === 2 && schemaRow.unique_constraints >= 1, schemaRow) && passed;
-    passed = report("show-day-assignment-invariants", days.rows.length > 0 && days.rows.every((day) => day.assignments === 8 && day.groups === 8 && day.judges === 8 && day.bis_in_panel), days.rows) && passed;
+    passed = report("show-day-assignment-invariants", days.rows.length > 0 && days.rows.every((day) => day.assignments === 7 && day.groups === 7 && day.judges === 7 && day.bis_in_panel), days.rows) && passed;
     passed = report("same-panel-across-cluster", new Set(days.rows.map((day) => day.panel)).size === 1, days.rows.map((day) => ({ id: day.id, panel: day.panel }))) && passed;
     passed = report("canonical-cluster-duration", options.expectedDays == null || days.rows.length === options.expectedDays, { expectedDays: options.expectedDays, actualDays: days.rows.length }) && passed;
     passed = report("stable-panel-and-rotation", panels.rows[0]?.group_repeats === 0, panels.rows[0]) && passed;

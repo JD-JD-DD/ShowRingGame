@@ -6,14 +6,17 @@ export const CANONICAL_SHOW_GROUP_CODES = [
   "TOY",
   "NON_SPORTING",
   "HERDING",
-  "MISCELLANEOUS",
 ] as const;
 
 export type CanonicalShowGroupCode =
   (typeof CANONICAL_SHOW_GROUP_CODES)[number];
 
+// Retained only for persisted historical results and legacy breed routing. New
+// ordinary-show judge panels are defined exclusively by CANONICAL_SHOW_GROUP_CODES.
+export type ShowGroupCode = CanonicalShowGroupCode | "MISCELLANEOUS";
+
 export const CANONICAL_SHOW_GROUP_LABELS: Record<
-  CanonicalShowGroupCode,
+  ShowGroupCode,
   string
 > = {
   SPORTING: "Sporting",
@@ -26,7 +29,7 @@ export const CANONICAL_SHOW_GROUP_LABELS: Record<
   MISCELLANEOUS: "Miscellaneous",
 };
 
-const GROUP_CODE_BY_BREED_GROUP_NAME: Record<string, CanonicalShowGroupCode> = {
+const GROUP_CODE_BY_BREED_GROUP_NAME: Record<string, ShowGroupCode> = {
   Sporting: "SPORTING",
   Hound: "HOUND",
   Working: "WORKING",
@@ -47,14 +50,14 @@ export function isCanonicalShowGroupCode(
 }
 
 export function getCanonicalShowGroupLabel(
-  groupCode: CanonicalShowGroupCode
+  groupCode: ShowGroupCode
 ): string {
   return CANONICAL_SHOW_GROUP_LABELS[groupCode];
 }
 
 export function resolveBreedGroupNameToCanonicalShowGroupCode(
   groupName: string | null | undefined
-): CanonicalShowGroupCode {
+): ShowGroupCode {
   if (typeof groupName !== "string" || !groupName.trim()) {
     throw new Error("Breed group name must be a non-empty supported group label.");
   }

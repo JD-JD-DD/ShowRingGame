@@ -38,7 +38,7 @@ import {
   MIN_SHOW_AGE_HOURS,
   type Dog as EngineDog,
   type Judge as EngineJudge,
-  type CanonicalShowGroupCode,
+  type ShowGroupCode,
   resolveBreedGroupNameToCanonicalShowGroupCode,
 } from "@showring/rules";
 import {
@@ -1697,7 +1697,7 @@ async function createGroupAwardsForShowDay(args: {
       tx,
       showDayId: args.showDayId,
     });
-    const awardsByGroup = new Map<CanonicalShowGroupCode, typeof bobAwards>();
+    const awardsByGroup = new Map<ShowGroupCode, typeof bobAwards>();
 
     for (const award of bobAwards) {
       const groupCode = resolveBreedGroupNameToCanonicalShowGroupCode(

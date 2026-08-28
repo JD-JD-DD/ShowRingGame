@@ -29,7 +29,6 @@ const expectedGroupCodes = [
   "TOY",
   "NON_SPORTING",
   "HERDING",
-  "MISCELLANEOUS",
 ];
 
 assertEqual(
@@ -47,6 +46,13 @@ for (const groupCode of CANONICAL_SHOW_GROUP_CODES) {
   );
   assertEqual(isCanonicalShowGroupCode(groupCode), true, `${groupCode} type guard`);
 }
+
+assertEqual(
+  resolveBreedGroupNameToCanonicalShowGroupCode("Miscellaneous"),
+  "MISCELLANEOUS",
+  "legacy Miscellaneous resolver"
+);
+assertEqual(isCanonicalShowGroupCode("MISCELLANEOUS"), false, "Miscellaneous is not a scheduled group");
 
 assertThrows(
   () => resolveBreedGroupNameToCanonicalShowGroupCode(null),

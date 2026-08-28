@@ -24,10 +24,10 @@ function assertInvalid(overrides: Partial<Parameters<typeof requireCompleteShowD
 
 assert.equal(requirePanel().bisJudgeId, "judge-1", "complete canonical panel accepts its scheduled BIS judge");
 assert.equal(requirePanel().bisJudgeId, "judge-1", "an empty assigned group does not affect BIS panel validation");
-assertInvalid({ assignments: assignments.slice(0, 7) }, "seven assignments fail closed");
-assertInvalid({ assignments: [...assignments, { groupCode: CANONICAL_SHOW_GROUP_CODES[0], judgeId: "judge-9" }] }, "nine assignments fail closed");
+assertInvalid({ assignments: assignments.slice(0, 6) }, "six assignments fail closed");
+assertInvalid({ assignments: [...assignments, { groupCode: CANONICAL_SHOW_GROUP_CODES[0], judgeId: "judge-8" }] }, "eight assignments fail closed");
 assertInvalid({ assignments: assignments.slice(1) }, "missing canonical group fails closed");
-assertInvalid({ assignments: assignments.map((assignment, index) => index === 7 ? { ...assignment, groupCode: CANONICAL_SHOW_GROUP_CODES[0] } : assignment) }, "duplicate group fails closed");
+assertInvalid({ assignments: assignments.map((assignment, index) => index === 6 ? { ...assignment, groupCode: CANONICAL_SHOW_GROUP_CODES[0] } : assignment) }, "duplicate group fails closed");
 assertInvalid({ assignments: assignments.map((assignment) => ({ ...assignment, judgeId: "judge-1" })) }, "duplicate judge fails closed");
 assertInvalid({ bisJudgeId: null }, "null BIS judge fails closed");
 assertInvalid({ bisJudgeId: "outside-panel" }, "BIS judge outside panel fails closed");

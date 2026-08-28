@@ -16,10 +16,15 @@ function getMarketContextSuffix(request: Request): string {
     : "";
 }
 
+function isProfilePurchase(request: Request): boolean {
+  return new URL(request.url).searchParams.get("from") === "profile";
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ listingId: string }> }
 ) {
+  let listingDogId: string | null = null;
   try {
     const { listingId } = await params;
 
@@ -44,6 +49,8 @@ export async function POST(
     if (!listing) {
       return fail("Listing not found.", 404);
     }
+
+    listingDogId = listing.dogId;
 
     const currentEpoch = getCurrentEpoch();
     const marketContextSuffix = getMarketContextSuffix(request);
@@ -79,9 +86,17 @@ export async function POST(
     return ok({ dogId });
   } catch (error) {
     console.error("POST /api/market-dogs/[listingId]/buy failed", error);
-    return fail(
-      error instanceof Error ? error.message : "Unable to buy dog.",
-      400
-    );
+    const message = error instanceof Error ? error.message : "Unable to buy dog.";
+
+    if (wantsHtmlRedirect(request) && isProfilePurchase(request) && listingDogId) {
+      return Response.redirect(
+        new URL(
+          `/dogs/${listingDogId}?saleError=${encodeURIComponent(message)}`,
+          request.url
+        )
+      );
+    }
+
+    return fail(message, 400);
   }
 }

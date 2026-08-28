@@ -1,5 +1,5 @@
 import type { ShowEntryAbsenceReason, ShowEntryStatus } from "@prisma/client";
-import type { CanonicalShowGroupCode } from "@showring/rules";
+import type { ShowGroupCode } from "@showring/rules";
 
 type NonEmptyReadonlyArray<T> = readonly [T, ...T[]];
 
@@ -45,7 +45,7 @@ export type MyResultsGroup = {
 };
 
 /** "UNMAPPED" preserves a result whose legacy breed group cannot be resolved. */
-export type MyResultsGroupCode = CanonicalShowGroupCode | "UNMAPPED";
+export type MyResultsGroupCode = ShowGroupCode | "UNMAPPED";
 
 export type MyResultsBreed = {
   code2: string;

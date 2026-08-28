@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { getShowDistrictRegionName, getCanonicalShowGroupLabel, resolveBreedGroupNameToCanonicalShowGroupCode, CANONICAL_SHOW_GROUP_CODES, type CanonicalShowGroupCode } from "@showring/rules";
+import { getShowDistrictRegionName, getCanonicalShowGroupLabel, resolveBreedGroupNameToCanonicalShowGroupCode, CANONICAL_SHOW_GROUP_CODES, type ShowGroupCode } from "@showring/rules";
 
 import type {
   MyResultsDogResult,
@@ -44,7 +44,7 @@ export type MyResultsQueryEntry = {
     scheduledEpoch: number;
     judge: MyResultsJudge | null;
     cluster: { id: string; name: string; district: number | null };
-    groupJudgeAssignments: Array<{ groupCode: CanonicalShowGroupCode; judge: MyResultsJudge }>;
+    groupJudgeAssignments: Array<{ groupCode: ShowGroupCode; judge: MyResultsJudge }>;
   };
   showResult: {
     pointsAwarded: number;

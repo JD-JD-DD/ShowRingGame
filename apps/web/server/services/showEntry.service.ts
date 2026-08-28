@@ -2812,7 +2812,7 @@ export async function createShowEntriesForCluster(args: {
         firstRequiredGroupByBreedCode2.set(group.breedCode2, group);
       }
     }
-    const groupCodeByBreedCode2 = new Map<string, import("@showring/rules").CanonicalShowGroupCode>();
+    const groupCodeByBreedCode2 = new Map<string, import("@showring/rules").ShowGroupCode>();
 
     for (const breedCode2 of requiredBreedCode2s) {
       const breed = breedByCode2.get(breedCode2);
@@ -2836,7 +2836,7 @@ export async function createShowEntriesForCluster(args: {
       }
     }
 
-    const requiredAssignmentKeys = new Map<string, { showDayId: string; groupCode: import("@showring/rules").CanonicalShowGroupCode }>();
+    const requiredAssignmentKeys = new Map<string, { showDayId: string; groupCode: import("@showring/rules").ShowGroupCode }>();
     for (const group of requiredBlockGroups.values()) {
       const groupCode = groupCodeByBreedCode2.get(group.breedCode2)!;
       requiredAssignmentKeys.set(`${group.showDay.id}:${groupCode}`, {

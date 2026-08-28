@@ -1047,7 +1047,7 @@ model ShowDay {
 /// The authoritative scheduled judge for one canonical group on one ShowDay.
 /// These assignments exist independently of entries, including zero-entry groups.
 /// ShowDay.judgeId remains the current day-level judge and will become the designated
-/// BIS judge in a later stage. That judge must eventually be one of these eight
+/// BIS judge in a later stage. That judge must eventually be one of these seven
 /// group judges, but this migration neither populates nor enforces that invariant.
 model ShowDayGroupJudgeAssignment {
   id        String        @id @default(cuid())
