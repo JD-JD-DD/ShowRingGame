@@ -221,6 +221,10 @@ export type MarketDogDto = {
   listingType: string;
   isOwnedByCurrentKennel: boolean;
   visibleCategories: VisibleCategories;
+  healthTests: Array<{
+    testTypeCode: string;
+    resultCode: string;
+  }>;
 };
 
 export function assertWholeDollarAmount(value: number, label: string): void {
@@ -370,6 +374,7 @@ function mapMarketListing(args: {
     sellerKennelName: listing.sellerKennel?.name ?? null,
     listingType: listing.listingType,
     isOwnedByCurrentKennel: listing.dog.ownerKennelId === currentKennelId,
+    healthTests: listing.dog.healthTests,
     visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
       storedTraits: listing.dog,
       phenotypeHealthTruths: healthConditionTruths,

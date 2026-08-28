@@ -9,6 +9,7 @@ import {
   normalizeBreedGroupName,
 } from "@/components/breeds/BreedSelectOptions";
 import TraitLine from "@/components/ui/TraitLine";
+import HealthTestResultsPanel from "@/components/dogs/HealthTestResultsPanel";
 
 type VisibleCategories = Record<string, number>;
 
@@ -30,6 +31,10 @@ type MarketDogDto = {
   listingType: string;
   isOwnedByCurrentKennel: boolean;
   visibleCategories: VisibleCategories;
+  healthTests: Array<{
+    testTypeCode: string;
+    resultCode: string;
+  }>;
 };
 
 type MarketDogsResponse = {
@@ -443,6 +448,10 @@ export default function MarketPage() {
                         ? "Foundation Market"
                         : dog.sellerKennelName ?? "Player Kennel"}
                     </div>
+                  </div>
+
+                  <div className="mb-5 text-sm">
+                    <HealthTestResultsPanel tests={dog.healthTests} />
                   </div>
 
                   <div>

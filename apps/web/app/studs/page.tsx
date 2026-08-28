@@ -25,6 +25,7 @@ import {
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
 } from "@/server/services/dogVisibleCategories.service";
 import TraitLine from "@/components/ui/TraitLine";
+import HealthTestResultsPanel from "@/components/dogs/HealthTestResultsPanel";
 import {
   BRUCELLOSIS_DISEASE_CODE,
   CURRENT_BREED_RELEASE,
@@ -642,6 +643,7 @@ export default async function StudsPage({ searchParams }: PageProps) {
                           </span>
                         </div>
                       </div>
+                      <HealthTestResultsPanel tests={dog.healthTests} />
                     </div>
 
                     <div>
