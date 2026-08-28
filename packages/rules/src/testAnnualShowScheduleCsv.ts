@@ -76,13 +76,18 @@ const immutableIdentityFingerprint = crypto
 
 assertEqual(
   immutableIdentityFingerprint,
-  "82c24d2e79e4e70d1836a8c67a660189c112a2afb3f60531d47d8bf569f706cd",
+  "f89fcaefeb4450bda109616c82d598b4651e9dfe6a5dd9157e6e45d96bad7a0b",
   "immutable CSV identity fingerprint"
 );
 
 assertEqual(rows.length, 154, "total CSV row count");
 assertEqual(regularRows.length, 153, "regular annual row count");
 assertEqual(reservedRows.length, 1, "reserved marker row count");
+assertEqual(
+  new Set(regularRows.map((row) => row.showName)).size,
+  153,
+  "unique regular show name count"
+);
 assertEqual(reservedRows[0]?.weekInYear, 52, "reserved marker week");
 assertEqual(
   regularRows.filter((row) => row.clusterType === "FOUR_DAY").length,
