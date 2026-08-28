@@ -1,7 +1,9 @@
 import { db } from "@/lib/db";
 import {
   CANONICAL_SHOW_GROUP_CODES,
+  isCanonicalShowGroupCode,
   type CanonicalShowGroupCode,
+  type ShowGroupCode,
 } from "@showring/rules";
 
 export type PlannerJudge = { id: string; judgeCode: string; name: string };
@@ -131,7 +133,7 @@ type PersistedPlanCluster = {
   showDays: Array<{
     status: string;
     judgeId: string;
-    groupJudgeAssignments: Array<{ groupCode: CanonicalShowGroupCode; judgeId: string }>;
+    groupJudgeAssignments: Array<{ groupCode: ShowGroupCode; judgeId: string }>;
   }>;
 };
 
@@ -142,6 +144,7 @@ export function getJudgeAssignmentPlanState(
     const assignments = showDay.groupJudgeAssignments;
     return (
       assignments.length === CANONICAL_SHOW_GROUP_CODES.length &&
+      assignments.every((assignment) => isCanonicalShowGroupCode(assignment.groupCode)) &&
       new Set(assignments.map((assignment) => assignment.groupCode)).size ===
         CANONICAL_SHOW_GROUP_CODES.length &&
       new Set(assignments.map((assignment) => assignment.judgeId)).size ===
