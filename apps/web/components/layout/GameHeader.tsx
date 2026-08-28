@@ -21,6 +21,7 @@ export default async function GameHeader() {
         <GameHeaderNav
           balance={kennel?.balance ?? null}
           gameTime={<GlobalUtcClock />}
+          isAuthenticated={Boolean(userId)}
         />
       </div>
 

@@ -30,12 +30,22 @@ function main() {
     "<LogoutButton />",
     "global header account menu renders the logout control"
   );
+  assertIncludes(
+    headerSource,
+    "isAuthenticated ?",
+    "global header renders logout only for authenticated users"
+  );
   assertExcludes(
     headerSource,
     "onClickCapture={() => setAccountOpen(false)}",
     "logout submit is not raced by menu click-capture closing"
   );
 
+  assertIncludes(
+    logoutButtonSource,
+    "Log Out",
+    "logout control uses the restored player-facing label"
+  );
   assertIncludes(
     logoutButtonSource,
     'action="/api/auth/logout"',

@@ -81,6 +81,7 @@ function navClass(active: boolean): string {
 type GameHeaderNavProps = {
   balance: number | null;
   gameTime: ReactNode;
+  isAuthenticated: boolean;
 };
 
 function formatMoney(amount: number): string {
@@ -90,6 +91,7 @@ function formatMoney(amount: number): string {
 export default function GameHeaderNav({
   balance,
   gameTime,
+  isAuthenticated,
 }: GameHeaderNavProps) {
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -260,7 +262,9 @@ export default function GameHeaderNav({
                     </Link>
                   ))}
                   <div className="game-header__menu-divider mt-2 border-t pt-2"><ThemeToggle /></div>
-                  <div className="game-header__menu-divider mt-2 border-t pt-2"><LogoutButton /></div>
+                  {isAuthenticated ? (
+                    <div className="game-header__menu-divider mt-2 border-t pt-2"><LogoutButton /></div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
