@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   BreedSelectOptions,
@@ -95,6 +96,7 @@ function visibleCategoryEntries(categories: VisibleCategories) {
 }
 
 export default function MarketPage() {
+  const router = useRouter();
   const [breedCatalog, setBreedCatalog] = useState<BreedCatalogDto[]>([]);
   const [loadingBreeds, setLoadingBreeds] = useState(true);
 
@@ -238,6 +240,8 @@ export default function MarketPage() {
       if (selectedBreedCode2) {
         await loadDogs(selectedBreedCode2);
       }
+
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Purchase failed.");
     } finally {

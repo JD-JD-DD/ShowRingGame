@@ -1206,6 +1206,7 @@ export default function KennelDogsPanel() {
       setActiveBulkWorkspace(null);
       resetHealthTestingWorkspaceState();
       setMessage(formatBulkHealthTestCompletion(data.result));
+      router.refresh();
     } catch (executionError) {
       setHealthTestExecutionError(formatHealthTestExecutionError(executionError));
     } finally {
@@ -1241,6 +1242,7 @@ export default function KennelDogsPanel() {
       setActiveBulkWorkspace(null);
       resetBrucellosisWorkspaceState();
       setMessage(formatBulkBrucellosisCompletion(data.result));
+      router.refresh();
     } catch (executionError) {
       const message = executionError instanceof Error ? executionError.message : "";
       setBrucellosisExecutionError(

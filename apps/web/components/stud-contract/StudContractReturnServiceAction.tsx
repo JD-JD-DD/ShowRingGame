@@ -16,7 +16,6 @@ export function StudContractReturnServiceAction(props: { returnServiceId: string
       const payload = await response.json();
       if (!response.ok || !payload.ok) {
         setFeedback({ kind: "error", message: typeof payload.error === "string" ? payload.error : "Unable to attempt Return Service. Please try again." });
-        router.refresh();
         return;
       }
       setFeedback({ kind: "success", message: "Return Service used. The return breeding has begun." });

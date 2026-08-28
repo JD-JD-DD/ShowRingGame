@@ -2014,6 +2014,7 @@ export default function BreedPageClient({
       unlockSubmit = false;
       const returnDogId = initialDog?.id ?? selectedDam.id;
       setSuccessMessage("Confirmed. Returning to the dog's page...");
+      router.refresh();
       window.setTimeout(() => router.push(`/dogs/${returnDogId}`), 900);
     } catch {
       setErrorMessage("Something went wrong while creating the breeding.");
