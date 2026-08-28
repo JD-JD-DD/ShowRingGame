@@ -415,6 +415,24 @@ enum KennelCommunicationReportStatus {
   RESOLVED
 }
 
+enum SupportTier {
+  BRONZE
+  SILVER
+  GOLD
+}
+
+enum SupportProvider {
+  PAYPAL
+}
+
+enum SupportStatus {
+  PENDING
+  ACTIVE
+  PAYMENT_RETRY
+  CANCELLATION_SCHEDULED
+  ENDED
+}
+
 model User {
   id               String               @id @default(cuid())
   email            String               @unique
@@ -433,6 +451,43 @@ model User {
 
   kennel              Kennel?
   passwordResetTokens PasswordResetToken[]
+  supportSubscriptions SupportSubscription[]
+}
+
+model SupportSubscription {
+  id                        String          @id @default(cuid())
+  userId                    String
+  provider                  SupportProvider
+  providerSubscriptionId    String          @unique
+  currentTier               SupportTier
+  status                    SupportStatus
+  currentPaidPeriodStart    DateTime?
+  currentPaidPeriodEnd      DateTime?
+  firstSupportedAt          DateTime?
+  cancellationRequestedAt   DateTime?
+  endedAt                   DateTime?
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
+
+  user        User                          @relation(fields: [userId], references: [id])
+  tierPeriods SupportSubscriptionTierPeriod[]
+
+  @@index([userId, status])
+  @@index([currentPaidPeriodEnd])
+}
+
+model SupportSubscriptionTierPeriod {
+  id                    String              @id @default(cuid())
+  supportSubscriptionId String
+  tier                  SupportTier
+  startedAt             DateTime
+  endedAt               DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  supportSubscription SupportSubscription @relation(fields: [supportSubscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([supportSubscriptionId, startedAt])
 }
 
 model UserAccessAudit {
@@ -502,6 +557,7 @@ model Kennel {
   balance          Int                    @default(0)
   reputationScore  Int                    @default(0)
   publicSlogan     String?
+  showSupporterBadge Boolean                @default(true)
   moderationStatus KennelModerationStatus @default(ACTIVE)
   moderationReason String?
   moderatedAt      DateTime?
