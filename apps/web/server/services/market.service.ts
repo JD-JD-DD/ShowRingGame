@@ -3,7 +3,10 @@ import type { Prisma } from "@prisma/client";
 import type { PersistedDogTraitRecord } from "@/server/services/phenotypePersistence.service";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import { hasPendingVeterinaryCareForDog } from "@/server/services/emergencyVetCare.service";
+import {
+  assertDogHasNoPendingVeterinaryCare,
+  hasPendingVeterinaryCareForDog,
+} from "@/server/services/emergencyVetCare.service";
 import { getStudContractPuppyProtection } from "@/server/services/studContractPuppyProtection.service";
 import { extinguishStudContractReturnServicesForDog } from "@/server/services/studContractReturnService.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
