@@ -6,9 +6,9 @@ Create exactly one PayPal sandbox Catalog Product for voluntary ShowRing Support
 
 | ShowRing tier | Monthly price | Configuration variable |
 | --- | ---: | --- |
-| `BRONZE` | $2.00 | `PAYPAL_SANDBOX_PLAN_BRONZE_ID` |
-| `SILVER` | $5.00 | `PAYPAL_SANDBOX_PLAN_SILVER_ID` |
-| `GOLD` | $10.00 | `PAYPAL_SANDBOX_PLAN_GOLD_ID` |
+| `BRONZE` | $2.00 | `PAYPAL_SANDBOX_BRONZE_PLAN_ID` |
+| `SILVER` | $5.00 | `PAYPAL_SANDBOX_SILVER_PLAN_ID` |
+| `GOLD` | $10.00 | `PAYPAL_SANDBOX_GOLD_PLAN_ID` |
 
 Set these server-only environment variables through the normal deployment/environment configuration mechanism:
 
@@ -16,9 +16,9 @@ Set these server-only environment variables through the normal deployment/enviro
 PAYPAL_SANDBOX_CLIENT_ID=
 PAYPAL_SANDBOX_CLIENT_SECRET=
 PAYPAL_SANDBOX_PRODUCT_ID=
-PAYPAL_SANDBOX_PLAN_BRONZE_ID=
-PAYPAL_SANDBOX_PLAN_SILVER_ID=
-PAYPAL_SANDBOX_PLAN_GOLD_ID=
+PAYPAL_SANDBOX_BRONZE_PLAN_ID=
+PAYPAL_SANDBOX_SILVER_PLAN_ID=
+PAYPAL_SANDBOX_GOLD_PLAN_ID=
 PAYPAL_SANDBOX_WEBHOOK_ID=
 ```
 

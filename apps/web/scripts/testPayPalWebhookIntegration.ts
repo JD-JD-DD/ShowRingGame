@@ -21,7 +21,7 @@ async function main() {
 
   Object.assign(process.env, {
     PAYPAL_SANDBOX_CLIENT_ID: "client", PAYPAL_SANDBOX_CLIENT_SECRET: "secret", PAYPAL_SANDBOX_PRODUCT_ID: "product",
-    PAYPAL_SANDBOX_PLAN_BRONZE_ID: "bronze", PAYPAL_SANDBOX_PLAN_SILVER_ID: "silver", PAYPAL_SANDBOX_PLAN_GOLD_ID: "gold",
+    PAYPAL_SANDBOX_BRONZE_PLAN_ID: "bronze", PAYPAL_SANDBOX_SILVER_PLAN_ID: "silver", PAYPAL_SANDBOX_GOLD_PLAN_ID: "gold",
   });
   const events: any[] = [];
   const subscription: any = { id: "support-1", providerSubscriptionId: "I-sub", currentTier: "BRONZE", status: "ACTIVE", firstSupportedAt: new Date("2026-08-01"), currentPaidPeriodStart: new Date("2026-08-01"), currentPaidPeriodEnd: new Date("2026-09-01"), cancellationRequestedAt: null, endedAt: null, tierPeriods: [{ id: "period-1", tier: "BRONZE", endedAt: null }] };

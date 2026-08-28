@@ -42,9 +42,9 @@ function requiredEnvironmentValue(name: string): string {
 
 export function getPayPalSupportConfig(): PayPalSupportConfig {
   const planIds = {
-    BRONZE: requiredEnvironmentValue("PAYPAL_SANDBOX_PLAN_BRONZE_ID"),
-    SILVER: requiredEnvironmentValue("PAYPAL_SANDBOX_PLAN_SILVER_ID"),
-    GOLD: requiredEnvironmentValue("PAYPAL_SANDBOX_PLAN_GOLD_ID"),
+    BRONZE: requiredEnvironmentValue("PAYPAL_SANDBOX_BRONZE_PLAN_ID"),
+    SILVER: requiredEnvironmentValue("PAYPAL_SANDBOX_SILVER_PLAN_ID"),
+    GOLD: requiredEnvironmentValue("PAYPAL_SANDBOX_GOLD_PLAN_ID"),
   };
 
   if (new Set(Object.values(planIds)).size !== SUPPORT_TIERS.length) {
@@ -128,7 +128,7 @@ export class PayPalSandboxClient {
   private accessToken: string | null = null;
 
   constructor(
-    private readonly config: PayPalSupportConfig,
+    private readonly config: Pick<PayPalSupportConfig, "clientId" | "clientSecret">,
     private readonly fetchImplementation: typeof fetch = fetch
   ) {}
 
@@ -163,7 +163,7 @@ export class PayPalSandboxClient {
     return this.accessToken;
   }
 
-  private async request(method: "GET" | "POST", path: string, body?: unknown): Promise<unknown> {
+  private async request(method: "GET" | "POST", path: string, body?: unknown, requestId?: string): Promise<unknown> {
     const accessToken = await this.getAccessToken();
     let response: Response;
     try {
@@ -172,6 +172,7 @@ export class PayPalSandboxClient {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
+          ...(requestId ? { "PayPal-Request-Id": requestId } : {}),
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         cache: "no-store",
@@ -230,6 +231,22 @@ export class PayPalSandboxClient {
       webhook_event: args.event,
     }));
     return result?.verification_status === "SUCCESS";
+  }
+
+  async createCatalogProduct(body: unknown, requestId: string): Promise<Record<string, unknown>> {
+    return asRecord(await this.request("POST", "/v1/catalogs/products", body, requestId)) ?? {};
+  }
+
+  async createBillingPlan(body: unknown, requestId: string): Promise<Record<string, unknown>> {
+    return asRecord(await this.request("POST", "/v1/billing/plans", body, requestId)) ?? {};
+  }
+
+  async getCatalogProduct(productId: string): Promise<Record<string, unknown>> {
+    return asRecord(await this.request("GET", `/v1/catalogs/products/${encodeURIComponent(productId)}`)) ?? {};
+  }
+
+  async getBillingPlan(planId: string): Promise<Record<string, unknown>> {
+    return asRecord(await this.request("GET", `/v1/billing/plans/${encodeURIComponent(planId)}`)) ?? {};
   }
 }
 
