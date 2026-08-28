@@ -111,13 +111,23 @@ export default function BulkForSaleWorkspace({
     () =>
       new Set(
         eligibleDogs
-          .filter((dog) => !isValidWholeDollarSalePrice(pricesByDogId[dog.dogId] ?? ""))
+          .filter((dog) => {
+            const price = pricesByDogId[dog.dogId] ?? "";
+            return price !== "" && !isValidWholeDollarSalePrice(price);
+          })
           .map((dog) => dog.dogId)
       ),
     [eligibleDogs, pricesByDogId]
   );
+  const pricedEligibleDogs = useMemo(
+    () =>
+      eligibleDogs.filter((dog) =>
+        isValidWholeDollarSalePrice(pricesByDogId[dog.dogId] ?? "")
+      ),
+    [eligibleDogs, pricesByDogId]
+  );
   const formReady =
-    !loading && !error && eligibleDogs.length > 0 && invalidPriceDogIds.size === 0;
+    !loading && !error && pricedEligibleDogs.length > 0 && invalidPriceDogIds.size === 0;
   const sellAllPriceValid = isValidWholeDollarSalePrice(sellAllPrice);
 
   function applyPriceToEligibleDogs() {
@@ -138,7 +148,7 @@ export default function BulkForSaleWorkspace({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          updates: eligibleDogs.map((dog) => ({
+          updates: pricedEligibleDogs.map((dog) => ({
             dogId: dog.dogId,
             askingPrice: pricesByDogId[dog.dogId],
           })),
@@ -166,7 +176,7 @@ export default function BulkForSaleWorkspace({
       <div className="flex flex-col gap-4">
         <div>
           <h2 id="bulk-for-sale-heading" className="theme-heading text-lg font-semibold">Bulk For Sale</h2>
-          <p className="theme-copy mt-1 text-sm">Set an asking price for each eligible selected dog.</p>
+          <p className="theme-copy mt-1 text-sm">Leave a price blank to skip that dog.</p>
         </div>
 
         <div className="grid gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -214,7 +224,7 @@ export default function BulkForSaleWorkspace({
         </div>
 
         <div className="flex flex-col gap-2 border-t border-[var(--color-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="theme-copy text-sm" role="status">{successMessage ? "The submitted dogs are listed for sale." : formReady ? "Prices are complete. Ready to list eligible dogs for sale." : eligibleDogs.length === 0 && !loading && !error ? "No selected dogs are currently eligible for sale." : "Add a valid whole-dollar price for every eligible dog."}</p>
+          <p className="theme-copy text-sm" role="status">{successMessage ? "The submitted dogs are listed for sale." : formReady ? "Ready to list priced eligible dogs for sale." : eligibleDogs.length === 0 && !loading && !error ? "No selected dogs are currently eligible for sale." : invalidPriceDogIds.size > 0 ? "Correct or clear each invalid sale price." : "Add a valid whole-dollar price for at least one eligible dog."}</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={onClose} className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">Cancel</button>
             <button type="button" onClick={submitBulkSale} disabled={!formReady || submitting || Boolean(successMessage)} className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Listing dogs..." : "List Dogs For Sale"}</button>
