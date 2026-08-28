@@ -10,6 +10,8 @@ export type PayPalSupportConfig = {
   planIds: Record<SupportTierValue, string>;
 };
 
+type PayPalSandboxClientConfig = Pick<PayPalSupportConfig, "clientId" | "clientSecret"> | PayPalSupportConfig;
+
 export type PayPalWebhookVerificationHeaders = {
   authAlgo: string;
   certUrl: string;
@@ -128,7 +130,7 @@ export class PayPalSandboxClient {
   private accessToken: string | null = null;
 
   constructor(
-    private readonly config: Pick<PayPalSupportConfig, "clientId" | "clientSecret">,
+    private readonly config: PayPalSandboxClientConfig,
     private readonly fetchImplementation: typeof fetch = fetch
   ) {}
 
@@ -193,6 +195,9 @@ export class PayPalSandboxClient {
   async createSubscription(args: {
     tier: SupportTierValue;
   }): Promise<CreatedPayPalSupportSubscription> {
+    if (!("planIds" in this.config)) {
+      throw new PayPalSupportError("PayPal sandbox support is not configured.", 503);
+    }
     const result = await this.request("POST", "/v1/billing/subscriptions", {
       plan_id: getPayPalPlanId(args.tier, this.config),
       application_context: { user_action: "SUBSCRIBE_NOW" },
