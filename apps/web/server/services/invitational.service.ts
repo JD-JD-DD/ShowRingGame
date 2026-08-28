@@ -11,6 +11,7 @@ import type {
 import {
   canEnterShows,
   CURRENT_BREED_RELEASE,
+  isCanonicalShowGroupCode,
   resolveBreedGroupNameToCanonicalShowGroupCode,
   SHOW_DAY_SAT,
   SHOW_WEEK_HOURS,
@@ -285,6 +286,9 @@ async function ensureInvitationalShowForYear(args: {
       const groupCode = resolveBreedGroupNameToCanonicalShowGroupCode(
         breed.groupName
       );
+      if (!isCanonicalShowGroupCode(groupCode)) {
+        throw new Error(`Invalid invitational competition group for breed=${breed.code2}, group=${groupCode}.`);
+      }
       const judgeId = judgeIdByGroupCode.get(groupCode);
 
       if (!judgeId) {
