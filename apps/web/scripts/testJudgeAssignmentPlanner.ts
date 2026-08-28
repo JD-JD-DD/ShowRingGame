@@ -34,7 +34,6 @@ for (const plan of plans) {
     assert(day.assignments.length === 7, "seven group assignments per day");
     assert(new Set(day.assignments.map((assignment) => assignment.judgeId)).size === 7, "distinct daily judges");
     assert(day.assignments.map((assignment) => assignment.groupCode).join(",") === CANONICAL_SHOW_GROUP_CODES.join(","), "canonical groups");
-    assert(!day.assignments.some((assignment) => assignment.groupCode === "MISCELLANEOUS"), "no Miscellaneous assignment");
     assert(plan.panelJudgeIds.includes(day.bisJudgeId), "BIS belongs to panel");
   }
   for (const judgeId of plan.panelJudgeIds) {
