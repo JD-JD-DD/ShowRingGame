@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import KennelDogsPanel from "@/components/kennel/KennelDogsPanel";
@@ -61,28 +60,6 @@ export default async function KennelPage() {
         hasBreedingPlan={hasBreedingPlan}
         showByDefault={!hasBeginnerLoopComplete}
       />
-
-      <section className="theme-card mb-8 rounded-2xl p-4">
-        <div className="theme-label mb-3 text-xs font-semibold uppercase tracking-[0.18em]">
-          Premium Features
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/plan-a-litter"
-            className="theme-primary-button inline-flex min-h-12 items-center gap-[.65rem] rounded-xl px-[.9rem] py-2"
-          >
-            <span>
-              <span className="block text-[0.58rem] font-bold uppercase tracking-[0.2em] text-[var(--color-primary-foreground)]">
-                Advanced Planning Tool
-              </span>
-              <span className="mt-0.5 block text-sm font-bold tracking-wide text-[var(--color-primary-foreground)]">
-                Plan A Litter
-              </span>
-            </span>
-          </Link>
-        </div>
-      </section>
-
       <KennelDogsPanel />
     </main>
   );
