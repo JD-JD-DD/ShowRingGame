@@ -1,0 +1,11 @@
+import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+const root = join(process.cwd(), "../.."); const source = (path: string) => readFileSync(join(root, path), "utf8");
+const page = source("apps/web/app/test/support-sandbox/page.tsx"); const client = source("apps/web/components/test/SupportSandboxTestClient.tsx");
+assert.ok(page.includes("getSessionUserId") && page.includes('redirect("/login")'));
+assert.ok(client.includes('fetch("/api/support/subscriptions"'));
+assert.ok(client.includes('JSON.stringify({ tier: "BRONZE" })'));
+assert.ok(!client.includes("SILVER") && !client.includes("GOLD"));
+assert.ok(client.includes("Create Bronze Subscription") && client.includes("Continue to PayPal Sandbox Approval"));
+console.log("Support sandbox harness checks passed.");
