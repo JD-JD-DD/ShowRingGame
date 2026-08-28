@@ -36,7 +36,9 @@ assertInvalid({ assignments: [...assignments, { groupCode: "ARCHIVED", judgeId: 
 assertInvalid({ assignments: assignments.map((assignment) => ({ ...assignment, judgeId: "judge-1" })) }, "duplicate judge fails closed");
 assertInvalid({ bisJudgeId: null }, "null BIS judge fails closed");
 assertInvalid({ bisJudgeId: "outside-panel" }, "BIS judge outside panel fails closed");
-assertInvalid({ assignments: legacyAssignments, bisJudgeId: "judge-8" }, "legacy Miscellaneous-only BIS judge fails closed");
+assert.equal(requirePanel({ assignments: legacyAssignments, bisJudgeId: "judge-8" }).bisJudgeId, "judge-8", "legacy Miscellaneous BIS judge is retained");
+assertInvalid({ assignments: legacyAssignments, bisJudgeId: "outside-panel" }, "legacy BIS judge outside every assignment fails closed");
+assertInvalid({ assignments: [...legacyAssignments, { groupCode: "ARCHIVED", judgeId: "judge-9" }] }, "more than one extra assignment fails closed");
 
 const root = process.cwd().endsWith(join("apps", "web")) ? join(process.cwd(), "..", "..") : process.cwd();
 const judging = readFileSync(join(root, "apps/web/server/services/judging.service.ts"), "utf8");

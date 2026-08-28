@@ -56,7 +56,12 @@ export function requireCompleteShowDayJudgePanelForBis(args: {
   const hasOnlyLegacyMiscellaneousExtra =
     noncanonicalAssignments.length === 1 &&
     noncanonicalAssignments[0]!.groupCode === "MISCELLANEOUS";
-  const bisJudgeInPanel = Boolean(args.bisJudgeId && canonicalJudgeIds.has(args.bisJudgeId));
+  const bisJudgeInPanel = Boolean(
+    args.bisJudgeId &&
+      (canonicalJudgeIds.has(args.bisJudgeId) ||
+        (hasOnlyLegacyMiscellaneousExtra &&
+          noncanonicalAssignments[0]!.judgeId === args.bisJudgeId))
+  );
 
   if (
     canonicalAssignments.length !== CANONICAL_SHOW_GROUP_CODES.length ||
@@ -66,7 +71,7 @@ export function requireCompleteShowDayJudgePanelForBis(args: {
     !bisJudgeInPanel
   ) {
     throw new Error(
-      `Invalid scheduled BIS judge panel for showDay=${args.showDayId}, cluster=${args.clusterId ?? "unknown"}, year=${args.year ?? "unknown"}; assignmentCount=${args.assignments.length}; canonicalGroupsPresent=${[...canonicalGroups].sort().join(",")}; canonicalDistinctJudgeCount=${canonicalJudgeIds.size}; bisJudgeId=${args.bisJudgeId ?? "null"}; bisJudgeInCanonicalPanel=${bisJudgeInPanel}.`
+      `Invalid scheduled BIS judge panel for showDay=${args.showDayId}, cluster=${args.clusterId ?? "unknown"}, year=${args.year ?? "unknown"}; assignmentCount=${args.assignments.length}; canonicalGroupsPresent=${[...canonicalGroups].sort().join(",")}; canonicalDistinctJudgeCount=${canonicalJudgeIds.size}; bisJudgeId=${args.bisJudgeId ?? "null"}; bisJudgeInCanonicalOrLegacyMiscellaneousPanel=${bisJudgeInPanel}.`
     );
   }
 
