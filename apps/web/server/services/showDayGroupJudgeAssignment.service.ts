@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import {
   CANONICAL_SHOW_GROUP_CODES,
+  isCanonicalShowGroupCode,
   resolveBreedGroupNameToCanonicalShowGroupCode,
 } from "@showring/rules";
 
@@ -45,22 +46,27 @@ export function requireCompleteShowDayJudgePanelForBis(args: {
   clusterId?: string;
   year?: number;
 }): { bisJudgeId: string } {
-  const canonicalGroups = new Set<string>(CANONICAL_SHOW_GROUP_CODES);
-  const presentGroups = new Set(args.assignments.map((assignment) => assignment.groupCode));
-  const judgeIds = new Set(args.assignments.map((assignment) => assignment.judgeId));
+  const canonicalAssignments = args.assignments.filter((assignment) => isCanonicalShowGroupCode(assignment.groupCode));
+  const noncanonicalAssignments = args.assignments.filter((assignment) => !isCanonicalShowGroupCode(assignment.groupCode));
+  const canonicalGroups = new Set(canonicalAssignments.map((assignment) => assignment.groupCode));
+  const canonicalJudgeIds = new Set(canonicalAssignments.map((assignment) => assignment.judgeId));
   const hasAllCanonicalGroups =
-    presentGroups.size === CANONICAL_SHOW_GROUP_CODES.length &&
-    CANONICAL_SHOW_GROUP_CODES.every((groupCode) => presentGroups.has(groupCode));
-  const bisJudgeInPanel = Boolean(args.bisJudgeId && judgeIds.has(args.bisJudgeId));
+    canonicalGroups.size === CANONICAL_SHOW_GROUP_CODES.length &&
+    CANONICAL_SHOW_GROUP_CODES.every((groupCode) => canonicalGroups.has(groupCode));
+  const hasOnlyLegacyMiscellaneousExtra =
+    noncanonicalAssignments.length === 1 &&
+    noncanonicalAssignments[0]!.groupCode === "MISCELLANEOUS";
+  const bisJudgeInPanel = Boolean(args.bisJudgeId && canonicalJudgeIds.has(args.bisJudgeId));
 
   if (
-    args.assignments.length !== CANONICAL_SHOW_GROUP_CODES.length ||
+    canonicalAssignments.length !== CANONICAL_SHOW_GROUP_CODES.length ||
+    (args.assignments.length !== CANONICAL_SHOW_GROUP_CODES.length && !hasOnlyLegacyMiscellaneousExtra) ||
     !hasAllCanonicalGroups ||
-    judgeIds.size !== CANONICAL_SHOW_GROUP_CODES.length ||
+    canonicalJudgeIds.size !== CANONICAL_SHOW_GROUP_CODES.length ||
     !bisJudgeInPanel
   ) {
     throw new Error(
-      `Invalid scheduled BIS judge panel for showDay=${args.showDayId}, cluster=${args.clusterId ?? "unknown"}, year=${args.year ?? "unknown"}; assignmentCount=${args.assignments.length}; canonicalGroupsPresent=${[...presentGroups].filter((groupCode) => canonicalGroups.has(groupCode)).sort().join(",")}; distinctJudgeCount=${judgeIds.size}; bisJudgeId=${args.bisJudgeId ?? "null"}; bisJudgeInPanel=${bisJudgeInPanel}.`
+      `Invalid scheduled BIS judge panel for showDay=${args.showDayId}, cluster=${args.clusterId ?? "unknown"}, year=${args.year ?? "unknown"}; assignmentCount=${args.assignments.length}; canonicalGroupsPresent=${[...canonicalGroups].sort().join(",")}; canonicalDistinctJudgeCount=${canonicalJudgeIds.size}; bisJudgeId=${args.bisJudgeId ?? "null"}; bisJudgeInCanonicalPanel=${bisJudgeInPanel}.`
     );
   }
 

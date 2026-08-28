@@ -24,13 +24,19 @@ function assertInvalid(overrides: Partial<Parameters<typeof requireCompleteShowD
 
 assert.equal(requirePanel().bisJudgeId, "judge-1", "complete canonical panel accepts its scheduled BIS judge");
 assert.equal(requirePanel().bisJudgeId, "judge-1", "an empty assigned group does not affect BIS panel validation");
+const legacyAssignments = [...assignments, { groupCode: "MISCELLANEOUS", judgeId: "judge-8" }];
+assert.equal(requirePanel({ assignments: legacyAssignments }).bisJudgeId, "judge-1", "legacy Miscellaneous assignment is ignored for BIS panel validation");
 assertInvalid({ assignments: assignments.slice(0, 6) }, "six assignments fail closed");
 assertInvalid({ assignments: [...assignments, { groupCode: CANONICAL_SHOW_GROUP_CODES[0], judgeId: "judge-8" }] }, "eight assignments fail closed");
+assertInvalid({ assignments: [...assignments.slice(0, 6), { groupCode: "MISCELLANEOUS", judgeId: "judge-8" }] }, "missing canonical group with Miscellaneous fails closed");
 assertInvalid({ assignments: assignments.slice(1) }, "missing canonical group fails closed");
 assertInvalid({ assignments: assignments.map((assignment, index) => index === 6 ? { ...assignment, groupCode: CANONICAL_SHOW_GROUP_CODES[0] } : assignment) }, "duplicate group fails closed");
+assertInvalid({ assignments: [...legacyAssignments.slice(0, 6), { groupCode: CANONICAL_SHOW_GROUP_CODES[0], judgeId: "judge-7" }, legacyAssignments[7]!] }, "duplicate canonical group with Miscellaneous fails closed");
+assertInvalid({ assignments: [...assignments, { groupCode: "ARCHIVED", judgeId: "judge-8" }] }, "arbitrary noncanonical extra fails closed");
 assertInvalid({ assignments: assignments.map((assignment) => ({ ...assignment, judgeId: "judge-1" })) }, "duplicate judge fails closed");
 assertInvalid({ bisJudgeId: null }, "null BIS judge fails closed");
 assertInvalid({ bisJudgeId: "outside-panel" }, "BIS judge outside panel fails closed");
+assertInvalid({ assignments: legacyAssignments, bisJudgeId: "judge-8" }, "legacy Miscellaneous-only BIS judge fails closed");
 
 const root = process.cwd().endsWith(join("apps", "web")) ? join(process.cwd(), "..", "..") : process.cwd();
 const judging = readFileSync(join(root, "apps/web/server/services/judging.service.ts"), "utf8");
