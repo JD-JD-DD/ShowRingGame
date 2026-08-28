@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { DogProfilePedigreeDogDto } from "@/server/mappers/dog.mapper";
+import { PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES } from "./phenotypeHealthPresentation";
 
 type DogPedigreeGridProps = {
   ancestors: DogProfilePedigreeDogDto[];
@@ -76,9 +77,12 @@ function AncestorCard({ ancestor, compact = false }: { ancestor: DogProfilePedig
       <div className="dog-heading mt-1 font-semibold">{ancestor.displayName}</div>
       <div className="dog-copy mt-2 text-xs">{ancestor.colorLabel}</div>
       {!compact
-        ? ancestor.detailedHealthResults.map((result) => (
+          ? ancestor.detailedHealthResults.map((result) => (
             <div key={result.testCode} className="dog-copy mt-1 text-xs">
-              {result.displayName}: {result.resultLabel}
+              <span>{result.displayName}: </span>
+              <span className={PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES[result.severityKey]}>
+                {result.resultLabel}
+              </span>
             </div>
           ))
         : null}

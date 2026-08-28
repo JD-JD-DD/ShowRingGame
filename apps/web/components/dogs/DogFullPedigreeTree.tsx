@@ -6,6 +6,7 @@ import {
   buildFourGenerationPedigreeSlots,
   type PedigreeSlot,
 } from "./pedigreeSlots";
+import { PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES } from "./phenotypeHealthPresentation";
 
 type Props = { ancestors: DogProfilePedigreeDogDto[] };
 
@@ -52,7 +53,7 @@ function PedigreeSlotCard({ slot }: { slot: PedigreeSlot }) {
       {!compact ? <div className="dog-copy mt-1">{slot.ancestor.registrationNumber} · {slot.ancestor.sex === "M" ? "Male" : "Female"}</div> : null}
       <div className="dog-copy mt-1">{slot.ancestor.colorLabel} · {coiLabel(slot.ancestor.storedCoiPercent)}</div>
       <div className="dog-copy mt-1">Progeny: {slot.ancestor.progenyCount.toLocaleString()}</div>
-      {compact ? <div className="dog-copy mt-1">{slot.ancestor.healthTestsSummary}</div> : slot.ancestor.detailedHealthResults.map((result) => <div key={result.testCode} className="dog-copy mt-1">{result.displayName}: {result.resultLabel}</div>)}
+      {compact ? <div className="dog-copy mt-1">{slot.ancestor.healthTestsSummary}</div> : slot.ancestor.detailedHealthResults.map((result) => <div key={result.testCode} className="dog-copy mt-1"><span>{result.displayName}: </span><span className={PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES[result.severityKey]}>{result.resultLabel}</span></div>)}
       {slot.ancestor.healthStatusMarkers.hasFullClearance ? <div className="mt-1 font-semibold text-emerald-700 dark:text-emerald-200">Full health clearance</div> : null}
     </>
   ) : (
