@@ -582,6 +582,70 @@ async function executePhenotypeHealthTestsForKennelTx(
   return createdRecords;
 }
 
+export function prepareBulkPhenotypeHealthTestPersistence(args: {
+  kennelId: string;
+  executionPlan: Array<{
+    dog: HealthExecutionDog;
+    testTypeCodes: PhenotypeHealthTestCode[];
+  }>;
+  truthsByDogId: Map<string, PhenotypeHealthTruth[]>;
+  currentEpoch: number;
+  runningBalance: { value: number };
+  onPrepared: () => void;
+}) {
+  const healthTestRecords: Prisma.HealthTestRecordCreateManyInput[] = [];
+  const ledgerTransactions: Prisma.LedgerTransactionCreateManyInput[] = [];
+
+  for (const item of args.executionPlan) {
+    const truthByCode = new Map(
+      (args.truthsByDogId.get(item.dog.id) ?? []).map((truth) => [
+        truth.conditionCode,
+        truth,
+      ])
+    );
+
+    for (const testTypeCode of item.testTypeCodes) {
+      const truth = truthByCode.get(testTypeCode);
+
+      if (!truth) {
+        throw new Error("Health profile could not be generated.");
+      }
+
+      const definition = PHENOTYPE_HEALTH_TESTS[testTypeCode];
+      const result = revealPhenotypeHealthTestResult({
+        conditionCode: testTypeCode,
+        geneticLiability: truth.geneticLiability,
+        environmentModifier: truth.environmentModifier,
+      });
+      args.runningBalance.value -= definition.fee;
+
+      healthTestRecords.push({
+        dogId: item.dog.id,
+        testTypeCode,
+        resultCode: result.resultCode,
+        testedAtEpoch: args.currentEpoch,
+        revealedAtEpoch: args.currentEpoch,
+        isPublic: true,
+        notes: "Phenotype screening result.",
+        detailsJson: { screeningType: "PHENOTYPE" },
+      });
+      ledgerTransactions.push({
+        kennelId: args.kennelId,
+        transactionType: "HEALTH_TEST_FEE",
+        amount: -definition.fee,
+        balanceAfter: args.runningBalance.value,
+        occurredAtEpoch: args.currentEpoch,
+        dogId: item.dog.id,
+        memo: `${definition.label} screening for ${item.dog.regNumber}.`,
+        metadataJson: { testTypeCode },
+      });
+      args.onPrepared();
+    }
+  }
+
+  return { healthTestRecords, ledgerTransactions };
+}
+
 export async function runPhenotypeHealthTestsForKennel(args: {
   kennelId: string;
   dogId: string;
@@ -846,27 +910,40 @@ export async function runBulkPhenotypeHealthTestsForKennel(args: {
       };
     }
 
+    phase = "loadHealthTruth";
+    const truthsByDogId = await ensurePhenotypeHealthTruthsForDogs(
+      tx,
+      executionPlan.map((item) => item.dog.id)
+    );
+    const runningBalance = { value: kennel.balance };
+    phase = "prepareResults";
+    const { healthTestRecords, ledgerTransactions } =
+      prepareBulkPhenotypeHealthTestPersistence({
+        kennelId: kennel.id,
+        executionPlan,
+        truthsByDogId,
+        currentEpoch: args.currentEpoch,
+        runningBalance,
+        onPrepared: () => {
+          processedTestCount += 1;
+        },
+      });
+
     phase = "balanceDebit";
     await tx.kennel.update({
       where: { id: kennel.id },
       data: { balance: kennel.balance - totalCharged },
     });
 
-    const runningBalance = { value: kennel.balance };
+    phase = "persistResults";
+    await tx.healthTestRecord.createMany({ data: healthTestRecords });
 
-    phase = "healthResultProcessing";
+    phase = "persistLedger";
+    await tx.ledgerTransaction.createMany({ data: ledgerTransactions });
+
     for (const item of executionPlan) {
-      await executePhenotypeHealthTestsForKennelTx(tx, {
-        kennelId: kennel.id,
-        dog: item.dog,
-        testTypeCodes: item.testTypeCodes,
-        currentEpoch: args.currentEpoch,
-        runningBalance,
-      });
-
       for (const testTypeCode of item.testTypeCodes) {
         executedByTest[testTypeCode] += 1;
-        processedTestCount += 1;
       }
     }
 
@@ -883,7 +960,7 @@ export async function runBulkPhenotypeHealthTestsForKennel(args: {
       executedByTest,
       skippedByReason,
     };
-    });
+    }, { timeout: 15_000 });
 
     console.info("Bulk health test execution completed", {
       operation: "bulk-health-tests",
