@@ -5,7 +5,7 @@ export default function LogoutButton() {
     <form action="/api/auth/logout" method="post">
       <button
         type="submit"
-        className="rounded-md border border-white/10 px-5 py-2 text-sm font-semibold text-white hover:bg-white/10"
+        className="game-header__menu-item block w-full rounded-xl px-3 py-2 text-left font-semibold transition"
       >
         Log Out
       </button>
