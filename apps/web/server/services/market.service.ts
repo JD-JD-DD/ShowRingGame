@@ -1,9 +1,10 @@
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import type { PersistedDogTraitRecord } from "@/server/services/phenotypePersistence.service";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
-import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
-import { assertDogNotProtectedByStudContractSelection } from "@/server/services/studContractPuppyProtection.service";
+import { hasPendingVeterinaryCareForDog } from "@/server/services/emergencyVetCare.service";
+import { getStudContractPuppyProtection } from "@/server/services/studContractPuppyProtection.service";
 import { extinguishStudContractReturnServicesForDog } from "@/server/services/studContractReturnService.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
@@ -21,6 +22,133 @@ import {
 
 export const PLAYER_SALE_LISTING_TYPE = "PLAYER_PUBLIC";
 export const PLAYER_STUD_LISTING_TYPE = "PLAYER_STUD";
+
+export type SaleEligibilityReasonCode =
+  | "DOG_NOT_FOUND"
+  | "NOT_OWNED"
+  | "NOT_ACTIVE"
+  | "PENDING_VET_CARE"
+  | "STUD_CONTRACT_SELECTION_PROTECTED"
+  | "UNDER_SALE_AGE"
+  | "ALREADY_LISTED"
+  | "BREEDING_CONFLICT";
+
+export type DogSaleEligibility = {
+  dogId: string;
+  eligible: boolean;
+  reasonCode: SaleEligibilityReasonCode | null;
+  reasonMessage: string | null;
+};
+
+function ineligibleDogSale(
+  dogId: string,
+  reasonCode: SaleEligibilityReasonCode,
+  reasonMessage: string
+): DogSaleEligibility {
+  return { dogId, eligible: false, reasonCode, reasonMessage };
+}
+
+/**
+ * Evaluates the current server-side rules for listing one player-owned dog.
+ * This is a preflight only: callers that create listings must evaluate it again
+ * against current state inside their write transaction.
+ */
+export async function getDogSaleEligibility(args: {
+  dogId: string;
+  sellerKennelId: string;
+  currentEpoch: number;
+  client?: typeof db | Prisma.TransactionClient;
+}): Promise<DogSaleEligibility> {
+  const client = args.client ?? db;
+  const dog = await client.dog.findUnique({
+    where: { id: args.dogId },
+    select: {
+      id: true,
+      ownerKennelId: true,
+      birthEpoch: true,
+      lifecycleState: true,
+      marketState: true,
+    },
+  });
+
+  if (!dog) {
+    return ineligibleDogSale(args.dogId, "DOG_NOT_FOUND", "Dog not found.");
+  }
+  if (dog.ownerKennelId !== args.sellerKennelId) {
+    return ineligibleDogSale(dog.id, "NOT_OWNED", "You do not own this dog.");
+  }
+  if (dog.lifecycleState !== "ALIVE") {
+    return ineligibleDogSale(
+      dog.id,
+      "NOT_ACTIVE",
+      "Only active dogs can be offered for sale."
+    );
+  }
+  if (await hasPendingVeterinaryCareForDog(dog.id, client)) {
+    return ineligibleDogSale(
+      dog.id,
+      "PENDING_VET_CARE",
+      "This dog is awaiting emergency veterinary care."
+    );
+  }
+
+  const protection = await getStudContractPuppyProtection({
+    dogId: dog.id,
+    client,
+  });
+  if (protection.protected) {
+    return ineligibleDogSale(
+      dog.id,
+      "STUD_CONTRACT_SELECTION_PROTECTED",
+      protection.reasonCode === "SELECTED_CLAIM"
+        ? "This puppy has been selected under an active Stud Contract and cannot be listed for sale yet."
+        : "This puppy is part of an active Stud Contract selection and cannot be listed for sale yet."
+    );
+  }
+  if (!canSellPuppy(args.currentEpoch, dog.birthEpoch, dog.lifecycleState)) {
+    return ineligibleDogSale(
+      dog.id,
+      "UNDER_SALE_AGE",
+      "Dogs cannot be offered for sale until 8 weeks of game age."
+    );
+  }
+  if (dog.marketState !== "NOT_FOR_SALE") {
+    return ineligibleDogSale(
+      dog.id,
+      "ALREADY_LISTED",
+      "This dog is already listed or unavailable for sale."
+    );
+  }
+
+  const activeDamBreeding = await client.breedingAttempt.findFirst({
+    where: {
+      damId: dog.id,
+      status: { in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"] },
+    },
+    select: { id: true },
+  });
+  if (activeDamBreeding) {
+    return ineligibleDogSale(
+      dog.id,
+      "BREEDING_CONFLICT",
+      "Pregnant bitches and bitches awaiting pregnancy checks cannot be listed yet."
+    );
+  }
+
+  const activeListing = await client.dogListing.findFirst({
+    where: { dogId: dog.id, status: "ACTIVE" },
+    select: { id: true },
+  });
+  if (activeListing) {
+    return ineligibleDogSale(
+      dog.id,
+      "ALREADY_LISTED",
+      "This dog already has an active listing."
+    );
+  }
+
+  return { dogId: dog.id, eligible: true, reasonCode: null, reasonMessage: null };
+}
 
 type HiddenTraitRecord = PersistedDogTraitRecord;
 
@@ -308,72 +436,21 @@ export async function listDogForSale(args: {
 
   assertWholeDollarAmount(askingPrice, "Sale price");
   return db.$transaction(async (tx) => {
+    const eligibility = await getDogSaleEligibility({
+      dogId,
+      sellerKennelId,
+      currentEpoch,
+      client: tx,
+    });
+    if (!eligibility.eligible) {
+      throw new Error(eligibility.reasonMessage ?? "Dog cannot be offered for sale.");
+    }
+
     const dog = await tx.dog.findUnique({
       where: { id: dogId },
-      select: {
-        id: true,
-        regNumber: true,
-        ownerKennelId: true,
-        birthEpoch: true,
-        lifecycleState: true,
-        marketState: true,
-      },
+      select: { id: true, regNumber: true },
     });
-
-    if (!dog) {
-      throw new Error("Dog not found.");
-    }
-
-    if (dog.ownerKennelId !== sellerKennelId) {
-      throw new Error("You do not own this dog.");
-    }
-
-    if (dog.lifecycleState !== "ALIVE") {
-      throw new Error("Only active dogs can be offered for sale.");
-    }
-
-    await assertDogHasNoPendingVeterinaryCare(dog.id, tx);
-    await assertDogNotProtectedByStudContractSelection({ dogId: dog.id, action: "listed for sale", client: tx });
-
-    if (!canSellPuppy(currentEpoch, dog.birthEpoch, dog.lifecycleState)) {
-      throw new Error("Dogs cannot be offered for sale until 8 weeks of game age.");
-    }
-
-    if (dog.marketState !== "NOT_FOR_SALE") {
-      throw new Error("This dog is already listed or unavailable for sale.");
-    }
-
-    const activeDamBreeding = await tx.breedingAttempt.findFirst({
-      where: {
-        damId: dog.id,
-        status: {
-          in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"],
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (activeDamBreeding) {
-      throw new Error(
-        "Pregnant bitches and bitches awaiting pregnancy checks cannot be listed yet."
-      );
-    }
-
-    const activeListing = await tx.dogListing.findFirst({
-      where: {
-        dogId: dog.id,
-        status: "ACTIVE",
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (activeListing) {
-      throw new Error("This dog already has an active listing.");
-    }
+    if (!dog) throw new Error("Dog not found.");
 
     const listing = await tx.dogListing.create({
       data: {
