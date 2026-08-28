@@ -4,6 +4,8 @@ import {
   PHENOTYPE_HEALTH_TESTS,
   type PhenotypeHealthTestCode,
 } from "@showring/rules";
+import { getPhenotypeHealthSeverity } from "@/lib/dogHealth";
+import { PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES } from "./phenotypeHealthPresentation";
 
 export type PublicHealthTestResult = {
   testTypeCode: string;
@@ -46,6 +48,10 @@ export function publicHealthTestResultRows(
           test.testTypeCode,
           test.resultCode
         ),
+        severity: getPhenotypeHealthSeverity(
+          test.testTypeCode,
+          test.resultCode
+        ),
       },
     ];
   });
@@ -68,7 +74,11 @@ export default function HealthTestResultsPanel({
           {results.map((test) => (
             <div key={test.testTypeCode}>
               <dt className="inline font-medium">{test.label}: </dt>
-              <dd className="inline">{test.result}</dd>
+              <dd
+                className={`inline ${PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES[test.severity]}`}
+              >
+                {test.result}
+              </dd>
             </div>
           ))}
         </dl>

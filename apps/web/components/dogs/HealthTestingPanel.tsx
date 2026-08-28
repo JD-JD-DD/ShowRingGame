@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES } from "./phenotypeHealthPresentation";
 
 type HealthTestPanelRow = {
   testTypeCode: string;
@@ -21,12 +22,6 @@ type HealthTestingPanelProps = {
   rows: HealthTestPanelRow[];
   canOrderHealthTests: boolean;
   kennelBalance: number;
-};
-
-const RESULT_NAME_STYLES: Record<"green" | "yellow" | "red", string> = {
-  green: "text-emerald-700 dark:text-emerald-200",
-  yellow: "text-amber-700 dark:text-amber-200",
-  red: "text-red-700 dark:text-red-200",
 };
 
 function formatMoney(amount: number): string {
@@ -77,7 +72,7 @@ export default function HealthTestingPanel({
           const selectable = availableCodeSet.has(row.testTypeCode);
           const checked = validSelectedCodes.includes(row.testTypeCode);
           const nameClass = row.result
-            ? RESULT_NAME_STYLES[row.result.severity]
+            ? PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES[row.result.severity]
             : "dog-heading";
 
           return (
@@ -86,7 +81,7 @@ export default function HealthTestingPanel({
               className={`flex items-center gap-3 px-3 py-2.5 ${selectable ? "cursor-pointer" : "cursor-default"}`}
             >
               {row.result ? (
-                <span className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-xs font-bold ${RESULT_NAME_STYLES[row.result.severity]}`} aria-label="Complete">
+                <span className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-xs font-bold ${PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES[row.result.severity]}`} aria-label="Complete">
                   ✓
                 </span>
               ) : (

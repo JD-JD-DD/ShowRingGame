@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { publicHealthTestResultRows } from "../components/dogs/HealthTestResultsPanel";
+import { PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES } from "../components/dogs/phenotypeHealthPresentation";
 
 const repoRoot = path.resolve(__dirname, "../../..");
 const marketService = fs.readFileSync(
@@ -29,15 +30,22 @@ assert.deepEqual(
       testTypeCode: "HIP_DYSPLASIA",
       label: "Hip Dysplasia",
       result: "Excellent",
+      severity: "green",
     },
     {
       testTypeCode: "CARDIAC",
       label: "Cardiac",
       result: "Normal",
+      severity: "green",
     },
   ],
   "the shared presenter keeps the newest public result per canonical test"
 );
+assert.deepEqual(PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES, {
+  green: "text-emerald-700 dark:text-emerald-200",
+  yellow: "text-amber-700 dark:text-amber-200",
+  red: "text-red-700 dark:text-red-200",
+});
 assert.equal(
   publicHealthTestResultRows([
     { testTypeCode: "NOT_A_PUBLIC_TEST", resultCode: "UNKNOWN" },
@@ -65,6 +73,21 @@ assert.match(
   studsPage,
   /<HealthTestResultsPanel tests=\{dog\.healthTests\} \/>/,
   "public stud cards use the shared health-test presenter"
+);
+
+const healthTestResultsPanel = fs.readFileSync(
+  path.join(repoRoot, "apps/web/components/dogs/HealthTestResultsPanel.tsx"),
+  "utf8"
+);
+assert.match(
+  healthTestResultsPanel,
+  /getPhenotypeHealthSeverity\(\s*test\.testTypeCode,\s*test\.resultCode/,
+  "completed public result severity comes from the canonical health helper"
+);
+assert.match(
+  healthTestResultsPanel,
+  /<dt className="inline font-medium">\{test\.label\}: <\/dt>[\s\S]*?PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES\[test\.severity\]/,
+  "only the result value receives the shared semantic text class"
 );
 assert.match(
   studsPage,
