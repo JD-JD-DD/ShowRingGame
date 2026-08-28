@@ -74,7 +74,7 @@
     "test:show-countdowns": "tsx scripts/testShowCountdowns.ts",
     "test:paypal-support-integration": "tsx scripts/testPayPalSupportIntegration.ts",
     "test:paypal-webhook-integration": "tsx scripts/testPayPalWebhookIntegration.ts",
-    "provision:paypal-support-sandbox": "tsx scripts/provisionPayPalSupportSandbox.ts",
+    "provision:paypal-support-sandbox": "tsx scripts/provisionPayPalSupportSandbox.cts",
     "verify:judge-assignments": "tsx scripts/verifyJudgeAssignmentsReadOnly.ts",
     "test:maintain-show-schedule-auth": "tsx scripts/testMaintainShowScheduleAuthorization.ts",
     "repair:year15-schedule:dry-run": "tsx scripts/repairYear15Schedule.ts",
