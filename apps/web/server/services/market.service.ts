@@ -222,10 +222,122 @@ export type MarketDogDto = {
   visibleCategories: VisibleCategories;
 };
 
-function assertWholeDollarAmount(value: number, label: string): void {
+export function assertWholeDollarAmount(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 1) {
     throw new Error(`${label} must be a whole dollar amount of at least $1.`);
   }
+}
+
+type PlayerSaleListingDataArgs = {
+  dogId: string;
+  sellerKennelId: string;
+  askingPrice: number;
+  currentEpoch: number;
+  regNumber: string;
+};
+
+function playerSaleListingData(args: PlayerSaleListingDataArgs) {
+  return {
+    dogId: args.dogId,
+    sellerKennelId: args.sellerKennelId,
+    sellerType: "PLAYER" as const,
+    askingPrice: args.askingPrice,
+    listingType: PLAYER_SALE_LISTING_TYPE,
+    status: "ACTIVE" as const,
+    listedAtEpoch: args.currentEpoch,
+    descriptionPublic: `Player listing for ${args.regNumber}.`,
+  };
+}
+
+export class BulkDogSaleError extends Error {
+  constructor(
+    message: string,
+    readonly details?: {
+      failedDogId?: string;
+      reasonCode?: SaleEligibilityReasonCode;
+      reasonMessage?: string;
+    }
+  ) {
+    super(message);
+  }
+}
+
+export async function bulkListDogsForSale(args: {
+  sellerKennelId: string;
+  currentEpoch: number;
+  updates: Array<{ dogId: string; askingPrice: number }>;
+}): Promise<{ listedCount: number }> {
+  return bulkListDogsForSaleWithClient(args, db);
+}
+
+export async function bulkListDogsForSaleWithClient(
+  args: {
+    sellerKennelId: string;
+    currentEpoch: number;
+    updates: Array<{ dogId: string; askingPrice: number }>;
+  },
+  client: Pick<typeof db, "$transaction"> = db
+): Promise<{ listedCount: number }> {
+  for (const update of args.updates) {
+    assertWholeDollarAmount(update.askingPrice, "Sale price");
+  }
+
+  return client.$transaction(async (tx) => {
+    for (const update of args.updates) {
+      const eligibility = await getDogSaleEligibility({
+        dogId: update.dogId,
+        sellerKennelId: args.sellerKennelId,
+        currentEpoch: args.currentEpoch,
+        client: tx,
+      });
+      if (!eligibility.eligible) {
+        throw new BulkDogSaleError(
+          `No dogs were listed. ${eligibility.reasonMessage ?? "This dog is no longer eligible for sale."}`,
+          {
+            failedDogId: update.dogId,
+            reasonCode: eligibility.reasonCode ?? undefined,
+            reasonMessage: eligibility.reasonMessage ?? undefined,
+          }
+        );
+      }
+    }
+
+    const dogs = await tx.dog.findMany({
+      where: { id: { in: args.updates.map((update) => update.dogId) } },
+      select: { id: true, regNumber: true },
+    });
+    const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
+    if (dogsById.size !== args.updates.length) {
+      throw new BulkDogSaleError("No dogs were listed. A selected dog could not be found.");
+    }
+
+    await tx.dogListing.createMany({
+      data: args.updates.map((update) =>
+        playerSaleListingData({
+          dogId: update.dogId,
+          sellerKennelId: args.sellerKennelId,
+          askingPrice: update.askingPrice,
+          currentEpoch: args.currentEpoch,
+          regNumber: dogsById.get(update.dogId)!.regNumber,
+        })
+      ),
+    });
+
+    const marketStateUpdate = await tx.dog.updateMany({
+      where: {
+        id: { in: args.updates.map((update) => update.dogId) },
+        ownerKennelId: args.sellerKennelId,
+        lifecycleState: "ALIVE",
+        marketState: "NOT_FOR_SALE",
+      },
+      data: { marketState: "LISTED_PLAYER" },
+    });
+    if (marketStateUpdate.count !== args.updates.length) {
+      throw new BulkDogSaleError("No dogs were listed. A selected dog is no longer eligible for sale.");
+    }
+
+    return { listedCount: args.updates.length };
+  });
 }
 
 function mapMarketListing(args: {
@@ -459,16 +571,13 @@ export async function listDogForSale(args: {
     if (!dog) throw new Error("Dog not found.");
 
     const listing = await tx.dogListing.create({
-      data: {
+      data: playerSaleListingData({
         dogId: dog.id,
         sellerKennelId,
-        sellerType: "PLAYER",
         askingPrice,
-        listingType: PLAYER_SALE_LISTING_TYPE,
-        status: "ACTIVE",
-        listedAtEpoch: currentEpoch,
-        descriptionPublic: `Player listing for ${dog.regNumber}.`,
-      },
+        currentEpoch,
+        regNumber: dog.regNumber,
+      }),
       select: {
         id: true,
       },

@@ -23,6 +23,12 @@ type BulkSalePreflightResponse = {
   error?: string;
 };
 
+type BulkSaleMutationResponse = {
+  ok?: boolean;
+  listedCount?: number;
+  error?: string;
+};
+
 export function isValidWholeDollarSalePrice(value: string): boolean {
   if (!/^\d+$/.test(value)) return false;
   const price = Number.parseInt(value, 10);
@@ -43,7 +49,12 @@ export default function BulkForSaleWorkspace({
   const [sellAllPrice, setSellAllPrice] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [preflightRetry, setPreflightRetry] = useState(0);
   const requestSequence = useRef(0);
+  const previousDogIdsKey = useRef<string | null>(null);
   const dogIdsKey = dogs.map((dog) => dog.dogId).join(",");
 
   useEffect(() => {
@@ -51,7 +62,12 @@ export default function BulkForSaleWorkspace({
     setLoading(true);
     setError(null);
     setEligibilityByDogId({});
-    setPricesByDogId({});
+    if (previousDogIdsKey.current !== dogIdsKey) {
+      setPricesByDogId({});
+      setSubmissionError(null);
+      setSuccessMessage(null);
+      previousDogIdsKey.current = dogIdsKey;
+    }
 
     void fetch("/api/kennel/dogs/bulk-sale-preflight", {
       method: "POST",
@@ -83,7 +99,7 @@ export default function BulkForSaleWorkspace({
       .finally(() => {
         if (requestId === requestSequence.current) setLoading(false);
       });
-  }, [dogIdsKey]);
+  }, [dogIdsKey, preflightRetry]);
 
   const eligibleDogs = useMemo(
     () => dogs.filter((dog) => eligibilityByDogId[dog.dogId]?.eligible),
@@ -110,6 +126,43 @@ export default function BulkForSaleWorkspace({
     }));
   }
 
+  async function submitBulkSale() {
+    if (!formReady || submitting || successMessage) return;
+    setSubmitting(true);
+    setSubmissionError(null);
+
+    try {
+      const response = await fetch("/api/kennel/dogs/bulk-for-sale", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          updates: eligibleDogs.map((dog) => ({
+            dogId: dog.dogId,
+            askingPrice: pricesByDogId[dog.dogId],
+          })),
+        }),
+      });
+      const data = (await response.json()) as BulkSaleMutationResponse;
+      if (!response.ok || !data.ok || typeof data.listedCount !== "number") {
+        throw new Error(data.error || "No dogs were listed.");
+      }
+      setSuccessMessage(
+        data.listedCount === 1
+          ? "1 dog was listed for sale."
+          : `${data.listedCount.toLocaleString()} dogs were listed for sale.`
+      );
+    } catch (mutationError) {
+      setSubmissionError(
+        mutationError instanceof Error
+          ? mutationError.message
+          : "No dogs were listed. Please review sale eligibility and try again."
+      );
+      setPreflightRetry((current) => current + 1);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <section className="mt-4 min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4" aria-labelledby="bulk-for-sale-heading">
       <div className="flex flex-col gap-4">
@@ -132,6 +185,8 @@ export default function BulkForSaleWorkspace({
 
         {loading ? <p className="theme-copy text-sm" role="status" aria-live="polite">Checking sale eligibility...</p> : null}
         {error ? <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="alert">{error}</div> : null}
+        {submissionError ? <div className="theme-status-danger rounded-lg px-3 py-2 text-sm" role="alert">{submissionError}</div> : null}
+        {successMessage ? <div className="theme-status-success rounded-lg px-3 py-2 text-sm" role="status">{successMessage}</div> : null}
 
         <div className="grid gap-3">
           {dogs.map((dog) => {
@@ -161,10 +216,10 @@ export default function BulkForSaleWorkspace({
         </div>
 
         <div className="flex flex-col gap-2 border-t border-[var(--color-border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="theme-copy text-sm" role="status">{formReady ? "Prices are complete. Listing will be available in a future update." : eligibleDogs.length === 0 && !loading && !error ? "No selected dogs are currently eligible for sale." : "Add a valid whole-dollar price for every eligible dog."}</p>
+          <p className="theme-copy text-sm" role="status">{successMessage ? "The submitted dogs are listed for sale." : formReady ? "Prices are complete. Ready to list eligible dogs for sale." : eligibleDogs.length === 0 && !loading && !error ? "No selected dogs are currently eligible for sale." : "Add a valid whole-dollar price for every eligible dog."}</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={onClose} className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus)]">Cancel</button>
-            <button type="button" disabled className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45">List Dogs For Sale</button>
+            <button type="button" onClick={submitBulkSale} disabled={!formReady || submitting || Boolean(successMessage)} className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45">{submitting ? "Listing dogs..." : "List Dogs For Sale"}</button>
           </div>
         </div>
       </div>
