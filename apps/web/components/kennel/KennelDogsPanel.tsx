@@ -6,6 +6,9 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import BulkCallNameEditor from "@/components/kennel/BulkCallNameEditor";
+import BulkForSaleWorkspace, {
+  type BulkSaleDog,
+} from "@/components/kennel/BulkForSaleWorkspace";
 import {
   formatBulkBrucellosisCompletion,
   formatBulkHealthTestCompletion,
@@ -166,8 +169,13 @@ type BulkAction =
   | "rehome"
   | "move-dogs"
   | "health-tests"
-  | "brucellosis";
-type ConfigurableBulkWorkspace = "move-dogs" | "health-tests" | "brucellosis";
+  | "brucellosis"
+  | "bulk-sale";
+type ConfigurableBulkWorkspace =
+  | "move-dogs"
+  | "health-tests"
+  | "brucellosis"
+  | "bulk-sale";
 type HealthTestCode =
   | "HIP_DYSPLASIA"
   | "ELBOW_DYSPLASIA"
@@ -905,6 +913,21 @@ export default function KennelDogsPanel() {
     const selected = new Set(selectedDogIds);
     return allDogs.filter((dog) => selected.has(dog.dogId));
   }, [allDogs, selectedDogIds]);
+  const selectedSaleDogs = useMemo(() => {
+    const dogsById = new Map(allDogs.map((dog) => [dog.dogId, dog]));
+    return selectedDogIds.flatMap((dogId) => {
+      const dog = dogsById.get(dogId);
+      return dog
+        ? [{
+            dogId: dog.dogId,
+            displayName: getDogDisplayName(dog),
+            callName: dog.callName,
+            regNumber: dog.regNumber,
+            ageLabel: formatAge(dog.ageHours),
+          } satisfies BulkSaleDog]
+        : [];
+    });
+  }, [allDogs, selectedDogIds]);
 
   const selectedDogsQuery = selectedDogIds.join(",");
   const selectedRuns = runs.filter((run) => selectedRunIds.includes(run.id));
@@ -1147,6 +1170,16 @@ export default function KennelDogsPanel() {
       setBulkAction("");
       setConfirmingBulkAction(false);
       setActiveBulkWorkspace("brucellosis");
+      setSelectedMoveRunId("");
+      resetHealthTestingWorkspaceState();
+      resetBrucellosisWorkspaceState();
+      return;
+    }
+
+    if (action === "bulk-sale") {
+      setBulkAction("");
+      setConfirmingBulkAction(false);
+      setActiveBulkWorkspace("bulk-sale");
       setSelectedMoveRunId("");
       resetHealthTestingWorkspaceState();
       resetBrucellosisWorkspaceState();
@@ -2121,6 +2154,7 @@ export default function KennelDogsPanel() {
                 <option value="move-dogs">Move Dogs</option>
                 <option value="health-tests">Health Tests...</option>
                 <option value="brucellosis">Brucellosis Test</option>
+                <option value="bulk-sale">Bulk For Sale</option>
                 <option value="show-entry">Show Entry</option>
                 <option value="rehome">Re-Home</option>
               </select>
@@ -2199,6 +2233,13 @@ export default function KennelDogsPanel() {
                 </div>
               </div>
             </div>
+          ) : null}
+
+          {activeBulkWorkspace === "bulk-sale" ? (
+            <BulkForSaleWorkspace
+              dogs={selectedSaleDogs}
+              onClose={closeActiveBulkWorkspace}
+            />
           ) : null}
 
           {activeBulkWorkspace === "health-tests" ? (

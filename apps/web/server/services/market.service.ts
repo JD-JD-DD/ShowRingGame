@@ -7,7 +7,10 @@ import {
   assertDogHasNoPendingVeterinaryCare,
   hasPendingVeterinaryCareForDog,
 } from "@/server/services/emergencyVetCare.service";
-import { getStudContractPuppyProtection } from "@/server/services/studContractPuppyProtection.service";
+import {
+  assertDogNotProtectedByStudContractSelection,
+  getStudContractPuppyProtection,
+} from "@/server/services/studContractPuppyProtection.service";
 import { extinguishStudContractReturnServicesForDog } from "@/server/services/studContractReturnService.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
