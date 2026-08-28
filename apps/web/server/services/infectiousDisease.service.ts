@@ -312,6 +312,57 @@ export async function executeBrucellosisScreeningForKennelTx(
   return test;
 }
 
+export function prepareBulkBrucellosisScreeningPersistence(args: {
+  kennelId: string;
+  dogs: BrucellosisScreeningDog[];
+  statusByDogId: Map<string, string>;
+  currentEpoch: number;
+  runningBalance: { value: number };
+  onPrepared: () => void;
+}) {
+  const testRecords: Prisma.InfectiousDiseaseTestRecordCreateManyInput[] = [];
+  const ledgerTransactions: Prisma.LedgerTransactionCreateManyInput[] = [];
+
+  for (const dog of args.dogs) {
+    const resultCode: BrucellosisTestResultCode =
+      args.statusByDogId.get(dog.id) === "INFECTED" ? "POSITIVE" : "NEGATIVE";
+    const validUntilEpoch =
+      resultCode === "NEGATIVE"
+        ? args.currentEpoch + BRUCELLOSIS_TEST_VALID_HOURS
+        : null;
+    args.runningBalance.value -= BRUCELLOSIS_TEST_FEE;
+
+    testRecords.push({
+      dogId: dog.id,
+      diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+      resultCode,
+      testedAtEpoch: args.currentEpoch,
+      validUntilEpoch,
+      breedingAttemptId: null,
+      notes:
+        resultCode === "POSITIVE"
+          ? "Positive brucellosis screen."
+          : "Negative brucellosis screen.",
+    });
+    ledgerTransactions.push({
+      kennelId: args.kennelId,
+      transactionType: "HEALTH_TEST_FEE",
+      amount: -BRUCELLOSIS_TEST_FEE,
+      balanceAfter: args.runningBalance.value,
+      occurredAtEpoch: args.currentEpoch,
+      dogId: dog.id,
+      memo: `Brucellosis screening for ${formatDogDisplayName(dog)}.`,
+      metadataJson: {
+        diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+        resultCode,
+      },
+    });
+    args.onPrepared();
+  }
+
+  return { testRecords, ledgerTransactions };
+}
+
 export async function runBulkBrucellosisScreeningForKennel(args: {
   kennelId: string;
   dogIds: unknown;
@@ -399,24 +450,44 @@ export async function runBulkBrucellosisScreeningForKennel(args: {
       };
     }
 
+    phase = "loadDiseaseStatus";
+    const diseaseStatuses = await tx.dogInfectiousDiseaseStatus.findMany({
+      where: {
+        dogId: { in: screenableDogs.map((dog) => dog.id) },
+        diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+      },
+      select: {
+        dogId: true,
+        status: true,
+      },
+    });
+    const runningBalance = { value: kennel.balance };
+    phase = "prepareScreenings";
+    const { testRecords, ledgerTransactions } =
+      prepareBulkBrucellosisScreeningPersistence({
+        kennelId: kennel.id,
+        dogs: screenableDogs,
+        statusByDogId: new Map(
+          diseaseStatuses.map((status) => [status.dogId, status.status])
+        ),
+        currentEpoch: args.currentEpoch,
+        runningBalance,
+        onPrepared: () => {
+          processedScreeningCount += 1;
+        },
+      });
+
     phase = "balanceDebit";
     await tx.kennel.update({
       where: { id: kennel.id },
       data: { balance: kennel.balance - totalCharged },
     });
 
-    const runningBalance = { value: kennel.balance };
+    phase = "persistScreenings";
+    await tx.infectiousDiseaseTestRecord.createMany({ data: testRecords });
 
-    phase = "screeningProcessing";
-    for (const dog of screenableDogs) {
-      await executeBrucellosisScreeningForKennelTx(tx, {
-        kennelId: kennel.id,
-        dog,
-        currentEpoch: args.currentEpoch,
-        runningBalance,
-      });
-      processedScreeningCount += 1;
-    }
+    phase = "persistLedger";
+    await tx.ledgerTransaction.createMany({ data: ledgerTransactions });
 
     phase = "transactionCommit";
     return {

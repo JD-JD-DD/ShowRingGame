@@ -1,6 +1,12 @@
 import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  BRUCELLOSIS_DISEASE_CODE,
+  BRUCELLOSIS_TEST_FEE,
+  BRUCELLOSIS_TEST_VALID_HOURS,
+} from "@showring/rules";
+import { prepareBulkBrucellosisScreeningPersistence } from "../server/services/infectiousDisease.service";
 
 const root = process.cwd().endsWith(join("apps", "web"))
   ? join(process.cwd(), "..", "..")
@@ -47,8 +53,10 @@ assert.ok(
   "bulk Brucellosis makes one aggregate balance mutation"
 );
 assert.ok(
-  bulkExecution.includes("executeBrucellosisScreeningForKennelTx(tx, {"),
-  "bulk Brucellosis delegates each screening to the canonical charged seam"
+  bulkExecution.includes("await tx.dogInfectiousDiseaseStatus.findMany({") &&
+    !bulkExecution.includes("executeBrucellosisScreeningForKennelTx(tx, {") &&
+    !bulkExecution.includes("runBrucellosisTest(tx,"),
+  "bulk Brucellosis loads disease statuses once instead of invoking the per-dog seam"
 );
 assert.ok(
   service.includes("await tx.ledgerTransaction.create({"),
@@ -85,7 +93,10 @@ for (const marker of [
   "errorName",
   "errorCode",
   "errorMessage",
-  'phase = "screeningProcessing"',
+  'phase = "loadDiseaseStatus"',
+  'phase = "prepareScreenings"',
+  'phase = "persistScreenings"',
+  'phase = "persistLedger"',
   'phase = "transactionCommit"',
 ]) {
   assert.ok(service.includes(marker), `bulk Brucellosis diagnostics retain ${marker}`);
@@ -97,6 +108,69 @@ assert.ok(
 assert.ok(
   !service.includes('console.info("Bulk brucellosis execution completed", {\n      resultCode'),
   "bulk Brucellosis success diagnostics do not log screening result values"
+);
+assert.ok(
+  bulkExecution.includes(
+    "await tx.infectiousDiseaseTestRecord.createMany({ data: testRecords })"
+  ) &&
+    bulkExecution.includes(
+      "await tx.ledgerTransaction.createMany({ data: ledgerTransactions })"
+    ) &&
+    !bulkExecution.includes("tx.dogInfectiousDiseaseStatus.findUnique") &&
+    !bulkExecution.includes("tx.infectiousDiseaseTestRecord.create({") &&
+    !bulkExecution.includes("tx.ledgerTransaction.create({"),
+  "bulk Brucellosis uses one status query and bounded record/ledger writes"
+);
+
+const dogs = Array.from({ length: 50 }, (_, index) => ({
+  id: `bruc-dog-${index + 1}`,
+  registeredName: null,
+  callName: null,
+  regNumber: `BRUC-${index + 1}`,
+  visibleTitlePrefix: null,
+  visibleTitleSuffix: null,
+}));
+const startingBalance = 100_000;
+let preparedCount = 0;
+const prepared = prepareBulkBrucellosisScreeningPersistence({
+  kennelId: "bruc-kennel",
+  dogs,
+  statusByDogId: new Map([[dogs[0]!.id, "INFECTED"]]),
+  currentEpoch: 4321,
+  runningBalance: { value: startingBalance },
+  onPrepared: () => {
+    preparedCount += 1;
+  },
+});
+
+assert.equal(preparedCount, 50, "a 50-dog cohort prepares every screening");
+assert.equal(prepared.testRecords.length, 50, "one test record is prepared per dog");
+assert.equal(prepared.ledgerTransactions.length, 50, "one ledger row is prepared per dog");
+assert.equal(prepared.testRecords[0]?.resultCode, "POSITIVE", "infected dogs screen positive");
+assert.equal(
+  prepared.testRecords[1]?.resultCode,
+  "NEGATIVE",
+  "dogs without an infected status screen negative"
+);
+assert.equal(
+  prepared.testRecords[1]?.validUntilEpoch,
+  4321 + BRUCELLOSIS_TEST_VALID_HOURS,
+  "negative screens retain their existing validity period"
+);
+assert.equal(
+  prepared.ledgerTransactions[0]?.amount,
+  -BRUCELLOSIS_TEST_FEE,
+  "every screening retains the canonical charge"
+);
+assert.equal(
+  prepared.ledgerTransactions.at(-1)?.balanceAfter,
+  startingBalance - 50 * BRUCELLOSIS_TEST_FEE,
+  "ledger rows retain deterministic progressive balances"
+);
+assert.equal(
+  prepared.testRecords[0]?.diseaseCode,
+  BRUCELLOSIS_DISEASE_CODE,
+  "every prepared test retains the Brucellosis disease code"
 );
 
 console.log("Bulk brucellosis execution source checks passed.");
