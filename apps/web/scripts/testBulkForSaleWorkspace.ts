@@ -14,6 +14,17 @@ assert.match(panel, /<option value="bulk-sale">Bulk For Sale<\/option>/);
 assert.match(panel, /setActiveBulkWorkspace\("bulk-sale"\)/);
 assert.match(panel, /selectedDogIds\.flatMap/);
 assert.match(panel, /<BulkForSaleWorkspace/);
+assert.match(panel, /onSuccess=\{refreshAfterBulkSaleSuccess\}/);
+assert.match(panel, /async function refreshAfterBulkSaleSuccess/);
+assert.match(panel, /await loadDogs\(\{ preserveLoadingState: true \}\)/);
+assert.match(panel, /clearSelection\(\);/);
+assert.match(panel, /1 dog listed for sale\./);
+assert.match(panel, /dogs listed for sale\./);
+assert.match(panel, /The dogs were listed for sale, but My Kennel could not be refreshed\./);
+assert.doesNotMatch(
+  panel.slice(panel.indexOf("async function refreshAfterBulkSaleSuccess"), panel.indexOf("function updateBulkAction")),
+  /loadRuns|router\.refresh|window\.location/
+);
 
 assert.match(workspace, /bulk-sale-preflight/);
 assert.match(workspace, /Checking sale eligibility/);
@@ -28,6 +39,8 @@ assert.match(workspace, /\/api\/kennel\/dogs\/bulk-for-sale/);
 assert.match(workspace, /disabled=\{!formReady \|\| submitting \|\| Boolean\(successMessage\)\}/);
 assert.match(workspace, /Listing dogs\.\.\./);
 assert.match(workspace, /setPreflightRetry/);
+assert.match(workspace, /await onSuccess\(\{ listedCount: data\.listedCount \}\)/);
+assert.doesNotMatch(workspace, /router\.refresh|window\.location/);
 assert.match(workspace, /aria-label=\{`Sale price for \$\{dog\.displayName\}`\}/);
 assert.match(workspace, /Sell All For price/);
 assert.match(workspace, /toLocaleString|Intl\.NumberFormat|formatMoney|Sale price/);

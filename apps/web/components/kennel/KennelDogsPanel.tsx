@@ -645,7 +645,7 @@ export default function KennelDogsPanel() {
       const data: KennelDogsResponse = await response.json();
 
       if (requestSequence !== dogsRequestSequence.current) {
-        return;
+        return false;
       }
 
       if (!response.ok || !data.ok) {
@@ -654,6 +654,7 @@ export default function KennelDogsPanel() {
 
       setAllDogs(data.dogs ?? []);
       setGroomingSummary(data.groomingSummary ?? null);
+      return true;
     } catch (err) {
       if (requestSequence !== dogsRequestSequence.current) {
         return;
@@ -662,6 +663,7 @@ export default function KennelDogsPanel() {
       setError(
         err instanceof Error ? err.message : "Failed to load kennel dogs."
       );
+      return false;
     } finally {
       if (requestSequence === dogsRequestSequence.current) {
         setLoading(false);
@@ -1143,6 +1145,19 @@ export default function KennelDogsPanel() {
 
   async function refreshAfterBulkNamingSave() {
     await loadDogs({ preserveLoadingState: true });
+  }
+
+  async function refreshAfterBulkSaleSuccess(args: { listedCount: number }) {
+    const refreshed = await loadDogs({ preserveLoadingState: true });
+    clearSelection();
+    setMessage(
+      args.listedCount === 1
+        ? "1 dog listed for sale."
+        : `${args.listedCount.toLocaleString()} dogs listed for sale.`
+    );
+    if (!refreshed) {
+      setError("The dogs were listed for sale, but My Kennel could not be refreshed.");
+    }
   }
 
   function updateBulkAction(action: BulkAction) {
@@ -2239,6 +2254,7 @@ export default function KennelDogsPanel() {
             <BulkForSaleWorkspace
               dogs={selectedSaleDogs}
               onClose={closeActiveBulkWorkspace}
+              onSuccess={refreshAfterBulkSaleSuccess}
             />
           ) : null}
 

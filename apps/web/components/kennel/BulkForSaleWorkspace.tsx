@@ -38,9 +38,11 @@ export function isValidWholeDollarSalePrice(value: string): boolean {
 export default function BulkForSaleWorkspace({
   dogs,
   onClose,
+  onSuccess,
 }: {
   dogs: BulkSaleDog[];
   onClose: () => void;
+  onSuccess: (args: { listedCount: number }) => Promise<void>;
 }) {
   const [eligibilityByDogId, setEligibilityByDogId] = useState<
     Record<string, SaleEligibility>
@@ -146,11 +148,7 @@ export default function BulkForSaleWorkspace({
       if (!response.ok || !data.ok || typeof data.listedCount !== "number") {
         throw new Error(data.error || "No dogs were listed.");
       }
-      setSuccessMessage(
-        data.listedCount === 1
-          ? "1 dog was listed for sale."
-          : `${data.listedCount.toLocaleString()} dogs were listed for sale.`
-      );
+      await onSuccess({ listedCount: data.listedCount });
     } catch (mutationError) {
       setSubmissionError(
         mutationError instanceof Error
