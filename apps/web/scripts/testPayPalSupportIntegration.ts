@@ -88,7 +88,11 @@ const fetchStub: typeof fetch = async (input, init) => {
   return new Response(JSON.stringify(responses.shift()), { status: 200 });
 };
 const client = new PayPalClient(config, fetchStub);
-const created = await client.createSubscription({ tier: "SILVER" });
+const created = await client.createSubscription({
+  tier: "SILVER",
+  returnUrl: "https://showring.example/account/settings/support?paypal=approved",
+  cancelUrl: "https://showring.example/support?paypal=cancelled",
+});
 const retrieved = await client.getSubscription(created.providerSubscriptionId);
 
 assert.equal(created.providerSubscriptionId, "I-sandbox-subscription");
@@ -99,7 +103,11 @@ assert.equal(requests[0]?.url, "https://api-m.sandbox.paypal.com/v1/oauth2/token
 assert.equal(requests[1]?.url, "https://api-m.sandbox.paypal.com/v1/billing/subscriptions");
 assert.deepEqual(JSON.parse(String(requests[1]?.init?.body)), {
   plan_id: "plan-5",
-  application_context: { user_action: "SUBSCRIBE_NOW" },
+  application_context: {
+    user_action: "SUBSCRIBE_NOW",
+    return_url: "https://showring.example/account/settings/support?paypal=approved",
+    cancel_url: "https://showring.example/support?paypal=cancelled",
+  },
 });
 assert.equal(
   requests[2]?.url,

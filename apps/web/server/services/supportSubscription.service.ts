@@ -93,6 +93,8 @@ export type CreateSupportSubscriptionResult = {
 export async function createPayPalSupportSubscription(args: {
   userId: string;
   tier: SupportTierValue;
+  returnUrl: string;
+  cancelUrl: string;
   database?: SupportSubscriptionDatabase;
   payPalClient?: PayPalClient;
 }): Promise<CreateSupportSubscriptionResult> {
@@ -115,7 +117,11 @@ export async function createPayPalSupportSubscription(args: {
       throw new SupportSubscriptionError("This account already has a current support subscription.", 409);
     }
 
-    const created = await payPalClient.createSubscription({ tier: args.tier });
+    const created = await payPalClient.createSubscription({
+      tier: args.tier,
+      returnUrl: args.returnUrl,
+      cancelUrl: args.cancelUrl,
+    });
     const verified = await payPalClient.getSubscription(created.providerSubscriptionId);
     const status = verifyPayPalSubscription({ subscription: verified, tier: args.tier });
     const supportedAt = status === "ACTIVE" ? verified.startTime ?? new Date() : null;

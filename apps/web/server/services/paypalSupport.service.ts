@@ -272,13 +272,19 @@ export class PayPalClient {
 
   async createSubscription(args: {
     tier: SupportTierValue;
+    returnUrl: string;
+    cancelUrl: string;
   }): Promise<CreatedPayPalSupportSubscription> {
     if (!("planIds" in this.config)) {
       throw new PayPalSupportError("PayPal support is not configured.", 503);
     }
     const result = await this.request("POST", "/v1/billing/subscriptions", {
       plan_id: getPayPalPlanId(args.tier, this.config),
-      application_context: { user_action: "SUBSCRIBE_NOW" },
+      application_context: {
+        user_action: "SUBSCRIBE_NOW",
+        return_url: args.returnUrl,
+        cancel_url: args.cancelUrl,
+      },
     });
     const subscription = parseCreatedPayPalSubscription(result);
 

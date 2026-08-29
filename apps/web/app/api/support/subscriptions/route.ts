@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/http";
+import { getAppBaseUrl } from "@/lib/appBaseUrl";
 import { getSessionUserId } from "@/lib/session";
 import { isSupportTier, PayPalSupportError } from "@/server/services/paypalSupport.service";
 import {
@@ -22,7 +23,13 @@ export async function POST(request: Request) {
       return fail("A valid support tier is required.", 400);
     }
 
-    const subscription = await createPayPalSupportSubscription({ userId, tier });
+    const appBaseUrl = getAppBaseUrl(request);
+    const subscription = await createPayPalSupportSubscription({
+      userId,
+      tier,
+      returnUrl: new URL("/account/settings/support?paypal=approved", appBaseUrl).toString(),
+      cancelUrl: new URL("/support?paypal=cancelled", appBaseUrl).toString(),
+    });
     return ok({ subscription });
   } catch (error) {
     if (error instanceof SupportSubscriptionError || error instanceof PayPalSupportError) {

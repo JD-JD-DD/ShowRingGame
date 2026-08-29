@@ -60,6 +60,7 @@ const primaryNavMenus = [
 
 const accountItems = [
   { label: "Settings", href: "/account" },
+  { label: "Support", href: "/support" },
   { label: "FAQ", href: "/faq" },
   { label: "Map", href: "/travel-map" },
   { label: "Start Up Guide", href: "/start-up-guide" },
