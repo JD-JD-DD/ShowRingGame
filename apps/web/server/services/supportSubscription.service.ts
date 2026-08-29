@@ -8,7 +8,7 @@ import {
   type SupportTierValue,
 } from "@/server/services/paypalSupport.service";
 
-const CURRENT_SUPPORT_STATUSES = [
+export const CURRENT_SUPPORT_STATUSES = [
   "PENDING",
   "ACTIVE",
   "PAYMENT_RETRY",
