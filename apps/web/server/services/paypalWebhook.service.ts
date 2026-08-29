@@ -1,8 +1,8 @@
 import { db } from "@/lib/db";
 import {
-  createPayPalSandboxClient,
-  getPayPalSandboxWebhookId,
-  type PayPalSandboxClient,
+  createPayPalClient,
+  getPayPalWebhookId,
+  type PayPalClient,
   type PayPalWebhookVerificationHeaders,
 } from "@/server/services/paypalSupport.service";
 import {
@@ -47,12 +47,12 @@ export function resolveProviderSubscriptionId(event: WebhookEvent): string | nul
 export async function verifyPayPalWebhook(args: {
   headers: PayPalWebhookVerificationHeaders;
   body: unknown;
-  payPalClient?: PayPalSandboxClient;
+  payPalClient?: PayPalClient;
 }): Promise<void> {
-  const verified = await (args.payPalClient ?? createPayPalSandboxClient()).verifyWebhookSignature({
+  const verified = await (args.payPalClient ?? createPayPalClient()).verifyWebhookSignature({
     headers: args.headers,
     event: args.body,
-    webhookId: getPayPalSandboxWebhookId(),
+    webhookId: getPayPalWebhookId(),
   });
   if (!verified) throw new PayPalWebhookError("PayPal webhook signature verification failed.", 401);
 }
@@ -63,7 +63,7 @@ function isUniqueViolation(error: unknown): boolean {
 
 export async function processVerifiedPayPalWebhook(args: {
   event: WebhookEvent;
-  payPalClient?: PayPalSandboxClient;
+  payPalClient?: PayPalClient;
   database?: any;
 }): Promise<"processed" | "ignored" | "duplicate"> {
   const database = args.database ?? db;
@@ -87,7 +87,7 @@ export async function processVerifiedPayPalWebhook(args: {
 
   try {
     // This current provider read deliberately occurs outside the database transaction.
-    const current = await (args.payPalClient ?? createPayPalSandboxClient()).getSubscription(providerSubscriptionId);
+    const current = await (args.payPalClient ?? createPayPalClient()).getSubscription(providerSubscriptionId);
     const tier = getSupportTierForPayPalPlan(current.planId);
     const status = translatePayPalStatus(current);
     const now = new Date();

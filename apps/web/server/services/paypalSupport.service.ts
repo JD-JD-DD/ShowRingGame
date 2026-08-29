@@ -1,16 +1,22 @@
 export const PAYPAL_SANDBOX_API_BASE = "https://api-m.sandbox.paypal.com";
+export const PAYPAL_LIVE_API_BASE = "https://api-m.paypal.com";
+
+export const PAYPAL_ENVIRONMENTS = ["sandbox", "live"] as const;
+export type PayPalEnvironment = (typeof PAYPAL_ENVIRONMENTS)[number];
 
 export const SUPPORT_TIERS = ["BRONZE", "SILVER", "GOLD"] as const;
 export type SupportTierValue = (typeof SUPPORT_TIERS)[number];
 
 export type PayPalSupportConfig = {
+  environment: PayPalEnvironment;
   clientId: string;
   clientSecret: string;
   productId: string;
   planIds: Record<SupportTierValue, string>;
+  webhookId: string;
 };
 
-type PayPalSandboxClientConfig = Pick<PayPalSupportConfig, "clientId" | "clientSecret"> | PayPalSupportConfig;
+type PayPalClientConfig = Pick<PayPalSupportConfig, "environment" | "clientId" | "clientSecret"> | PayPalSupportConfig;
 
 export type PayPalWebhookVerificationHeaders = {
   authAlgo: string;
@@ -45,35 +51,66 @@ export class PayPalSupportError extends Error {
   }
 }
 
-function requiredEnvironmentValue(name: string): string {
-  const value = process.env[name]?.trim();
+type PayPalEnvironmentValues = Record<string, string | undefined>;
+
+function requiredEnvironmentValue(name: string, values: PayPalEnvironmentValues = process.env): string {
+  const value = values[name]?.trim();
   if (!value) {
-    throw new PayPalSupportError("PayPal sandbox support is not configured.", 503);
+    throw new PayPalSupportError("PayPal support is not configured.", 503);
   }
   return value;
 }
 
-export function getPayPalSupportConfig(): PayPalSupportConfig {
+export function getPayPalEnvironment(value = process.env.PAYPAL_ENVIRONMENT): PayPalEnvironment {
+  if (value === "sandbox" || value === "live") return value;
+  throw new PayPalSupportError("PayPal environment is not configured.", 503);
+}
+
+function environmentVariableName(environment: PayPalEnvironment, suffix: string): string {
+  return `PAYPAL_${environment.toUpperCase()}_${suffix}`;
+}
+
+export function getPayPalSupportConfig(
+  environment = getPayPalEnvironment(),
+  values: PayPalEnvironmentValues = process.env
+): PayPalSupportConfig {
   const planIds = {
-    BRONZE: requiredEnvironmentValue("PAYPAL_SANDBOX_BRONZE_PLAN_ID"),
-    SILVER: requiredEnvironmentValue("PAYPAL_SANDBOX_SILVER_PLAN_ID"),
-    GOLD: requiredEnvironmentValue("PAYPAL_SANDBOX_GOLD_PLAN_ID"),
+    BRONZE: requiredEnvironmentValue(environmentVariableName(environment, "BRONZE_PLAN_ID"), values),
+    SILVER: requiredEnvironmentValue(environmentVariableName(environment, "SILVER_PLAN_ID"), values),
+    GOLD: requiredEnvironmentValue(environmentVariableName(environment, "GOLD_PLAN_ID"), values),
   };
 
   if (new Set(Object.values(planIds)).size !== SUPPORT_TIERS.length) {
-    throw new PayPalSupportError("PayPal sandbox support plan configuration is invalid.", 503);
+    throw new PayPalSupportError("PayPal support plan configuration is invalid.", 503);
   }
 
   return {
-    clientId: requiredEnvironmentValue("PAYPAL_SANDBOX_CLIENT_ID"),
-    clientSecret: requiredEnvironmentValue("PAYPAL_SANDBOX_CLIENT_SECRET"),
-    productId: requiredEnvironmentValue("PAYPAL_SANDBOX_PRODUCT_ID"),
+    environment,
+    clientId: requiredEnvironmentValue(environmentVariableName(environment, "CLIENT_ID"), values),
+    clientSecret: requiredEnvironmentValue(environmentVariableName(environment, "CLIENT_SECRET"), values),
+    productId: requiredEnvironmentValue(environmentVariableName(environment, "PRODUCT_ID"), values),
     planIds,
+    webhookId: requiredEnvironmentValue(environmentVariableName(environment, "WEBHOOK_ID"), values),
   };
 }
 
-export function getPayPalSandboxWebhookId(): string {
-  return requiredEnvironmentValue("PAYPAL_SANDBOX_WEBHOOK_ID");
+export function getPayPalWebhookId(config = getPayPalSupportConfig()): string {
+  return config.webhookId;
+}
+
+export function getPayPalApiBase(environment: PayPalEnvironment): string {
+  return environment === "sandbox" ? PAYPAL_SANDBOX_API_BASE : PAYPAL_LIVE_API_BASE;
+}
+
+export function getPayPalProvisioningConfig(
+  environment: PayPalEnvironment,
+  values: PayPalEnvironmentValues = process.env
+): Pick<PayPalSupportConfig, "environment" | "clientId" | "clientSecret"> {
+  return {
+    environment,
+    clientId: requiredEnvironmentValue(environmentVariableName(environment, "CLIENT_ID"), values),
+    clientSecret: requiredEnvironmentValue(environmentVariableName(environment, "CLIENT_SECRET"), values),
+  };
 }
 
 export function isSupportTier(value: unknown): value is SupportTierValue {
@@ -162,11 +199,11 @@ export type CreatedPayPalSupportSubscription = {
   approvalUrl: string | null;
 };
 
-export class PayPalSandboxClient {
+export class PayPalClient {
   private accessToken: string | null = null;
 
   constructor(
-    private readonly config: PayPalSandboxClientConfig,
+    private readonly config: PayPalClientConfig,
     private readonly fetchImplementation: typeof fetch = fetch
   ) {}
 
@@ -175,7 +212,7 @@ export class PayPalSandboxClient {
 
     let response: Response;
     try {
-      response = await this.fetchImplementation(`${PAYPAL_SANDBOX_API_BASE}/v1/oauth2/token`, {
+      response = await this.fetchImplementation(`${getPayPalApiBase(this.config.environment)}/v1/oauth2/token`, {
         method: "POST",
         headers: {
           Authorization: `Basic ${Buffer.from(`${this.config.clientId}:${this.config.clientSecret}`).toString("base64")}`,
@@ -185,16 +222,16 @@ export class PayPalSandboxClient {
         cache: "no-store",
       });
     } catch {
-      throw new PayPalSupportError("Unable to contact PayPal sandbox.");
+      throw new PayPalSupportError("Unable to contact PayPal.");
     }
 
     if (!response.ok) {
-      throw new PayPalSupportError("PayPal sandbox authentication failed.");
+      throw new PayPalSupportError("PayPal authentication failed.");
     }
 
     const payload = asRecord(await response.json().catch(() => null));
     if (!payload || typeof payload.access_token !== "string") {
-      throw new PayPalSupportError("PayPal sandbox returned an invalid authentication response.");
+      throw new PayPalSupportError("PayPal returned an invalid authentication response.");
     }
 
     this.accessToken = payload.access_token;
@@ -205,7 +242,7 @@ export class PayPalSandboxClient {
     const accessToken = await this.getAccessToken();
     let response: Response;
     try {
-      response = await this.fetchImplementation(`${PAYPAL_SANDBOX_API_BASE}${path}`, {
+      response = await this.fetchImplementation(`${getPayPalApiBase(this.config.environment)}${path}`, {
         method,
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -216,12 +253,12 @@ export class PayPalSandboxClient {
         cache: "no-store",
       });
     } catch {
-      throw new PayPalSupportError("Unable to contact PayPal sandbox.");
+      throw new PayPalSupportError("Unable to contact PayPal.");
     }
 
     if (!response.ok) {
       throw new PayPalSupportError(
-        "PayPal sandbox subscription request failed.",
+        "PayPal subscription request failed.",
         response.status,
         parsePayPalProviderError(await response.json().catch(() => null))
       );
@@ -229,7 +266,7 @@ export class PayPalSandboxClient {
 
     if (response.status === 204) return null;
     return response.json().catch(() => {
-      throw new PayPalSupportError("PayPal sandbox returned an invalid response.");
+      throw new PayPalSupportError("PayPal returned an invalid response.");
     });
   }
 
@@ -237,7 +274,7 @@ export class PayPalSandboxClient {
     tier: SupportTierValue;
   }): Promise<CreatedPayPalSupportSubscription> {
     if (!("planIds" in this.config)) {
-      throw new PayPalSupportError("PayPal sandbox support is not configured.", 503);
+      throw new PayPalSupportError("PayPal support is not configured.", 503);
     }
     const result = await this.request("POST", "/v1/billing/subscriptions", {
       plan_id: getPayPalPlanId(args.tier, this.config),
@@ -300,8 +337,12 @@ export class PayPalSandboxClient {
   }
 }
 
-export function createPayPalSandboxClient(
-  config = getPayPalSupportConfig()
-): PayPalSandboxClient {
-  return new PayPalSandboxClient(config);
+export function createPayPalClient(
+  config: PayPalClientConfig = getPayPalSupportConfig()
+): PayPalClient {
+  return new PayPalClient(config);
+}
+
+export function createPayPalSandboxClient(): PayPalClient {
+  return createPayPalClient(getPayPalSupportConfig("sandbox"));
 }

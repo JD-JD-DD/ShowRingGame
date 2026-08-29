@@ -3,14 +3,24 @@ import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import {
   createPayPalSandboxClient,
+  getPayPalEnvironment,
   getPayPalPlanId,
   getPayPalSupportConfig,
 } from "@/server/services/paypalSupport.service";
+
+function sandboxTestingAvailable() {
+  try {
+    return getPayPalEnvironment() === "sandbox";
+  } catch {
+    return false;
+  }
+}
 
 export async function POST() {
   try {
     const userId = await getSessionUserId();
     if (!userId) return fail("Unauthorized.", 401);
+    if (!sandboxTestingAvailable()) return fail("Sandbox support testing is unavailable while PayPal is configured for Live.", 409);
     const subscription = await (db as any).supportSubscription.findFirst({ where: { userId, status: "PENDING" }, orderBy: { createdAt: "desc" } });
     if (!subscription) return fail("No pending sandbox test subscription is available to clear.", 409);
     if (subscription.provider !== "PAYPAL") return fail("The pending subscription cannot be cleared by this test tool.", 409);

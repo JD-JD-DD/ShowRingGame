@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PayPalSandboxClient, type PayPalSupportConfig } from "../server/services/paypalSupport.service";
+import { PayPalClient, type PayPalSupportConfig } from "../server/services/paypalSupport.service";
 import { parsePayPalWebhookEvent, processVerifiedPayPalWebhook, resolveProviderSubscriptionId } from "../server/services/paypalWebhook.service";
 
 const root = join(process.cwd(), "../..");
 const source = (path: string) => readFileSync(join(root, path), "utf8");
-const config: PayPalSupportConfig = { clientId: "client", clientSecret: "secret", productId: "product", planIds: { BRONZE: "bronze", SILVER: "silver", GOLD: "gold" } };
+const config: PayPalSupportConfig = { environment: "sandbox", clientId: "client", clientSecret: "secret", productId: "product", planIds: { BRONZE: "bronze", SILVER: "silver", GOLD: "gold" }, webhookId: "webhook" };
 
 async function main() {
   const responses = [{ access_token: "token" }, { verification_status: "SUCCESS" }, { verification_status: "FAILURE" }];
-  const client = new PayPalSandboxClient(config, async () => new Response(JSON.stringify(responses.shift()), { status: 200 }));
+  const client = new PayPalClient(config, async () => new Response(JSON.stringify(responses.shift()), { status: 200 }));
   const headers = { authAlgo: "SHA256withRSA", certUrl: "https://api-m.sandbox.paypal.com/certs/test", transmissionId: "id", transmissionSig: "sig", transmissionTime: "2026-08-28T00:00:00Z" };
   assert.equal(await client.verifyWebhookSignature({ headers, event: { id: "WH-1" }, webhookId: "webhook" }), true);
   assert.equal(await client.verifyWebhookSignature({ headers, event: { id: "WH-2" }, webhookId: "webhook" }), false);
@@ -20,8 +20,10 @@ async function main() {
   assert.equal(resolveProviderSubscriptionId(saleEvent), "I-sub");
 
   Object.assign(process.env, {
+    PAYPAL_ENVIRONMENT: "sandbox",
     PAYPAL_SANDBOX_CLIENT_ID: "client", PAYPAL_SANDBOX_CLIENT_SECRET: "secret", PAYPAL_SANDBOX_PRODUCT_ID: "product",
     PAYPAL_SANDBOX_BRONZE_PLAN_ID: "bronze", PAYPAL_SANDBOX_SILVER_PLAN_ID: "silver", PAYPAL_SANDBOX_GOLD_PLAN_ID: "gold",
+    PAYPAL_SANDBOX_WEBHOOK_ID: "webhook",
   });
   const events: any[] = [];
   const subscription: any = { id: "support-1", providerSubscriptionId: "I-sub", currentTier: "BRONZE", status: "ACTIVE", firstSupportedAt: new Date("2026-08-01"), currentPaidPeriodStart: new Date("2026-08-01"), currentPaidPeriodEnd: new Date("2026-09-01"), cancellationRequestedAt: null, endedAt: null, tierPeriods: [{ id: "period-1", tier: "BRONZE", endedAt: null }] };

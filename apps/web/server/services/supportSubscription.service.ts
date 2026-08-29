@@ -1,9 +1,9 @@
 import { db } from "@/lib/db";
 import {
-  createPayPalSandboxClient,
+  createPayPalClient,
   getPayPalPlanId,
   getPayPalSupportConfig,
-  type PayPalSandboxClient,
+  type PayPalClient,
   type PayPalSupportSubscription,
   type SupportTierValue,
 } from "@/server/services/paypalSupport.service";
@@ -94,10 +94,10 @@ export async function createPayPalSupportSubscription(args: {
   userId: string;
   tier: SupportTierValue;
   database?: SupportSubscriptionDatabase;
-  payPalClient?: PayPalSandboxClient;
+  payPalClient?: PayPalClient;
 }): Promise<CreateSupportSubscriptionResult> {
   const database = args.database ?? (db as unknown as SupportSubscriptionDatabase);
-  const payPalClient = args.payPalClient ?? createPayPalSandboxClient();
+  const payPalClient = args.payPalClient ?? createPayPalClient();
 
   return database.$transaction(async (transaction) => {
     const users = await transaction.$queryRaw<{ id: string }[]>`
