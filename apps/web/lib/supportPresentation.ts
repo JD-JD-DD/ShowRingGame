@@ -13,6 +13,25 @@ export const SUPPORT_TIERS = [
 export type SupportPresentationTier = (typeof SUPPORT_TIERS)[number];
 export type SupportPresentationTierValue = SupportPresentationTier["tier"];
 
+export type SupportStatusPresentationValue =
+  | "PENDING"
+  | "ACTIVE"
+  | "PAYMENT_RETRY"
+  | "CANCELLATION_SCHEDULED"
+  | "ENDED";
+
+export const SUPPORT_STATUS_PRESENTATION: Record<SupportStatusPresentationValue, string> = {
+  PENDING: "Pending confirmation",
+  ACTIVE: "Active",
+  PAYMENT_RETRY: "Payment issue",
+  CANCELLATION_SCHEDULED: "Cancelling",
+  ENDED: "Not currently supporting",
+};
+
+export function getSupportStatusLabel(status: SupportStatusPresentationValue): string {
+  return SUPPORT_STATUS_PRESENTATION[status];
+}
+
 export const SUPPORT_FAQ = [
   {
     question: "Can I cancel anytime?",
