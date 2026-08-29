@@ -195,6 +195,7 @@ export class PayPalSandboxClient {
       throw new PayPalSupportError("PayPal sandbox subscription request failed.");
     }
 
+    if (response.status === 204) return null;
     return response.json().catch(() => {
       throw new PayPalSupportError("PayPal sandbox returned an invalid response.");
     });
@@ -227,6 +228,10 @@ export class PayPalSandboxClient {
       `/v1/billing/subscriptions/${encodeURIComponent(providerSubscriptionId)}`
     );
     return parsePayPalSubscription(result);
+  }
+
+  async cancelSubscription(providerSubscriptionId: string): Promise<void> {
+    await this.request("POST", `/v1/billing/subscriptions/${encodeURIComponent(providerSubscriptionId)}/cancel`, { reason: "ShowRing sandbox test reset" });
   }
 
   async verifyWebhookSignature(args: {
