@@ -5,6 +5,7 @@ import {
   getPayPalPlanId,
   isSupportTier,
   PayPalSandboxClient,
+  PayPalSupportError,
   PAYPAL_SANDBOX_API_BASE,
   type PayPalSupportConfig,
 } from "../server/services/paypalSupport.service";
@@ -63,9 +64,39 @@ assert.equal(
   "https://api-m.sandbox.paypal.com/v1/billing/subscriptions/I-sandbox-subscription"
 );
 
+const cancellationFailureClient = new PayPalSandboxClient(config, async (input) => {
+  if (String(input).endsWith("/v1/oauth2/token")) {
+    return new Response(JSON.stringify({ access_token: "sandbox-access-token" }), { status: 200 });
+  }
+  return new Response(JSON.stringify({
+    name: "UNPROCESSABLE_ENTITY",
+    message: "The requested action could not be performed.",
+    debug_id: "sandbox-debug-id",
+    details: [{ issue: "CANNOT_CANCEL", description: "The subscription cannot be cancelled." }],
+    payer: { email_address: "buyer@example.test" },
+  }), { status: 422 });
+});
+
+await assert.rejects(
+  () => cancellationFailureClient.cancelSubscription("I-sandbox-subscription"),
+  (error: unknown) => {
+    assert.ok(error instanceof PayPalSupportError);
+    assert.equal(error.status, 422);
+    assert.deepEqual(error.providerError, {
+      name: "UNPROCESSABLE_ENTITY",
+      message: "The requested action could not be performed.",
+      debugId: "sandbox-debug-id",
+      details: [{ issue: "CANNOT_CANCEL", description: "The subscription cannot be cancelled." }],
+    });
+    assert.doesNotMatch(JSON.stringify(error.providerError), /buyer@example\.test|payer|secret|client|Authorization/);
+    return true;
+  }
+);
+
 const route = source("apps/web/app/api/support/subscriptions/route.ts");
 const supportService = source("apps/web/server/services/supportSubscription.service.ts");
 const paypalService = source("apps/web/server/services/paypalSupport.service.ts");
+const clearPendingRoute = source("apps/web/app/api/test/support-sandbox/clear-pending/route.ts");
 const schema = source("apps/web/prisma/schema.prisma");
 
 assert.match(route, /getSessionUserId/, "support route authenticates server-side");
@@ -79,6 +110,9 @@ assert.match(schema, /providerSubscriptionId\s+String\s+@unique/, "provider subs
 assert.match(paypalService, /api-m\.sandbox\.paypal\.com/, "PayPal integration is sandbox-only");
 assert.doesNotMatch(paypalService, /NEXT_PUBLIC_PAYPAL/, "PayPal credentials remain server-only");
 assert.doesNotMatch(paypalService, /console\./, "PayPal credentials and authorization headers are never logged");
+assert.match(clearPendingRoute, /operation: "paypal sandbox pending subscription cancellation"/, "cleanup logs only the cancellation diagnostic");
+assert.match(clearPendingRoute, /The pending PayPal sandbox subscription could not be cleared\. No ShowRing subscription data was changed\./, "cleanup keeps the player-facing error generic");
+assert.doesNotMatch(clearPendingRoute, /console\.error\([^,]+,\s*error\)/, "cleanup does not log the raw error object");
 
 console.log("PayPal SUPPORT-02 source checks passed.");
 }

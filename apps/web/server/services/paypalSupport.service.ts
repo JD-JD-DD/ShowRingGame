@@ -28,8 +28,19 @@ export type PayPalSupportSubscription = {
   nextBillingTime: Date | null;
 };
 
+export type PayPalProviderError = {
+  name: string | null;
+  message: string | null;
+  debugId: string | null;
+  details: Array<{ issue: string | null; description: string | null }>;
+};
+
 export class PayPalSupportError extends Error {
-  constructor(message: string, readonly status = 502) {
+  constructor(
+    message: string,
+    readonly status = 502,
+    readonly providerError: PayPalProviderError | null = null
+  ) {
     super(message);
   }
 }
@@ -80,6 +91,23 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+}
+
+function parsePayPalProviderError(value: unknown): PayPalProviderError {
+  const error = asRecord(value);
+  const details = Array.isArray(error?.details) ? error.details : [];
+  return {
+    name: typeof error?.name === "string" ? error.name : null,
+    message: typeof error?.message === "string" ? error.message : null,
+    debugId: typeof error?.debug_id === "string" ? error.debug_id : null,
+    details: details.map((detail) => {
+      const parsed = asRecord(detail);
+      return {
+        issue: typeof parsed?.issue === "string" ? parsed.issue : null,
+        description: typeof parsed?.description === "string" ? parsed.description : null,
+      };
+    }),
+  };
 }
 
 function parseOptionalDate(value: unknown): Date | null {
@@ -192,7 +220,11 @@ export class PayPalSandboxClient {
     }
 
     if (!response.ok) {
-      throw new PayPalSupportError("PayPal sandbox subscription request failed.");
+      throw new PayPalSupportError(
+        "PayPal sandbox subscription request failed.",
+        response.status,
+        parsePayPalProviderError(await response.json().catch(() => null))
+      );
     }
 
     if (response.status === 204) return null;
