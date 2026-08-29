@@ -22,6 +22,7 @@ function createClient(dogs: Record<string, DogState>, options: { updateCount?: n
       id,
       litterId: dog.protectedSelection ? `litter-${id}` : null,
       regNumber: `REG-${id}`,
+      sex: "F",
       ownerKennelId: dog.ownerKennelId,
       birthEpoch: dog.birthEpoch ?? 44,
       lifecycleState: dog.lifecycleState ?? "ALIVE",
@@ -32,6 +33,15 @@ function createClient(dogs: Record<string, DogState>, options: { updateCount?: n
     }]),
   );
   const createdListings: Array<Record<string, unknown>> = [];
+  const calls = {
+    dogFindMany: 0,
+    listingFindMany: 0,
+    breedingFindMany: 0,
+    breedingFindFirst: 0,
+    ordinaryCareFindMany: 0,
+    reproductiveCareFindMany: 0,
+    protectionFindMany: 0,
+  };
 
   const tx = {
     dog: {
@@ -39,7 +49,8 @@ function createClient(dogs: Record<string, DogState>, options: { updateCount?: n
         return records[args.where.id] ?? null;
       },
       async findMany(args: { where: { id: { in: string[] } } }) {
-        return args.where.id.in.flatMap((id) => records[id] ? [{ id, regNumber: records[id].regNumber }] : []);
+        calls.dogFindMany += 1;
+        return args.where.id.in.flatMap((id) => records[id] ? [records[id]] : []);
       },
       async updateMany(args: {
         where: { id: { in: string[] }; ownerKennelId: string; lifecycleState: string; marketState: string };
@@ -57,14 +68,26 @@ function createClient(dogs: Record<string, DogState>, options: { updateCount?: n
       async findFirst(args: { where: { dogId: string } }) {
         return records[args.where.dogId]?.pendingCare ? { id: "care-1" } : null;
       },
+      async findMany(args: { where: { dogId: { in: string[] } } }) {
+        calls.ordinaryCareFindMany += 1;
+        return args.where.dogId.in.flatMap((id) => records[id]?.pendingCare ? [{ dogId: id }] : []);
+      },
     },
-    reproductiveEmergencyEvent: { async findFirst() { return null; } },
+    reproductiveEmergencyEvent: {
+      async findFirst() { return null; },
+      async findMany() {
+        calls.reproductiveCareFindMany += 1;
+        return [];
+      },
+    },
     studContractPuppySelection: {
       async findMany() {
+        calls.protectionFindMany += 1;
         return Object.values(records)
           .filter((dog) => dog.protectedSelection)
           .map((dog) => ({
             id: `selection-${dog.id}`,
+            litterId: dog.litterId,
             status: "DAM_FIRST_PICK",
             damFirstPickDogId: null,
             selectedDogId: null,
@@ -74,12 +97,21 @@ function createClient(dogs: Record<string, DogState>, options: { updateCount?: n
     },
     breedingAttempt: {
       async findFirst(args: { where: { damId: string } }) {
+        calls.breedingFindFirst += 1;
         return records[args.where.damId]?.breedingStatus ? { id: "attempt-1" } : null;
+      },
+      async findMany(args: { where: { damId: { in: string[] } } }) {
+        calls.breedingFindMany += 1;
+        return args.where.damId.in.flatMap((id) => records[id]?.breedingStatus ? [{ damId: id }] : []);
       },
     },
     dogListing: {
       async findFirst(args: { where: { dogId: string } }) {
         return createdListings.find((listing) => listing.dogId === args.where.dogId && listing.status === "ACTIVE") ?? null;
+      },
+      async findMany(args: { where: { dogId: { in: string[] } } }) {
+        calls.listingFindMany += 1;
+        return createdListings.filter((listing) => args.where.dogId.in.includes(listing.dogId as string) && listing.status === "ACTIVE").map((listing) => ({ dogId: listing.dogId }));
       },
       async createMany(args: { data: Array<Record<string, unknown>> }) {
         createdListings.push(...args.data);
@@ -104,6 +136,7 @@ function createClient(dogs: Record<string, DogState>, options: { updateCount?: n
     },
     records,
     createdListings,
+    calls,
   };
 }
 
@@ -139,6 +172,24 @@ async function main() {
   assert.deepEqual(valid.createdListings.map((listing) => listing.descriptionPublic), ["Player listing for REG-a.", "Player listing for REG-b."]);
   assert.equal(valid.records.a.marketState, "LISTED_PLAYER");
   assert.equal(valid.records.b.marketState, "LISTED_PLAYER");
+  assert.deepEqual(valid.calls, {
+    dogFindMany: 1,
+    listingFindMany: 1,
+    breedingFindMany: 1,
+    breedingFindFirst: 0,
+    ordinaryCareFindMany: 1,
+    reproductiveCareFindMany: 1,
+    protectionFindMany: 0,
+  }, "bulk eligibility reads are set-based");
+
+  const large = createClient(Object.fromEntries(Array.from({ length: 100 }, (_, index) => [`dog-${index}`, { ownerKennelId: "kennel-1" }])));
+  await bulkListDogsForSaleWithClient(saleArgs(Array.from({ length: 100 }, (_, index) => ({ dogId: `dog-${index}`, askingPrice: index + 1 }))), large.client as never);
+  assert.equal(large.calls.dogFindMany, 1);
+  assert.equal(large.calls.listingFindMany, 1);
+  assert.equal(large.calls.breedingFindMany, 1);
+  assert.equal(large.calls.breedingFindFirst, 0);
+  assert.equal(large.calls.ordinaryCareFindMany, 1);
+  assert.equal(large.calls.reproductiveCareFindMany, 1);
 
   const boundary = createClient({ boundary: { ownerKennelId: "kennel-1", birthEpoch: 44 } });
   await bulkListDogsForSaleWithClient(saleArgs([{ dogId: "boundary", askingPrice: 1 }]), boundary.client as never);

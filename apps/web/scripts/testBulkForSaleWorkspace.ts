@@ -84,6 +84,7 @@ assert.match(mutationRoute, /sellerKennelId: kennel\.id/);
 assert.doesNotMatch(mutationRoute, /sellerKennelId: body|listDogForSale|dogListing|marketState/);
 
 assert.match(market, /export async function bulkListDogsForSale/);
+assert.match(market, /async function getBulkDogSaleEligibility/);
 assert.match(market, /db\.\$transaction/);
 assert.match(market, /getDogSaleEligibility\(\{/);
 assert.match(market, /new BulkDogSaleError/);
@@ -91,6 +92,14 @@ assert.match(market, /dogListing\.createMany/);
 assert.match(market, /dog\.updateMany/);
 assert.match(market, /marketState: "LISTED_PLAYER"/);
 assert.match(market, /playerSaleListingData/);
+assert.match(market, /dogListing\.findMany/);
+assert.match(market, /breedingAttempt\.findMany/);
+assert.match(market, /getDogIdsWithPendingVeterinaryCare/);
+assert.match(market, /getStudContractPuppyProtectionsForDogs/);
+assert.doesNotMatch(
+  market.slice(market.indexOf("async function getBulkDogSaleEligibility"), market.indexOf("export async function bulkListDogsForSale")),
+  /findFirst/
+);
 assert.match(market, /assertWholeDollarAmount\(askingPrice, "Sale price"\)/);
 assert.match(market, /export async function listDogForSale/);
 assert.match(market, /await assertDogHasNoPendingVeterinaryCare\(listing\.dog\.id, tx\)/);

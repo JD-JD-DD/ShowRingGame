@@ -433,27 +433,37 @@ export async function hasPendingVeterinaryCareForDogs(
   dogIds: string[],
   client: PendingVeterinaryCareBatchClient = db
 ): Promise<boolean> {
+  return (await getDogIdsWithPendingVeterinaryCare(dogIds, client)).size > 0;
+}
+
+export async function getDogIdsWithPendingVeterinaryCare(
+  dogIds: string[],
+  client: PendingVeterinaryCareBatchClient = db
+): Promise<Set<string>> {
   if (dogIds.length === 0) {
-    return false;
+    return new Set();
   }
 
   const [ordinary, reproductive] = await Promise.all([
-    client.dogEmergencyCareEvent.findFirst({
+    client.dogEmergencyCareEvent.findMany({
       where: { dogId: { in: dogIds }, status: "PENDING" },
-      select: { id: true },
+      select: { dogId: true },
     }),
-    client.reproductiveEmergencyEvent.findFirst({
+    client.reproductiveEmergencyEvent.findMany({
       where: {
         damId: { in: dogIds },
         status: {
           in: ["PENDING", "TREATMENT_AUTHORIZED", "TREATMENT_DECLINED"],
         },
       },
-      select: { id: true },
+      select: { damId: true },
     }),
   ]);
 
-  return ordinary !== null || reproductive !== null;
+  return new Set([
+    ...ordinary.map((event) => event.dogId),
+    ...reproductive.map((event) => event.damId),
+  ]);
 }
 
 export async function assertDogHasNoPendingVeterinaryCare(
