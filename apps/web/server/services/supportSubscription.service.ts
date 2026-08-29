@@ -4,6 +4,7 @@ import {
   getPayPalPlanId,
   getPayPalSupportConfig,
   type PayPalClient,
+  type PayPalSupportConfig,
   type PayPalSupportSubscription,
   type SupportTierValue,
 } from "@/server/services/paypalSupport.service";
@@ -27,6 +28,10 @@ type SupportSubscriptionTransaction = {
 
 type SupportSubscriptionDatabase = {
   $transaction<T>(callback: (transaction: SupportSubscriptionTransaction) => Promise<T>): Promise<T>;
+};
+
+type SupportSynchronizationDatabase = {
+  $transaction<T>(callback: (transaction: any) => Promise<T>): Promise<T>;
 };
 
 export class SupportSubscriptionError extends Error {
@@ -71,8 +76,9 @@ export function getSupportTierForPayPalPlan(planId: string): SupportTierValue {
 export function verifyPayPalSubscription(args: {
   subscription: PayPalSupportSubscription;
   tier: SupportTierValue;
+  config?: PayPalSupportConfig;
 }): CanonicalSupportStatus {
-  const config = getPayPalSupportConfig();
+  const config = args.config ?? getPayPalSupportConfig();
   if (args.subscription.planId !== getPayPalPlanId(args.tier, config)) {
     throw new SupportSubscriptionError("PayPal subscription plan does not match the selected support tier.", 422);
   }
@@ -85,6 +91,103 @@ export type CreateSupportSubscriptionResult = {
   status: CanonicalSupportStatus;
   approvalUrl: string | null;
 };
+
+function sameDate(left: Date | null | undefined, right: Date | null | undefined): boolean {
+  return (left?.getTime() ?? null) === (right?.getTime() ?? null);
+}
+
+export async function synchronizeVerifiedPayPalSubscription(args: {
+  database: SupportSynchronizationDatabase;
+  providerSubscription: PayPalSupportSubscription;
+  tier: SupportTierValue;
+  status: CanonicalSupportStatus;
+  skipUnchanged?: boolean;
+}): Promise<{ tier: SupportTierValue; status: CanonicalSupportStatus } | null> {
+  const now = new Date();
+  return args.database.$transaction(async (tx) => {
+    const subscription = await tx.supportSubscription.findUnique({
+      where: { providerSubscriptionId: args.providerSubscription.id },
+    });
+    if (!subscription) return null;
+
+    await tx.$queryRaw`SELECT "id" FROM "SupportSubscription" WHERE "id" = ${subscription.id} FOR UPDATE`;
+    const fresh = await tx.supportSubscription.findUnique({
+      where: { id: subscription.id },
+      include: { tierPeriods: { where: { endedAt: null } } },
+    });
+    const startedAt = args.providerSubscription.startTime ?? now;
+    const activePeriod = fresh.tierPeriods[0];
+    const hasSupported = args.status !== "PENDING";
+    const currentPaidPeriodStart = args.status === "ACTIVE" ? startedAt : fresh.currentPaidPeriodStart;
+    const currentPaidPeriodEnd = args.status === "ACTIVE" ? args.providerSubscription.nextBillingTime : fresh.currentPaidPeriodEnd;
+    const firstSupportedAt = fresh.firstSupportedAt ?? (args.status === "ACTIVE" ? startedAt : null);
+    const cancellationRequestedAt = args.status === "CANCELLATION_SCHEDULED" ? fresh.cancellationRequestedAt ?? now : null;
+    const endedAt = args.status === "ENDED" ? fresh.endedAt ?? now : null;
+    const tierPeriodChanges = hasSupported && (!activePeriod || activePeriod.tier !== args.tier);
+
+    if (hasSupported && activePeriod && activePeriod.tier !== args.tier) {
+      await tx.supportSubscriptionTierPeriod.update({ where: { id: activePeriod.id }, data: { endedAt: startedAt } });
+    }
+    if (tierPeriodChanges) {
+      await tx.supportSubscriptionTierPeriod.create({ data: { supportSubscriptionId: fresh.id, tier: args.tier, startedAt } });
+    }
+
+    const unchanged =
+      fresh.currentTier === args.tier &&
+      fresh.status === args.status &&
+      sameDate(fresh.currentPaidPeriodStart, currentPaidPeriodStart) &&
+      sameDate(fresh.currentPaidPeriodEnd, currentPaidPeriodEnd) &&
+      sameDate(fresh.firstSupportedAt, firstSupportedAt) &&
+      sameDate(fresh.cancellationRequestedAt, cancellationRequestedAt) &&
+      sameDate(fresh.endedAt, endedAt);
+    if (!args.skipUnchanged || !unchanged) {
+      await tx.supportSubscription.update({ where: { id: fresh.id }, data: {
+        currentTier: args.tier,
+        status: args.status,
+        currentPaidPeriodStart,
+        currentPaidPeriodEnd,
+        firstSupportedAt,
+        cancellationRequestedAt,
+        endedAt,
+      } });
+    }
+    return { tier: args.tier, status: args.status };
+  });
+}
+
+export async function reconcilePayPalSupportSubscription(args: {
+  userId: string;
+  database?: any;
+  payPalClient?: PayPalClient;
+  config?: PayPalSupportConfig;
+}): Promise<{ tier: SupportTierValue; status: CanonicalSupportStatus }> {
+  const database = args.database ?? db;
+  const subscription = await database.supportSubscription.findFirst({
+    where: { userId: args.userId, provider: "PAYPAL", status: { in: CURRENT_SUPPORT_STATUSES } },
+    orderBy: { createdAt: "desc" },
+    select: { currentTier: true, providerSubscriptionId: true },
+  });
+  if (!subscription) throw new SupportSubscriptionError("No current PayPal support subscription was found.", 404);
+
+  const providerSubscription = await (args.payPalClient ?? createPayPalClient()).getSubscription(subscription.providerSubscriptionId);
+  if (providerSubscription.id !== subscription.providerSubscriptionId) {
+    throw new SupportSubscriptionError("PayPal support status could not be verified.", 422);
+  }
+  const status = verifyPayPalSubscription({
+    subscription: providerSubscription,
+    tier: subscription.currentTier,
+    config: args.config,
+  });
+  const result = await synchronizeVerifiedPayPalSubscription({
+    database,
+    providerSubscription,
+    tier: subscription.currentTier,
+    status,
+    skipUnchanged: true,
+  });
+  if (!result) throw new SupportSubscriptionError("No current PayPal support subscription was found.", 404);
+  return result;
+}
 
 /**
  * Creates a sandbox subscription only after serializing current-support checks

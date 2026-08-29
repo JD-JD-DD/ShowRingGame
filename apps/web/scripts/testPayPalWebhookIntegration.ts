@@ -54,14 +54,15 @@ async function main() {
 
   const route = source("apps/web/app/api/webhooks/paypal/route.ts");
   const service = source("apps/web/server/services/paypalWebhook.service.ts");
+  const synchronizationService = source("apps/web/server/services/supportSubscription.service.ts");
   const schema = source("apps/web/prisma/schema.prisma");
   assert.match(route, /verificationHeaders\(request\)/, "missing signature headers are rejected before processing");
   assert.match(route, /verifyPayPalWebhook/, "signature verification occurs before mutation");
   assert.match(service, /providerEventId/, "provider event IDs are persisted");
   assert.match(schema, /providerEventId\s+String\s+@unique/, "provider event IDs are globally unique");
   assert.match(service, /getSubscription\(providerSubscriptionId\)/, "events synchronize from current PayPal state");
-  assert.match(service, /FOR UPDATE/, "subscription updates are serialized");
-  assert.match(service, /activePeriod\.tier !== tier/, "replays do not duplicate tier periods");
+  assert.match(synchronizationService, /FOR UPDATE/, "subscription updates are serialized");
+  assert.match(synchronizationService, /activePeriod\.tier !== args\.tier/, "replays do not duplicate tier periods");
   assert.match(service, /PAYMENT\.SALE\.REFUNDED/, "refunds are accepted without direct cancellation mapping");
   assert.doesNotMatch(service, /kennel\.balance|ledgerTransaction/, "webhooks do not mutate game economy");
   console.log("PayPal SUPPORT-03 webhook checks passed.");

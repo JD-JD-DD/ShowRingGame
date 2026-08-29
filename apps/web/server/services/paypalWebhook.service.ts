@@ -7,6 +7,7 @@ import {
 } from "@/server/services/paypalSupport.service";
 import {
   getSupportTierForPayPalPlan,
+  synchronizeVerifiedPayPalSubscription,
   translatePayPalStatus,
 } from "@/server/services/supportSubscription.service";
 
@@ -90,31 +91,13 @@ export async function processVerifiedPayPalWebhook(args: {
     const current = await (args.payPalClient ?? createPayPalClient()).getSubscription(providerSubscriptionId);
     const tier = getSupportTierForPayPalPlan(current.planId);
     const status = translatePayPalStatus(current);
-    const now = new Date();
-    const result = await database.$transaction(async (tx: any) => {
-      const subscription = await tx.supportSubscription.findUnique({ where: { providerSubscriptionId: current.id } });
-      if (!subscription) return "ignored" as const;
-      await tx.$queryRaw`SELECT "id" FROM "SupportSubscription" WHERE "id" = ${subscription.id} FOR UPDATE`;
-      const fresh = await tx.supportSubscription.findUnique({ where: { id: subscription.id }, include: { tierPeriods: { where: { endedAt: null } } } });
-      const startedAt = current.startTime ?? now;
-      const activePeriod = fresh.tierPeriods[0];
-      const hasSupported = status !== "PENDING";
-      if (hasSupported && activePeriod && activePeriod.tier !== tier) {
-        await tx.supportSubscriptionTierPeriod.update({ where: { id: activePeriod.id }, data: { endedAt: startedAt } });
-      }
-      if (hasSupported && (!activePeriod || activePeriod.tier !== tier)) {
-        await tx.supportSubscriptionTierPeriod.create({ data: { supportSubscriptionId: fresh.id, tier, startedAt } });
-      }
-      await tx.supportSubscription.update({ where: { id: fresh.id }, data: {
-        currentTier: tier, status,
-        currentPaidPeriodStart: status === "ACTIVE" ? startedAt : fresh.currentPaidPeriodStart,
-        currentPaidPeriodEnd: status === "ACTIVE" ? current.nextBillingTime : fresh.currentPaidPeriodEnd,
-        firstSupportedAt: fresh.firstSupportedAt ?? (status === "ACTIVE" ? startedAt : null),
-        cancellationRequestedAt: status === "CANCELLATION_SCHEDULED" ? fresh.cancellationRequestedAt ?? now : null,
-        endedAt: status === "ENDED" ? fresh.endedAt ?? now : null,
-      } });
-      return "processed" as const;
+    const synchronized = await synchronizeVerifiedPayPalSubscription({
+      database,
+      providerSubscription: current,
+      tier,
+      status,
     });
+    const result = synchronized ? "processed" as const : "ignored" as const;
     await database.supportProviderEvent.update({ where: { id: providerEvent.id }, data: { processingStatus: result === "processed" ? "PROCESSED" : "IGNORED", processedAt: new Date() } });
     return result;
   } catch (error) {
