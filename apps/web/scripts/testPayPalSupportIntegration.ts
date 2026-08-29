@@ -110,9 +110,15 @@ assert.match(schema, /providerSubscriptionId\s+String\s+@unique/, "provider subs
 assert.match(paypalService, /api-m\.sandbox\.paypal\.com/, "PayPal integration is sandbox-only");
 assert.doesNotMatch(paypalService, /NEXT_PUBLIC_PAYPAL/, "PayPal credentials remain server-only");
 assert.doesNotMatch(paypalService, /console\./, "PayPal credentials and authorization headers are never logged");
-assert.match(clearPendingRoute, /operation: "paypal sandbox pending subscription cancellation"/, "cleanup logs only the cancellation diagnostic");
-assert.match(clearPendingRoute, /The pending PayPal sandbox subscription could not be cleared\. No ShowRing subscription data was changed\./, "cleanup keeps the player-facing error generic");
-assert.doesNotMatch(clearPendingRoute, /console\.error\([^,]+,\s*error\)/, "cleanup does not log the raw error object");
+assert.match(clearPendingRoute, /getSessionUserId/, "test reset requires an authenticated session");
+assert.match(clearPendingRoute, /status: "PENDING"/, "test reset considers only pending ShowRing subscriptions");
+assert.match(clearPendingRoute, /subscription\.provider !== "PAYPAL"/, "test reset requires the stored PayPal provider");
+assert.match(clearPendingRoute, /getSubscription\(subscription\.providerSubscriptionId\)/, "test reset verifies the stored provider subscription");
+assert.match(clearPendingRoute, /current\.status !== "APPROVAL_PENDING"/, "test reset rejects active, approved, and unknown provider states");
+assert.match(clearPendingRoute, /current\.planId !== getPayPalPlanId/, "test reset rejects a mismatched provider plan");
+assert.match(clearPendingRoute, /status: "ENDED", endedAt: new Date\(\)/, "only a verified pending record transitions to ended");
+assert.doesNotMatch(clearPendingRoute, /supportSubscription\.delete/, "test reset preserves the support subscription history record");
+assert.doesNotMatch(clearPendingRoute, /cancelSubscription|\/cancel/, "test reset never asks PayPal to cancel the unapproved subscription");
 
 console.log("PayPal SUPPORT-02 source checks passed.");
 }

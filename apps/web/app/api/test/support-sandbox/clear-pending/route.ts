@@ -5,7 +5,6 @@ import {
   createPayPalSandboxClient,
   getPayPalPlanId,
   getPayPalSupportConfig,
-  PayPalSupportError,
 } from "@/server/services/paypalSupport.service";
 
 export async function POST() {
@@ -18,25 +17,6 @@ export async function POST() {
     const paypal = createPayPalSandboxClient();
     const current = await paypal.getSubscription(subscription.providerSubscriptionId);
     if (current.status !== "APPROVAL_PENDING" || current.planId !== getPayPalPlanId(subscription.currentTier, getPayPalSupportConfig())) return fail("The pending PayPal sandbox subscription is no longer eligible to clear. No ShowRing subscription data was changed.", 409);
-    try {
-      await paypal.cancelSubscription(subscription.providerSubscriptionId);
-    } catch (error) {
-      if (error instanceof PayPalSupportError) {
-        console.error("PayPal sandbox pending subscription cancellation failed", {
-          operation: "paypal sandbox pending subscription cancellation",
-          httpStatus: error.status,
-          providerName: error.providerError?.name ?? null,
-          providerMessage: error.providerError?.message ?? null,
-          providerDebugId: error.providerError?.debugId ?? null,
-          providerDetails: error.providerError?.details ?? [],
-          providerSubscriptionId: subscription.providerSubscriptionId,
-          currentPayPalSubscriptionStatus: current.status,
-        });
-      }
-      return fail("The pending PayPal sandbox subscription could not be cleared. No ShowRing subscription data was changed.", 502);
-    }
-    const afterCancel = await paypal.getSubscription(subscription.providerSubscriptionId);
-    if (afterCancel.status === "APPROVAL_PENDING") return fail("The pending PayPal sandbox subscription could not be cleared. No ShowRing subscription data was changed.", 502);
     await (db as any).supportSubscription.update({ where: { id: subscription.id }, data: { status: "ENDED", endedAt: new Date() } });
     return ok({ message: "Pending sandbox test subscription cleared. You may create one new Bronze sandbox subscription." });
   } catch { return fail("The pending PayPal sandbox subscription could not be cleared. No ShowRing subscription data was changed.", 502); }
