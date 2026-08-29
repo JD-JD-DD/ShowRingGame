@@ -109,6 +109,14 @@ function parsePayPalSubscription(value: unknown): PayPalSupportSubscription {
   };
 }
 
+function parseCreatedPayPalSubscription(value: unknown): { id: string; status: string } {
+  const subscription = asRecord(value);
+  if (!subscription || typeof subscription.id !== "string" || typeof subscription.status !== "string") {
+    throw new PayPalSupportError("PayPal returned an invalid subscription response.");
+  }
+  return { id: subscription.id, status: subscription.status };
+}
+
 function findApprovalUrl(value: unknown): string | null {
   const subscription = asRecord(value);
   const links = Array.isArray(subscription?.links) ? subscription.links : [];
@@ -202,7 +210,7 @@ export class PayPalSandboxClient {
       plan_id: getPayPalPlanId(args.tier, this.config),
       application_context: { user_action: "SUBSCRIBE_NOW" },
     });
-    const subscription = parsePayPalSubscription(result);
+    const subscription = parseCreatedPayPalSubscription(result);
 
     return {
       providerSubscriptionId: subscription.id,

@@ -32,7 +32,6 @@ const responses = [
   {
     id: "I-sandbox-subscription",
     status: "APPROVAL_PENDING",
-    plan_id: "plan-5",
     links: [{ rel: "approve", href: "https://www.sandbox.paypal.com/checkoutnow?token=example" }],
   },
   {
