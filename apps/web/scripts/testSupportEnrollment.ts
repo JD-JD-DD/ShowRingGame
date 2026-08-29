@@ -9,7 +9,6 @@ const presentation = source("apps/web/lib/supportPresentation.ts");
 const enrollment = source("apps/web/components/support/SupportEnrollment.tsx");
 const supportPage = source("apps/web/app/support/page.tsx");
 const statusPage = source("apps/web/app/account/settings/support/page.tsx");
-const refreshButton = source("apps/web/components/support/RefreshSupportStatusButton.tsx");
 const header = source("apps/web/components/layout/GameHeaderNav.tsx");
 const route = source("apps/web/app/api/support/subscriptions/route.ts");
 const payPalService = source("apps/web/server/services/paypalSupport.service.ts");
@@ -44,7 +43,7 @@ assert.match(statusPage, /paypal === "approved"/);
 assert.match(statusPage, /PayPal approval received\. Confirming your support status…/);
 assert.match(statusPage, /subscription\.status === "PENDING"/);
 assert.doesNotMatch(statusPage, /cancelSubscription|upgrade|downgrade/);
-assert.match(refreshButton, /router\.refresh\(\)/);
+assert.doesNotMatch(statusPage, /Refresh Support Status/);
 assert.match(header, /\{ label: "Support", href: "\/support" \}/);
 
 assert.match(route, /getAppBaseUrl\(request\)/);
