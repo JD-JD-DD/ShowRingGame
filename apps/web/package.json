@@ -82,6 +82,7 @@
     "test:supporter-badge-preference": "tsx scripts/testSupporterBadgePreference.ts",
     "test:supporter-badge-account-preview": "tsx scripts/testSupporterBadgeAccountPreview.tsx",
     "test:supporter-badge-public-kennel": "tsx scripts/testSupporterBadgePublicKennel.tsx",
+    "test:supporter-badge-community-map": "tsx scripts/testCommunitySupporterBadgeMap.ts",
     "audit:support-again-readiness": "tsx scripts/auditSupportAgainReadiness.ts",
     "test:support-sandbox-harness": "tsx scripts/testSupportSandboxHarness.ts",
     "repair:support-upgrade-cleanup": "tsx scripts/repairSupportUpgradeCleanup.ts",
