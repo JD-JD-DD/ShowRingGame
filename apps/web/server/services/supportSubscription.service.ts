@@ -392,9 +392,21 @@ export async function advanceSupportSubscriptionChange(args: {
     });
   }
   try {
-    await database.supportSubscriptionChange.update({ where: { id: change.id }, data: { status: "TARGET_ACTIVE_CANCELLATION_PENDING", sourceCancellationRequestedAt: new Date(), failedAt: null } });
-    await client.cancelSubscription(change.sourceSubscription.providerSubscriptionId);
-    const source = await client.getSubscription(change.sourceSubscription.providerSubscriptionId);
+    let source = await client.getSubscription(change.sourceSubscription.providerSubscriptionId);
+    if (source.id !== change.sourceSubscription.providerSubscriptionId) {
+      throw new SupportSubscriptionError("PayPal support status could not be verified.", 422);
+    }
+    if (source.status === "ACTIVE") {
+      await database.supportSubscriptionChange.update({ where: { id: change.id }, data: { status: "TARGET_ACTIVE_CANCELLATION_PENDING", sourceCancellationRequestedAt: new Date(), failedAt: null } });
+      await client.cancelSubscription(change.sourceSubscription.providerSubscriptionId);
+      source = await client.getSubscription(change.sourceSubscription.providerSubscriptionId);
+      if (source.id !== change.sourceSubscription.providerSubscriptionId) {
+        throw new SupportSubscriptionError("PayPal support status could not be verified.", 422);
+      }
+    }
+    if (source.status !== "CANCELLED") {
+      throw new SupportSubscriptionError("PayPal did not confirm cancellation of the superseded support subscription.", 422);
+    }
     const sourceStatus = verifyPayPalSubscription({ subscription: source, tier: change.sourceSubscription.currentTier });
     const synchronizedSource = await synchronizeVerifiedPayPalSubscription({ database, providerSubscription: source, tier: change.sourceSubscription.currentTier, status: sourceStatus, supersededUpgradeSource: true });
     await finalizeSupersededUpgradeSource({ database, providerSubscriptionId: change.sourceSubscription.providerSubscriptionId, sourceStatus: synchronizedSource?.status ?? sourceStatus });
