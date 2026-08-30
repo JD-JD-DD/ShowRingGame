@@ -76,6 +76,7 @@
     "test:paypal-webhook-integration": "tsx scripts/testPayPalWebhookIntegration.ts",
     "test:support-sandbox-harness": "tsx scripts/testSupportSandboxHarness.ts",
     "repair:support-upgrade-cleanup": "tsx scripts/repairSupportUpgradeCleanup.ts",
+    "repair:support-cancellation-paid-through": "tsx scripts/repairSupportCancellationPaidThrough.ts",
     "provision:paypal-support": "tsx scripts/provisionPayPalSupport.cts",
     "verify:judge-assignments": "tsx scripts/verifyJudgeAssignmentsReadOnly.ts",
     "test:maintain-show-schedule-auth": "tsx scripts/testMaintainShowScheduleAuthorization.ts",
