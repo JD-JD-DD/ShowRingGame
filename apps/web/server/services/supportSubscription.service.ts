@@ -575,6 +575,7 @@ export async function createPayPalSupportSubscription(args: {
   cancelUrl: string;
   database?: SupportSubscriptionDatabase;
   payPalClient?: PayPalClient;
+  config?: PayPalSupportConfig;
 }): Promise<CreateSupportSubscriptionResult> {
   const database = args.database ?? (db as unknown as SupportSubscriptionDatabase);
   const payPalClient = args.payPalClient ?? createPayPalClient();
@@ -606,7 +607,7 @@ export async function createPayPalSupportSubscription(args: {
       cancelUrl: args.cancelUrl,
     });
     const verified = await payPalClient.getSubscription(created.providerSubscriptionId);
-    const status = verifyPayPalSubscription({ subscription: verified, tier: args.tier });
+    const status = verifyPayPalSubscription({ subscription: verified, tier: args.tier, config: args.config });
     const supportedAt = status === "ACTIVE" ? verified.startTime ?? new Date() : null;
     const subscription = await transaction.supportSubscription.create({
       data: {
