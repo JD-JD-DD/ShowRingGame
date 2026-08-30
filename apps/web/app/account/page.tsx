@@ -4,6 +4,8 @@ import KennelNameSettingsSection from "@/components/account/KennelNameSettingsSe
 import SupporterBadgePreference from "@/components/account/SupporterBadgePreference";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
+import { getSupporterBadgePresentation } from "@/lib/supporterBadgePresentation";
+import { getCanonicalSupportSubscription } from "@/server/services/supportSubscription.service";
 
 type AccountPageProps = {
   searchParams: Promise<{
@@ -42,6 +44,8 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
   if (!kennel) {
     redirect("/onboarding");
   }
+  const support = await getCanonicalSupportSubscription({ userId });
+  const badge = getSupporterBadgePresentation({ tier: support?.currentTier, status: support?.status, showSupporterBadge: kennel.showSupporterBadge, currentPaidPeriodEnd: support?.currentPaidPeriodEnd });
 
   const selfServiceRename = await db.kennelRenameHistory.findFirst({
     where: {
@@ -73,7 +77,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         hasUsedSelfServiceRename={Boolean(selfServiceRename)}
         initialSuccess={resolvedSearchParams.renamed === "1"}
       />
-      <SupporterBadgePreference initialValue={kennel.showSupporterBadge} />
+      <SupporterBadgePreference initialValue={kennel.showSupporterBadge} previewTier={badge.visible ? badge.tier : null} />
     </main>
   );
 }
