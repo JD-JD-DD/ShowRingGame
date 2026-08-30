@@ -50,7 +50,7 @@ async function main() {
   assert.equal(events.length, 1, "replay retains one provider event");
   assert.equal(subscription.status, "ENDED", "current PayPal state wins over delayed ACTIVATED event");
   assert.equal(subscription.currentTier, "SILVER");
-  assert.equal(subscription.tierPeriods.length, 2, "replay does not duplicate tier history");
+  assert.equal(subscription.tierPeriods.length, 1, "ended provider state does not reopen or duplicate tier history");
 
   const route = source("apps/web/app/api/webhooks/paypal/route.ts");
   const service = source("apps/web/server/services/paypalWebhook.service.ts");
