@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+const root = join(process.cwd(), "../..");
+const source = (path: string) => readFileSync(join(root, path), "utf8");
+const route = source("apps/web/app/api/account/supporter-badge/route.ts");
+const component = source("apps/web/components/account/SupporterBadgePreference.tsx");
+assert.match(route, /getSessionUserId/); assert.match(route, /typeof .*showSupporterBadge !== "boolean"/);
+assert.match(route, /kennel\.updateMany\(\{ where: \{ userId \}, data: \{ showSupporterBadge/);
+assert.doesNotMatch(route, /supportSubscription|PayPal|paypal/i);
+assert.match(component, /Public supporter badge/); assert.match(component, /Show or hide your supporter badge on public ShowRing pages\./); assert.match(component, /aria-pressed/);
+console.log("SUPPORT-07C supporter badge preference checks passed.");

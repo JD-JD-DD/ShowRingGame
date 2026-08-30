@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import KennelNameSettingsSection from "@/components/account/KennelNameSettingsSection";
+import SupporterBadgePreference from "@/components/account/SupporterBadgePreference";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 
@@ -24,6 +25,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
       id: true,
       name: true,
       slug: true,
+      showSupporterBadge: true,
       renameHistory: {
         orderBy: {
           changedAt: "desc",
@@ -71,6 +73,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         hasUsedSelfServiceRename={Boolean(selfServiceRename)}
         initialSuccess={resolvedSearchParams.renamed === "1"}
       />
+      <SupporterBadgePreference initialValue={kennel.showSupporterBadge} />
     </main>
   );
 }
