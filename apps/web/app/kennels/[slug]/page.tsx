@@ -200,7 +200,9 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
   const studListings = activeListings.filter(
     (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
   );
-  const support = await getCanonicalSupportSubscription({ userId: kennel.userId });
+  const support = kennel.userId
+    ? await getCanonicalSupportSubscription({ userId: kennel.userId })
+    : null;
   const supporterBadge = getSupporterBadgePresentation({ tier: support?.currentTier, status: support?.status, currentPaidPeriodEnd: support?.currentPaidPeriodEnd, showSupporterBadge: kennel.showSupporterBadge });
   const saleListings = activeListings.filter(
     (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
