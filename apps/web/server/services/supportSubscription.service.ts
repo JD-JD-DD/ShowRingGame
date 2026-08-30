@@ -520,40 +520,48 @@ export async function cancelPayPalSupportSubscription(args: {
 }): Promise<CancelSupportSubscriptionResult> {
   const database = args.database ?? db;
   const client = args.payPalClient ?? createPayPalClient();
-  return database.$transaction(async (tx: any) => {
+  const subscription = await database.$transaction(async (tx: any) => {
     const users = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "User" WHERE "id" = ${args.userId} FOR UPDATE`;
     if (users.length !== 1) throw new SupportSubscriptionError("Account not found.", 404);
-    const subscription = await getCanonicalSupportSubscription({ userId: args.userId, database: tx });
-    if (!subscription) throw new SupportSubscriptionError("No current PayPal support subscription was found.", 404);
-    if (subscription.status === "CANCELLATION_SCHEDULED") return { tier: subscription.currentTier, status: subscription.status, currentPaidPeriodEnd: subscription.currentPaidPeriodEnd ?? null };
-    if (subscription.status !== "ACTIVE") throw new SupportSubscriptionError("You can only cancel an active support subscription.", 409);
+    const current = await getCanonicalSupportSubscription({ userId: args.userId, database: tx });
+    if (!current) throw new SupportSubscriptionError("No current PayPal support subscription was found.", 404);
+    if (current.status === "CANCELLATION_SCHEDULED") return current;
+    if (current.status !== "ACTIVE") throw new SupportSubscriptionError("You can only cancel an active support subscription.", 409);
     const change = await tx.supportSubscriptionChange.findFirst({ where: { userId: args.userId, status: { in: LIVE_CHANGE_STATES } } });
     if (change) throw new SupportSubscriptionError("A support-level change is already in progress.", 409);
-
-    let paidThrough = subscription.currentPaidPeriodEnd ?? null;
-    if (!paidThrough || paidThrough <= new Date()) {
-      const verified = await client.getSubscription(subscription.providerSubscriptionId);
-      if (verified.id !== subscription.providerSubscriptionId) throw new SupportSubscriptionError("PayPal support status could not be verified.", 422);
-      const status = verifyPayPalSubscription({ subscription: verified, tier: subscription.currentTier, config: args.config });
-      if (status !== "ACTIVE" || !verified.nextBillingTime || verified.nextBillingTime <= new Date()) {
-        throw new SupportSubscriptionError("Cancellation cannot be completed until PayPal provides your paid-through date.", 422);
-      }
-      await synchronizeVerifiedPayPalSubscription({ database: tx, providerSubscription: verified, tier: subscription.currentTier, status });
-      paidThrough = verified.nextBillingTime;
-    }
-    await tx.supportSubscription.update({ where: { id: subscription.id }, data: { cancellationRequestedAt: new Date() } });
-    try {
-      await client.cancelSubscription(subscription.providerSubscriptionId, "Player requested cancellation.");
-      const provider = await client.getSubscription(subscription.providerSubscriptionId);
-      const providerStatus = translatePayPalStatus(provider);
-      const result = await synchronizeVerifiedPayPalSubscription({ database: tx, providerSubscription: provider, tier: subscription.currentTier, status: providerStatus });
-      if (!result || result.status !== "CANCELLATION_SCHEDULED") throw new SupportSubscriptionError("PayPal cancellation could not be verified.", 502);
-      return { tier: subscription.currentTier, status: "CANCELLATION_SCHEDULED", currentPaidPeriodEnd: paidThrough };
-    } catch (error) {
-      await tx.supportSubscription.update({ where: { id: subscription.id }, data: { cancellationRequestedAt: null } });
-      throw error;
-    }
+    return current;
   });
+  if (subscription.status === "CANCELLATION_SCHEDULED") {
+    return { tier: subscription.currentTier, status: subscription.status, currentPaidPeriodEnd: subscription.currentPaidPeriodEnd ?? null };
+  }
+
+  let paidThrough = subscription.currentPaidPeriodEnd ?? null;
+  if (!paidThrough || paidThrough <= new Date()) {
+    const verified = await client.getSubscription(subscription.providerSubscriptionId);
+    if (verified.id !== subscription.providerSubscriptionId) throw new SupportSubscriptionError("PayPal support status could not be verified.", 422);
+    const status = verifyPayPalSubscription({ subscription: verified, tier: subscription.currentTier, config: args.config });
+    if (status !== "ACTIVE" || !verified.nextBillingTime || verified.nextBillingTime <= new Date()) {
+      throw new SupportSubscriptionError("Cancellation cannot be completed until PayPal provides your paid-through date.", 422);
+    }
+    await synchronizeVerifiedPayPalSubscription({ database, providerSubscription: verified, tier: subscription.currentTier, status });
+    paidThrough = verified.nextBillingTime;
+  }
+  await database.supportSubscription.update({ where: { id: subscription.id }, data: { cancellationRequestedAt: new Date() } });
+  let providerCancellationAccepted = false;
+  try {
+    await client.cancelSubscription(subscription.providerSubscriptionId, "Player requested cancellation.");
+    providerCancellationAccepted = true;
+    const provider = await client.getSubscription(subscription.providerSubscriptionId);
+    const providerStatus = translatePayPalStatus(provider);
+    const result = await synchronizeVerifiedPayPalSubscription({ database, providerSubscription: provider, tier: subscription.currentTier, status: providerStatus });
+    if (!result || result.status !== "CANCELLATION_SCHEDULED") throw new SupportSubscriptionError("PayPal cancellation could not be verified.", 502);
+    return { tier: subscription.currentTier, status: "CANCELLATION_SCHEDULED", currentPaidPeriodEnd: paidThrough };
+  } catch (error) {
+    if (!providerCancellationAccepted) {
+      await database.supportSubscription.update({ where: { id: subscription.id }, data: { cancellationRequestedAt: null } });
+    }
+    throw error;
+  }
 }
 
 /**

@@ -13,6 +13,9 @@ async function main() {
   assert.match(service, /currentPaidPeriodEnd/, "paid-through boundary is retained");
   assert.match(service, /client\.getSubscription\(subscription\.providerSubscriptionId\)/, "missing paid-through dates are provider verified before cancel");
   assert.match(service, /client\.cancelSubscription\(subscription\.providerSubscriptionId, "Player requested cancellation\."\)/, "only canonical provider subscription is cancelled");
+  assert.match(service, /await database\.supportSubscription\.update\(\{ where: \{ id: subscription\.id \}, data: \{ cancellationRequestedAt: new Date\(\) \} \}\);/, "cancellation intent is durable before the provider call");
+  assert.match(service, /let providerCancellationAccepted = false;/, "provider acceptance is tracked separately from post-cancel synchronization");
+  assert.match(service, /if \(!providerCancellationAccepted\)/, "only a failed provider cancellation clears the durable cancellation intent");
   assert.match(service, /CANCELLATION_SCHEDULED/, "provider cancellation maps to local paid-through recognition");
   assert.match(service, /finalizeElapsedCancellation/, "elapsed paid-through recognition transitions lazily and idempotently");
   assert.match(service, /endedAt: fresh\.endedAt \?\? fresh\.currentPaidPeriodEnd/, "history closes at paid-through boundary");
