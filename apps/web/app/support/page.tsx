@@ -2,17 +2,14 @@ import SupportEnrollment from "@/components/support/SupportEnrollment";
 import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
 import { SUPPORT_BADGE_ONLY_BENEFIT, SUPPORT_FAQ, SUPPORT_POLICY_STATEMENT } from "@/lib/supportPresentation";
-import { CURRENT_SUPPORT_STATUSES } from "@/server/services/supportSubscription.service";
+import { getCanonicalSupportSubscription } from "@/server/services/supportSubscription.service";
 
 type SupportPageProps = { searchParams: Promise<{ paypal?: string }> };
 
 export default async function SupportPage({ searchParams }: SupportPageProps) {
   const userId = await getSessionUserId();
   const currentSubscription = userId
-    ? await (db as any).supportSubscription.findFirst({
-        where: { userId, status: { in: CURRENT_SUPPORT_STATUSES } },
-        select: { currentTier: true, status: true },
-      })
+    ? await getCanonicalSupportSubscription({ userId })
     : null;
   const { paypal } = await searchParams;
 

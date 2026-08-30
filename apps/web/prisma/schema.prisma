@@ -433,6 +433,18 @@ enum SupportStatus {
   ENDED
 }
 
+enum SupportSubscriptionChangeType {
+  UPGRADE
+}
+
+enum SupportSubscriptionChangeStatus {
+  PENDING_APPROVAL
+  TARGET_ACTIVE_CANCELLATION_PENDING
+  COMPLETED
+  ABANDONED
+  CLEANUP_FAILED
+}
+
 enum SupportProviderEventProcessingStatus {
   RECEIVED
   PROCESSED
@@ -459,6 +471,7 @@ model User {
   kennel              Kennel?
   passwordResetTokens PasswordResetToken[]
   supportSubscriptions SupportSubscription[]
+  supportSubscriptionChanges SupportSubscriptionChange[]
 }
 
 model SupportSubscription {
@@ -478,9 +491,37 @@ model SupportSubscription {
 
   user        User                          @relation(fields: [userId], references: [id])
   tierPeriods SupportSubscriptionTierPeriod[]
+  sourceChanges SupportSubscriptionChange[] @relation("SupportSubscriptionChangeSource")
+  targetChanges SupportSubscriptionChange[] @relation("SupportSubscriptionChangeTarget")
 
   @@index([userId, status])
   @@index([currentPaidPeriodEnd])
+}
+
+model SupportSubscriptionChange {
+  id                            String                          @id @default(cuid())
+  userId                        String
+  sourceSupportSubscriptionId   String
+  targetSupportSubscriptionId   String?                         @unique
+  targetTier                    SupportTier
+  approvalUrl                   String?
+  type                          SupportSubscriptionChangeType   @default(UPGRADE)
+  status                        SupportSubscriptionChangeStatus
+  requestedAt                   DateTime                        @default(now())
+  targetActivatedAt             DateTime?
+  sourceCancellationRequestedAt DateTime?
+  completedAt                   DateTime?
+  abandonedAt                   DateTime?
+  failedAt                      DateTime?
+  createdAt                     DateTime                        @default(now())
+  updatedAt                     DateTime                        @updatedAt
+
+  user               User                @relation(fields: [userId], references: [id])
+  sourceSubscription SupportSubscription @relation("SupportSubscriptionChangeSource", fields: [sourceSupportSubscriptionId], references: [id])
+  targetSubscription SupportSubscription? @relation("SupportSubscriptionChangeTarget", fields: [targetSupportSubscriptionId], references: [id])
+
+  @@index([userId, status])
+  @@index([sourceSupportSubscriptionId])
 }
 
 model SupportSubscriptionTierPeriod {

@@ -92,6 +92,65 @@ export type CreateSupportSubscriptionResult = {
   approvalUrl: string | null;
 };
 
+export type SupportSubscriptionChangeState =
+  | "PENDING_APPROVAL"
+  | "TARGET_ACTIVE_CANCELLATION_PENDING"
+  | "COMPLETED"
+  | "ABANDONED"
+  | "CLEANUP_FAILED";
+
+const LIVE_CHANGE_STATES: SupportSubscriptionChangeState[] = [
+  "PENDING_APPROVAL",
+  "TARGET_ACTIVE_CANCELLATION_PENDING",
+  "CLEANUP_FAILED",
+];
+
+type CanonicalSubscription = {
+  id: string;
+  userId: string;
+  providerSubscriptionId: string;
+  currentTier: SupportTierValue;
+  status: CanonicalSupportStatus;
+  firstSupportedAt?: Date | null;
+  currentPaidPeriodStart?: Date | null;
+  currentPaidPeriodEnd?: Date | null;
+};
+
+/**
+ * Chooses a player's recognised subscription. A replacement only takes over
+ * after its provider-backed row is ACTIVE; timestamps and query order are never
+ * used to break an upgrade overlap.
+ */
+export async function getCanonicalSupportSubscription(args: {
+  userId: string;
+  database?: any;
+}): Promise<CanonicalSubscription | null> {
+  const database = args.database ?? db;
+  const change = await database.supportSubscriptionChange?.findFirst?.({
+    where: { userId: args.userId, status: { in: LIVE_CHANGE_STATES } },
+    orderBy: { requestedAt: "desc" },
+    include: { sourceSubscription: true, targetSubscription: true },
+  });
+  if (change) {
+    if (change.targetActivatedAt && change.targetSubscription?.status === "ACTIVE") return change.targetSubscription;
+    return change.sourceSubscription;
+  }
+  const current = database.supportSubscription.findMany
+    ? await database.supportSubscription.findMany({ where: { userId: args.userId, provider: "PAYPAL", status: { in: CURRENT_SUPPORT_STATUSES } } })
+    : await database.supportSubscription.findFirst({ where: { userId: args.userId, provider: "PAYPAL", status: { in: CURRENT_SUPPORT_STATUSES } } }).then((value: any) => value ? [value] : []);
+  return current.length === 1 ? current[0] : null;
+}
+
+function isStrictUpgrade(source: SupportTierValue, target: SupportTierValue): boolean {
+  return ({ BRONZE: 0, SILVER: 1, GOLD: 2 } as const)[target] > ({ BRONZE: 0, SILVER: 1, GOLD: 2 } as const)[source];
+}
+
+export type CreateSupportSubscriptionChangeResult = {
+  tier: SupportTierValue;
+  status: SupportSubscriptionChangeState;
+  approvalUrl: string | null;
+};
+
 function sameDate(left: Date | null | undefined, right: Date | null | undefined): boolean {
   return (left?.getTime() ?? null) === (right?.getTime() ?? null);
 }
@@ -162,11 +221,17 @@ export async function reconcilePayPalSupportSubscription(args: {
   config?: PayPalSupportConfig;
 }): Promise<{ tier: SupportTierValue; status: CanonicalSupportStatus }> {
   const database = args.database ?? db;
-  const subscription = await database.supportSubscription.findFirst({
-    where: { userId: args.userId, provider: "PAYPAL", status: { in: CURRENT_SUPPORT_STATUSES } },
-    orderBy: { createdAt: "desc" },
-    select: { currentTier: true, providerSubscriptionId: true },
+  const inProgressChange = await database.supportSubscriptionChange?.findFirst?.({
+    where: { userId: args.userId, status: { in: LIVE_CHANGE_STATES } },
+    include: { targetSubscription: true },
   });
+  if (inProgressChange?.targetSubscription && !inProgressChange.targetActivatedAt) {
+    const targetProviderSubscription = await (args.payPalClient ?? createPayPalClient()).getSubscription(inProgressChange.targetSubscription.providerSubscriptionId);
+    const targetStatus = verifyPayPalSubscription({ subscription: targetProviderSubscription, tier: inProgressChange.targetTier, config: args.config });
+    await synchronizeVerifiedPayPalSubscription({ database, providerSubscription: targetProviderSubscription, tier: inProgressChange.targetTier, status: targetStatus, skipUnchanged: true });
+    await advanceSupportSubscriptionChange({ database, payPalClient: args.payPalClient, targetProviderSubscriptionId: inProgressChange.targetSubscription.providerSubscriptionId });
+  }
+  const subscription = await getCanonicalSupportSubscription({ userId: args.userId, database });
   if (!subscription) throw new SupportSubscriptionError("No current PayPal support subscription was found.", 404);
 
   const providerSubscription = await (args.payPalClient ?? createPayPalClient()).getSubscription(subscription.providerSubscriptionId);
@@ -185,8 +250,109 @@ export async function reconcilePayPalSupportSubscription(args: {
     status,
     skipUnchanged: true,
   });
+  await advanceSupportSubscriptionChange({ database, payPalClient: args.payPalClient, targetProviderSubscriptionId: subscription.providerSubscriptionId });
   if (!result) throw new SupportSubscriptionError("No current PayPal support subscription was found.", 404);
   return result;
+}
+
+/** Promotes an already verified replacement and performs its exact-source cleanup. */
+export async function advanceSupportSubscriptionChange(args: {
+  database?: any;
+  payPalClient?: PayPalClient;
+  targetProviderSubscriptionId: string;
+}): Promise<void> {
+  const database = args.database ?? db;
+  const client = args.payPalClient ?? createPayPalClient();
+  const change = await database.supportSubscriptionChange?.findFirst?.({
+    where: { targetSubscription: { providerSubscriptionId: args.targetProviderSubscriptionId }, status: { in: LIVE_CHANGE_STATES } },
+    include: { sourceSubscription: { include: { tierPeriods: { where: { endedAt: null } } } }, targetSubscription: true },
+  });
+  if (!change || !change.targetSubscription) return;
+  if (change.targetSubscription.status !== "ACTIVE") {
+    if (["ENDED"].includes(change.targetSubscription.status) && change.status === "PENDING_APPROVAL") {
+      await database.supportSubscriptionChange.update({ where: { id: change.id }, data: { status: "ABANDONED", abandonedAt: new Date() } });
+    }
+    return;
+  }
+  const activatedAt = change.targetSubscription.currentPaidPeriodStart ?? new Date();
+  if (!change.targetActivatedAt) {
+    await database.$transaction(async (tx: any) => {
+      const fresh = await tx.supportSubscriptionChange.findUnique({ where: { id: change.id }, include: { sourceSubscription: { include: { tierPeriods: { where: { endedAt: null } } } } } });
+      if (!fresh || fresh.targetActivatedAt) return;
+      for (const period of fresh.sourceSubscription.tierPeriods) {
+        await tx.supportSubscriptionTierPeriod.update({ where: { id: period.id }, data: { endedAt: activatedAt } });
+      }
+      await tx.supportSubscriptionChange.update({ where: { id: fresh.id }, data: { status: "TARGET_ACTIVE_CANCELLATION_PENDING", targetActivatedAt: activatedAt } });
+    });
+  }
+  try {
+    await database.supportSubscriptionChange.update({ where: { id: change.id }, data: { status: "TARGET_ACTIVE_CANCELLATION_PENDING", sourceCancellationRequestedAt: new Date(), failedAt: null } });
+    await client.cancelSubscription(change.sourceSubscription.providerSubscriptionId);
+    const source = await client.getSubscription(change.sourceSubscription.providerSubscriptionId);
+    const sourceStatus = verifyPayPalSubscription({ subscription: source, tier: change.sourceSubscription.currentTier });
+    await synchronizeVerifiedPayPalSubscription({ database, providerSubscription: source, tier: change.sourceSubscription.currentTier, status: sourceStatus });
+    if (sourceStatus === "ENDED") {
+      await database.supportSubscriptionChange.update({ where: { id: change.id }, data: { status: "COMPLETED", completedAt: new Date() } });
+    }
+  } catch {
+    await database.supportSubscriptionChange.update({ where: { id: change.id }, data: { status: "CLEANUP_FAILED", failedAt: new Date() } });
+  }
+}
+
+export async function createPayPalSupportSubscriptionChange(args: {
+  userId: string;
+  tier: SupportTierValue;
+  returnUrl: string;
+  cancelUrl: string;
+  database?: any;
+  payPalClient?: PayPalClient;
+}): Promise<CreateSupportSubscriptionChangeResult> {
+  const database = args.database ?? db;
+  const client = args.payPalClient ?? createPayPalClient();
+  return database.$transaction(async (tx: any) => {
+    const users = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "User" WHERE "id" = ${args.userId} FOR UPDATE`;
+    if (users.length !== 1) throw new SupportSubscriptionError("Account not found.", 404);
+    const canonical = await getCanonicalSupportSubscription({ userId: args.userId, database: tx });
+    if (!canonical || canonical.status !== "ACTIVE") throw new SupportSubscriptionError("You can only upgrade from an active support subscription.", 409);
+    if (canonical.currentTier === args.tier) throw new SupportSubscriptionError(`${args.tier[0]}${args.tier.slice(1).toLowerCase()} Supporter is already your current support level.`, 409);
+    if (!isStrictUpgrade(canonical.currentTier, args.tier)) throw new SupportSubscriptionError("Support levels can only be upgraded right now.", 409);
+
+    const existing = await tx.supportSubscriptionChange.findFirst({
+      where: { userId: args.userId, status: { in: LIVE_CHANGE_STATES } },
+      include: { targetSubscription: true },
+    });
+    if (existing) {
+      if (existing.status === "PENDING_APPROVAL" && existing.targetTier === args.tier && existing.targetSubscription?.status === "PENDING") {
+        const provider = await client.getSubscription(existing.targetSubscription.providerSubscriptionId);
+        if (provider.status === "APPROVAL_PENDING") {
+          return { tier: args.tier, status: "PENDING_APPROVAL", approvalUrl: existing.approvalUrl };
+        }
+        await tx.supportSubscriptionChange.update({ where: { id: existing.id }, data: { status: "ABANDONED", abandonedAt: new Date() } });
+      } else {
+        throw new SupportSubscriptionError("A support-level change is already in progress.", 409);
+      }
+    }
+
+    const change = await tx.supportSubscriptionChange.create({ data: {
+      userId: args.userId, sourceSupportSubscriptionId: canonical.id, targetTier: args.tier, status: "PENDING_APPROVAL",
+    } });
+    const created = await client.createSubscription({ tier: args.tier, returnUrl: args.returnUrl, cancelUrl: args.cancelUrl });
+    const verified = await client.getSubscription(created.providerSubscriptionId);
+    const status = verifyPayPalSubscription({ subscription: verified, tier: args.tier });
+    if (status === "ENDED") {
+      await tx.supportSubscriptionChange.update({ where: { id: change.id }, data: { status: "ABANDONED", abandonedAt: new Date() } });
+      throw new SupportSubscriptionError("PayPal could not start this support-level change.", 422);
+    }
+    const target = await tx.supportSubscription.create({ data: {
+      userId: args.userId, provider: "PAYPAL", providerSubscriptionId: verified.id, currentTier: args.tier, status,
+      currentPaidPeriodStart: status === "ACTIVE" ? verified.startTime ?? new Date() : null,
+      currentPaidPeriodEnd: status === "ACTIVE" ? verified.nextBillingTime : null,
+      firstSupportedAt: canonical.firstSupportedAt ?? canonical.currentPaidPeriodStart ?? new Date(),
+      tierPeriods: status === "ACTIVE" ? { create: { tier: args.tier, startedAt: verified.startTime ?? new Date() } } : undefined,
+    }, select: { id: true } });
+    await tx.supportSubscriptionChange.update({ where: { id: change.id }, data: { targetSupportSubscriptionId: target.id, approvalUrl: created.approvalUrl } });
+    return { tier: args.tier, status: "PENDING_APPROVAL", approvalUrl: created.approvalUrl };
+  });
 }
 
 /**

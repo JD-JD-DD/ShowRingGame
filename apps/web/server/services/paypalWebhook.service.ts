@@ -7,6 +7,7 @@ import {
 } from "@/server/services/paypalSupport.service";
 import {
   getSupportTierForPayPalPlan,
+  advanceSupportSubscriptionChange,
   synchronizeVerifiedPayPalSubscription,
   translatePayPalStatus,
 } from "@/server/services/supportSubscription.service";
@@ -97,6 +98,9 @@ export async function processVerifiedPayPalWebhook(args: {
       tier,
       status,
     });
+    if (synchronized) {
+      await advanceSupportSubscriptionChange({ database, payPalClient: args.payPalClient, targetProviderSubscriptionId: providerSubscriptionId });
+    }
     const result = synchronized ? "processed" as const : "ignored" as const;
     await database.supportProviderEvent.update({ where: { id: providerEvent.id }, data: { processingStatus: result === "processed" ? "PROCESSED" : "IGNORED", processedAt: new Date() } });
     return result;

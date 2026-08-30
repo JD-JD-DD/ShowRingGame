@@ -12,7 +12,7 @@ import {
   type SupportPresentationTierValue,
   type SupportStatusPresentationValue,
 } from "@/lib/supportPresentation";
-import { CURRENT_SUPPORT_STATUSES } from "@/server/services/supportSubscription.service";
+import { getCanonicalSupportSubscription } from "@/server/services/supportSubscription.service";
 
 type SupportStatusPageProps = { searchParams: Promise<{ paypal?: string }> };
 
@@ -43,7 +43,7 @@ function SupportDetails({ subscription }: { subscription: SupportSubscriptionVie
       {subscription.status === "PAYMENT_RETRY" && periodEnd ? <div><dt className="theme-label font-semibold">Billing information</dt><dd className="theme-copy mt-1">{periodEnd}</dd></div> : null}
       {subscription.status === "CANCELLATION_SCHEDULED" && periodEnd ? <div><dt className="theme-label font-semibold">Support ends</dt><dd className="theme-copy mt-1">{periodEnd}</dd></div> : null}
     </dl>
-    {subscription.status === "ACTIVE" ? <><p className="theme-copy mt-5 text-sm">Your Supporter badge remains eligible for display.</p><SupportManagementAffordances /></> : null}
+    {subscription.status === "ACTIVE" ? <><p className="theme-copy mt-5 text-sm">Your Supporter badge remains eligible for display.</p><SupportManagementAffordances currentTier={subscription.currentTier} /></> : null}
     {subscription.status === "PENDING" ? <><p className="theme-status-info mt-5 rounded-xl px-3 py-2 text-sm">Your support confirmation may take a short time to appear.</p><ReconcileSupportStatusButton /></> : null}
     {subscription.status === "PAYMENT_RETRY" ? <p className="theme-status-info mt-5 rounded-xl px-3 py-2 text-sm">PayPal is currently retrying this payment. Your Supporter status remains active during the payment-retry period.</p> : null}
     {subscription.status === "CANCELLATION_SCHEDULED" ? <div className="theme-card theme-copy mt-5 rounded-xl p-4 text-sm"><p>{periodEnd ? `Your support remains active through ${periodEnd}.` : "Your support remains active through the current paid period."} No further recurring charges will be made after this paid period.</p><p className="mt-2">Your Supporter badge remains active through the current paid period.</p></div> : null}
@@ -53,11 +53,7 @@ function SupportDetails({ subscription }: { subscription: SupportSubscriptionVie
 export default async function SupportStatusPage({ searchParams }: SupportStatusPageProps) {
   const userId = await getSessionUserId();
   if (!userId) redirect("/login?next=%2Faccount%2Fsettings%2Fsupport");
-  const subscription = await (db as any).supportSubscription.findFirst({
-    where: { userId, status: { in: CURRENT_SUPPORT_STATUSES } },
-    orderBy: { createdAt: "desc" },
-    select: { currentTier: true, status: true, firstSupportedAt: true, currentPaidPeriodEnd: true },
-  });
+  const subscription = await getCanonicalSupportSubscription({ userId });
   const formerSubscription = subscription ? null : await (db as any).supportSubscription.findFirst({
     where: { userId },
     orderBy: { createdAt: "desc" },

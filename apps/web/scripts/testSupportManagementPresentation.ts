@@ -19,9 +19,9 @@ assert.match(presentation, /ENDED: "Not currently supporting"/);
 assert.match(page, /subscription\.status === "ACTIVE"/);
 assert.match(page, /Next billing date/);
 assert.match(affordances, /Change support level/);
-assert.match(affordances, /Cancel support/);
-assert.match(affordances, /no change has been made/);
-assert.match(affordances, /no cancellation has been scheduled/);
+assert.doesNotMatch(affordances, /Cancel support/);
+assert.match(affordances, /\/api\/support\/change-tier/);
+assert.match(affordances, /Upgrading starts a new higher-level monthly support subscription/);
 
 assert.match(page, /subscription\.status === "PENDING"/);
 assert.match(page, /ReconcileSupportStatusButton/);
@@ -42,6 +42,6 @@ assert.match(page, /You are not currently supporting ShowRing\./);
 assert.match(page, /Support ShowRing/);
 assert.match(page, /href="\/support"/);
 assert.doesNotMatch(page + affordances, /lifetime|total contributed|supporter score|supporter rank/i);
-assert.doesNotMatch(page + affordances + supportService, /revise|cancelSubscription\(|CANCELLATION_SCHEDULED.*user action/);
+assert.doesNotMatch(page + affordances, /revise|CANCELLATION_SCHEDULED.*user action/);
 
 console.log("SUPPORT-05 management presentation checks passed.");
