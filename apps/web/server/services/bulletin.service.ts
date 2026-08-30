@@ -1,8 +1,10 @@
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { estimateJsonSizeBytes } from "@/lib/perf";
+import type { SupportPresentationTierValue } from "@/lib/supportPresentation";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import { getKennelPrestigeSummaries } from "@/server/services/kennelPrestige.service";
+import { getCommunitySupporterBadgePresentations } from "@/server/services/communitySupporterBadge.service";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 
@@ -39,6 +41,7 @@ type ThreadListRecord = {
   };
   kennel: {
     id: string;
+    userId: string | null;
     name: string;
     slug: string;
     user: {
@@ -83,6 +86,7 @@ export type BulletinThreadListItem = {
     displayName: string | null;
   };
   badges: KennelPrestigeBadges;
+  supporterTier: SupportPresentationTierValue | null;
 };
 
 export type BulletinCategoryDto = {
@@ -113,6 +117,7 @@ export type BulletinPostDto = {
     displayName: string | null;
   };
   badges: KennelPrestigeBadges;
+  supporterTier: SupportPresentationTierValue | null;
 };
 
 export type BulletinThreadDetailDto = BulletinThreadListItem & {
@@ -334,7 +339,11 @@ async function badgesForKennels(
 
 function mapThreadListItem(
   thread: ThreadListRecord,
-  badgesByKennelId: Map<string, KennelPrestigeBadges>
+  badgesByKennelId: Map<string, KennelPrestigeBadges>,
+  supporterBadgesByUserId: Map<
+    string,
+    { tier: SupportPresentationTierValue } | null
+  >
 ): BulletinThreadListItem {
   const firstPost = thread.posts[0];
 
@@ -361,18 +370,31 @@ function mapThreadListItem(
         prestigeScore: 0,
         prestigeRank: "New Kennel",
       },
+    supporterTier: thread.kennel.userId
+      ? supporterBadgesByUserId.get(thread.kennel.userId)?.tier ?? null
+      : null,
   };
 }
 
 async function mapThreadRecords(
   threads: ThreadListRecord[],
-  badgesByKennelId?: Map<string, KennelPrestigeBadges>
+  badgesByKennelId?: Map<string, KennelPrestigeBadges>,
+  supporterBadgesByUserId?: Map<
+    string,
+    { tier: SupportPresentationTierValue } | null
+  >
 ): Promise<BulletinThreadListItem[]> {
-  const badges =
-    badgesByKennelId ??
-    (await badgesForKennels(threads.map((thread) => thread.kennel.id)));
+  const [badges, supporterBadges] = await Promise.all([
+    badgesByKennelId ?? badgesForKennels(threads.map((thread) => thread.kennel.id)),
+    supporterBadgesByUserId ??
+      getCommunitySupporterBadgePresentations(
+        threads.map((thread) => thread.kennel.userId)
+      ),
+  ]);
 
-  return threads.map((thread) => mapThreadListItem(thread, badges));
+  return threads.map((thread) =>
+    mapThreadListItem(thread, badges, supporterBadges)
+  );
 }
 
 export async function getCommunityActor(userId: string): Promise<CommunityActor> {
@@ -493,6 +515,7 @@ const threadListSelect = Prisma.validator<Prisma.BulletinThreadSelect>()({
   kennel: {
     select: {
       id: true,
+      userId: true,
       name: true,
       slug: true,
       user: {
@@ -623,11 +646,17 @@ export async function getCommunityOverview(args: {
     distinctAuthorKennelCount = new Set(authorKennelIds).size;
 
     stage = "load-prestige-badges";
-    const badgesByKennelId = await badgesForKennels(authorKennelIds);
+    const [badgesByKennelId, supporterBadgesByUserId] = await Promise.all([
+      badgesForKennels(authorKennelIds),
+      getCommunitySupporterBadgePresentations([
+        ...latestThreads.map((thread) => thread.kennel.userId),
+        ...recentThreads.map((thread) => thread.kennel.userId),
+      ]),
+    ]);
 
     stage = "assemble-community-overview";
     const latestById = new Map(
-      (await mapThreadRecords(latestThreads, badgesByKennelId)).map((thread) => [
+      (await mapThreadRecords(latestThreads, badgesByKennelId, supporterBadgesByUserId)).map((thread) => [
         thread.id,
         thread,
       ])
@@ -648,7 +677,11 @@ export async function getCommunityOverview(args: {
           ? latestById.get(category.threads[0].id) ?? null
           : null,
       })),
-      recentTopics: await mapThreadRecords(recentThreads, badgesByKennelId),
+      recentTopics: await mapThreadRecords(
+        recentThreads,
+        badgesByKennelId,
+        supporterBadgesByUserId
+      ),
     };
   } catch (error) {
     const errorCode =
@@ -729,6 +762,7 @@ export async function getBulletinThread(
           kennel: {
             select: {
               id: true,
+              userId: true,
               name: true,
               slug: true,
               user: {
@@ -751,11 +785,21 @@ export async function getBulletinThread(
     return null;
   }
 
-  const badgesByKennelId = await badgesForKennels([
-    thread.kennel.id,
-    ...thread.posts.map((post) => post.kennel.id),
+  const [badgesByKennelId, supporterBadgesByUserId] = await Promise.all([
+    badgesForKennels([
+      thread.kennel.id,
+      ...thread.posts.map((post) => post.kennel.id),
+    ]),
+    getCommunitySupporterBadgePresentations([
+      thread.kennel.userId,
+      ...thread.posts.map((post) => post.kennel.userId),
+    ]),
   ]);
-  const listItem = mapThreadListItem(thread, badgesByKennelId);
+  const listItem = mapThreadListItem(
+    thread,
+    badgesByKennelId,
+    supporterBadgesByUserId
+  );
 
   const payload = {
     ...listItem,
@@ -784,6 +828,9 @@ export async function getBulletinThread(
           prestigeScore: 0,
         prestigeRank: "New Kennel",
         },
+      supporterTier: post.kennel.userId
+        ? supporterBadgesByUserId.get(post.kennel.userId)?.tier ?? null
+        : null,
     })),
   };
   console.info("service-perf", {

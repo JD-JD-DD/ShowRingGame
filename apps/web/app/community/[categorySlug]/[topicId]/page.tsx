@@ -103,7 +103,7 @@ export default async function CommunityTopicPage({
                 {topic.pinned ? <span className="theme-status-warning rounded-full px-3 py-1 text-xs font-semibold uppercase">Pinned</span> : null}
                 {topic.status !== "OPEN" ? <span className="theme-status-info rounded-full px-3 py-1 text-xs font-semibold uppercase">{topic.status}</span> : null}
               </div>
-              <div className="mt-4"><CommunityAuthor kennel={topic.kennel} badges={topic.badges} /></div>
+              <div className="mt-4"><CommunityAuthor kennel={topic.kennel} badges={topic.badges} supporterTier={topic.supporterTier} /></div>
             </div>
             <div className="flex flex-wrap gap-3">
               <a href="#reply-composer" className="theme-primary-button rounded-2xl px-5 py-3 text-sm font-semibold">
@@ -177,7 +177,7 @@ export default async function CommunityTopicPage({
               }`}
             >
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <CommunityAuthor kennel={post.kennel} badges={post.badges} />
+                <CommunityAuthor kennel={post.kennel} badges={post.badges} supporterTier={post.supporterTier} />
                 <div className="theme-label text-xs">{index === 0 ? "Original post" : `Reply ${index}`} · {formatPostTime(post.createdAt)}</div>
               </div>
               {post.moderationStatus !== "VISIBLE" ? <p className="mb-3 text-xs font-semibold uppercase">{post.moderationStatus}{post.moderationReason ? ` · ${post.moderationReason}` : ""}</p> : null}

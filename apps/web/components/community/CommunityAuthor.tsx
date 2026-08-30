@@ -1,16 +1,20 @@
 import Link from "next/link";
 import BulletinBadges from "@/components/bulletin/BulletinBadges";
+import SupporterBadge from "@/components/support/SupporterBadge";
+import type { SupportPresentationTierValue } from "@/lib/supportPresentation";
 import type { KennelPrestigeBadges } from "@/server/services/bulletin.service";
 
 export default function CommunityAuthor({
   kennel,
   badges,
+  supporterTier,
 }: {
   kennel: {
     name: string;
     slug: string;
   };
   badges: KennelPrestigeBadges;
+  supporterTier: SupportPresentationTierValue | null;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -22,6 +26,7 @@ export default function CommunityAuthor({
       </Link>
       <span className="theme-copy text-sm" aria-hidden="true">·</span>
       <BulletinBadges badges={badges} />
+      {supporterTier ? <SupporterBadge tier={supporterTier} /> : null}
     </div>
   );
 }
