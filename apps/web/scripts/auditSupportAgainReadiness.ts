@@ -17,8 +17,8 @@ async function main() {
   const candidates = [];
   for (const userId of [...new Set(historicalSubscriptions.map((subscription) => subscription.userId))]) {
     const [currentCount, liveWorkflowCount, history] = await Promise.all([
-      db.supportSubscription.count({ where: { userId, provider: "PAYPAL", status: { in: CURRENT_STATUSES } } }),
-      db.supportSubscriptionChange.count({ where: { userId, status: { in: LIVE_CHANGE_STATUSES } } }),
+      db.supportSubscription.count({ where: { userId, provider: "PAYPAL", status: { in: [...CURRENT_STATUSES] } } }),
+      db.supportSubscriptionChange.count({ where: { userId, status: { in: [...LIVE_CHANGE_STATUSES] } } }),
       db.supportSubscription.findMany({
         where: { userId, provider: "PAYPAL", status: "ENDED" },
         select: { id: true, currentTier: true, status: true, firstSupportedAt: true, endedAt: true },
