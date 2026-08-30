@@ -64,8 +64,7 @@ export function translatePayPalStatus(args: {
   }
 }
 
-export function getSupportTierForPayPalPlan(planId: string): SupportTierValue {
-  const config = getPayPalSupportConfig();
+export function getSupportTierForPayPalPlan(planId: string, config = getPayPalSupportConfig()): SupportTierValue {
   const tier = (Object.entries(config.planIds) as Array<[SupportTierValue, string]>).find(
     ([, configuredPlanId]) => configuredPlanId === planId
   )?.[0];
@@ -145,11 +144,48 @@ function isStrictUpgrade(source: SupportTierValue, target: SupportTierValue): bo
   return ({ BRONZE: 0, SILVER: 1, GOLD: 2 } as const)[target] > ({ BRONZE: 0, SILVER: 1, GOLD: 2 } as const)[source];
 }
 
+function isStrictDowngrade(source: SupportTierValue, target: SupportTierValue): boolean {
+  return ({ BRONZE: 0, SILVER: 1, GOLD: 2 } as const)[target] < ({ BRONZE: 0, SILVER: 1, GOLD: 2 } as const)[source];
+}
+
 export type CreateSupportSubscriptionChangeResult = {
   tier: SupportTierValue;
+  currentTier?: SupportTierValue;
   status: SupportSubscriptionChangeState;
   approvalUrl: string | null;
 };
+
+async function getPendingDowngrade(database: any, providerSubscriptionId: string): Promise<any | null> {
+  return database.supportSubscriptionChange?.findFirst?.({
+    where: { type: "DOWNGRADE", status: "PENDING_APPROVAL", sourceSubscription: { providerSubscriptionId } },
+    include: { sourceSubscription: true },
+  }) ?? null;
+}
+
+export async function getVerifiedTierForSupportSubscription(args: {
+  database: any;
+  providerSubscriptionId: string;
+  storedTier: SupportTierValue;
+  providerSubscription: PayPalSupportSubscription;
+  config?: PayPalSupportConfig;
+}): Promise<SupportTierValue> {
+  const providerTier = getSupportTierForPayPalPlan(args.providerSubscription.planId, args.config);
+  const change = await getPendingDowngrade(args.database, args.providerSubscriptionId);
+  if (!change) return providerTier;
+  if (providerTier === args.storedTier) return args.storedTier;
+  if (providerTier === change.targetTier) return change.targetTier;
+  throw new SupportSubscriptionError("PayPal support plan does not match the pending support-level change.", 422);
+}
+
+export async function completeVerifiedScheduledDowngrade(args: {
+  database: any;
+  providerSubscriptionId: string;
+  verifiedTier: SupportTierValue;
+}): Promise<void> {
+  const change = await getPendingDowngrade(args.database, args.providerSubscriptionId);
+  if (!change || args.verifiedTier !== change.targetTier) return;
+  await args.database.supportSubscriptionChange.update({ where: { id: change.id }, data: { status: "COMPLETED", completedAt: new Date() } });
+}
 
 function sameDate(left: Date | null | undefined, right: Date | null | undefined): boolean {
   return (left?.getTime() ?? null) === (right?.getTime() ?? null);
@@ -238,18 +274,16 @@ export async function reconcilePayPalSupportSubscription(args: {
   if (providerSubscription.id !== subscription.providerSubscriptionId) {
     throw new SupportSubscriptionError("PayPal support status could not be verified.", 422);
   }
-  const status = verifyPayPalSubscription({
-    subscription: providerSubscription,
-    tier: subscription.currentTier,
-    config: args.config,
-  });
+  const verifiedTier = await getVerifiedTierForSupportSubscription({ database, providerSubscriptionId: subscription.providerSubscriptionId, storedTier: subscription.currentTier, providerSubscription, config: args.config });
+  const status = verifyPayPalSubscription({ subscription: providerSubscription, tier: verifiedTier, config: args.config });
   const result = await synchronizeVerifiedPayPalSubscription({
     database,
     providerSubscription,
-    tier: subscription.currentTier,
+    tier: verifiedTier,
     status,
     skipUnchanged: true,
   });
+  await completeVerifiedScheduledDowngrade({ database, providerSubscriptionId: subscription.providerSubscriptionId, verifiedTier });
   await advanceSupportSubscriptionChange({ database, payPalClient: args.payPalClient, targetProviderSubscriptionId: subscription.providerSubscriptionId });
   if (!result) throw new SupportSubscriptionError("No current PayPal support subscription was found.", 404);
   return result;
@@ -315,6 +349,9 @@ export async function createPayPalSupportSubscriptionChange(args: {
     const canonical = await getCanonicalSupportSubscription({ userId: args.userId, database: tx });
     if (!canonical || canonical.status !== "ACTIVE") throw new SupportSubscriptionError("You can only upgrade from an active support subscription.", 409);
     if (canonical.currentTier === args.tier) throw new SupportSubscriptionError(`${args.tier[0]}${args.tier.slice(1).toLowerCase()} Supporter is already your current support level.`, 409);
+    if (isStrictDowngrade(canonical.currentTier, args.tier)) {
+      return createScheduledPayPalSupportDowngrade({ ...args, database: tx, payPalClient: client, canonical });
+    }
     if (!isStrictUpgrade(canonical.currentTier, args.tier)) throw new SupportSubscriptionError("Support levels can only be upgraded right now.", 409);
 
     const existing = await tx.supportSubscriptionChange.findFirst({
@@ -353,6 +390,44 @@ export async function createPayPalSupportSubscriptionChange(args: {
     await tx.supportSubscriptionChange.update({ where: { id: change.id }, data: { targetSupportSubscriptionId: target.id, approvalUrl: created.approvalUrl } });
     return { tier: args.tier, status: "PENDING_APPROVAL", approvalUrl: created.approvalUrl };
   });
+}
+
+async function createScheduledPayPalSupportDowngrade(args: {
+  userId: string;
+  tier: SupportTierValue;
+  returnUrl: string;
+  cancelUrl: string;
+  database: any;
+  payPalClient: PayPalClient;
+  canonical: CanonicalSubscription;
+}): Promise<CreateSupportSubscriptionChangeResult> {
+  const existing = await args.database.supportSubscriptionChange.findFirst({
+    where: { userId: args.userId, status: { in: LIVE_CHANGE_STATES } },
+    include: { sourceSubscription: true },
+  });
+  if (existing) {
+    if (existing.type === "DOWNGRADE" && existing.status === "PENDING_APPROVAL" && existing.sourceSupportSubscriptionId === args.canonical.id && existing.targetTier === args.tier) {
+      const provider = await args.payPalClient.getSubscription(args.canonical.providerSubscriptionId);
+      const providerTier = getSupportTierForPayPalPlan(provider.planId);
+      if (providerTier === args.canonical.currentTier) {
+        return { currentTier: args.canonical.currentTier, tier: args.tier, status: "PENDING_APPROVAL", approvalUrl: existing.approvalUrl };
+      }
+      await args.database.supportSubscriptionChange.update({ where: { id: existing.id }, data: { status: "ABANDONED", abandonedAt: new Date() } });
+    } else {
+      throw new SupportSubscriptionError("A support-level change is already in progress.", 409);
+    }
+  }
+  const change = await args.database.supportSubscriptionChange.create({ data: {
+    userId: args.userId,
+    sourceSupportSubscriptionId: args.canonical.id,
+    targetTier: args.tier,
+    type: "DOWNGRADE",
+    status: "PENDING_APPROVAL",
+    expectedEffectiveAt: args.canonical.currentPaidPeriodEnd ?? null,
+  } });
+  const revised = await args.payPalClient.reviseSubscription({ providerSubscriptionId: args.canonical.providerSubscriptionId, tier: args.tier, returnUrl: args.returnUrl, cancelUrl: args.cancelUrl });
+  await args.database.supportSubscriptionChange.update({ where: { id: change.id }, data: { approvalUrl: revised.approvalUrl } });
+  return { currentTier: args.canonical.currentTier, tier: args.tier, status: "PENDING_APPROVAL", approvalUrl: revised.approvalUrl };
 }
 
 /**

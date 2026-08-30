@@ -22,6 +22,7 @@ assert.match(affordances, /Change support level/);
 assert.doesNotMatch(affordances, /Cancel support/);
 assert.match(affordances, /\/api\/support\/change-tier/);
 assert.match(affordances, /Upgrading starts a new higher-level monthly support subscription/);
+assert.match(affordances, /current support level will remain active until PayPal applies the lower level/);
 
 assert.match(page, /subscription\.status === "PENDING"/);
 assert.match(page, /ReconcileSupportStatusButton/);

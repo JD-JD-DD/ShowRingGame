@@ -7,6 +7,8 @@ import {
 } from "@/server/services/paypalSupport.service";
 import {
   getSupportTierForPayPalPlan,
+  getVerifiedTierForSupportSubscription,
+  completeVerifiedScheduledDowngrade,
   advanceSupportSubscriptionChange,
   synchronizeVerifiedPayPalSubscription,
   translatePayPalStatus,
@@ -90,7 +92,13 @@ export async function processVerifiedPayPalWebhook(args: {
   try {
     // This current provider read deliberately occurs outside the database transaction.
     const current = await (args.payPalClient ?? createPayPalClient()).getSubscription(providerSubscriptionId);
-    const tier = getSupportTierForPayPalPlan(current.planId);
+    const providerTier = getSupportTierForPayPalPlan(current.planId);
+    const stored = await database.supportSubscription.findUnique({ where: { providerSubscriptionId } });
+    if (!stored) {
+      await database.supportProviderEvent.update({ where: { id: providerEvent.id }, data: { processingStatus: "IGNORED", processedAt: new Date() } });
+      return "ignored";
+    }
+    const tier = await getVerifiedTierForSupportSubscription({ database, providerSubscriptionId, storedTier: stored.currentTier, providerSubscription: current });
     const status = translatePayPalStatus(current);
     const synchronized = await synchronizeVerifiedPayPalSubscription({
       database,
@@ -99,6 +107,7 @@ export async function processVerifiedPayPalWebhook(args: {
       status,
     });
     if (synchronized) {
+      await completeVerifiedScheduledDowngrade({ database, providerSubscriptionId, verifiedTier: tier });
       await advanceSupportSubscriptionChange({ database, payPalClient: args.payPalClient, targetProviderSubscriptionId: providerSubscriptionId });
     }
     const result = synchronized ? "processed" as const : "ignored" as const;

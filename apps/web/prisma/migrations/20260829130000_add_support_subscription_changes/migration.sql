@@ -1,4 +1,4 @@
-CREATE TYPE "SupportSubscriptionChangeType" AS ENUM ('UPGRADE');
+CREATE TYPE "SupportSubscriptionChangeType" AS ENUM ('UPGRADE', 'DOWNGRADE');
 
 CREATE TYPE "SupportSubscriptionChangeStatus" AS ENUM ('PENDING_APPROVAL', 'TARGET_ACTIVE_CANCELLATION_PENDING', 'COMPLETED', 'ABANDONED', 'CLEANUP_FAILED');
 
@@ -9,6 +9,7 @@ CREATE TABLE "SupportSubscriptionChange" (
     "targetSupportSubscriptionId" TEXT,
     "targetTier" "SupportTier" NOT NULL,
     "approvalUrl" TEXT,
+    "expectedEffectiveAt" TIMESTAMP(3),
     "type" "SupportSubscriptionChangeType" NOT NULL DEFAULT 'UPGRADE',
     "status" "SupportSubscriptionChangeStatus" NOT NULL,
     "requestedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

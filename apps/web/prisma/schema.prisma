@@ -435,6 +435,7 @@ enum SupportStatus {
 
 enum SupportSubscriptionChangeType {
   UPGRADE
+  DOWNGRADE
 }
 
 enum SupportSubscriptionChangeStatus {
@@ -505,6 +506,7 @@ model SupportSubscriptionChange {
   targetSupportSubscriptionId   String?                         @unique
   targetTier                    SupportTier
   approvalUrl                   String?
+  expectedEffectiveAt           DateTime?
   type                          SupportSubscriptionChangeType   @default(UPGRADE)
   status                        SupportSubscriptionChangeStatus
   requestedAt                   DateTime                        @default(now())

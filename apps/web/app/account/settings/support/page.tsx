@@ -27,7 +27,7 @@ type SupportSubscriptionView = {
   currentPaidPeriodEnd: Date | null;
 };
 
-function SupportDetails({ subscription }: { subscription: SupportSubscriptionView }) {
+function SupportDetails({ subscription, pendingDowngrade }: { subscription: SupportSubscriptionView; pendingDowngrade: { targetTier: SupportPresentationTierValue; expectedEffectiveAt: Date | null } | null }) {
   const tier = getSupportTierPresentation(subscription.currentTier);
   const firstSupported = formatDate(subscription.firstSupportedAt);
   const periodEnd = formatDate(subscription.currentPaidPeriodEnd);
@@ -44,6 +44,7 @@ function SupportDetails({ subscription }: { subscription: SupportSubscriptionVie
       {subscription.status === "CANCELLATION_SCHEDULED" && periodEnd ? <div><dt className="theme-label font-semibold">Support ends</dt><dd className="theme-copy mt-1">{periodEnd}</dd></div> : null}
     </dl>
     {subscription.status === "ACTIVE" ? <><p className="theme-copy mt-5 text-sm">Your Supporter badge remains eligible for display.</p><SupportManagementAffordances currentTier={subscription.currentTier} /></> : null}
+    {pendingDowngrade ? <p role="status" className="theme-status-info mt-5 rounded-xl px-3 py-2 text-sm">Change to {getSupportTierPresentation(pendingDowngrade.targetTier).label} pending{pendingDowngrade.expectedEffectiveAt ? ` for ${formatDate(pendingDowngrade.expectedEffectiveAt)}` : ""}. Your current level remains active until PayPal applies the change.</p> : null}
     {subscription.status === "PENDING" ? <><p className="theme-status-info mt-5 rounded-xl px-3 py-2 text-sm">Your support confirmation may take a short time to appear.</p><ReconcileSupportStatusButton /></> : null}
     {subscription.status === "PAYMENT_RETRY" ? <p className="theme-status-info mt-5 rounded-xl px-3 py-2 text-sm">PayPal is currently retrying this payment. Your Supporter status remains active during the payment-retry period.</p> : null}
     {subscription.status === "CANCELLATION_SCHEDULED" ? <div className="theme-card theme-copy mt-5 rounded-xl p-4 text-sm"><p>{periodEnd ? `Your support remains active through ${periodEnd}.` : "Your support remains active through the current paid period."} No further recurring charges will be made after this paid period.</p><p className="mt-2">Your Supporter badge remains active through the current paid period.</p></div> : null}
@@ -54,6 +55,7 @@ export default async function SupportStatusPage({ searchParams }: SupportStatusP
   const userId = await getSessionUserId();
   if (!userId) redirect("/login?next=%2Faccount%2Fsettings%2Fsupport");
   const subscription = await getCanonicalSupportSubscription({ userId });
+  const pendingDowngrade = subscription ? await (db as any).supportSubscriptionChange.findFirst({ where: { sourceSupportSubscriptionId: subscription.id, type: "DOWNGRADE", status: "PENDING_APPROVAL" }, select: { targetTier: true, expectedEffectiveAt: true } }) : null;
   const formerSubscription = subscription ? null : await (db as any).supportSubscription.findFirst({
     where: { userId },
     orderBy: { createdAt: "desc" },
@@ -64,6 +66,6 @@ export default async function SupportStatusPage({ searchParams }: SupportStatusP
   return <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
     <header><p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">Account Settings</p><h1 className="theme-heading mt-2 text-3xl font-semibold">Support Status</h1></header>
     {paypal === "approved" ? <p role="status" className="theme-status-info mt-6 rounded-2xl px-4 py-3 text-sm">PayPal approval received. Confirming your support status…</p> : null}
-    {subscription ? <SupportDetails subscription={subscription as SupportSubscriptionView} /> : formerSubscription ? <section className="theme-card mt-6 rounded-2xl p-5"><p className="theme-heading font-semibold">Thank you for supporting ShowRing during development.</p><dl className="theme-copy mt-5 grid gap-4 text-sm sm:grid-cols-2"><div><dt className="theme-label font-semibold">First supported</dt><dd className="mt-1">{formatDate(formerSubscription.firstSupportedAt) ?? "Unavailable"}</dd></div><div><dt className="theme-label font-semibold">Previous level</dt><dd className="mt-1">{getSupportTierPresentation(formerSubscription.currentTier as SupportPresentationTierValue).label}</dd></div><div><dt className="theme-label font-semibold">Current status</dt><dd className="mt-1">Not currently supporting</dd></div></dl><Link href="/support" className="theme-primary-button mt-6 inline-flex rounded-xl px-4 py-2 text-sm font-semibold">Support Again</Link></section> : <section className="theme-card mt-6 rounded-2xl p-5"><p className="theme-copy text-sm">You are not currently supporting ShowRing.</p><Link href="/support" className="theme-primary-button mt-5 inline-flex rounded-xl px-4 py-2 text-sm font-semibold">Support ShowRing</Link></section>}
+    {subscription ? <SupportDetails subscription={subscription as SupportSubscriptionView} pendingDowngrade={pendingDowngrade as { targetTier: SupportPresentationTierValue; expectedEffectiveAt: Date | null } | null} /> : formerSubscription ? <section className="theme-card mt-6 rounded-2xl p-5"><p className="theme-heading font-semibold">Thank you for supporting ShowRing during development.</p><dl className="theme-copy mt-5 grid gap-4 text-sm sm:grid-cols-2"><div><dt className="theme-label font-semibold">First supported</dt><dd className="mt-1">{formatDate(formerSubscription.firstSupportedAt) ?? "Unavailable"}</dd></div><div><dt className="theme-label font-semibold">Previous level</dt><dd className="mt-1">{getSupportTierPresentation(formerSubscription.currentTier as SupportPresentationTierValue).label}</dd></div><div><dt className="theme-label font-semibold">Current status</dt><dd className="mt-1">Not currently supporting</dd></div></dl><Link href="/support" className="theme-primary-button mt-6 inline-flex rounded-xl px-4 py-2 text-sm font-semibold">Support Again</Link></section> : <section className="theme-card mt-6 rounded-2xl p-5"><p className="theme-copy text-sm">You are not currently supporting ShowRing.</p><Link href="/support" className="theme-primary-button mt-5 inline-flex rounded-xl px-4 py-2 text-sm font-semibold">Support ShowRing</Link></section>}
   </main>;
 }

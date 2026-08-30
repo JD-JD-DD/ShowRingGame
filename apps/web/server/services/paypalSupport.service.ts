@@ -199,6 +199,8 @@ export type CreatedPayPalSupportSubscription = {
   approvalUrl: string | null;
 };
 
+export type RevisedPayPalSupportSubscription = { approvalUrl: string | null };
+
 export class PayPalClient {
   private accessToken: string | null = null;
 
@@ -303,6 +305,15 @@ export class PayPalClient {
       `/v1/billing/subscriptions/${encodeURIComponent(providerSubscriptionId)}`
     );
     return parsePayPalSubscription(result);
+  }
+
+  async reviseSubscription(args: { providerSubscriptionId: string; tier: SupportTierValue; returnUrl: string; cancelUrl: string }): Promise<RevisedPayPalSupportSubscription> {
+    if (!("planIds" in this.config)) throw new PayPalSupportError("PayPal support is not configured.", 503);
+    const result = await this.request("POST", `/v1/billing/subscriptions/${encodeURIComponent(args.providerSubscriptionId)}/revise`, {
+      plan_id: getPayPalPlanId(args.tier, this.config),
+      application_context: { user_action: "SUBSCRIBE_NOW", return_url: args.returnUrl, cancel_url: args.cancelUrl },
+    });
+    return { approvalUrl: findApprovalUrl(result) };
   }
 
   async cancelSubscription(providerSubscriptionId: string): Promise<void> {
