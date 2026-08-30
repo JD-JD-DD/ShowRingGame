@@ -1,0 +1,2 @@
+ALTER TYPE "SupportSubscriptionChangeType"
+ADD VALUE IF NOT EXISTS 'DOWNGRADE';
