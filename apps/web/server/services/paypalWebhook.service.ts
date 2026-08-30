@@ -9,6 +9,8 @@ import {
   getSupportTierForPayPalPlan,
   getVerifiedTierForSupportSubscription,
   completeVerifiedScheduledDowngrade,
+  finalizeSupersededUpgradeSource,
+  isSupersededUpgradeSource,
   advanceSupportSubscriptionChange,
   synchronizeVerifiedPayPalSubscription,
   translatePayPalStatus,
@@ -101,6 +103,7 @@ export async function processVerifiedPayPalWebhook(args: {
     }
     const tier = await getVerifiedTierForSupportSubscription({ database, providerSubscriptionId, storedTier: stored.currentTier, providerSubscription: current });
     const status = translatePayPalStatus(current);
+    const supersededUpgradeSource = await isSupersededUpgradeSource({ database, providerSubscriptionId });
     const synchronized = await synchronizeVerifiedPayPalSubscription({
       database,
       providerSubscription: current,
@@ -112,8 +115,10 @@ export async function processVerifiedPayPalWebhook(args: {
           ? "RECOVERED"
           : undefined,
       paymentEventAt: args.event.create_time,
+      supersededUpgradeSource,
     });
     if (synchronized) {
+      await finalizeSupersededUpgradeSource({ database, providerSubscriptionId, sourceStatus: synchronized.status });
       await completeVerifiedScheduledDowngrade({ database, providerSubscriptionId, verifiedTier: tier });
       await advanceSupportSubscriptionChange({ database, payPalClient: args.payPalClient, targetProviderSubscriptionId: providerSubscriptionId });
     }

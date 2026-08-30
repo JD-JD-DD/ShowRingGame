@@ -213,6 +213,7 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
   skipUnchanged?: boolean;
   paymentEvent?: "FAILED" | "RECOVERED";
   paymentEventAt?: Date;
+  supersededUpgradeSource?: boolean;
 }): Promise<{ tier: SupportTierValue; status: CanonicalSupportStatus } | null> {
   const now = new Date();
   return args.database.$transaction(async (tx) => {
@@ -229,7 +230,9 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
     const startedAt = args.providerSubscription.startTime ?? now;
     const providerFailureAt = args.providerSubscription.lastFailedPaymentAt ?? args.paymentEventAt ?? now;
     const failureIsNewerThanRecovery = !fresh.lastPaymentRecoveryAt || providerFailureAt > fresh.lastPaymentRecoveryAt;
-    const effectiveStatus = fresh.cancellationRequestedAt && args.providerSubscription.status === "CANCELLED"
+    const effectiveStatus = args.supersededUpgradeSource && args.providerSubscription.status === "CANCELLED"
+      ? "ENDED"
+      : fresh.cancellationRequestedAt && args.providerSubscription.status === "CANCELLED"
       ? (fresh.currentPaidPeriodEnd && fresh.currentPaidPeriodEnd > now ? "CANCELLATION_SCHEDULED" : "ENDED")
       : args.paymentEvent === "FAILED" && failureIsNewerThanRecovery
         ? "PAYMENT_RETRY"
@@ -239,7 +242,7 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
             ? "PAYMENT_RETRY"
             : args.status;
     const activePeriod = fresh.tierPeriods[0];
-    const hasSupported = effectiveStatus !== "PENDING";
+    const hasSupported = ["ACTIVE", "PAYMENT_RETRY", "CANCELLATION_SCHEDULED"].includes(effectiveStatus);
     const currentPaidPeriodStart = effectiveStatus === "ACTIVE" ? startedAt : fresh.currentPaidPeriodStart;
     const currentPaidPeriodEnd = effectiveStatus === "ACTIVE" ? args.providerSubscription.nextBillingTime : fresh.currentPaidPeriodEnd;
     const firstSupportedAt = fresh.firstSupportedAt ?? (effectiveStatus === "ACTIVE" ? startedAt : null);
@@ -325,6 +328,39 @@ export async function reconcilePayPalSupportSubscription(args: {
   return result;
 }
 
+export async function isSupersededUpgradeSource(args: { database?: any; providerSubscriptionId: string }): Promise<boolean> {
+  const database = args.database ?? db;
+  const change = await database.supportSubscriptionChange?.findFirst?.({
+    where: {
+      type: "UPGRADE",
+      sourceSubscription: { providerSubscriptionId: args.providerSubscriptionId },
+      targetActivatedAt: { not: null },
+    },
+    select: { id: true },
+  });
+  return Boolean(change);
+}
+
+export async function finalizeSupersededUpgradeSource(args: {
+  database?: any;
+  providerSubscriptionId: string;
+  sourceStatus: CanonicalSupportStatus;
+}): Promise<void> {
+  if (args.sourceStatus !== "ENDED") return;
+  const database = args.database ?? db;
+  const change = await database.supportSubscriptionChange?.findFirst?.({
+    where: {
+      type: "UPGRADE",
+      sourceSubscription: { providerSubscriptionId: args.providerSubscriptionId },
+      targetActivatedAt: { not: null },
+    },
+    select: { id: true, status: true, completedAt: true },
+  });
+  if (change && change.status !== "COMPLETED") {
+    await database.supportSubscriptionChange.update({ where: { id: change.id }, data: { status: "COMPLETED", completedAt: change.completedAt ?? new Date() } });
+  }
+}
+
 /** Promotes an already verified replacement and performs its exact-source cleanup. */
 export async function advanceSupportSubscriptionChange(args: {
   database?: any;
@@ -360,10 +396,8 @@ export async function advanceSupportSubscriptionChange(args: {
     await client.cancelSubscription(change.sourceSubscription.providerSubscriptionId);
     const source = await client.getSubscription(change.sourceSubscription.providerSubscriptionId);
     const sourceStatus = verifyPayPalSubscription({ subscription: source, tier: change.sourceSubscription.currentTier });
-    await synchronizeVerifiedPayPalSubscription({ database, providerSubscription: source, tier: change.sourceSubscription.currentTier, status: sourceStatus });
-    if (sourceStatus === "ENDED") {
-      await database.supportSubscriptionChange.update({ where: { id: change.id }, data: { status: "COMPLETED", completedAt: new Date() } });
-    }
+    const synchronizedSource = await synchronizeVerifiedPayPalSubscription({ database, providerSubscription: source, tier: change.sourceSubscription.currentTier, status: sourceStatus, supersededUpgradeSource: true });
+    await finalizeSupersededUpgradeSource({ database, providerSubscriptionId: change.sourceSubscription.providerSubscriptionId, sourceStatus: synchronizedSource?.status ?? sourceStatus });
   } catch {
     await database.supportSubscriptionChange.update({ where: { id: change.id }, data: { status: "CLEANUP_FAILED", failedAt: new Date() } });
   }
