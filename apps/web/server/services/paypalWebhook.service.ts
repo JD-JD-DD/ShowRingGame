@@ -24,7 +24,7 @@ export class PayPalWebhookError extends Error {
   constructor(message: string, readonly status = 400) { super(message); }
 }
 
-type WebhookEvent = { id: string; event_type: string; resource?: Record<string, unknown> };
+type WebhookEvent = { id: string; event_type: string; create_time?: Date; resource?: Record<string, unknown> };
 
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -35,7 +35,8 @@ export function parsePayPalWebhookEvent(value: unknown): WebhookEvent {
   if (!event || typeof event.id !== "string" || typeof event.event_type !== "string") {
     throw new PayPalWebhookError("Invalid PayPal webhook event.");
   }
-  return { id: event.id, event_type: event.event_type, resource: record(event.resource) ?? undefined };
+  const createTime = typeof event.create_time === "string" ? new Date(event.create_time) : null;
+  return { id: event.id, event_type: event.event_type, create_time: createTime && !Number.isNaN(createTime.getTime()) ? createTime : undefined, resource: record(event.resource) ?? undefined };
 }
 
 export function resolveProviderSubscriptionId(event: WebhookEvent): string | null {
@@ -105,6 +106,12 @@ export async function processVerifiedPayPalWebhook(args: {
       providerSubscription: current,
       tier,
       status,
+      paymentEvent: args.event.event_type === "BILLING.SUBSCRIPTION.PAYMENT.FAILED"
+        ? "FAILED"
+        : args.event.event_type === "PAYMENT.SALE.COMPLETED"
+          ? "RECOVERED"
+          : undefined,
+      paymentEventAt: args.event.create_time,
     });
     if (synchronized) {
       await completeVerifiedScheduledDowngrade({ database, providerSubscriptionId, verifiedTier: tier });

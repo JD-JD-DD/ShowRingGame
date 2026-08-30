@@ -486,6 +486,9 @@ model SupportSubscription {
   currentPaidPeriodEnd      DateTime?
   firstSupportedAt          DateTime?
   cancellationRequestedAt   DateTime?
+  paymentFailureStartedAt   DateTime?
+  lastPaymentFailureAt      DateTime?
+  lastPaymentRecoveryAt     DateTime?
   endedAt                   DateTime?
   createdAt                 DateTime        @default(now())
   updatedAt                 DateTime        @updatedAt

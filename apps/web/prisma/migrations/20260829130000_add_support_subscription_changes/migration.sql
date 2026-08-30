@@ -30,3 +30,7 @@ CREATE INDEX "SupportSubscriptionChange_sourceSupportSubscriptionId_idx" ON "Sup
 ALTER TABLE "SupportSubscriptionChange" ADD CONSTRAINT "SupportSubscriptionChange_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "SupportSubscriptionChange" ADD CONSTRAINT "SupportSubscriptionChange_sourceSupportSubscriptionId_fkey" FOREIGN KEY ("sourceSupportSubscriptionId") REFERENCES "SupportSubscription"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "SupportSubscriptionChange" ADD CONSTRAINT "SupportSubscriptionChange_targetSupportSubscriptionId_fkey" FOREIGN KEY ("targetSupportSubscriptionId") REFERENCES "SupportSubscription"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "SupportSubscription" ADD COLUMN "paymentFailureStartedAt" TIMESTAMP(3),
+ADD COLUMN "lastPaymentFailureAt" TIMESTAMP(3),
+ADD COLUMN "lastPaymentRecoveryAt" TIMESTAMP(3);

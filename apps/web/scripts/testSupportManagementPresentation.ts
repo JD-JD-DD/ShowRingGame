@@ -32,7 +32,7 @@ assert.match(reconcile, /\/api\/support\/reconcile/);
 assert.doesNotMatch(page, /Refresh Support Status/);
 
 assert.match(page, /subscription\.status === "PAYMENT_RETRY"/);
-assert.match(page, /PayPal is currently retrying this payment\. Your Supporter status remains active during the payment-retry period\./);
+assert.match(page, /PayPal was unable to complete a support payment\. Your supporter recognition remains active while PayPal handles payment recovery\./);
 assert.match(page, /subscription\.status === "CANCELLATION_SCHEDULED"/);
 assert.match(page, /Your recurring PayPal subscription has been cancelled\./);
 assert.match(page, /No further recurring charges are scheduled\./);

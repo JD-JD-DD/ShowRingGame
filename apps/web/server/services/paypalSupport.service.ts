@@ -32,6 +32,8 @@ export type PayPalSupportSubscription = {
   planId: string;
   startTime: Date | null;
   nextBillingTime: Date | null;
+  lastFailedPaymentAt?: Date | null;
+  outstandingBalance?: string | null;
 };
 
 export type PayPalProviderError = {
@@ -156,6 +158,8 @@ function parseOptionalDate(value: unknown): Date | null {
 function parsePayPalSubscription(value: unknown): PayPalSupportSubscription {
   const subscription = asRecord(value);
   const billingInfo = asRecord(subscription?.billing_info);
+  const lastFailedPayment = asRecord(billingInfo?.last_failed_payment);
+  const outstandingBalance = asRecord(billingInfo?.outstanding_balance);
   if (
     !subscription ||
     typeof subscription.id !== "string" ||
@@ -171,6 +175,8 @@ function parsePayPalSubscription(value: unknown): PayPalSupportSubscription {
     planId: subscription.plan_id,
     startTime: parseOptionalDate(subscription.start_time),
     nextBillingTime: parseOptionalDate(billingInfo?.next_billing_time),
+    lastFailedPaymentAt: parseOptionalDate(lastFailedPayment?.time),
+    outstandingBalance: typeof outstandingBalance?.value === "string" ? outstandingBalance.value : null,
   };
 }
 

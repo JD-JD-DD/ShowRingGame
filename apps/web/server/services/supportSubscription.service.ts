@@ -211,6 +211,8 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
   tier: SupportTierValue;
   status: CanonicalSupportStatus;
   skipUnchanged?: boolean;
+  paymentEvent?: "FAILED" | "RECOVERED";
+  paymentEventAt?: Date;
 }): Promise<{ tier: SupportTierValue; status: CanonicalSupportStatus } | null> {
   const now = new Date();
   return args.database.$transaction(async (tx) => {
@@ -225,9 +227,17 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
       include: { tierPeriods: { where: { endedAt: null } } },
     });
     const startedAt = args.providerSubscription.startTime ?? now;
+    const providerFailureAt = args.providerSubscription.lastFailedPaymentAt ?? args.paymentEventAt ?? now;
+    const failureIsNewerThanRecovery = !fresh.lastPaymentRecoveryAt || providerFailureAt > fresh.lastPaymentRecoveryAt;
     const effectiveStatus = fresh.cancellationRequestedAt && args.providerSubscription.status === "CANCELLED"
       ? (fresh.currentPaidPeriodEnd && fresh.currentPaidPeriodEnd > now ? "CANCELLATION_SCHEDULED" : "ENDED")
-      : args.status;
+      : args.paymentEvent === "FAILED" && failureIsNewerThanRecovery
+        ? "PAYMENT_RETRY"
+        : args.status === "PAYMENT_RETRY"
+          ? "PAYMENT_RETRY"
+          : fresh.status === "PAYMENT_RETRY" && args.status === "ACTIVE" && args.paymentEvent !== "RECOVERED"
+            ? "PAYMENT_RETRY"
+            : args.status;
     const activePeriod = fresh.tierPeriods[0];
     const hasSupported = effectiveStatus !== "PENDING";
     const currentPaidPeriodStart = effectiveStatus === "ACTIVE" ? startedAt : fresh.currentPaidPeriodStart;
@@ -235,6 +245,9 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
     const firstSupportedAt = fresh.firstSupportedAt ?? (effectiveStatus === "ACTIVE" ? startedAt : null);
     const cancellationRequestedAt = effectiveStatus === "CANCELLATION_SCHEDULED" ? fresh.cancellationRequestedAt ?? now : null;
     const endedAt = effectiveStatus === "ENDED" ? fresh.endedAt ?? now : null;
+    const lastPaymentFailureAt = args.paymentEvent === "FAILED" && failureIsNewerThanRecovery ? providerFailureAt : fresh.lastPaymentFailureAt;
+    const paymentFailureStartedAt = effectiveStatus === "PAYMENT_RETRY" ? fresh.paymentFailureStartedAt ?? lastPaymentFailureAt ?? now : fresh.paymentFailureStartedAt;
+    const lastPaymentRecoveryAt = args.paymentEvent === "RECOVERED" && args.status === "ACTIVE" ? args.paymentEventAt ?? now : fresh.lastPaymentRecoveryAt;
     const tierPeriodChanges = hasSupported && (!activePeriod || activePeriod.tier !== args.tier);
 
     if (hasSupported && activePeriod && activePeriod.tier !== args.tier) {
@@ -251,7 +264,10 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
       sameDate(fresh.currentPaidPeriodEnd, currentPaidPeriodEnd) &&
       sameDate(fresh.firstSupportedAt, firstSupportedAt) &&
       sameDate(fresh.cancellationRequestedAt, cancellationRequestedAt) &&
-      sameDate(fresh.endedAt, endedAt);
+      sameDate(fresh.endedAt, endedAt) &&
+      sameDate(fresh.paymentFailureStartedAt, paymentFailureStartedAt) &&
+      sameDate(fresh.lastPaymentFailureAt, lastPaymentFailureAt) &&
+      sameDate(fresh.lastPaymentRecoveryAt, lastPaymentRecoveryAt);
     if (!args.skipUnchanged || !unchanged) {
       await tx.supportSubscription.update({ where: { id: fresh.id }, data: {
         currentTier: args.tier,
@@ -261,6 +277,9 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
         firstSupportedAt,
         cancellationRequestedAt,
         endedAt,
+        paymentFailureStartedAt,
+        lastPaymentFailureAt,
+        lastPaymentRecoveryAt,
       } });
     }
     return { tier: args.tier, status: effectiveStatus };
