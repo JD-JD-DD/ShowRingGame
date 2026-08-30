@@ -74,6 +74,7 @@
     "test:show-countdowns": "tsx scripts/testShowCountdowns.ts",
     "test:paypal-support-integration": "tsx scripts/testPayPalSupportIntegration.ts",
     "test:paypal-webhook-integration": "tsx scripts/testPayPalWebhookIntegration.ts",
+    "test:support-paid-through-expiration": "tsx scripts/testSupportPaidThroughExpiration.ts",
     "test:support-sandbox-harness": "tsx scripts/testSupportSandboxHarness.ts",
     "repair:support-upgrade-cleanup": "tsx scripts/repairSupportUpgradeCleanup.ts",
     "repair:support-cancellation-paid-through": "tsx scripts/repairSupportCancellationPaidThrough.ts",
