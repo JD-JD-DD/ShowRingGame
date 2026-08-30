@@ -6,6 +6,9 @@ import { getDistrictPanelStyle } from "@/lib/districtStyles";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
+import { getSupporterBadgePresentation } from "@/lib/supporterBadgePresentation";
+import SupporterBadge from "@/components/support/SupporterBadge";
+import { getCanonicalSupportSubscription } from "@/server/services/supportSubscription.service";
 import { getKennelPrestigeSummary } from "@/server/services/kennelPrestige.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import {
@@ -58,6 +61,7 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
       homeDistrict: true,
       publicSlogan: true,
       moderationStatus: true,
+      showSupporterBadge: true,
       user: {
         select: {
           moderationStatus: true,
@@ -196,6 +200,8 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
   const studListings = activeListings.filter(
     (listing) => listing.listingType === PLAYER_STUD_LISTING_TYPE
   );
+  const support = await getCanonicalSupportSubscription({ userId: kennel.userId });
+  const supporterBadge = getSupporterBadgePresentation({ tier: support?.currentTier, status: support?.status, currentPaidPeriodEnd: support?.currentPaidPeriodEnd, showSupporterBadge: kennel.showSupporterBadge });
   const saleListings = activeListings.filter(
     (listing) => listing.listingType === PLAYER_SALE_LISTING_TYPE
   );
@@ -209,7 +215,7 @@ export default async function PublicKennelProfilePage({ params }: PageProps) {
               <p className="theme-label text-sm uppercase tracking-[0.25em]">
                 Public Kennel
               </p>
-              <h1 className="theme-heading mt-2 text-4xl font-semibold">{kennel.name}</h1>
+              <div className="mt-2 flex flex-wrap items-center gap-3"><h1 className="theme-heading text-4xl font-semibold">{kennel.name}</h1>{supporterBadge.visible ? <SupporterBadge tier={supporterBadge.tier} /> : null}</div>
               {kennel.renameHistory[0]?.previousName ? (
                 <p className="theme-copy mt-2 text-sm">
                   Previously known as: {kennel.renameHistory[0].previousName}
