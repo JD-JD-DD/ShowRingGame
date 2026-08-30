@@ -24,6 +24,8 @@ async function main() {
   assert.match(webhook, /getVerifiedTierForSupportSubscription/, "webhook validates pending downgrade against provider GET");
   assert.match(webhook, /completeVerifiedScheduledDowngrade/, "webhook completes only verified downgrade");
   assert.match(management, /current support level will remain active until PayPal applies the lower level/, "downgrade disclosure preserves current recognition");
+  assert.match(management, /You are not starting a second subscription or paying the lower amount today/, "downgrade consent explains PayPal's revision presentation");
+  assert.match(management, /The new support level and monthly amount will take effect on your next billing date/, "downgrade consent preserves the next-cycle effective date");
   assert.match(management, /SILVER: \["GOLD", "BRONZE"\]/, "Silver exposes only Gold upgrade and Bronze downgrade");
   assert.match(management, /GOLD: \["SILVER", "BRONZE"\]/, "Gold exposes lower choices");
   console.log("SUPPORT-06C scheduled-downgrade checks passed.");
