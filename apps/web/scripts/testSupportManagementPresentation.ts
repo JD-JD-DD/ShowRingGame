@@ -23,6 +23,8 @@ assert.doesNotMatch(affordances, /Cancel support/);
 assert.match(affordances, /\/api\/support\/change-tier/);
 assert.match(affordances, /Upgrading starts a new higher-level monthly support subscription/);
 assert.match(affordances, /current support level will remain active until PayPal applies the lower level/);
+assert.match(affordances, /Cancel Support/);
+assert.match(affordances, /Keep Support/);
 
 assert.match(page, /subscription\.status === "PENDING"/);
 assert.match(page, /ReconcileSupportStatusButton/);
@@ -32,8 +34,8 @@ assert.doesNotMatch(page, /Refresh Support Status/);
 assert.match(page, /subscription\.status === "PAYMENT_RETRY"/);
 assert.match(page, /PayPal is currently retrying this payment\. Your Supporter status remains active during the payment-retry period\./);
 assert.match(page, /subscription\.status === "CANCELLATION_SCHEDULED"/);
-assert.match(page, /No further recurring charges will be made after this paid period\./);
-assert.match(page, /Your Supporter badge remains active through the current paid period\./);
+assert.match(page, /Your recurring PayPal subscription has been cancelled\./);
+assert.match(page, /No further recurring charges are scheduled\./);
 
 assert.match(page, /Thank you for supporting ShowRing during development\./);
 assert.match(page, /Previous level/);

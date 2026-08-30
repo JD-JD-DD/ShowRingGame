@@ -43,11 +43,11 @@ function SupportDetails({ subscription, pendingDowngrade }: { subscription: Supp
       {subscription.status === "PAYMENT_RETRY" && periodEnd ? <div><dt className="theme-label font-semibold">Billing information</dt><dd className="theme-copy mt-1">{periodEnd}</dd></div> : null}
       {subscription.status === "CANCELLATION_SCHEDULED" && periodEnd ? <div><dt className="theme-label font-semibold">Support ends</dt><dd className="theme-copy mt-1">{periodEnd}</dd></div> : null}
     </dl>
-    {subscription.status === "ACTIVE" ? <><p className="theme-copy mt-5 text-sm">Your Supporter badge remains eligible for display.</p><SupportManagementAffordances currentTier={subscription.currentTier} /></> : null}
+    {subscription.status === "ACTIVE" ? <><p className="theme-copy mt-5 text-sm">Your Supporter badge remains eligible for display.</p><SupportManagementAffordances currentTier={subscription.currentTier} paidThrough={subscription.currentPaidPeriodEnd} /></> : null}
     {pendingDowngrade ? <p role="status" className="theme-status-info mt-5 rounded-xl px-3 py-2 text-sm">Change to {getSupportTierPresentation(pendingDowngrade.targetTier).label} pending{pendingDowngrade.expectedEffectiveAt ? ` for ${formatDate(pendingDowngrade.expectedEffectiveAt)}` : ""}. Your current level remains active until PayPal applies the change.</p> : null}
     {subscription.status === "PENDING" ? <><p className="theme-status-info mt-5 rounded-xl px-3 py-2 text-sm">Your support confirmation may take a short time to appear.</p><ReconcileSupportStatusButton /></> : null}
     {subscription.status === "PAYMENT_RETRY" ? <p className="theme-status-info mt-5 rounded-xl px-3 py-2 text-sm">PayPal is currently retrying this payment. Your Supporter status remains active during the payment-retry period.</p> : null}
-    {subscription.status === "CANCELLATION_SCHEDULED" ? <div className="theme-card theme-copy mt-5 rounded-xl p-4 text-sm"><p>{periodEnd ? `Your support remains active through ${periodEnd}.` : "Your support remains active through the current paid period."} No further recurring charges will be made after this paid period.</p><p className="mt-2">Your Supporter badge remains active through the current paid period.</p></div> : null}
+    {subscription.status === "CANCELLATION_SCHEDULED" ? <div className="theme-card theme-copy mt-5 rounded-xl p-4 text-sm"><p>Your recurring PayPal subscription has been cancelled. Your supporter recognition will remain active through the end of your paid support period. No further recurring charges are scheduled.</p><p className="mt-2">{periodEnd ? `Support remains active through ${periodEnd}.` : "Support remains active through the current paid period."}</p></div> : null}
   </section>;
 }
 

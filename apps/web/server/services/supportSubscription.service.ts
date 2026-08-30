@@ -21,7 +21,7 @@ type CanonicalSupportStatus = (typeof CURRENT_SUPPORT_STATUSES)[number] | "ENDED
 type SupportSubscriptionTransaction = {
   $queryRaw<T>(query: TemplateStringsArray, ...values: unknown[]): Promise<T>;
   supportSubscription: {
-    findFirst(args: unknown): Promise<{ id: string } | null>;
+    findFirst(args: unknown): Promise<{ id: string; firstSupportedAt?: Date | null } | null>;
     create(args: unknown): Promise<{ id: string; status: CanonicalSupportStatus }>;
   };
 };
@@ -115,6 +115,17 @@ type CanonicalSubscription = {
   currentPaidPeriodEnd?: Date | null;
 };
 
+async function finalizeElapsedCancellation(database: any, subscription: CanonicalSubscription): Promise<boolean> {
+  if (subscription.status !== "CANCELLATION_SCHEDULED" || !subscription.currentPaidPeriodEnd || subscription.currentPaidPeriodEnd > new Date()) return false;
+  await database.$transaction(async (tx: any) => {
+    const fresh = await tx.supportSubscription.findUnique({ where: { id: subscription.id }, include: { tierPeriods: { where: { endedAt: null } } } });
+    if (!fresh || fresh.status !== "CANCELLATION_SCHEDULED" || !fresh.currentPaidPeriodEnd || fresh.currentPaidPeriodEnd > new Date()) return;
+    for (const period of fresh.tierPeriods) await tx.supportSubscriptionTierPeriod.update({ where: { id: period.id }, data: { endedAt: fresh.currentPaidPeriodEnd } });
+    await tx.supportSubscription.update({ where: { id: fresh.id }, data: { status: "ENDED", endedAt: fresh.endedAt ?? fresh.currentPaidPeriodEnd } });
+  });
+  return true;
+}
+
 /**
  * Chooses a player's recognised subscription. A replacement only takes over
  * after its provider-backed row is ACTIVE; timestamps and query order are never
@@ -131,13 +142,14 @@ export async function getCanonicalSupportSubscription(args: {
     include: { sourceSubscription: true, targetSubscription: true },
   });
   if (change) {
-    if (change.targetActivatedAt && change.targetSubscription?.status === "ACTIVE") return change.targetSubscription;
-    return change.sourceSubscription;
+    const selected = change.targetActivatedAt && change.targetSubscription?.status === "ACTIVE" ? change.targetSubscription : change.sourceSubscription;
+    return await finalizeElapsedCancellation(database, selected) ? null : selected;
   }
   const current = database.supportSubscription.findMany
     ? await database.supportSubscription.findMany({ where: { userId: args.userId, provider: "PAYPAL", status: { in: CURRENT_SUPPORT_STATUSES } } })
     : await database.supportSubscription.findFirst({ where: { userId: args.userId, provider: "PAYPAL", status: { in: CURRENT_SUPPORT_STATUSES } } }).then((value: any) => value ? [value] : []);
-  return current.length === 1 ? current[0] : null;
+  const selected = current.length === 1 ? current[0] : null;
+  return selected && await finalizeElapsedCancellation(database, selected) ? null : selected;
 }
 
 function isStrictUpgrade(source: SupportTierValue, target: SupportTierValue): boolean {
@@ -154,6 +166,8 @@ export type CreateSupportSubscriptionChangeResult = {
   status: SupportSubscriptionChangeState;
   approvalUrl: string | null;
 };
+
+export type CancelSupportSubscriptionResult = { tier: SupportTierValue; status: CanonicalSupportStatus; currentPaidPeriodEnd: Date | null };
 
 async function getPendingDowngrade(database: any, providerSubscriptionId: string): Promise<any | null> {
   return database.supportSubscriptionChange?.findFirst?.({
@@ -211,13 +225,16 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
       include: { tierPeriods: { where: { endedAt: null } } },
     });
     const startedAt = args.providerSubscription.startTime ?? now;
+    const effectiveStatus = fresh.cancellationRequestedAt && args.providerSubscription.status === "CANCELLED"
+      ? (fresh.currentPaidPeriodEnd && fresh.currentPaidPeriodEnd > now ? "CANCELLATION_SCHEDULED" : "ENDED")
+      : args.status;
     const activePeriod = fresh.tierPeriods[0];
-    const hasSupported = args.status !== "PENDING";
-    const currentPaidPeriodStart = args.status === "ACTIVE" ? startedAt : fresh.currentPaidPeriodStart;
-    const currentPaidPeriodEnd = args.status === "ACTIVE" ? args.providerSubscription.nextBillingTime : fresh.currentPaidPeriodEnd;
-    const firstSupportedAt = fresh.firstSupportedAt ?? (args.status === "ACTIVE" ? startedAt : null);
-    const cancellationRequestedAt = args.status === "CANCELLATION_SCHEDULED" ? fresh.cancellationRequestedAt ?? now : null;
-    const endedAt = args.status === "ENDED" ? fresh.endedAt ?? now : null;
+    const hasSupported = effectiveStatus !== "PENDING";
+    const currentPaidPeriodStart = effectiveStatus === "ACTIVE" ? startedAt : fresh.currentPaidPeriodStart;
+    const currentPaidPeriodEnd = effectiveStatus === "ACTIVE" ? args.providerSubscription.nextBillingTime : fresh.currentPaidPeriodEnd;
+    const firstSupportedAt = fresh.firstSupportedAt ?? (effectiveStatus === "ACTIVE" ? startedAt : null);
+    const cancellationRequestedAt = effectiveStatus === "CANCELLATION_SCHEDULED" ? fresh.cancellationRequestedAt ?? now : null;
+    const endedAt = effectiveStatus === "ENDED" ? fresh.endedAt ?? now : null;
     const tierPeriodChanges = hasSupported && (!activePeriod || activePeriod.tier !== args.tier);
 
     if (hasSupported && activePeriod && activePeriod.tier !== args.tier) {
@@ -229,7 +246,7 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
 
     const unchanged =
       fresh.currentTier === args.tier &&
-      fresh.status === args.status &&
+      fresh.status === effectiveStatus &&
       sameDate(fresh.currentPaidPeriodStart, currentPaidPeriodStart) &&
       sameDate(fresh.currentPaidPeriodEnd, currentPaidPeriodEnd) &&
       sameDate(fresh.firstSupportedAt, firstSupportedAt) &&
@@ -238,7 +255,7 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
     if (!args.skipUnchanged || !unchanged) {
       await tx.supportSubscription.update({ where: { id: fresh.id }, data: {
         currentTier: args.tier,
-        status: args.status,
+        status: effectiveStatus,
         currentPaidPeriodStart,
         currentPaidPeriodEnd,
         firstSupportedAt,
@@ -246,7 +263,7 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
         endedAt,
       } });
     }
-    return { tier: args.tier, status: args.status };
+    return { tier: args.tier, status: effectiveStatus };
   });
 }
 
@@ -430,6 +447,50 @@ async function createScheduledPayPalSupportDowngrade(args: {
   return { currentTier: args.canonical.currentTier, tier: args.tier, status: "PENDING_APPROVAL", approvalUrl: revised.approvalUrl };
 }
 
+export async function cancelPayPalSupportSubscription(args: {
+  userId: string;
+  database?: any;
+  payPalClient?: PayPalClient;
+  config?: PayPalSupportConfig;
+}): Promise<CancelSupportSubscriptionResult> {
+  const database = args.database ?? db;
+  const client = args.payPalClient ?? createPayPalClient();
+  return database.$transaction(async (tx: any) => {
+    const users = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "User" WHERE "id" = ${args.userId} FOR UPDATE`;
+    if (users.length !== 1) throw new SupportSubscriptionError("Account not found.", 404);
+    const subscription = await getCanonicalSupportSubscription({ userId: args.userId, database: tx });
+    if (!subscription) throw new SupportSubscriptionError("No current PayPal support subscription was found.", 404);
+    if (subscription.status === "CANCELLATION_SCHEDULED") return { tier: subscription.currentTier, status: subscription.status, currentPaidPeriodEnd: subscription.currentPaidPeriodEnd ?? null };
+    if (subscription.status !== "ACTIVE") throw new SupportSubscriptionError("You can only cancel an active support subscription.", 409);
+    const change = await tx.supportSubscriptionChange.findFirst({ where: { userId: args.userId, status: { in: LIVE_CHANGE_STATES } } });
+    if (change) throw new SupportSubscriptionError("A support-level change is already in progress.", 409);
+
+    let paidThrough = subscription.currentPaidPeriodEnd ?? null;
+    if (!paidThrough || paidThrough <= new Date()) {
+      const verified = await client.getSubscription(subscription.providerSubscriptionId);
+      if (verified.id !== subscription.providerSubscriptionId) throw new SupportSubscriptionError("PayPal support status could not be verified.", 422);
+      const status = verifyPayPalSubscription({ subscription: verified, tier: subscription.currentTier, config: args.config });
+      if (status !== "ACTIVE" || !verified.nextBillingTime || verified.nextBillingTime <= new Date()) {
+        throw new SupportSubscriptionError("Cancellation cannot be completed until PayPal provides your paid-through date.", 422);
+      }
+      await synchronizeVerifiedPayPalSubscription({ database: tx, providerSubscription: verified, tier: subscription.currentTier, status });
+      paidThrough = verified.nextBillingTime;
+    }
+    await tx.supportSubscription.update({ where: { id: subscription.id }, data: { cancellationRequestedAt: new Date() } });
+    try {
+      await client.cancelSubscription(subscription.providerSubscriptionId, "Player requested cancellation.");
+      const provider = await client.getSubscription(subscription.providerSubscriptionId);
+      const providerStatus = translatePayPalStatus(provider);
+      const result = await synchronizeVerifiedPayPalSubscription({ database: tx, providerSubscription: provider, tier: subscription.currentTier, status: providerStatus });
+      if (!result || result.status !== "CANCELLATION_SCHEDULED") throw new SupportSubscriptionError("PayPal cancellation could not be verified.", 502);
+      return { tier: subscription.currentTier, status: "CANCELLATION_SCHEDULED", currentPaidPeriodEnd: paidThrough };
+    } catch (error) {
+      await tx.supportSubscription.update({ where: { id: subscription.id }, data: { cancellationRequestedAt: null } });
+      throw error;
+    }
+  });
+}
+
 /**
  * Creates a sandbox subscription only after serializing current-support checks
  * for the account, then verifies PayPal's returned subscription before linking it.
@@ -460,6 +521,11 @@ export async function createPayPalSupportSubscription(args: {
     if (existing) {
       throw new SupportSubscriptionError("This account already has a current support subscription.", 409);
     }
+    const originalSupport = await transaction.supportSubscription.findFirst({
+      where: { userId: args.userId, firstSupportedAt: { not: null } },
+      orderBy: { firstSupportedAt: "asc" },
+      select: { firstSupportedAt: true },
+    });
 
     const created = await payPalClient.createSubscription({
       tier: args.tier,
@@ -478,7 +544,7 @@ export async function createPayPalSupportSubscription(args: {
         status,
         currentPaidPeriodStart: supportedAt,
         currentPaidPeriodEnd: status === "ACTIVE" ? verified.nextBillingTime : null,
-        firstSupportedAt: supportedAt,
+        firstSupportedAt: originalSupport?.firstSupportedAt ?? supportedAt,
         endedAt: status === "ENDED" ? new Date() : null,
         tierPeriods:
           status === "ACTIVE" && supportedAt

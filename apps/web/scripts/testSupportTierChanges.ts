@@ -19,7 +19,7 @@ async function main() {
   assert.match(service, /PENDING_APPROVAL/, "pending approval is explicit");
   assert.match(service, /CLEANUP_FAILED/, "cancellation failure remains durable");
   assert.match(service, /targetActivatedAt && change\.targetSubscription\?\.status === "ACTIVE"/, "only a verified active replacement becomes canonical");
-  assert.match(service, /return change\.sourceSubscription/, "source remains canonical before activation");
+  assert.match(service, /: change\.sourceSubscription;/, "source remains canonical before activation");
   assert.match(service, /isStrictUpgrade/, "only strictly higher tiers are eligible");
   assert.match(service, /firstSupportedAt: canonical\.firstSupportedAt/, "replacement preserves original first support date");
   assert.match(service, /cancelSubscription\(change\.sourceSubscription\.providerSubscriptionId\)/, "only exact source is cancelled");

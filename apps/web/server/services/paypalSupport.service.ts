@@ -316,8 +316,8 @@ export class PayPalClient {
     return { approvalUrl: findApprovalUrl(result) };
   }
 
-  async cancelSubscription(providerSubscriptionId: string): Promise<void> {
-    await this.request("POST", `/v1/billing/subscriptions/${encodeURIComponent(providerSubscriptionId)}/cancel`, { reason: "ShowRing sandbox test reset" });
+  async cancelSubscription(providerSubscriptionId: string, reason = "ShowRing sandbox test reset"): Promise<void> {
+    await this.request("POST", `/v1/billing/subscriptions/${encodeURIComponent(providerSubscriptionId)}/cancel`, { reason });
   }
 
   async verifyWebhookSignature(args: {
