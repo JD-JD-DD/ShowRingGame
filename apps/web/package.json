@@ -76,6 +76,8 @@
     "test:paypal-webhook-integration": "tsx scripts/testPayPalWebhookIntegration.ts",
     "test:support-paid-through-expiration": "tsx scripts/testSupportPaidThroughExpiration.ts",
     "test:support-former-supporter": "tsx scripts/testSupportFormerSupporter.ts",
+    "test:support-payment-retry-lifecycle": "tsx scripts/testSupportPaymentRetryLifecycle.ts",
+    "audit:support-again-readiness": "tsx scripts/auditSupportAgainReadiness.ts",
     "test:support-sandbox-harness": "tsx scripts/testSupportSandboxHarness.ts",
     "repair:support-upgrade-cleanup": "tsx scripts/repairSupportUpgradeCleanup.ts",
     "repair:support-cancellation-paid-through": "tsx scripts/repairSupportCancellationPaidThrough.ts",

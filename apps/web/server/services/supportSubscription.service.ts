@@ -229,7 +229,12 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
     });
     const startedAt = args.providerSubscription.startTime ?? now;
     const providerFailureAt = args.providerSubscription.lastFailedPaymentAt ?? args.paymentEventAt ?? now;
+    const paymentRecoveryAt = args.paymentEventAt ?? now;
     const failureIsNewerThanRecovery = !fresh.lastPaymentRecoveryAt || providerFailureAt > fresh.lastPaymentRecoveryAt;
+    const failureIsNewerThanStoredFailure = !fresh.lastPaymentFailureAt || providerFailureAt > fresh.lastPaymentFailureAt;
+    const recoveryIsNewerThanFailure = !fresh.lastPaymentFailureAt || paymentRecoveryAt > fresh.lastPaymentFailureAt;
+    const recoveryIsNewerThanStoredRecovery = !fresh.lastPaymentRecoveryAt || paymentRecoveryAt > fresh.lastPaymentRecoveryAt;
+    const verifiedRecovery = args.paymentEvent === "RECOVERED" && args.status === "ACTIVE" && recoveryIsNewerThanFailure;
     const effectiveStatus = args.supersededUpgradeSource && args.providerSubscription.status === "CANCELLED"
       ? "ENDED"
       : fresh.cancellationRequestedAt && args.providerSubscription.status === "CANCELLED"
@@ -238,7 +243,7 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
         ? "PAYMENT_RETRY"
         : args.status === "PAYMENT_RETRY"
           ? "PAYMENT_RETRY"
-          : fresh.status === "PAYMENT_RETRY" && args.status === "ACTIVE" && args.paymentEvent !== "RECOVERED"
+          : fresh.status === "PAYMENT_RETRY" && args.status === "ACTIVE" && !verifiedRecovery
             ? "PAYMENT_RETRY"
             : args.status;
     const activePeriod = fresh.tierPeriods[0];
@@ -248,9 +253,9 @@ export async function synchronizeVerifiedPayPalSubscription(args: {
     const firstSupportedAt = fresh.firstSupportedAt ?? (effectiveStatus === "ACTIVE" ? startedAt : null);
     const cancellationRequestedAt = effectiveStatus === "CANCELLATION_SCHEDULED" ? fresh.cancellationRequestedAt ?? now : null;
     const endedAt = effectiveStatus === "ENDED" ? fresh.endedAt ?? now : null;
-    const lastPaymentFailureAt = args.paymentEvent === "FAILED" && failureIsNewerThanRecovery ? providerFailureAt : fresh.lastPaymentFailureAt;
+    const lastPaymentFailureAt = args.paymentEvent === "FAILED" && failureIsNewerThanRecovery && failureIsNewerThanStoredFailure ? providerFailureAt : fresh.lastPaymentFailureAt;
     const paymentFailureStartedAt = effectiveStatus === "PAYMENT_RETRY" ? fresh.paymentFailureStartedAt ?? lastPaymentFailureAt ?? now : fresh.paymentFailureStartedAt;
-    const lastPaymentRecoveryAt = args.paymentEvent === "RECOVERED" && args.status === "ACTIVE" ? args.paymentEventAt ?? now : fresh.lastPaymentRecoveryAt;
+    const lastPaymentRecoveryAt = verifiedRecovery && recoveryIsNewerThanStoredRecovery ? paymentRecoveryAt : fresh.lastPaymentRecoveryAt;
     const tierPeriodChanges = hasSupported && (!activePeriod || activePeriod.tier !== args.tier);
 
     if (hasSupported && activePeriod && activePeriod.tier !== args.tier) {
