@@ -101,7 +101,7 @@ export default function SupportEnrollment({
       {currentSubscription ? (
         <div className="theme-card mt-5 rounded-2xl p-5">
           <p className="theme-heading font-semibold">You already have current ShowRing Support.</p>
-          <p className="theme-copy mt-2 text-sm">Current level: {currentSubscription.tier}. Status: {currentSubscription.status}.</p>
+          <p className="theme-copy mt-2 text-sm">Current level: {currentSubscription.tier}. Status: {currentSubscription.status === "CANCELLATION_SCHEDULED" ? "Cancellation Scheduled" : currentSubscription.status}.</p>
           <Link href="/account/settings/support" className="theme-primary-button mt-4 inline-flex rounded-xl px-4 py-2 text-sm font-semibold">
             View Support Status
           </Link>

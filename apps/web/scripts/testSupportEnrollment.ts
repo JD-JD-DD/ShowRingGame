@@ -34,6 +34,7 @@ assert.match(enrollment, /if \(!selectedTier \|\| isSubmitting\) return/);
 assert.match(enrollment, /disabled=\{isSubmitting\}/);
 assert.match(enrollment, /\/login\?next=%2Fsupport/);
 assert.match(enrollment, /currentSubscription \?/);
+assert.match(enrollment, /currentSubscription\.status === "CANCELLATION_SCHEDULED" \? "Cancellation Scheduled" : currentSubscription\.status/);
 assert.match(enrollment, /Support setup was cancelled\. No new support subscription was completed\./);
 
 assert.match(supportPage, /CURRENT_SUPPORT_STATUSES/);
