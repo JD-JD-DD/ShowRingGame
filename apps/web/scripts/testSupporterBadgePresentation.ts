@@ -1,0 +1,10 @@
+import assert from "node:assert/strict";
+import { getSupporterBadgePresentation } from "../lib/supporterBadgePresentation";
+const now = new Date("2031-01-01T00:00:00Z");
+for (const tier of ["BRONZE", "SILVER", "GOLD"] as const) assert.deepEqual(getSupporterBadgePresentation({ tier, status: "ACTIVE", showSupporterBadge: true, now }), { visible: true, tier });
+assert.deepEqual(getSupporterBadgePresentation({ tier: "GOLD", status: "ACTIVE", showSupporterBadge: false, now }), { visible: false });
+assert.deepEqual(getSupporterBadgePresentation({ tier: "SILVER", status: "PAYMENT_RETRY", showSupporterBadge: true, now }), { visible: true, tier: "SILVER" });
+for (const end of [new Date(now.getTime() - 1), now, new Date(now.getTime() + 1)]) assert.equal(getSupporterBadgePresentation({ tier: "BRONZE", status: "CANCELLATION_SCHEDULED", showSupporterBadge: true, currentPaidPeriodEnd: end, now }).visible, end > now);
+for (const status of ["ENDED", "PENDING", "UNKNOWN"]) assert.deepEqual(getSupporterBadgePresentation({ tier: "GOLD", status, showSupporterBadge: true, now }), { visible: false });
+assert.deepEqual(getSupporterBadgePresentation({ status: "ACTIVE", showSupporterBadge: true, now }), { visible: false });
+console.log("SUPPORT-07B supporter badge eligibility checks passed.");
