@@ -25,6 +25,7 @@ assert.match(affordances, /Upgrading starts a new higher-level monthly support s
 assert.match(affordances, /current support level will remain active until PayPal applies the lower level/);
 assert.match(affordances, /Cancel Support/);
 assert.match(affordances, /Keep Support/);
+assert.match(page, /A support-level change is in progress/);
 
 assert.match(page, /subscription\.status === "PENDING"/);
 assert.match(page, /ReconcileSupportStatusButton/);
