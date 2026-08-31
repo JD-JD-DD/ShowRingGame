@@ -58,6 +58,8 @@ export type ArtCampaignReadDto = {
   breedGroupName: string | null;
   status: ArtCampaignStatusValue;
   artworkAssetReference: string | null;
+  artworkArtistCredit: string | null;
+  artworkCompletedAt: Date | null;
   recognition: ArtCampaignRecognitionDto | null;
   firstSuccessfulContributionAt: Date | null;
   progress: ArtCampaignProgress;
@@ -190,7 +192,7 @@ export function toArtCampaignReadDto(campaign: {
   showRingAllocationCents: number;
   breed: { name: string; groupName: string | null };
   contributions: ArtContributionRecognitionRecord[];
-  artwork: { assetReference: string | null } | null;
+  artwork: { assetReference: string | null; artistCredit?: string | null; completedAt?: Date | null } | null;
 }): ArtCampaignReadDto {
   return {
     id: campaign.id,
@@ -201,6 +203,8 @@ export function toArtCampaignReadDto(campaign: {
     breedGroupName: campaign.breed.groupName,
     status: campaign.status,
     artworkAssetReference: campaign.artwork?.assetReference ?? null,
+    artworkArtistCredit: campaign.artwork?.artistCredit ?? null,
+    artworkCompletedAt: campaign.artwork?.completedAt ?? null,
     recognition: ["FUNDED", "DRAWING_COMPLETE"].includes(campaign.status) ? deriveArtCampaignRecognition(campaign.contributions) : null,
     firstSuccessfulContributionAt: firstSuccessfulContributionAt(campaign.contributions),
     progress: calculateArtCampaignProgress({
@@ -225,6 +229,15 @@ export function selectHelpFinishArtCampaigns(campaigns: ArtCampaignReadDto[], li
     .slice(0, limit);
 }
 
+export function selectCompletedStandardBreedArtworkGallery(campaigns: ArtCampaignReadDto[]): ArtCampaignReadDto[] {
+  return campaigns
+    .filter((campaign) => campaign.campaignKey === STANDARD_BREED_ARTWORK_CAMPAIGN_KEY && campaign.status === "DRAWING_COMPLETE" && Boolean(campaign.artworkAssetReference))
+    .sort((left, right) => {
+      const completedAt = (right.artworkCompletedAt?.getTime() ?? Number.NEGATIVE_INFINITY) - (left.artworkCompletedAt?.getTime() ?? Number.NEGATIVE_INFINITY);
+      return completedAt || left.breedName.localeCompare(right.breedName) || left.id.localeCompare(right.id);
+    });
+}
+
 type ArtCampaignReadDatabase = {
   artCampaign: { findMany(args: unknown): Promise<any[]> };
 };
@@ -242,7 +255,7 @@ export async function getEligibleStandardBreedArtworkCampaigns(args: { database?
     include: {
       breed: { select: { name: true, groupName: true } },
       contributions: { select: { fundedUnits: true, requestedAt: true, fundedAt: true, recognition: true, kennelId: true, kennel: { select: { name: true, slug: true } } } },
-      artwork: { select: { assetReference: true } },
+      artwork: { select: { assetReference: true, artistCredit: true, completedAt: true } },
     },
     orderBy: [{ breed: { groupName: "asc" } }, { breed: { name: "asc" } }, { id: "asc" }],
   });

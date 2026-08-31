@@ -2,10 +2,11 @@ import Link from "next/link";
 
 import ArtCampaignCard from "@/components/art/ArtCampaignCard";
 import BreedArtFundingBoardClient from "@/components/art/BreedArtFundingBoardClient";
+import CompletedArtworkGallery from "@/components/art/CompletedArtworkGallery";
 import { formatArtCurrency } from "@/lib/artCampaignPresentation";
 import { getSessionUserId } from "@/lib/session";
 import { STANDARD_BREED_ARTWORK_FUNDING } from "@/prisma/artCampaignSeed";
-import { getStandardBreedArtworkBoardSummary } from "@/server/services/artCampaign.service";
+import { getStandardBreedArtworkBoardSummary, selectCompletedStandardBreedArtworkGallery } from "@/server/services/artCampaign.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
 
 export default async function BreedArtFundingPage() {
@@ -48,6 +49,8 @@ export default async function BreedArtFundingPage() {
         </div>
         {summary.campaigns.length ? <BreedArtFundingBoardClient campaigns={summary.campaigns} creditKennelName={kennel?.name} /> : <p className="theme-copy mt-5">No breed artwork campaigns are available right now.</p>}
       </section>
+
+      <CompletedArtworkGallery campaigns={selectCompletedStandardBreedArtworkGallery(summary.campaigns)} />
 
       <section className="theme-panel mt-12 rounded-2xl p-5 sm:p-6" aria-labelledby="artists-heading">
         <h2 id="artists-heading" className="theme-heading text-2xl font-semibold">Interested in contributing art to ShowRing?</h2>

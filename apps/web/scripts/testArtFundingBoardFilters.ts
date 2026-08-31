@@ -15,6 +15,8 @@ function campaign(overrides: Partial<ArtCampaignReadDto>): ArtCampaignReadDto {
     breedGroupName: "Sporting",
     status: "NEEDS_FUNDING",
     artworkAssetReference: null,
+    artworkArtistCredit: null,
+    artworkCompletedAt: null,
     recognition: null,
     firstSuccessfulContributionAt: null,
     progress: {
