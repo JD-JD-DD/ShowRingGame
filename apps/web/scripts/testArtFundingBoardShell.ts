@@ -8,6 +8,7 @@ const source = (path: string) => readFileSync(join(root, path), "utf8");
 function main() {
   const page = source("apps/web/app/breed-art/page.tsx");
   const card = source("apps/web/components/art/ArtCampaignCard.tsx");
+  const boardClient = source("apps/web/components/art/BreedArtFundingBoardClient.tsx");
   const presentation = source("apps/web/lib/artCampaignPresentation.ts");
   const header = source("apps/web/components/layout/GameHeaderNav.tsx");
 
@@ -15,7 +16,8 @@ function main() {
   assert.match(page, /summary\.fundedCampaignCount[\s\S]*summary\.totalEligibleCampaignCount/);
   assert.match(page, /summary\.drawingCompleteCount/);
   assert.match(page, /summary\.helpFinishCampaigns\.map/);
-  assert.match(page, /summary\.campaigns\.map/);
+  assert.match(page, /BreedArtFundingBoardClient campaigns=\{summary\.campaigns\}/);
+  assert.match(boardClient, /filteredCampaigns\.map/);
   assert.doesNotMatch(page + card, /\b314\b|\b318\b/);
   assert.match(page, /artistAllocationCents\)\} compensates the artist/);
   assert.match(page, /showRingAllocationCents\)\} supports ShowRing development and operating expenses/);

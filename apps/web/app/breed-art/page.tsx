@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import ArtCampaignCard from "@/components/art/ArtCampaignCard";
+import BreedArtFundingBoardClient from "@/components/art/BreedArtFundingBoardClient";
 import { formatArtCurrency } from "@/lib/artCampaignPresentation";
 import { STANDARD_BREED_ARTWORK_FUNDING } from "@/prisma/artCampaignSeed";
 import { getStandardBreedArtworkBoardSummary } from "@/server/services/artCampaign.service";
@@ -41,7 +42,7 @@ export default async function BreedArtFundingPage() {
           <h2 id="funding-board-heading" className="theme-heading mt-2 text-2xl font-semibold">Breed Art Funding Board</h2>
           <p className="theme-copy mt-2">Browse the current Standard Breed Artwork collection.</p>
         </div>
-        {summary.campaigns.length ? <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{summary.campaigns.map((campaign) => <ArtCampaignCard key={campaign.id} campaign={campaign} />)}</div> : <p className="theme-copy mt-5">No breed artwork campaigns are available right now.</p>}
+        {summary.campaigns.length ? <BreedArtFundingBoardClient campaigns={summary.campaigns} /> : <p className="theme-copy mt-5">No breed artwork campaigns are available right now.</p>}
       </section>
 
       <section className="theme-panel mt-12 rounded-2xl p-5 sm:p-6" aria-labelledby="artists-heading">

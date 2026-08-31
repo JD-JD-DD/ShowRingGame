@@ -1,3 +1,5 @@
+"use client";
+
 import { formatArtCurrency, getArtCampaignStatusLabel } from "@/lib/artCampaignPresentation";
 import type { ArtCampaignReadDto } from "@/server/services/artCampaign.service";
 

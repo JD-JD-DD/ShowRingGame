@@ -35,6 +35,7 @@
     "test:art-campaign-foundation": "tsx scripts/testArtCampaignFoundation.ts",
     "test:art-campaign-read-model": "tsx scripts/testArtCampaignReadModel.ts",
     "test:art-funding-board-shell": "tsx scripts/testArtFundingBoardShell.ts",
+    "test:art-funding-board-filters": "tsx scripts/testArtFundingBoardFilters.ts",
     "test:breeding-eligibility": "tsx scripts/testBreedingEligibilityConsistency.ts",
     "test:breeding-eligibility-reasons": "tsx scripts/testBreedingEligibilityReasons.ts",
     "test:stud-recovery": "tsx scripts/testStudRecovery.ts",
