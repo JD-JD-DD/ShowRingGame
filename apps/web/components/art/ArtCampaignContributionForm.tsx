@@ -51,7 +51,7 @@ export default function ArtCampaignContributionForm({ campaign, creditKennelName
     <h4 id={`contribute-${campaign.id}`} className="theme-heading text-base font-semibold">Contribute to {campaign.breedName}</h4>
     <div className="mt-3 grid gap-3">
       <label className="theme-label grid gap-1 text-sm" htmlFor={`units-${campaign.id}`}>Funding units
-        <select id={`units-${campaign.id}`} value={unitChoice} onChange={(event) => setUnitChoice(event.target.value)} className="theme-input rounded-xl px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+        <select id={`units-${campaign.id}`} value={unitChoice} onChange={(event) => setUnitChoice(event.target.value)} className="theme-control rounded-xl px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
           {Array.from({ length: campaign.progress.maxContributionUnits ?? 0 }, (_, index) => index + 1).map((units) => <option key={units} value={units}>{units} {units === 1 ? "unit" : "units"} — {formatArtCurrency(units * campaign.progress.fundingUnitCents)}</option>)}
           <option value="remaining">Fund Remaining — {campaign.progress.unitsRemaining} {campaign.progress.unitsRemaining === 1 ? "unit" : "units"} — {formatArtCurrency(campaign.progress.amountRemainingCents)}</option>
         </select>

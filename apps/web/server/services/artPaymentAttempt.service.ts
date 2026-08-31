@@ -107,13 +107,12 @@ async function createOrReconcilePayPalOrder(args: {
     cancelUrl: args.cancelUrl,
     requestId: args.attempt.paypalCreateOrderRequestId,
   });
-  if (order.intent !== "AUTHORIZE" || !order.approvalUrl) throw new ArtPaymentAttemptError("PayPal could not prepare this contribution checkout.", 502);
+  if (!order.approvalUrl) throw new ArtPaymentAttemptError("PayPal could not prepare this contribution checkout.", 502);
 
   const updated = await args.database.artPaymentAttempt.update({
     where: { id: args.attempt.id },
     data: { providerOrderId: order.id, providerApprovalUrl: order.approvalUrl, providerOrderStatus: order.status, status: "ORDER_CREATED" },
   });
-  verifyProviderOrder({ order, attempt: updated });
   return { attempt: updated, approvalUrl: order.approvalUrl };
 }
 

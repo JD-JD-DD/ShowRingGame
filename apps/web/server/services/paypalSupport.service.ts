@@ -210,7 +210,7 @@ export type RevisedPayPalSupportSubscription = { approvalUrl: string | null };
 export type PayPalArtOrder = {
   id: string;
   status: string;
-  intent: string;
+  intent: string | null;
   approvalUrl: string | null;
   referenceId: string | null;
   customId: string | null;
@@ -236,14 +236,14 @@ function parsePayPalArtOrder(value: unknown): PayPalArtOrder {
   const amount = asRecord(purchaseUnit?.amount);
   const items = Array.isArray(purchaseUnit?.items) ? purchaseUnit?.items : [];
   const item = asRecord(items[0]);
-  if (!order || typeof order.id !== "string" || typeof order.status !== "string" || typeof order.intent !== "string") {
+  if (!order || typeof order.id !== "string" || !order.id.trim() || typeof order.status !== "string") {
     throw new PayPalSupportError("PayPal returned an invalid order response.");
   }
   return {
     id: order.id,
     status: order.status,
-    intent: order.intent,
-    approvalUrl: findApprovalUrl(order),
+    intent: typeof order.intent === "string" ? order.intent : null,
+    approvalUrl: findPayPalArtApprovalUrl(order),
     referenceId: typeof purchaseUnit?.reference_id === "string" ? purchaseUnit.reference_id : null,
     customId: typeof purchaseUnit?.custom_id === "string" ? purchaseUnit.custom_id : null,
     amountValue: typeof amount?.value === "string" ? amount.value : null,
@@ -251,6 +251,22 @@ function parsePayPalArtOrder(value: unknown): PayPalArtOrder {
     itemQuantity: typeof item?.quantity === "string" ? item.quantity : null,
     itemSku: typeof item?.sku === "string" ? item.sku : null,
   };
+}
+
+function findPayPalArtApprovalUrl(value: unknown): string | null {
+  const order = asRecord(value);
+  const links = Array.isArray(order?.links) ? order.links : [];
+  for (const link of links) {
+    const candidate = asRecord(link);
+    if (candidate?.rel !== "approve" || candidate.method !== "GET" || typeof candidate.href !== "string") continue;
+    try {
+      const approvalUrl = new URL(candidate.href);
+      if (approvalUrl.protocol === "https:") return approvalUrl.toString();
+    } catch {
+      // A provider-supplied approval URL must be an absolute HTTPS URL.
+    }
+  }
+  return null;
 }
 
 function formatUsdCents(cents: number): string {
@@ -400,7 +416,9 @@ export class PayPalClient {
         user_action: "CONTINUE",
       },
     }, args.requestId);
-    return parsePayPalArtOrder(result);
+    const order = parsePayPalArtOrder(result);
+    if (!order.approvalUrl) throw new PayPalSupportError("PayPal returned an invalid order response.");
+    return order;
   }
 
   async getArtOrder(providerOrderId: string): Promise<PayPalArtOrder> {

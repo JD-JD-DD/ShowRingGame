@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { startArtPaymentAttempt } from "../server/services/artPaymentAttempt.service";
+import { PayPalClient, PayPalSupportError } from "../server/services/paypalSupport.service";
 
 const root = join(process.cwd(), "../..");
 const source = (path: string) => readFileSync(join(root, path), "utf8");
@@ -12,7 +13,48 @@ const campaign = {
   artistAllocationCents: 4000, showRingAllocationCents: 1000, breed: { name: "Beagle" }, contributions: [],
 };
 
+function createArtOrderClient(orderResponse: unknown, orderStatus = 201) {
+  const requests: Array<{ url: string; init: RequestInit | undefined }> = [];
+  const client = new PayPalClient({ environment: "sandbox", clientId: "client", clientSecret: "secret" } as any, async (url, init) => {
+    const requestUrl = String(url);
+    requests.push({ url: requestUrl, init });
+    if (requestUrl.endsWith("/v1/oauth2/token")) return new Response(JSON.stringify({ access_token: "token" }), { status: 200 });
+    return new Response(JSON.stringify(orderResponse), { status: orderStatus });
+  });
+  return { client, requests };
+}
+
+const createArtOrderArgs = {
+  attemptId: "attempt-1", campaignId: campaign.id, campaignTitle: campaign.title,
+  requestedUnits: 1, fundingUnitCents: 500, expectedAmountCents: 500,
+  returnUrl: "https://showring.example/breed-art/checkout/attempt-1",
+  cancelUrl: "https://showring.example/breed-art/checkout/attempt-1?cancelled=1",
+  requestId: "request-1",
+};
+
 async function main() {
+  const minimalOrder = { id: "ORDER-MINIMAL", status: "CREATED", links: [{ rel: "approve", method: "GET", href: "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-MINIMAL" }] };
+  const minimalClient = createArtOrderClient(minimalOrder);
+  const createdMinimalOrder = await minimalClient.client.createArtOrder(createArtOrderArgs);
+  assert.equal(createdMinimalOrder.id, "ORDER-MINIMAL");
+  assert.equal(createdMinimalOrder.intent, null, "minimal create responses do not need a full order representation");
+  assert.equal(createdMinimalOrder.approvalUrl, "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-MINIMAL");
+  assert.equal(minimalClient.requests[1]?.url.endsWith("/v2/checkout/orders"), true);
+  const createRequest = JSON.parse(String(minimalClient.requests[1]?.init?.body));
+  assert.deepEqual(createRequest, {
+    intent: "AUTHORIZE",
+    purchase_units: [{
+      reference_id: "attempt-1", custom_id: "attempt-1", invoice_id: "art-attempt-1",
+      amount: { currency_code: "USD", value: "5.00", breakdown: { item_total: { currency_code: "USD", value: "5.00" } } },
+      items: [{ name: campaign.title, sku: campaign.id, quantity: "1", unit_amount: { currency_code: "USD", value: "5.00" } }],
+    }],
+    application_context: { return_url: createArtOrderArgs.returnUrl, cancel_url: createArtOrderArgs.cancelUrl, user_action: "CONTINUE" },
+  });
+  await assert.rejects(() => createArtOrderClient({ status: "CREATED", links: minimalOrder.links }).client.createArtOrder(createArtOrderArgs), PayPalSupportError);
+  await assert.rejects(() => createArtOrderClient({ id: "ORDER-NO-APPROVE", status: "CREATED", links: [] }).client.createArtOrder(createArtOrderArgs), PayPalSupportError);
+  await assert.rejects(() => createArtOrderClient({ id: "ORDER-BAD-APPROVE", status: "CREATED", links: [{ rel: "approve", method: "GET", href: "http://paypal.example/approve" }] }).client.createArtOrder(createArtOrderArgs), PayPalSupportError);
+  await assert.rejects(() => createArtOrderClient({ name: "INVALID_REQUEST", message: "Bad request", debug_id: "debug-id" }, 422).client.createArtOrder(createArtOrderArgs), (error: unknown) => error instanceof PayPalSupportError && error.status === 422 && error.providerError?.name === "INVALID_REQUEST" && error.providerError.debugId === "debug-id");
+
   const attempts: any[] = [];
   const database: any = {
     artCampaign: { findFirst: async () => campaign },
@@ -55,6 +97,9 @@ async function main() {
   const form = source("apps/web/components/art/ArtCampaignContributionForm.tsx");
   const schema = source("apps/web/prisma/schema.prisma");
   assert.match(payPalService, /intent: "AUTHORIZE"/);
+  assert.match(payPalService, /candidate\.rel !== "approve" \|\| candidate\.method !== "GET"/);
+  assert.match(payPalService, /approvalUrl\.protocol === "https:"/);
+  assert.match(payPalService, /response\.ok/);
   assert.match(paymentService, /validateArtContributionUnits/);
   assert.doesNotMatch(paymentService, /artContribution\.(create|update)|fundedUnits.*\+=|reservationAcquiredAt: new Date/);
   assert.doesNotMatch(paymentService, /\/capture|providerCaptureId:|status: "COMPLETED"/);
@@ -68,6 +113,7 @@ async function main() {
   assert.doesNotMatch(schema, /ArtPaymentAttempt[\s\S]*SupportProviderEvent/);
   assert.match(card, /campaign\.status === "NEEDS_FUNDING" && progress\.canAcceptContributions/);
   assert.match(form, /Fund Remaining/);
+  assert.match(form, /Funding units[\s\S]*theme-control/);
   assert.match(form, /I understand that my contribution is non-refundable\./);
   assert.match(form, /Funding availability is confirmed when your contribution is finalized\./);
   console.log("ART-07 Breed Art payment foundation checks passed.");
