@@ -68,6 +68,15 @@ export async function finalizeArtPaymentAttempt(args: { userId: string; attemptI
   let attempt = await database.artPaymentAttempt.findUnique({ where: { id: args.attemptId } });
   if (!attempt || attempt.userId !== args.userId) throw new ArtPaymentAttemptError("Contribution checkout was not found.", 404);
   if (attempt.status === "COMPLETED") return { state: "COMPLETED" as const };
+  if (["RECONCILING", "VOID_PENDING"].includes(attempt.status)) {
+    await reconcileArtPaymentAttempt({ attemptId: attempt.id, database, payPalClient: args.payPalClient });
+    attempt = await database.artPaymentAttempt.findUnique({ where: { id: attempt.id } });
+    if (!attempt) throw new ArtPaymentAttemptError("Contribution checkout was not found.", 404);
+    if (attempt.status === "COMPLETED") return { state: "COMPLETED" as const };
+    if (attempt.status === "FAILED") return { state: "FAILED" as const };
+    if (attempt.status === "VOIDED") return { state: "UNAVAILABLE" as const };
+    return { state: "RECONCILING" as const };
+  }
   const client = args.payPalClient ?? createPayPalArtOrdersClient();
   const order = await client.getArtOrder(attempt.providerOrderId);
   verifyProviderOrder({ order, attempt });

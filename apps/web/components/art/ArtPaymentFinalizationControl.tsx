@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function ArtPaymentFinalizationControl({ attemptId }: { attemptId: string }) {
+export default function ArtPaymentFinalizationControl({ attemptId, recheckOnly = false }: { attemptId: string; recheckOnly?: boolean }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
@@ -15,10 +15,11 @@ export default function ArtPaymentFinalizationControl({ attemptId }: { attemptId
       if (!response.ok) setMessage(data?.error ?? "Unable to finalize your contribution.");
       else if (data?.state === "COMPLETED") { setMessage("Your contribution is complete."); router.refresh(); }
       else if (data?.state === "UNAVAILABLE") setMessage("This artwork campaign was fully funded before your contribution could be finalized. You were not charged.");
+      else if (data?.state === "FAILED") setMessage("PayPal could not complete this contribution. No contribution was completed.");
       else if (data?.state === "RECONCILING") setMessage("We’re confirming the payment status with PayPal. Please do not start another contribution for this attempt.");
-      else setMessage("Your contribution could not be finalized. You were not charged.");
+      else setMessage("Your contribution could not be finalized. Please check the contribution status again.");
     } catch { setMessage("Unable to finalize your contribution."); }
     finally { setPending(false); }
   }
-  return <div className="mt-5"><button type="button" onClick={finalize} disabled={pending} className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60">{pending ? "Finalizing…" : "Finalize contribution"}</button>{message ? <p className="theme-copy mt-3 text-sm" role="status" aria-live="polite">{message}</p> : null}</div>;
+  return <div className="mt-5"><button type="button" onClick={finalize} disabled={pending} className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60">{pending ? "Checking…" : recheckOnly ? "Check contribution status" : "Finalize contribution"}</button>{message ? <p className="theme-copy mt-3 text-sm" role="status" aria-live="polite">{message}</p> : null}</div>;
 }
