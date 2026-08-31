@@ -43,6 +43,7 @@
     "test:art-payment-provider-event-replay": "tsx scripts/testArtPaymentProviderEventReplay.ts",
     "test:art-supporter-recognition": "tsx scripts/testArtSupporterRecognition.ts",
     "test:art-completed-gallery": "tsx scripts/testArtCompletedGallery.ts",
+    "test:art-admin-completion": "tsx scripts/testArtAdminCompletion.ts",
     "test:breeding-eligibility": "tsx scripts/testBreedingEligibilityConsistency.ts",
     "test:breeding-eligibility-reasons": "tsx scripts/testBreedingEligibilityReasons.ts",
     "test:stud-recovery": "tsx scripts/testStudRecovery.ts",

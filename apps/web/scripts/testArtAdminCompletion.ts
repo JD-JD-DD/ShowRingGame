@@ -1,0 +1,33 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const root = join(process.cwd(), "../..");
+const source = (path: string) => readFileSync(join(root, path), "utf8");
+const service = source("apps/web/server/services/artworkCompletion.service.ts");
+const route = source("apps/web/app/api/admin/breed-art/[campaignId]/complete/route.ts");
+const page = source("apps/web/app/admin/breed-art/page.tsx");
+const form = source("apps/web/components/art/AdminArtworkCompletionForm.tsx");
+const schema = source("apps/web/prisma/schema.prisma");
+
+assert.match(service, /select: \{ isAdmin: true \}/);
+assert.match(service, /campaign\.status !== "FUNDED"/);
+assert.match(service, /calculateArtCampaignProgress/);
+assert.match(service, /completedUnits !== campaign\.totalFundingUnits/);
+assert.match(service, /\$transaction/);
+assert.match(service, /FOR UPDATE/);
+assert.match(service, /artArtwork\.create/);
+assert.match(service, /status: "DRAWING_COMPLETE"/);
+assert.match(service, /new Date\(\)/);
+assert.match(service, /artistCredit\.length > 160/);
+assert.match(service, /assetReference\.length > 2048/);
+assert.match(service, /campaign\.status === "DRAWING_COMPLETE"/);
+assert.doesNotMatch(service, /PayPal|SupportSubscription|SupportProviderEvent|LedgerTransaction|kennel\.balance/);
+assert.match(route, /getSessionUserId/);
+assert.match(route, /completeArtCampaignArtwork/);
+assert.match(page, /user\?\.isAdmin/);
+assert.match(form, /Artist credit/);
+assert.match(form, /Artwork asset reference/);
+assert.match(form, /Funded — Awaiting Artwork → Drawing Complete/);
+assert.match(schema, /artCampaignId\s+String\s+@unique/);
+console.log("ART-11 Breed Art admin completion source checks passed.");
