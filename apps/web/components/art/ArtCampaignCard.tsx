@@ -10,6 +10,7 @@ import ArtCampaignContributionForm from "./ArtCampaignContributionForm";
 export default function ArtCampaignCard({ campaign, creditKennelName }: { campaign: ArtCampaignReadDto; creditKennelName?: string | null }) {
   const { progress } = campaign;
   const amountSummary = `${formatArtCurrency(progress.amountFundedCents)} of ${formatArtCurrency(progress.fundingGoalCents)} funded`;
+  const artworkAssetReference = campaign.artworkAssetReference?.trim();
 
   return <article className="theme-card rounded-2xl p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -20,18 +21,14 @@ export default function ArtCampaignCard({ campaign, creditKennelName }: { campai
       <p className="theme-copy rounded-full border px-3 py-1 text-xs font-semibold">{getArtCampaignStatusLabel(campaign.status)}</p>
     </div>
 
-    {campaign.status === "DRAWING_COMPLETE" && campaign.artworkAssetReference ? (
-      <img src={campaign.artworkAssetReference} alt={`${campaign.breedName} artwork`} className="theme-panel mt-4 aspect-[4/3] w-full rounded-xl object-cover" />
-    ) : (
-      <div aria-hidden="true" className="theme-panel mt-4 aspect-[4/3] rounded-xl" />
-    )}
+    {campaign.status === "DRAWING_COMPLETE" && artworkAssetReference ? <img src={artworkAssetReference} alt={`${campaign.breedName} artwork`} className="theme-panel mt-4 aspect-[4/3] w-full rounded-xl object-cover" /> : null}
 
     <div className="mt-4">
       <p className="theme-copy text-sm font-semibold">{amountSummary}</p>
-      {progress.canAcceptContributions ? <p className="theme-copy mt-1 text-sm">{formatArtCurrency(progress.amountRemainingCents)} remaining</p> : null}
-      <progress className="mt-3 h-3 w-full" value={progress.amountFundedCents} max={progress.fundingGoalCents} aria-label={`${campaign.breedName}: ${amountSummary}`}>
+      <progress className="mt-2 h-2 w-full" value={progress.amountFundedCents} max={progress.fundingGoalCents} aria-label={`${campaign.breedName}: ${amountSummary}`}>
         {amountSummary}
       </progress>
+      {progress.canAcceptContributions ? <p className="theme-copy mt-1 text-sm">{formatArtCurrency(progress.amountRemainingCents)} remaining</p> : null}
     </div>
     {campaign.recognition ? <details className="theme-panel mt-4 rounded-xl p-3 text-sm">
       <summary className="theme-copy cursor-pointer font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Funded by {new Intl.NumberFormat().format(campaign.recognition.supporterCount)} {campaign.recognition.supporterCount === 1 ? "supporter" : "supporters"}</summary>

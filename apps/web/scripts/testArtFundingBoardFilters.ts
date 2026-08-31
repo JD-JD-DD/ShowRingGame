@@ -53,7 +53,10 @@ function main() {
   assert.match(boardClient, /<label[\s\S]*Breed Name[\s\S]*type="search"/);
   assert.match(boardClient, /<label[\s\S]*Funding Status[\s\S]*<select/);
   assert.match(boardClient, /<button type="button"[\s\S]*setFilters\(DEFAULT_ART_CAMPAIGN_FILTERS\)[\s\S]*Clear Filters/);
-  assert.match(boardClient, /aria-live="polite"[\s\S]*Showing/);
+  assert.match(boardClient, /aria-live="polite"[\s\S]*hasActiveFilters \? `Showing/);
+  assert.match(boardClient, /Use the filters above to browse breed artwork campaigns\./);
+  assert.match(boardClient, /hasActiveFilters \? visibleCampaigns\.length/);
+  assert.match(boardClient, /theme-control/);
   assert.match(boardClient, /No breeds match these filters\./);
   console.log("ART-05 Breed Art funding board filter checks passed.");
 }

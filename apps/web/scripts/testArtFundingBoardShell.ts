@@ -17,7 +17,9 @@ function main() {
   assert.match(page, /summary\.drawingCompleteCount/);
   assert.match(page, /summary\.helpFinishCampaigns\.map/);
   assert.match(page, /BreedArtFundingBoardClient campaigns=\{summary\.campaigns\}/);
-  assert.match(boardClient, /filteredCampaigns\.map/);
+  assert.match(boardClient, /visibleCampaigns\.map/);
+  assert.match(boardClient, /const visibleCampaigns = hasActiveFilters \? filteredCampaigns : \[\]/);
+  assert.match(boardClient, /Use the filters above to browse breed artwork campaigns\./);
   assert.doesNotMatch(page + card, /\b314\b|\b318\b/);
   assert.match(page, /artistAllocationCents\)\} compensates the artist/);
   assert.match(page, /showRingAllocationCents\)\} supports ShowRing development and operating expenses/);
@@ -29,6 +31,8 @@ function main() {
   assert.doesNotMatch(page, /showringgame@gmail\.com/);
   assert.match(card, /<progress[\s\S]*value=\{progress\.amountFundedCents\}[\s\S]*max=\{progress\.fundingGoalCents\}/);
   assert.match(card, /amountSummary/);
+  assert.match(card, /campaign\.status === "DRAWING_COMPLETE" && artworkAssetReference/);
+  assert.doesNotMatch(card, /aria-hidden="true" className="theme-panel mt-4 aspect-\[4\/3\] rounded-xl"/);
   assert.match(presentation, /NEEDS_FUNDING: "Needs Funding"/);
   assert.match(presentation, /FUNDED: "Funded — Awaiting Artwork"/);
   assert.match(presentation, /DRAWING_COMPLETE: "Drawing Complete"/);
