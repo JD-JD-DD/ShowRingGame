@@ -23,7 +23,8 @@ function main() {
   assert.doesNotMatch(page + card, /donation|donor/i);
   assert.doesNotMatch(page + card, /PayPal|fetch\(|<button|Contribute/);
   assert.match(page, /Interested in contributing art to ShowRing\?/);
-  assert.match(page, /Message us to learn more\./);
+  assert.match(page, /href="\/inbox\/messages\/start\/devtest"[\s\S]*Message us to learn more\./);
+  assert.doesNotMatch(page, /showringgame@gmail\.com/);
   assert.match(card, /<progress[\s\S]*value=\{progress\.amountFundedCents\}[\s\S]*max=\{progress\.fundingGoalCents\}/);
   assert.match(card, /amountSummary/);
   assert.match(presentation, /NEEDS_FUNDING: "Needs Funding"/);

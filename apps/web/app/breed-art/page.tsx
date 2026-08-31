@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import ArtCampaignCard from "@/components/art/ArtCampaignCard";
 import { formatArtCurrency } from "@/lib/artCampaignPresentation";
 import { STANDARD_BREED_ARTWORK_FUNDING } from "@/prisma/artCampaignSeed";
@@ -45,7 +47,7 @@ export default async function BreedArtFundingPage() {
       <section className="theme-panel mt-12 rounded-2xl p-5 sm:p-6" aria-labelledby="artists-heading">
         <h2 id="artists-heading" className="theme-heading text-2xl font-semibold">Interested in contributing art to ShowRing?</h2>
         <p className="theme-copy mt-3 leading-7">We&apos;re interested in working with artists who love dogs and would like to contribute to ShowRing&apos;s growing art collection.</p>
-        <p className="theme-copy mt-3 font-semibold">Message us to learn more.</p>
+        <Link href="/inbox/messages/start/devtest" className="theme-copy mt-3 inline-block font-semibold underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Message us to learn more.</Link>
       </section>
     </main>;
   } catch {
