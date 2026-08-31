@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { CURRENT_BREED_RELEASE } from "@showring/rules";
 import fs from "node:fs";
 import path from "node:path";
+import { seedInitialStandardBreedArtworkCampaigns } from "./artCampaignSeed";
 
 const prisma = new PrismaClient();
 
@@ -75,6 +76,8 @@ async function main() {
 
     await prisma.breed.create({ data });
   }
+
+  await seedInitialStandardBreedArtworkCampaigns(prisma);
 
   console.log(`Seeded ${rows.length} breeds`);
 }

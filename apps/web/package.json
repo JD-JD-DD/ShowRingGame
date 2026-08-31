@@ -32,6 +32,8 @@
     "test:global-header-logout": "tsx scripts/testGlobalHeaderLogout.ts",
     "test:game-header-visibility": "tsx scripts/testGameHeaderVisibility.ts",
     "test:breed-visibility": "tsx scripts/testBreedVisibility.ts",
+    "test:art-campaign-foundation": "tsx scripts/testArtCampaignFoundation.ts",
+    "test:art-campaign-read-model": "tsx scripts/testArtCampaignReadModel.ts",
     "test:breeding-eligibility": "tsx scripts/testBreedingEligibilityConsistency.ts",
     "test:breeding-eligibility-reasons": "tsx scripts/testBreedingEligibilityReasons.ts",
     "test:stud-recovery": "tsx scripts/testStudRecovery.ts",

@@ -453,6 +453,17 @@ enum SupportProviderEventProcessingStatus {
   FAILED
 }
 
+enum ArtCampaignStatus {
+  NEEDS_FUNDING
+  FUNDED
+  DRAWING_COMPLETE
+}
+
+enum ArtContributionRecognition {
+  KENNEL_CREDIT
+  ANONYMOUS
+}
+
 model User {
   id               String               @id @default(cuid())
   email            String               @unique
@@ -473,6 +484,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   supportSubscriptions SupportSubscription[]
   supportSubscriptionChanges SupportSubscriptionChange[]
+  artContributions ArtContribution[]
 }
 
 model SupportSubscription {
@@ -662,6 +674,7 @@ model Kennel {
   receivedCommunicationReports KennelCommunicationReport[] @relation("KennelCommunicationReportReported")
   privateDogNotes          KennelDogPrivateNote[]
   runs                     KennelRun[]
+  artContributions         ArtContribution[]
   serviceClaims            KennelServiceClaim[]
   groomingListingsOwned    GroomingListing[]       @relation("GroomingListingOwnerKennel")
   groomingListingsClaimed  GroomingListing[]       @relation("GroomingListingGroomerKennel")
@@ -716,8 +729,69 @@ model Breed {
   geneticBackgroundSnapshots BreedGeneticBackgroundSnapshot[]
   judgingProfiles   BreedJudgingProfile[]
   annualChampionshipPointSchedules AnnualChampionshipPointSchedule[]
+  artCampaigns      ArtCampaign[]
 
   @@index([releaseVersion])
+}
+
+model ArtCampaign {
+  id                      String            @id @default(cuid())
+  breedCode2              String
+  campaignKey             String
+  title                   String
+  fundingGoalCents        Int
+  fundingUnitCents        Int
+  totalFundingUnits       Int
+  artistAllocationCents   Int
+  showRingAllocationCents Int
+  status                  ArtCampaignStatus @default(NEEDS_FUNDING)
+  fundedAt                DateTime?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  breed         Breed             @relation(fields: [breedCode2], references: [code2])
+  contributions ArtContribution[]
+  artwork       ArtArtwork?
+
+  @@unique([breedCode2, campaignKey])
+  @@index([status])
+}
+
+model ArtContribution {
+  id                    String                     @id @default(cuid())
+  artCampaignId         String
+  userId                String
+  kennelId              String
+  requestedUnits        Int
+  fundedUnits           Int
+  amountCents           Int
+  recognition           ArtContributionRecognition
+  provider              String?
+  providerPaymentId     String?                    @unique
+  requestedAt           DateTime                   @default(now())
+  fundedAt              DateTime?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+
+  campaign ArtCampaign @relation(fields: [artCampaignId], references: [id])
+  user     User        @relation(fields: [userId], references: [id])
+  kennel   Kennel      @relation(fields: [kennelId], references: [id])
+
+  @@index([artCampaignId])
+  @@index([userId])
+  @@index([kennelId])
+}
+
+model ArtArtwork {
+  id             String   @id @default(cuid())
+  artCampaignId  String   @unique
+  artistCredit   String?
+  assetReference String?
+  completedAt    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  campaign ArtCampaign @relation(fields: [artCampaignId], references: [id])
 }
 
 model BreedJudgingProfile {
