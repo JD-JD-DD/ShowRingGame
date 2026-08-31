@@ -12,6 +12,18 @@ export type ArtContributionFundingRecord = {
   fundedAt: Date | null;
 };
 
+type ArtContributionRecognitionRecord = ArtContributionFundingRecord & {
+  recognition?: "KENNEL_CREDIT" | "ANONYMOUS";
+  kennelId?: string;
+  kennel?: { name: string; slug: string };
+};
+
+export type ArtCampaignRecognitionDto = {
+  supporterCount: number;
+  publicKennels: Array<{ kennelName: string; kennelSlug: string }>;
+  anonymousSupporterCount: number;
+};
+
 export type ArtCampaignFundingConfiguration = {
   fundingGoalCents: number;
   fundingUnitCents: number;
@@ -46,6 +58,7 @@ export type ArtCampaignReadDto = {
   breedGroupName: string | null;
   status: ArtCampaignStatusValue;
   artworkAssetReference: string | null;
+  recognition: ArtCampaignRecognitionDto | null;
   firstSuccessfulContributionAt: Date | null;
   progress: ArtCampaignProgress;
 };
@@ -140,6 +153,30 @@ function firstSuccessfulContributionAt(contributions: ArtContributionFundingReco
   return times.length ? new Date(Math.min(...times.map((value) => value.getTime()))) : null;
 }
 
+export function deriveArtCampaignRecognition(contributions: ArtContributionRecognitionRecord[]): ArtCampaignRecognitionDto | null {
+  const publicKennels = new Map<string, { kennelName: string; kennelSlug: string }>();
+  let anonymousSupporterCount = 0;
+
+  for (const contribution of contributions) {
+    if (normalizedFundedUnits(contribution.fundedUnits) === 0 || !contribution.fundedAt) continue;
+    if (contribution.recognition === "ANONYMOUS") {
+      anonymousSupporterCount += 1;
+      continue;
+    }
+    if (contribution.recognition !== "KENNEL_CREDIT" || !contribution.kennelId || !contribution.kennel) continue;
+    publicKennels.set(contribution.kennelId, {
+      kennelName: contribution.kennel.name,
+      kennelSlug: contribution.kennel.slug,
+    });
+  }
+
+  const namedKennels = [...publicKennels.values()].sort(
+    (left, right) => left.kennelName.localeCompare(right.kennelName) || left.kennelSlug.localeCompare(right.kennelSlug)
+  );
+  const supporterCount = namedKennels.length + anonymousSupporterCount;
+  return supporterCount > 0 ? { supporterCount, publicKennels: namedKennels, anonymousSupporterCount } : null;
+}
+
 export function toArtCampaignReadDto(campaign: {
   id: string;
   campaignKey: string;
@@ -152,7 +189,7 @@ export function toArtCampaignReadDto(campaign: {
   artistAllocationCents: number;
   showRingAllocationCents: number;
   breed: { name: string; groupName: string | null };
-  contributions: ArtContributionFundingRecord[];
+  contributions: ArtContributionRecognitionRecord[];
   artwork: { assetReference: string | null } | null;
 }): ArtCampaignReadDto {
   return {
@@ -164,6 +201,7 @@ export function toArtCampaignReadDto(campaign: {
     breedGroupName: campaign.breed.groupName,
     status: campaign.status,
     artworkAssetReference: campaign.artwork?.assetReference ?? null,
+    recognition: ["FUNDED", "DRAWING_COMPLETE"].includes(campaign.status) ? deriveArtCampaignRecognition(campaign.contributions) : null,
     firstSuccessfulContributionAt: firstSuccessfulContributionAt(campaign.contributions),
     progress: calculateArtCampaignProgress({
       status: campaign.status,
@@ -203,7 +241,7 @@ export async function getEligibleStandardBreedArtworkCampaigns(args: { database?
     },
     include: {
       breed: { select: { name: true, groupName: true } },
-      contributions: { select: { fundedUnits: true, requestedAt: true, fundedAt: true } },
+      contributions: { select: { fundedUnits: true, requestedAt: true, fundedAt: true, recognition: true, kennelId: true, kennel: { select: { name: true, slug: true } } } },
       artwork: { select: { assetReference: true } },
     },
     orderBy: [{ breed: { groupName: "asc" } }, { breed: { name: "asc" } }, { id: "asc" }],

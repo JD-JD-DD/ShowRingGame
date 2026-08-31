@@ -41,6 +41,7 @@
     "test:art-payment-finalization": "tsx scripts/testArtPaymentFinalization.ts",
     "test:art-payment-reconciliation-runner": "tsx scripts/testArtPaymentReconciliationRunner.ts",
     "test:art-payment-provider-event-replay": "tsx scripts/testArtPaymentProviderEventReplay.ts",
+    "test:art-supporter-recognition": "tsx scripts/testArtSupporterRecognition.ts",
     "test:breeding-eligibility": "tsx scripts/testBreedingEligibilityConsistency.ts",
     "test:breeding-eligibility-reasons": "tsx scripts/testBreedingEligibilityReasons.ts",
     "test:stud-recovery": "tsx scripts/testStudRecovery.ts",

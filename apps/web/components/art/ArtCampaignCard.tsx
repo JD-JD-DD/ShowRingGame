@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { formatArtCurrency, getArtCampaignStatusLabel } from "@/lib/artCampaignPresentation";
 import type { ArtCampaignReadDto } from "@/server/services/artCampaign.service";
 
@@ -31,6 +33,13 @@ export default function ArtCampaignCard({ campaign, creditKennelName }: { campai
         {amountSummary}
       </progress>
     </div>
+    {campaign.recognition ? <details className="theme-panel mt-4 rounded-xl p-3 text-sm">
+      <summary className="theme-copy cursor-pointer font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Funded by {new Intl.NumberFormat().format(campaign.recognition.supporterCount)} {campaign.recognition.supporterCount === 1 ? "supporter" : "supporters"}</summary>
+      <ul className="theme-copy mt-3 list-disc space-y-1 pl-5">
+        {campaign.recognition.publicKennels.map((kennel) => <li key={kennel.kennelSlug}><Link href={`/kennels/${kennel.kennelSlug}`} className="font-semibold underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{kennel.kennelName}</Link></li>)}
+        {campaign.recognition.anonymousSupporterCount > 0 ? <li>Anonymous {campaign.recognition.anonymousSupporterCount === 1 ? "supporter" : "supporters"}: {new Intl.NumberFormat().format(campaign.recognition.anonymousSupporterCount)}</li> : null}
+      </ul>
+    </details> : null}
     {campaign.status === "NEEDS_FUNDING" && progress.canAcceptContributions ? <ArtCampaignContributionForm campaign={campaign} creditKennelName={creditKennelName} /> : null}
   </article>;
 }
