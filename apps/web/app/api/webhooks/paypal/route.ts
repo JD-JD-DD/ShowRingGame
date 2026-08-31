@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PayPalSupportError } from "@/server/services/paypalSupport.service";
 import { parsePayPalWebhookEvent, PayPalWebhookError, processVerifiedPayPalWebhook, verifyPayPalWebhook } from "@/server/services/paypalWebhook.service";
+import { processVerifiedArtPaymentWebhook } from "@/server/services/artPaymentWebhook.service";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
     const body: unknown = JSON.parse(await request.text());
     const event = parsePayPalWebhookEvent(body);
     await verifyPayPalWebhook({ headers: verificationHeaders(request), body });
-    await processVerifiedPayPalWebhook({ event });
+    if (!(await processVerifiedArtPaymentWebhook({ event }))) await processVerifiedPayPalWebhook({ event });
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof PayPalWebhookError || error instanceof PayPalSupportError) {

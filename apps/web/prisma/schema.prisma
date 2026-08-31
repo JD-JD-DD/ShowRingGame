@@ -787,6 +787,7 @@ model ArtCampaign {
 model ArtContribution {
   id                    String                     @id @default(cuid())
   artCampaignId         String
+  artPaymentAttemptId   String?                    @unique
   userId                String
   kennelId              String
   requestedUnits        Int
@@ -803,6 +804,7 @@ model ArtContribution {
   campaign ArtCampaign @relation(fields: [artCampaignId], references: [id])
   user     User        @relation(fields: [userId], references: [id])
   kennel   Kennel      @relation(fields: [kennelId], references: [id])
+  paymentAttempt ArtPaymentAttempt? @relation(fields: [artPaymentAttemptId], references: [id], onDelete: Restrict)
 
   @@index([artCampaignId])
   @@index([userId])
@@ -846,6 +848,7 @@ model ArtPaymentAttempt {
   user           User                      @relation(fields: [userId], references: [id], onDelete: Restrict)
   kennel         Kennel                    @relation(fields: [kennelId], references: [id], onDelete: Restrict)
   providerEvents ArtPaymentProviderEvent[]
+  contribution   ArtContribution?
 
   @@unique([userId, clientRequestId])
   @@index([artCampaignId, status])

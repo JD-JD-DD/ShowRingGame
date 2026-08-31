@@ -66,7 +66,7 @@ async function loadEligibleCampaign(database: ArtPaymentAttemptDatabase, campaig
   return campaign;
 }
 
-function verifyProviderOrder(args: { order: PayPalArtOrder; attempt: PaymentAttemptRecord }) {
+export function verifyProviderOrder(args: { order: PayPalArtOrder; attempt: PaymentAttemptRecord }) {
   const expectedAmount = formatUsdCents(args.attempt.expectedAmountCents);
   if (
     args.order.id !== args.attempt.providerOrderId ||

@@ -220,6 +220,16 @@ export type PayPalArtOrder = {
   itemSku: string | null;
 };
 
+export type PayPalArtAuthorization = { id: string; status: string; amountValue: string | null; currencyCode: string | null };
+export type PayPalArtCapture = { id: string; status: string; amountValue: string | null; currencyCode: string | null };
+
+function parsePayPalArtPayment(value: unknown, kind: "authorization" | "capture"): PayPalArtAuthorization | PayPalArtCapture {
+  const payment = asRecord(value);
+  const amount = asRecord(payment?.amount);
+  if (!payment || typeof payment.id !== "string" || typeof payment.status !== "string") throw new PayPalSupportError(`PayPal returned an invalid ${kind} response.`);
+  return { id: payment.id, status: payment.status, amountValue: typeof amount?.value === "string" ? amount.value : null, currencyCode: typeof amount?.currency_code === "string" ? amount.currency_code : null };
+}
+
 function parsePayPalArtOrder(value: unknown): PayPalArtOrder {
   const order = asRecord(value);
   const purchaseUnit = Array.isArray(order?.purchase_units) ? asRecord(order.purchase_units[0]) : null;
@@ -396,6 +406,30 @@ export class PayPalClient {
   async getArtOrder(providerOrderId: string): Promise<PayPalArtOrder> {
     if (!providerOrderId.trim()) throw new PayPalSupportError("PayPal order ID is required.", 400);
     return parsePayPalArtOrder(await this.request("GET", `/v2/checkout/orders/${encodeURIComponent(providerOrderId)}`));
+  }
+
+  async authorizeArtOrder(providerOrderId: string, requestId: string): Promise<PayPalArtAuthorization> {
+    const result = asRecord(await this.request("POST", `/v2/checkout/orders/${encodeURIComponent(providerOrderId)}/authorize`, {}, requestId));
+    const unit = Array.isArray(result?.purchase_units) ? asRecord(result.purchase_units[0]) : null;
+    const payments = asRecord(unit?.payments);
+    const authorization = Array.isArray(payments?.authorizations) ? payments?.authorizations[0] : null;
+    return parsePayPalArtPayment(authorization, "authorization") as PayPalArtAuthorization;
+  }
+
+  async getArtAuthorization(providerAuthorizationId: string): Promise<PayPalArtAuthorization> {
+    return parsePayPalArtPayment(await this.request("GET", `/v2/payments/authorizations/${encodeURIComponent(providerAuthorizationId)}`), "authorization") as PayPalArtAuthorization;
+  }
+
+  async captureArtAuthorization(providerAuthorizationId: string, args: { amountCents: number; requestId: string }): Promise<PayPalArtCapture> {
+    return parsePayPalArtPayment(await this.request("POST", `/v2/payments/authorizations/${encodeURIComponent(providerAuthorizationId)}/capture`, { amount: { currency_code: "USD", value: formatUsdCents(args.amountCents) }, final_capture: true }, args.requestId), "capture") as PayPalArtCapture;
+  }
+
+  async getArtCapture(providerCaptureId: string): Promise<PayPalArtCapture> {
+    return parsePayPalArtPayment(await this.request("GET", `/v2/payments/captures/${encodeURIComponent(providerCaptureId)}`), "capture") as PayPalArtCapture;
+  }
+
+  async voidArtAuthorization(providerAuthorizationId: string, requestId: string): Promise<void> {
+    await this.request("POST", `/v2/payments/authorizations/${encodeURIComponent(providerAuthorizationId)}/void`, {}, requestId);
   }
 
   async reviseSubscription(args: { providerSubscriptionId: string; tier: SupportTierValue; returnUrl: string; cancelUrl: string }): Promise<RevisedPayPalSupportSubscription> {
