@@ -37,6 +37,7 @@
     "test:art-funding-board-shell": "tsx scripts/testArtFundingBoardShell.ts",
     "test:art-funding-board-filters": "tsx scripts/testArtFundingBoardFilters.ts",
     "test:art-payment-concurrency-spike": "tsx scripts/testArtPaymentConcurrencySpike.ts",
+    "test:art-payment-foundation": "tsx scripts/testArtPaymentFoundation.ts",
     "test:breeding-eligibility": "tsx scripts/testBreedingEligibilityConsistency.ts",
     "test:breeding-eligibility-reasons": "tsx scripts/testBreedingEligibilityReasons.ts",
     "test:stud-recovery": "tsx scripts/testStudRecovery.ts",

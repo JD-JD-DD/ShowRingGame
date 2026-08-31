@@ -3,12 +3,16 @@ import Link from "next/link";
 import ArtCampaignCard from "@/components/art/ArtCampaignCard";
 import BreedArtFundingBoardClient from "@/components/art/BreedArtFundingBoardClient";
 import { formatArtCurrency } from "@/lib/artCampaignPresentation";
+import { getSessionUserId } from "@/lib/session";
 import { STANDARD_BREED_ARTWORK_FUNDING } from "@/prisma/artCampaignSeed";
 import { getStandardBreedArtworkBoardSummary } from "@/server/services/artCampaign.service";
+import { getKennelForUser } from "@/server/services/kennel.service";
 
 export default async function BreedArtFundingPage() {
   try {
     const summary = await getStandardBreedArtworkBoardSummary();
+    const userId = await getSessionUserId();
+    const kennel = userId ? await getKennelForUser(userId) : null;
 
     return <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <header className="max-w-3xl">
@@ -33,7 +37,7 @@ export default async function BreedArtFundingPage() {
       <section className="mt-10" aria-labelledby="help-finish-heading">
         <h2 id="help-finish-heading" className="theme-heading text-2xl font-semibold">Help Finish a Breed</h2>
         <p className="theme-copy mt-2">These breeds are closest to reaching their artwork funding goal.</p>
-        {summary.helpFinishCampaigns.length ? <div className="mt-5 grid gap-4 md:grid-cols-3">{summary.helpFinishCampaigns.map((campaign) => <ArtCampaignCard key={campaign.id} campaign={campaign} />)}</div> : <p className="theme-copy mt-5">No campaigns currently need funding.</p>}
+        {summary.helpFinishCampaigns.length ? <div className="mt-5 grid gap-4 md:grid-cols-3">{summary.helpFinishCampaigns.map((campaign) => <ArtCampaignCard key={campaign.id} campaign={campaign} creditKennelName={kennel?.name} />)}</div> : <p className="theme-copy mt-5">No campaigns currently need funding.</p>}
       </section>
 
       <section className="mt-12" aria-labelledby="funding-board-heading">
@@ -42,7 +46,7 @@ export default async function BreedArtFundingPage() {
           <h2 id="funding-board-heading" className="theme-heading mt-2 text-2xl font-semibold">Breed Art Funding Board</h2>
           <p className="theme-copy mt-2">Browse the current Standard Breed Artwork collection.</p>
         </div>
-        {summary.campaigns.length ? <BreedArtFundingBoardClient campaigns={summary.campaigns} /> : <p className="theme-copy mt-5">No breed artwork campaigns are available right now.</p>}
+        {summary.campaigns.length ? <BreedArtFundingBoardClient campaigns={summary.campaigns} creditKennelName={kennel?.name} /> : <p className="theme-copy mt-5">No breed artwork campaigns are available right now.</p>}
       </section>
 
       <section className="theme-panel mt-12 rounded-2xl p-5 sm:p-6" aria-labelledby="artists-heading">

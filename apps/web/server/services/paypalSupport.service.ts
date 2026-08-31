@@ -207,6 +207,46 @@ export type CreatedPayPalSupportSubscription = {
 
 export type RevisedPayPalSupportSubscription = { approvalUrl: string | null };
 
+export type PayPalArtOrder = {
+  id: string;
+  status: string;
+  intent: string;
+  approvalUrl: string | null;
+  referenceId: string | null;
+  customId: string | null;
+  amountValue: string | null;
+  currencyCode: string | null;
+  itemQuantity: string | null;
+  itemSku: string | null;
+};
+
+function parsePayPalArtOrder(value: unknown): PayPalArtOrder {
+  const order = asRecord(value);
+  const purchaseUnit = Array.isArray(order?.purchase_units) ? asRecord(order.purchase_units[0]) : null;
+  const amount = asRecord(purchaseUnit?.amount);
+  const items = Array.isArray(purchaseUnit?.items) ? purchaseUnit?.items : [];
+  const item = asRecord(items[0]);
+  if (!order || typeof order.id !== "string" || typeof order.status !== "string" || typeof order.intent !== "string") {
+    throw new PayPalSupportError("PayPal returned an invalid order response.");
+  }
+  return {
+    id: order.id,
+    status: order.status,
+    intent: order.intent,
+    approvalUrl: findApprovalUrl(order),
+    referenceId: typeof purchaseUnit?.reference_id === "string" ? purchaseUnit.reference_id : null,
+    customId: typeof purchaseUnit?.custom_id === "string" ? purchaseUnit.custom_id : null,
+    amountValue: typeof amount?.value === "string" ? amount.value : null,
+    currencyCode: typeof amount?.currency_code === "string" ? amount.currency_code : null,
+    itemQuantity: typeof item?.quantity === "string" ? item.quantity : null,
+    itemSku: typeof item?.sku === "string" ? item.sku : null,
+  };
+}
+
+function formatUsdCents(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
 export class PayPalClient {
   private accessToken: string | null = null;
 
@@ -313,6 +353,51 @@ export class PayPalClient {
     return parsePayPalSubscription(result);
   }
 
+  async createArtOrder(args: {
+    attemptId: string;
+    campaignId: string;
+    campaignTitle: string;
+    requestedUnits: number;
+    fundingUnitCents: number;
+    expectedAmountCents: number;
+    returnUrl: string;
+    cancelUrl: string;
+    requestId: string;
+  }): Promise<PayPalArtOrder> {
+    const unitAmount = formatUsdCents(args.fundingUnitCents);
+    const totalAmount = formatUsdCents(args.expectedAmountCents);
+    const result = await this.request("POST", "/v2/checkout/orders", {
+      intent: "AUTHORIZE",
+      purchase_units: [{
+        reference_id: args.attemptId,
+        custom_id: args.attemptId,
+        invoice_id: `art-${args.attemptId}`,
+        amount: {
+          currency_code: "USD",
+          value: totalAmount,
+          breakdown: { item_total: { currency_code: "USD", value: totalAmount } },
+        },
+        items: [{
+          name: args.campaignTitle,
+          sku: args.campaignId,
+          quantity: String(args.requestedUnits),
+          unit_amount: { currency_code: "USD", value: unitAmount },
+        }],
+      }],
+      application_context: {
+        return_url: args.returnUrl,
+        cancel_url: args.cancelUrl,
+        user_action: "CONTINUE",
+      },
+    }, args.requestId);
+    return parsePayPalArtOrder(result);
+  }
+
+  async getArtOrder(providerOrderId: string): Promise<PayPalArtOrder> {
+    if (!providerOrderId.trim()) throw new PayPalSupportError("PayPal order ID is required.", 400);
+    return parsePayPalArtOrder(await this.request("GET", `/v2/checkout/orders/${encodeURIComponent(providerOrderId)}`));
+  }
+
   async reviseSubscription(args: { providerSubscriptionId: string; tier: SupportTierValue; returnUrl: string; cancelUrl: string }): Promise<RevisedPayPalSupportSubscription> {
     if (!("planIds" in this.config)) throw new PayPalSupportError("PayPal support is not configured.", 503);
     const result = await this.request("POST", `/v1/billing/subscriptions/${encodeURIComponent(args.providerSubscriptionId)}/revise`, {
@@ -368,4 +453,8 @@ export function createPayPalClient(
 
 export function createPayPalSandboxClient(): PayPalClient {
   return createPayPalClient(getPayPalSupportConfig("sandbox"));
+}
+
+export function createPayPalArtOrdersClient(): PayPalClient {
+  return createPayPalClient(getPayPalProvisioningConfig(getPayPalEnvironment()));
 }

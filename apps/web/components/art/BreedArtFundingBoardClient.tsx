@@ -7,7 +7,7 @@ import type { ArtCampaignReadDto, ArtCampaignStatusValue } from "@/server/servic
 
 import ArtCampaignCard from "./ArtCampaignCard";
 
-export default function BreedArtFundingBoardClient({ campaigns }: { campaigns: ArtCampaignReadDto[] }) {
+export default function BreedArtFundingBoardClient({ campaigns, creditKennelName }: { campaigns: ArtCampaignReadDto[]; creditKennelName?: string | null }) {
   const [filters, setFilters] = useState(DEFAULT_ART_CAMPAIGN_FILTERS);
   const groupOptions = useMemo(() => getArtCampaignGroupOptions(campaigns), [campaigns]);
   const filteredCampaigns = useMemo(() => filterArtCampaigns(campaigns, filters), [campaigns, filters]);
@@ -37,6 +37,6 @@ export default function BreedArtFundingBoardClient({ campaigns }: { campaigns: A
       <p className="theme-copy mt-4 text-sm" aria-live="polite" aria-atomic="true">Showing {new Intl.NumberFormat().format(filteredCampaigns.length)} breeds</p>
     </section>
 
-    {filteredCampaigns.length ? <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{filteredCampaigns.map((campaign) => <ArtCampaignCard key={campaign.id} campaign={campaign} />)}</div> : <p className="theme-copy mt-5">No breeds match these filters.</p>}
+    {filteredCampaigns.length ? <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{filteredCampaigns.map((campaign) => <ArtCampaignCard key={campaign.id} campaign={campaign} creditKennelName={creditKennelName} />)}</div> : <p className="theme-copy mt-5">No breeds match these filters.</p>}
   </>;
 }

@@ -23,7 +23,7 @@ function main() {
   assert.match(page, /showRingAllocationCents\)\} supports ShowRing development and operating expenses/);
   assert.match(page, /Contributions will be available in/);
   assert.doesNotMatch(page + card, /donation|donor/i);
-  assert.doesNotMatch(page + card, /PayPal|fetch\(|<button|Contribute/);
+  assert.doesNotMatch(page, /PayPal|fetch\(|<button/);
   assert.match(page, /Interested in contributing art to ShowRing\?/);
   assert.match(page, /href="\/inbox\/messages\/start\/devtest"[\s\S]*Message us to learn more\./);
   assert.doesNotMatch(page, /showringgame@gmail\.com/);

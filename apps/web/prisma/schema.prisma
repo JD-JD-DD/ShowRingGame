@@ -464,6 +464,30 @@ enum ArtContributionRecognition {
   ANONYMOUS
 }
 
+enum ArtPaymentAttemptStatus {
+  CREATED
+  ORDER_CREATED
+  APPROVED
+  AUTHORIZED
+  RESERVED
+  UNAVAILABLE_AFTER_AUTH
+  CAPTURE_PENDING
+  COMPLETED
+  FAILED
+  VOID_PENDING
+  VOIDED
+  CANCELLED
+  EXPIRED
+  RECONCILING
+}
+
+enum ArtPaymentProviderEventProcessingStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  FAILED
+}
+
 model User {
   id               String               @id @default(cuid())
   email            String               @unique
@@ -485,6 +509,7 @@ model User {
   supportSubscriptions SupportSubscription[]
   supportSubscriptionChanges SupportSubscriptionChange[]
   artContributions ArtContribution[]
+  artPaymentAttempts ArtPaymentAttempt[]
 }
 
 model SupportSubscription {
@@ -675,6 +700,7 @@ model Kennel {
   privateDogNotes          KennelDogPrivateNote[]
   runs                     KennelRun[]
   artContributions         ArtContribution[]
+  artPaymentAttempts       ArtPaymentAttempt[]
   serviceClaims            KennelServiceClaim[]
   groomingListingsOwned    GroomingListing[]       @relation("GroomingListingOwnerKennel")
   groomingListingsClaimed  GroomingListing[]       @relation("GroomingListingGroomerKennel")
@@ -751,6 +777,7 @@ model ArtCampaign {
 
   breed         Breed             @relation(fields: [breedCode2], references: [code2])
   contributions ArtContribution[]
+  paymentAttempts ArtPaymentAttempt[]
   artwork       ArtArtwork?
 
   @@unique([breedCode2, campaignKey])
@@ -780,6 +807,69 @@ model ArtContribution {
   @@index([artCampaignId])
   @@index([userId])
   @@index([kennelId])
+}
+
+model ArtPaymentAttempt {
+  id                              String                  @id @default(cuid())
+  artCampaignId                   String
+  userId                          String
+  kennelId                        String
+  requestedUnits                  Int
+  expectedAmountCents             Int
+  currency                        String
+  recognition                     ArtContributionRecognition
+  nonRefundableAcknowledged       Boolean
+  nonRefundableAcknowledgedAt     DateTime
+  status                          ArtPaymentAttemptStatus @default(CREATED)
+  clientRequestId                 String
+  paypalCreateOrderRequestId      String                  @unique
+  paypalAuthorizeRequestId        String?                 @unique
+  paypalCaptureRequestId          String?                 @unique
+  paypalVoidRequestId             String?                 @unique
+  provider                        String                  @default("PAYPAL")
+  providerOrderId                 String?                 @unique
+  providerApprovalUrl             String?
+  providerAuthorizationId         String?                 @unique
+  providerCaptureId               String?                 @unique
+  providerOrderStatus             String?
+  approvedAt                      DateTime?
+  authorizedAt                    DateTime?
+  reservedUnits                   Int?
+  reservationAcquiredAt           DateTime?
+  reservationReleasedAt           DateTime?
+  expiresAt                       DateTime?
+  terminalAt                      DateTime?
+  createdAt                       DateTime                @default(now())
+  updatedAt                       DateTime                @updatedAt
+
+  campaign       ArtCampaign               @relation(fields: [artCampaignId], references: [id], onDelete: Restrict)
+  user           User                      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  kennel         Kennel                    @relation(fields: [kennelId], references: [id], onDelete: Restrict)
+  providerEvents ArtPaymentProviderEvent[]
+
+  @@unique([userId, clientRequestId])
+  @@index([artCampaignId, status])
+  @@index([userId, createdAt])
+  @@index([status, updatedAt])
+}
+
+model ArtPaymentProviderEvent {
+  id               String                                @id @default(cuid())
+  provider         String
+  providerEventId  String                                @unique
+  eventType        String
+  artPaymentAttemptId String?
+  providerResourceId String?
+  processingStatus ArtPaymentProviderEventProcessingStatus @default(RECEIVED)
+  receivedAt       DateTime                              @default(now())
+  processedAt      DateTime?
+  createdAt        DateTime                              @default(now())
+  updatedAt        DateTime                              @updatedAt
+
+  attempt ArtPaymentAttempt? @relation(fields: [artPaymentAttemptId], references: [id], onDelete: Restrict)
+
+  @@index([artPaymentAttemptId])
+  @@index([processingStatus, receivedAt])
 }
 
 model ArtArtwork {

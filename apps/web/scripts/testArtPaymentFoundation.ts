@@ -1,0 +1,76 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { startArtPaymentAttempt } from "../server/services/artPaymentAttempt.service";
+
+const root = join(process.cwd(), "../..");
+const source = (path: string) => readFileSync(join(root, path), "utf8");
+const campaign = {
+  id: "campaign-1", campaignKey: "STANDARD_BREED_ARTWORK", title: "Standard Breed Artwork — Beagle", breedCode2: "BE",
+  status: "NEEDS_FUNDING", fundingGoalCents: 5000, fundingUnitCents: 500, totalFundingUnits: 10,
+  artistAllocationCents: 4000, showRingAllocationCents: 1000, breed: { name: "Beagle" }, contributions: [],
+};
+
+async function main() {
+  const attempts: any[] = [];
+  const database: any = {
+    artCampaign: { findFirst: async () => campaign },
+    artPaymentAttempt: {
+      findUnique: async ({ where }: any) => where.userId_clientRequestId ? attempts.find((attempt) => attempt.userId === where.userId_clientRequestId.userId && attempt.clientRequestId === where.userId_clientRequestId.clientRequestId) ?? null : attempts.find((attempt) => attempt.id === where.id) ?? null,
+      create: async ({ data }: any) => { const attempt = { id: "attempt-1", status: "CREATED", providerOrderId: null, providerApprovalUrl: null, ...data }; attempts.push(attempt); return attempt; },
+      update: async ({ where, data }: any) => Object.assign(attempts.find((attempt) => attempt.id === where.id), data),
+    },
+  };
+  const providerOrder = (attempt: any) => ({ id: "ORDER-1", status: "CREATED", intent: "AUTHORIZE", approvalUrl: "https://paypal.example/approve", referenceId: attempt.id, customId: attempt.id, amountValue: "10.00", currencyCode: "USD", itemQuantity: "2", itemSku: campaign.id });
+  const payPalClient: any = {
+    createArtOrder: async (args: any) => {
+      assert.equal(args.requestedUnits, 2);
+      assert.equal(args.fundingUnitCents, 500);
+      assert.equal(args.expectedAmountCents, 1000);
+      assert.match(args.returnUrl, /breed-art\/checkout\/attempt-1/);
+      return providerOrder({ id: args.attemptId });
+    },
+    getArtOrder: async () => providerOrder(attempts[0]),
+  };
+  const input = { userId: "user-1", campaignId: campaign.id, requestedUnits: 2, recognition: "KENNEL_CREDIT", nonRefundableAcknowledged: true, clientRequestId: "client-request-1", appBaseUrl: "https://showring.example", database, payPalClient, resolveKennel: (async () => ({ id: "kennel-1", name: "SilverOak" })) as any };
+  const first = await startArtPaymentAttempt(input);
+  const retry = await startArtPaymentAttempt(input);
+  assert.deepEqual(first, { attemptId: "attempt-1", approvalUrl: "https://paypal.example/approve" });
+  assert.deepEqual(retry, first);
+  assert.equal(attempts.length, 1);
+  assert.equal(attempts[0].expectedAmountCents, 1000);
+  assert.equal(attempts[0].currency, "USD");
+  assert.equal(attempts[0].nonRefundableAcknowledged, true);
+  assert.ok(attempts[0].nonRefundableAcknowledgedAt instanceof Date);
+  assert.equal(attempts[0].status, "ORDER_CREATED");
+  await assert.rejects(() => startArtPaymentAttempt({ ...input, clientRequestId: "missing-ack", nonRefundableAcknowledged: false }), /acknowledge/);
+  await assert.rejects(() => startArtPaymentAttempt({ ...input, clientRequestId: "bad-units", requestedUnits: 11 }), /no longer available/);
+
+  const paymentService = source("apps/web/server/services/artPaymentAttempt.service.ts");
+  const payPalService = source("apps/web/server/services/paypalSupport.service.ts");
+  const route = source("apps/web/app/api/art-campaigns/[campaignId]/checkout/route.ts");
+  const returnPage = source("apps/web/app/breed-art/checkout/[attemptId]/page.tsx");
+  const card = source("apps/web/components/art/ArtCampaignCard.tsx");
+  const form = source("apps/web/components/art/ArtCampaignContributionForm.tsx");
+  const schema = source("apps/web/prisma/schema.prisma");
+  assert.match(payPalService, /intent: "AUTHORIZE"/);
+  assert.match(paymentService, /validateArtContributionUnits/);
+  assert.doesNotMatch(paymentService, /artContribution\.(create|update)|fundedUnits.*\+=|reservationAcquiredAt: new Date/);
+  assert.doesNotMatch(paymentService, /\/capture|providerCaptureId:|status: "COMPLETED"/);
+  assert.match(route, /getSessionUserId/);
+  assert.doesNotMatch(route, /amount|currency|providerOrderId/);
+  assert.match(paymentService, /getArtOrder\(attempt\.providerOrderId\)/);
+  assert.match(paymentService, /attempt\.userId !== args\.userId/);
+  assert.match(returnPage, /Funding availability is confirmed when your contribution is finalized\./);
+  assert.match(schema, /model ArtPaymentAttempt/);
+  assert.match(schema, /model ArtPaymentProviderEvent/);
+  assert.doesNotMatch(schema, /ArtPaymentAttempt[\s\S]*SupportProviderEvent/);
+  assert.match(card, /campaign\.status === "NEEDS_FUNDING" && progress\.canAcceptContributions/);
+  assert.match(form, /Fund Remaining/);
+  assert.match(form, /I understand that my contribution is non-refundable\./);
+  assert.match(form, /Funding availability is confirmed when your contribution is finalized\./);
+  console.log("ART-07 Breed Art payment foundation checks passed.");
+}
+
+void main();

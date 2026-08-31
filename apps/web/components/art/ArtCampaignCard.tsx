@@ -3,7 +3,9 @@
 import { formatArtCurrency, getArtCampaignStatusLabel } from "@/lib/artCampaignPresentation";
 import type { ArtCampaignReadDto } from "@/server/services/artCampaign.service";
 
-export default function ArtCampaignCard({ campaign }: { campaign: ArtCampaignReadDto }) {
+import ArtCampaignContributionForm from "./ArtCampaignContributionForm";
+
+export default function ArtCampaignCard({ campaign, creditKennelName }: { campaign: ArtCampaignReadDto; creditKennelName?: string | null }) {
   const { progress } = campaign;
   const amountSummary = `${formatArtCurrency(progress.amountFundedCents)} of ${formatArtCurrency(progress.fundingGoalCents)} funded`;
 
@@ -29,5 +31,6 @@ export default function ArtCampaignCard({ campaign }: { campaign: ArtCampaignRea
         {amountSummary}
       </progress>
     </div>
+    {campaign.status === "NEEDS_FUNDING" && progress.canAcceptContributions ? <ArtCampaignContributionForm campaign={campaign} creditKennelName={creditKennelName} /> : null}
   </article>;
 }
