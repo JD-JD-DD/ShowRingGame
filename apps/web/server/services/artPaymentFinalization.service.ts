@@ -107,9 +107,37 @@ export async function reconcileArtPaymentAttempt(args: { attemptId: string; data
   const attempt = await database.artPaymentAttempt.findUnique({ where: { id: args.attemptId } });
   if (!attempt || attempt.status === "COMPLETED") return attempt;
   const client = args.payPalClient ?? createPayPalArtOrdersClient();
+
+  if (attempt.status === "VOID_PENDING" && attempt.providerAuthorizationId) {
+    const authorization = await client.getArtAuthorization(attempt.providerAuthorizationId);
+    if (authorization.status === "VOIDED" || authorization.status === "EXPIRED" || authorization.status === "DENIED") {
+      return releaseReservation(database, attempt.id, "VOIDED");
+    }
+
+    const voidRequestId = attempt.paypalVoidRequestId ?? randomUUID();
+    if (!attempt.paypalVoidRequestId) {
+      await database.artPaymentAttempt.update({ where: { id: attempt.id }, data: { paypalVoidRequestId: voidRequestId } });
+    }
+    await client.voidArtAuthorization(attempt.providerAuthorizationId, voidRequestId);
+    return releaseReservation(database, attempt.id, "VOIDED");
+  }
+
   if (attempt.providerCaptureId) {
     const capture = await client.getArtCapture(attempt.providerCaptureId);
     if (capture.status === "COMPLETED") return finalizeCapturedAttempt(database, attempt.id, capture);
+    if (capture.status === "DECLINED") return releaseReservation(database, attempt.id, "FAILED");
+    return attempt;
   }
+
+  if (attempt.status === "RECONCILING" && attempt.providerAuthorizationId && attempt.paypalCaptureRequestId && attempt.reservedUnits === attempt.requestedUnits) {
+    try {
+      const capture = await client.captureArtAuthorization(attempt.providerAuthorizationId, { amountCents: attempt.expectedAmountCents, requestId: attempt.paypalCaptureRequestId });
+      if (capture.status === "COMPLETED") return finalizeCapturedAttempt(database, attempt.id, capture);
+      await database.artPaymentAttempt.update({ where: { id: attempt.id }, data: { status: "RECONCILING", providerCaptureId: capture.id } });
+    } catch (error) {
+      if (isDefinitiveProviderFailure(error)) return releaseReservation(database, attempt.id, "FAILED");
+    }
+  }
+
   return attempt;
 }
