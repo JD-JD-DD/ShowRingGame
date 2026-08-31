@@ -33,6 +33,7 @@
     "test:game-header-visibility": "tsx scripts/testGameHeaderVisibility.ts",
     "test:breed-visibility": "tsx scripts/testBreedVisibility.ts",
     "test:art-campaign-foundation": "tsx scripts/testArtCampaignFoundation.ts",
+    "seed:art-campaigns": "tsx scripts/seedArtCampaigns.ts",
     "test:art-campaign-read-model": "tsx scripts/testArtCampaignReadModel.ts",
     "test:art-funding-board-shell": "tsx scripts/testArtFundingBoardShell.ts",
     "test:art-funding-board-filters": "tsx scripts/testArtFundingBoardFilters.ts",
