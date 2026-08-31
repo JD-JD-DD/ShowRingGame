@@ -19,6 +19,13 @@ assert.match(finalizer, /attempt\.requestedUnits > campaign\.totalFundingUnits -
 assert.match(finalizer, /before \+ attempt\.requestedUnits > campaign\.totalFundingUnits/);
 assert.match(checkout, /Your contribution was canceled\. You were not charged\./);
 assert.match(checkout, /We&apos;re confirming your contribution with PayPal/);
+assert.match(checkout, /ArtPaymentFinalizationControl attemptId=\{attempt\.id\} autoFinalize/);
+assert.doesNotMatch(checkout, /Finalize contribution/);
+assert.match(control, /autoFinalizationStartedAttemptIds/);
+assert.match(control, /useEffect\(\(\) => \{[\s\S]*autoFinalize/);
+assert.match(control, /Finalizing your contribution…/);
+assert.match(control, /showStatusCheck \? "Check contribution status"/);
+assert.match(control, /fetch\(`\/api\/art-payments\/\$\{attemptId\}\/finalize`/);
 assert.match(control, /PayPal could not complete this contribution\. No contribution was completed\./);
 assert.doesNotMatch(control, /else setMessage\("Your contribution could not be finalized\. You were not charged/);
 assert.match(card, /campaign\.status === "NEEDS_FUNDING" && progress\.canAcceptContributions/);
