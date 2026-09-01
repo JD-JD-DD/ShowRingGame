@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { HomePayPalButton } from "@/components/payments/HomePayPalButton";
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { getSessionUserId } from "@/lib/session";
@@ -480,11 +479,20 @@ export default async function HomePage() {
               )}
             </section>
 
-            <section
-              className="theme-panel rounded-[24px] p-5"
-              aria-label="PayPal button"
-            >
-              <HomePayPalButton />
+            <section className="theme-panel rounded-[24px] p-5" aria-labelledby="support-and-art-heading">
+              <h2 id="support-and-art-heading" className="theme-heading text-xl font-semibold">Support ShowRing</h2>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                <article className="theme-card rounded-2xl p-4">
+                  <h3 className="theme-heading text-lg font-semibold">Support ShowRing</h3>
+                  <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">ShowRing is free to play. Voluntary monthly support helps with development and operating costs.</p>
+                  <Link href="/support" className="theme-primary-button mt-4 inline-flex rounded-xl border border-[var(--dog-border-strong)] px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Support ShowRing</Link>
+                </article>
+                <article className="theme-card rounded-2xl p-4">
+                  <h3 className="theme-heading text-lg font-semibold">Breed Art Fund</h3>
+                  <p className="mt-2 text-sm leading-6 text-[var(--dog-copy)]">Help fund original artwork for ShowRing&apos;s growing breed collection.</p>
+                  <Link href="/breed-art" className="theme-primary-button mt-4 inline-flex rounded-xl border border-[var(--dog-border-strong)] px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Explore the Breed Art Fund</Link>
+                </article>
+              </div>
             </section>
           </div>
         </section>
