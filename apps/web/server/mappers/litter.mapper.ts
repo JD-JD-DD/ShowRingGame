@@ -324,7 +324,7 @@ export async function mapLitterDetail(
   litter: LitterDetailInput,
   currentEpoch: number,
   viewerKennelId: string
-): LitterDetailDto {
+): Promise<LitterDetailDto> {
   const listItem = mapLitterListItem(litter, currentEpoch);
   const isBreederView = litter.bredByKennel?.id === viewerKennelId;
 
