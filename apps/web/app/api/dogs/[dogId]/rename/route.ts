@@ -12,8 +12,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ dogId: string }> }
 ) {
+  const { dogId } = await params;
+
   try {
-    const { dogId } = await params;
     const userId = await getSessionUserId();
 
     if (!userId) {
