@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { db } from "@/lib/db";
 import { buildDogPageUrl, redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { getSessionUserId } from "@/lib/session";
 import {
