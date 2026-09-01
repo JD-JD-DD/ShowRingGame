@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { hasPendingVeterinaryCareForDogs } from "@/server/services/emergencyVetCare.service";
 import { deleteEmptyLitterRuns } from "@/server/services/kennelRun.service";
 import { assertDogsNotProtectedByStudContractSelection } from "@/server/services/studContractPuppyProtection.service";
-import { extinguishStudContractReturnServicesForDog } from "@/server/services/studContractReturnService.service";
+import { extinguishStudContractReturnServicesForDogs } from "@/server/services/studContractReturnService.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
   PLAYER_STUD_LISTING_TYPE,
@@ -164,15 +164,13 @@ export async function rehomeOwnedDogsWithClient(
     if (transfer.count !== dogIds.length) {
       throw new Error("One or more dogs are no longer available to re-home.");
     }
-    for (const dogId of dogIds) {
-      await extinguishStudContractReturnServicesForDog({
-        client: tx,
-        dogId,
-        extinguishedAt: new Date(),
-        sireReason: "SIRE_OWNERSHIP_CHANGED",
-        damReason: "DAM_OWNERSHIP_CHANGED",
-      });
-    }
+    await extinguishStudContractReturnServicesForDogs({
+      client: tx,
+      dogIds,
+      extinguishedAt: new Date(),
+      sireReason: "SIRE_OWNERSHIP_CHANGED",
+      damReason: "DAM_OWNERSHIP_CHANGED",
+    });
 
     await deleteEmptyLitterRuns({
       priorRunIds: dogs.map((dog) => dog.kennelRunId),

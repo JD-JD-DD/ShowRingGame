@@ -53,3 +53,25 @@ export async function extinguishStudContractReturnServicesForDog(args: {
     : 0;
   return { sireCount, damCount };
 }
+
+export async function extinguishStudContractReturnServicesForDogs(args: {
+  client: ReturnServiceClient;
+  dogIds: string[];
+  extinguishedAt: Date;
+  sireReason?: ReturnServiceExtinguishmentReason;
+  damReason?: ReturnServiceExtinguishmentReason;
+}) {
+  const sireCount = args.sireReason
+    ? (await args.client.studContractReturnService.updateMany({
+      where: { status: "AVAILABLE", contract: { sireDogId: { in: args.dogIds } } },
+      data: { status: "EXTINGUISHED", extinguishedAt: args.extinguishedAt, extinguishmentReason: args.sireReason },
+    })).count
+    : 0;
+  const damCount = args.damReason
+    ? (await args.client.studContractReturnService.updateMany({
+      where: { status: "AVAILABLE", contract: { damDogId: { in: args.dogIds } } },
+      data: { status: "EXTINGUISHED", extinguishedAt: args.extinguishedAt, extinguishmentReason: args.damReason },
+    })).count
+    : 0;
+  return { sireCount, damCount };
+}

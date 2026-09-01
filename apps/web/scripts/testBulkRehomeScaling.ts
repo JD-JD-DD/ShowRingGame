@@ -19,12 +19,24 @@ function createRehomeClient(size: number, blocked: CareKind = "none") {
   const state = {
     ordinaryQueries: 0, reproductiveQueries: 0, listingUpdates: 0,
     dogUpdates: 0, runDeletes: 0, kennelUpdates: 0,
+    returnServiceUpdates: 0,
     ledgerRows: [] as Array<{ dogId: string; amount: number }>,
   };
+  const returnServices = [
+    { id: "sire-match", sireDogId: "dog-0", damDogId: "unrelated-dam", status: "AVAILABLE", reason: null as string | null },
+    { id: "dam-match", sireDogId: "unrelated-sire", damDogId: `dog-${Math.min(1, size - 1)}`, status: "AVAILABLE", reason: null as string | null },
+    { id: "both-match", sireDogId: "dog-0", damDogId: "dog-0", status: "AVAILABLE", reason: null as string | null },
+    { id: "unrelated", sireDogId: "unrelated-sire", damDogId: "unrelated-dam", status: "AVAILABLE", reason: null as string | null },
+  ];
   const tx = {
     dog: {
       async findMany() {
-        return dogs.map(({ ownerKennelId: _ownerKennelId, ...dog }) => dog);
+        return dogs.map((dog) => ({
+          id: dog.id,
+          birthEpoch: dog.birthEpoch,
+          lifecycleState: dog.lifecycleState,
+          kennelRunId: dog.kennelRunId,
+        }));
       },
       async updateMany(args: { data: { ownerKennelId: null; lifecycleState: string } }) {
         state.dogUpdates += 1;
@@ -37,15 +49,15 @@ function createRehomeClient(size: number, blocked: CareKind = "none") {
       },
     },
     dogEmergencyCareEvent: {
-      async findFirst() {
+      async findMany() {
         state.ordinaryQueries += 1;
-        return blocked === "ordinary" ? { id: "ordinary-care" } : null;
+        return blocked === "ordinary" ? [{ dogId: "dog-0" }] : [];
       },
     },
     reproductiveEmergencyEvent: {
-      async findFirst() {
+      async findMany() {
         state.reproductiveQueries += 1;
-        return blocked === "reproductive" ? { id: "reproductive-care" } : null;
+        return blocked === "reproductive" ? [{ damId: "dog-0" }] : [];
       },
     },
     breedingAttempt: { async findFirst() { return null; } },
@@ -64,15 +76,31 @@ function createRehomeClient(size: number, blocked: CareKind = "none") {
         return { count: args.data.length };
       },
     },
+    studContractReturnService: {
+      async updateMany(args: {
+        where: { status: string; contract: { sireDogId?: { in: string[] }; damDogId?: { in: string[] } } };
+        data: { status: string; extinguishmentReason: string };
+      }) {
+        state.returnServiceUpdates += 1;
+        const matchingDogIds = args.where.contract.sireDogId?.in ?? args.where.contract.damDogId?.in ?? [];
+        const side = args.where.contract.sireDogId ? "sireDogId" : "damDogId";
+        const matches = returnServices.filter((service) => service.status === args.where.status && matchingDogIds.includes(service[side]));
+        for (const service of matches) {
+          service.status = args.data.status;
+          service.reason = args.data.extinguishmentReason;
+        }
+        return { count: matches.length };
+      },
+    },
   };
   return {
     client: { async $transaction(callback: (transaction: typeof tx) => unknown) { return callback(tx); } },
-    dogs, state,
+    dogs, state, returnServices,
   };
 }
 
 async function checkSuccessfulBatch(size: number, duplicateFirstId = false) {
-  const { client, dogs, state } = createRehomeClient(size);
+  const { client, dogs, state, returnServices } = createRehomeClient(size);
   const dogIds = dogs.map((dog) => dog.id);
   if (duplicateFirstId) dogIds.push(dogIds[0]);
   const result = await rehomeOwnedDogsWithClient(
@@ -85,6 +113,11 @@ async function checkSuccessfulBatch(size: number, duplicateFirstId = false) {
   assert.equal(state.reproductiveQueries, 1);
   assert.equal(state.listingUpdates, 1);
   assert.equal(state.dogUpdates, 1);
+  assert.equal(state.returnServiceUpdates, 2, "return-service cleanup stays constant regardless of batch size");
+  assert.equal(returnServices.find((service) => service.id === "sire-match")?.reason, "SIRE_OWNERSHIP_CHANGED");
+  assert.equal(returnServices.find((service) => service.id === "dam-match")?.reason, "DAM_OWNERSHIP_CHANGED");
+  assert.equal(returnServices.find((service) => service.id === "both-match")?.reason, "SIRE_OWNERSHIP_CHANGED", "a row matching both sides is safely extinguished once");
+  assert.equal(returnServices.find((service) => service.id === "unrelated")?.status, "AVAILABLE", "unrelated return services remain available");
   assert.equal(state.runDeletes, 1, "litter-run cleanup is set-based");
   assert.equal(state.kennelUpdates, 1, "kennel receives one aggregate credit");
   assert.equal(state.ledgerRows.length, size);
@@ -119,6 +152,7 @@ async function main() {
   await checkBlockedBatch("reproductive");
 
   const rehome = readFileSync("server/services/rehome.service.ts", "utf8");
+  const returnService = readFileSync("server/services/studContractReturnService.service.ts", "utf8");
   const kennelRuns = readFileSync("server/services/kennelRun.service.ts", "utf8");
   const route = readFileSync("app/api/dogs/bulk-rehome/route.ts", "utf8");
   assert.match(rehome, /hasPendingVeterinaryCareForDogs\(dogIds, tx\)/);
@@ -126,6 +160,10 @@ async function main() {
   assert.match(rehome, /dogListing\.updateMany/);
   assert.match(rehome, /dog\.updateMany/);
   assert.match(rehome, /deleteEmptyLitterRuns/);
+  assert.match(rehome, /extinguishStudContractReturnServicesForDogs/);
+  assert.doesNotMatch(rehome, /for \(const dogId of dogIds\)[\s\S]{0,300}studContractReturnService/);
+  assert.match(returnService, /contract: \{ sireDogId: \{ in: args\.dogIds \} \}/);
+  assert.match(returnService, /contract: \{ damDogId: \{ in: args\.dogIds \} \}/);
   assert.match(kennelRuns, /kennelRun\.deleteMany/);
   assert.match(route, /error instanceof RehomeError/);
   assert.doesNotMatch(route, /error instanceof Error\s*\? error\.message/);
