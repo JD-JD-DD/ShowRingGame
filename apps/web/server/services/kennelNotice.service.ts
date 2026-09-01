@@ -4,6 +4,145 @@ import { db } from "@/lib/db";
 
 type DbClient = typeof db | Prisma.TransactionClient;
 const INVITATIONAL_RESULTS_NOTICE_BATCH_SIZE = 500;
+export const SYSTEM_BROADCAST_BATCH_SIZE = 500;
+const SYSTEM_BROADCAST_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const MAX_SYSTEM_BROADCAST_KEY_LENGTH = 80;
+const MAX_SYSTEM_BROADCAST_TITLE_LENGTH = 160;
+const MAX_SYSTEM_BROADCAST_BODY_LENGTH = 2000;
+const MAX_SYSTEM_BROADCAST_ACTION_LABEL_LENGTH = 80;
+
+export class SystemBroadcastError extends Error {
+  constructor(message: string, readonly status = 400) {
+    super(message);
+  }
+}
+
+export type SystemBroadcastAction = { label: string; href: string };
+export type SystemBroadcastInput = { broadcastKey: string; title: string; body: string; actions: SystemBroadcastAction[] };
+export type SystemBroadcastPreview = SystemBroadcastInput & { eligibleRecipients: number; alreadyHasBroadcast: number; wouldCreate: number };
+export type SystemBroadcastSummary = { broadcastKey: string; eligibleRecipients: number; created: number; skippedExisting: number; batches: number };
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function requiredText(value: unknown, label: string, maximumLength: number): string {
+  if (typeof value !== "string") throw new SystemBroadcastError(`${label} is required.`);
+  const normalized = value.trim();
+  if (!normalized) throw new SystemBroadcastError(`${label} is required.`);
+  if (normalized.length > maximumLength) throw new SystemBroadcastError(`${label} is too long.`);
+  return normalized;
+}
+
+export function isSafeSystemBroadcastHref(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const href = value.trim();
+  let decodedHref: string;
+  try { decodedHref = decodeURIComponent(href); } catch { return false; }
+  if (!href.startsWith("/") || href.startsWith("//") || href.includes("\\") || decodedHref.startsWith("//") || decodedHref.includes("\\")) return false;
+  try {
+    return new URL(href, "https://showring.local").origin === "https://showring.local";
+  } catch {
+    return false;
+  }
+}
+
+function normalizeSystemBroadcastActions(value: unknown): SystemBroadcastAction[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > 2) throw new SystemBroadcastError("Provide up to two internal actions.");
+  return value.map((item) => {
+    const action = record(item);
+    const label = requiredText(action?.label, "Action label", MAX_SYSTEM_BROADCAST_ACTION_LABEL_LENGTH);
+    const href = typeof action?.href === "string" ? action.href.trim() : "";
+    if (!isSafeSystemBroadcastHref(href)) throw new SystemBroadcastError("Action links must be safe internal paths.");
+    return { label, href };
+  });
+}
+
+export function parseSystemBroadcastInput(value: unknown): SystemBroadcastInput {
+  const input = record(value);
+  const broadcastKey = requiredText(input?.broadcastKey, "Broadcast key", MAX_SYSTEM_BROADCAST_KEY_LENGTH);
+  if (!SYSTEM_BROADCAST_KEY_PATTERN.test(broadcastKey)) throw new SystemBroadcastError("Broadcast key must use lowercase letters, numbers, and single hyphens.");
+  return {
+    broadcastKey,
+    title: requiredText(input?.title, "Title", MAX_SYSTEM_BROADCAST_TITLE_LENGTH),
+    body: requiredText(input?.body, "Body", MAX_SYSTEM_BROADCAST_BODY_LENGTH),
+    actions: normalizeSystemBroadcastActions(input?.actions),
+  };
+}
+
+export function getSystemBroadcastNoticeActions(notice: { type: KennelNoticeType; metadataJson: unknown }): SystemBroadcastAction[] {
+  if (notice.type !== "KENNEL_SERVICE") return [];
+  const metadata = record(notice.metadataJson);
+  const systemBroadcast = record(metadata?.systemBroadcast);
+  const actions = systemBroadcast?.actions;
+  if (!Array.isArray(actions)) return [];
+  return actions.slice(0, 2).flatMap((item) => {
+    const action = record(item);
+    const label = typeof action?.label === "string" && action.label.trim().length <= MAX_SYSTEM_BROADCAST_ACTION_LABEL_LENGTH ? action.label.trim() : "";
+    const href = typeof action?.href === "string" ? action.href.trim() : "";
+    return label && isSafeSystemBroadcastHref(href) ? [{ label, href }] : [];
+  });
+}
+
+function getSystemBroadcastSourceKey(broadcastKey: string, kennelId: string) {
+  return `system-broadcast:${broadcastKey}:${kennelId}`;
+}
+
+async function listSystemBroadcastRecipientKennels(client: any) {
+  return client.kennel.findMany({
+    where: {
+      isNpc: false,
+      userId: { not: null },
+      moderationStatus: "ACTIVE",
+      user: { is: { moderationStatus: "ACTIVE" } },
+    },
+    orderBy: { id: "asc" },
+    select: { id: true },
+  });
+}
+
+async function countExistingSystemBroadcasts(client: any, sourceKeys: string[]) {
+  if (!sourceKeys.length) return 0;
+  let count = 0;
+  for (let index = 0; index < sourceKeys.length; index += SYSTEM_BROADCAST_BATCH_SIZE) {
+    count += await client.kennelNotice.count({ where: { sourceKey: { in: sourceKeys.slice(index, index + SYSTEM_BROADCAST_BATCH_SIZE) } } });
+  }
+  return count;
+}
+
+export async function previewSystemKennelBroadcast(args: { input: unknown; client?: any }): Promise<SystemBroadcastPreview> {
+  const input = parseSystemBroadcastInput(args.input);
+  const client = args.client ?? db;
+  const recipients = await listSystemBroadcastRecipientKennels(client);
+  const alreadyHasBroadcast = await countExistingSystemBroadcasts(client, recipients.map((kennel: { id: string }) => getSystemBroadcastSourceKey(input.broadcastKey, kennel.id)));
+  return { ...input, eligibleRecipients: recipients.length, alreadyHasBroadcast, wouldCreate: recipients.length - alreadyHasBroadcast };
+}
+
+export async function createSystemKennelBroadcast(args: { input: unknown; currentEpoch: number; client?: any }): Promise<SystemBroadcastSummary> {
+  const input = parseSystemBroadcastInput(args.input);
+  const client = args.client ?? db;
+  const recipients = await listSystemBroadcastRecipientKennels(client);
+  const rows: Prisma.KennelNoticeCreateManyInput[] = recipients.map((kennel: { id: string }) => ({
+    kennelId: kennel.id,
+    sourceKey: getSystemBroadcastSourceKey(input.broadcastKey, kennel.id),
+    type: "KENNEL_SERVICE",
+    title: input.title,
+    body: input.body,
+    createdAtEpoch: args.currentEpoch,
+    metadataJson: { systemBroadcast: { key: input.broadcastKey, actions: input.actions } },
+  }));
+  let created = 0;
+  let batches = 0;
+  for (let index = 0; index < rows.length; index += SYSTEM_BROADCAST_BATCH_SIZE) {
+    const result = await client.kennelNotice.createMany({ data: rows.slice(index, index + SYSTEM_BROADCAST_BATCH_SIZE), skipDuplicates: true });
+    created += result.count;
+    batches += 1;
+  }
+  const summary = { broadcastKey: input.broadcastKey, eligibleRecipients: recipients.length, created, skippedExisting: recipients.length - created, batches };
+  console.info("system-kennel-broadcast", summary);
+  return summary;
+}
 
 export type KennelNoticeLinkArgs = {
   linkedDogId?: string | null;

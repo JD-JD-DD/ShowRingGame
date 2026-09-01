@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { epochToDate } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import DeleteReadNoticesForm from "@/components/notices/DeleteReadNoticesForm";
-import { listKennelNotices } from "@/server/services/kennelNotice.service";
+import { getSystemBroadcastNoticeActions, listKennelNotices } from "@/server/services/kennelNotice.service";
 
 type NoticesSearchParams = {
   message?: string | string[];
@@ -194,6 +194,7 @@ export default async function NoticesPage({
             {notices.map((notice) => {
               const href = getNoticeHref(notice);
               const isUnread = notice.readAtEpoch === null;
+              const systemBroadcastActions = getSystemBroadcastNoticeActions(notice);
 
               return (
                 <article
@@ -220,6 +221,9 @@ export default async function NoticesPage({
                       {notice.body ? (
                         <p className="theme-copy mt-2">{notice.body}</p>
                       ) : null}
+                      {systemBroadcastActions.length ? <div className="mt-4 flex flex-wrap gap-2">
+                        {systemBroadcastActions.map((action) => <Link key={`${action.label}:${action.href}`} href={action.href} className="theme-secondary-button inline-flex rounded-lg border border-[var(--dog-border-strong)] px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">{action.label}</Link>)}
+                      </div> : null}
                       <p className="theme-label mt-3 text-sm">
                         {formatNoticeDate(notice.createdAtEpoch)}
                       </p>
