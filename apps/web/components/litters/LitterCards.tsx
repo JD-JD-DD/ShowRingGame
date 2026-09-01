@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import type { LitterListItemDto } from "@/server/mappers/litter.mapper";
 import { formatGameAge } from "@/lib/gameTimeFormat";
+import { getLitterDisplayName } from "@/lib/litterDisplayName";
 import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
 
 const focusLinkClass =
@@ -39,12 +40,18 @@ export function LitterCards({ litters }: { litters: LitterListItemDto[] }) {
                 <span className="theme-neutral-badge rounded-full px-3 py-1 text-xs font-semibold">
                   {litter.breedName} ({litter.breedCode2})
                 </span>
-                <span className="theme-neutral-badge rounded-full px-3 py-1 text-xs">
-                  Serial {litter.serial7}
-                </span>
               </div>
 
-              <h3 className="theme-heading mt-4 text-2xl font-semibold">
+              <div className="mt-4">
+                <div className="theme-heading text-2xl font-semibold">
+                  {getLitterDisplayName(litter.customName, litter.serial7)}
+                </div>
+                {litter.customName ? (
+                  <div className="theme-copy mt-1 text-sm">Serial {litter.serial7}</div>
+                ) : null}
+              </div>
+
+              <h3 className="theme-heading mt-3 text-2xl font-semibold">
                 <Link href={`/dogs/${litter.dam.dogId}`} className={`hover:underline ${focusLinkClass}`}>
                   {litter.dam.displayName}
                 </Link>{" "}

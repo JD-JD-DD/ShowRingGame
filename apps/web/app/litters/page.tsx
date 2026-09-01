@@ -5,6 +5,7 @@ import { LittersListClient } from "@/components/litters/LittersListClient";
 import { StudContractPuppySelectionActions } from "@/components/litters/StudContractPuppySelectionActions";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { formatRealDurationHoursLong } from "@/lib/gameTimeFormat";
+import { getLitterDisplayName } from "@/lib/litterDisplayName";
 import { getSessionUserId } from "@/lib/session";
 import { db } from "@/lib/db";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -245,7 +246,12 @@ export default async function LittersPage({ searchParams }: PageProps) {
                 return (
                   <article id={`stud-contract-selection-${selection.litter.id}`} key={selection.id} className="theme-panel rounded-2xl p-5">
                     <div className="theme-label text-xs uppercase tracking-wide">{title}</div>
-                    <h3 className="theme-heading mt-2 text-lg font-semibold">Litter {selection.litter.serial7}</h3>
+                    <h3 className="theme-heading mt-2 text-lg font-semibold">
+                      {getLitterDisplayName(selection.litter.customName, selection.litter.serial7)}
+                    </h3>
+                    {selection.litter.customName ? (
+                      <p className="theme-copy mt-1 text-sm">Serial {selection.litter.serial7}</p>
+                    ) : null}
                     <p className="theme-copy mt-2 text-sm">
                       {selection.contract.puppyPickPosition === "FIRST" ? "First Pick" : "Second Pick"}
                       {selection.status === "DAM_FIRST_PICK" && isStudOwner
