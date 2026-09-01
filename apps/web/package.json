@@ -39,6 +39,7 @@
     "test:art-campaign-read-model": "tsx scripts/testArtCampaignReadModel.ts",
     "test:art-funding-board-shell": "tsx scripts/testArtFundingBoardShell.ts",
     "test:art-funding-board-filters": "tsx scripts/testArtFundingBoardFilters.ts",
+    "test:art-funded-artwork": "tsx scripts/testArtFundedArtwork.ts",
     "test:art-payment-concurrency-spike": "tsx scripts/testArtPaymentConcurrencySpike.ts",
     "test:art-payment-foundation": "tsx scripts/testArtPaymentFoundation.ts",
     "test:art-payment-finalization": "tsx scripts/testArtPaymentFinalization.ts",

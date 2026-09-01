@@ -238,6 +238,16 @@ export function selectCompletedStandardBreedArtworkGallery(campaigns: ArtCampaig
     });
 }
 
+export function selectFundedStandardBreedArtworkCampaigns(campaigns: ArtCampaignReadDto[]): ArtCampaignReadDto[] {
+  return campaigns
+    .filter((campaign) => campaign.campaignKey === STANDARD_BREED_ARTWORK_CAMPAIGN_KEY && campaign.status === "FUNDED")
+    .sort((left, right) =>
+      (left.breedGroupName ?? "").localeCompare(right.breedGroupName ?? "") ||
+      left.breedName.localeCompare(right.breedName) ||
+      left.id.localeCompare(right.id)
+    );
+}
+
 type ArtCampaignReadDatabase = {
   artCampaign: { findMany(args: unknown): Promise<any[]> };
 };

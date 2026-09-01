@@ -3,10 +3,11 @@ import Link from "next/link";
 import ArtCampaignCard from "@/components/art/ArtCampaignCard";
 import BreedArtFundingBoardClient from "@/components/art/BreedArtFundingBoardClient";
 import CompletedArtworkGallery from "@/components/art/CompletedArtworkGallery";
+import FundedArtwork from "@/components/art/FundedArtwork";
 import { formatArtCurrency } from "@/lib/artCampaignPresentation";
 import { getSessionUserId } from "@/lib/session";
 import { STANDARD_BREED_ARTWORK_FUNDING } from "@/prisma/artCampaignSeed";
-import { getStandardBreedArtworkBoardSummary, selectCompletedStandardBreedArtworkGallery } from "@/server/services/artCampaign.service";
+import { getStandardBreedArtworkBoardSummary, selectCompletedStandardBreedArtworkGallery, selectFundedStandardBreedArtworkCampaigns } from "@/server/services/artCampaign.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
 
 export default async function BreedArtFundingPage() {
@@ -49,6 +50,8 @@ export default async function BreedArtFundingPage() {
         </div>
         {summary.campaigns.length ? <BreedArtFundingBoardClient campaigns={summary.campaigns} creditKennelName={kennel?.name} /> : <p className="theme-copy mt-5">No breed artwork campaigns are available right now.</p>}
       </section>
+
+      <FundedArtwork campaigns={selectFundedStandardBreedArtworkCampaigns(summary.campaigns)} />
 
       <CompletedArtworkGallery campaigns={selectCompletedStandardBreedArtworkGallery(summary.campaigns)} />
 
