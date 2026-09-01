@@ -47,6 +47,18 @@ function statusLabel(status: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function marketStateLabel(marketState: string): string | null {
+  switch (marketState) {
+    case "LISTED_PLAYER":
+    case "LISTED_NPC":
+      return "Listed for sale";
+    case "SOLD_PENDING_TRANSFER":
+      return "Sale pending transfer";
+    default:
+      return null;
+  }
+}
+
 export default async function LitterDetailPage({ params }: PageProps) {
   const userId = await getSessionUserId();
 
@@ -217,6 +229,7 @@ export default async function LitterDetailPage({ params }: PageProps) {
               const visibleCategories = visibleCategoryEntries(
                 puppy.visibleCategories
               );
+              const marketLabel = marketStateLabel(puppy.marketState);
 
               return (
                 <article
@@ -255,21 +268,56 @@ export default async function LitterDetailPage({ params }: PageProps) {
                       here as part of the litter record.
                     </div>
                   ) : (
-                    <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
-                      {visibleCategories.map(([key, value]) => (
-                        <TraitLine
-                          key={key}
-                          label={formatCategoryName(key)}
-                          value={value}
-                          precision={3}
-                          min={0}
-                          max={20}
-                          ideal={10}
-                          leftLabel="Under ideal"
-                          rightLabel="Over ideal"
-                        />
-                      ))}
-                    </div>
+                    <>
+                      {puppy.currentOwnerKennel || puppy.kennelRun || marketLabel ? (
+                        <dl className="theme-copy mt-5 grid gap-x-5 gap-y-3 text-sm sm:grid-cols-2">
+                          {puppy.currentOwnerKennel ? (
+                            <div>
+                              <dt className="theme-label text-xs uppercase tracking-wide">
+                                Current kennel
+                              </dt>
+                              <dd className="mt-1 font-medium">
+                                {puppy.currentOwnerKennel.name}
+                              </dd>
+                            </div>
+                          ) : null}
+                          {puppy.kennelRun ? (
+                            <div>
+                              <dt className="theme-label text-xs uppercase tracking-wide">
+                                Kennel run
+                              </dt>
+                              <dd className="mt-1 font-medium">
+                                {puppy.kennelRun.name}
+                              </dd>
+                            </div>
+                          ) : null}
+                          {marketLabel ? (
+                            <div>
+                              <dt className="theme-label text-xs uppercase tracking-wide">
+                                Sale status
+                              </dt>
+                              <dd className="mt-1 font-medium">{marketLabel}</dd>
+                            </div>
+                          ) : null}
+                        </dl>
+                      ) : null}
+
+                      <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
+                        {visibleCategories.map(([key, value]) => (
+                          <TraitLine
+                            key={key}
+                            label={formatCategoryName(key)}
+                            value={value}
+                            precision={3}
+                            min={0}
+                            max={20}
+                            ideal={10}
+                            leftLabel="Under ideal"
+                            rightLabel="Over ideal"
+                          />
+                        ))}
+                      </div>
+                    </>
                   )}
                 </article>
               );
