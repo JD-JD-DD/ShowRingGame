@@ -197,7 +197,7 @@ export default async function LitterDetailPage({ params }: PageProps) {
             </span>
           </div>
 
-          <LitterPuppyCardsClient puppies={litter.puppies} />
+          <LitterPuppyCardsClient litterId={litter.litterId} puppies={litter.puppies} />
         </section>
       </div>
     </main>

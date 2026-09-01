@@ -18,8 +18,7 @@ assert.match(mapper, /isManageableByBreeder,\s*actionEligibility:/, "structural 
 assert.match(rehome, /export async function getDogRehomeEligibility/, "re-home has a reusable canonical preflight");
 assert.match(rehome, /getDogRehomeEligibility\(\{ dogId, kennelId: args\.kennelId/, "re-home mutation reuses its preflight");
 assert.match(litterService, /await mapLitterDetail/, "detail service awaits asynchronous eligibility mapping");
-for (const source of [puppyCards, puppyCard]) {
-  assert.doesNotMatch(source, /canListForSale|canRehome|breederNote/, "Stage 3B adds no visible puppy action UI or private note boundary");
-}
+assert.doesNotMatch(puppyCards, /canListForSale|canRehome|canMoveRun|breederNote/, "only the implemented naming action enters the shared action seam");
+assert.doesNotMatch(puppyCard, /canListForSale|canRehome|canMoveRun|canName|breederNote/, "presentation cards do not render action controls or private notes");
 
 console.log("Litter action eligibility read-model checks passed.");

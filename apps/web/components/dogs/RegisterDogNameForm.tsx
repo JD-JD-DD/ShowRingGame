@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { MAX_REGISTERED_NAME_LENGTH } from "@/server/validation/dogName.validation";
+
 type RegisterDogNameFormProps = {
   action: string;
   nameError: string | null;
@@ -38,7 +40,7 @@ export default function RegisterDogNameForm({
           type="text"
           name="registeredName"
           defaultValue=""
-          maxLength={45}
+          maxLength={MAX_REGISTERED_NAME_LENGTH}
           required
           onChange={() => setConfirmingName(null)}
           className="dog-control mt-2 w-full rounded-xl px-3 py-2 text-sm outline-none"

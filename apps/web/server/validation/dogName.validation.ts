@@ -1,4 +1,4 @@
-const MAX_REGISTERED_NAME_LENGTH = 45;
+export const MAX_REGISTERED_NAME_LENGTH = 45;
 export const MAX_CALL_NAME_LENGTH = 45;
 
 const TITLE_ABBREVIATIONS = new Set(

@@ -27,7 +27,7 @@ assert.doesNotMatch(editor, /Remove Name|removeName|deleteName/, "there is no na
 assert.doesNotMatch(editor, /Modal|Popover|Drawer/, "editor has no overlay interaction");
 
 assert.match(page, /<LitterMetadataEditor[\s\S]*breederNote=\{litter\.breederNote\}/, "private note is passed only to metadata editor");
-assert.match(page, /<LitterPuppyCardsClient puppies=\{litter\.puppies\}/, "puppy grid remains separate");
+assert.match(page, /<LitterPuppyCardsClient litterId=\{litter\.litterId\} puppies=\{litter\.puppies\}/, "puppy grid remains separate");
 for (const source of [puppyCards, puppyCard]) {
   assert.doesNotMatch(source, /breederNote/, "private notes never cross the puppy-grid boundary");
 }

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { db } from "@/lib/db";
 import { getSessionUserId } from "@/lib/session";
-import { validateCallName } from "@/server/validation/dogName.validation";
+import {
+  DogNamingError,
+  updateDogNaming,
+} from "@/server/services/dogNaming.service";
 
 export async function POST(
   request: Request,
@@ -24,38 +26,18 @@ export async function POST(
       return NextResponse.json({ error: "Kennel not found." }, { status: 404 });
     }
 
-    const dog = await db.dog.findUnique({
-      where: { id: dogId },
-      select: { id: true, ownerKennelId: true },
-    });
-
-    if (!dog) {
-      return NextResponse.json({ error: "Dog not found." }, { status: 404 });
-    }
-
-    if (dog.ownerKennelId !== kennel.id) {
-      return NextResponse.json(
-        { error: "You do not own this dog." },
-        { status: 403 }
-      );
-    }
-
-    const validation = validateCallName((await request.formData()).get("callName"));
-
-    if (!validation.ok) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
-    }
-
-    const updatedDog = await db.$transaction(async (tx) => {
-      return tx.dog.update({
-        where: { id: dogId },
-        data: { callName: validation.name || null },
-        select: { callName: true },
-      });
+    const updatedDog = await updateDogNaming({
+      kennelId: kennel.id,
+      dogId,
+      callName: (await request.formData()).get("callName"),
     });
 
     return NextResponse.json({ callName: updatedDog.callName });
   } catch (error) {
+    if (error instanceof DogNamingError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     console.error("POST /api/dogs/[dogId]/call-name failed:", error);
 
     return NextResponse.json({ error: "Failed to update call name." }, { status: 500 });

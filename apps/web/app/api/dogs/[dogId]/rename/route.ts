@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { db } from "@/lib/db";
 import { buildDogPageUrl, redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { getSessionUserId } from "@/lib/session";
-import { validateRegisteredDogName } from "@/server/validation/dogName.validation";
+import {
+  DogNamingError,
+  updateDogNaming,
+} from "@/server/services/dogNaming.service";
 
 export async function POST(
   request: Request,
@@ -28,77 +30,22 @@ export async function POST(
 
     const formData = await request.formData();
 
-    const dog = await db.dog.findUnique({
-      where: { id: dogId },
-      select: {
-        id: true,
-        ownerKennelId: true,
-        registeredName: true,
-      },
-    });
-
-    if (!dog) {
-      return NextResponse.json({ error: "Dog not found." }, { status: 404 });
-    }
-
-    if (dog.ownerKennelId !== kennel.id) {
-      return NextResponse.json(
-        { error: "You do not own this dog." },
-        { status: 403 }
-      );
-    }
-
-    if (dog.registeredName?.trim()) {
-      return redirectToDogPageWithField(
-        request,
-        dogId,
-        "nameError",
-        "This dog has already been named."
-      );
-    }
-
-    const breeds = await db.breed.findMany({
-      select: { name: true },
-    });
-
-    const validation = validateRegisteredDogName(
-      formData.get("registeredName"),
-      breeds.map((breed) => breed.name)
-    );
-
-    if (!validation.ok) {
-      return redirectToDogPageWithField(request, dogId, "nameError", validation.error);
-    }
-
-    const existingDog = await db.dog.findFirst({
-      where: {
-        id: { not: dogId },
-        registeredName: {
-          equals: validation.name,
-          mode: "insensitive",
-        },
-      },
-      select: { id: true },
-    });
-
-    if (existingDog) {
-      return redirectToDogPageWithField(
-        request,
-        dogId,
-        "nameError",
-        "That dog name is already in use."
-      );
-    }
-
-    await db.$transaction(async (tx) => {
-      await tx.dog.update({
-        where: { id: dogId },
-        data: { registeredName: validation.name },
-      });
+    await updateDogNaming({
+      kennelId: kennel.id,
+      dogId,
+      registeredName: formData.get("registeredName"),
     });
 
     return NextResponse.redirect(buildDogPageUrl(request, dogId));
   } catch (error) {
+    if (error instanceof DogNamingError) {
+      if (error.status === 400 || error.status === 409) {
+        return redirectToDogPageWithField(request, dogId, "nameError", error.message);
+      }
+
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     console.error("POST /api/dogs/[dogId]/rename failed:", error);
 
     return NextResponse.json({ error: "Failed to rename dog." }, { status: 500 });

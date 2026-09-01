@@ -9,11 +9,11 @@ assert.match(client, /"use client"/, "only the puppy-card boundary is client-sid
 assert.match(client, /filter\(\(puppy\) => puppy\.isManageableByBreeder\)/, "manageable IDs use the authoritative server field");
 assert.match(client, /filter\(\(puppyId\) => manageablePuppyIds\.has\(puppyId\)\)/, "stale IDs are pruned against current manageable IDs");
 assert.match(client, /selectAllManageablePuppies[\s\S]*new Set\(manageablePuppyIds\)/, "select-all uses only manageable IDs");
-assert.doesNotMatch(client, /checkbox|Select All|selected count|Action toolbar|<button/i, "client boundary renders no visible selection controls");
+assert.match(client, /type="button"[\s\S]*Clear selection/, "client boundary owns the shared selection controls");
 assert.match(card, /Current kennel[\s\S]*Kennel run[\s\S]*Sale status/, "Stage 1C card metadata remains present");
 assert.match(card, /puppy\.isNeonatalLoss[\s\S]*Litter loss/, "litter-loss presentation remains present");
 assert.match(page, /flex flex-wrap items-center justify-between gap-4/, "Puppies header remains wrap-ready for future controls");
-assert.match(client, /<div>\s*<div className="grid gap-5 lg:grid-cols-2">/, "client boundary keeps a local post-grid insertion seam without rendering a placeholder");
+assert.match(client, /<div>\s*<div className="grid gap-5 lg:grid-cols-2">/, "client boundary keeps a local post-grid action seam");
 
 type Puppy = { id: string; manageable: boolean };
 const puppies: Puppy[] = [
