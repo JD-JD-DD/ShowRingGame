@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { LitterPuppyDto } from "@/server/mappers/litter.mapper";
 import { LitterPuppyCard } from "@/components/litters/LitterPuppyCard";
+import { LitterPuppyKennelRunWorkspace } from "@/components/litters/LitterPuppyKennelRunWorkspace";
 import { LitterPuppyNameWorkspace } from "@/components/litters/LitterPuppyNameWorkspace";
 
 type PuppySelectionItem = Pick<
@@ -82,7 +83,7 @@ export function LitterPuppyCardsClient({
   const selectedPuppyId = [...selectionState.selectedPuppyIds][0] ?? null;
   const selectedPuppy =
     puppies.find((puppy) => puppy.dogId === selectedPuppyId) ?? null;
-  const [activeAction, setActiveAction] = useState<"name" | null>(null);
+  const [activeAction, setActiveAction] = useState<"name" | "moveRun" | null>(null);
 
   function clearSelection() {
     setActiveAction(null);
@@ -128,6 +129,14 @@ export function LitterPuppyCardsClient({
               </button>
               <button
                 type="button"
+                onClick={() => setActiveAction("moveRun")}
+                disabled={!selectedPuppy.actionEligibility.canMoveRun}
+                className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
+              >
+                Move Kennel Run
+              </button>
+              <button
+                type="button"
                 onClick={clearSelection}
                 className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
               >
@@ -140,10 +149,23 @@ export function LitterPuppyCardsClient({
                 {selectedPuppy.actionEligibility.nameDisabledReason}
               </p>
             ) : null}
+            {!selectedPuppy.actionEligibility.canMoveRun &&
+            selectedPuppy.actionEligibility.moveRunDisabledReason ? (
+              <p className="theme-status-danger basis-full rounded-xl px-3 py-2 text-sm">
+                {selectedPuppy.actionEligibility.moveRunDisabledReason}
+              </p>
+            ) : null}
           </section>
 
           {activeAction === "name" ? (
             <LitterPuppyNameWorkspace
+              litterId={litterId}
+              puppy={selectedPuppy}
+              onClose={() => setActiveAction(null)}
+            />
+          ) : null}
+          {activeAction === "moveRun" ? (
+            <LitterPuppyKennelRunWorkspace
               litterId={litterId}
               puppy={selectedPuppy}
               onClose={() => setActiveAction(null)}
