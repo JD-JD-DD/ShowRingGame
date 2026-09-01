@@ -7,6 +7,7 @@ import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { getLitterForKennel } from "@/server/services/litter.service";
+import { LitterMetadataEditor } from "@/components/litters/LitterMetadataEditor";
 import { LitterPuppyCardsClient } from "@/components/litters/LitterPuppyCardsClient";
 
 type PageProps = {
@@ -59,7 +60,13 @@ export default async function LitterDetailPage({ params }: PageProps) {
               <p className="theme-label text-sm uppercase tracking-[0.25em]">
                 Litter Record
               </p>
-              <h1 className="theme-heading mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+              <LitterMetadataEditor
+                litterId={litter.litterId}
+                customName={litter.customName}
+                breederNote={litter.breederNote}
+                serial7={litter.serial7}
+              />
+              <h2 className="theme-heading mt-4 text-2xl font-semibold tracking-tight">
                 <Link
                   href={`/dogs/${litter.dam.dogId}`}
                   className={`hover:underline ${focusLinkClass}`}
@@ -73,7 +80,7 @@ export default async function LitterDetailPage({ params }: PageProps) {
                 >
                   {litter.sire.displayName}
                 </Link>
-              </h1>
+              </h2>
             <p className="theme-copy mt-2 text-sm leading-6">
               {litter.breedName} ({litter.breedCode2}) litter {litter.serial7},
               Whelped: {formatShowCalendarLabel(litter.bornEpoch)}. Litter age: {formatGameAge(litter.ageHours ?? 0)}.
