@@ -2,6 +2,8 @@ import type { VisibleCategories } from "@showring/rules";
 import type { PersistedDogTraitRecord } from "@/server/services/phenotypePersistence.service";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { deriveCurrentVisibleCategoriesForDogDisplay } from "@/server/services/dogVisibleCategories.service";
+import { getDogSaleEligibility } from "@/server/services/market.service";
+import { getDogRehomeEligibility } from "@/server/services/rehome.service";
 
 type ParentDogInput = {
   id: string;
@@ -144,6 +146,17 @@ export type LitterPuppyDto = LitterParentDto & {
     name: string;
   } | null;
   isManageableByBreeder: boolean;
+  actionEligibility: {
+    canName: boolean;
+    nameDisabledReason: string | null;
+    canAssignRegisteredName: boolean;
+    canMoveRun: boolean;
+    moveRunDisabledReason: string | null;
+    canListForSale: boolean;
+    saleDisabledReason: string | null;
+    canRehome: boolean;
+    rehomeDisabledReason: string | null;
+  };
   litterOrder: number | null;
   visibleCategories: VisibleCategories;
 };
@@ -197,13 +210,23 @@ function mapParent(dog: ParentDogInput): LitterParentDto {
   };
 }
 
-function mapPuppy(
+async function mapPuppy(
   dog: PuppyDogInput,
   currentEpoch: number,
   isBreederView: boolean,
-  viewerKennelId: string
-): LitterPuppyDto {
+  viewerKennelId: string,
+  litterId: string
+): Promise<LitterPuppyDto> {
   const isNeonatalLoss = dog.visibilityState === "HIDDEN_NEONATAL_LOSS";
+  const isManageableByBreeder = !isNeonatalLoss && isBreederView && dog.ownerKennel?.id === viewerKennelId && dog.lifecycleState === "ALIVE";
+  const hasLitterManagementAuthority = isManageableByBreeder && dog.litterId === litterId;
+  const unavailableReason = dog.ownerKennel?.id !== viewerKennelId ? "This puppy is no longer owned by your kennel." : "This puppy is no longer available for kennel management.";
+  const saleEligibility = hasLitterManagementAuthority
+    ? await getDogSaleEligibility({ dogId: dog.id, sellerKennelId: viewerKennelId, currentEpoch })
+    : null;
+  const rehomeEligibility = hasLitterManagementAuthority
+    ? await getDogRehomeEligibility({ dogId: dog.id, kennelId: viewerKennelId, currentEpoch })
+    : null;
 
   return {
     ...mapParent(dog),
@@ -228,11 +251,18 @@ function mapPuppy(
     kennelRun: dog.kennelRun
       ? { runId: dog.kennelRun.id, name: dog.kennelRun.name }
       : null,
-    isManageableByBreeder:
-      !isNeonatalLoss &&
-      isBreederView &&
-      dog.ownerKennel?.id === viewerKennelId &&
-      dog.lifecycleState === "ALIVE",
+    isManageableByBreeder,
+    actionEligibility: {
+      canName: hasLitterManagementAuthority,
+      nameDisabledReason: hasLitterManagementAuthority ? null : unavailableReason,
+      canAssignRegisteredName: hasLitterManagementAuthority && !dog.registeredName?.trim(),
+      canMoveRun: hasLitterManagementAuthority,
+      moveRunDisabledReason: hasLitterManagementAuthority ? null : unavailableReason,
+      canListForSale: saleEligibility?.eligible ?? false,
+      saleDisabledReason: saleEligibility ? saleEligibility.reasonMessage : unavailableReason,
+      canRehome: rehomeEligibility?.eligible ?? false,
+      rehomeDisabledReason: rehomeEligibility ? rehomeEligibility.reason : unavailableReason,
+    },
     litterOrder: dog.litterOrder,
     visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
       storedTraits: dog,
@@ -290,7 +320,7 @@ export function mapLitterListItem(
   };
 }
 
-export function mapLitterDetail(
+export async function mapLitterDetail(
   litter: LitterDetailInput,
   currentEpoch: number,
   viewerKennelId: string
@@ -320,8 +350,8 @@ export function mapLitterDetail(
           whelpedEpoch: litter.breedingAttempt.whelpedEpoch,
         }
       : null,
-    puppies: litter.puppies.map((puppy) =>
-      mapPuppy(puppy, currentEpoch, isBreederView, viewerKennelId)
-    ),
+    puppies: await Promise.all(litter.puppies.map((puppy) =>
+      mapPuppy(puppy, currentEpoch, isBreederView, viewerKennelId, litter.id)
+    )),
   };
 }

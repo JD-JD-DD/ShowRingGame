@@ -723,7 +723,7 @@ export async function getLitterForKennel(args: {
   const [litterWithFreshHealthTruths] =
     await withFreshPuppyHealthConditionTruths([litter]);
 
-  return mapLitterDetail(litterWithFreshHealthTruths, currentEpoch, kennelId);
+  return await mapLitterDetail(litterWithFreshHealthTruths, currentEpoch, kennelId);
 }
 
 export async function updateLitterMetadata(args: {

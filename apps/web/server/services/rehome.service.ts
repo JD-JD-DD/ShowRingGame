@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
-import { hasPendingVeterinaryCareForDogs } from "@/server/services/emergencyVetCare.service";
+import type { Prisma } from "@prisma/client";
+import { hasPendingVeterinaryCareForDog } from "@/server/services/emergencyVetCare.service";
 import { deleteEmptyLitterRuns } from "@/server/services/kennelRun.service";
-import { assertDogsNotProtectedByStudContractSelection } from "@/server/services/studContractPuppyProtection.service";
+import { getStudContractPuppyProtection } from "@/server/services/studContractPuppyProtection.service";
 import { extinguishStudContractReturnServicesForDogs } from "@/server/services/studContractReturnService.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -21,6 +22,11 @@ type RehomeResult = {
 
 type RehomeDatabaseClient = Pick<typeof db, "$transaction">;
 
+export type DogRehomeEligibility = {
+  eligible: boolean;
+  reason: string | null;
+};
+
 export class RehomeError extends Error {
   status: number;
 
@@ -33,6 +39,40 @@ export class RehomeError extends Error {
 
 function uniqueDogIds(dogIds: string[]): string[] {
   return [...new Set(dogIds.map((dogId) => dogId.trim()).filter(Boolean))];
+}
+
+export async function getDogRehomeEligibility(args: {
+  dogId: string;
+  kennelId: string;
+  currentEpoch: number;
+  client?: typeof db | Prisma.TransactionClient;
+}): Promise<DogRehomeEligibility> {
+  const client = args.client ?? db;
+  const dog = await client.dog.findUnique({
+    where: { id: args.dogId },
+    select: { id: true, ownerKennelId: true, isPlayerVisible: true, birthEpoch: true, lifecycleState: true },
+  });
+  if (!dog || dog.ownerKennelId !== args.kennelId || !dog.isPlayerVisible) {
+    return { eligible: false, reason: "This dog is no longer owned by your kennel." };
+  }
+  if (dog.lifecycleState !== "ALIVE" || args.currentEpoch - dog.birthEpoch < PUPPY_SALE_MIN_AGE_HOURS) {
+    return { eligible: false, reason: "Only dogs at least 8 weeks old that are active and owned by your kennel can be re-homed." };
+  }
+  if (await hasPendingVeterinaryCareForDog(dog.id, client)) {
+    return { eligible: false, reason: "This dog is awaiting emergency veterinary care." };
+  }
+  const protection = await getStudContractPuppyProtection({ dogId: dog.id, client });
+  if (protection.protected) {
+    return { eligible: false, reason: protection.reasonCode === "SELECTED_CLAIM" ? "This puppy has been selected under an active Stud Contract and cannot be rehomed yet." : "This puppy is part of an active Stud Contract selection and cannot be rehomed yet." };
+  }
+  const activeDamBreeding = await client.breedingAttempt.findFirst({
+    where: { damId: dog.id, status: { in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"] } },
+    select: { id: true },
+  });
+  if (activeDamBreeding) {
+    return { eligible: false, reason: "Pregnant bitches and bitches awaiting pregnancy checks cannot be re-homed yet." };
+  }
+  return { eligible: true, reason: null };
 }
 
 export async function rehomeOwnedDogs(args: {
@@ -79,26 +119,9 @@ export async function rehomeOwnedDogsWithClient(
       );
     }
 
-    const blockedDog = dogs.find((dog) => {
-      const ageHours = args.currentEpoch - dog.birthEpoch;
-
-      return ageHours < PUPPY_SALE_MIN_AGE_HOURS || dog.lifecycleState !== "ALIVE";
-    });
-
-    if (blockedDog) {
-      throw new RehomeError(
-        "Only dogs at least 8 weeks old that are active and owned by your kennel can be re-homed."
-      );
-    }
-
-    if (await hasPendingVeterinaryCareForDogs(dogIds, tx)) {
-      throw new RehomeError("This dog is awaiting emergency veterinary care.");
-    }
-
-    try {
-      await assertDogsNotProtectedByStudContractSelection({ dogIds, action: "rehomed", client: tx });
-    } catch (error) {
-      throw new RehomeError(error instanceof Error ? error.message : "This puppy cannot be rehomed yet.");
+    for (const dogId of dogIds) {
+      const eligibility = await getDogRehomeEligibility({ dogId, kennelId: args.kennelId, currentEpoch: args.currentEpoch, client: tx });
+      if (!eligibility.eligible) throw new RehomeError(eligibility.reason ?? "This dog cannot be re-homed yet.");
     }
 
     const dogsById = new Map(dogs.map((dog) => [dog.id, dog]));
@@ -113,24 +136,6 @@ export async function rehomeOwnedDogsWithClient(
       (total, dog) => total + dog.payout,
       0
     );
-
-    const activeDamBreeding = await tx.breedingAttempt.findFirst({
-      where: {
-        damId: { in: dogIds },
-        status: {
-          in: ["INITIATED", "PREGNANT", "REPRODUCTIVE_EMERGENCY"],
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (activeDamBreeding) {
-      throw new RehomeError(
-        "Pregnant bitches and bitches awaiting pregnancy checks cannot be re-homed yet."
-      );
-    }
 
     const cancelledListings = await tx.dogListing.updateMany({
       where: {
