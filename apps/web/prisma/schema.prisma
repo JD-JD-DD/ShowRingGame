@@ -21,6 +21,7 @@ enum AnnualChampionshipPointScheduleResolutionType {
   LOCAL
   PRIOR_PUBLISHED_SCHEDULE
   NATIONAL_SAME_BREED_SAME_SEX
+  MINIMUM_POINT_SCHEDULE
 }
 
 enum DogLifecycleState {

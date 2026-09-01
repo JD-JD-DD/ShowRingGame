@@ -6,6 +6,14 @@ import {
 
 export const ANNUAL_CHAMPIONSHIP_POINT_SCHEDULE_MIN_SAMPLE_SIZE = 10;
 
+export const MINIMUM_ANNUAL_CHAMPIONSHIP_POINT_SCHEDULE_THRESHOLDS = {
+  onePointThreshold: 2,
+  twoPointThreshold: 3,
+  threePointThreshold: 4,
+  fourPointThreshold: 5,
+  fivePointThreshold: 6,
+} as const;
+
 export type AnnualChampionshipCompetitionObservationForResolution = {
   sourceYear: number;
   district: number;
@@ -51,6 +59,12 @@ type PriorPublishedScheduleResolution = Target & {
   priorSchedule: PriorPublishedAnnualChampionshipPointSchedule;
 };
 
+type MinimumPointScheduleResolution = Target & {
+  resolutionType: "MINIMUM_POINT_SCHEDULE";
+  sourceObservationCount: number;
+  calculation: AnnualChampionshipPointScheduleCalculation;
+};
+
 type UnresolvedResolution = Target & {
   resolutionType: "UNRESOLVED";
   localObservationCount: number;
@@ -68,6 +82,7 @@ type DataQualityResolution = Target & {
 export type AnnualChampionshipPointScheduleResolution =
   | CalculatedResolution
   | PriorPublishedScheduleResolution
+  | MinimumPointScheduleResolution
   | UnresolvedResolution
   | DataQualityResolution;
 
@@ -96,6 +111,19 @@ function calculatePopulation(counts: readonly number[]):
     if (error.code === "INVALID_COMPETITION_COUNTS") return { kind: "DATA_QUALITY_ERROR" };
     return { kind: "STRUCTURALLY_UNUSABLE" };
   }
+}
+
+function calculateMinimumPointSchedule(counts: readonly number[]): AnnualChampionshipPointScheduleCalculation {
+  const threshold = MINIMUM_ANNUAL_CHAMPIONSHIP_POINT_SCHEDULE_THRESHOLDS;
+  const qualifyingRate = (minimum: number) =>
+    counts.length === 0 ? 0 : counts.filter((count) => count >= minimum).length / counts.length;
+  return {
+    ...threshold,
+    observationCount: counts.length,
+    achievedOnePointRate: qualifyingRate(threshold.onePointThreshold),
+    achievedMajorRate: qualifyingRate(threshold.threePointThreshold),
+    achievedFivePointRate: qualifyingRate(threshold.fivePointThreshold),
+  };
 }
 
 /**
@@ -139,7 +167,12 @@ export function resolveAnnualChampionshipPointScheduleSource(args: Target & {
   }
 
   if (nationalObservationCount < ANNUAL_CHAMPIONSHIP_POINT_SCHEDULE_MIN_SAMPLE_SIZE) {
-    return { ...target, resolutionType: "UNRESOLVED", localObservationCount, nationalObservationCount, localReason, reason: "NATIONAL_SAMPLE_TOO_SMALL" };
+    return {
+      ...target,
+      resolutionType: "MINIMUM_POINT_SCHEDULE",
+      sourceObservationCount: nationalObservationCount,
+      calculation: calculateMinimumPointSchedule(sameYearBreedSex.map((observation) => observation.dogsInCompetition)),
+    };
   }
   const nationalCalculation = calculatePopulation(sameYearBreedSex.map((observation) => observation.dogsInCompetition));
   if (nationalCalculation.kind === "CALCULATED") {
@@ -148,5 +181,10 @@ export function resolveAnnualChampionshipPointScheduleSource(args: Target & {
   if (nationalCalculation.kind === "DATA_QUALITY_ERROR") {
     return { ...target, resolutionType: "DATA_QUALITY_ERROR", sourceScope: "NATIONAL_SAME_BREED_SAME_SEX", errorCode: "INVALID_COMPETITION_COUNTS" };
   }
-  return { ...target, resolutionType: "UNRESOLVED", localObservationCount, nationalObservationCount, localReason, reason: "NATIONAL_CALCULATION_FAILED" };
+  return {
+    ...target,
+    resolutionType: "MINIMUM_POINT_SCHEDULE",
+    sourceObservationCount: nationalObservationCount,
+    calculation: calculateMinimumPointSchedule(sameYearBreedSex.map((observation) => observation.dogsInCompetition)),
+  };
 }

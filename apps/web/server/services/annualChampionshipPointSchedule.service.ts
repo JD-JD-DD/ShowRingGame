@@ -22,7 +22,7 @@ export type AnnualChampionshipPointScheduleInput =
     fourPointThreshold: number;
     fivePointThreshold: number;
     observationCount: number;
-    resolutionType?: "LOCAL" | "PRIOR_PUBLISHED_SCHEDULE" | "NATIONAL_SAME_BREED_SAME_SEX";
+    resolutionType?: "LOCAL" | "PRIOR_PUBLISHED_SCHEDULE" | "NATIONAL_SAME_BREED_SAME_SEX" | "MINIMUM_POINT_SCHEDULE";
     sourceObservationCount?: number | null;
     inheritedFromScheduleId?: string | null;
     achievedOnePointRate: number;

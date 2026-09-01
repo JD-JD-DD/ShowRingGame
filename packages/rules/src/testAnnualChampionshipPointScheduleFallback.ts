@@ -50,16 +50,23 @@ function main() {
   const bootstrap = resolve({ observations: [...observations(validCounts.slice(0, 6)), ...observations(validCounts.slice(6), { district: 5 })] });
   assert.equal(bootstrap.resolutionType, "NATIONAL_SAME_BREED_SAME_SEX", "first-year bootstrap works without a fake prior schedule");
 
-  const unresolvedSmall = resolve({ observations: observations(validCounts.slice(0, 9)) });
-  assert.deepEqual(unresolvedSmall.resolutionType, "UNRESOLVED", "insufficient national sample remains unresolved");
-  const unresolvedShape = resolve({ observations: observations([2, 2, 2, 2, 2, 2, 3, 3, 3, 3]) });
-  assert.equal(unresolvedShape.resolutionType, "UNRESOLVED", "structurally invalid national sample remains unresolved");
+  const minimumSmall = resolve({ observations: observations(validCounts.slice(0, 9)) });
+  assert.equal(minimumSmall.resolutionType, "MINIMUM_POINT_SCHEDULE", "insufficient national sample uses the canonical minimum schedule");
+  if (minimumSmall.resolutionType === "MINIMUM_POINT_SCHEDULE") {
+    assert.deepEqual(
+      minimumSmall.calculation,
+      { onePointThreshold: 2, twoPointThreshold: 3, threePointThreshold: 4, fourPointThreshold: 5, fivePointThreshold: 6, observationCount: 9, achievedOnePointRate: 1, achievedMajorRate: 1 / 9, achievedFivePointRate: 0 },
+      "minimum schedule retains its canonical thresholds and source-population audit rates"
+    );
+  }
+  const minimumShape = resolve({ observations: observations([2, 2, 2, 2, 2, 2, 3, 3, 3, 3]) });
+  assert.equal(minimumShape.resolutionType, "MINIMUM_POINT_SCHEDULE", "structurally invalid national sample uses the canonical minimum schedule");
   const malformed = resolve({ observations: observations([0, 2, 2, 2, 2, 2, 2, 2, 4, 6]) });
   assert.equal(malformed.resolutionType, "DATA_QUALITY_ERROR", "malformed persisted counts are not hidden behind fallback");
   const noMaleData = resolve({ observations: observations(validCounts, { sex: "F" }) });
-  assert.equal(noMaleData.resolutionType, "UNRESOLVED", "opposite-sex observations are never borrowed");
+  assert.equal(noMaleData.resolutionType, "MINIMUM_POINT_SCHEDULE", "opposite-sex observations are never borrowed before using the minimum schedule");
   const noBreedData = resolve({ observations: observations(validCounts, { breedCode2: "LR" }) });
-  assert.equal(noBreedData.resolutionType, "UNRESOLVED", "unrelated breeds are never borrowed");
+  assert.equal(noBreedData.resolutionType, "MINIMUM_POINT_SCHEDULE", "unrelated breeds are never borrowed before using the minimum schedule");
   assert.deepEqual(resolve({ observations: [...observations(validCounts)].reverse() }), local, "observation order does not change resolution");
   console.log("Annual Championship Point Schedule fallback checks passed.");
 }
