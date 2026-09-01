@@ -31,9 +31,8 @@ assert.match(page, /<LitterPuppyCardsClient puppies=\{litter\.puppies\}/, "puppy
 for (const source of [puppyCards, puppyCard]) {
   assert.doesNotMatch(source, /breederNote/, "private notes never cross the puppy-grid boundary");
 }
-assert.doesNotMatch(litterCards, /getLitterDisplayName|customName/, "Whelped Litter cards have no Stage 2F label propagation");
-assert.match(littersPage, /Litter \{selection\.litter\.serial7\}/, "stud-contract heading remains unchanged");
-assert.doesNotMatch(littersPage, /getLitterDisplayName/, "stud-contract display has no Stage 2F label propagation");
+assert.match(litterCards, /getLitterDisplayName\(litter\.customName, litter\.serial7\)/, "Whelped Litter cards use the shared display helper");
+assert.match(littersPage, /getLitterDisplayName\(selection\.litter\.customName, selection\.litter\.serial7\)/, "stud-contract heading uses the shared display helper");
 assert.match(page, /export default async function LitterDetailPage/, "Litter Record remains server-rendered");
 assert.match(page, /litterId=\{litter\.litterId\}/, "editor receives immutable id routing identity");
 

@@ -55,6 +55,5 @@ assert.equal(getLitterDisplayName("", "6258828"), "Serial 6258828", "blank name 
 
 assert.match(detailRoute, /litterId/, "detail route remains parameterized by immutable litter id");
 assert.match(litterPage, /getLitterForKennel/, "litter record remains on the breeder-scoped id lookup");
-assert.doesNotMatch(litterPage, /customName/, "litter record presentation is unchanged in this read-model stage");
 
 console.log("Litter metadata read-model checks passed.");
