@@ -54,6 +54,11 @@ type DbClient = typeof db | Prisma.TransactionClient;
 // Breed blocks persist results one dog at a time and then recalculate title
 // progress. Larger entries need more than Prisma's five-second default.
 const BREED_BLOCK_TRANSACTION_TIMEOUT_MS = 30_000;
+const CLAIMABLE_JUDGING_BLOCK_STATUSES: ShowJudgingBlockStatus[] = [
+  ShowJudgingBlockStatus.SCHEDULED,
+  ShowJudgingBlockStatus.ENTRY_OPEN,
+  ShowJudgingBlockStatus.ENTRY_LOCKED,
+];
 
 const showBlockForJudgingArgs =
   Prisma.validator<Prisma.ShowJudgingBlockDefaultArgs>()({
@@ -164,6 +169,8 @@ export type JudgeShowBlockDto = {
   showDayId: string;
   status: ShowJudgingBlockStatus;
   alreadyPublished: boolean;
+  /** A different worker holds the persisted JUDGING claim for this block. */
+  alreadyProcessing?: boolean;
   eligibleEntryCount: number;
   ineligibleEntryCount: number;
   results: JudgedShowResultDto[];
@@ -807,6 +814,27 @@ async function repairPublishedBlockState(args: {
   };
 }
 
+async function getAlreadyPublishedBlockResult(
+  block: ShowBlockForJudging
+): Promise<JudgeShowBlockDto> {
+  return db.$transaction(
+    async (tx) => ({
+      judgingBlockId: block.id,
+      showDayId: block.showDayId,
+      status: ShowJudgingBlockStatus.RESULTS_PUBLISHED,
+      alreadyPublished: true,
+      eligibleEntryCount: block.showEntries.filter(
+        (entry) => entry.entryStatus === "JUDGED"
+      ).length,
+      ineligibleEntryCount: block.showEntries.filter(
+        (entry) => entry.entryStatus === "INELIGIBLE"
+      ).length,
+      results: await listPersistedBlockResults(tx, block.id),
+    }),
+    { timeout: BREED_BLOCK_TRANSACTION_TIMEOUT_MS }
+  );
+}
+
 async function maybeCompleteCluster(
   tx: Prisma.TransactionClient,
   clusterId: string
@@ -883,6 +911,77 @@ export async function judgeShowBlock(args: {
   currentEpoch: number;
 }): Promise<JudgeShowBlockDto> {
   const { judgingBlockId, currentEpoch } = args;
+  const initialBlock = await db.showJudgingBlock.findUnique({
+    where: { id: judgingBlockId },
+    select: { status: true },
+  });
+
+  if (!initialBlock) {
+    throw new Error("Show judging block not found.");
+  }
+
+  if (initialBlock.status === "RESULTS_PUBLISHED") {
+    const publishedBlock = await db.showJudgingBlock.findUnique({
+      where: { id: judgingBlockId },
+      ...showBlockForJudgingArgs,
+    });
+    if (!publishedBlock) {
+      throw new Error("Show judging block not found.");
+    }
+    return getAlreadyPublishedBlockResult(publishedBlock);
+  }
+
+  if (initialBlock.status === "CANCELLED") {
+    throw new Error("Cancelled judging blocks cannot be judged.");
+  }
+
+  const priorStatus = initialBlock.status;
+  const claim = await db.showJudgingBlock.updateMany({
+    where: {
+      id: judgingBlockId,
+      status: { in: CLAIMABLE_JUDGING_BLOCK_STATUSES },
+    },
+    data: { status: "JUDGING" },
+  });
+
+  if (claim.count === 0) {
+    const currentBlock = await db.showJudgingBlock.findUnique({
+      where: { id: judgingBlockId },
+      select: { status: true, showDayId: true },
+    });
+    if (!currentBlock) {
+      throw new Error("Show judging block not found.");
+    }
+    if (currentBlock.status === "RESULTS_PUBLISHED") {
+      const publishedBlock = await db.showJudgingBlock.findUnique({
+        where: { id: judgingBlockId },
+        ...showBlockForJudgingArgs,
+      });
+      if (!publishedBlock) {
+        throw new Error("Show judging block not found.");
+      }
+      return getAlreadyPublishedBlockResult(publishedBlock);
+    }
+    if (currentBlock.status === "JUDGING") {
+      return {
+        judgingBlockId,
+        showDayId: currentBlock.showDayId,
+        status: ShowJudgingBlockStatus.JUDGING,
+        // Existing callers treat an idempotent no-op as not newly judged.
+        alreadyPublished: true,
+        alreadyProcessing: true,
+        eligibleEntryCount: 0,
+        ineligibleEntryCount: 0,
+        results: [],
+      };
+    }
+    if (currentBlock.status === "CANCELLED") {
+      throw new Error("Cancelled judging blocks cannot be judged.");
+    }
+    throw new Error("Show judging block is not ready for judging.");
+  }
+
+  try {
   const block = await db.showJudgingBlock.findUnique({
     where: { id: judgingBlockId },
     ...showBlockForJudgingArgs,
@@ -912,7 +1011,7 @@ export async function judgeShowBlock(args: {
   const preparedConformationCategoryWeights = combineBreedAndJudgeConformationWeights({ breedWeights: preparedBreedConformationProfile.conformationWeights, judgeWeights: { TYPE_EXPRESSION: preparedEngineJudge.categoryWeights.TYPE_EXPRESSION, STRUCTURE_BALANCE: preparedEngineJudge.categoryWeights.STRUCTURE_BALANCE, MOVEMENT: preparedEngineJudge.categoryWeights.MOVEMENT, COAT_PRESENTATION: preparedEngineJudge.categoryWeights.COAT_PRESENTATION, TEMPERAMENT_RING_BEHAVIOR: preparedEngineJudge.categoryWeights.TEMPERAMENT_RING_BEHAVIOR } });
   const preparedJudgedBlock = judgeBreedBlock({ judge: preparedEngineJudge, conformationCategoryWeights: preparedConformationCategoryWeights, showEpoch: block.startEpoch, entries: preparedEligibleEntries.map((entry) => ({ showEntryId: entry.id, dog: toEngineDog(entry, preparedHealthTruthsByDogId.get(entry.dogId)), isChampion: isChampionEntry(entry) })), championshipPointThresholds: preparedChampionshipPointThresholds });
 
-  return db.$transaction(async (tx) => {
+  return await db.$transaction(async (tx) => {
     const currentBlock = await tx.showJudgingBlock.findUnique({
       where: { id: judgingBlockId },
       select: {
@@ -929,7 +1028,7 @@ export async function judgeShowBlock(args: {
     }
 
     const preparationIsCurrent =
-      currentBlock.status === block.status &&
+      currentBlock.status === "JUDGING" &&
       currentBlock.startEpoch === block.startEpoch &&
       currentBlock.showDayId === block.showDayId &&
       currentBlock.showEntries.length === preparedEntryStatuses.size &&
@@ -1002,11 +1101,6 @@ export async function judgeShowBlock(args: {
         results: [],
       };
     }
-
-    await tx.showJudgingBlock.update({
-      where: { id: judgingBlockId },
-      data: { status: "JUDGING" },
-    });
 
     await tx.showDay.update({
       where: { id: block.showDayId },
@@ -1166,6 +1260,21 @@ export async function judgeShowBlock(args: {
     }
 
     if (resultsToCreate.length > 0) {
+      const candidateShowEntryIds = [
+        ...new Set(resultsToCreate.map((result) => result.showEntryId)),
+      ];
+      const existingResults = await tx.showResult.findMany({
+        where: { showEntryId: { in: candidateShowEntryIds } },
+        select: { id: true, showEntryId: true, judgingBlockId: true },
+      });
+      const crossBlockResult = existingResults.find(
+        (result) => result.judgingBlockId !== judgingBlockId
+      );
+      if (crossBlockResult) {
+        throw new Error(
+          `ShowResult consistency error: showEntryId=${crossBlockResult.showEntryId}, existingShowResultId=${crossBlockResult.id}, existingJudgingBlockId=${crossBlockResult.judgingBlockId}, requestedJudgingBlockId=${judgingBlockId}.`
+        );
+      }
       await tx.showResult.createMany({ data: resultsToCreate });
       const expectedShowEntryIds = new Set(resultsToCreate.map((result) => result.showEntryId));
       const persistedResults = await tx.showResult.findMany({
@@ -1256,6 +1365,13 @@ export async function judgeShowBlock(args: {
   }, {
     timeout: BREED_BLOCK_TRANSACTION_TIMEOUT_MS,
   });
+  } catch (error) {
+    await db.showJudgingBlock.updateMany({
+      where: { id: judgingBlockId, status: "JUDGING" },
+      data: { status: priorStatus },
+    });
+    throw error;
+  }
 }
 
 export async function judgeShowDay(args: {

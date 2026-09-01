@@ -78,6 +78,7 @@
     "test:pending-veterinary-care": "tsx scripts/testPendingVeterinaryCare.ts",
     "test:bulk-rehome-scaling": "tsx scripts/testBulkRehomeScaling.ts",
     "test:foundation-inventory-serialization": "tsx scripts/testFoundationInventorySerialization.ts",
+    "test:judging-publication-claim": "tsx scripts/testJudgingPublicationClaim.ts",
     "test:judging-automatic-absence": "tsx scripts/testJudgingAutomaticAbsence.ts",
     "test:show-entry-absence-reasons": "tsx scripts/testShowEntryAbsenceReasons.ts",
     "test:show-entry-maintenance": "tsx scripts/testShowEntryMaintenance.ts",
