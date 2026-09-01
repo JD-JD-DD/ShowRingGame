@@ -6,6 +6,7 @@ import type { LitterPuppyDto } from "@/server/mappers/litter.mapper";
 import { LitterPuppyCard } from "@/components/litters/LitterPuppyCard";
 import { LitterPuppyKennelRunWorkspace } from "@/components/litters/LitterPuppyKennelRunWorkspace";
 import { LitterPuppyNameWorkspace } from "@/components/litters/LitterPuppyNameWorkspace";
+import { LitterPuppySaleWorkspace } from "@/components/litters/LitterPuppySaleWorkspace";
 
 type PuppySelectionItem = Pick<
   LitterPuppyDto,
@@ -83,7 +84,7 @@ export function LitterPuppyCardsClient({
   const selectedPuppyId = [...selectionState.selectedPuppyIds][0] ?? null;
   const selectedPuppy =
     puppies.find((puppy) => puppy.dogId === selectedPuppyId) ?? null;
-  const [activeAction, setActiveAction] = useState<"name" | "moveRun" | null>(null);
+  const [activeAction, setActiveAction] = useState<"name" | "moveRun" | "sale" | null>(null);
 
   function clearSelection() {
     setActiveAction(null);
@@ -137,6 +138,14 @@ export function LitterPuppyCardsClient({
               </button>
               <button
                 type="button"
+                onClick={() => setActiveAction("sale")}
+                disabled={!selectedPuppy.actionEligibility.canListForSale}
+                className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
+              >
+                Put Up for Sale
+              </button>
+              <button
+                type="button"
                 onClick={clearSelection}
                 className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
               >
@@ -155,6 +164,12 @@ export function LitterPuppyCardsClient({
                 {selectedPuppy.actionEligibility.moveRunDisabledReason}
               </p>
             ) : null}
+            {!selectedPuppy.actionEligibility.canListForSale &&
+            selectedPuppy.actionEligibility.saleDisabledReason ? (
+              <p className="theme-status-danger basis-full rounded-xl px-3 py-2 text-sm">
+                {selectedPuppy.actionEligibility.saleDisabledReason}
+              </p>
+            ) : null}
           </section>
 
           {activeAction === "name" ? (
@@ -166,6 +181,13 @@ export function LitterPuppyCardsClient({
           ) : null}
           {activeAction === "moveRun" ? (
             <LitterPuppyKennelRunWorkspace
+              litterId={litterId}
+              puppy={selectedPuppy}
+              onClose={() => setActiveAction(null)}
+            />
+          ) : null}
+          {activeAction === "sale" ? (
+            <LitterPuppySaleWorkspace
               litterId={litterId}
               puppy={selectedPuppy}
               onClose={() => setActiveAction(null)}

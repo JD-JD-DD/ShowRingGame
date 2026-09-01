@@ -18,7 +18,7 @@ assert.match(mapper, /isManageableByBreeder,\s*actionEligibility:/, "structural 
 assert.match(rehome, /export async function getDogRehomeEligibility/, "re-home has a reusable canonical preflight");
 assert.match(rehome, /getDogRehomeEligibility\(\{ dogId, kennelId: args\.kennelId/, "re-home mutation reuses its preflight");
 assert.match(litterService, /await mapLitterDetail/, "detail service awaits asynchronous eligibility mapping");
-assert.doesNotMatch(puppyCards, /canListForSale|canRehome|breederNote/, "only implemented shared actions enter the action seam");
+assert.doesNotMatch(puppyCards, /canRehome|breederNote/, "only implemented shared actions enter the action seam");
 assert.doesNotMatch(puppyCard, /canListForSale|canRehome|canMoveRun|canName|breederNote/, "presentation cards do not render action controls or private notes");
 
 console.log("Litter action eligibility read-model checks passed.");

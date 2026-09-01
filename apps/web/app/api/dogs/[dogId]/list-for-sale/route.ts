@@ -4,18 +4,7 @@ import { redirectToDogPageWithField } from "@/lib/dogPageRedirect";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
-import { listDogForSale } from "@/server/services/market.service";
-
-function parseWholeDollarPrice(value: FormDataEntryValue | null): number | null {
-  const rawValue = String(value ?? "").trim();
-
-  if (!/^\d+$/.test(rawValue)) {
-    return null;
-  }
-
-  const price = Number.parseInt(rawValue, 10);
-  return Number.isSafeInteger(price) ? price : null;
-}
+import { listDogForSale, parseWholeDollarPrice } from "@/server/services/market.service";
 
 export async function POST(
   request: Request,

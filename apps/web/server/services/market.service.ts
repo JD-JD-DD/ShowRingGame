@@ -224,6 +224,17 @@ export function assertWholeDollarAmount(value: number, label: string): void {
   }
 }
 
+export function parseWholeDollarPrice(value: unknown): number | null {
+  const rawValue = String(value ?? "").trim();
+
+  if (!/^\d+$/.test(rawValue)) {
+    return null;
+  }
+
+  const price = Number.parseInt(rawValue, 10);
+  return Number.isSafeInteger(price) ? price : null;
+}
+
 type PlayerSaleListingDataArgs = {
   dogId: string;
   sellerKennelId: string;
