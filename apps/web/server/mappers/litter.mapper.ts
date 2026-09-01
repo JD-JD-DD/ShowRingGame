@@ -80,6 +80,7 @@ type LitterDetailInput = {
   id: string;
   breedCode2: string;
   serial7: string;
+  customName: string | null;
   breederNote: string | null;
   bornEpoch: number;
   pupCount: number;
