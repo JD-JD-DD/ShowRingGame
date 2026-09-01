@@ -218,6 +218,7 @@ export type PayPalArtOrder = {
   currencyCode: string | null;
   itemQuantity: string | null;
   itemSku: string | null;
+  captures: PayPalArtCapture[];
 };
 
 export type PayPalArtAuthorization = { id: string; status: string; amountValue: string | null; currencyCode: string | null };
@@ -236,6 +237,10 @@ function parsePayPalArtOrder(value: unknown): PayPalArtOrder {
   const amount = asRecord(purchaseUnit?.amount);
   const items = Array.isArray(purchaseUnit?.items) ? purchaseUnit?.items : [];
   const item = asRecord(items[0]);
+  const payments = asRecord(purchaseUnit?.payments);
+  const captures = Array.isArray(payments?.captures)
+    ? payments.captures.map((capture) => parsePayPalArtPayment(capture, "capture") as PayPalArtCapture)
+    : [];
   if (!order || typeof order.id !== "string" || !order.id.trim() || typeof order.status !== "string") {
     throw new PayPalSupportError("PayPal returned an invalid order response.");
   }
@@ -250,6 +255,7 @@ function parsePayPalArtOrder(value: unknown): PayPalArtOrder {
     currencyCode: typeof amount?.currency_code === "string" ? amount.currency_code : null,
     itemQuantity: typeof item?.quantity === "string" ? item.quantity : null,
     itemSku: typeof item?.sku === "string" ? item.sku : null,
+    captures,
   };
 }
 

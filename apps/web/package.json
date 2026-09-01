@@ -35,6 +35,7 @@
     "test:art-campaign-foundation": "tsx scripts/testArtCampaignFoundation.ts",
     "seed:art-campaigns": "tsx scripts/seedArtCampaigns.ts",
     "audit:art-campaign-population": "tsx scripts/auditArtCampaignPopulation.ts",
+    "audit:art-payment-attempt-read-only": "tsx scripts/auditArtPaymentAttemptReadOnly.ts",
     "test:art-campaign-read-model": "tsx scripts/testArtCampaignReadModel.ts",
     "test:art-funding-board-shell": "tsx scripts/testArtFundingBoardShell.ts",
     "test:art-funding-board-filters": "tsx scripts/testArtFundingBoardFilters.ts",

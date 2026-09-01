@@ -3,12 +3,17 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
 import { getKennelForUser } from "@/server/services/kennel.service";
 import { ART_PAYMENT_CURRENCY, ArtPaymentAttemptError, verifyProviderOrder } from "@/server/services/artPaymentAttempt.service";
-import { createPayPalArtOrdersClient, PayPalSupportError, type PayPalArtAuthorization, type PayPalArtCapture, type PayPalClient } from "@/server/services/paypalSupport.service";
+import { createPayPalArtOrdersClient, PayPalSupportError, type PayPalArtAuthorization, type PayPalArtCapture, type PayPalArtOrder, type PayPalClient } from "@/server/services/paypalSupport.service";
 
 type Database = any;
 
 function amountMatches(payment: PayPalArtAuthorization | PayPalArtCapture, attempt: any) {
   return payment.amountValue === (attempt.expectedAmountCents / 100).toFixed(2) && payment.currencyCode === ART_PAYMENT_CURRENCY;
+}
+
+export function findCompletedOrderCapture(order: PayPalArtOrder, attempt: any): PayPalArtCapture | null {
+  const completedMatches = order.captures.filter((capture) => capture.status === "COMPLETED" && amountMatches(capture, attempt));
+  return completedMatches.length === 1 ? completedMatches[0] : null;
 }
 
 function isDefinitiveProviderFailure(error: unknown) {
@@ -139,13 +144,10 @@ export async function reconcileArtPaymentAttempt(args: { attemptId: string; data
   }
 
   if (attempt.status === "RECONCILING" && attempt.providerAuthorizationId && attempt.paypalCaptureRequestId && attempt.reservedUnits === attempt.requestedUnits) {
-    try {
-      const capture = await client.captureArtAuthorization(attempt.providerAuthorizationId, { amountCents: attempt.expectedAmountCents, requestId: attempt.paypalCaptureRequestId });
-      if (capture.status === "COMPLETED") return finalizeCapturedAttempt(database, attempt.id, capture);
-      await database.artPaymentAttempt.update({ where: { id: attempt.id }, data: { status: "RECONCILING", providerCaptureId: capture.id } });
-    } catch (error) {
-      if (isDefinitiveProviderFailure(error)) return releaseReservation(database, attempt.id, "FAILED");
-    }
+    const order = await client.getArtOrder(attempt.providerOrderId);
+    verifyProviderOrder({ order, attempt });
+    const capture = findCompletedOrderCapture(order, attempt);
+    if (capture) return finalizeCapturedAttempt(database, attempt.id, capture);
   }
 
   return attempt;
