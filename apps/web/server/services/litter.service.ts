@@ -101,6 +101,7 @@ const litterDetailSelect = Prisma.validator<Prisma.LitterSelect>()({
     orderBy: [{ litterOrder: "asc" }, { regNumber: "asc" }],
     select: {
       id: true,
+      litterId: true,
       callName: true,
       registeredName: true,
       regNumber: true,
@@ -114,6 +115,24 @@ const litterDetailSelect = Prisma.validator<Prisma.LitterSelect>()({
       isPlayerVisible: true,
       marketState: true,
       litterOrder: true,
+      ownerKennel: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      breederKennel: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      kennelRun: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       traitHead: true,
       traitForequarters: true,
       traitHindquarters: true,
@@ -635,5 +654,5 @@ export async function getLitterForKennel(args: {
   const [litterWithFreshHealthTruths] =
     await withFreshPuppyHealthConditionTruths([litter]);
 
-  return mapLitterDetail(litterWithFreshHealthTruths, currentEpoch);
+  return mapLitterDetail(litterWithFreshHealthTruths, currentEpoch, kennelId);
 }

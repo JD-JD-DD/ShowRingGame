@@ -19,12 +19,25 @@ type LitterListPuppyPreviewInput = ParentDogInput & {
 };
 
 type PuppyDogInput = PersistedDogTraitRecord & Omit<LitterListPuppyPreviewInput, "visibilityState"> & {
+  litterId: string | null;
   visibilityState: string;
   birthEpoch: number;
   deathEpoch: number | null;
   lifecycleState: string;
   isPlayerVisible: boolean;
   marketState: string;
+  ownerKennel: {
+    id: string;
+    name: string;
+  } | null;
+  breederKennel: {
+    id: string;
+    name: string;
+  } | null;
+  kennelRun: {
+    id: string;
+    name: string;
+  } | null;
   healthConditionTruths: Array<{
     conditionCode: string;
     geneticLiability: number;
@@ -103,6 +116,11 @@ export type LitterPuppyPreviewDto = LitterParentDto & {
 };
 
 export type LitterPuppyDto = LitterParentDto & {
+  litterId: string | null;
+  callName: string | null;
+  registeredName: string | null;
+  visibleTitlePrefix: string | null;
+  visibleTitleSuffix: string | null;
   ageHours: number;
   deathEpoch: number | null;
   lifecycleState: string;
@@ -110,6 +128,19 @@ export type LitterPuppyDto = LitterParentDto & {
   isPlayerVisible: boolean;
   isNeonatalLoss: boolean;
   marketState: string;
+  currentOwnerKennel: {
+    kennelId: string;
+    name: string;
+  } | null;
+  breederKennel: {
+    kennelId: string;
+    name: string;
+  } | null;
+  kennelRun: {
+    runId: string;
+    name: string;
+  } | null;
+  isManageableByBreeder: boolean;
   litterOrder: number | null;
   visibleCategories: VisibleCategories;
 };
@@ -134,6 +165,7 @@ export type LitterListItemDto = {
 };
 
 export type LitterDetailDto = LitterListItemDto & {
+  isBreederView: boolean;
   bredByKennel: {
     kennelId: string;
     name: string;
@@ -160,11 +192,21 @@ function mapParent(dog: ParentDogInput): LitterParentDto {
   };
 }
 
-function mapPuppy(dog: PuppyDogInput, currentEpoch: number): LitterPuppyDto {
+function mapPuppy(
+  dog: PuppyDogInput,
+  currentEpoch: number,
+  isBreederView: boolean,
+  viewerKennelId: string
+): LitterPuppyDto {
   const isNeonatalLoss = dog.visibilityState === "HIDDEN_NEONATAL_LOSS";
 
   return {
     ...mapParent(dog),
+    litterId: dog.litterId,
+    callName: dog.callName,
+    registeredName: dog.registeredName ?? null,
+    visibleTitlePrefix: dog.visibleTitlePrefix ?? null,
+    visibleTitleSuffix: dog.visibleTitleSuffix ?? null,
     ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
     deathEpoch: dog.deathEpoch,
     lifecycleState: dog.lifecycleState,
@@ -172,6 +214,20 @@ function mapPuppy(dog: PuppyDogInput, currentEpoch: number): LitterPuppyDto {
     isPlayerVisible: dog.isPlayerVisible,
     isNeonatalLoss,
     marketState: dog.marketState,
+    currentOwnerKennel: dog.ownerKennel
+      ? { kennelId: dog.ownerKennel.id, name: dog.ownerKennel.name }
+      : null,
+    breederKennel: dog.breederKennel
+      ? { kennelId: dog.breederKennel.id, name: dog.breederKennel.name }
+      : null,
+    kennelRun: dog.kennelRun
+      ? { runId: dog.kennelRun.id, name: dog.kennelRun.name }
+      : null,
+    isManageableByBreeder:
+      !isNeonatalLoss &&
+      isBreederView &&
+      dog.ownerKennel?.id === viewerKennelId &&
+      dog.lifecycleState === "ALIVE",
     litterOrder: dog.litterOrder,
     visibleCategories: deriveCurrentVisibleCategoriesForDogDisplay({
       storedTraits: dog,
@@ -230,12 +286,15 @@ export function mapLitterListItem(
 
 export function mapLitterDetail(
   litter: LitterDetailInput,
-  currentEpoch: number
+  currentEpoch: number,
+  viewerKennelId: string
 ): LitterDetailDto {
   const listItem = mapLitterListItem(litter, currentEpoch);
+  const isBreederView = litter.bredByKennel?.id === viewerKennelId;
 
   return {
     ...listItem,
+    isBreederView,
     bredByKennel: litter.bredByKennel
       ? {
           kennelId: litter.bredByKennel.id,
@@ -254,6 +313,8 @@ export function mapLitterDetail(
           whelpedEpoch: litter.breedingAttempt.whelpedEpoch,
         }
       : null,
-    puppies: litter.puppies.map((puppy) => mapPuppy(puppy, currentEpoch)),
+    puppies: litter.puppies.map((puppy) =>
+      mapPuppy(puppy, currentEpoch, isBreederView, viewerKennelId)
+    ),
   };
 }
