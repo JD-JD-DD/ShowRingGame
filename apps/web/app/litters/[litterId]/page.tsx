@@ -18,6 +18,13 @@ type PageProps = {
 const focusLinkClass =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200";
 
+function statusLabel(status: string): string {
+  return status
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export default async function LitterDetailPage({ params }: PageProps) {
   const userId = await getSessionUserId();
 
@@ -176,7 +183,7 @@ export default async function LitterDetailPage({ params }: PageProps) {
         </section>
 
         <section>
-          <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <h2 className="theme-heading text-2xl font-semibold">Puppies</h2>
             <span className="theme-copy text-sm">
               Whelped {formatShowCalendarLabel(litter.bornEpoch)}

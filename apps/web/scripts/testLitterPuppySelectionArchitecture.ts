@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const client = readFileSync("components/litters/LitterPuppyCardsClient.tsx", "utf8");
 const card = readFileSync("components/litters/LitterPuppyCard.tsx", "utf8");
+const page = readFileSync("app/litters/[litterId]/page.tsx", "utf8");
 
 assert.match(client, /"use client"/, "only the puppy-card boundary is client-side");
 assert.match(client, /filter\(\(puppy\) => puppy\.isManageableByBreeder\)/, "manageable IDs use the authoritative server field");
@@ -11,6 +12,8 @@ assert.match(client, /selectAllManageablePuppies[\s\S]*new Set\(manageablePuppyI
 assert.doesNotMatch(client, /checkbox|Select All|selected count|Action toolbar|<button/i, "client boundary renders no visible selection controls");
 assert.match(card, /Current kennel[\s\S]*Kennel run[\s\S]*Sale status/, "Stage 1C card metadata remains present");
 assert.match(card, /puppy\.isNeonatalLoss[\s\S]*Litter loss/, "litter-loss presentation remains present");
+assert.match(page, /flex flex-wrap items-center justify-between gap-4/, "Puppies header remains wrap-ready for future controls");
+assert.match(client, /<div>\s*<div className="grid gap-5 lg:grid-cols-2">/, "client boundary keeps a local post-grid insertion seam without rendering a placeholder");
 
 type Puppy = { id: string; manageable: boolean };
 const puppies: Puppy[] = [

@@ -75,10 +75,12 @@ export function LitterPuppyCardsClient({
   void selectionState;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      {puppies.map((puppy) => (
-        <LitterPuppyCard key={puppy.dogId} puppy={puppy} />
-      ))}
+    <div>
+      <div className="grid gap-5 lg:grid-cols-2">
+        {puppies.map((puppy) => (
+          <LitterPuppyCard key={puppy.dogId} puppy={puppy} />
+        ))}
+      </div>
     </div>
   );
 }
