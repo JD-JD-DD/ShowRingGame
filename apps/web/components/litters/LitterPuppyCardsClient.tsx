@@ -50,6 +50,10 @@ function usePuppySelectionState(puppies: PuppySelectionItem[]) {
       if (!manageablePuppyIds.has(puppyId)) return;
       setSelectedPuppyIds((current) => new Set([...current, puppyId]));
     },
+    selectSinglePuppy(puppyId: string) {
+      if (!manageablePuppyIds.has(puppyId)) return;
+      setSelectedPuppyIds(new Set([puppyId]));
+    },
     deselectPuppy(puppyId: string) {
       setSelectedPuppyIds((current) => {
         const next = new Set(current);
@@ -72,15 +76,37 @@ export function LitterPuppyCardsClient({
   puppies: LitterPuppyDto[];
 }) {
   const selectionState = usePuppySelectionState(puppies);
-  void selectionState;
+  const selectedPuppyId = [...selectionState.selectedPuppyIds][0] ?? null;
 
   return (
     <div>
       <div className="grid gap-5 lg:grid-cols-2">
         {puppies.map((puppy) => (
-          <LitterPuppyCard key={puppy.dogId} puppy={puppy} />
+          <LitterPuppyCard
+            key={puppy.dogId}
+            puppy={puppy}
+            isSelected={selectedPuppyId === puppy.dogId}
+            onSelectionChange={(selected) =>
+              selected
+                ? selectionState.selectSinglePuppy(puppy.dogId)
+                : selectionState.deselectPuppy(puppy.dogId)
+            }
+          />
         ))}
       </div>
+
+      {selectedPuppyId ? (
+        <section className="theme-card mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4" aria-live="polite">
+          <p className="theme-heading text-sm font-semibold">1 puppy selected</p>
+          <button
+            type="button"
+            onClick={selectionState.clearSelection}
+            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
+          >
+            Clear selection
+          </button>
+        </section>
+      ) : null}
     </div>
   );
 }

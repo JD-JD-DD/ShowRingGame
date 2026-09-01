@@ -41,7 +41,15 @@ function marketStateLabel(marketState: string): string | null {
   }
 }
 
-export function LitterPuppyCard({ puppy }: { puppy: LitterPuppyDto }) {
+export function LitterPuppyCard({
+  puppy,
+  isSelected,
+  onSelectionChange,
+}: {
+  puppy: LitterPuppyDto;
+  isSelected: boolean;
+  onSelectionChange: (selected: boolean) => void;
+}) {
   const visibleCategories = Object.entries(puppy.visibleCategories).filter(
     ([key]) => key !== "conditioningHandling"
   );
@@ -68,8 +76,22 @@ export function LitterPuppyCard({ puppy }: { puppy: LitterPuppyDto }) {
           )}
           <div className="theme-copy mt-1 text-sm">{puppy.regNumber}</div>
         </div>
-        <div className="theme-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
-          {statusLabel(puppy.lifecycleState)}
+        <div className="flex items-center gap-2">
+          {puppy.isManageableByBreeder ? (
+            <label className="flex cursor-pointer items-center gap-2 text-xs font-medium">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={(event) => onSelectionChange(event.target.checked)}
+                aria-label={`Select Puppy ${puppy.litterOrder ?? ""}, ${puppy.regNumber}`}
+                className="size-4 accent-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
+              />
+              <span>Select</span>
+            </label>
+          ) : null}
+          <div className="theme-neutral-badge rounded-full px-3 py-1 text-xs font-medium">
+            {statusLabel(puppy.lifecycleState)}
+          </div>
         </div>
       </div>
 
