@@ -94,7 +94,7 @@ export default async function LittersPage({ searchParams }: PageProps) {
       turnDeadlineAt: true,
       damFirstPickDogId: true,
       damFirstPickForfeitedAt: true,
-      litter: { select: { id: true, serial7: true, bornEpoch: true, puppies: { where: { lifecycleState: "ALIVE" }, orderBy: { litterOrder: "asc" }, select: { id: true, callName: true, registeredName: true, regNumber: true, sex: true, litterOrder: true } } } },
+      litter: { select: { id: true, serial7: true, customName: true, bornEpoch: true, puppies: { where: { lifecycleState: "ALIVE" }, orderBy: { litterOrder: "asc" }, select: { id: true, callName: true, registeredName: true, regNumber: true, sex: true, litterOrder: true } } } },
       selectedDog: { select: { id: true, callName: true, registeredName: true, regNumber: true } },
       contract: { select: { puppyPickPosition: true, puppySex: true, sireKennelId: true, damKennelId: true } },
     },

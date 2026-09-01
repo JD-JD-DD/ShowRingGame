@@ -21,6 +21,7 @@ const litterListSelect = Prisma.validator<Prisma.LitterSelect>()({
   id: true,
   breedCode2: true,
   serial7: true,
+  customName: true,
   bornEpoch: true,
   pupCount: true,
   createdAt: true,
@@ -79,6 +80,7 @@ const litterListSelect = Prisma.validator<Prisma.LitterSelect>()({
 
 const litterDetailSelect = Prisma.validator<Prisma.LitterSelect>()({
   ...litterListSelect,
+  breederNote: true,
   bredByKennel: {
     select: {
       id: true,

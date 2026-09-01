@@ -53,6 +53,7 @@ type LitterListInput = {
   id: string;
   breedCode2: string;
   serial7: string;
+  customName: string | null;
   bornEpoch: number;
   pupCount: number;
   createdAt: Date;
@@ -79,6 +80,7 @@ type LitterDetailInput = {
   id: string;
   breedCode2: string;
   serial7: string;
+  breederNote: string | null;
   bornEpoch: number;
   pupCount: number;
   createdAt: Date;
@@ -150,6 +152,7 @@ export type LitterListItemDto = {
   breedCode2: string;
   breedName: string;
   serial7: string;
+  customName: string | null;
   bornEpoch: number;
   ageHours: number;
   pupCount: number;
@@ -165,6 +168,7 @@ export type LitterListItemDto = {
 };
 
 export type LitterDetailDto = LitterListItemDto & {
+  breederNote: string | null;
   isBreederView: boolean;
   bredByKennel: {
     kennelId: string;
@@ -269,6 +273,7 @@ export function mapLitterListItem(
     breedCode2: litter.breedCode2,
     breedName: litter.breed.name,
     serial7: litter.serial7,
+    customName: litter.customName,
     bornEpoch: litter.bornEpoch,
     ageHours: Math.max(0, currentEpoch - litter.bornEpoch),
     pupCount: litter.pupCount,
@@ -294,6 +299,7 @@ export function mapLitterDetail(
 
   return {
     ...listItem,
+    breederNote: litter.breederNote,
     isBreederView,
     bredByKennel: litter.bredByKennel
       ? {
