@@ -2,7 +2,10 @@ import { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { formatDogDisplayName } from "@/lib/dogNames";
-import { assertDogHasNoPendingVeterinaryCare } from "@/server/services/emergencyVetCare.service";
+import {
+  assertDogHasNoPendingVeterinaryCare,
+  hasPendingVeterinaryCareForDog,
+} from "@/server/services/emergencyVetCare.service";
 import { createKennelNotice } from "@/server/services/kennelNotice.service";
 import {
   deriveThyroidGroomingModifiers,
@@ -28,6 +31,16 @@ const MAX_COAT_CONDITION = 20;
 const MIN_COAT_CONDITION = 0;
 const DEFAULT_MISSED_GROOMING_DECAY_BATCH_SIZE = 400;
 const MAX_MISSED_GROOMING_DECAY_BATCH_SIZE = 400;
+
+export class GroomingServiceError extends Error {
+  constructor(
+    message: string,
+    public readonly status = 400
+  ) {
+    super(message);
+    this.name = "GroomingServiceError";
+  }
+}
 
 export type KennelGroomingSummaryDto = {
   groomingActionsUsedThisWeek: number;
@@ -393,7 +406,9 @@ async function assertKennelHasGroomingCapacity(args: {
   });
 
   if (actionsUsed >= TOTAL_GROOMING_ACTION_LIMIT_PER_WEEK) {
-    throw new Error("Your kennel has used all 10 grooming actions this week.");
+    throw new GroomingServiceError(
+      "Your kennel has used all 10 grooming actions this week."
+    );
   }
 }
 
@@ -405,7 +420,7 @@ async function assertDogNotGroomedThisWeek(args: {
   const existing = await getDogGroomingActionThisWeek(args);
 
   if (existing) {
-    throw new Error("This dog has already been groomed this week.");
+    throw new GroomingServiceError("This dog has already been groomed this week.");
   }
 }
 
@@ -1101,18 +1116,24 @@ export async function acceptGroomingJob(args: {
     });
 
     if (!listing || listing.status !== "OPEN") {
-      throw new Error("This grooming job is no longer available.");
+      throw new GroomingServiceError("This grooming job is no longer available.");
     }
 
     if (listing.ownerKennelId === args.groomerKennelId) {
-      throw new Error("You cannot accept your own kennel's grooming listing.");
+      throw new GroomingServiceError(
+        "You cannot accept your own kennel's grooming listing."
+      );
     }
 
     if (!listing.dog.isPlayerVisible || listing.dog.lifecycleState !== "ALIVE") {
-      throw new Error("This dog is no longer eligible for grooming.");
+      throw new GroomingServiceError("This dog is no longer eligible for grooming.");
     }
 
-    await assertDogHasNoPendingVeterinaryCare(listing.dog.id, tx);
+    if (await hasPendingVeterinaryCareForDog(listing.dog.id, tx)) {
+      throw new GroomingServiceError(
+        "This dog is awaiting emergency veterinary care."
+      );
+    }
 
     if (
       !isDogEligibleForGrooming({
@@ -1121,7 +1142,7 @@ export async function acceptGroomingJob(args: {
         lifecycleState: listing.dog.lifecycleState,
       })
     ) {
-      throw new Error("This dog is no longer eligible for grooming.");
+      throw new GroomingServiceError("This dog is no longer eligible for grooming.");
     }
 
     await assertDogNotGroomedThisWeek({
@@ -1148,7 +1169,7 @@ export async function acceptGroomingJob(args: {
     });
 
     if (listingClaim.count === 0) {
-      throw new Error("This grooming job is no longer available.");
+      throw new GroomingServiceError("This grooming job is no longer available.");
     }
 
     const { nextCoatCondition, actualGain } = applyCoatGain(

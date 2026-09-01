@@ -11,6 +11,7 @@
     "test:dog-action-windows": "tsx scripts/testDogActionWindows.ts",
     "test:grooming-decay-noop-catchup": "tsx scripts/testGroomingDecayNoopCatchup.ts",
     "test:grooming-eligibility": "tsx scripts/testGroomingEligibility.ts",
+    "test:grooming-listing-acceptance-errors": "tsx scripts/testGroomingListingAcceptanceErrors.ts",
     "test:dog-profile-kennel-run-move": "tsx scripts/testDogProfileKennelRunMove.ts",
     "test:dog-show-record-title-points": "tsx scripts/testDogShowRecordTitlePoints.ts",
     "test:dog-titles": "tsx scripts/testDogTitles.ts",

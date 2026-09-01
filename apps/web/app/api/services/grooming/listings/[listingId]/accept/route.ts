@@ -4,7 +4,10 @@ import { fail, ok } from "@/lib/http";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
-import { acceptGroomingJob } from "@/server/services/grooming.service";
+import {
+  acceptGroomingJob,
+  GroomingServiceError,
+} from "@/server/services/grooming.service";
 
 function redirectWithMessage(
   request: Request,
@@ -58,17 +61,20 @@ export async function POST(
       ? ok(result)
       : redirectWithMessage(request, returnTo, { message: result.message });
   } catch (error) {
+    if (error instanceof GroomingServiceError) {
+      return isJson
+        ? fail(error.message, error.status)
+        : redirectWithMessage(request, returnTo, { error: error.message });
+    }
+
     console.error(
       "POST /api/services/grooming/listings/[listingId]/accept failed:",
       error
     );
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Unable to accept grooming job.";
+    const message = "Unable to accept grooming job.";
 
     return isJson
-      ? fail(message)
+      ? fail(message, 500)
       : redirectWithMessage(request, returnTo, { error: message });
   }
 }
