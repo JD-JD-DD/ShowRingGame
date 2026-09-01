@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import {
@@ -6,10 +6,7 @@ import {
   validateRegisteredDogName,
 } from "@/server/validation/dogName.validation";
 
-type DogNamingClient = Pick<PrismaClient, "dog" | "breed">;
-type DogNamingTransactionRunner = DogNamingClient & {
-  $transaction<T>(fn: (tx: DogNamingClient) => Promise<T>): Promise<T>;
-};
+type DogNamingClient = Pick<Prisma.TransactionClient, "dog" | "breed">;
 
 export class DogNamingError extends Error {
   constructor(
@@ -25,7 +22,7 @@ type DogNamingUpdate = {
   dogId: string;
   callName?: FormDataEntryValue | string | null;
   registeredName?: FormDataEntryValue | string | null;
-  client?: DogNamingTransactionRunner | DogNamingClient;
+  client?: DogNamingClient;
 };
 
 async function updateDogNamingWithClient(
@@ -95,12 +92,11 @@ async function updateDogNamingWithClient(
 }
 
 export async function updateDogNaming(args: DogNamingUpdate) {
-  const client = args.client ?? db;
-  const updateArgs = { ...args, client: undefined };
+  const { client, ...updateArgs } = args;
 
-  if ("$transaction" in client) {
-    return client.$transaction((tx) => updateDogNamingWithClient(tx, updateArgs));
+  if (client) {
+    return updateDogNamingWithClient(client, updateArgs);
   }
 
-  return updateDogNamingWithClient(client, updateArgs);
+  return db.$transaction((tx) => updateDogNamingWithClient(tx, updateArgs));
 }
