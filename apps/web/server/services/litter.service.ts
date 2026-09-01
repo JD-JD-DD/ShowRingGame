@@ -204,6 +204,73 @@ const DEFAULT_LITTER_ARCHIVE_FILTERS: LitterArchiveFilters = {
   sort: "newest",
 };
 
+const MAX_LITTER_CUSTOM_NAME_LENGTH = 25;
+const MAX_LITTER_BREEDER_NOTE_LENGTH = 2_000;
+
+export class LitterMetadataError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+export type LitterMetadataInput = {
+  customName?: unknown;
+  breederNote?: unknown;
+};
+
+type LitterMetadataValues = {
+  customName: string | null;
+  breederNote: string | null;
+};
+
+function hasOwn(input: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(input, key);
+}
+
+export function resolveLitterMetadataUpdate(
+  current: LitterMetadataValues,
+  input: LitterMetadataInput
+): Partial<LitterMetadataValues> {
+  const update: Partial<LitterMetadataValues> = {};
+
+  if (hasOwn(input, "customName")) {
+    if (input.customName !== null && typeof input.customName !== "string") {
+      throw new LitterMetadataError("Litter name must be plain text.", 400);
+    }
+
+    const customName = typeof input.customName === "string" ? input.customName.trim() : null;
+
+    if (current.customName !== null && customName === null) {
+      throw new LitterMetadataError("A named litter must have a litter name.", 400);
+    }
+
+    if (customName !== null && customName.length > MAX_LITTER_CUSTOM_NAME_LENGTH) {
+      throw new LitterMetadataError("Litter name must be 25 characters or fewer.", 400);
+    }
+
+    update.customName = customName || null;
+  }
+
+  if (hasOwn(input, "breederNote")) {
+    if (input.breederNote !== null && typeof input.breederNote !== "string") {
+      throw new LitterMetadataError("Private breeder note must be plain text.", 400);
+    }
+
+    const breederNote = typeof input.breederNote === "string" ? input.breederNote.trim() : null;
+
+    if (breederNote !== null && breederNote.length > MAX_LITTER_BREEDER_NOTE_LENGTH) {
+      throw new LitterMetadataError(
+        "Private breeder note must be 2,000 characters or fewer.",
+        400
+      );
+    }
+
+    update.breederNote = breederNote || null;
+  }
+
+  return update;
+}
+
 export function parseLitterArchiveFilters(
   input: Record<string, unknown> | null | undefined
 ): LitterArchiveFilters {
@@ -655,4 +722,44 @@ export async function getLitterForKennel(args: {
     await withFreshPuppyHealthConditionTruths([litter]);
 
   return mapLitterDetail(litterWithFreshHealthTruths, currentEpoch, kennelId);
+}
+
+export async function updateLitterMetadata(args: {
+  kennelId: string;
+  litterId: string;
+  input: LitterMetadataInput;
+}) {
+  const litter = await db.litter.findFirst({
+    where: {
+      id: args.litterId,
+      bredByKennelId: args.kennelId,
+    },
+    select: {
+      id: true,
+      customName: true,
+      breederNote: true,
+    },
+  });
+
+  if (!litter) {
+    throw new LitterMetadataError("Litter not found.", 404);
+  }
+
+  const update = resolveLitterMetadataUpdate(litter, args.input);
+
+  if (Object.keys(update).length === 0) {
+    return {
+      customName: litter.customName,
+      breederNote: litter.breederNote,
+    };
+  }
+
+  return db.litter.update({
+    where: { id: litter.id },
+    data: update,
+    select: {
+      customName: true,
+      breederNote: true,
+    },
+  });
 }
