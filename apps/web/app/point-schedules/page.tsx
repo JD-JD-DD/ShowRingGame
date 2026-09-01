@@ -6,9 +6,9 @@ import { getSessionUserId } from "@/lib/session";
 import {
   getPublishedAnnualChampionshipPointScheduleTable,
   listPublishedAnnualChampionshipPointScheduleYears,
-  type PublishedPointScheduleDivision,
 } from "@/server/services/annualChampionshipPointSchedule.service";
-import { SHOW_YEAR_HOURS } from "@showring/rules";
+import PointScheduleTableClient from "./PointScheduleTableClient";
+import { getShowDistrictPresentationLabel, SHOW_DISTRICT_REGIONS, SHOW_YEAR_HOURS } from "@showring/rules";
 
 export const dynamic = "force-dynamic";
 
@@ -24,45 +24,6 @@ function parsePositiveInteger(value: string | null): number | null {
   if (!value || !/^\d+$/.test(value)) return null;
   const parsed = Number.parseInt(value, 10);
   return parsed > 0 ? parsed : null;
-}
-
-function ScheduleTable({ division }: { division: PublishedPointScheduleDivision }) {
-  return (
-    <div id={`division-${division.district}`} className="overflow-x-auto">
-      <table className="w-full min-w-[860px] border-separate border-spacing-y-2 text-sm">
-        <thead className="theme-label text-left text-xs uppercase tracking-[0.12em]">
-          <tr>
-            <th scope="col" rowSpan={2} className="sticky left-0 z-10 px-3 py-2 text-left">Breed</th>
-            {[1, 2, 3, 4, 5].map((points) => (
-              <th key={points} scope="colgroup" colSpan={2} className="px-3 py-2 text-center">
-                {points} Point{points === 1 ? "" : "s"}
-              </th>
-            ))}
-          </tr>
-          <tr>
-            {[1, 2, 3, 4, 5].flatMap((points) => [
-              <th key={`${points}-dogs`} scope="col" className="px-3 py-2 text-right">Dogs</th>,
-              <th key={`${points}-bitches`} scope="col" className="px-3 py-2 text-right">Bitches</th>,
-            ])}
-          </tr>
-        </thead>
-        <tbody>
-          {division.rows.map((row) => {
-            const dog = row.dogThresholds;
-            const bitch = row.bitchThresholds;
-            return (
-              <tr key={row.breedCode2} className="theme-card">
-                <th scope="row" className="theme-heading sticky left-0 z-10 rounded-l-2xl px-3 py-3 text-left font-semibold">{row.breedName}</th>
-                {[dog.one, bitch.one, dog.two, bitch.two, dog.three, bitch.three, dog.four, bitch.four, dog.five, bitch.five].map((value, index) => (
-                  <td key={index} className={`px-3 py-3 text-right ${index === 9 ? "rounded-r-2xl" : ""}`}>{value.toLocaleString()}</td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
 }
 
 export default async function PointSchedulesPage({ searchParams }: PageProps) {
@@ -95,7 +56,7 @@ export default async function PointSchedulesPage({ searchParams }: PageProps) {
       <header className="theme-panel mb-6 rounded-[28px] px-6 py-6">
         <p className="theme-label text-sm uppercase tracking-[0.25em]">Championship Reference</p>
         <h1 className="theme-heading mt-2 text-4xl font-bold tracking-tight">Point Schedules</h1>
-        <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">Point schedules show the minimum number of Dogs or Bitches required for a 1–5 point Championship win in each breed and Division.</p>
+        <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">Point schedules show the minimum number of Dogs or Bitches required for a 1–5 point Championship win in each breed and District.</p>
       </header>
 
       {selectedYear === null || !table ? (
@@ -106,15 +67,15 @@ export default async function PointSchedulesPage({ searchParams }: PageProps) {
             <form className="grid gap-4 sm:grid-cols-2 sm:items-end">
               <div>
                 <label htmlFor="year" className="theme-copy mb-1 block text-xs font-semibold uppercase tracking-wide">Point Schedule Year</label>
-                <select id="year" name="year" defaultValue={selectedYear} className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none">
+                <select id="year" name="year" defaultValue={selectedYear} className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
                   {years.map((year) => <option key={year.effectiveYear} value={year.effectiveYear}>Year {year.effectiveYear}{year.effectiveYear === currentYear ? " (Current)" : year.effectiveYear > currentYear ? " (Upcoming)" : ""}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="district" className="theme-copy mb-1 block text-xs font-semibold uppercase tracking-wide">Division</label>
-                <select id="district" name="district" defaultValue={selectedDistrict ?? ""} className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none">
-                  <option value="">All Divisions</option>
-                  {Array.from({ length: 15 }, (_, index) => index + 1).map((district) => <option key={district} value={district}>Division {district}</option>)}
+                <label htmlFor="district" className="theme-copy mb-1 block text-xs font-semibold uppercase tracking-wide">District</label>
+                <select id="district" name="district" defaultValue={selectedDistrict ?? ""} className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+                  <option value="">All Districts</option>
+                  {SHOW_DISTRICT_REGIONS.map((region) => <option key={region.district} value={region.district}>{getShowDistrictPresentationLabel(region.district)}</option>)}
                 </select>
               </div>
               <button type="submit" className="theme-primary-button rounded-xl px-5 py-2.5 text-sm font-semibold sm:col-span-2">View Point Schedule</button>
@@ -122,18 +83,11 @@ export default async function PointSchedulesPage({ searchParams }: PageProps) {
           </section>
 
           <section className="theme-panel rounded-[28px] p-5">
-            <h2 className="theme-heading text-2xl font-semibold">Year {table.effectiveYear} Point Schedule{selectedDistrict ? ` — Division ${selectedDistrict}` : ""}</h2>
+            <h2 className="theme-heading text-2xl font-semibold">Year {table.effectiveYear} Point Schedule{selectedDistrict ? ` — ${getShowDistrictPresentationLabel(selectedDistrict)}` : ""}</h2>
             <p className="theme-copy mt-2 text-sm">Published schedules remain available for reference by game year.</p>
             {table.incompleteBreedKeys.length > 0 ? <p className="mt-4 text-sm text-[var(--color-danger-text)]">Some published schedule rows are incomplete and cannot be displayed.</p> : null}
-            {!selectedDistrict && table.divisions.length > 1 ? <nav aria-label="Division sections" className="mt-5 flex flex-wrap gap-2">{table.divisions.map((division) => <a key={division.district} href={`#division-${division.district}`} className="theme-secondary-button rounded-full px-3 py-1.5 text-xs font-semibold">Division {division.district}</a>)}</nav> : null}
-            {table.divisions.length === 0 ? <p className="theme-copy mt-6 text-sm">No published schedule rows are available for this Division.</p> : <div className="mt-6 space-y-8">
-              {table.divisions.map((division) => (
-                <section key={division.district}>
-                  {!selectedDistrict ? <h3 className="theme-heading mb-3 text-xl font-semibold">Division {division.district}</h3> : null}
-                  <ScheduleTable division={division} />
-                </section>
-              ))}
-            </div>}
+            {!selectedDistrict && table.divisions.length > 1 ? <nav aria-label="District sections" className="mt-5 flex flex-wrap gap-2">{table.divisions.map((division) => <a key={division.district} href={`#district-${division.district}`} className="theme-secondary-button rounded-full px-3 py-1.5 text-xs font-semibold">{getShowDistrictPresentationLabel(division.district)}</a>)}</nav> : null}
+            {table.divisions.length === 0 ? <p className="theme-copy mt-6 text-sm">No published schedule rows are available for this District.</p> : <PointScheduleTableClient divisions={table.divisions} showDistrictHeadings={!selectedDistrict} />}
           </section>
         </>
       )}

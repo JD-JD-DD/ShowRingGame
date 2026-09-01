@@ -50,3 +50,9 @@ export function getShowDistrictRegion(district: number) {
 export function getShowDistrictRegionName(district: number): string {
   return getShowDistrictRegion(district).name;
 }
+
+/** A consistent player-facing label while numeric districts remain canonical. */
+export function getShowDistrictPresentationLabel(district: number): string {
+  const region = getShowDistrictRegion(district);
+  return `District ${region.district} - ${region.shortName}`;
+}

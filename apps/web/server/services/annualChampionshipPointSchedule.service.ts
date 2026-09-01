@@ -42,6 +42,7 @@ export type PublishedPointScheduleYear = Readonly<{
 export type PublishedPointScheduleBreedRow = Readonly<{
   breedCode2: string;
   breedName: string;
+  breedGroupName: string | null;
   dogThresholds: Readonly<{ one: number; two: number; three: number; four: number; five: number }>;
   bitchThresholds: Readonly<{ one: number; two: number; three: number; four: number; five: number }>;
 }>;
@@ -222,7 +223,7 @@ export async function getPublishedAnnualChampionshipPointScheduleTable(args: {
       threePointThreshold: true,
       fourPointThreshold: true,
       fivePointThreshold: true,
-      breed: { select: { name: true } },
+      breed: { select: { name: true, groupName: true } },
     },
     orderBy: [{ district: "asc" }, { breedCode2: "asc" }, { sex: "asc" }],
   });
@@ -230,6 +231,7 @@ export async function getPublishedAnnualChampionshipPointScheduleTable(args: {
     district: number;
     breedCode2: string;
     breedName: string;
+    breedGroupName: string | null;
     M?: (typeof schedules)[number];
     F?: (typeof schedules)[number];
   }>();
@@ -239,6 +241,7 @@ export async function getPublishedAnnualChampionshipPointScheduleTable(args: {
       district: schedule.district,
       breedCode2: schedule.breedCode2,
       breedName: schedule.breed.name,
+      breedGroupName: schedule.breed.groupName,
     };
     pair[schedule.sex] = schedule;
     pairs.set(key, pair);
@@ -261,6 +264,7 @@ export async function getPublishedAnnualChampionshipPointScheduleTable(args: {
     rows.push({
       breedCode2: pair.breedCode2,
       breedName: pair.breedName,
+      breedGroupName: pair.breedGroupName,
       dogThresholds: thresholds(pair.M),
       bitchThresholds: thresholds(pair.F),
     });
