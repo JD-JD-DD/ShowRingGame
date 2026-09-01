@@ -39,6 +39,12 @@ assert.deepEqual([...selected].sort(), ["one", "three", "two"], "select-all cont
 const updatedManageableIds = new Set(["one", "three"]);
 selected = new Set([...selected].filter((id) => updatedManageableIds.has(id)));
 assert.deepEqual([...selected].sort(), ["one", "three"], "reconciliation removes only stale or non-manageable selections");
+const sameManageableIdsAfterDisplayUpdate = new Set(["one", "three"]);
+selected = new Set([...selected].filter((id) => sameManageableIdsAfterDisplayUpdate.has(id)));
+assert.deepEqual([...selected].sort(), ["one", "three"], "name, title, run, or market display updates preserve valid selections");
+const missingPuppyIds = new Set(["one"]);
+selected = new Set([...selected].filter((id) => missingPuppyIds.has(id)));
+assert.deepEqual([...selected], ["one"], "reconciliation removes only the selection whose puppy disappeared");
 selected.clear();
 assert.equal(selected.size, 0, "clear removes every selection");
 
