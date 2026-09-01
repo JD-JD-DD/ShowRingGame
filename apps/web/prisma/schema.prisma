@@ -1248,6 +1248,8 @@ model Litter {
   damId          String
   pupCount       Int
   bredByKennelId String?
+  customName     String?
+  breederNote    String?
   createdAt      DateTime @default(now())
 
   breed           Breed            @relation(fields: [breedCode2], references: [code2])
