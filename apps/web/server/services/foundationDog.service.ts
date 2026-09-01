@@ -550,14 +550,18 @@ async function calculateFoundationAskingPrice(args: {
 }
 
 
-async function createOneFoundationDog(args: {
+type PreparedFoundationDog = {
+  generated: ReturnType<typeof createFoundationDogProfile>;
+  litterOrder: number;
+  askingPrice: number;
+};
+
+async function prepareFoundationDog(args: {
   breedCode2: string;
   currentEpoch: number;
-  forcedSex?: "M" | "F";
   populationContext?: FoundationPopulationContext;
-  allocationAttempt?: number;
-}): Promise<void> {
-  const { breedCode2, currentEpoch, forcedSex, allocationAttempt = 0 } = args;
+}): Promise<PreparedFoundationDog> {
+  const { breedCode2, currentEpoch } = args;
 
   const breedBaseline = { breedCode2, traitMeans: GLOBAL_FALLBACK_BASELINE };
   const { regNumber, litterOrder } = await generateUniqueFoundationIdentity(
@@ -574,17 +578,27 @@ async function createOneFoundationDog(args: {
     populationContext: args.populationContext,
   });
 
-  const finalSex = forcedSex ?? generated.dog.sex;
-
   const askingPrice = await calculateFoundationAskingPrice({
     breedCode2,
     currentEpoch,
     suggestedPrice: generated.suggestedPrice,
   });
 
-  await db.$transaction(async (tx) => {
-    await reserveDogRegistrations(tx, [generated.dog.regNumber]);
-    const createdDog = await tx.dog.create({
+  return { generated, litterOrder, askingPrice };
+}
+
+async function persistPreparedFoundationDog(args: {
+  tx: Prisma.TransactionClient;
+  prepared: PreparedFoundationDog;
+  currentEpoch: number;
+  forcedSex?: "M" | "F";
+}): Promise<void> {
+  const { tx, prepared, currentEpoch } = args;
+  const { generated, litterOrder, askingPrice } = prepared;
+  const finalSex = args.forcedSex ?? generated.dog.sex;
+
+  await reserveDogRegistrations(tx, [generated.dog.regNumber]);
+  const createdDog = await tx.dog.create({
       data: {
         regNumber: generated.dog.regNumber,
         callName: generated.callName,
@@ -610,15 +624,15 @@ async function createOneFoundationDog(args: {
       select: {
         id: true,
       },
-    });
+  });
 
-    await ensurePhenotypeHealthTruthsForDogs(tx, [createdDog.id]);
-    await maybeSeedFoundationBrucellosis(tx, {
-      dogId: createdDog.id,
-      currentEpoch,
-    });
+  await ensurePhenotypeHealthTruthsForDogs(tx, [createdDog.id]);
+  await maybeSeedFoundationBrucellosis(tx, {
+    dogId: createdDog.id,
+    currentEpoch,
+  });
 
-    await tx.dogListing.create({
+  await tx.dogListing.create({
       data: {
         dogId: createdDog.id,
         sellerKennelId: null,
@@ -630,14 +644,34 @@ async function createOneFoundationDog(args: {
         expiresAtEpoch: currentEpoch + FOUNDATION_LISTING_HOURS,
         descriptionPublic: FOUNDATION_DESCRIPTION_PUBLIC,
       },
-    });
-  }).catch(async (error) => {
+  });
+}
+
+async function createOneFoundationDog(args: {
+  breedCode2: string;
+  currentEpoch: number;
+  forcedSex?: "M" | "F";
+  populationContext?: FoundationPopulationContext;
+  allocationAttempt?: number;
+}): Promise<void> {
+  const allocationAttempt = args.allocationAttempt ?? 0;
+  try {
+    const prepared = await prepareFoundationDog(args);
+    await db.$transaction((tx) =>
+      persistPreparedFoundationDog({
+        tx,
+        prepared,
+        currentEpoch: args.currentEpoch,
+        forcedSex: args.forcedSex,
+      })
+    );
+  } catch (error) {
     if (isDogRegistrationCollision(error) && allocationAttempt < 99) {
       await createOneFoundationDog({ ...args, allocationAttempt: allocationAttempt + 1 });
       return;
     }
     throw error;
-  });
+  }
 }
 
 type FoundationInventoryCleanupResult = {
@@ -935,6 +969,125 @@ async function withFoundationInventoryBreedLock<T>(args: {
   });
 }
 
+type FoundationInventoryState = {
+  currentCount: number;
+  currentFemaleCount: number;
+  currentMaleCount: number;
+};
+
+async function getLockedFoundationInventoryState(args: {
+  breedCode2: string;
+}): Promise<FoundationInventoryState> {
+  return withFoundationInventoryBreedLock({
+    breedCode2: args.breedCode2,
+    operation: async (tx) => {
+      const [currentCount, currentFemaleCount, currentMaleCount] =
+        await Promise.all([
+          countUnsoldFoundationDogsByBreed(args.breedCode2, tx),
+          countUnsoldFoundationFemalesByBreed(args.breedCode2, tx),
+          countUnsoldFoundationMalesByBreed(args.breedCode2, tx),
+        ]);
+      return { currentCount, currentFemaleCount, currentMaleCount };
+    },
+  });
+}
+
+function getFoundationInventoryCreateCount(args: {
+  state: FoundationInventoryState;
+  targetInventory: number;
+}): number {
+  const femalesNeeded = Math.max(
+    0,
+    FOUNDATION_MIN_ACTIVE_FEMALES - args.state.currentFemaleCount
+  );
+  const malesNeeded = Math.max(
+    0,
+    FOUNDATION_MIN_ACTIVE_MALES - args.state.currentMaleCount
+  );
+  return Math.max(
+    args.targetInventory - args.state.currentCount,
+    femalesNeeded + malesNeeded
+  );
+}
+
+function getFoundationInventoryForcedSex(args: {
+  state: FoundationInventoryState;
+  preferredSex?: "M" | "F";
+}): "M" | "F" | undefined {
+  if (args.state.currentFemaleCount < FOUNDATION_MIN_ACTIVE_FEMALES) {
+    return "F";
+  }
+  if (args.state.currentMaleCount < FOUNDATION_MIN_ACTIVE_MALES) {
+    return "M";
+  }
+  return args.preferredSex;
+}
+
+async function createOneFoundationDogForInventory(args: {
+  breedCode2: string;
+  currentEpoch: number;
+  targetInventory: number;
+  preferredSex?: "M" | "F";
+  populationContext: FoundationPopulationContext;
+  allocationAttempt?: number;
+}): Promise<boolean> {
+  const allocationAttempt = args.allocationAttempt ?? 0;
+  try {
+    // Identity, pricing, and profile generation deliberately happen before the
+    // lock-bearing transaction. A later locked recheck decides whether this
+    // prepared dog is still needed.
+    const prepared = await prepareFoundationDog(args);
+    return await withFoundationInventoryBreedLock({
+      breedCode2: args.breedCode2,
+      operation: async (tx) => {
+        const state = await getLockedFoundationInventoryStateFromTransaction({
+          breedCode2: args.breedCode2,
+          tx,
+        });
+        if (
+          getFoundationInventoryCreateCount({
+            state,
+            targetInventory: args.targetInventory,
+          }) === 0
+        ) {
+          return false;
+        }
+        await persistPreparedFoundationDog({
+          tx,
+          prepared,
+          currentEpoch: args.currentEpoch,
+          forcedSex: getFoundationInventoryForcedSex({
+            state,
+            preferredSex: args.preferredSex,
+          }),
+        });
+        return true;
+      },
+    });
+  } catch (error) {
+    if (isDogRegistrationCollision(error) && allocationAttempt < 99) {
+      return createOneFoundationDogForInventory({
+        ...args,
+        allocationAttempt: allocationAttempt + 1,
+      });
+    }
+    throw error;
+  }
+}
+
+async function getLockedFoundationInventoryStateFromTransaction(args: {
+  breedCode2: string;
+  tx: Prisma.TransactionClient;
+}): Promise<FoundationInventoryState> {
+  const [currentCount, currentFemaleCount, currentMaleCount] =
+    await Promise.all([
+      countUnsoldFoundationDogsByBreed(args.breedCode2, args.tx),
+      countUnsoldFoundationFemalesByBreed(args.breedCode2, args.tx),
+      countUnsoldFoundationMalesByBreed(args.breedCode2, args.tx),
+    ]);
+  return { currentCount, currentFemaleCount, currentMaleCount };
+}
+
 export async function ensureFoundationInventoryForBreed(args: {
   breedCode2: string;
   currentEpoch: number;
@@ -951,58 +1104,43 @@ export async function ensureFoundationInventoryForBreed(args: {
   });
 
   try {
-    await withFoundationInventoryBreedLock({
-      breedCode2,
-      operation: async (tx) => {
-      // These are the authoritative post-lock inventory counts. A waiting
-      // caller always derives its deficit from the preceding lock holder's work.
-      const [currentCount, currentFemaleCount, currentMaleCount, policy] =
-        await Promise.all([
-          countUnsoldFoundationDogsByBreed(breedCode2, tx),
-          countUnsoldFoundationFemalesByBreed(breedCode2, tx),
-          countUnsoldFoundationMalesByBreed(breedCode2, tx),
-          getFoundationPolicyForBreed({ breedCode2, currentEpoch }),
-        ]);
+    const [policy, populationContext] = await Promise.all([
+      getFoundationPolicyForBreed({ breedCode2, currentEpoch }),
+      resolveFoundationPopulationContext(breedCode2),
+    ]);
+    const targetInventory = getEffectiveFoundationTarget(policy);
+    const initialState = await getLockedFoundationInventoryState({ breedCode2 });
+    const createCount = getFoundationInventoryCreateCount({
+      state: initialState,
+      targetInventory,
+    });
 
-      const targetInventory = getEffectiveFoundationTarget(policy);
-      const femalesNeeded = Math.max(
+    const forcedSexes = buildForcedFoundationSexes({
+      femalesNeeded: Math.max(
         0,
-        FOUNDATION_MIN_ACTIVE_FEMALES - currentFemaleCount
-      );
-      const malesNeeded = Math.max(
+        FOUNDATION_MIN_ACTIVE_FEMALES - initialState.currentFemaleCount
+      ),
+      malesNeeded: Math.max(
         0,
-        FOUNDATION_MIN_ACTIVE_MALES - currentMaleCount
-      );
-      const createCount = Math.max(
-        targetInventory - currentCount,
-        femalesNeeded + malesNeeded
-      );
-
-      if (createCount === 0) {
-        return;
+        FOUNDATION_MIN_ACTIVE_MALES - initialState.currentMaleCount
+      ),
+      totalCount: createCount,
+    });
+    let createdCount = 0;
+    for (const preferredSex of forcedSexes) {
+      if (await createOneFoundationDogForInventory({
+        breedCode2,
+        currentEpoch,
+        targetInventory,
+        preferredSex,
+        populationContext,
+      })) {
+        createdCount += 1;
       }
+    }
 
-      const forcedSexes = buildForcedFoundationSexes({
-        femalesNeeded,
-        malesNeeded,
-        totalCount: createCount,
-      });
-      const populationContext = await resolveFoundationPopulationContext(breedCode2);
-
-      for (const forcedSex of forcedSexes) {
-        await createOneFoundationDog({
-          breedCode2,
-          currentEpoch,
-          forcedSex,
-          populationContext,
-        });
-      }
-
-      const [finalCount, finalFemaleCount, finalMaleCount] = await Promise.all([
-        countUnsoldFoundationDogsByBreed(breedCode2, tx),
-        countUnsoldFoundationFemalesByBreed(breedCode2, tx),
-        countUnsoldFoundationMalesByBreed(breedCode2, tx),
-      ]);
+    const finalState = await getLockedFoundationInventoryState({ breedCode2 });
+    const { currentCount: finalCount, currentFemaleCount: finalFemaleCount, currentMaleCount: finalMaleCount } = finalState;
       if (
         finalCount < targetInventory ||
         finalFemaleCount < FOUNDATION_MIN_ACTIVE_FEMALES ||
@@ -1010,18 +1148,16 @@ export async function ensureFoundationInventoryForBreed(args: {
       ) {
         console.error("foundation-inventory-maintenance-incomplete", {
           breedCode2,
-          currentCount,
-          currentFemaleCount,
-          currentMaleCount,
+          currentCount: initialState.currentCount,
+          currentFemaleCount: initialState.currentFemaleCount,
+          currentMaleCount: initialState.currentMaleCount,
           targetInventory,
-          createdCount: createCount,
+          createdCount,
           finalCount,
           finalFemaleCount,
           finalMaleCount,
         });
       }
-      },
-    });
   } catch (error) {
     console.error("foundation-inventory-maintenance-failed", {
       breedCode2,
