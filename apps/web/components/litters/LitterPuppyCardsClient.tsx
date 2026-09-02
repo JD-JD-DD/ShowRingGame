@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { LitterPuppyDto } from "@/server/mappers/litter.mapper";
 import { LitterPuppyCard } from "@/components/litters/LitterPuppyCard";
 import { LitterPuppyKennelRunWorkspace } from "@/components/litters/LitterPuppyKennelRunWorkspace";
+import type { LitterPuppyKennelRunResult } from "@/components/litters/LitterPuppyKennelRunWorkspace";
 import { LitterPuppyNameWorkspace } from "@/components/litters/LitterPuppyNameWorkspace";
 import type { LitterPuppyNamingResult } from "@/components/litters/LitterPuppyNameWorkspace";
 import { LitterPuppyRehomeWorkspace } from "@/components/litters/LitterPuppyRehomeWorkspace";
@@ -132,6 +133,7 @@ export function LitterPuppyCardsClient({
   );
   const [activeAction, setActiveAction] = useState<"name" | "moveRun" | "sale" | "rehome" | null>(null);
   const [namingResult, setNamingResult] = useState<LitterPuppyNamingResult | null>(null);
+  const [kennelRunResult, setKennelRunResult] = useState<LitterPuppyKennelRunResult | null>(null);
   const activeActionDescriptor = activeAction ? PUPPY_ACTIONS[activeAction] : null;
   const activeActionPartition = activeActionDescriptor
     ? {
@@ -157,6 +159,7 @@ export function LitterPuppyCardsClient({
   function clearSelection() {
     setActiveAction(null);
     setNamingResult(null);
+    setKennelRunResult(null);
     selectionState.clearSelection();
   }
 
@@ -165,6 +168,7 @@ export function LitterPuppyCardsClient({
       if (!selectionState.selectedPuppyIds.has(puppyId)) {
         setActiveAction(null);
         setNamingResult(null);
+        setKennelRunResult(null);
         selectionState.selectPuppy(puppyId);
       }
       return;
@@ -173,6 +177,7 @@ export function LitterPuppyCardsClient({
     if (selectionState.selectedPuppyIds.has(puppyId)) {
       setActiveAction(null);
       setNamingResult(null);
+      setKennelRunResult(null);
       selectionState.deselectPuppy(puppyId);
     }
   }
@@ -187,6 +192,7 @@ export function LitterPuppyCardsClient({
     if (!alreadySelected) {
       setActiveAction(null);
       setNamingResult(null);
+      setKennelRunResult(null);
       selectionState.selectAllManageablePuppies();
     }
   }
@@ -243,6 +249,16 @@ export function LitterPuppyCardsClient({
                   })}
                 </ul>
               ) : null}
+            </section>
+          ) : null}
+          {kennelRunResult ? (
+            <section className="theme-status-success mt-5 rounded-xl px-4 py-3 text-sm" role="status">
+              <p className="font-semibold">Kennel run updated</p>
+              <p>{pluralizePuppies(kennelRunResult.movedCount)} moved to {kennelRunResult.targetRunName ?? "the selected kennel run"}.{kennelRunResult.skipped.length > 0 ? ` ${pluralizePuppies(kennelRunResult.skipped.length)} skipped.` : ""}</p>
+              {kennelRunResult.skipped.length > 0 ? <ul className="mt-2 grid gap-1">{kennelRunResult.skipped.map((skipped) => {
+                const puppy = puppies.find((candidate) => candidate.dogId === skipped.dogId);
+                return <li key={skipped.dogId}>{puppy ? `${puppy.displayName} · ${puppy.regNumber}` : "Puppy"}: {skipped.reason}</li>;
+              })}</ul> : null}
             </section>
           ) : null}
           <section className="theme-card mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
@@ -324,12 +340,17 @@ export function LitterPuppyCardsClient({
               }}
             />
           ) : null}
-          {activeAction === "moveRun" && singleEligiblePuppy ? (
+          {activeAction === "moveRun" && activeActionPartition ? (
             <LitterPuppyKennelRunWorkspace
               litterId={litterId}
-              puppy={singleEligiblePuppy}
+              eligiblePuppies={activeActionPartition.eligiblePuppies}
+              skippedPuppies={activeActionPartition.skippedPuppies}
               onClose={() => setActiveAction(null)}
-              onAuthoritativeRefresh={onAuthoritativeRefresh}
+              onComplete={(result) => {
+                setActiveAction(null);
+                setKennelRunResult(result);
+                onAuthoritativeRefresh();
+              }}
             />
           ) : null}
           {activeAction === "sale" && singleEligiblePuppy ? (

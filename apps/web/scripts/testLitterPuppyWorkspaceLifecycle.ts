@@ -17,19 +17,22 @@ assert.match(client, /onClick=\{\(\) => setActiveAction\("sale"\)\}/, "Sale acti
 assert.match(client, /onClick=\{\(\) => setActiveAction\("rehome"\)\}/, "Re-home action switches the active workspace");
 assert.match(client, /if \(selectedPuppies\.length === 0\) setActiveAction\(null\)/, "clearing or reconciling away the selection closes the active review");
 assert.match(client, /const onAuthoritativeRefresh = useCallback[\s\S]*router\.refresh\(\)/, "parent owns the authoritative refresh convention");
-assert.match(client, /onAuthoritativeRefresh=\{onAuthoritativeRefresh\}/, "every workspace receives the shared refresh callback");
+assert.match(client, /onAuthoritativeRefresh=\{onAuthoritativeRefresh\}/, "legacy single-puppy workspaces receive the shared refresh callback");
+assert.match(client, /onComplete=\{\(result\) => \{[\s\S]*setKennelRunResult\(result\)[\s\S]*onAuthoritativeRefresh\(\)/, "unified Move reports a parent-held result before refreshing");
 assert.match(client, /selectedPuppies\.length === 1/, "single-puppy workspaces cannot target the first member of a multi-selection");
 assert.match(client, /activeActionPartition/, "one active action owns the current selection review");
 
-for (const workspace of [nameWorkspace, runWorkspace, saleWorkspace, rehomeWorkspace]) {
-  assert.match(workspace, /onAuthoritativeRefresh\(\)/, "workspace refreshes authoritative state after success or stale failure");
+for (const workspace of [saleWorkspace, rehomeWorkspace]) {
+  assert.match(workspace, /onAuthoritativeRefresh\(\)/, "legacy workspace refreshes authoritative state after success or stale failure");
   assert.match(workspace, /role="alert"/, "workspace presents expected errors inline");
   assert.match(workspace, /onClose/, "workspace closes through the parent-owned lifecycle");
   assert.match(workspace, /focus-visible:outline/, "workspace controls provide a visible keyboard focus state");
   assert.doesNotMatch(workspace, /alert\(|confirm\(|location\.href|router\.push/i, "workspace does not navigate or use browser dialogs");
 }
 
-assert.match(nameWorkspace, /response\.status === 403 \|\| response\.status === 404 \|\| response\.status === 409/, "stale registered-name conflicts refresh authoritative state");
-assert.match(runWorkspace, /response\.status === 403 \|\| response\.status === 404/, "stale run ownership and destination failures refresh authoritative state");
+for (const workspace of [nameWorkspace, runWorkspace]) {
+  assert.match(workspace, /onComplete/, "unified workspace delegates successful refresh and result display to its parent");
+  assert.match(workspace, /role="alert"/, "unified workspace retains inline errors");
+}
 
 console.log("Litter puppy workspace lifecycle checks passed.");
