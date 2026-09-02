@@ -1,5 +1,7 @@
 # ShowRing Game — Master File vNext
 
+> **Documentation status:** Current design/architecture reference as of the latest repository architecture sweep. Always verify current implementation paths in repository code before modifying them.
+
 ## Document Authority
 
 This Master File is ShowRing's design authority: it defines what the game means, the player promises it makes, and the deliberately chosen rules that future work must preserve. The documents in `docs/ARCHITECTURE/` are implementation authority and reference: they locate the present code, persistence, services, and known architecture risks.
