@@ -23,11 +23,11 @@ assert.match(client, /selectedPuppies\.length > 0/, "shared actions render for o
 assert.match(client, /activeActionPartition\.eligiblePuppies\.length === 0/, "zero eligible actions open an explanatory non-executable review");
 assert.match(client, /Skipped[\s\S]*disabledReason\(puppy\)[\s\S]*This action is not currently available for this puppy\./, "skipped rows show server reasons with a safe presentation fallback");
 assert.match(client, /selectedPuppies\.length === 1[\s\S]*eligiblePuppies\.length === 1/, "only an exactly-one eligible cohort may render a legacy single-puppy workspace");
-assert.match(client, /activeAction === "name" && singleEligiblePuppy/, "Name route stays guarded to one puppy");
+assert.match(client, /activeAction === "name" && activeActionPartition/, "Name routes one or many eligible puppies through the unified workspace");
 assert.match(client, /activeAction === "moveRun" && singleEligiblePuppy/, "Move route stays guarded to one puppy");
 assert.match(client, /activeAction === "sale" && singleEligiblePuppy/, "Sale route stays guarded to one puppy");
 assert.match(client, /activeAction === "rehome" && singleEligiblePuppy/, "Re-home route stays guarded to one puppy");
-assert.doesNotMatch(client, /bulk-|Eligible\/Skipped|actionEligibilityEngine/i, "Stage 4C adds no bulk mutation route or generalized eligibility engine");
+assert.doesNotMatch(client, /Eligible\/Skipped|actionEligibilityEngine/i, "action review adds no generalized eligibility engine");
 assert.doesNotMatch(client, /breederNote|genotype|hidden health|traitHead/, "review receives no private litter or genetic data");
 
 console.log("Litter puppy action selection review checks passed.");
