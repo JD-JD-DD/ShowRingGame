@@ -2,6 +2,7 @@ import {
   canBreed,
   DAM_MAX_BREED_AGE_HOURS,
   MIN_BREED_AGE_HOURS,
+  REPRODUCTIVE_EMERGENCY_EXTENDED_RECOVERY_HOURS,
   type DogStatus,
   type Sex,
   STUD_RECOVERY_HOURS,
@@ -76,7 +77,7 @@ export function getIndividualBreedingEligibility(
   );
   const latestEvent = terminalEvents[0] ?? null;
   const reproductiveRecoveryUntil = latestEvent?.resolvedEpoch != null && latestEvent.reproductiveConsequence !== "PERMANENT_BREEDING_RESTRICTION"
-    ? latestEvent.resolvedEpoch + (latestEvent.reproductiveConsequence === "EXTENDED_RECOVERY" ? 365 : WHELPING_COOLDOWN_HOURS)
+    ? latestEvent.resolvedEpoch + (latestEvent.reproductiveConsequence === "EXTENDED_RECOVERY" ? REPRODUCTIVE_EMERGENCY_EXTENDED_RECOVERY_HOURS : WHELPING_COOLDOWN_HOURS)
     : null;
   const cooldownUntilEpoch = reproductiveRecoveryUntil ?? (
     args.sex === "F" && args.lastWhelpedEpoch != null

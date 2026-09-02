@@ -12,7 +12,7 @@ A finding requires a materially repeated/disputed business rule, durable mutatio
 
 | ID | Concept | Classification | Canonical authority | Other locations | Behavior relationship | Severity | Drift risk | Confidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ARCH-DEBT-001 | Extended reproductive recovery duration | DUPLICATE | lifecycle constant | breeding eligibility literal | EQUIVALENT today | HIGH | HIGH | HIGH |
+| ARCH-DEBT-001 | Extended reproductive recovery duration | RESOLVED (was DUPLICATE) | lifecycle constant | breeding eligibility gate | EQUIVALENT (365 hours) | RESOLVED | RESOLVED | HIGH |
 | ARCH-DEBT-002 | Gameplay balance/ledger mutation authority | UNKNOWN | no universal authority established | feature transaction writers | PARTIALLY OVERLAPPING | CRITICAL | VERY HIGH | HIGH |
 | ARCH-DEBT-003 | Game-year duration used in player age display | DUPLICATE | `SHOW_YEAR_HOURS` | studs/planner local `365` arithmetic | EQUIVALENT today | LOW | MODERATE | HIGH |
 | ARCH-DEBT-004 | Current title display/source of truth | UNKNOWN | title/credit services for progression | Dog visible title/progress fields | UNKNOWN | HIGH | HIGH | MEDIUM |
@@ -25,7 +25,7 @@ A finding requires a materially repeated/disputed business rule, durable mutatio
 | Search area | Result |
 | --- | --- |
 | Show eligibility; judging recheck; dog/planner UI | no meaningful finding; entry and judging are protected variants |
-| Breeding eligibility; post-whelp recovery | ARCH-DEBT-001; other biological/contract distinctions are variants |
+| Breeding eligibility; post-whelp recovery | ARCH-DEBT-001 resolved; other biological/contract distinctions are variants |
 | Dog age/lifecycle; clock/calendar | ARCH-DEBT-003; local age display is otherwise presentation or event-time variant |
 | Visible categories; health labels/eligibility | no confirmed competing business rule; display/judging and phenotype/brucellosis differ intentionally |
 | Grooming; market; ownership; kennel runs/bulk actions | no confirmed semantic divergence; action-stage variants retained |
@@ -42,7 +42,7 @@ A finding requires a materially repeated/disputed business rule, durable mutatio
 
 ### Classification
 
-`REPRODUCTIVE_EMERGENCY_EXTENDED_RECOVERY_HOURS` in rules is **CANONICAL** for the named simulation duration; the literal `365` in breeding eligibility is a **DUPLICATE** semantic implementation.
+**RESOLVED (formerly DUPLICATE).** `REPRODUCTIVE_EMERGENCY_EXTENDED_RECOVERY_HOURS` is the canonical named simulation duration and the breeding eligibility gate now consumes it directly.
 
 ### Owning domain
 
@@ -59,15 +59,15 @@ The duration of extended reproductive recovery after a resolved reproductive eme
 ### Occurrences
 
 - **Location:** `packages/rules/constants/lifecycle.constants.ts`; **function/service:** named constant; **purpose:** defines 365-hour extended recovery; **classification:** CANONICAL; **inputs/outputs:** no runtime inputs → duration; **role:** rule input; **evidence:** named lifecycle constant.
-- **Location:** `apps/web/server/services/breedingEligibility.service.ts`; **function/service:** `getIndividualBreedingEligibility`; **purpose:** computes next eligible epoch; **classification:** DUPLICATE; **inputs/outputs:** reproductive consequence/resolved epoch → recovery eligibility; **role:** authoritative server validation; **evidence:** inline `365` when consequence is `EXTENDED_RECOVERY`.
+- **Location:** `apps/web/server/services/breedingEligibility.service.ts`; **function/service:** `getIndividualBreedingEligibility`; **purpose:** computes next eligible epoch; **classification:** CANONICAL CONSUMER; **inputs/outputs:** reproductive consequence/resolved epoch + named lifecycle duration → recovery eligibility; **role:** authoritative server validation; **evidence:** consumes `REPRODUCTIVE_EMERGENCY_EXTENDED_RECOVERY_HOURS` for `EXTENDED_RECOVERY`.
 
 ### Behavior comparison
 
-**EQUIVALENT** today: both represent 365 game hours, but they can drift independently if the rule changes.
+**EQUIVALENT:** behavior remains 365 game hours. The independent literal no longer exists in this eligibility gate.
 
 ### Intent analysis
 
-**UNKNOWN**; no evidence establishes that the literal intentionally differs from the named constant.
+Canonicalization confirmed: the gate consumes the existing named lifecycle rule.
 
 ### Current consumers
 
@@ -83,19 +83,19 @@ Could incorrectly permit or deny breeding after an extended recovery rule change
 
 ### Severity
 
-HIGH.
+RESOLVED (former HIGH).
 
 ### Drift risk
 
-HIGH.
+RESOLVED.
 
 ### Test coverage
 
-Breeding eligibility/reproductive emergency scripts cover behavior; coverage of synchronization between the named constant and literal is **UNKNOWN**.
+`apps/web/scripts/testReproductiveEmergencyEligibility.ts` derives both extended-recovery boundary assertions from the named constant.
 
 ### Evidence
 
-Rules lifecycle constants and breeding eligibility source; Stage 4 identified the same helper as the current biological gate.
+Rules lifecycle constants, breeding eligibility source, and focused boundary regression.
 
 ### Confidence
 
@@ -103,7 +103,7 @@ HIGH.
 
 ### Later-stage question
 
-Should the server eligibility gate consume the named extended-recovery constant, or is a distinct duration intentional?
+Resolved: the server eligibility gate consumes the named lifecycle constant.
 
 ## ARCH-DEBT-002 — Gameplay Balance and Ledger Mutation Authority
 
@@ -547,7 +547,8 @@ Which historical screens or reports still intentionally consume PLAYER_STUD link
 
 | Classification | Count |
 | --- | --- |
-| DUPLICATE | 2 |
+| RESOLVED (former DUPLICATE) | 1 |
+| DUPLICATE | 1 |
 | UNKNOWN | 3 |
 | LEGACY | 1 |
 | DIVERGENT | 0 |
@@ -561,13 +562,14 @@ Which historical screens or reports still intentionally consume PLAYER_STUD link
 | MEDIUM | 2 |
 | LOW | 1 |
 | INFO | 1 |
+| RESOLVED (former HIGH) | 1 |
 
 ### Counts by owning domain
 
 | Domain | Findings |
 | --- | --- |
 | Economy & Ledger | 1 |
-| Breeding / Health & Care / Lifecycle | 1 |
+| Breeding / Health & Care / Lifecycle | 1 (resolved) |
 | Calendar / Dogs | 1 |
 | Championships / Dogs | 1 |
 | Support / Community | 1 |
@@ -577,7 +579,6 @@ Which historical screens or reports still intentionally consume PLAYER_STUD link
 ### Highest-risk findings
 
 - **ARCH-DEBT-002:** feature-local balance writers can drift in financial history/transaction invariants because no shared authority is established.
-- **ARCH-DEBT-001:** extended recovery literal can diverge from the named rule and allow/deny a major breeding action.
 - **ARCH-DEBT-004:** title display/cache authority is unresolved across historical and current title state.
 
 ### Broadest drift surfaces
