@@ -14,6 +14,5 @@ assert.match(card, /puppy\.isManageableByBreeder \?/, "only structurally managea
 assert.match(card, /type="checkbox"/, "selection uses a semantic checkbox");
 assert.match(card, /aria-label=\{`Select Puppy/, "checkbox has puppy-specific accessible text");
 assert.doesNotMatch(card, /canListForSale|canRehome|canMoveRun|canName/, "puppy cards do not render action controls");
-assert.doesNotMatch(client, /Re-home/, "future action buttons remain absent until functional");
 
 console.log("Litter single-puppy selection checks passed.");

@@ -6,6 +6,7 @@ import type { LitterPuppyDto } from "@/server/mappers/litter.mapper";
 import { LitterPuppyCard } from "@/components/litters/LitterPuppyCard";
 import { LitterPuppyKennelRunWorkspace } from "@/components/litters/LitterPuppyKennelRunWorkspace";
 import { LitterPuppyNameWorkspace } from "@/components/litters/LitterPuppyNameWorkspace";
+import { LitterPuppyRehomeWorkspace } from "@/components/litters/LitterPuppyRehomeWorkspace";
 import { LitterPuppySaleWorkspace } from "@/components/litters/LitterPuppySaleWorkspace";
 
 type PuppySelectionItem = Pick<
@@ -84,7 +85,7 @@ export function LitterPuppyCardsClient({
   const selectedPuppyId = [...selectionState.selectedPuppyIds][0] ?? null;
   const selectedPuppy =
     puppies.find((puppy) => puppy.dogId === selectedPuppyId) ?? null;
-  const [activeAction, setActiveAction] = useState<"name" | "moveRun" | "sale" | null>(null);
+  const [activeAction, setActiveAction] = useState<"name" | "moveRun" | "sale" | "rehome" | null>(null);
 
   function clearSelection() {
     setActiveAction(null);
@@ -146,6 +147,14 @@ export function LitterPuppyCardsClient({
               </button>
               <button
                 type="button"
+                onClick={() => setActiveAction("rehome")}
+                disabled={!selectedPuppy.actionEligibility.canRehome}
+                className="theme-status-danger rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
+              >
+                Re-home
+              </button>
+              <button
+                type="button"
                 onClick={clearSelection}
                 className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
               >
@@ -170,6 +179,12 @@ export function LitterPuppyCardsClient({
                 {selectedPuppy.actionEligibility.saleDisabledReason}
               </p>
             ) : null}
+            {!selectedPuppy.actionEligibility.canRehome &&
+            selectedPuppy.actionEligibility.rehomeDisabledReason ? (
+              <p className="theme-status-danger basis-full rounded-xl px-3 py-2 text-sm">
+                {selectedPuppy.actionEligibility.rehomeDisabledReason}
+              </p>
+            ) : null}
           </section>
 
           {activeAction === "name" ? (
@@ -188,6 +203,13 @@ export function LitterPuppyCardsClient({
           ) : null}
           {activeAction === "sale" ? (
             <LitterPuppySaleWorkspace
+              litterId={litterId}
+              puppy={selectedPuppy}
+              onClose={() => setActiveAction(null)}
+            />
+          ) : null}
+          {activeAction === "rehome" ? (
+            <LitterPuppyRehomeWorkspace
               litterId={litterId}
               puppy={selectedPuppy}
               onClose={() => setActiveAction(null)}

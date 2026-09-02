@@ -12,7 +12,6 @@ assert.match(client, /Move Kennel Run/, "Move Kennel Run is available in the sha
 assert.match(client, /disabled=\{!selectedPuppy\.actionEligibility\.canMoveRun\}/, "move availability is server-authoritative");
 assert.match(client, /moveRunDisabledReason/, "unavailable moves visibly explain the server reason");
 assert.match(client, /<LitterPuppyKennelRunWorkspace/, "Move opens an inline workspace");
-assert.doesNotMatch(client, /Re-home/, "Re-home remains absent");
 
 assert.match(workspace, /fetch\("\/api\/kennel\/runs"/, "destination runs load on demand from the canonical endpoint");
 assert.match(workspace, /Current kennel run/, "current run is clearly displayed");

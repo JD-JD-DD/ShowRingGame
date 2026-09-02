@@ -12,7 +12,6 @@ assert.match(client, /Put Up for Sale/, "sale action is visible in the shared ac
 assert.match(client, /disabled=\{!selectedPuppy\.actionEligibility\.canListForSale\}/, "sale availability is server-authoritative");
 assert.match(client, /saleDisabledReason/, "sale unavailability visibly uses the server reason");
 assert.match(client, /<LitterPuppySaleWorkspace/, "sale action opens an inline workspace");
-assert.doesNotMatch(client, /Re-home/, "Re-home remains absent");
 
 assert.match(workspace, /Sale price/, "workspace exposes the canonical price field");
 assert.match(workspace, /min=\{1\}/, "price has canonical minimum UI assistance");

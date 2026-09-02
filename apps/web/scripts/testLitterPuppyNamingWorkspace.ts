@@ -15,7 +15,6 @@ assert.match(client, /activeAction.*"name" \| null/, "one extensible naming work
 assert.match(client, /disabled=\{!selectedPuppy\.actionEligibility\.canName\}/, "Name availability is server-authoritative");
 assert.match(client, /nameDisabledReason/, "unavailable naming explains its server-provided reason");
 assert.match(client, /<LitterPuppyNameWorkspace/, "Name opens only in the post-grid action seam");
-assert.doesNotMatch(client, /Re-home/, "unimplemented future actions are not rendered");
 assert.match(client, /setActiveAction\(null\)[\s\S]*clearSelection/, "clearing selection closes and discards the workspace");
 assert.match(client, /selectedPuppyId !== puppyId\) setActiveAction\(null\)/, "switching puppies closes the prior workspace");
 
