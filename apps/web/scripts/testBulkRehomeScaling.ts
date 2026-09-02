@@ -14,10 +14,13 @@ function createRehomeClient(size: number, blocked: CareKind = "none") {
     birthEpoch: 50,
     lifecycleState: "ALIVE",
     kennelRunId: index % 2 === 0 ? "litter-run" : null,
+    litterId: "litter-1",
+    sex: index % 2 === 0 ? "M" : "F",
     ownerKennelId: "kennel-1" as string | null,
   }));
   const state = {
-    ordinaryQueries: 0, reproductiveQueries: 0, listingUpdates: 0,
+    ordinaryQueries: 0, reproductiveQueries: 0, studProtectionQueries: 0,
+    breedingConflictQueries: 0, listingUpdates: 0,
     dogUpdates: 0, runDeletes: 0, kennelUpdates: 0,
     returnServiceUpdates: 0,
     ledgerRows: [] as Array<{ dogId: string; amount: number }>,
@@ -33,9 +36,13 @@ function createRehomeClient(size: number, blocked: CareKind = "none") {
       async findMany() {
         return dogs.map((dog) => ({
           id: dog.id,
+          ownerKennelId: dog.ownerKennelId,
+          isPlayerVisible: true,
           birthEpoch: dog.birthEpoch,
           lifecycleState: dog.lifecycleState,
           kennelRunId: dog.kennelRunId,
+          litterId: dog.litterId,
+          sex: dog.sex,
         }));
       },
       async updateMany(args: { data: { ownerKennelId: null; lifecycleState: string } }) {
@@ -60,7 +67,18 @@ function createRehomeClient(size: number, blocked: CareKind = "none") {
         return blocked === "reproductive" ? [{ damId: "dog-0" }] : [];
       },
     },
-    breedingAttempt: { async findFirst() { return null; } },
+    breedingAttempt: {
+      async findMany() {
+        state.breedingConflictQueries += 1;
+        return [];
+      },
+    },
+    studContractPuppySelection: {
+      async findMany() {
+        state.studProtectionQueries += 1;
+        return [];
+      },
+    },
     dogListing: {
       async updateMany() { state.listingUpdates += 1; return { count: size }; },
     },
@@ -111,6 +129,8 @@ async function checkSuccessfulBatch(size: number, duplicateFirstId = false) {
   assert.equal(result.dogIds.length, size, "duplicate IDs do not increase payout");
   assert.equal(state.ordinaryQueries, 1);
   assert.equal(state.reproductiveQueries, 1);
+  assert.equal(state.studProtectionQueries, 1);
+  assert.equal(state.breedingConflictQueries, 1);
   assert.equal(state.listingUpdates, 1);
   assert.equal(state.dogUpdates, 1);
   assert.equal(state.returnServiceUpdates, 2, "return-service cleanup stays constant regardless of batch size");
@@ -144,6 +164,8 @@ async function checkBlockedBatch(blocked: Exclude<CareKind, "none">) {
 
 async function main() {
   await checkSuccessfulBatch(1);
+  await checkSuccessfulBatch(10);
+  await checkSuccessfulBatch(11);
   await checkSuccessfulBatch(30);
   await checkSuccessfulBatch(100);
   await checkSuccessfulBatch(200);
@@ -155,8 +177,10 @@ async function main() {
   const returnService = readFileSync("server/services/studContractReturnService.service.ts", "utf8");
   const kennelRuns = readFileSync("server/services/kennelRun.service.ts", "utf8");
   const route = readFileSync("app/api/dogs/bulk-rehome/route.ts", "utf8");
-  assert.match(rehome, /hasPendingVeterinaryCareForDogs\(dogIds, tx\)/);
-  assert.doesNotMatch(rehome, /for \(const dogId of dogIds\)[\s\S]{0,160}assertDogHasNoPendingVeterinaryCare/);
+  assert.match(rehome, /getDogIdsWithPendingVeterinaryCare\(dogIds, tx\)/);
+  assert.match(rehome, /getStudContractPuppyProtectionsForDogs\(\{ dogs, client: tx \}\)/);
+  assert.match(rehome, /tx\.breedingAttempt\.findMany/);
+  assert.doesNotMatch(rehome, /for \(const dogId of dogIds\)[\s\S]{0,160}getDogRehomeEligibility/);
   assert.match(rehome, /dogListing\.updateMany/);
   assert.match(rehome, /dog\.updateMany/);
   assert.match(rehome, /deleteEmptyLitterRuns/);
@@ -167,7 +191,7 @@ async function main() {
   assert.match(kennelRuns, /kennelRun\.deleteMany/);
   assert.match(route, /error instanceof RehomeError/);
   assert.doesNotMatch(route, /error instanceof Error\s*\? error\.message/);
-  console.log("Bulk re-home scaling checks passed for 1, 30, 100, and 200 dogs.");
+  console.log("Bulk re-home scaling checks passed for 1, 10, 11, 30, 100, and 200 dogs.");
 }
 
 void main();
