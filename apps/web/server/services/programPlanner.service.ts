@@ -6,6 +6,7 @@ import {
   MIN_SHOW_AGE_HOURS,
   PHENOTYPE_HEALTH_TEST_CODES,
   PHENOTYPE_HEALTH_TESTS,
+  SHOW_YEAR_HOURS,
 } from "@showring/rules";
 import {
   getBreedingEligibilityMessage,
@@ -147,8 +148,8 @@ function average(values: number[]) {
 }
 
 function formatAge(ageHours: number) {
-  const years = Math.floor(ageHours / 365);
-  const weeks = Math.floor((ageHours % 365) / 7);
+  const years = Math.floor(ageHours / SHOW_YEAR_HOURS);
+  const weeks = Math.floor((ageHours % SHOW_YEAR_HOURS) / 7);
 
   if (years > 0) {
     return `${years} yr${years === 1 ? "" : "s"} ${weeks} wk${

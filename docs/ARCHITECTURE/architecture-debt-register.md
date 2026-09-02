@@ -14,7 +14,7 @@ A finding requires a materially repeated/disputed business rule, durable mutatio
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ARCH-DEBT-001 | Extended reproductive recovery duration | RESOLVED (was DUPLICATE) | lifecycle constant | breeding eligibility gate | EQUIVALENT (365 hours) | RESOLVED | RESOLVED | HIGH |
 | ARCH-DEBT-002 | Gameplay balance/ledger mutation authority | UNKNOWN | no universal authority established | feature transaction writers | PARTIALLY OVERLAPPING | CRITICAL | VERY HIGH | HIGH |
-| ARCH-DEBT-003 | Game-year duration used in player age display | DUPLICATE | `SHOW_YEAR_HOURS` | studs/planner local `365` arithmetic | EQUIVALENT today | LOW | MODERATE | HIGH |
+| ARCH-DEBT-003 | Game-year duration used in player age display | RESOLVED (was DUPLICATE) | `SHOW_YEAR_HOURS` | studs/planner age presentation | EQUIVALENT (365 hours) | RESOLVED | RESOLVED | HIGH |
 | ARCH-DEBT-004 | Current title display/source of truth | UNKNOWN | title/credit services for progression | Dog visible title/progress fields | UNKNOWN | HIGH | HIGH | MEDIUM |
 | ARCH-DEBT-005 | Current support subscription bulk selection | UNKNOWN | `getCanonicalSupportSubscription` | community bulk resolver | PARTIALLY OVERLAPPING | MEDIUM | HIGH | MEDIUM |
 | ARCH-DEBT-006 | Dog/show complex read authority | UNKNOWN | no single path established | services/mappers/direct server Prisma | PARTIALLY OVERLAPPING | MEDIUM | HIGH | HIGH |
@@ -26,7 +26,7 @@ A finding requires a materially repeated/disputed business rule, durable mutatio
 | --- | --- |
 | Show eligibility; judging recheck; dog/planner UI | no meaningful finding; entry and judging are protected variants |
 | Breeding eligibility; post-whelp recovery | ARCH-DEBT-001 resolved; other biological/contract distinctions are variants |
-| Dog age/lifecycle; clock/calendar | ARCH-DEBT-003; local age display is otherwise presentation or event-time variant |
+| Dog age/lifecycle; clock/calendar | ARCH-DEBT-003 resolved; remaining age display is presentation or event-time variant |
 | Visible categories; health labels/eligibility | no confirmed competing business rule; display/judging and phenotype/brucellosis differ intentionally |
 | Grooming; market; ownership; kennel runs/bulk actions | no confirmed semantic divergence; action-stage variants retained |
 | Balance/ledger; entry cost | ARCH-DEBT-002; no independent UI cost calculation confirmed |
@@ -178,7 +178,7 @@ What common balance/ledger invariants, if any, do all current gameplay money wri
 
 ### Classification
 
-`SHOW_YEAR_HOURS` is **CANONICAL** for named game-year duration; local `365` age arithmetic is a **DUPLICATE** presentation implementation.
+**RESOLVED (formerly DUPLICATE).** `SHOW_YEAR_HOURS` is the canonical named game-year duration, and both player age-label surfaces consume it directly.
 
 ### Owning domain
 
@@ -195,16 +195,16 @@ Converting dog age hours into game years/days or game years/weeks for player dis
 ### Occurrences
 
 - **Location:** rules time constants; **function/service:** `SHOW_YEAR_HOURS`; **purpose:** named 365-hour game year; **classification:** CANONICAL; **role:** rule constant.
-- **Location:** `app/studs/page.tsx`; **function/component:** `ageLabel`; **purpose:** player age years/days; **classification:** DUPLICATE/PRESENTATION; **inputs/outputs:** age hours → label; **evidence:** local divide/modulo `365`.
-- **Location:** `programPlanner.service.ts`; **function/service:** local age label; **purpose:** planner years/weeks; **classification:** DUPLICATE/PRESENTATION; **evidence:** local divide/modulo `365` and `7`.
+- **Location:** `app/studs/page.tsx`; **function/component:** `ageLabel`; **purpose:** player age years/days; **classification:** CANONICAL CONSUMER/PRESENTATION; **inputs/outputs:** age hours → label; **evidence:** divide/modulo `SHOW_YEAR_HOURS`.
+- **Location:** `programPlanner.service.ts`; **function/service:** local age label; **purpose:** planner years/weeks; **classification:** CANONICAL CONSUMER/PRESENTATION; **evidence:** divide/modulo `SHOW_YEAR_HOURS` and `7`.
 
 ### Behavior comparison
 
-**EQUIVALENT** today. The formats intentionally differ (days versus weeks); the duration literal is the shared drift surface.
+**EQUIVALENT (365 hours).** The formats intentionally differ (days versus weeks) and remain format-specific; their shared duration now has one authority.
 
 ### Intent analysis
 
-Presentation format variance is intentional; literal copying is not explained.
+Presentation format variance is intentional; the duration literal is now canonicalized.
 
 ### Current consumers
 
@@ -220,19 +220,19 @@ Could display an incorrect game age if the calendar duration changes.
 
 ### Severity
 
-LOW.
+RESOLVED (former LOW).
 
 ### Drift risk
 
-MODERATE.
+RESOLVED.
 
 ### Test coverage
 
-`testGameTimeFormat` exists; coverage for these local labels against `SHOW_YEAR_HOURS` is **UNKNOWN**.
+`testGameTimeFormat` verifies both source consumers and below/exact/after-year boundaries while retaining days versus weeks.
 
 ### Evidence
 
-Rules time constant and direct literal searches in player/planner code.
+Rules time constant, direct source imports, focused game-time format regression, and target literal search.
 
 ### Confidence
 
@@ -240,7 +240,7 @@ HIGH.
 
 ### Later-stage question
 
-Should player age-label surfaces consume a shared duration/helper while retaining format-specific output?
+RESOLVED: retain format-specific output while consuming the shared duration constant.
 
 ## ARCH-DEBT-004 — Dog Title Display Source of Truth
 
@@ -547,8 +547,8 @@ Which historical screens or reports still intentionally consume PLAYER_STUD link
 
 | Classification | Count |
 | --- | --- |
-| RESOLVED (former DUPLICATE) | 1 |
-| DUPLICATE | 1 |
+| RESOLVED (former DUPLICATE) | 2 |
+| DUPLICATE | 0 |
 | UNKNOWN | 3 |
 | LEGACY | 1 |
 | DIVERGENT | 0 |
@@ -560,9 +560,10 @@ Which historical screens or reports still intentionally consume PLAYER_STUD link
 | CRITICAL | 1 |
 | HIGH | 2 |
 | MEDIUM | 2 |
-| LOW | 1 |
+| LOW | 0 |
 | INFO | 1 |
 | RESOLVED (former HIGH) | 1 |
+| RESOLVED (former LOW) | 1 |
 
 ### Counts by owning domain
 
@@ -570,7 +571,7 @@ Which historical screens or reports still intentionally consume PLAYER_STUD link
 | --- | --- |
 | Economy & Ledger | 1 |
 | Breeding / Health & Care / Lifecycle | 1 (resolved) |
-| Calendar / Dogs | 1 |
+| Calendar / Dogs | 1 (resolved) |
 | Championships / Dogs | 1 |
 | Support / Community | 1 |
 | Dogs / Showing | 1 |

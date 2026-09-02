@@ -1,4 +1,8 @@
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { SHOW_YEAR_HOURS } from "@showring/rules";
 
 import {
   formatDogAge,
@@ -9,6 +13,49 @@ import {
   formatShortCountdownHours,
   formatUtcDateTime,
 } from "../lib/gameTimeFormat";
+
+const studiesPageSource = readFileSync(
+  join(process.cwd(), "app/studs/page.tsx"),
+  "utf8"
+);
+const programPlannerSource = readFileSync(
+  join(process.cwd(), "server/services/programPlanner.service.ts"),
+  "utf8"
+);
+
+const formatStudAge = (ageHours: number) => {
+  const years = Math.floor(ageHours / SHOW_YEAR_HOURS);
+  const days = ageHours % SHOW_YEAR_HOURS;
+  return years <= 0 ? `${days} days` : `${years}y ${days}d`;
+};
+const formatPlannerAge = (ageHours: number) => {
+  const years = Math.floor(ageHours / SHOW_YEAR_HOURS);
+  const weeks = Math.floor((ageHours % SHOW_YEAR_HOURS) / 7);
+  return years > 0
+    ? `${years} yr${years === 1 ? "" : "s"} ${weeks} wk${
+        weeks === 1 ? "" : "s"
+      }`
+    : `${weeks} wk${weeks === 1 ? "" : "s"}`;
+};
+
+assert.match(studiesPageSource, /import\s*\{\s*SHOW_YEAR_HOURS\s*\}\s*from\s*["']@showring\/rules["']/);
+assert.match(studiesPageSource, /Math\.floor\(ageHours \/ SHOW_YEAR_HOURS\)/);
+assert.match(studiesPageSource, /ageHours % SHOW_YEAR_HOURS/);
+assert.match(programPlannerSource, /SHOW_YEAR_HOURS,\s*\}\s*from\s*["']@showring\/rules["']/);
+assert.match(programPlannerSource, /Math\.floor\(ageHours \/ SHOW_YEAR_HOURS\)/);
+assert.match(programPlannerSource, /ageHours % SHOW_YEAR_HOURS/);
+assert.doesNotMatch(studiesPageSource, /(?:\/|%)\s*365/);
+assert.doesNotMatch(programPlannerSource, /(?:\/|%)\s*365/);
+assert.deepEqual(
+  [SHOW_YEAR_HOURS - 1, SHOW_YEAR_HOURS, SHOW_YEAR_HOURS + 2].map(formatStudAge),
+  ["364 days", "1y 0d", "1y 2d"],
+  "stud age labels retain years and days at the canonical game-year boundary"
+);
+assert.deepEqual(
+  [SHOW_YEAR_HOURS - 1, SHOW_YEAR_HOURS, SHOW_YEAR_HOURS + 14].map(formatPlannerAge),
+  ["52 wks", "1 yr 0 wks", "1 yr 2 wks"],
+  "planner age labels retain years and weeks at the canonical game-year boundary"
+);
 
 const boundaryHours = [-1, 0, 1, 6, 7, 23, 24, 25, 168, 365, 730];
 

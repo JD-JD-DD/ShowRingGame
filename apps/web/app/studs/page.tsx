@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { SHOW_YEAR_HOURS } from "@showring/rules";
 
 import {
   BreedSelectOptions,
@@ -53,8 +54,8 @@ function firstQueryValue(value: string | string[] | undefined): string | null {
 }
 
 function ageLabel(ageHours: number) {
-  const years = Math.floor(ageHours / 365);
-  const days = ageHours % 365;
+  const years = Math.floor(ageHours / SHOW_YEAR_HOURS);
+  const days = ageHours % SHOW_YEAR_HOURS;
 
   if (years <= 0) return `${days} days`;
   return `${years}y ${days}d`;
