@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:game-time-format": "tsx scripts/testGameTimeFormat.ts",
+    "test:architecture-guardrails": "tsx scripts/testArchitectureGuardrails.ts",
     "test:dog-action-windows": "tsx scripts/testDogActionWindows.ts",
     "test:grooming-decay-noop-catchup": "tsx scripts/testGroomingDecayNoopCatchup.ts",
     "test:grooming-eligibility": "tsx scripts/testGroomingEligibility.ts",
