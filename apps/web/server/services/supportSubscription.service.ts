@@ -115,8 +115,22 @@ type CanonicalSubscription = {
   currentPaidPeriodEnd?: Date | null;
 };
 
+/** Pure current-state interpretation for already-loaded Support rows. */
+export function isCurrentSupportSubscriptionAt(
+  subscription: Pick<CanonicalSubscription, "status" | "currentPaidPeriodEnd">,
+  now = new Date()
+): boolean {
+  return (
+    subscription.status !== "CANCELLATION_SCHEDULED" ||
+    Boolean(
+      subscription.currentPaidPeriodEnd &&
+        subscription.currentPaidPeriodEnd > now
+    )
+  );
+}
+
 async function finalizeElapsedCancellation(database: any, subscription: CanonicalSubscription): Promise<boolean> {
-  if (subscription.status !== "CANCELLATION_SCHEDULED" || !subscription.currentPaidPeriodEnd || subscription.currentPaidPeriodEnd > new Date()) return false;
+  if (isCurrentSupportSubscriptionAt(subscription)) return false;
   await database.$transaction(async (tx: any) => {
     const fresh = await tx.supportSubscription.findUnique({ where: { id: subscription.id }, include: { tierPeriods: { where: { endedAt: null } } } });
     if (!fresh || fresh.status !== "CANCELLATION_SCHEDULED" || !fresh.currentPaidPeriodEnd || fresh.currentPaidPeriodEnd > new Date()) return;

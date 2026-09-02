@@ -12,13 +12,13 @@ A finding requires a materially repeated/disputed business rule, durable mutatio
 
 | ID | Concept | Classification | Canonical authority | Other locations | Behavior relationship | Severity | Drift risk | Confidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ARCH-DEBT-001 | Extended reproductive recovery duration | RESOLVED (was DUPLICATE) | lifecycle constant | breeding eligibility gate | EQUIVALENT (365 hours) | RESOLVED | RESOLVED | HIGH |
-| ARCH-DEBT-002 | Gameplay balance/ledger mutation authority | UNKNOWN | no universal authority established | feature transaction writers | PARTIALLY OVERLAPPING | CRITICAL | VERY HIGH | HIGH |
-| ARCH-DEBT-003 | Game-year duration used in player age display | RESOLVED (was DUPLICATE) | `SHOW_YEAR_HOURS` | studs/planner age presentation | EQUIVALENT (365 hours) | RESOLVED | RESOLVED | HIGH |
-| ARCH-DEBT-004 | Current title display/source of truth | UNKNOWN | title/credit services for progression | Dog visible title/progress fields | UNKNOWN | HIGH | HIGH | MEDIUM |
-| ARCH-DEBT-005 | Current support subscription bulk selection | UNKNOWN | `getCanonicalSupportSubscription` | community bulk resolver | PARTIALLY OVERLAPPING | MEDIUM | HIGH | MEDIUM |
-| ARCH-DEBT-006 | Dog/show complex read authority | UNKNOWN | no single path established | services/mappers/direct server Prisma | PARTIALLY OVERLAPPING | MEDIUM | HIGH | HIGH |
-| ARCH-DEBT-007 | PLAYER_STUD historical linkage | LEGACY | StudOffer/StudContract services | retained listing/attempt linkage | INTENTIONALLY DIFFERENT | INFO | LOW | HIGH |
+| ARCH-DEBT-001 | Extended reproductive recovery duration | RESOLVED — CANONICALIZED (was DUPLICATE) | lifecycle constant | breeding eligibility gate | EQUIVALENT (365 hours) | RESOLVED | RESOLVED | HIGH |
+| ARCH-DEBT-002 | Gameplay balance/ledger mutation authority | OPEN — BOUNDED ARCHITECTURE QUESTION (was UNKNOWN) | established invariants; no universal writer | feature transaction writers | INTENTIONAL DOMAIN VARIANTS | CRITICAL | VERY HIGH | HIGH |
+| ARCH-DEBT-003 | Game-year duration used in player age display | RESOLVED — CANONICALIZED (was DUPLICATE) | `SHOW_YEAR_HOURS` | studs/planner age presentation | EQUIVALENT (365 hours) | RESOLVED | RESOLVED | HIGH |
+| ARCH-DEBT-004 | Current title display/source of truth | OPEN — BOUNDED ARCHITECTURE QUESTION (was UNKNOWN) | current title progress, historical awards/credits, presentation mirror | Dog visible title/progress fields | ESTABLISHED WITH BOUNDED QUESTIONS | HIGH | HIGH | HIGH |
+| ARCH-DEBT-005 | Current support subscription bulk selection | RESOLVED — CANONICALIZED (was UNKNOWN) | Support current-state predicate | Community batched presentation resolver | EQUIVALENT (read-only batch) | RESOLVED | RESOLVED | HIGH |
+| ARCH-DEBT-006 | Dog/show complex read authority | RESOLVED — NO CANONICALIZATION REQUIRED (was UNKNOWN) | established field contracts; no universal read authority required | services/mappers/direct server Prisma | INTENTIONAL VARIANTS | RESOLVED | RESOLVED | HIGH |
+| ARCH-DEBT-007 | PLAYER_STUD historical linkage | LEGACY — PRESERVE / DO NOT EXTEND | StudOffer/StudContract services | retained listing/attempt linkage | INTENTIONALLY DIFFERENT | INFO | LOW | HIGH |
 
 ## 4. Search Coverage
 
@@ -31,7 +31,7 @@ A finding requires a materially repeated/disputed business rule, durable mutatio
 | Grooming; market; ownership; kennel runs/bulk actions | no confirmed semantic divergence; action-stage variants retained |
 | Balance/ledger; entry cost | ARCH-DEBT-002; no independent UI cost calculation confirmed |
 | Points, titles, prestige, show finalization | ARCH-DEBT-004; no second production finalizer found |
-| Support selector/badge | ARCH-DEBT-005; badge remains presentation-only |
+| Support selector/badge | ARCH-DEBT-005 resolved; badge remains presentation-only |
 | Stud contracts | ARCH-DEBT-007; legacy retained, not current authority |
 | Scheduled progression/idempotency | no same-operation competing progression writer confirmed |
 | Community enrichment; unread state | no debt; batch enrichment and notice/conversation counts are distinct variants |
@@ -42,7 +42,7 @@ A finding requires a materially repeated/disputed business rule, durable mutatio
 
 ### Classification
 
-**RESOLVED (formerly DUPLICATE).** `REPRODUCTIVE_EMERGENCY_EXTENDED_RECOVERY_HOURS` is the canonical named simulation duration and the breeding eligibility gate now consumes it directly.
+**Status: RESOLVED — CANONICALIZED.** **Original classification: DUPLICATE.** `REPRODUCTIVE_EMERGENCY_EXTENDED_RECOVERY_HOURS` is the canonical named simulation duration and the breeding eligibility gate now consumes it directly.
 
 ### Owning domain
 
@@ -109,7 +109,7 @@ Resolved: the server eligibility gate consumes the named lifecycle constant.
 
 ### Classification
 
-**UNKNOWN**. Feature-local writers are current production authorities for their own operations, but no universal balance/ledger authority or complete ledger invariant was established.
+**Status: OPEN — BOUNDED ARCHITECTURE QUESTION.** **Original classification: UNKNOWN.** Feature-local writers remain current production authorities. Stage 10 established signed per-kennel ledger amounts, logical post-effect `balanceAfter`, normal business/balance/ledger co-persistence, paired player transfers, recipient-only faucets, and payer-only sinks; it did not establish one universal writer, idempotency mechanism, or balance assertion abstraction.
 
 ### Owning domain
 
@@ -121,7 +121,7 @@ The shared responsibility for mutating `Kennel.balance`, calculating `balanceAft
 
 ### Canonical authority
 
-No single canonical helper/service established. Feature transaction services are authoritative for their local mutation: show entry, health, market/foundation purchase, breeding, grooming, care, rehome, kennel service, and repair paths.
+No universal helper/service is established or required by current evidence. Feature transaction services are authoritative for their local mutation and must preserve the documented accounting invariants.
 
 ### Occurrences
 
@@ -172,13 +172,13 @@ HIGH for writer spread; MEDIUM for any assertion about individual ledger omissio
 
 ### Later-stage question
 
-What common balance/ledger invariants, if any, do all current gameplay money writers intentionally share?
+Future feature work should preserve established accounting invariants and address a demonstrated inconsistency locally; it does not authorize a universal Economy/Ledger writer, universal idempotency mechanism, or universal `balanceAfter` assertion layer.
 
 ## ARCH-DEBT-003 — Game-Year Duration in Player Age Presentation
 
 ### Classification
 
-**RESOLVED (formerly DUPLICATE).** `SHOW_YEAR_HOURS` is the canonical named game-year duration, and both player age-label surfaces consume it directly.
+**Status: RESOLVED — CANONICALIZED.** **Original classification: DUPLICATE.** `SHOW_YEAR_HOURS` is the canonical named game-year duration, and both player age-label surfaces consume it directly.
 
 ### Owning domain
 
@@ -246,7 +246,7 @@ RESOLVED: retain format-specific output while consuming the shared duration cons
 
 ### Classification
 
-**UNKNOWN**.
+**Status: OPEN — BOUNDED ARCHITECTURE QUESTION.** **Original classification: UNKNOWN.** Current semantic CH/GCH authority, historical award/credit authority, the synchronized prefix presentation mirror, and compatibility fallbacks are established. Remaining questions are limited to legacy reconciliation, completion metadata, historical current-name presentation, and producer suffix scope.
 
 ### Owning domain
 
@@ -258,7 +258,7 @@ Whether current player-visible Dog title prefix/suffix and producer summaries ar
 
 ### Canonical authority
 
-Title progression mutation authority is `titleProgress.service` with grand-champion/credit services during judging finalization. Persistence includes `DogTitleProgress`, credit/award records, and visible fields on `Dog`. No single display authority established.
+`DogTitleProgress.currentTitleCode` is the current semantic CH/GCH authority; `ShowAward`, `ShowResult`, and GCH credits are historical authority; `Dog.visibleTitlePrefix` is a synchronized presentation mirror; and existing compatibility fallbacks remain required. The remaining bounded questions do not establish a title-system refactor.
 
 ### Occurrences
 
@@ -272,7 +272,7 @@ Title progression mutation authority is `titleProgress.service` with grand-champ
 
 ### Intent analysis
 
-Likely current-summary/history distinction, but cache purpose is not proven.
+The current semantic, historical, mirror, and compatibility roles are established. Legacy reconciliation policy, completion metadata authority, historical current-name presentation, and producer suffix scope require a concrete feature, migration, reconciliation need, or explicit design decision.
 
 ### Current consumers
 
@@ -300,21 +300,21 @@ Dog-title, title-notice, grand-champion, prestige, and show-record scripts exist
 
 ### Evidence
 
-Stage 3 data audit and Stage 4 title registry; schema Dog/title/credit models; judging service dependency chain.
+Stage 3 data audit and Stage 4 title registry; schema Dog/title/credit models; judging service dependency chain; [title-source-of-truth-audit.md](title-source-of-truth-audit.md); [title-prefix-presentation-contract.md](title-prefix-presentation-contract.md).
 
 ### Confidence
 
-MEDIUM.
+HIGH for the established authority model; MEDIUM for the bounded remaining questions.
 
 ### Later-stage question
 
-Which persisted title/producer fields are current authoritative summaries versus replaceable display caches?
+Preserve the established title contracts and compatibility fallbacks. Address legacy reconciliation, completion metadata, historical current-name presentation, or producer suffix scope only through a concrete feature, migration, reconciliation need, or explicit design decision; do not recalculate titles or remove fallbacks as generic cleanup.
 
 ## ARCH-DEBT-005 — Current Support Subscription Selection in Batch Presentation
 
 ### Classification
 
-**UNKNOWN**.
+**Status: RESOLVED — CANONICALIZED.** **Original classification: UNKNOWN.** Community retains batched reads and now applies the shared Support current-state predicate after its equivalent source/target selection.
 
 ### Owning domain
 
@@ -326,21 +326,21 @@ Selecting one current support subscription for an individual versus a Community 
 
 ### Canonical authority
 
-`supportSubscription.service:getCanonicalSupportSubscription` is the individual current-subscription authority used by account/support/public-kennel surfaces and support lifecycle work.
+`supportSubscription.service:getCanonicalSupportSubscription` remains the individual current-subscription authority. `isCurrentSupportSubscriptionAt` shares its elapsed scheduled-cancellation read rule with batched presentation without transferring lifecycle mutation ownership.
 
 ### Occurrences
 
 - **Location:** `supportSubscription.service.ts:getCanonicalSupportSubscription`; **purpose:** resolve current PayPal subscription across eligible records/changes; **classification:** CANONICAL; **inputs/outputs:** user/current subscription/change rows → one subscription/null; **role:** authoritative read.
-- **Location:** `communitySupporterBadge.service.ts:getCommunitySupporterBadgePresentations`; **purpose:** batch select subscription plus kennel preference for Community author badges; **classification:** UNKNOWN/DERIVED; **inputs/outputs:** user IDs/batch records/changes → badge map; **role:** presentation enrichment; **evidence:** independent `findMany` filters and change resolution.
+- **Location:** `communitySupporterBadge.service.ts:getCommunitySupporterBadgePresentations`; **purpose:** batch select subscription plus kennel preference for Community author badges; **classification:** CANONICAL CONSUMER/PRESENTATION; **inputs/outputs:** user IDs/batch records/changes → badge map; **role:** presentation enrichment; **evidence:** equivalent batched source/target selection followed by the shared current-state predicate.
 - **Location:** support sandbox/test and former-subscription page queries; **purpose:** test/history selection; **classification:** INTENTIONAL VARIANT; **role:** non-production or historical read.
 
 ### Behavior comparison
 
-**PARTIALLY OVERLAPPING**. Both target current PayPal support state, but the batch resolver implements selection with its own set query and change handling. Equivalence for all upgrade/cancellation edge cases was not established.
+**EQUIVALENT (read-only batch).** Community preserves batched query/change selection and applies the shared elapsed-cancellation read rule; actual cancellation finalization remains in Support lifecycle services.
 
 ### Intent analysis
 
-Batching may require a distinct implementation; no test proving parity with individual canonical resolution was found in the inspected code.
+Batching is an intentional implementation variant. The focused regression covers the shared current-state boundary and preserves set-based Community enrichment.
 
 ### Current consumers
 
@@ -352,23 +352,23 @@ READ_ONLY.
 
 ### Player impact
 
-Could show an inconsistent supporter badge between Community and account/public-kennel surfaces; it does not change subscription truth or gameplay eligibility.
+No remaining audited current-selection inconsistency. The batch path remains presentation-only and does not change subscription truth or gameplay eligibility.
 
 ### Severity
 
-MEDIUM.
+RESOLVED (former MEDIUM).
 
 ### Drift risk
 
-HIGH.
+RESOLVED.
 
 ### Test coverage
 
-Badge presentation/community mapping and support lifecycle scripts exist. Parity coverage between the two selectors is **UNKNOWN**.
+Badge presentation/community mapping and Support lifecycle scripts cover the shared elapsed-cancellation current-state rule and no-N+1 batch shape.
 
 ### Evidence
 
-Direct selector inventory, community batch service, canonical support service, and Stage 4 support registry.
+Support batch parity audit, shared predicate, Community batch regression, canonical lifecycle regression, and paid-through-expiration regression.
 
 ### Confidence
 
@@ -376,13 +376,13 @@ MEDIUM.
 
 ### Later-stage question
 
-Does the Community batch resolver produce identical current-subscription selection to `getCanonicalSupportSubscription` for upgrades, paid-through cancellations, and former supporters?
+RESOLVED: Community now matches canonical current-state selection read-only while preserving batched I/O; Support lifecycle services retain persisted finalization.
 
 ## ARCH-DEBT-006 — Distributed Dog and Show Read Models
 
 ### Classification
 
-**UNKNOWN**.
+**Status: RESOLVED — NO CANONICALIZATION REQUIRED.** **Original classification: UNKNOWN.** Field-contract investigation found no concrete same-fact semantic drift, hidden-data leak, historical misuse, or material N+1 defect.
 
 ### Owning domain
 
@@ -394,21 +394,21 @@ Complex player read models are assembled through dedicated services/mappers and 
 
 ### Canonical authority
 
-No single authoritative read path established. `dog.service:getDogProfile` plus dog mapper is a strong Dog precedent; show pages directly combine `db` reads with schedule/availability/service helpers.
+No universal Dog or Show read authority is required. Existing field contracts remain authoritative where applicable: Dog display/title compatibility, visible categories, health interpretation, show availability, and durable result/award facts. `dog.service:getDogProfile` plus the dog mapper and direct Show page reads are legitimate surface-specific variants.
 
 ### Occurrences
 
-- **Location:** `dog.service.ts:getDogProfile` and `server/mappers/dog.mapper.ts`; **purpose:** player-safe Dog profile; **classification:** AUTHORITATIVE READ precedent; **role:** service/mapper.
-- **Location:** `app/shows/page.tsx`; **purpose:** show collection/read model; **classification:** UNKNOWN direct server-component read; **role:** Prisma plus service/rules shaping; **evidence:** imports `db` and several services/rules.
-- **Location:** named litter/show mappers and feature-local DTO code; **purpose:** surface-specific presentation; **classification:** DERIVED/PRESENTATION; **role:** read shaping.
+- **Location:** `dog.service.ts:getDogProfile` and `server/mappers/dog.mapper.ts`; **purpose:** player-safe Dog profile; **classification:** ACCEPTED service/mapper read; **role:** surface-specific read composition.
+- **Location:** `app/shows/page.tsx`; **purpose:** show collection/read model; **classification:** ACCEPTED direct server-component read; **role:** Prisma plus service/rules shaping.
+- **Location:** named litter/show mappers and feature-local DTO code; **purpose:** surface-specific presentation; **classification:** ACCEPTED mapper/local shaping; **role:** read shaping.
 
 ### Behavior comparison
 
-**PARTIALLY OVERLAPPING**. They solve player read-model construction with different boundaries, not the same exact DTO.
+**INTENTIONAL VARIANTS**. They solve surface-specific player read construction with different boundaries, not the same exact DTO, while retaining narrow shared field contracts where the same fact requires one.
 
 ### Intent analysis
 
-Server-component direct reads are an accepted Next.js pattern; whether any specific surface should reuse a mapper/service is **UNKNOWN**.
+Direct Server Component Prisma reads, services, mappers, and narrow presentation/semantic helpers are legitimate current variants. The audit found no evidence that their coexistence creates a competing read authority.
 
 ### Current consumers
 
@@ -420,37 +420,37 @@ READ_ONLY.
 
 ### Player impact
 
-Could create inconsistent status/field exposure or performance drift across surfaces, without proving a current defect.
+No concrete status/field exposure, historical interpretation, or material performance defect was found. Future work should act only on a demonstrated field-level defect.
 
 ### Severity
 
-MEDIUM.
+RESOLVED (formerly MEDIUM).
 
 ### Drift risk
 
-HIGH.
+RESOLVED.
 
 ### Test coverage
 
-Focused dog/show/read-model scripts exist; cross-surface DTO parity coverage is **UNKNOWN**.
+The field-contract audit found no defect requiring cross-surface DTO parity. Existing focused dog/show/read-model scripts remain relevant to concrete future changes.
 
 ### Evidence
 
-Stage 1 system flow; Stage 4/5 registry; direct `/shows` page and mapper/service directories.
+Stage 1 system flow; Stage 4/5 registry; direct `/shows` page and mapper/service directories; [read-model-field-contract-audit.md](read-model-field-contract-audit.md).
 
 ### Confidence
 
-HIGH for distributed topology; MEDIUM for any specific drift consequence.
+HIGH.
 
 ### Later-stage question
 
-Which high-risk player fields require a shared read/mapping authority, while preserving intentional direct server-component reads?
+Future changes should preserve established field contracts and address concrete defects locally; this finding does not authorize a universal Dog/Show read service, repository, CQRS layer, or other centralized read architecture.
 
 ## ARCH-DEBT-007 — Historical PLAYER_STUD Listing and Attempt Linkage
 
 ### Classification
 
-**LEGACY**.
+**Status: LEGACY — PRESERVE / DO NOT EXTEND.** **Original classification: LEGACY.**
 
 ### Owning domain
 
@@ -462,7 +462,7 @@ Historical PLAYER_STUD listing and `BreedingAttempt.studListingId` linkage retai
 
 ### Canonical authority
 
-Current public stud/contract authority is StudOffer/StudContract services and persisted models. Historical listing/attempt linkage is not current contract authority.
+Current public stud/contract authority is StudOffer/StudContract services and persisted models. PLAYER_STUD listing/attempt linkage is historical compatibility only; new runtime code must not use it as active commercial-stud truth.
 
 ### Occurrences
 
@@ -511,7 +511,7 @@ HIGH.
 
 ### Later-stage question
 
-Which historical screens or reports still intentionally consume PLAYER_STUD linkage, if any?
+Preserve historical linkage and its tests where needed. Do not delete, migrate, or extend PLAYER_STUD as active commercial-stud authority without a separately scoped migration/design decision.
 
 ## Protected Intentional Variants
 
@@ -537,21 +537,17 @@ Which historical screens or reports still intentionally consume PLAYER_STUD link
 | --- | --- | --- | --- | --- |
 | Economy/ledger mutation | feature-local writers | no universal helper/invariant established | VERY HIGH | compare each balance update and ledger expectation |
 | Dog title display | Dog fields, progress, awards, credits | cache/primary relationship unknown | HIGH | trace all writers/readers/synchronization |
-| Support batch current selector | canonical service, community batch resolver | parity not established | HIGH | test edge-case selector parity |
-| Dog/show reads | services/mappers/direct server Prisma | multiple valid read styles | HIGH | identify high-risk field contracts |
-| Current epoch helper | lib game clock and rules time helper | production call authority differs | HIGH | trace non-production and deployment consumers |
 
 ## Architecture Debt Summary
 
-### Counts by classification
+### Counts by final Stage 10 status
 
-| Classification | Count |
+| Status | Count |
 | --- | --- |
-| RESOLVED (former DUPLICATE) | 2 |
-| DUPLICATE | 0 |
-| UNKNOWN | 3 |
-| LEGACY | 1 |
-| DIVERGENT | 0 |
+| RESOLVED — CANONICALIZED | 3 |
+| RESOLVED — NO CANONICALIZATION REQUIRED | 1 |
+| OPEN — BOUNDED ARCHITECTURE QUESTION | 2 |
+| LEGACY — PRESERVE / DO NOT EXTEND | 1 |
 
 ### Counts by severity
 
@@ -559,11 +555,12 @@ Which historical screens or reports still intentionally consume PLAYER_STUD link
 | --- | --- |
 | CRITICAL | 1 |
 | HIGH | 2 |
-| MEDIUM | 2 |
+| MEDIUM | 0 |
 | LOW | 0 |
 | INFO | 1 |
 | RESOLVED (former HIGH) | 1 |
 | RESOLVED (former LOW) | 1 |
+| RESOLVED (former MEDIUM) | 2 |
 
 ### Counts by owning domain
 
@@ -573,8 +570,8 @@ Which historical screens or reports still intentionally consume PLAYER_STUD link
 | Breeding / Health & Care / Lifecycle | 1 (resolved) |
 | Calendar / Dogs | 1 (resolved) |
 | Championships / Dogs | 1 |
-| Support / Community | 1 |
-| Dogs / Showing | 1 |
+| Support / Community | 1 (resolved) |
+| Dogs / Showing | 1 (resolved) |
 | Stud Services / Market / Breeding | 1 |
 
 ### Highest-risk findings
@@ -584,6 +581,6 @@ Which historical screens or reports still intentionally consume PLAYER_STUD link
 
 ### Broadest drift surfaces
 
-Economy/ledger mutation spans the most independently implemented writers. Dog/title presentation and Dog/show read-model construction also span multiple services, persistence models, pages, and presentation layers. Support current-state selection spans individual and batch presentation paths.
+Economy/ledger mutation spans the most independently implemented writers. Dog/title presentation also spans multiple services, persistence models, pages, and presentation layers. These are bounded architecture questions, not generalized refactor mandates.
 
 This register intentionally contains no remediation plan, refactor steps, or implementation prescription.

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getSupporterBadgePresentation } from "@/lib/supporterBadgePresentation";
+import { isCurrentSupportSubscriptionAt } from "@/server/services/supportSubscription.service";
 
 const CURRENT = ["PENDING", "ACTIVE", "PAYMENT_RETRY", "CANCELLATION_SCHEDULED"] as const;
 const LIVE = ["PENDING_APPROVAL", "TARGET_ACTIVE_CANCELLATION_PENDING", "CLEANUP_FAILED"] as const;
@@ -16,7 +17,8 @@ export async function getCommunitySupporterBadgePresentations(userIds: Array<str
   const kennelByUser = new Map(kennels.map((kennel) => [kennel.userId, kennel]));
   for (const userId of ids) {
     const kennel = kennelByUser.get(userId); const change = changes.find((item) => item.userId === userId);
-    const subscription = change ? (change.targetActivatedAt && change.targetSubscription?.status === "ACTIVE" ? change.targetSubscription : change.sourceSubscription) : current.filter((item) => item.userId === userId).length === 1 ? current.find((item) => item.userId === userId) : null;
+    const selected = change ? (change.targetActivatedAt && change.targetSubscription?.status === "ACTIVE" ? change.targetSubscription : change.sourceSubscription) : current.filter((item) => item.userId === userId).length === 1 ? current.find((item) => item.userId === userId) : null;
+    const subscription = selected && isCurrentSupportSubscriptionAt(selected) ? selected : null;
     const presentation = getSupporterBadgePresentation({ tier: subscription?.currentTier, status: subscription?.status, currentPaidPeriodEnd: subscription?.currentPaidPeriodEnd, showSupporterBadge: kennel?.showSupporterBadge === true });
     result.set(userId, presentation.visible ? { tier: presentation.tier } : null);
   }

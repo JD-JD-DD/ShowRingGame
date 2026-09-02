@@ -91,7 +91,7 @@ async function main() {
 
   const service = source("apps/web/server/services/supportSubscription.service.ts");
   const accountPage = source("apps/web/app/account/settings/support/page.tsx");
-  assert.match(service, /subscription\.currentPaidPeriodEnd > new Date\(\)/, "expiration uses an inclusive boundary");
+  assert.match(service, /isCurrentSupportSubscriptionAt\(subscription\)/, "expiration uses the shared inclusive current-state predicate");
   assert.match(service, /endedAt: fresh\.endedAt \?\? fresh\.currentPaidPeriodEnd/, "finalization preserves an existing ended timestamp");
   assert.doesNotMatch(service.slice(service.indexOf("async function finalizeElapsedCancellation"), service.indexOf("export async function getCanonicalSupportSubscription")), /PayPal|paypal|createSubscription|cancelSubscription|reviseSubscription|getSubscription/, "expiration is local and provider-independent");
   assert.match(accountPage, /subscription \? <SupportDetails[\s\S]*Support Again/, "ended support presents the normal Support Again path");
