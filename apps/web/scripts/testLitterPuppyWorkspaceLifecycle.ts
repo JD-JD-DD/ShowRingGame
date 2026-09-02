@@ -8,7 +8,8 @@ const saleWorkspace = readFileSync("components/litters/LitterPuppySaleWorkspace.
 const rehomeWorkspace = readFileSync("components/litters/LitterPuppyRehomeWorkspace.tsx", "utf8");
 
 assert.match(client, /useState<"name" \| "moveRun" \| "sale" \| "rehome" \| null>/, "one discriminator controls every workspace");
-assert.match(client, /if \(selectedPuppyId !== puppyId\) setActiveAction\(null\)/, "selecting another puppy closes the prior workspace");
+assert.match(client, /if \(!selectionState\.selectedPuppyIds\.has\(puppyId\)\) \{\s*setActiveAction\(null\)/, "adding a puppy closes the prior single-puppy workspace");
+assert.match(client, /if \(selectionState\.selectedPuppyIds\.has\(puppyId\)\) \{\s*setActiveAction\(null\)/, "removing a puppy closes the prior single-puppy workspace");
 assert.match(client, /function clearSelection\(\) \{\s*setActiveAction\(null\)/, "clearing selection closes the workspace and discards its draft");
 assert.match(client, /onClick=\{\(\) => setActiveAction\("name"\)\}/, "Name action switches the active workspace");
 assert.match(client, /onClick=\{\(\) => setActiveAction\("moveRun"\)\}/, "Move action switches the active workspace");
@@ -17,7 +18,8 @@ assert.match(client, /onClick=\{\(\) => setActiveAction\("rehome"\)\}/, "Re-home
 assert.match(client, /if \(!isEligible\) setActiveAction\(null\)/, "refreshed ineligible actions close their workspace");
 assert.match(client, /const onAuthoritativeRefresh = useCallback[\s\S]*router\.refresh\(\)/, "parent owns the authoritative refresh convention");
 assert.match(client, /onAuthoritativeRefresh=\{onAuthoritativeRefresh\}/, "every workspace receives the shared refresh callback");
-assert.doesNotMatch(client, /Select All|bulk action|selected count/i, "Feature 3 remains single-puppy without bulk UI");
+assert.match(client, /selectionState\.selectedCount === 1/, "single-puppy workspaces cannot target the first member of a multi-selection");
+assert.doesNotMatch(client, /Eligible|Skipped|bulk action/i, "Stage 4B adds no action partition or bulk execution UI");
 
 for (const workspace of [nameWorkspace, runWorkspace, saleWorkspace, rehomeWorkspace]) {
   assert.match(workspace, /onAuthoritativeRefresh\(\)/, "workspace refreshes authoritative state after success or stale failure");

@@ -49,15 +49,12 @@ function usePuppySelectionState(puppies: PuppySelectionItem[]) {
   }, [manageablePuppyIds, manageablePuppyIdsKey]);
 
   return {
+    manageablePuppyIds,
     selectedPuppyIds,
     selectedCount: selectedPuppyIds.size,
     selectPuppy(puppyId: string) {
       if (!manageablePuppyIds.has(puppyId)) return;
       setSelectedPuppyIds((current) => new Set([...current, puppyId]));
-    },
-    selectSinglePuppy(puppyId: string) {
-      if (!manageablePuppyIds.has(puppyId)) return;
-      setSelectedPuppyIds(new Set([puppyId]));
     },
     deselectPuppy(puppyId: string) {
       setSelectedPuppyIds((current) => {
@@ -86,7 +83,9 @@ export function LitterPuppyCardsClient({
   const selectionState = usePuppySelectionState(puppies);
   const selectedPuppyId = [...selectionState.selectedPuppyIds][0] ?? null;
   const selectedPuppy =
-    puppies.find((puppy) => puppy.dogId === selectedPuppyId) ?? null;
+    selectionState.selectedCount === 1
+      ? puppies.find((puppy) => puppy.dogId === selectedPuppyId) ?? null
+      : null;
   const [activeAction, setActiveAction] = useState<"name" | "moveRun" | "sale" | "rehome" | null>(null);
 
   const onAuthoritativeRefresh = useCallback(() => {
@@ -114,13 +113,30 @@ export function LitterPuppyCardsClient({
 
   function selectPuppy(puppyId: string, selected: boolean) {
     if (selected) {
-      if (selectedPuppyId !== puppyId) setActiveAction(null);
-      selectionState.selectSinglePuppy(puppyId);
+      if (!selectionState.selectedPuppyIds.has(puppyId)) {
+        setActiveAction(null);
+        selectionState.selectPuppy(puppyId);
+      }
       return;
     }
 
-    setActiveAction(null);
-    selectionState.deselectPuppy(puppyId);
+    if (selectionState.selectedPuppyIds.has(puppyId)) {
+      setActiveAction(null);
+      selectionState.deselectPuppy(puppyId);
+    }
+  }
+
+  function selectAllManageablePuppies() {
+    const alreadySelected =
+      selectionState.selectedCount === selectionState.manageablePuppyIds.size &&
+      [...selectionState.manageablePuppyIds].every((puppyId) =>
+        selectionState.selectedPuppyIds.has(puppyId)
+      );
+
+    if (!alreadySelected) {
+      setActiveAction(null);
+      selectionState.selectAllManageablePuppies();
+    }
   }
 
   return (
@@ -130,16 +146,40 @@ export function LitterPuppyCardsClient({
           <LitterPuppyCard
             key={puppy.dogId}
             puppy={puppy}
-            isSelected={selectedPuppyId === puppy.dogId}
+            isSelected={selectionState.selectedPuppyIds.has(puppy.dogId)}
             onSelectionChange={(selected) => selectPuppy(puppy.dogId, selected)}
           />
         ))}
       </div>
 
+      {selectionState.manageablePuppyIds.size > 0 ? (
+        <section className="theme-card mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4" aria-live="polite">
+          <p className="theme-heading text-sm font-semibold">
+            {selectionState.selectedCount.toLocaleString()} {selectionState.selectedCount === 1 ? "puppy" : "puppies"} selected
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={selectAllManageablePuppies}
+              className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
+            >
+              Select all eligible
+            </button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              disabled={selectionState.selectedCount === 0}
+              className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
+            >
+              Clear selection
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       {selectedPuppy ? (
         <>
-          <section className="theme-card mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4" aria-live="polite">
-            <p className="theme-heading text-sm font-semibold">1 puppy selected</p>
+          <section className="theme-card mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -172,13 +212,6 @@ export function LitterPuppyCardsClient({
                 className="theme-status-danger rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
               >
                 Re-home
-              </button>
-              <button
-                type="button"
-                onClick={clearSelection}
-                className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
-              >
-                Clear selection
               </button>
             </div>
             {!selectedPuppy.actionEligibility.canName &&
