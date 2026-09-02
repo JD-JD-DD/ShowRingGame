@@ -19,7 +19,8 @@ This directory documents current repository topology, domain boundaries, depende
 7. Check [cross-cutting-patterns.md](cross-cutting-patterns.md).
 8. Check [architecture-debt-register.md](architecture-debt-register.md) before touching a known debt surface.
 9. Follow the proportionate [Codex Development Protocol](codex-development-protocol.md) for meaningful work.
-10. Inspect the current referenced code before changing anything.
+10. Use [Documentation Maintenance](documentation-maintenance.md) to decide whether documentation changes are warranted.
+11. Inspect the current referenced code before changing anything.
 
 Repository code remains current implementation evidence. Architecture documentation can become stale and must not override current code without inspection.
 
@@ -37,6 +38,7 @@ Repository code remains current implementation evidence. Architecture documentat
 | [cross-cutting-patterns.md](cross-cutting-patterns.md) | Reusable implementation contracts. | Working across auth, mutations, reads, jobs, errors, or formatting. |
 | [architecture-debt-register.md](architecture-debt-register.md) | Evidence-backed duplicate, drift, and authority risks. | Touching a known high-risk surface. |
 | [codex-development-protocol.md](codex-development-protocol.md) | Required development routine for preserving documented authority and boundaries. | Planning or implementing meaningful work. |
+| [documentation-maintenance.md](documentation-maintenance.md) | Proportional thresholds for updating design, architecture, ADR, and runbook documentation. | Assessing documentation impact after meaningful work. |
 | [domains/](domains/) | Focused maps for selected complex domains. | Working in one of the covered complex flows. |
 
 ## Domain Architecture Guides

@@ -70,7 +70,7 @@ Implement narrowly, run focused tests, inspect the diff, run applicable guardrai
 
 ## 12. Documentation Change Rules
 
-Update architecture documentation only when domain ownership, canonical rule/service authority, persistence ownership/type, history semantics, established pattern, dependency, guardrail invariant, or durable decision genuinely changes. Update the Master File for deliberate design changes; ADRs for durable choices with meaningful alternatives; runbooks for operational procedures. Ordinary localized work should not churn documentation.
+Update architecture documentation only when domain ownership, canonical rule/service authority, persistence ownership/type, history semantics, established pattern, dependency, guardrail invariant, or durable decision genuinely changes. Update the Master File for deliberate design changes; ADRs for durable choices with meaningful alternatives; runbooks for operational procedures. Ordinary localized work should not churn documentation. Apply the proportional thresholds in [Documentation Maintenance](documentation-maintenance.md).
 
 ## 13. Standard Codex Prompt Shape
 
