@@ -19,10 +19,11 @@ assert.match(client, /if \(selectedPuppies\.length === 0\) setActiveAction\(null
 assert.match(client, /const onAuthoritativeRefresh = useCallback[\s\S]*router\.refresh\(\)/, "parent owns the authoritative refresh convention");
 assert.match(client, /onAuthoritativeRefresh=\{onAuthoritativeRefresh\}/, "legacy single-puppy workspaces receive the shared refresh callback");
 assert.match(client, /onComplete=\{\(result\) => \{[\s\S]*setKennelRunResult\(result\)[\s\S]*onAuthoritativeRefresh\(\)/, "unified Move reports a parent-held result before refreshing");
+assert.match(client, /onComplete=\{\(result\) => \{[\s\S]*setSaleResult\(result\)[\s\S]*onAuthoritativeRefresh\(\)/, "unified Sale reports a parent-held result before refreshing");
 assert.match(client, /selectedPuppies\.length === 1/, "single-puppy workspaces cannot target the first member of a multi-selection");
 assert.match(client, /activeActionPartition/, "one active action owns the current selection review");
 
-for (const workspace of [saleWorkspace, rehomeWorkspace]) {
+for (const workspace of [rehomeWorkspace]) {
   assert.match(workspace, /onAuthoritativeRefresh\(\)/, "legacy workspace refreshes authoritative state after success or stale failure");
   assert.match(workspace, /role="alert"/, "workspace presents expected errors inline");
   assert.match(workspace, /onClose/, "workspace closes through the parent-owned lifecycle");
@@ -30,7 +31,7 @@ for (const workspace of [saleWorkspace, rehomeWorkspace]) {
   assert.doesNotMatch(workspace, /alert\(|confirm\(|location\.href|router\.push/i, "workspace does not navigate or use browser dialogs");
 }
 
-for (const workspace of [nameWorkspace, runWorkspace]) {
+for (const workspace of [nameWorkspace, runWorkspace, saleWorkspace]) {
   assert.match(workspace, /onComplete/, "unified workspace delegates successful refresh and result display to its parent");
   assert.match(workspace, /role="alert"/, "unified workspace retains inline errors");
 }
