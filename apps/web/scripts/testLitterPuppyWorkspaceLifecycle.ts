@@ -23,6 +23,7 @@ for (const workspace of [nameWorkspace, runWorkspace, saleWorkspace, rehomeWorks
   assert.match(workspace, /onAuthoritativeRefresh\(\)/, "workspace refreshes authoritative state after success or stale failure");
   assert.match(workspace, /role="alert"/, "workspace presents expected errors inline");
   assert.match(workspace, /onClose/, "workspace closes through the parent-owned lifecycle");
+  assert.match(workspace, /focus-visible:outline/, "workspace controls provide a visible keyboard focus state");
   assert.doesNotMatch(workspace, /alert\(|confirm\(|location\.href|router\.push/i, "workspace does not navigate or use browser dialogs");
 }
 

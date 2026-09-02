@@ -135,10 +135,10 @@ export function LitterPuppyKennelRunWorkspace({
         {error ? <p className="theme-status-danger rounded-xl px-3 py-2 text-sm" role="alert">{error}</p> : null}
 
         <div className="flex flex-wrap gap-2">
-          <button type="submit" disabled={!selectedRun || isCurrentRun || isLoading || isMoving} className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="submit" disabled={!selectedRun || isCurrentRun || isLoading || isMoving} className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200">
             {isMoving ? "Moving..." : "Move Puppy"}
           </button>
-          <button type="button" disabled={isMoving} onClick={onClose} className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="button" disabled={isMoving} onClick={onClose} className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200">
             Cancel
           </button>
         </div>

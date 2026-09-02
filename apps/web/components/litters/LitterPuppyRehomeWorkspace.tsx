@@ -60,7 +60,7 @@ export function LitterPuppyRehomeWorkspace({
         <button
           type="submit"
           disabled={isRehoming || !puppy.actionEligibility.canRehome}
-          className="theme-status-danger rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          className="theme-status-danger rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
         >
           {isRehoming ? "Re-homing..." : "Confirm Re-home"}
         </button>
@@ -68,7 +68,7 @@ export function LitterPuppyRehomeWorkspace({
           type="button"
           disabled={isRehoming}
           onClick={onClose}
-          className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
         >
           Cancel
         </button>

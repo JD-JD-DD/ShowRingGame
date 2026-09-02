@@ -112,7 +112,7 @@ export function LitterPuppyNameWorkspace({
           <button
             type="submit"
             disabled={isSaving}
-            className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
           >
             Save
           </button>
@@ -120,7 +120,7 @@ export function LitterPuppyNameWorkspace({
             type="button"
             disabled={isSaving}
             onClick={onClose}
-            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
           >
             Cancel
           </button>

@@ -80,7 +80,7 @@ export function LitterPuppySaleWorkspace({
           <button
             type="submit"
             disabled={isSaving || !puppy.actionEligibility.canListForSale}
-            className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
           >
             {isSaving ? "Listing..." : "Put Up for Sale"}
           </button>
@@ -88,7 +88,7 @@ export function LitterPuppySaleWorkspace({
             type="button"
             disabled={isSaving}
             onClick={onClose}
-            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
           >
             Cancel
           </button>
