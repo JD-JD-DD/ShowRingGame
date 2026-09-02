@@ -15,11 +15,11 @@ assert.match(client, /onClick=\{\(\) => setActiveAction\("name"\)\}/, "Name acti
 assert.match(client, /onClick=\{\(\) => setActiveAction\("moveRun"\)\}/, "Move action switches the active workspace");
 assert.match(client, /onClick=\{\(\) => setActiveAction\("sale"\)\}/, "Sale action switches the active workspace");
 assert.match(client, /onClick=\{\(\) => setActiveAction\("rehome"\)\}/, "Re-home action switches the active workspace");
-assert.match(client, /if \(!isEligible\) setActiveAction\(null\)/, "refreshed ineligible actions close their workspace");
+assert.match(client, /if \(selectedPuppies\.length === 0\) setActiveAction\(null\)/, "clearing or reconciling away the selection closes the active review");
 assert.match(client, /const onAuthoritativeRefresh = useCallback[\s\S]*router\.refresh\(\)/, "parent owns the authoritative refresh convention");
 assert.match(client, /onAuthoritativeRefresh=\{onAuthoritativeRefresh\}/, "every workspace receives the shared refresh callback");
-assert.match(client, /selectionState\.selectedCount === 1/, "single-puppy workspaces cannot target the first member of a multi-selection");
-assert.doesNotMatch(client, /Eligible|Skipped|bulk action/i, "Stage 4B adds no action partition or bulk execution UI");
+assert.match(client, /selectedPuppies\.length === 1/, "single-puppy workspaces cannot target the first member of a multi-selection");
+assert.match(client, /activeActionPartition/, "one active action owns the current selection review");
 
 for (const workspace of [nameWorkspace, runWorkspace, saleWorkspace, rehomeWorkspace]) {
   assert.match(workspace, /onAuthoritativeRefresh\(\)/, "workspace refreshes authoritative state after success or stale failure");

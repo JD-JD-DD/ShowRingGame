@@ -9,7 +9,7 @@ assert.match(client, /selectPuppy\(puppyId: string\)[\s\S]*new Set\(\[\.\.\.curr
 assert.match(client, /deselectPuppy\(puppyId: string\)[\s\S]*next\.delete\(puppyId\)/, "unchecking removes only that puppy ID");
 assert.doesNotMatch(client, /selectSinglePuppy/, "no separate single-selection state remains");
 assert.match(client, /reconcileSelectedPuppyIds/, "stale selections remain reconciled");
-assert.match(client, /selectedCount === 1/, "single-puppy action workspaces are gated to exactly one selected puppy");
+assert.match(client, /selectedPuppies\.length === 1/, "single-puppy action workspaces are gated to exactly one selected puppy");
 assert.match(client, /selectedPuppyIds\.has\(puppy\.dogId\)/, "every selected puppy remains visibly checked");
 assert.match(client, /Select all eligible/, "selection control uses the manageable cohort explicitly");
 assert.match(client, /selectedCount\.toLocaleString\(\)/, "selected count is locale-aware");

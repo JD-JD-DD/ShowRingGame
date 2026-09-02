@@ -15,6 +15,47 @@ type PuppySelectionItem = Pick<
   "dogId" | "isManageableByBreeder"
 >;
 
+type PuppyActionKey = "name" | "moveRun" | "sale" | "rehome";
+
+const PUPPY_ACTIONS: Record<
+  PuppyActionKey,
+  {
+    label: string;
+    eligibleLabel: string;
+    isEligible: (puppy: LitterPuppyDto) => boolean;
+    disabledReason: (puppy: LitterPuppyDto) => string | null;
+  }
+> = {
+  name: {
+    label: "Name",
+    eligibleLabel: "can be named",
+    isEligible: (puppy) => puppy.actionEligibility.canName,
+    disabledReason: (puppy) => puppy.actionEligibility.nameDisabledReason,
+  },
+  moveRun: {
+    label: "Move Kennel Run",
+    eligibleLabel: "can be moved",
+    isEligible: (puppy) => puppy.actionEligibility.canMoveRun,
+    disabledReason: (puppy) => puppy.actionEligibility.moveRunDisabledReason,
+  },
+  sale: {
+    label: "Put Up for Sale",
+    eligibleLabel: "will be listed for sale",
+    isEligible: (puppy) => puppy.actionEligibility.canListForSale,
+    disabledReason: (puppy) => puppy.actionEligibility.saleDisabledReason,
+  },
+  rehome: {
+    label: "Re-home",
+    eligibleLabel: "can be re-homed",
+    isEligible: (puppy) => puppy.actionEligibility.canRehome,
+    disabledReason: (puppy) => puppy.actionEligibility.rehomeDisabledReason,
+  },
+};
+
+function pluralizePuppies(count: number): string {
+  return `${count.toLocaleString()} ${count === 1 ? "puppy" : "puppies"}`;
+}
+
 function getManageablePuppyIds(puppies: PuppySelectionItem[]): Set<string> {
   return new Set(
     puppies
@@ -81,30 +122,35 @@ export function LitterPuppyCardsClient({
 }) {
   const router = useRouter();
   const selectionState = usePuppySelectionState(puppies);
-  const selectedPuppyId = [...selectionState.selectedPuppyIds][0] ?? null;
-  const selectedPuppy =
-    selectionState.selectedCount === 1
-      ? puppies.find((puppy) => puppy.dogId === selectedPuppyId) ?? null
-      : null;
+  const selectedPuppies = useMemo(
+    () =>
+      puppies.filter((puppy) =>
+        selectionState.selectedPuppyIds.has(puppy.dogId)
+      ),
+    [puppies, selectionState.selectedPuppyIds]
+  );
   const [activeAction, setActiveAction] = useState<"name" | "moveRun" | "sale" | "rehome" | null>(null);
+  const activeActionDescriptor = activeAction ? PUPPY_ACTIONS[activeAction] : null;
+  const activeActionPartition = activeActionDescriptor
+    ? {
+        eligiblePuppies: selectedPuppies.filter(activeActionDescriptor.isEligible),
+        skippedPuppies: selectedPuppies.filter(
+          (puppy) => !activeActionDescriptor.isEligible(puppy)
+        ),
+      }
+    : null;
+  const singleEligiblePuppy =
+    selectedPuppies.length === 1 && activeActionPartition?.eligiblePuppies.length === 1
+      ? activeActionPartition.eligiblePuppies[0]
+      : null;
 
   const onAuthoritativeRefresh = useCallback(() => {
     router.refresh();
   }, [router]);
 
   useEffect(() => {
-    if (!activeAction || !selectedPuppy) {
-      if (!selectedPuppy) setActiveAction(null);
-      return;
-    }
-
-    const isEligible =
-      (activeAction === "name" && selectedPuppy.actionEligibility.canName) ||
-      (activeAction === "moveRun" && selectedPuppy.actionEligibility.canMoveRun) ||
-      (activeAction === "sale" && selectedPuppy.actionEligibility.canListForSale) ||
-      (activeAction === "rehome" && selectedPuppy.actionEligibility.canRehome);
-    if (!isEligible) setActiveAction(null);
-  }, [activeAction, selectedPuppy]);
+    if (selectedPuppies.length === 0) setActiveAction(null);
+  }, [selectedPuppies]);
 
   function clearSelection() {
     setActiveAction(null);
@@ -155,7 +201,7 @@ export function LitterPuppyCardsClient({
       {selectionState.manageablePuppyIds.size > 0 ? (
         <section className="theme-card mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4" aria-live="polite">
           <p className="theme-heading text-sm font-semibold">
-            {selectionState.selectedCount.toLocaleString()} {selectionState.selectedCount === 1 ? "puppy" : "puppies"} selected
+            {pluralizePuppies(selectionState.selectedCount)} selected
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -177,14 +223,13 @@ export function LitterPuppyCardsClient({
         </section>
       ) : null}
 
-      {selectedPuppy ? (
+      {selectedPuppies.length > 0 ? (
         <>
           <section className="theme-card mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setActiveAction("name")}
-                disabled={!selectedPuppy.actionEligibility.canName}
                 className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
               >
                 Name
@@ -192,7 +237,6 @@ export function LitterPuppyCardsClient({
               <button
                 type="button"
                 onClick={() => setActiveAction("moveRun")}
-                disabled={!selectedPuppy.actionEligibility.canMoveRun}
                 className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
               >
                 Move Kennel Run
@@ -200,7 +244,6 @@ export function LitterPuppyCardsClient({
               <button
                 type="button"
                 onClick={() => setActiveAction("sale")}
-                disabled={!selectedPuppy.actionEligibility.canListForSale}
                 className="theme-primary-button rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
               >
                 Put Up for Sale
@@ -208,66 +251,74 @@ export function LitterPuppyCardsClient({
               <button
                 type="button"
                 onClick={() => setActiveAction("rehome")}
-                disabled={!selectedPuppy.actionEligibility.canRehome}
                 className="theme-status-danger rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
               >
                 Re-home
               </button>
             </div>
-            {!selectedPuppy.actionEligibility.canName &&
-            selectedPuppy.actionEligibility.nameDisabledReason ? (
-              <p className="theme-status-danger basis-full rounded-xl px-3 py-2 text-sm">
-                {selectedPuppy.actionEligibility.nameDisabledReason}
-              </p>
-            ) : null}
-            {!selectedPuppy.actionEligibility.canMoveRun &&
-            selectedPuppy.actionEligibility.moveRunDisabledReason ? (
-              <p className="theme-status-danger basis-full rounded-xl px-3 py-2 text-sm">
-                {selectedPuppy.actionEligibility.moveRunDisabledReason}
-              </p>
-            ) : null}
-            {!selectedPuppy.actionEligibility.canListForSale &&
-            selectedPuppy.actionEligibility.saleDisabledReason ? (
-              <p className="theme-status-danger basis-full rounded-xl px-3 py-2 text-sm">
-                {selectedPuppy.actionEligibility.saleDisabledReason}
-              </p>
-            ) : null}
-            {!selectedPuppy.actionEligibility.canRehome &&
-            selectedPuppy.actionEligibility.rehomeDisabledReason ? (
-              <p className="theme-status-danger basis-full rounded-xl px-3 py-2 text-sm">
-                {selectedPuppy.actionEligibility.rehomeDisabledReason}
-              </p>
-            ) : null}
           </section>
 
-          {activeAction === "name" ? (
+          {activeActionDescriptor && activeActionPartition ? (
+            <section className="theme-card mt-5 rounded-2xl p-5" aria-labelledby="litter-puppy-action-review-heading">
+              <h3 id="litter-puppy-action-review-heading" className="theme-heading text-lg font-semibold">
+                {activeActionDescriptor.label}
+              </h3>
+              <p className="theme-copy mt-1 text-sm">
+                {pluralizePuppies(selectedPuppies.length)} selected
+              </p>
+              <div className="theme-copy mt-4 grid gap-1 text-sm">
+                <p>{pluralizePuppies(activeActionPartition.eligiblePuppies.length)} {activeActionDescriptor.eligibleLabel}</p>
+                <p>{pluralizePuppies(activeActionPartition.skippedPuppies.length)} will be skipped</p>
+              </div>
+              {activeActionPartition.skippedPuppies.length > 0 ? (
+                <div className="mt-4">
+                  <h4 className="theme-heading text-sm font-semibold">Skipped</h4>
+                  <ul className="theme-copy mt-2 grid gap-2 text-sm">
+                    {activeActionPartition.skippedPuppies.map((puppy) => (
+                      <li key={puppy.dogId} className="rounded-xl border border-[var(--color-border)] px-3 py-2">
+                        <span className="font-semibold">{puppy.displayName}</span> · {puppy.regNumber}
+                        <span className="block mt-1">{activeActionDescriptor.disabledReason(puppy) || "This action is not currently available for this puppy."}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {activeActionPartition.eligiblePuppies.length === 0 ? (
+                <p className="theme-status-danger mt-4 rounded-xl px-3 py-2 text-sm">
+                  No selected puppies can proceed with this action.
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+
+          {activeAction === "name" && singleEligiblePuppy ? (
             <LitterPuppyNameWorkspace
               litterId={litterId}
-              puppy={selectedPuppy}
+              puppy={singleEligiblePuppy}
               onClose={() => setActiveAction(null)}
               onAuthoritativeRefresh={onAuthoritativeRefresh}
             />
           ) : null}
-          {activeAction === "moveRun" ? (
+          {activeAction === "moveRun" && singleEligiblePuppy ? (
             <LitterPuppyKennelRunWorkspace
               litterId={litterId}
-              puppy={selectedPuppy}
+              puppy={singleEligiblePuppy}
               onClose={() => setActiveAction(null)}
               onAuthoritativeRefresh={onAuthoritativeRefresh}
             />
           ) : null}
-          {activeAction === "sale" ? (
+          {activeAction === "sale" && singleEligiblePuppy ? (
             <LitterPuppySaleWorkspace
               litterId={litterId}
-              puppy={selectedPuppy}
+              puppy={singleEligiblePuppy}
               onClose={() => setActiveAction(null)}
               onAuthoritativeRefresh={onAuthoritativeRefresh}
             />
           ) : null}
-          {activeAction === "rehome" ? (
+          {activeAction === "rehome" && singleEligiblePuppy ? (
             <LitterPuppyRehomeWorkspace
               litterId={litterId}
-              puppy={selectedPuppy}
+              puppy={singleEligiblePuppy}
               onClose={() => setActiveAction(null)}
               onAuthoritativeRefresh={onAuthoritativeRefresh}
             />
