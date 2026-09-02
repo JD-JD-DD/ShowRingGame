@@ -249,7 +249,7 @@ export function LitterPuppyCardsClient({
 
       {rehomeResult ? (
         <section className="theme-status-success mt-5 rounded-xl px-4 py-3 text-sm" role="status">
-          <p className="font-semibold">Puppies re-homed</p>
+          <p className="font-semibold">{rehomeResult.rehomedCount === 1 ? "Puppy re-homed" : "Puppies re-homed"}</p>
           <p>{pluralizePuppies(rehomeResult.rehomedCount)} re-homed.{rehomeResult.skipped.length > 0 ? ` ${pluralizePuppies(rehomeResult.skipped.length)} skipped.` : ""}</p>
           {rehomeResult.skipped.length > 0 ? <ul className="mt-2 grid gap-1">{rehomeResult.skipped.map((skipped) => {
             const puppy = puppies.find((candidate) => candidate.dogId === skipped.dogId);
@@ -286,7 +286,7 @@ export function LitterPuppyCardsClient({
           ) : null}
           {saleResult ? (
             <section className="theme-status-success mt-5 rounded-xl px-4 py-3 text-sm" role="status">
-              <p className="font-semibold">Puppies listed for sale</p>
+              <p className="font-semibold">Sale listings created</p>
               <p>{pluralizePuppies(saleResult.listedCount)} listed.{saleResult.skipped.length > 0 ? ` ${pluralizePuppies(saleResult.skipped.length)} skipped.` : ""}</p>
               {saleResult.skipped.length > 0 ? <ul className="mt-2 grid gap-1">{saleResult.skipped.map((skipped) => {
                 const puppy = puppies.find((candidate) => candidate.dogId === skipped.dogId);
