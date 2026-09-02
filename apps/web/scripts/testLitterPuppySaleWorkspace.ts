@@ -17,7 +17,7 @@ assert.match(workspace, /Sale price/, "workspace exposes the canonical price fie
 assert.match(workspace, /min=\{1\}/, "price has canonical minimum UI assistance");
 assert.match(workspace, /step=\{1\}/, "price has canonical whole-dollar UI assistance");
 assert.match(workspace, /inputMode="numeric"/, "price matches canonical numeric input behavior");
-assert.match(workspace, /router\.refresh\(\)/, "success and stale errors refresh authoritative state");
+assert.match(workspace, /onAuthoritativeRefresh\(\)/, "success and stale errors refresh authoritative state");
 assert.match(workspace, /role="alert"/, "errors remain inline and accessible");
 assert.doesNotMatch(workspace, /modal|popover|drawer|Edit Sale|Cancel Listing|Relist/i, "workspace has no listing-management controls");
 assert.doesNotMatch(workspace, /PUPPY_SALE_MIN_AGE_HOURS|ageHours/, "client performs no sale-age calculation");

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 import type { LitterPuppyDto } from "@/server/mappers/litter.mapper";
 
@@ -9,12 +8,13 @@ export function LitterPuppySaleWorkspace({
   litterId,
   puppy,
   onClose,
+  onAuthoritativeRefresh,
 }: {
   litterId: string;
   puppy: LitterPuppyDto;
   onClose: () => void;
+  onAuthoritativeRefresh: () => void;
 }) {
-  const router = useRouter();
   const [askingPrice, setAskingPrice] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -37,12 +37,12 @@ export function LitterPuppySaleWorkspace({
       const data = (await response.json().catch(() => ({}))) as { error?: string; ok?: boolean };
       if (!response.ok || data.ok === false) {
         setError(data.error ?? "Failed to list puppy for sale.");
-        router.refresh();
+        onAuthoritativeRefresh();
         return;
       }
 
       onClose();
-      router.refresh();
+      onAuthoritativeRefresh();
     } catch {
       setError("Failed to list puppy for sale.");
     } finally {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 import type { LitterPuppyDto } from "@/server/mappers/litter.mapper";
 import {
@@ -13,12 +12,13 @@ export function LitterPuppyNameWorkspace({
   litterId,
   puppy,
   onClose,
+  onAuthoritativeRefresh,
 }: {
   litterId: string;
   puppy: LitterPuppyDto;
   onClose: () => void;
+  onAuthoritativeRefresh: () => void;
 }) {
-  const router = useRouter();
   const [callName, setCallName] = useState(puppy.callName ?? "");
   const [registeredName, setRegisteredName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -45,14 +45,14 @@ export function LitterPuppyNameWorkspace({
 
       if (!response.ok) {
         setError(result.error ?? "Failed to update puppy name.");
-        if (response.status === 403 || response.status === 404) {
-          router.refresh();
+        if (response.status === 403 || response.status === 404 || response.status === 409) {
+          onAuthoritativeRefresh();
         }
         return;
       }
 
       onClose();
-      router.refresh();
+      onAuthoritativeRefresh();
     } catch {
       setError("Failed to update puppy name.");
     } finally {

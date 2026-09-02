@@ -17,7 +17,7 @@ assert.match(workspace, /fetch\("\/api\/kennel\/runs"/, "destination runs load o
 assert.match(workspace, /Current kennel run/, "current run is clearly displayed");
 assert.match(workspace, /Destination kennel run/, "destination selector is labelled");
 assert.match(workspace, /This puppy is already in this kennel run\./, "current-run selection prevents needless mutation churn");
-assert.match(workspace, /router\.refresh\(\)/, "success and stale failures refresh authoritative state");
+assert.match(workspace, /onAuthoritativeRefresh\(\)/, "success and stale failures refresh authoritative state");
 assert.match(workspace, /role="status"/, "loading state is semantic");
 assert.match(workspace, /role="alert"/, "errors are semantic");
 assert.doesNotMatch(workspace, /modal|popover|drawer/i, "workspace is inline");

@@ -20,7 +20,7 @@ assert.match(workspace, /litter record, its pedigree, and historical records/, "
 assert.match(workspace, /Confirm Re-home/, "confirmation control states its consequence");
 assert.match(workspace, />\s*Cancel\s*</, "cancel is explicit");
 assert.match(workspace, /role="alert"/, "expected errors remain inline and accessible");
-assert.match(workspace, /router\.refresh\(\)/, "success and stale failures refresh authoritative state");
+assert.match(workspace, /onAuthoritativeRefresh\(\)/, "success and stale failures refresh authoritative state");
 assert.doesNotMatch(workspace, /modal|popover|drawer|confirm\(/i, "workspace uses no overlay or browser confirmation");
 
 assert.match(route, /export async function POST/, "litter re-home uses a narrow POST route");

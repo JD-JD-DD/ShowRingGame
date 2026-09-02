@@ -22,7 +22,7 @@ assert.match(workspace, /Call name/, "workspace exposes call-name editing");
 assert.match(workspace, /MAX_CALL_NAME_LENGTH/, "workspace uses the canonical call-name limit");
 assert.match(workspace, /MAX_REGISTERED_NAME_LENGTH/, "workspace uses the canonical registered-name limit");
 assert.match(workspace, /Registered name is permanent once assigned\./, "assigned registered names are read-only and explained");
-assert.match(workspace, /router\.refresh\(\)/, "success and stale failures refresh authoritative litter state");
+assert.match(workspace, /onAuthoritativeRefresh\(\)/, "success and stale failures refresh authoritative litter state");
 assert.match(workspace, /role="alert"/, "expected failures remain inline and accessible");
 assert.doesNotMatch(workspace, /modal|popover|drawer/i, "workspace is inline");
 

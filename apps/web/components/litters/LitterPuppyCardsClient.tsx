@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import type { LitterPuppyDto } from "@/server/mappers/litter.mapper";
 import { LitterPuppyCard } from "@/components/litters/LitterPuppyCard";
@@ -81,11 +82,30 @@ export function LitterPuppyCardsClient({
   litterId: string;
   puppies: LitterPuppyDto[];
 }) {
+  const router = useRouter();
   const selectionState = usePuppySelectionState(puppies);
   const selectedPuppyId = [...selectionState.selectedPuppyIds][0] ?? null;
   const selectedPuppy =
     puppies.find((puppy) => puppy.dogId === selectedPuppyId) ?? null;
   const [activeAction, setActiveAction] = useState<"name" | "moveRun" | "sale" | "rehome" | null>(null);
+
+  const onAuthoritativeRefresh = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
+  useEffect(() => {
+    if (!activeAction || !selectedPuppy) {
+      if (!selectedPuppy) setActiveAction(null);
+      return;
+    }
+
+    const isEligible =
+      (activeAction === "name" && selectedPuppy.actionEligibility.canName) ||
+      (activeAction === "moveRun" && selectedPuppy.actionEligibility.canMoveRun) ||
+      (activeAction === "sale" && selectedPuppy.actionEligibility.canListForSale) ||
+      (activeAction === "rehome" && selectedPuppy.actionEligibility.canRehome);
+    if (!isEligible) setActiveAction(null);
+  }, [activeAction, selectedPuppy]);
 
   function clearSelection() {
     setActiveAction(null);
@@ -192,6 +212,7 @@ export function LitterPuppyCardsClient({
               litterId={litterId}
               puppy={selectedPuppy}
               onClose={() => setActiveAction(null)}
+              onAuthoritativeRefresh={onAuthoritativeRefresh}
             />
           ) : null}
           {activeAction === "moveRun" ? (
@@ -199,6 +220,7 @@ export function LitterPuppyCardsClient({
               litterId={litterId}
               puppy={selectedPuppy}
               onClose={() => setActiveAction(null)}
+              onAuthoritativeRefresh={onAuthoritativeRefresh}
             />
           ) : null}
           {activeAction === "sale" ? (
@@ -206,6 +228,7 @@ export function LitterPuppyCardsClient({
               litterId={litterId}
               puppy={selectedPuppy}
               onClose={() => setActiveAction(null)}
+              onAuthoritativeRefresh={onAuthoritativeRefresh}
             />
           ) : null}
           {activeAction === "rehome" ? (
@@ -213,6 +236,7 @@ export function LitterPuppyCardsClient({
               litterId={litterId}
               puppy={selectedPuppy}
               onClose={() => setActiveAction(null)}
+              onAuthoritativeRefresh={onAuthoritativeRefresh}
             />
           ) : null}
         </>

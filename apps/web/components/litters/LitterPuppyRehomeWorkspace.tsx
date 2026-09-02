@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 import type { LitterPuppyDto } from "@/server/mappers/litter.mapper";
 
@@ -9,12 +8,13 @@ export function LitterPuppyRehomeWorkspace({
   litterId,
   puppy,
   onClose,
+  onAuthoritativeRefresh,
 }: {
   litterId: string;
   puppy: LitterPuppyDto;
   onClose: () => void;
+  onAuthoritativeRefresh: () => void;
 }) {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isRehoming, setIsRehoming] = useState(false);
 
@@ -32,12 +32,12 @@ export function LitterPuppyRehomeWorkspace({
       const data = (await response.json().catch(() => ({}))) as { error?: string; ok?: boolean };
       if (!response.ok || data.ok === false) {
         setError(data.error ?? "We could not re-home this puppy. Please try again.");
-        router.refresh();
+        onAuthoritativeRefresh();
         return;
       }
 
       onClose();
-      router.refresh();
+      onAuthoritativeRefresh();
     } catch {
       setError("We could not re-home this puppy. Please try again.");
     } finally {
