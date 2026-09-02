@@ -4,6 +4,8 @@
 
 These focused regressions protect high-confidence architecture invariants. They complement feature and gameplay tests, remain deliberately small, and do not attempt to mechanically enforce every architecture pattern.
 
+The [Codex Development Protocol](codex-development-protocol.md) requires meaningful changes to identify and run relevant guardrails where practical.
+
 ## 2. Guardrail Standard
 
 A guardrail protects at least one authority boundary, hidden-data boundary, historical invariant, cross-domain prohibition, transaction invariant, idempotency invariant, or canonical semantic contract.
