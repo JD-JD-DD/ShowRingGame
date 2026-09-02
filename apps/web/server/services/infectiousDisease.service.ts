@@ -29,6 +29,8 @@ export class BulkBrucellosisExecutionError extends Error {
   }
 }
 
+export class BrucellosisScreeningError extends Error {}
+
 function getSafeBulkBrucellosisErrorDetails(error: unknown) {
   const candidate =
     error && typeof error === "object"
@@ -293,6 +295,11 @@ export async function executeBrucellosisScreeningForKennelTx(
   });
   args.runningBalance.value -= BRUCELLOSIS_TEST_FEE;
 
+  await tx.kennel.update({
+    where: { id: args.kennelId },
+    data: { balance: args.runningBalance.value },
+  });
+
   await tx.ledgerTransaction.create({
     data: {
       kennelId: args.kennelId,
@@ -310,6 +317,58 @@ export async function executeBrucellosisScreeningForKennelTx(
   });
 
   return test;
+}
+
+export async function runBrucellosisScreeningForKennel(args: {
+  kennelId: string;
+  dogId: string;
+  currentEpoch: number;
+}) {
+  return db.$transaction(async (tx) => {
+    const dog = await tx.dog.findUnique({
+      where: { id: args.dogId },
+      select: {
+        id: true,
+        ownerKennelId: true,
+        lifecycleState: true,
+        registeredName: true,
+        callName: true,
+        regNumber: true,
+        visibleTitlePrefix: true,
+        visibleTitleSuffix: true,
+      },
+    });
+
+    if (!dog) throw new BrucellosisScreeningError("Dog not found.");
+    if (dog.ownerKennelId !== args.kennelId) {
+      throw new BrucellosisScreeningError(
+        "You can only screen dogs owned by your kennel."
+      );
+    }
+    if (dog.lifecycleState !== "ALIVE") {
+      throw new BrucellosisScreeningError(
+        "Only living dogs can complete brucellosis screening."
+      );
+    }
+
+    const kennel = await tx.kennel.findUnique({
+      where: { id: args.kennelId },
+      select: { id: true, balance: true },
+    });
+    if (!kennel) throw new BrucellosisScreeningError("Kennel not found.");
+    if (kennel.balance < BRUCELLOSIS_TEST_FEE) {
+      throw new BrucellosisScreeningError(
+        "Insufficient funds for brucellosis screening."
+      );
+    }
+
+    return executeBrucellosisScreeningForKennelTx(tx, {
+      kennelId: kennel.id,
+      dog,
+      currentEpoch: args.currentEpoch,
+      runningBalance: { value: kennel.balance },
+    });
+  });
 }
 
 export function prepareBulkBrucellosisScreeningPersistence(args: {

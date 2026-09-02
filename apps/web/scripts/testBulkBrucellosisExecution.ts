@@ -19,13 +19,17 @@ const bulkExecution = service.slice(
   service.indexOf("export async function runBulkBrucellosisScreeningForKennel"),
   service.indexOf("export async function transmitBrucellosisThroughBreeding")
 );
+const singleExecution = service.slice(
+  service.indexOf("export async function runBrucellosisScreeningForKennel"),
+  service.indexOf("export function prepareBulkBrucellosisScreeningPersistence")
+);
 const standaloneRoute = readFileSync(
   join(root, "apps/web/app/api/dogs/[dogId]/brucellosis-screening/route.ts"),
   "utf8"
 );
 
 assert.ok(
-  bulkExecution.includes("return db.$transaction(async (tx) =>"),
+  bulkExecution.includes("const result = await db.$transaction(async (tx) =>"),
   "bulk Brucellosis execution is transactional"
 );
 assert.ok(
@@ -75,12 +79,31 @@ assert.ok(
   "bulk Brucellosis has no age gate"
 );
 assert.ok(
-  standaloneRoute.includes("executeBrucellosisScreeningForKennelTx(tx, {"),
-  "standalone Brucellosis screening reuses the canonical charged seam"
+  standaloneRoute.includes("runBrucellosisScreeningForKennel({"),
+  "standalone Brucellosis screening delegates to the Health-domain transaction"
 );
 assert.ok(
-  standaloneRoute.includes("currentKennel.balance < BRUCELLOSIS_TEST_FEE"),
-  "standalone Brucellosis screening retains its funds requirement"
+  !standaloneRoute.includes("tx.kennel.update({") &&
+    !standaloneRoute.includes("ledgerTransaction.create"),
+  "standalone route does not own balance or ledger mutation"
+);
+assert.ok(
+  singleExecution.includes("return db.$transaction(async (tx) =>") &&
+    singleExecution.includes("kennel.balance < BRUCELLOSIS_TEST_FEE") &&
+    singleExecution.includes("executeBrucellosisScreeningForKennelTx(tx, {"),
+  "single Brucellosis screening validates affordability and runs through one service transaction"
+);
+assert.ok(
+  singleExecution.includes('throw new BrucellosisScreeningError("Dog not found.")') &&
+    singleExecution.includes("You can only screen dogs owned by your kennel.") &&
+    singleExecution.includes("Only living dogs can complete brucellosis screening."),
+  "single Brucellosis screening preserves route-visible validation errors"
+);
+assert.ok(
+  service.includes("data: { balance: args.runningBalance.value }") &&
+    service.includes("amount: -BRUCELLOSIS_TEST_FEE") &&
+    service.includes("balanceAfter: args.runningBalance.value"),
+  "single Brucellosis screening co-persists the existing debit and post-debit ledger semantics"
 );
 for (const marker of [
   'operation: "bulk-brucellosis"',

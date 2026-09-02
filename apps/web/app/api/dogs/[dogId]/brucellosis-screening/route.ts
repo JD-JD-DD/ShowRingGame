@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { redirectToDogPageWithField } from "@/lib/dogPageRedirect";
-import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { getSessionUserId } from "@/lib/session";
 import { getKennelForUser } from "@/server/services/kennel.service";
-import { executeBrucellosisScreeningForKennelTx } from "@/server/services/infectiousDisease.service";
-import { BRUCELLOSIS_TEST_FEE } from "@showring/rules";
-
-class BrucellosisScreeningError extends Error {}
+import {
+  BrucellosisScreeningError,
+  runBrucellosisScreeningForKennel,
+} from "@/server/services/infectiousDisease.service";
 
 function formatResultLabel(resultCode: string): string {
   return resultCode === "NEGATIVE" ? "Negative" : "Positive";
@@ -35,69 +34,10 @@ export async function POST(
 
     const currentEpoch = getCurrentEpoch();
 
-    const result = await db.$transaction(async (tx) => {
-      const dog = await tx.dog.findUnique({
-        where: { id: dogId },
-        select: {
-          id: true,
-          ownerKennelId: true,
-          lifecycleState: true,
-          registeredName: true,
-          callName: true,
-          regNumber: true,
-          visibleTitlePrefix: true,
-          visibleTitleSuffix: true,
-        },
-      });
-
-      if (!dog) {
-        throw new BrucellosisScreeningError("Dog not found.");
-      }
-
-      if (dog.ownerKennelId !== kennel.id) {
-        throw new BrucellosisScreeningError(
-          "You can only screen dogs owned by your kennel."
-        );
-      }
-
-      if (dog.lifecycleState !== "ALIVE") {
-        throw new BrucellosisScreeningError(
-          "Only living dogs can complete brucellosis screening."
-        );
-      }
-
-      const currentKennel = await tx.kennel.findUnique({
-        where: { id: kennel.id },
-        select: { id: true, balance: true },
-      });
-
-      if (!currentKennel) {
-        throw new BrucellosisScreeningError("Kennel not found.");
-      }
-
-      if (currentKennel.balance < BRUCELLOSIS_TEST_FEE) {
-        throw new BrucellosisScreeningError(
-          "Insufficient funds for brucellosis screening."
-        );
-      }
-
-      const balanceAfter = currentKennel.balance - BRUCELLOSIS_TEST_FEE;
-
-      await tx.kennel.update({
-        where: { id: currentKennel.id },
-        data: { balance: balanceAfter },
-      });
-
-      const test = await executeBrucellosisScreeningForKennelTx(tx, {
-        kennelId: currentKennel.id,
-        dog,
-        currentEpoch,
-        runningBalance: { value: currentKennel.balance },
-      });
-
-      return {
-        resultCode: test.resultCode,
-      };
+    const result = await runBrucellosisScreeningForKennel({
+      kennelId: kennel.id,
+      dogId,
+      currentEpoch,
     });
 
     return redirectToDogPageWithField(

@@ -23,7 +23,7 @@ The inventory found **20 meaningful production operations** that write gameplay 
 | Bulk show entry | Showing | cluster entry creation | SINK | kennel → system | set final quote balance | yes, 1–3 rows | `-`; conceptual running balance | all entry/plan/balance/ledger writes in transaction | established bulk variant | High |
 | Single phenotype health test | Health | health-test execution | SINK | kennel → system | running balance then update | yes | `-`; running balance | test/result/balance/ledger transaction | established | High |
 | Bulk phenotype health test | Health | bulk health execution | SINK | kennel → system | set total debit | yes, per test | `-`; conceptual running balance | all-or-nothing transaction | established bulk variant | High |
-| Single brucellosis screening | Health | service or dog route orchestration | SINK | kennel → system | set debit | yes | `-`; post-screen balance | route/service execution in transaction | established, split route/helper shape | Medium |
+| Single brucellosis screening | Health | infectious-disease single-screening service | SINK | kennel → system | set debit | yes | `-`; post-screen balance | screening, balance, ledger in one service transaction | established | High |
 | Bulk brucellosis screening | Health | infectious-disease bulk execution | SINK | kennel → system | set total debit | yes, per screening | `-`; conceptual running balance | all-or-nothing transaction | established bulk variant | High |
 | Player dog sale | Market | market purchase | TRANSFER | buyer → seller | two computed updates | two | buyer `-`, seller `+`; each party's post-balance | listing/dog/ownership/balances/ledgers transaction | established | High |
 | Foundation purchase | Foundation | foundation purchase | SINK | kennel → system inventory | set computed debit | yes | `-`; buyer post-balance | ownership/inventory/balance/ledger transaction | intentional system-counterparty variant | High |
@@ -53,7 +53,7 @@ Single entry validates affordability, debits the kennel, persists `ShowEntry`, a
 
 ### Health
 
-Phenotype and brucellosis flows debit only the testing kennel with negative `HEALTH_TEST_FEE` rows. Bulk paths prepare individual result/ledger rows and execute all selected eligible tests, balance debit, records, and ledger rows in one transaction. Single dog-route brucellosis is a route-orchestrated transaction: the route updates balance and the shared service writes screening/ledger evidence. No behavior defect was demonstrated, but its split writer shape differs from service-contained flows.
+Phenotype and brucellosis flows debit only the testing kennel with negative `HEALTH_TEST_FEE` rows. Bulk paths prepare individual result/ledger rows and execute all selected eligible tests, balance debit, records, and ledger rows in one transaction. Stage 10C canonicalized single brucellosis: the route delegates to the Health-domain service, which co-persists screening, balance debit, and ledger history in one transaction. Focused coverage verifies this transaction structure and observable validation paths; it does not inject a database failure into the transaction.
 
 ### Market
 
@@ -150,7 +150,6 @@ No universal ledger source-key/idempotency invariant was established.
 
 ## 13. Unexplained Inconsistencies
 
-- Single brucellosis route orchestration updates `Kennel.balance` in the route while shared screening logic writes its ledger row; most normal flows keep both in a service. The same transaction and sign/balance semantics are evident, but the reason for this split ownership was not established.
 - `balanceAfter` has a strong logical meaning but no explicit repository-wide assertion/constraint establishes it against the final `Kennel.balance`, especially for aggregate bulk writes.
 - No universal source key or common duplicate-payment contract spans all monetary operations.
 
@@ -173,4 +172,4 @@ These are evidence-backed architecture differences, not demonstrated financial b
 
 ## 16. ARCH-DEBT-002 Recommendation
 
-**D. PARTIAL CANONICALIZATION POSSIBLE.** Strong evidence supports a future narrow contract around signed per-kennel ledger rows, transactional co-persistence with ordinary gameplay balance/business state, paired player transfers, and explicit system faucets/sinks. A universal writer/service, universal `balanceAfter` physical-timing assertion, and universal idempotency mechanism remain unsupported. Any future cleanup must preserve the documented bulk, system-counterparty, emergency-lock, and repair variants.
+**D. PARTIAL CANONICALIZATION POSSIBLE.** Stage 10C resolved the former single-brucellosis route/service split. Strong evidence supports a future narrow contract around signed per-kennel ledger rows, transactional co-persistence with ordinary gameplay balance/business state, paired player transfers, and explicit system faucets/sinks. A universal writer/service, universal `balanceAfter` physical-timing assertion, and universal idempotency mechanism remain unsupported. Any future cleanup must preserve the documented bulk, system-counterparty, emergency-lock, and repair variants.

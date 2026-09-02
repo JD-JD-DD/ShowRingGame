@@ -126,7 +126,7 @@ No single canonical helper/service established. Feature transaction services are
 ### Occurrences
 
 - **Location:** `showEntry.service.ts`; **function/service:** single/bulk entry writers; **purpose:** debit fees and write entry/ledger rows; **classification:** CANONICAL for show entry; **inputs/outputs:** quotes/kennel/entries → balance, ledger, entries; **role:** transactional mutation; **evidence:** transaction and bulk `ledgerTransaction.createMany`.
-- **Location:** `healthTest.service.ts` and `infectiousDisease.service.ts`; **function/service:** test mutations; **purpose:** debit test costs/write records; **classification:** CANONICAL for health testing; **role:** transactional mutation; **evidence:** balance writes and ledger creation in bulk health path.
+- **Location:** `healthTest.service.ts` and `infectiousDisease.service.ts`; **function/service:** test mutations; **purpose:** debit test costs/write records; **classification:** CANONICAL for health testing; **role:** transactional mutation; **evidence:** single and bulk health paths co-persist balance, records, and ledger history through Health-domain transactions.
 - **Location:** `market.service.ts`, `foundationDog.service.ts`, `breeding.service.ts`, `grooming.service.ts`, `emergencyVetCare.service.ts`, `reproductiveEmergencyTreatment.service.ts`, `rehome.service.ts`, `kennelService.service.ts`; **purpose:** feature-local debits/credits; **classification:** UNKNOWN as a common accounting pattern; **role:** transactional mutation; **evidence:** materially different set/increment balance updates and feature-specific ledger handling.
 - **Location:** `year13RegularShowRepair.service.ts`; **purpose:** historical repair; **classification:** LEGACY/operational variant; **role:** transaction writer; **evidence:** direct balance update in repair service.
 
@@ -164,7 +164,7 @@ Focused market, show entry, support, health, grooming, breeding, and care script
 
 ### Evidence
 
-Direct inventory of `Kennel.balance` writers; Stage 3/4/5 registries; visible Prisma transactions.
+Direct inventory of `Kennel.balance` writers; Stage 3/4/5 registries; visible Prisma transactions. The former single-brucellosis route/service split was canonicalized in Stage 10C; broader writer authority remains unresolved.
 
 ### Confidence
 
