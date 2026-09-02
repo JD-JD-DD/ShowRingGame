@@ -83,7 +83,7 @@ export function LitterPuppyCard({
                 type="checkbox"
                 checked={isSelected}
                 onChange={(event) => onSelectionChange(event.target.checked)}
-                aria-label={`Select Puppy ${puppy.litterOrder ?? ""}, ${puppy.regNumber}`}
+                aria-label={`Select ${puppy.displayName}, ${puppy.regNumber}`}
                 className="size-4 accent-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200"
               />
               <span>Select</span>

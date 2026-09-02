@@ -147,14 +147,16 @@ export function LitterPuppyCardsClient({
         ),
       }
     : null;
-  const singleEligiblePuppy =
-    selectedPuppies.length === 1 && activeActionPartition?.eligiblePuppies.length === 1
-      ? activeActionPartition.eligiblePuppies[0]
-      : null;
-
   const onAuthoritativeRefresh = useCallback(() => {
     router.refresh();
   }, [router]);
+
+  function clearActionResults() {
+    setNamingResult(null);
+    setKennelRunResult(null);
+    setSaleResult(null);
+    setRehomeResult(null);
+  }
 
   useEffect(() => {
     if (selectedPuppies.length === 0) setActiveAction(null);
@@ -162,10 +164,7 @@ export function LitterPuppyCardsClient({
 
   function clearSelection() {
     setActiveAction(null);
-    setNamingResult(null);
-    setKennelRunResult(null);
-    setSaleResult(null);
-    setRehomeResult(null);
+    clearActionResults();
     selectionState.clearSelection();
   }
 
@@ -173,10 +172,7 @@ export function LitterPuppyCardsClient({
     if (selected) {
       if (!selectionState.selectedPuppyIds.has(puppyId)) {
         setActiveAction(null);
-        setNamingResult(null);
-        setKennelRunResult(null);
-        setSaleResult(null);
-        setRehomeResult(null);
+        clearActionResults();
         selectionState.selectPuppy(puppyId);
       }
       return;
@@ -184,10 +180,7 @@ export function LitterPuppyCardsClient({
 
     if (selectionState.selectedPuppyIds.has(puppyId)) {
       setActiveAction(null);
-      setNamingResult(null);
-      setKennelRunResult(null);
-      setSaleResult(null);
-      setRehomeResult(null);
+      clearActionResults();
       selectionState.deselectPuppy(puppyId);
     }
   }
@@ -201,10 +194,7 @@ export function LitterPuppyCardsClient({
 
     if (!alreadySelected) {
       setActiveAction(null);
-      setNamingResult(null);
-      setKennelRunResult(null);
-      setSaleResult(null);
-      setRehomeResult(null);
+      clearActionResults();
       selectionState.selectAllManageablePuppies();
     }
   }
@@ -368,6 +358,7 @@ export function LitterPuppyCardsClient({
               onClose={() => setActiveAction(null)}
               onComplete={(result) => {
                 setActiveAction(null);
+                clearActionResults();
                 setNamingResult(result);
                 onAuthoritativeRefresh();
               }}
@@ -381,6 +372,7 @@ export function LitterPuppyCardsClient({
               onClose={() => setActiveAction(null)}
               onComplete={(result) => {
                 setActiveAction(null);
+                clearActionResults();
                 setKennelRunResult(result);
                 onAuthoritativeRefresh();
               }}
@@ -394,6 +386,7 @@ export function LitterPuppyCardsClient({
               onClose={() => setActiveAction(null)}
               onComplete={(result) => {
                 setActiveAction(null);
+                clearActionResults();
                 setSaleResult(result);
                 onAuthoritativeRefresh();
               }}
@@ -407,6 +400,7 @@ export function LitterPuppyCardsClient({
               onClose={() => setActiveAction(null)}
               onComplete={(result) => {
                 setActiveAction(null);
+                clearActionResults();
                 setRehomeResult(result);
                 onAuthoritativeRefresh();
               }}

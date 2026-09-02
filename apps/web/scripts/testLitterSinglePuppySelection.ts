@@ -15,7 +15,7 @@ assert.match(client, /Select all eligible/, "selection control uses the manageab
 assert.match(client, /selectedCount\.toLocaleString\(\)/, "selected count is locale-aware");
 assert.match(card, /puppy\.isManageableByBreeder \?/, "only structurally manageable puppies receive checkboxes");
 assert.match(card, /type="checkbox"/, "selection uses a semantic checkbox");
-assert.match(card, /aria-label=\{`Select Puppy/, "checkbox has puppy-specific accessible text");
+assert.match(card, /aria-label=\{`Select \$\{puppy\.displayName\}/, "checkbox has puppy-specific accessible text");
 assert.doesNotMatch(card, /canListForSale|canRehome|canMoveRun|canName/, "puppy cards do not render action controls");
 
 const manageableIds = new Set(["a", "b", "c"]);
