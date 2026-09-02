@@ -10,6 +10,7 @@ import type { LitterPuppyKennelRunResult } from "@/components/litters/LitterPupp
 import { LitterPuppyNameWorkspace } from "@/components/litters/LitterPuppyNameWorkspace";
 import type { LitterPuppyNamingResult } from "@/components/litters/LitterPuppyNameWorkspace";
 import { LitterPuppyRehomeWorkspace } from "@/components/litters/LitterPuppyRehomeWorkspace";
+import type { LitterPuppyRehomeResult } from "@/components/litters/LitterPuppyRehomeWorkspace";
 import { LitterPuppySaleWorkspace } from "@/components/litters/LitterPuppySaleWorkspace";
 import type { LitterPuppySaleResult } from "@/components/litters/LitterPuppySaleWorkspace";
 
@@ -136,6 +137,7 @@ export function LitterPuppyCardsClient({
   const [namingResult, setNamingResult] = useState<LitterPuppyNamingResult | null>(null);
   const [kennelRunResult, setKennelRunResult] = useState<LitterPuppyKennelRunResult | null>(null);
   const [saleResult, setSaleResult] = useState<LitterPuppySaleResult | null>(null);
+  const [rehomeResult, setRehomeResult] = useState<LitterPuppyRehomeResult | null>(null);
   const activeActionDescriptor = activeAction ? PUPPY_ACTIONS[activeAction] : null;
   const activeActionPartition = activeActionDescriptor
     ? {
@@ -163,6 +165,7 @@ export function LitterPuppyCardsClient({
     setNamingResult(null);
     setKennelRunResult(null);
     setSaleResult(null);
+    setRehomeResult(null);
     selectionState.clearSelection();
   }
 
@@ -173,6 +176,7 @@ export function LitterPuppyCardsClient({
         setNamingResult(null);
         setKennelRunResult(null);
         setSaleResult(null);
+        setRehomeResult(null);
         selectionState.selectPuppy(puppyId);
       }
       return;
@@ -183,6 +187,7 @@ export function LitterPuppyCardsClient({
       setNamingResult(null);
       setKennelRunResult(null);
       setSaleResult(null);
+      setRehomeResult(null);
       selectionState.deselectPuppy(puppyId);
     }
   }
@@ -199,6 +204,7 @@ export function LitterPuppyCardsClient({
       setNamingResult(null);
       setKennelRunResult(null);
       setSaleResult(null);
+      setRehomeResult(null);
       selectionState.selectAllManageablePuppies();
     }
   }
@@ -238,6 +244,17 @@ export function LitterPuppyCardsClient({
               Clear selection
             </button>
           </div>
+        </section>
+      ) : null}
+
+      {rehomeResult ? (
+        <section className="theme-status-success mt-5 rounded-xl px-4 py-3 text-sm" role="status">
+          <p className="font-semibold">Puppies re-homed</p>
+          <p>{pluralizePuppies(rehomeResult.rehomedCount)} re-homed.{rehomeResult.skipped.length > 0 ? ` ${pluralizePuppies(rehomeResult.skipped.length)} skipped.` : ""}</p>
+          {rehomeResult.skipped.length > 0 ? <ul className="mt-2 grid gap-1">{rehomeResult.skipped.map((skipped) => {
+            const puppy = puppies.find((candidate) => candidate.dogId === skipped.dogId);
+            return <li key={skipped.dogId}>{puppy ? `${puppy.displayName} · ${puppy.regNumber}` : "Puppy"}: {skipped.reason}</li>;
+          })}</ul> : null}
         </section>
       ) : null}
 
@@ -382,12 +399,17 @@ export function LitterPuppyCardsClient({
               }}
             />
           ) : null}
-          {activeAction === "rehome" && singleEligiblePuppy ? (
+          {activeAction === "rehome" && activeActionPartition ? (
             <LitterPuppyRehomeWorkspace
               litterId={litterId}
-              puppy={singleEligiblePuppy}
+              eligiblePuppies={activeActionPartition.eligiblePuppies}
+              skippedPuppies={activeActionPartition.skippedPuppies}
               onClose={() => setActiveAction(null)}
-              onAuthoritativeRefresh={onAuthoritativeRefresh}
+              onComplete={(result) => {
+                setActiveAction(null);
+                setRehomeResult(result);
+                onAuthoritativeRefresh();
+              }}
             />
           ) : null}
         </>

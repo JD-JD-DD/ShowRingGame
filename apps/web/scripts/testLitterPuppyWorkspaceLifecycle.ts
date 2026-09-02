@@ -20,18 +20,16 @@ assert.match(client, /const onAuthoritativeRefresh = useCallback[\s\S]*router\.r
 assert.match(client, /onAuthoritativeRefresh=\{onAuthoritativeRefresh\}/, "legacy single-puppy workspaces receive the shared refresh callback");
 assert.match(client, /onComplete=\{\(result\) => \{[\s\S]*setKennelRunResult\(result\)[\s\S]*onAuthoritativeRefresh\(\)/, "unified Move reports a parent-held result before refreshing");
 assert.match(client, /onComplete=\{\(result\) => \{[\s\S]*setSaleResult\(result\)[\s\S]*onAuthoritativeRefresh\(\)/, "unified Sale reports a parent-held result before refreshing");
+assert.match(client, /onComplete=\{\(result\) => \{[\s\S]*setRehomeResult\(result\)[\s\S]*onAuthoritativeRefresh\(\)/, "unified Re-home reports a parent-held result before refreshing");
 assert.match(client, /selectedPuppies\.length === 1/, "single-puppy workspaces cannot target the first member of a multi-selection");
 assert.match(client, /activeActionPartition/, "one active action owns the current selection review");
 
-for (const workspace of [rehomeWorkspace]) {
-  assert.match(workspace, /onAuthoritativeRefresh\(\)/, "legacy workspace refreshes authoritative state after success or stale failure");
-  assert.match(workspace, /role="alert"/, "workspace presents expected errors inline");
-  assert.match(workspace, /onClose/, "workspace closes through the parent-owned lifecycle");
-  assert.match(workspace, /focus-visible:outline/, "workspace controls provide a visible keyboard focus state");
-  assert.doesNotMatch(workspace, /alert\(|confirm\(|location\.href|router\.push/i, "workspace does not navigate or use browser dialogs");
-}
+assert.match(rehomeWorkspace, /onComplete/, "unified Re-home delegates successful refresh and result display to its parent");
+assert.match(rehomeWorkspace, /role="alert"/, "unified Re-home retains inline errors");
+assert.match(rehomeWorkspace, /focus-visible:outline/, "unified Re-home controls provide a visible keyboard focus state");
+assert.doesNotMatch(rehomeWorkspace, /alert\(|confirm\(|location\.href|router\.push/i, "unified Re-home does not navigate or use browser dialogs");
 
-for (const workspace of [nameWorkspace, runWorkspace, saleWorkspace]) {
+for (const workspace of [nameWorkspace, runWorkspace, saleWorkspace, rehomeWorkspace]) {
   assert.match(workspace, /onComplete/, "unified workspace delegates successful refresh and result display to its parent");
   assert.match(workspace, /role="alert"/, "unified workspace retains inline errors");
 }
