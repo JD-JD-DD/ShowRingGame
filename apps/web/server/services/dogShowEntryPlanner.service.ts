@@ -30,6 +30,7 @@ type PlannerDog = Prisma.DogGetPayload<{
     sex: true;
     ownerKennelId: true;
     birthEpoch: true;
+    deathEpoch: true;
     lifecycleState: true;
     marketState: true;
     coatCondition: true;
@@ -498,6 +499,7 @@ export async function getDogShowEntryPlanner({
         sex: true,
         ownerKennelId: true,
         birthEpoch: true,
+        deathEpoch: true,
         lifecycleState: true,
         marketState: true,
         coatCondition: true,
@@ -668,6 +670,12 @@ export async function getDogShowEntryPlanner({
 
   const reproState = getShowReproState(dog);
   const hasPendingEmergencyCare = dog.emergencyCareEvents.length > 0;
+  const displayAgeHours = Math.max(
+    0,
+    (dog.lifecycleState === "DECEASED" && dog.deathEpoch !== null
+      ? dog.deathEpoch
+      : currentEpoch) - dog.birthEpoch
+  );
   const dogDto: DogShowEntryPlannerDogDto = {
     dogId: dog.id,
     callName: dog.callName,
@@ -678,7 +686,7 @@ export async function getDogShowEntryPlanner({
     breedName: dog.breed.name,
     breedGroupName: dog.breed.groupName,
     sex: dog.sex,
-    ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
+    ageHours: displayAgeHours,
     lifecycleState: dog.lifecycleState,
     marketState: dog.marketState,
     ownerKennel: {

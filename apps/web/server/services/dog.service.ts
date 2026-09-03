@@ -900,6 +900,7 @@ export async function getDogProfile(args: {
       regNumber: true,
       sex: true,
       birthEpoch: true,
+      deathEpoch: true,
       breedCode2: true,
       lifecycleState: true,
       marketState: true,
@@ -1185,6 +1186,13 @@ export async function getDogProfile(args: {
   );
 
   const ageHours = Math.max(0, currentEpoch - dog.birthEpoch);
+  const displayAgeHours = Math.max(
+    0,
+    (dog.lifecycleState === DogLifecycleState.DECEASED &&
+    dog.deathEpoch !== null
+      ? dog.deathEpoch
+      : currentEpoch) - dog.birthEpoch
+  );
   const isAlive = dog.lifecycleState === DogLifecycleState.ALIVE;
   const isOwnedByCurrentKennel =
     viewerKennelId !== null && dog.ownerKennelId === viewerKennelId;
@@ -1659,8 +1667,8 @@ export async function getDogProfile(args: {
       regNumber: dog.regNumber,
       sex: dog.sex,
       sexLabel: formatSexLabel(dog.sex),
-      ageHours,
-      ageLabel: formatAgeLabel(ageHours),
+      ageHours: displayAgeHours,
+      ageLabel: formatAgeLabel(displayAgeHours),
       lifecycleState: dog.lifecycleState,
       lifecycleLabel: formatLifecycleLabel(dog.lifecycleState),
       originLabel,
