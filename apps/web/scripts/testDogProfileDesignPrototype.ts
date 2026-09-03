@@ -18,6 +18,7 @@ assert.match(page, /precision=\{3\}/, "prototype preserves three-decimal visible
 assert.match(page, /PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES/, "prototype reuses the established health result text-class mapping");
 assert.match(page, /valueClassName: PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES\[severity\]/, "only prototype Health result values receive the established severity class");
 assert.match(page, /className=\{`text-sm font-semibold \$\{row\.valueClassName \?\? "theme-heading"\}`\}/, "health result values use their semantic class instead of the neutral theme-heading class");
+assert.match(page, /<SummarySection title="Show Career".*action=\{<div className="flex flex-wrap gap-2"><PrototypeButton label="View Full Show Record".*<PrototypeButton label="Ribbon Room"/, "Show Career presents the locally mocked Ribbon Room action beside the full record action");
 assert.doesNotMatch(page, /@\/lib\/db|@\/server\/services|fetch\(/, "prototype has no database, service, or API dependency");
 assert.match(page, /Manage Dog/, "prototype includes the local Manage Dog control");
 assert.match(page, /aria-expanded=\{manageDogOpen\}/, "Manage Dog exposes expanded state");
