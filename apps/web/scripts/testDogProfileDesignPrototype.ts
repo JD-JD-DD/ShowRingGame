@@ -11,6 +11,10 @@ assert.match(page, /href="\/breed-art"/, "missing-art state uses the established
 assert.match(page, /TraitLine/, "prototype reuses the established trait slider component");
 assert.match(page, /precision=\{3\}/, "prototype preserves three-decimal visible-category presentation");
 assert.doesNotMatch(page, /@\/lib\/db|@\/server\/services|fetch\(/, "prototype has no database, service, or API dependency");
+assert.match(page, /Manage Dog/, "prototype includes the local Manage Dog control");
+assert.match(page, /aria-expanded=\{manageDogOpen\}/, "Manage Dog exposes expanded state");
+assert.match(page, /Emergency veterinary care required/, "prototype keeps urgent care visible outside Manage Dog");
+assert.match(page, /Not currently eligible — reproductive recovery is still active\./, "prototype explains unavailable breeding in plain English");
 assert.doesNotMatch(fixture, /genotype|geneticsVersion|traitHead|traitForequarters|traitHindquarters|traitGait|traitCoat|traitSize|traitTemperament|traitShowShine|traitFeet|traitTopline/, "fixture contains no hidden Dog trait fields");
 assert.match(fixture, /Demo's Ringbright Aster/, "prototype carries forward the guide dog's player-facing identity");
 
