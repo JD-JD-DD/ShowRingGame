@@ -100,7 +100,7 @@ export default async function CommunityCategoryPage({
                 </div>
                 <h3 className="theme-heading mt-2 text-lg font-semibold"><Link href={`/community/${category.slug}/${topic.id}`} className="hover:underline">{topic.title}</Link></h3>
                 <p className="theme-copy mt-2 text-sm leading-6">{topic.preview}</p>
-                <div className="mt-4"><CommunityAuthor kennel={topic.kennel} badges={topic.badges} supporterTier={topic.supporterTier} currentKennelId={actor.kennel.id} sourceType={topic.sourceType} /></div>
+                <div className="mt-4"><CommunityAuthor kennel={topic.kennel} badges={topic.badges} supporterTier={topic.supporterTier} currentKennelId={actor.kennel?.id ?? null} sourceType={topic.sourceType} /></div>
               </article>
             ))}
             {topics.length === 0 ? <p className="theme-card theme-copy rounded-[24px] p-6 text-sm">No topics in this category yet.</p> : null}

@@ -18,7 +18,7 @@ export default function CommunityAuthor({
   };
   badges: KennelPrestigeBadges;
   supporterTier: SupportPresentationTierValue | null;
-  currentKennelId: string;
+  currentKennelId: string | null;
   sourceType: string;
 }) {
   const canMessagePlayer = sourceType === "PLAYER" && kennel.id !== currentKennelId;
