@@ -14,6 +14,7 @@
     "test:grooming-eligibility": "tsx scripts/testGroomingEligibility.ts",
     "test:grooming-listing-acceptance-errors": "tsx scripts/testGroomingListingAcceptanceErrors.ts",
     "test:dog-profile-kennel-run-move": "tsx scripts/testDogProfileKennelRunMove.ts",
+    "test:dog-profile-design-prototype": "tsx scripts/testDogProfileDesignPrototype.ts",
     "test:dog-show-record-title-points": "tsx scripts/testDogShowRecordTitlePoints.ts",
     "test:dog-titles": "tsx scripts/testDogTitles.ts",
     "test:full-pedigree-slots": "tsx scripts/testFullPedigreeSlots.ts",

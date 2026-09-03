@@ -340,8 +340,8 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  'type ConfigurableBulkWorkspace = "move-dogs";',
-  "kennel roster has one explicit configurable bulk workspace state"
+  'type ConfigurableBulkWorkspace =\n  | "move-dogs"\n  | "health-tests"\n  | "brucellosis"\n  | "bulk-sale";',
+  "kennel roster has one explicit union for every configurable bulk workspace"
 );
 assertIncludes(
   kennelPanel,
@@ -385,8 +385,8 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
-  'type ConfigurableBulkWorkspace = "move-dogs" | "health-tests" | "brucellosis";',
-  "Health Tests is part of the single active workspace state"
+  'type ConfigurableBulkWorkspace =\n  | "move-dogs"\n  | "health-tests"\n  | "brucellosis"\n  | "bulk-sale";',
+  "Health Tests remains part of the single active configurable workspace union"
 );
 assertIncludes(
   kennelPanel,
@@ -538,9 +538,9 @@ assertIncludes(
   "Brucellosis execution has local progress feedback"
 );
 assertIncludes(
-  kennelPanel,
+  bulkHealthTestFeedback,
   "No brucellosis screenings were run.",
-  "zero-execution Brucellosis feedback is useful"
+  "zero-execution Brucellosis feedback remains useful"
 );
 const bulkBrucellosisExecutionSection = kennelPanel.slice(
   kennelPanel.indexOf("async function runBulkBrucellosisTests()"),
@@ -558,7 +558,6 @@ for (const stateSetter of [
   "setSortKey(",
   "setSortDirection(",
   "window.location",
-  "router.",
 ]) {
   assertExcludes(
     bulkBrucellosisExecutionSection,
@@ -566,6 +565,11 @@ for (const stateSetter of [
     `Brucellosis execution preserves roster context without ${stateSetter}`
   );
 }
+assertIncludes(
+  bulkBrucellosisExecutionSection,
+  "router.refresh();",
+  "successful Brucellosis execution refreshes roster data without navigation"
+);
 assertIncludes(
   bulkBrucellosisExecutionSection,
   "setActiveBulkWorkspace(null);",
@@ -840,7 +844,6 @@ for (const stateSetter of [
   "setSortKey(",
   "setSortDirection(",
   "window.location",
-  "router.",
 ]) {
   assertExcludes(
     bulkHealthTestExecutionSection,
@@ -848,6 +851,11 @@ for (const stateSetter of [
     `successful Health Tests execution does not reset or navigate via ${stateSetter}`
   );
 }
+assertIncludes(
+  bulkHealthTestExecutionSection,
+  "router.refresh();",
+  "successful Health Tests execution refreshes roster data without navigation"
+);
 assertIncludes(
   bulkHealthTestExecutionSection,
   "setHealthTestExecutionError(formatHealthTestExecutionError(executionError));",
