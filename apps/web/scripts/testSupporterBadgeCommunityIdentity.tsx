@@ -21,9 +21,11 @@ const prestige = readFileSync(
 for (const tier of ["BRONZE", "SILVER", "GOLD"] as const) {
   const markup = renderToStaticMarkup(
     <CommunityAuthor
-      kennel={{ name: "Northwind Kennel", slug: "northwind" }}
+      kennel={{ id: "northwind", name: "Northwind Kennel", slug: "northwind" }}
       badges={{ prestigeScore: 42, prestigeRank: "Hallmark" }}
       supporterTier={tier}
+      currentKennelId="other-kennel"
+      sourceType="PLAYER"
     />
   );
   assert.match(markup, /Hallmark/);
@@ -35,9 +37,11 @@ for (const tier of ["BRONZE", "SILVER", "GOLD"] as const) {
 
 const hiddenMarkup = renderToStaticMarkup(
   <CommunityAuthor
-    kennel={{ name: "Northwind Kennel", slug: "northwind" }}
+    kennel={{ id: "northwind", name: "Northwind Kennel", slug: "northwind" }}
     badges={{ prestigeScore: 42, prestigeRank: "Hallmark" }}
     supporterTier={null}
+    currentKennelId="other-kennel"
+    sourceType="PLAYER"
   />
 );
 assert.match(hiddenMarkup, /Hallmark/);

@@ -8,14 +8,21 @@ export default function CommunityAuthor({
   kennel,
   badges,
   supporterTier,
+  currentKennelId,
+  sourceType,
 }: {
   kennel: {
+    id: string;
     name: string;
     slug: string;
   };
   badges: KennelPrestigeBadges;
   supporterTier: SupportPresentationTierValue | null;
+  currentKennelId: string;
+  sourceType: string;
 }) {
+  const canMessagePlayer = sourceType === "PLAYER" && kennel.id !== currentKennelId;
+
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Link
@@ -24,6 +31,14 @@ export default function CommunityAuthor({
       >
         {kennel.name}
       </Link>
+      {canMessagePlayer ? (
+        <Link
+          href={`/inbox/messages/start/${kennel.slug}`}
+          className="theme-accent-link text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          Message Player
+        </Link>
+      ) : null}
       <span className="theme-copy text-sm" aria-hidden="true">·</span>
       <BulletinBadges badges={badges} />
       {supporterTier ? <SupporterBadge tier={supporterTier} /> : null}
