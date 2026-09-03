@@ -9,27 +9,11 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export function ScrollToBottomButton({ targetId }: { targetId: string }) {
-  return (
-    <button
-      type="button"
-      aria-label="Scroll to bottom"
-      onClick={() => {
-        document.getElementById(targetId)?.scrollIntoView({
-          block: "end",
-          behavior: prefersReducedMotion() ? "auto" : "smooth",
-        });
-      }}
-      className="theme-floating-button fixed right-4 top-32 z-30 rounded-full px-4 py-2 text-sm font-semibold motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] sm:right-6 sm:top-28"
-    >
-      Bottom
-    </button>
-  );
-}
-
 export default function ReturnToTopButton() {
   const [isVisible, setIsVisible] = useState(false);
   const pathname = usePathname();
+  const hasBottomScrollControl =
+    pathname === "/plan-a-litter" || /^\/shows\/[^/]+$/.test(pathname);
 
   useEffect(() => {
     const updateVisibility = () => {
@@ -46,7 +30,7 @@ export default function ReturnToTopButton() {
 
   return (
     <>
-      {pathname === "/plan-a-litter" ? (
+      {hasBottomScrollControl ? (
         <button
           type="button"
           aria-label="Scroll to bottom"

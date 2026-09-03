@@ -10,6 +10,7 @@ const client = source("apps/web/components/breeding/BreedPageClient.tsx");
 const planner = source("apps/web/components/breeding/BreedingPlannerPage.tsx");
 const layout = source("apps/web/app/layout.tsx");
 const scrollControls = source("apps/web/components/ReturnToTopButton.tsx");
+const showEntryPage = source("apps/web/app/shows/[showId]/page.tsx");
 
 function section(text: string, start: string, end: string) {
   const startIndex = text.indexOf(start);
@@ -290,10 +291,21 @@ assert.ok(
   layout.includes("<ReturnToTopButton />") &&
     scrollControls.includes('const pathname = usePathname();') &&
     scrollControls.includes('pathname === "/plan-a-litter"') &&
+    scrollControls.includes('/^\\/shows\\/[^/]+$/.test(pathname)') &&
     scrollControls.includes('top: document.documentElement.scrollHeight') &&
     scrollControls.includes("bottom-20 right-4 z-50") &&
     scrollControls.includes('aria-label="Scroll to bottom"'),
-  "Plan a Litter renders an always-visible, fixed Bottom control from the same root-layout client component as Top"
+  "Plan a Litter and the exact Show Entry route render one always-visible, fixed Bottom control from the same root-layout client component as Top"
+);
+assert.equal(
+  showEntryPage.includes("ScrollToBottomButton"),
+  false,
+  "Show Entry does not retain a duplicate page-local Bottom control"
+);
+assert.equal(
+  showEntryPage.includes("show-entry-page-bottom"),
+  false,
+  "Show Entry no longer needs a page-local Bottom anchor"
 );
 
 console.log("Breeding page client runtime regression checks passed.");
