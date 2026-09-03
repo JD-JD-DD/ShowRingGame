@@ -216,6 +216,18 @@ type BrucellosisExecution = {
   skippedByReason: BrucellosisPreview["skippedByReason"];
 };
 type GroomingStateFilter = "" | "groomed" | "ungroomed";
+type RosterViewState = {
+  selectedRunIds: string[];
+  searchText: string;
+  breedFilter: string;
+  sexFilter: "" | "M" | "F";
+  onlyBreedable: boolean;
+  onlyForSale: boolean;
+  onlyAtStud: boolean;
+  groomingStateFilter: GroomingStateFilter;
+  sortKey: SortKey;
+  sortDirection: "asc" | "desc";
+};
 type OptionalColumnId =
   | "dog"
   | "breed"
@@ -237,6 +249,19 @@ type OptionalColumnId =
   | "healthStatus";
 
 const VISIBLE_COLUMNS_STORAGE_KEY = "showring.kennelRoster.visibleColumns";
+const ROSTER_VIEW_STATE_STORAGE_KEY = "showring.kennelRoster.viewState";
+const SORT_KEYS: SortKey[] = [
+  "breed",
+  "name",
+  "sex",
+  "age",
+  "typeExpression",
+  "structureBalance",
+  "movement",
+  "coatPresentation",
+  "temperamentRingBehavior",
+  "conditioningHandling",
+];
 const OPTIONAL_COLUMNS: Array<{
   id: OptionalColumnId;
   label: string;
@@ -303,6 +328,77 @@ const DEFAULT_VISIBLE_COLUMNS: OptionalColumnId[] = [
   "structureBalance",
   "movement",
 ];
+const DEFAULT_ROSTER_VIEW_STATE: RosterViewState = {
+  selectedRunIds: [],
+  searchText: "",
+  breedFilter: "",
+  sexFilter: "",
+  onlyBreedable: false,
+  onlyForSale: false,
+  onlyAtStud: false,
+  groomingStateFilter: "",
+  sortKey: "breed",
+  sortDirection: "asc",
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function parseRosterViewState(value: string | null): RosterViewState | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+
+    if (!isRecord(parsed)) {
+      return null;
+    }
+
+    const selectedRunIds = Array.isArray(parsed.selectedRunIds)
+      ? [...new Set(parsed.selectedRunIds.filter((runId): runId is string => typeof runId === "string"))]
+      : DEFAULT_ROSTER_VIEW_STATE.selectedRunIds;
+    const sexFilter =
+      parsed.sexFilter === "M" || parsed.sexFilter === "F"
+        ? parsed.sexFilter
+        : DEFAULT_ROSTER_VIEW_STATE.sexFilter;
+    const groomingStateFilter =
+      parsed.groomingStateFilter === "groomed" ||
+      parsed.groomingStateFilter === "ungroomed"
+        ? parsed.groomingStateFilter
+        : DEFAULT_ROSTER_VIEW_STATE.groomingStateFilter;
+    const sortKey = SORT_KEYS.includes(parsed.sortKey as SortKey)
+      ? (parsed.sortKey as SortKey)
+      : DEFAULT_ROSTER_VIEW_STATE.sortKey;
+    const sortDirection =
+      parsed.sortDirection === "asc" || parsed.sortDirection === "desc"
+        ? parsed.sortDirection
+        : DEFAULT_ROSTER_VIEW_STATE.sortDirection;
+
+    return {
+      selectedRunIds,
+      searchText:
+        typeof parsed.searchText === "string"
+          ? parsed.searchText
+          : DEFAULT_ROSTER_VIEW_STATE.searchText,
+      breedFilter:
+        typeof parsed.breedFilter === "string"
+          ? parsed.breedFilter
+          : DEFAULT_ROSTER_VIEW_STATE.breedFilter,
+      sexFilter,
+      onlyBreedable: parsed.onlyBreedable === true,
+      onlyForSale: parsed.onlyForSale === true,
+      onlyAtStud: parsed.onlyAtStud === true,
+      groomingStateFilter,
+      sortKey,
+      sortDirection,
+    };
+  } catch {
+    return null;
+  }
+}
 
 function formatAge(ageHours: number): string {
   const weeks = Math.floor(ageHours / 7);
@@ -528,6 +624,8 @@ export default function KennelDogsPanel() {
     DEFAULT_VISIBLE_COLUMNS
   );
   const [visibleColumnsLoaded, setVisibleColumnsLoaded] = useState(false);
+  const [rosterViewStateHydrated, setRosterViewStateHydrated] = useState(false);
+  const rosterViewStateHydratedRef = useRef(false);
   const [groomingActionDogId, setGroomingActionDogId] = useState<string | null>(
     null
   );
@@ -581,6 +679,92 @@ export default function KennelDogsPanel() {
       JSON.stringify(visibleColumns)
     );
   }, [visibleColumns, visibleColumnsLoaded]);
+
+  useEffect(() => {
+    if (rosterViewStateHydratedRef.current || loading || runsLoading) {
+      return;
+    }
+
+    try {
+      const saved = parseRosterViewState(
+        window.localStorage.getItem(ROSTER_VIEW_STATE_STORAGE_KEY)
+      );
+
+      if (saved) {
+        const validRunIds = saved.selectedRunIds.filter((runId) =>
+          runs.some((run) => run.id === runId)
+        );
+        const uncategorizedRun = runs.find(
+          (run) => run.kind === "UNCATEGORIZED"
+        );
+        const breedFilter = allDogs.some(
+          (dog) => dog.breedCode2 === saved.breedFilter
+        )
+          ? saved.breedFilter
+          : DEFAULT_ROSTER_VIEW_STATE.breedFilter;
+
+        setSelectedRunIds(
+          validRunIds.length > 0
+            ? validRunIds
+            : uncategorizedRun
+              ? [uncategorizedRun.id]
+              : []
+        );
+        setSearchText(saved.searchText);
+        setBreedFilter(breedFilter);
+        setSexFilter(saved.sexFilter);
+        setOnlyBreedable(saved.onlyBreedable);
+        setOnlyForSale(saved.onlyForSale);
+        setOnlyAtStud(saved.onlyAtStud);
+        setGroomingStateFilter(saved.groomingStateFilter);
+        setSortKey(saved.sortKey);
+        setSortDirection(saved.sortDirection);
+      }
+    } catch {
+      // Storage access is optional; current in-memory defaults remain usable.
+    } finally {
+      rosterViewStateHydratedRef.current = true;
+      setRosterViewStateHydrated(true);
+    }
+  }, [allDogs, loading, runs, runsLoading]);
+
+  useEffect(() => {
+    if (!rosterViewStateHydrated) {
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(
+        ROSTER_VIEW_STATE_STORAGE_KEY,
+        JSON.stringify({
+          selectedRunIds,
+          searchText,
+          breedFilter,
+          sexFilter,
+          onlyBreedable,
+          onlyForSale,
+          onlyAtStud,
+          groomingStateFilter,
+          sortKey,
+          sortDirection,
+        } satisfies RosterViewState)
+      );
+    } catch {
+      // Storage access is optional; the current roster view remains usable.
+    }
+  }, [
+    breedFilter,
+    groomingStateFilter,
+    onlyAtStud,
+    onlyBreedable,
+    onlyForSale,
+    rosterViewStateHydrated,
+    searchText,
+    selectedRunIds,
+    sexFilter,
+    sortDirection,
+    sortKey,
+  ]);
 
   async function loadRuns() {
     setRunsLoading(true);

@@ -54,6 +54,14 @@ const bulkHealthTestFailureSection = bulkHealthTestExecutionSection.slice(
   bulkHealthTestExecutionSection.indexOf("} catch (executionError)"),
   bulkHealthTestExecutionSection.indexOf("} finally")
 );
+const rosterViewStatePersistenceSection = kennelPanel.slice(
+  kennelPanel.indexOf("window.localStorage.setItem(\n        ROSTER_VIEW_STATE_STORAGE_KEY"),
+  kennelPanel.indexOf("async function loadRuns()")
+);
+const clearAllFiltersSection = kennelPanel.slice(
+  kennelPanel.indexOf("function clearAllFilters()"),
+  kennelPanel.indexOf("function toggleRunSelection")
+);
 
 assertIncludes(
   kennelPanel,
@@ -944,6 +952,89 @@ assertIncludes(
   'window.localStorage.setItem(',
   "visible column preferences persist to localStorage"
 );
+assertIncludes(
+  kennelPanel,
+  'const ROSTER_VIEW_STATE_STORAGE_KEY = "showring.kennelRoster.viewState";',
+  "roster view state has a stable localStorage key"
+);
+assertIncludes(
+  kennelPanel,
+  "function parseRosterViewState(value: string | null)",
+  "roster view state is parsed defensively"
+);
+for (const validation of [
+  "try {\n    const parsed: unknown = JSON.parse(value);",
+  "if (!isRecord(parsed))",
+  'parsed.sexFilter === "M" || parsed.sexFilter === "F"',
+  'parsed.groomingStateFilter === "groomed"',
+  "SORT_KEYS.includes(parsed.sortKey as SortKey)",
+  'parsed.sortDirection === "asc" || parsed.sortDirection === "desc"',
+]) {
+  assertIncludes(
+    kennelPanel,
+    validation,
+    "roster view state rejects malformed or invalid persisted values"
+  );
+}
+assertIncludes(
+  kennelPanel,
+  "if (rosterViewStateHydratedRef.current || loading || runsLoading)",
+  "roster view state waits for roster and run loading before hydration"
+);
+assertIncludes(
+  kennelPanel,
+  "const validRunIds = saved.selectedRunIds.filter",
+  "roster view state discards deleted or unknown persisted run IDs"
+);
+assertIncludes(
+  kennelPanel,
+  "validRunIds.length > 0\n            ? validRunIds\n            : uncategorizedRun",
+  "an invalid persisted run selection falls back to Uncategorized"
+);
+assertIncludes(
+  kennelPanel,
+  "if (!rosterViewStateHydrated)",
+  "roster view state does not overwrite storage before hydration"
+);
+for (const allowedField of [
+  "selectedRunIds,",
+  "searchText,",
+  "breedFilter,",
+  "sexFilter,",
+  "onlyBreedable,",
+  "onlyForSale,",
+  "onlyAtStud,",
+  "groomingStateFilter,",
+  "sortKey,",
+  "sortDirection,",
+]) {
+  assertIncludes(
+    rosterViewStatePersistenceSection,
+    allowedField,
+    `roster view state persists ${allowedField.replace(",", "")}`
+  );
+}
+for (const transientField of [
+  "selectedDogIds",
+  "bulkAction",
+  "activeBulkWorkspace",
+  "healthTestPreview",
+  "brucellosisPreview",
+  "confirmingBulkAction",
+]) {
+  assertExcludes(
+    rosterViewStatePersistenceSection,
+    transientField,
+    `roster view state does not persist transient ${transientField}`
+  );
+}
+for (const preservedField of ["selectedRunIds", "sortKey", "sortDirection"]) {
+  assertExcludes(
+    clearAllFiltersSection,
+    `set${preservedField[0].toUpperCase()}${preservedField.slice(1)}`,
+    `Clear All Filters preserves ${preservedField}`
+  );
+}
 assertIncludes(
   kennelPanel,
   'const DEFAULT_VISIBLE_COLUMNS: OptionalColumnId[] = [',
