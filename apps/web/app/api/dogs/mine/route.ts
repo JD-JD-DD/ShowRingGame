@@ -6,6 +6,7 @@ import { getSessionUserId } from "@/lib/session";
 import { db } from "@/lib/db";
 import {
   getPhenotypeHealthBadgeStatus,
+  getPhenotypeHealthSeverity,
   hasAllGreenPhenotypeHealthTests,
 } from "@/lib/dogHealth";
 import { getKennelForUser } from "@/server/services/kennel.service";
@@ -14,6 +15,7 @@ import {
   getOwnedDogGroomingStatuses,
 } from "@/server/services/grooming.service";
 import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
+import { buildBrucellosisBreedingSafetyScreening } from "@/server/services/brucellosisPresentation.service";
 import { resolveDueBreedingProgressForKennel } from "@/server/services/breeding.service";
 import {
   getBreedingEligibilityMessage,
@@ -29,7 +31,12 @@ import {
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
 } from "@/server/services/dogVisibleCategories.service";
 import {
+  BRUCELLOSIS_DISEASE_CODE,
   PHENOTYPE_HEALTH_TEST_CODES,
+  PHENOTYPE_HEALTH_TESTS,
+  getPhenotypeHealthResultLabel,
+  getRequiredHealthTestsForBreed,
+  type PhenotypeHealthTestCode,
 } from "@showring/rules";
 
 const RECENT_BREEDING_RESULT_HOURS = 14;
@@ -109,6 +116,20 @@ type HealthTestSummary = {
   dogId: string;
   testTypeCode: string;
   resultCode: string;
+};
+
+type BrucellosisTestSummary = {
+  dogId: string;
+  diseaseCode: string;
+  resultCode: string;
+  testedAtEpoch: number;
+  validUntilEpoch: number | null;
+};
+
+type BrucellosisStatusSummary = {
+  dogId: string;
+  diseaseCode: string;
+  status: string;
 };
 
 type HealthConditionTruthSummary = {
@@ -277,6 +298,81 @@ function groupHealthTestsByDog(healthTests: HealthTestSummary[]) {
   }
 
   return testsByDogId;
+}
+
+function groupBrucellosisTestsByDog(tests: BrucellosisTestSummary[]) {
+  const testsByDogId = new Map<string, BrucellosisTestSummary[]>();
+
+  for (const test of tests) {
+    const dogTests = testsByDogId.get(test.dogId) ?? [];
+    dogTests.push(test);
+    testsByDogId.set(test.dogId, dogTests);
+  }
+
+  return testsByDogId;
+}
+
+function groupBrucellosisStatusesByDog(statuses: BrucellosisStatusSummary[]) {
+  const statusesByDogId = new Map<string, BrucellosisStatusSummary[]>();
+
+  for (const status of statuses) {
+    const dogStatuses = statusesByDogId.get(status.dogId) ?? [];
+    dogStatuses.push(status);
+    statusesByDogId.set(status.dogId, dogStatuses);
+  }
+
+  return statusesByDogId;
+}
+
+function buildRosterPhenotypeHealthPresentation(args: {
+  breedCode2: string;
+  ageHours: number;
+  healthTests: Array<{ testTypeCode: string; resultCode: string }>;
+}) {
+  const applicableTestCodes = new Set(getRequiredHealthTestsForBreed(args.breedCode2));
+
+  return Object.fromEntries(
+    PHENOTYPE_HEALTH_TEST_CODES.map((testCode) => {
+      const definition = PHENOTYPE_HEALTH_TESTS[testCode];
+      const result = args.healthTests.find(
+        (test) => test.testTypeCode === testCode
+      );
+      const isApplicable = applicableTestCodes.has(testCode);
+
+      return [
+        testCode,
+        result
+          ? {
+              resultCode: result.resultCode,
+              resultLabel: getPhenotypeHealthResultLabel(
+                testCode as PhenotypeHealthTestCode,
+                result.resultCode
+              ),
+              severity: getPhenotypeHealthSeverity(testCode, result.resultCode),
+              state: "TESTED" as const,
+              availabilityLabel: null,
+            }
+          : !isApplicable
+            ? {
+                resultCode: null,
+                resultLabel: null,
+                severity: null,
+                state: "NOT_APPLICABLE" as const,
+                availabilityLabel: null,
+              }
+            : {
+                resultCode: null,
+                resultLabel: null,
+                severity: null,
+                state: "UNTESTED" as const,
+                availabilityLabel:
+                  args.ageHours < definition.minimumAgeHours
+                    ? definition.minimumAgeLabel
+                    : null,
+              },
+      ];
+    })
+  );
 }
 
 function groupHealthConditionTruthsByDog(
@@ -488,6 +584,8 @@ export async function GET(request: Request) {
       recentNotPregnantAttempts,
       latestSireAttempts,
       latestHealthTests,
+      brucellosisTests,
+      brucellosisStatuses,
       activeListings,
       groomingStatuses,
       groomingSummary,
@@ -595,6 +693,35 @@ export async function GET(request: Request) {
               resultCode: true,
             },
           }),
+          db.infectiousDiseaseTestRecord.findMany({
+            where: {
+              dogId: { in: dogIds },
+              diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+            },
+            orderBy: [
+              { dogId: "asc" },
+              { testedAtEpoch: "desc" },
+              { createdAt: "desc" },
+            ],
+            select: {
+              dogId: true,
+              diseaseCode: true,
+              resultCode: true,
+              testedAtEpoch: true,
+              validUntilEpoch: true,
+            },
+          }),
+          db.dogInfectiousDiseaseStatus.findMany({
+            where: {
+              dogId: { in: dogIds },
+              diseaseCode: BRUCELLOSIS_DISEASE_CODE,
+            },
+            select: {
+              dogId: true,
+              diseaseCode: true,
+              status: true,
+            },
+          }),
           db.dogListing.findMany({
             where: {
               dogId: {
@@ -622,6 +749,8 @@ export async function GET(request: Request) {
           }),
         ]))
       : [
+          [],
+          [],
           [],
           [],
           [],
@@ -677,12 +806,22 @@ export async function GET(request: Request) {
       latestSireAttempts.map((attempt) => [attempt.sireId, attempt.createdEpoch])
     );
     const healthTestsByDogId = groupHealthTestsByDog(latestHealthTests);
+    const brucellosisTestsByDogId = groupBrucellosisTestsByDog(brucellosisTests);
+    const brucellosisStatusesByDogId = groupBrucellosisStatusesByDog(
+      brucellosisStatuses
+    );
     const activeListingTypesByDogId = groupActiveListingTypesByDog(activeListings);
 
     const payload = await perf.measure("dtoMappingMs", async () => ({
       groomingSummary,
       dogs: dogs.map((dog) => {
         const healthTests = healthTestsByDogId.get(dog.id) ?? [];
+        const ageHours = Math.max(0, currentEpoch - dog.birthEpoch);
+        const brucellosisScreening = buildBrucellosisBreedingSafetyScreening({
+          currentEpoch,
+          infectiousDiseaseStatuses: brucellosisStatusesByDogId.get(dog.id) ?? [],
+          infectiousDiseaseTests: brucellosisTestsByDogId.get(dog.id) ?? [],
+        })[0];
         const healthConditionTruths =
           healthConditionTruthsByDogId.get(dog.id) ?? dog.healthConditionTruths;
         const activeListingTypes =
@@ -699,7 +838,7 @@ export async function GET(request: Request) {
           breedName: dog.breed.name,
           breedGroupName: dog.breed.groupName,
           sex: dog.sex,
-          ageHours: Math.max(0, currentEpoch - dog.birthEpoch),
+          ageHours,
           lifecycleState: dog.lifecycleState,
           marketState: dog.marketState,
           hasAllGreenHealthTests: hasAllGreenPhenotypeHealthTests(
@@ -710,6 +849,19 @@ export async function GET(request: Request) {
             healthTests,
             dog.breedCode2
           ),
+          health: {
+            phenotype: buildRosterPhenotypeHealthPresentation({
+              breedCode2: dog.breedCode2,
+              ageHours,
+              healthTests,
+            }),
+            brucellosis: {
+              currentStatusLabel: brucellosisScreening.currentStatusLabel,
+              isCurrentNegative: brucellosisScreening.isCurrentNegative,
+              isPositiveOrInfected: brucellosisScreening.isPositiveOrInfected,
+              testedAtEpoch: brucellosisScreening.testedAtEpoch,
+            },
+          },
           isListedForSale: activeListingTypes.has(PLAYER_SALE_LISTING_TYPE),
           isListedAtStud: hasValidPublishedStudOffer({
             ownerKennelId: dog.ownerKennelId,

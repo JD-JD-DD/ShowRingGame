@@ -199,6 +199,14 @@ async function main() {
     mineRouteSource.includes("ensurePhenotypeHealthTruthsForDogs(db, dogIds)"),
     "kennel roster still uses the automatic phenotype truth repair helper"
   );
+  assert.ok(
+    mineRouteSource.includes("db.healthTestRecord.findMany({"),
+    "kennel roster retains one bounded phenotype health-record query"
+  );
+  assert.ok(
+    mineRouteSource.includes("health: {\n            phenotype: buildRosterPhenotypeHealthPresentation"),
+    "kennel roster derives phenotype column presentation from its existing batch results"
+  );
   for (const field of [
     "dogId:",
     "callName:",

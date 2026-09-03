@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
+import { PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES } from "@/components/dogs/phenotypeHealthPresentation";
 import BulkCallNameEditor from "@/components/kennel/BulkCallNameEditor";
 import BulkForSaleWorkspace, {
   type BulkSaleDog,
@@ -15,6 +16,11 @@ import {
   formatMoney,
 } from "@/components/kennel/bulkHealthTestFeedback";
 import { filterDogsBySelectedRuns } from "@/components/kennel/kennelDogFiltering";
+import {
+  compareKennelRosterHealth,
+  type RosterHealthPresentation,
+  type RosterPhenotypeHealthTest,
+} from "@/components/kennel/kennelRosterHealth";
 import { matchesKennelDogSearch } from "@/components/kennel/kennelDogSearch";
 import { formatDogDisplayName } from "@/lib/dogNames";
 import { formatGeneticCategoryValue } from "@/lib/phenotypeFormat";
@@ -86,6 +92,10 @@ type KennelDogDto = {
   };
   visibleCategories: VisibleCategories;
   breedingCardStatus: BreedingCardStatus;
+  health: {
+    phenotype: Omit<RosterHealthPresentation, "brucellosis">;
+    brucellosis: RosterHealthPresentation["brucellosis"];
+  };
 };
 
 type KennelRunDto = {
@@ -161,7 +171,13 @@ type SortKey =
   | "movement"
   | "coatPresentation"
   | "temperamentRingBehavior"
-  | "conditioningHandling";
+  | "conditioningHandling"
+  | "hips"
+  | "elbows"
+  | "cardiac"
+  | "thyroid"
+  | "caerEye"
+  | "brucellosis";
 
 type BulkAction =
   | ""
@@ -246,7 +262,13 @@ type OptionalColumnId =
   | "breedable"
   | "breedingStatus"
   | "groomingStatus"
-  | "healthStatus";
+  | "healthStatus"
+  | "hips"
+  | "elbows"
+  | "cardiac"
+  | "thyroid"
+  | "caerEye"
+  | "brucellosis";
 
 const VISIBLE_COLUMNS_STORAGE_KEY = "showring.kennelRoster.visibleColumns";
 const ROSTER_VIEW_STATE_STORAGE_KEY = "showring.kennelRoster.viewState";
@@ -261,6 +283,12 @@ const SORT_KEYS: SortKey[] = [
   "coatPresentation",
   "temperamentRingBehavior",
   "conditioningHandling",
+  "hips",
+  "elbows",
+  "cardiac",
+  "thyroid",
+  "caerEye",
+  "brucellosis",
 ];
 const OPTIONAL_COLUMNS: Array<{
   id: OptionalColumnId;
@@ -293,6 +321,12 @@ const OPTIONAL_COLUMNS: Array<{
   { id: "breedingStatus", label: "Pregnancy/Whelping" },
   { id: "groomingStatus", label: "Grooming" },
   { id: "healthStatus", label: "Health Tests" },
+  { id: "hips", label: "Hips", sortKey: "hips" },
+  { id: "elbows", label: "Elbows", sortKey: "elbows" },
+  { id: "cardiac", label: "Cardiac", sortKey: "cardiac" },
+  { id: "thyroid", label: "Thyroid", sortKey: "thyroid" },
+  { id: "caerEye", label: "CAER Eye", sortKey: "caerEye" },
+  { id: "brucellosis", label: "Brucellosis", sortKey: "brucellosis" },
 ];
 const OPTIONAL_COLUMN_IDS = OPTIONAL_COLUMNS.map((column) => column.id);
 const HEALTH_TEST_OPTIONS: Array<{ code: HealthTestCode; label: string }> = [
@@ -497,6 +531,30 @@ function GroomingResetCountdown({ resetEpoch }: { resetEpoch: number }) {
       {formatCountdown(msRemaining)}
     </span>
   );
+}
+
+function isHealthSortKey(
+  key: SortKey
+): key is keyof RosterHealthPresentation {
+  return ["hips", "elbows", "cardiac", "thyroid", "caerEye", "brucellosis"].includes(key);
+}
+
+function healthForSort(dog: KennelDogDto): RosterHealthPresentation {
+  return {
+    ...dog.health.phenotype,
+    brucellosis: dog.health.brucellosis,
+  };
+}
+
+function phenotypeHealthCellText(test: RosterPhenotypeHealthTest): string {
+  if (test.state === "NOT_APPLICABLE") return "Not applicable";
+  return test.resultLabel ?? test.availabilityLabel ?? "Untested";
+}
+
+function phenotypeHealthCellClass(test: RosterPhenotypeHealthTest): string {
+  return test.severity
+    ? PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES[test.severity]
+    : "theme-copy";
 }
 
 function healthTestConfigurationKey(args: {
@@ -1062,6 +1120,22 @@ export default function KennelDogsPanel() {
     });
 
     list.sort((a, b) => {
+      if (isHealthSortKey(sortKey)) {
+        return compareKennelRosterHealth({
+          a: {
+            health: healthForSort(a),
+            ageHours: a.ageHours,
+            displayName: getDogDisplayName(a),
+          },
+          b: {
+            health: healthForSort(b),
+            ageHours: b.ageHours,
+            displayName: getDogDisplayName(b),
+          },
+          column: sortKey,
+          direction: sortDirection,
+        });
+      }
       const aValue = valueForSort(a, sortKey);
       const bValue = valueForSort(b, sortKey);
 
@@ -3026,6 +3100,37 @@ export default function KennelDogsPanel() {
                             </div>
                           </td>
                         );
+                      case "hips":
+                      case "elbows":
+                      case "cardiac":
+                      case "thyroid":
+                      case "caerEye": {
+                        const test = dog.health.phenotype[columnId];
+
+                        return (
+                          <td key={columnId} className="px-2 py-2 text-xs">
+                            <span className={phenotypeHealthCellClass(test)}>
+                              {phenotypeHealthCellText(test)}
+                            </span>
+                          </td>
+                        );
+                      }
+                      case "brucellosis": {
+                        const screening = dog.health.brucellosis;
+                        const statusClass = screening.isPositiveOrInfected
+                          ? "text-red-700 dark:text-red-200"
+                          : screening.isCurrentNegative
+                            ? "text-emerald-700 dark:text-emerald-200"
+                            : "text-amber-700 dark:text-amber-200";
+
+                        return (
+                          <td key={columnId} className="px-2 py-2 text-xs">
+                            <span className={statusClass}>
+                              {screening.currentStatusLabel}
+                            </span>
+                          </td>
+                        );
+                      }
                       case "healthStatus":
                         return (
                           <td key={columnId} className="theme-copy px-2 py-2 text-xs">

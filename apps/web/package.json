@@ -18,6 +18,7 @@
     "test:dog-titles": "tsx scripts/testDogTitles.ts",
     "test:full-pedigree-slots": "tsx scripts/testFullPedigreeSlots.ts",
     "test:kennel-roster-maintenance": "tsx scripts/testKennelRosterMaintenancePath.ts",
+    "test:kennel-roster-health-columns": "tsx scripts/testKennelRosterHealthColumns.ts",
     "test:phenotype-health-truth-batching": "tsx scripts/testPhenotypeHealthTruthBatching.ts",
     "test:phenotype-decimal-persistence": "tsx scripts/testPhenotypeDecimalPersistence.ts",
     "test:kennel-run-apis": "tsx scripts/testKennelRunApis.ts",

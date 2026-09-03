@@ -42,6 +42,7 @@ import {
 import { getStoredProducerMeritForDog } from "@/server/services/producerMerit.service";
 import { hasValidPublishedStudOffer } from "@/server/services/studOfferPresentation.service";
 import { ensureUncategorizedKennelRun } from "@/server/services/kennelRun.service";
+import { buildBrucellosisBreedingSafetyScreening } from "@/server/services/brucellosisPresentation.service";
 import type { Dog as EngineDog } from "@showring/rules";
 import {
   MAX_SHOW_AGE_HOURS,
@@ -82,9 +83,6 @@ const GRAND_CHAMPIONSHIP_MILESTONES = [
 ] as const;
 const RECENT_SHOW_RESULT_LIMIT = 6;
 const INVITATIONAL_PLACEMENT_CODES = ["BIS", "RBIS", "G1", "G2", "G3", "G4"];
-const BRUCELLOSIS_SCREENING_HELPER_TEXT =
-  "Brucellosis screening is a repeatable breeding safety test. It reflects current breeding readiness, not permanent genetic health.";
-
 function mapSex(sex: "M" | "F"): Sex {
   return sex === "M" ? Sex.M : Sex.F;
 }
@@ -233,98 +231,14 @@ function formatAgeLabel(ageHours: number): string {
   return remainingWeeks > 0 ? `${years}y ${remainingWeeks}w` : `${years}y`;
 }
 
-function formatEligibilityLabel(isEligible: boolean): string {
-  return isEligible ? "Eligible" : "Not eligible";
-}
-
 function formatTestedDateLabel(testedAtEpoch: number | null): string | null {
   if (testedAtEpoch === null) return null;
 
   return `Tested ${epochToDate(testedAtEpoch).toISOString().slice(0, 10)}`;
 }
 
-function formatBrucellosisResultLabel(resultCode: string | null): string {
-  switch (resultCode) {
-    case "NEGATIVE":
-      return "Negative";
-    case "POSITIVE":
-      return "Positive";
-    case null:
-      return "No result";
-    default:
-      return resultCode;
-  }
-}
-
-function buildBrucellosisBreedingSafetyScreening(args: {
-  currentEpoch: number;
-  infectiousDiseaseStatuses: Array<{
-    diseaseCode: string;
-    status: string;
-  }>;
-  infectiousDiseaseTests: Array<{
-    diseaseCode: string;
-    resultCode: string;
-    testedAtEpoch: number;
-    validUntilEpoch: number | null;
-  }>;
-}) {
-  const isInfected = args.infectiousDiseaseStatuses.some(
-    (status) =>
-      status.diseaseCode === BRUCELLOSIS_DISEASE_CODE &&
-      status.status === "INFECTED"
-  );
-  const brucellosisTests = args.infectiousDiseaseTests.filter(
-    (test) => test.diseaseCode === BRUCELLOSIS_DISEASE_CODE
-  );
-  const latestTest = brucellosisTests[0] ?? null;
-  const currentNegativeTest = isInfected
-    ? null
-    : brucellosisTests.find(
-        (test) =>
-          test.resultCode === "NEGATIVE" &&
-          test.validUntilEpoch !== null &&
-          test.validUntilEpoch >= args.currentEpoch
-      ) ?? null;
-  const isPositiveOrInfected =
-    isInfected || latestTest?.resultCode === "POSITIVE";
-  const latestValidUntilEpoch = latestTest?.validUntilEpoch ?? null;
-  const currentNegativeValidUntilEpoch =
-    currentNegativeTest?.validUntilEpoch ?? null;
-  const validUntilLabel =
-    latestValidUntilEpoch === null
-      ? null
-      : `${latestValidUntilEpoch >= args.currentEpoch ? "Valid through" : "Expired"} ${formatGameDateLabel(latestValidUntilEpoch)}`;
-  const currentStatusLabel = isPositiveOrInfected
-    ? "Positive - not cleared for breeding"
-    : currentNegativeValidUntilEpoch !== null
-      ? `Current negative through ${formatGameDateLabel(
-          currentNegativeValidUntilEpoch
-        )}`
-      : latestTest
-        ? "No current negative screen"
-        : "Not screened";
-
-  return [
-    {
-      screeningCode: BRUCELLOSIS_DISEASE_CODE as "BRUCELLOSIS",
-      label: "Brucellosis Screening",
-      helperText: BRUCELLOSIS_SCREENING_HELPER_TEXT,
-      isRepeatable: true,
-      currentStatusLabel,
-      lastResultLabel: formatBrucellosisResultLabel(
-        latestTest?.resultCode ?? null
-      ),
-      testedAtEpoch: latestTest?.testedAtEpoch ?? null,
-      testedAtLabel: latestTest
-        ? formatTestedDateLabel(latestTest.testedAtEpoch)
-        : null,
-      validUntilEpoch: latestValidUntilEpoch,
-      validUntilLabel,
-      isCurrentNegative: Boolean(currentNegativeTest),
-      isPositiveOrInfected,
-    },
-  ];
+function formatEligibilityLabel(isEligible: boolean): string {
+  return isEligible ? "Eligible" : "Not eligible";
 }
 
 function getHealthImpactStatement(args: {
