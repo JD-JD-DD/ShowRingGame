@@ -2248,7 +2248,7 @@ export default function KennelDogsPanel() {
               >
                 <option value="">All Grooming</option>
                 <option value="groomed">Groomed</option>
-                <option value="ungroomed">Ungroomed</option>
+                <option value="ungroomed">Needs Grooming</option>
               </select>
             </label>
 
@@ -2958,6 +2958,7 @@ export default function KennelDogsPanel() {
                     <td className="rounded-l-2xl px-2 py-2">
                       <input
                         type="checkbox"
+                        className="h-5 w-5 shrink-0 cursor-pointer focus:ring-2 focus:ring-[var(--color-focus)]"
                         checked={selectedDogIds.includes(dog.dogId)}
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={(event) => event.stopPropagation()}

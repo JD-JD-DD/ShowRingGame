@@ -250,6 +250,26 @@ assertIncludes(
 );
 assertIncludes(
   kennelPanel,
+  '<option value="ungroomed">Needs Grooming</option>',
+  "Grooming filter uses the player-facing Needs Grooming label"
+);
+assertIncludes(
+  kennelPanel,
+  'groomingStateFilter === "ungroomed"',
+  "Grooming filter preserves its stored ungroomed value"
+);
+assertIncludes(
+  kennelPanel,
+  'className="h-5 w-5 shrink-0 cursor-pointer focus:ring-2 focus:ring-[var(--color-focus)]"',
+  "roster selection checkboxes retain native focus behavior at a comfortable size"
+);
+assertIncludes(
+  kennelPanel,
+  "onChange={() => toggleDogSelection(dog.dogId)}",
+  "larger roster selection checkboxes retain existing per-dog selection behavior"
+);
+assertIncludes(
+  kennelPanel,
   "xl:grid-cols-[minmax(220px,260px)_minmax(0,1fr)_minmax(220px,260px)]",
   "kennel roster uses the planned three-column desktop layout"
 );
