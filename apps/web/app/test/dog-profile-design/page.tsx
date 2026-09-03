@@ -21,8 +21,8 @@ export default function DogProfileDesignPrototypePage() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] pb-4">
           <div>
-            <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">Development prototype</p>
-            <h1 className="theme-heading mt-1 text-xl font-semibold">Dog Profile design study</h1>
+            <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">Dog Profile Preview</p>
+            <h1 className="theme-heading mt-1 text-xl font-semibold">Upcoming Dog Profile</h1>
           </div>
           <button
             type="button"
@@ -30,9 +30,11 @@ export default function DogProfileDesignPrototypePage() {
             onClick={() => setHasArtwork((current) => !current)}
             className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
-            {hasArtwork ? "Preview missing artwork" : "Preview completed artwork"}
+            {hasArtwork ? "View Without Breed Art" : "View With Breed Art"}
           </button>
         </div>
+
+        <p className="theme-copy mb-6 text-sm leading-6">This is a preview of the upcoming Individual Dog Profile using a sample dog. Buttons and statuses on this page are examples only and do not affect the game.</p>
 
         {showUrgentCare ? (
           <section className="mb-6 border-l-4 border-[var(--color-danger)] bg-[var(--color-danger-surface)] px-5 py-4" aria-labelledby="prototype-urgent-care-heading">
@@ -44,12 +46,12 @@ export default function DogProfileDesignPrototypePage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <PrototypeButton label="Review Care" onActivate={setPrototypeNotice} />
-                <button type="button" onClick={() => setShowUrgentCare(false)} className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Hide example</button>
+                <button type="button" onClick={() => setShowUrgentCare(false)} className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Hide Emergency Preview</button>
               </div>
             </div>
           </section>
         ) : (
-          <button type="button" onClick={() => setShowUrgentCare(true)} className="theme-secondary-button mb-6 rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Show urgent-state example</button>
+          <button type="button" onClick={() => setShowUrgentCare(true)} className="theme-secondary-button mb-6 rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Preview Emergency State</button>
         )}
 
         <section className="grid gap-8 border-b border-[var(--color-border)] pb-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center">
@@ -147,7 +149,7 @@ function SummarySection({ title, eyebrow, rows, action }: { title: string; eyebr
     <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">{eyebrow}</p>
     <h2 id={`${title.toLowerCase().replaceAll(" ", "-")}-heading`} className="theme-heading mt-2 text-2xl font-semibold">{title}</h2>
     <dl className="mt-5 divide-y divide-[var(--color-border)]">
-      {rows.map((row) => <div key={row.name} className="grid gap-1 py-4 sm:grid-cols-[minmax(10rem,0.7fr)_minmax(0,1fr)] sm:gap-5"><dt className="theme-copy text-sm">{row.name}</dt><dd><div className={`theme-heading text-sm font-semibold ${row.valueClassName ?? ""}`}>{row.value}</div>{row.detail ? <div className="theme-copy mt-1 text-xs leading-5">{row.detail}</div> : null}</dd></div>)}
+      {rows.map((row) => <div key={row.name} className="grid gap-1 py-4 sm:grid-cols-[minmax(10rem,0.7fr)_minmax(0,1fr)] sm:gap-5"><dt className="theme-copy text-sm">{row.name}</dt><dd><div className={`text-sm font-semibold ${row.valueClassName ?? "theme-heading"}`}>{row.value}</div>{row.detail ? <div className="theme-copy mt-1 text-xs leading-5">{row.detail}</div> : null}</dd></div>)}
     </dl>
     <div className="mt-5">{action}</div>
   </section>;

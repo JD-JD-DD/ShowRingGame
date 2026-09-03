@@ -8,10 +8,16 @@ const page = source("apps/web/app/test/dog-profile-design/page.tsx");
 const fixture = source("apps/web/app/test/dog-profile-design/fixture.ts");
 
 assert.match(page, /href="\/breed-art"/, "missing-art state uses the established Breed Art route");
+assert.match(page, /Dog Profile Preview/, "prototype uses player-facing preview copy");
+assert.match(page, /Upcoming Dog Profile/, "prototype identifies the upcoming player experience");
+assert.match(page, /Buttons and statuses on this page are examples only and do not affect the game\./, "prototype explains that its controls are non-gameplay examples");
+assert.match(page, /View Without Breed Art/, "prototype uses player-facing missing-art preview copy");
+assert.match(page, /Preview Emergency State/, "prototype uses player-facing emergency-preview copy");
 assert.match(page, /TraitLine/, "prototype reuses the established trait slider component");
 assert.match(page, /precision=\{3\}/, "prototype preserves three-decimal visible-category presentation");
 assert.match(page, /PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES/, "prototype reuses the established health result text-class mapping");
 assert.match(page, /valueClassName: PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES\[severity\]/, "only prototype Health result values receive the established severity class");
+assert.match(page, /className=\{`text-sm font-semibold \$\{row\.valueClassName \?\? "theme-heading"\}`\}/, "health result values use their semantic class instead of the neutral theme-heading class");
 assert.doesNotMatch(page, /@\/lib\/db|@\/server\/services|fetch\(/, "prototype has no database, service, or API dependency");
 assert.match(page, /Manage Dog/, "prototype includes the local Manage Dog control");
 assert.match(page, /aria-expanded=\{manageDogOpen\}/, "Manage Dog exposes expanded state");
