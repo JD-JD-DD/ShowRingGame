@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import { createPerfTimer } from "@/lib/perf";
 import { getSessionUserId } from "@/lib/session";
 import BreedPageClient from "@/components/breeding/BreedPageClient";
-import { ScrollToBottomButton } from "@/components/ReturnToTopButton";
 import { formatCompactStudOfferSummary } from "@/lib/studOfferPresentation";
 import { BRUCELLOSIS_DISEASE_CODE } from "@showring/rules";
 import { getCurrentEpoch } from "@/lib/gameClock";
@@ -1060,15 +1059,6 @@ export default async function BreedingPlannerPage({
           ← Back to Kennel
         </Link>
       </div>
-      {experience === "worksheet" ? (
-        <>
-          <div id="plan-a-litter-page-bottom" />
-          <ScrollToBottomButton
-            targetId="plan-a-litter-page-bottom"
-            placement="above-return-to-top"
-          />
-        </>
-      ) : null}
     </main>
   );
 }

@@ -8,6 +8,8 @@ const source = (relativePath: string) =>
 
 const client = source("apps/web/components/breeding/BreedPageClient.tsx");
 const planner = source("apps/web/components/breeding/BreedingPlannerPage.tsx");
+const layout = source("apps/web/app/layout.tsx");
+const scrollControls = source("apps/web/components/ReturnToTopButton.tsx");
 
 function section(text: string, start: string, end: string) {
   const startIndex = text.indexOf(start);
@@ -283,5 +285,15 @@ assert.deepEqual(card(), { isOwned: false, listed: true, pending: false }, "ordi
 assert.deepEqual(card({ pending: true }), { isOwned: false, listed: true, pending: true }, "pending-care outside stud card preserves its listing while carrying the unavailable state");
 assert.deepEqual(card({ pending: true, listed: false }), { isOwned: false, listed: false, pending: true }, "direct/card data remains serializable when no general public-stud batch is present");
 assert.equal(client.includes("initialBreedCode2 ?? \"\""), true, "no-breed planner state remains supported");
+
+assert.ok(
+  layout.includes("<ReturnToTopButton />") &&
+    scrollControls.includes('const pathname = usePathname();') &&
+    scrollControls.includes('pathname === "/plan-a-litter"') &&
+    scrollControls.includes('top: document.documentElement.scrollHeight') &&
+    scrollControls.includes("bottom-20 right-4 z-50") &&
+    scrollControls.includes('aria-label="Scroll to bottom"'),
+  "Plan a Litter renders an always-visible, fixed Bottom control from the same root-layout client component as Top"
+);
 
 console.log("Breeding page client runtime regression checks passed.");
