@@ -71,7 +71,7 @@ export default function DogProfileDesignPrototypePage() {
           </div>
 
           <div className="order-2 max-w-2xl">
-            <p className="theme-label text-sm font-semibold uppercase tracking-[0.18em]">{dog.breed} · {dog.sex}</p>
+            <p className="theme-label text-sm font-semibold uppercase tracking-[0.18em]">{dog.breed} · COLOR · {dog.sex}</p>
             <h2 className="theme-heading mt-3 text-4xl font-semibold tracking-tight sm:text-6xl">{dog.titlePrefix} {dog.registeredName}</h2>
             <p className="theme-copy mt-3 text-xl">“{dog.callName}”</p>
             <p className="theme-copy mt-5 text-sm leading-7">{dog.lifecycle}</p>

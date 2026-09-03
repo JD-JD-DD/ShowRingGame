@@ -8,6 +8,7 @@ const page = source("apps/web/app/test/dog-profile-design/page.tsx");
 const fixture = source("apps/web/app/test/dog-profile-design/fixture.ts");
 
 assert.match(page, /href="\/breed-art"/, "missing-art state uses the established Breed Art route");
+assert.match(page, /\{dog\.breed\} · COLOR · \{dog\.sex\}/, "prototype reserves Color in the three-part hero identity line");
 assert.match(page, /Dog Profile Preview/, "prototype uses player-facing preview copy");
 assert.match(page, /Upcoming Dog Profile/, "prototype identifies the upcoming player experience");
 assert.match(page, /Buttons and statuses on this page are examples only and do not affect the game\./, "prototype explains that its controls are non-gameplay examples");
