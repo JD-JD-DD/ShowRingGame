@@ -8,7 +8,13 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export function ScrollToBottomButton({ targetId }: { targetId: string }) {
+export function ScrollToBottomButton({
+  targetId,
+  placement = "top-right",
+}: {
+  targetId: string;
+  placement?: "top-right" | "above-return-to-top";
+}) {
   return (
     <button
       type="button"
@@ -19,7 +25,11 @@ export function ScrollToBottomButton({ targetId }: { targetId: string }) {
           behavior: prefersReducedMotion() ? "auto" : "smooth",
         });
       }}
-      className="theme-floating-button fixed right-4 top-32 z-30 rounded-full px-4 py-2 text-sm font-semibold motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] sm:right-6 sm:top-28"
+      className={`theme-floating-button fixed right-4 rounded-full px-4 py-2 text-sm font-semibold motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] sm:right-6 ${
+        placement === "above-return-to-top"
+          ? "bottom-20 z-50 sm:bottom-24"
+          : "top-32 z-30 sm:top-28"
+      }`}
     >
       Bottom
     </button>
