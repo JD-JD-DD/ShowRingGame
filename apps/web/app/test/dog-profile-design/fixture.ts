@@ -26,10 +26,10 @@ export const prototypeDog = {
   lifecycle: "Alive · Open · Eligible",
   healthSummary: "4 of 4 health tests complete",
   healthResults: [
-    ["Hip evaluation", "Good", "Year 3, Week 1"],
-    ["Eye exam", "Normal", "Year 3, Week 1"],
-    ["Cardiac screening", "Normal", "Year 3, Week 1"],
-    ["Brucellosis screening", "Current negative", "Valid through Year 3, Week 6"],
+    ["Hip evaluation", "Good", "Year 3, Week 1", "green"],
+    ["Eye exam", "Normal", "Year 3, Week 1", "green"],
+    ["Cardiac screening", "Normal", "Year 3, Week 1", "green"],
+    ["Brucellosis screening", "Current negative", "Valid through Year 3, Week 6", "green"],
   ] as const,
   visibleCategories: [
     { key: "type", label: "Type & Expression", value: 11.2, min: 0, ideal: 10, max: 20, leftLabel: "Under ideal", centerLabel: "10 ideal", rightLabel: "Over ideal" },

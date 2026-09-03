@@ -10,6 +10,8 @@ const fixture = source("apps/web/app/test/dog-profile-design/fixture.ts");
 assert.match(page, /href="\/breed-art"/, "missing-art state uses the established Breed Art route");
 assert.match(page, /TraitLine/, "prototype reuses the established trait slider component");
 assert.match(page, /precision=\{3\}/, "prototype preserves three-decimal visible-category presentation");
+assert.match(page, /PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES/, "prototype reuses the established health result text-class mapping");
+assert.match(page, /valueClassName: PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES\[severity\]/, "only prototype Health result values receive the established severity class");
 assert.doesNotMatch(page, /@\/lib\/db|@\/server\/services|fetch\(/, "prototype has no database, service, or API dependency");
 assert.match(page, /Manage Dog/, "prototype includes the local Manage Dog control");
 assert.match(page, /aria-expanded=\{manageDogOpen\}/, "Manage Dog exposes expanded state");

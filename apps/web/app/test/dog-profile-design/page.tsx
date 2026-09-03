@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
+import { PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES } from "@/components/dogs/phenotypeHealthPresentation";
 import TraitLine from "@/components/ui/TraitLine";
 
 import { prototypeDog } from "./fixture";
@@ -118,7 +119,7 @@ export default function DogProfileDesignPrototypePage() {
         </section>
 
         <div className="grid gap-x-12 border-t border-[var(--color-border)] py-12 lg:grid-cols-2">
-          <SummarySection title="Health" eyebrow={dog.healthSummary} rows={dog.healthResults.map(([name, status, detail]) => ({ name, value: status, detail }))} action={<PrototypeButton label="Order Health Tests" onActivate={setPrototypeNotice} />} />
+          <SummarySection title="Health" eyebrow={dog.healthSummary} rows={dog.healthResults.map(([name, status, detail, severity]) => ({ name, value: status, detail, valueClassName: PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES[severity] }))} action={<PrototypeButton label="Order Health Tests" onActivate={setPrototypeNotice} />} />
           <SummarySection title="Show Career" eyebrow="A finished Champion beginning her GCH record" rows={dog.showCareer.map(([name, value, detail]) => ({ name, value, detail }))} action={<PrototypeButton label="View Full Show Record" onActivate={setPrototypeNotice} />} />
           <SummarySection title="Pedigree" eyebrow="Four generations recorded" rows={dog.pedigree.map(([name, value, detail]) => ({ name, value, detail }))} action={<PrototypeButton label="View Full Pedigree" onActivate={setPrototypeNotice} />} />
           <SummarySection title="Breeding & Production" eyebrow="Current program context" rows={dog.production.map(([name, value]) => ({ name, value }))} action={<div><button type="button" disabled aria-describedby="breed-aster-reason" className="dog-card rounded-xl px-4 py-2 text-sm font-semibold opacity-70">Breed Aster</button><p id="breed-aster-reason" className="theme-copy mt-2 text-sm leading-6">Not currently eligible — reproductive recovery is still active.</p></div>} />
@@ -141,12 +142,12 @@ function ManageActionGroup({ title, actions, onActivate }: { title: string; acti
   return <section aria-labelledby={`manage-${title.toLowerCase()}-heading`}><h3 id={`manage-${title.toLowerCase()}-heading`} className="theme-label text-xs font-semibold uppercase tracking-[0.16em]">{title}</h3><div className="mt-2 flex flex-wrap gap-2">{actions.map((action) => <PrototypeButton key={action} label={action} onActivate={onActivate} />)}</div></section>;
 }
 
-function SummarySection({ title, eyebrow, rows, action }: { title: string; eyebrow: string; rows: Array<{ name: string; value: string; detail?: string }>; action: React.ReactNode }) {
+function SummarySection({ title, eyebrow, rows, action }: { title: string; eyebrow: string; rows: Array<{ name: string; value: string; detail?: string; valueClassName?: string }>; action: React.ReactNode }) {
   return <section className="border-b border-[var(--color-border)] py-8 first:pt-0 lg:[&:nth-child(-n+2)]:pt-0" aria-labelledby={`${title.toLowerCase().replaceAll(" ", "-")}-heading`}>
     <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">{eyebrow}</p>
     <h2 id={`${title.toLowerCase().replaceAll(" ", "-")}-heading`} className="theme-heading mt-2 text-2xl font-semibold">{title}</h2>
     <dl className="mt-5 divide-y divide-[var(--color-border)]">
-      {rows.map((row) => <div key={row.name} className="grid gap-1 py-4 sm:grid-cols-[minmax(10rem,0.7fr)_minmax(0,1fr)] sm:gap-5"><dt className="theme-copy text-sm">{row.name}</dt><dd><div className="theme-heading text-sm font-semibold">{row.value}</div>{row.detail ? <div className="theme-copy mt-1 text-xs leading-5">{row.detail}</div> : null}</dd></div>)}
+      {rows.map((row) => <div key={row.name} className="grid gap-1 py-4 sm:grid-cols-[minmax(10rem,0.7fr)_minmax(0,1fr)] sm:gap-5"><dt className="theme-copy text-sm">{row.name}</dt><dd><div className={`theme-heading text-sm font-semibold ${row.valueClassName ?? ""}`}>{row.value}</div>{row.detail ? <div className="theme-copy mt-1 text-xs leading-5">{row.detail}</div> : null}</dd></div>)}
     </dl>
     <div className="mt-5">{action}</div>
   </section>;
