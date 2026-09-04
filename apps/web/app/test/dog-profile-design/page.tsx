@@ -7,15 +7,26 @@ import { useState } from "react";
 import { PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES } from "@/components/dogs/phenotypeHealthPresentation";
 import TraitLine from "@/components/ui/TraitLine";
 
-import { prototypeCurrentShowEntries, prototypeDog } from "./fixture";
+import { prototypeCurrentShowEntries, prototypeDog, prototypeKennelRunNavigation } from "./fixture";
+
+type PrototypeView = "owner" | "public" | "listed" | "stud" | "deceased" | "pregnant";
 
 export default function DogProfileDesignPrototypePage() {
   const [hasArtwork, setHasArtwork] = useState(true);
   const [showUrgentCare, setShowUrgentCare] = useState(true);
   const [manageDogOpen, setManageDogOpen] = useState(false);
   const [showEntriesOpen, setShowEntriesOpen] = useState(false);
+  const [groomingOpen, setGroomingOpen] = useState(false);
+  const [outsideGroomingListed, setOutsideGroomingListed] = useState(false);
+  const [prototypeView, setPrototypeView] = useState<PrototypeView>("owner");
   const [prototypeNotice, setPrototypeNotice] = useState<string | null>(null);
   const dog = prototypeDog;
+  const isOwner = prototypeView === "owner" || prototypeView === "pregnant";
+  const isDeceased = prototypeView === "deceased";
+  const isPregnant = prototypeView === "pregnant";
+  const canBuyDog = prototypeView === "listed";
+  const canUseAtStud = prototypeView === "stud";
+  const heroStatus = isDeceased ? "Deceased · Age at death 4y 2w" : isPregnant ? "Alive · Pregnant · Show restricted" : dog.lifecycle;
 
   return (
     <main className="dog-page min-h-screen px-4 py-8 sm:px-6 lg:px-8">
@@ -25,19 +36,19 @@ export default function DogProfileDesignPrototypePage() {
             <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">Dog Profile Preview</p>
             <h1 className="theme-heading mt-1 text-xl font-semibold">Upcoming Dog Profile</h1>
           </div>
-          <button
+          <div className="flex flex-wrap items-end gap-3"><label className="theme-label grid gap-1 text-xs font-semibold uppercase tracking-[0.14em]">Preview state<select value={prototypeView} onChange={(event) => setPrototypeView(event.target.value as PrototypeView)} className="theme-secondary-button rounded-xl px-3 py-2 text-sm font-semibold normal-case tracking-normal focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"><option value="owner">Owner</option><option value="public">Public</option><option value="listed">Public · Listed</option><option value="stud">Public · At Stud</option><option value="deceased">Deceased</option><option value="pregnant">Owner · Pregnant</option></select></label><button
             type="button"
             aria-pressed={hasArtwork}
             onClick={() => setHasArtwork((current) => !current)}
             className="theme-secondary-button rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             {hasArtwork ? "View Without Breed Art" : "View With Breed Art"}
-          </button>
+          </button></div>
         </div>
 
         <p className="theme-copy mb-6 text-sm leading-6">This is a preview of the upcoming Individual Dog Profile using a sample dog. Buttons and statuses on this page are examples only and do not affect the game.</p>
 
-        {showUrgentCare ? (
+        {isOwner && showUrgentCare ? (
           <section className="mb-6 border-l-4 border-[var(--color-danger)] bg-[var(--color-danger-surface)] px-5 py-4" aria-labelledby="prototype-urgent-care-heading">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -51,9 +62,11 @@ export default function DogProfileDesignPrototypePage() {
               </div>
             </div>
           </section>
-        ) : (
+        ) : isOwner ? (
           <button type="button" onClick={() => setShowUrgentCare(true)} className="theme-secondary-button mb-6 rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Preview Emergency State</button>
-        )}
+        ) : null}
+
+        {isOwner ? <nav aria-label="Kennel run dog navigation" className="theme-card mb-6 grid gap-2 rounded-2xl p-2 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch"><div className="theme-card-interactive flex min-h-12 flex-col justify-center rounded-xl px-3 py-2 text-sm font-semibold"><span>← Previous Dog</span><span className="theme-copy mt-0.5 text-xs font-medium">Previous: {prototypeKennelRunNavigation.previous}</span></div><div className="flex min-h-12 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-inset)] px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">{prototypeKennelRunNavigation.position}</div><div className="theme-card-interactive flex min-h-12 flex-col justify-center rounded-xl px-3 py-2 text-sm font-semibold sm:text-right"><span>Next Dog →</span><span className="theme-copy mt-0.5 text-xs font-medium">Next: {prototypeKennelRunNavigation.next}</span></div></nav> : null}
 
         <section className="grid gap-8 border-b border-[var(--color-border)] pb-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center">
           <div className="order-1">
@@ -75,11 +88,12 @@ export default function DogProfileDesignPrototypePage() {
             <p className="theme-label text-sm font-semibold uppercase tracking-[0.18em]">{dog.breed} · COLOR · {dog.sex}</p>
             <h2 className="theme-heading mt-3 text-4xl font-semibold tracking-tight sm:text-6xl">{dog.titlePrefix} {dog.registeredName}</h2>
             <p className="theme-copy mt-3 text-xl">“{dog.callName}”</p>
-            <p className="theme-copy mt-5 text-sm leading-7">{dog.lifecycle}</p>
+            <p className={`theme-copy mt-5 text-sm leading-7 ${isDeceased || isPregnant ? "font-semibold" : ""}`}>{heroStatus}</p>
             <div className="relative mt-6 flex flex-wrap gap-3">
-              <PrototypeButton label="Show Planner" onActivate={setPrototypeNotice} primary />
-              <button type="button" aria-expanded={manageDogOpen} aria-controls="manage-dog-panel" onClick={() => setManageDogOpen((current) => !current)} className="theme-secondary-button rounded-xl px-4 py-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Manage Dog</button>
-              {manageDogOpen ? (
+              {!isDeceased && isOwner ? <><PrototypeButton label="Show Planner" onActivate={setPrototypeNotice} primary /><button type="button" aria-expanded={manageDogOpen} aria-controls="manage-dog-panel" onClick={() => setManageDogOpen((current) => !current)} className="theme-secondary-button rounded-xl px-4 py-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Manage Dog</button></> : null}
+              {!isDeceased && canBuyDog ? <PrototypeButton label="Buy Dog" onActivate={setPrototypeNotice} primary /> : null}
+              {!isDeceased && canUseAtStud ? <PrototypeButton label="Use at Stud" onActivate={setPrototypeNotice} primary /> : null}
+              {isOwner && manageDogOpen ? (
                 <section id="manage-dog-panel" aria-label="Manage Dog prototype controls" className="theme-panel basis-full rounded-2xl p-5 lg:absolute lg:right-0 lg:top-full lg:z-10 lg:mt-3 lg:w-[min(42rem,calc(100vw-3rem))]">
                   <div className="flex items-start justify-between gap-4">
                     <div><p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">Administrative actions</p><h2 className="theme-heading mt-1 text-xl font-semibold">Manage Aster</h2></div>
@@ -88,11 +102,11 @@ export default function DogProfileDesignPrototypePage() {
                   <div className="mt-5 grid gap-x-7 gap-y-5 sm:grid-cols-2">
                     <ManageActionGroup title="Identity" actions={["Edit call name", "Register name"]} onActivate={setPrototypeNotice} />
                     <ManageActionGroup title="Kennel" actions={["Move to another run", "Re-home"]} onActivate={setPrototypeNotice} />
-                    <ManageActionGroup title="Care" actions={["Groom"]} onActivate={setPrototypeNotice} />
-                    <ManageActionGroup title="Breeding" actions={["Breeding participation"]} onActivate={setPrototypeNotice} />
+                    <ManageActionGroup title="Breeding" actions={["Breed", "Breeding participation"]} onActivate={setPrototypeNotice} />
+                    <ManageGroomingGroup isOpen={groomingOpen} isListed={outsideGroomingListed} onToggle={() => setGroomingOpen((current) => !current)} onSetListed={setOutsideGroomingListed} onActivate={setPrototypeNotice} />
                     <div className="sm:col-span-2"><ManageShowsGroup entries={prototypeCurrentShowEntries} isOpen={showEntriesOpen} onToggle={() => setShowEntriesOpen((current) => !current)} onPull={setPrototypeNotice} /></div>
+                    <ManageActionGroup title="Stud" actions={["Stud Worksheet"]} onActivate={setPrototypeNotice} />
                     <ManageActionGroup title="Market" actions={["List for sale", "Manage listing"]} onActivate={setPrototypeNotice} />
-                    <ManageActionGroup title="Private" actions={["Notes"]} onActivate={setPrototypeNotice} />
                   </div>
                 </section>
               ) : null}
@@ -119,14 +133,13 @@ export default function DogProfileDesignPrototypePage() {
               <TraitLine key={category.key} label={category.label} value={category.value} min={category.min} max={category.max} ideal={category.ideal} leftLabel={category.leftLabel} centerLabel={category.centerLabel} rightLabel={category.rightLabel} precision={3} />
             ))}
           </div>
-          <div className="mt-8"><PrototypeButton label="Groom Aster" onActivate={setPrototypeNotice} /></div>
         </section>
 
         <div className="grid gap-x-12 border-t border-[var(--color-border)] py-12 lg:grid-cols-2">
-          <SummarySection title="Health" eyebrow={dog.healthSummary} rows={dog.healthResults.map(([name, status, detail, severity]) => ({ name, value: status, detail, valueClassName: PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES[severity] }))} action={<PrototypeButton label="Order Health Tests" onActivate={setPrototypeNotice} />} />
+          <SummarySection title="Health" eyebrow={dog.healthSummary} rows={dog.healthResults.map(([name, status, detail, severity]) => ({ name, value: status, detail, valueClassName: PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES[severity] }))} action={isOwner ? <PrototypeButton label="Order Health Tests" onActivate={setPrototypeNotice} /> : null} />
           <SummarySection title="Show Career" eyebrow="A finished Champion beginning her GCH record" rows={dog.showCareer.map(([name, value, detail]) => ({ name, value, detail }))} action={<div className="flex flex-wrap gap-2"><PrototypeButton label="View Full Show Record" onActivate={setPrototypeNotice} /><PrototypeButton label="Ribbon Room" onActivate={setPrototypeNotice} /></div>} />
           <SummarySection title="Pedigree" eyebrow="Four generations recorded" rows={dog.pedigree.map(([name, value, detail]) => ({ name, value, detail }))} action={<PrototypeButton label="View Full Pedigree" onActivate={setPrototypeNotice} />} />
-          <SummarySection title="Breeding & Production" eyebrow="Current program context" rows={dog.production.map(([name, value]) => ({ name, value }))} action={<div><button type="button" disabled aria-describedby="breed-aster-reason" className="dog-card rounded-xl px-4 py-2 text-sm font-semibold opacity-70">Breed Aster</button><p id="breed-aster-reason" className="theme-copy mt-2 text-sm leading-6">Not currently eligible — reproductive recovery is still active.</p></div>} />
+          <SummarySection title="Breeding & Production" eyebrow="Current program context" rows={dog.production.map(([name, value]) => ({ name, value }))} action={<div className="space-y-5"><div className="dog-card rounded-xl p-4"><h3 className="theme-heading text-sm font-semibold">Current reproductive detail</h3><p className="theme-copy mt-2 text-sm leading-6">{isPregnant ? "Pregnant. Show participation is restricted while this fictional pregnancy is active." : isDeceased ? "Historical breeding and production record preserved after death." : "Open to future breeding planning; current availability is represented in the hero status."}</p></div><div className="grid gap-3 sm:grid-cols-2"><div className="dog-card rounded-xl p-4"><h3 className="theme-heading text-sm font-semibold">Reproductive history</h3><p className="theme-copy mt-2 text-sm leading-6">Bred to Foundation Sire · Year 2, Week 8 · 4 puppies survived.</p></div><div className="dog-card rounded-xl p-4"><h3 className="theme-heading text-sm font-semibold">Progeny</h3><p className="theme-copy mt-2 text-sm leading-6">Riverlight Juniper · Female · future Champion prospect.</p></div></div>{isOwner ? <div className="border-t border-[var(--color-border)] pt-5"><h3 className="theme-heading text-sm font-semibold">Private Kennel Notes</h3><p className="theme-copy mt-2 text-sm leading-6">Program tags: holdback prospect · autumn specialty plan</p><p className="theme-copy mt-1 text-sm leading-6">Keep conditioning steady through the next show cluster.</p></div> : null}</div>} />
         </div>
         {prototypeNotice ? <p role="status" aria-live="polite" className="theme-status-info mt-2 rounded-xl px-4 py-3 text-sm">{prototypeNotice} is a prototype-only control; no Dog action was performed.</p> : null}
       </div>
@@ -144,6 +157,10 @@ function PrototypeButton({ label, onActivate, primary = false }: { label: string
 
 function ManageActionGroup({ title, actions, onActivate }: { title: string; actions: string[]; onActivate: (label: string) => void }) {
   return <section aria-labelledby={`manage-${title.toLowerCase()}-heading`}><h3 id={`manage-${title.toLowerCase()}-heading`} className="theme-label text-xs font-semibold uppercase tracking-[0.16em]">{title}</h3><div className="mt-2 flex flex-wrap gap-2">{actions.map((action) => <PrototypeButton key={action} label={action} onActivate={onActivate} />)}</div></section>;
+}
+
+function ManageGroomingGroup({ isOpen, isListed, onToggle, onSetListed, onActivate }: { isOpen: boolean; isListed: boolean; onToggle: () => void; onSetListed: (listed: boolean) => void; onActivate: (label: string) => void }) {
+  return <section aria-labelledby="manage-grooming-heading"><h3 id="manage-grooming-heading" className="theme-label text-xs font-semibold uppercase tracking-[0.16em]">Grooming</h3><button type="button" aria-expanded={isOpen} aria-controls="prototype-grooming-management" onClick={onToggle} className="theme-secondary-button mt-2 rounded-xl px-4 py-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Manage Grooming</button>{isOpen ? <div id="prototype-grooming-management" className="dog-card mt-3 space-y-3 rounded-xl p-4 text-sm"><p className="theme-copy">Coat condition: 8.1 · 1 weekly grooming action remains.</p>{isListed ? <><p className="theme-copy">Currently listed for outside grooming.</p><PrototypeButton label="Cancel Grooming Listing" onActivate={() => { onSetListed(false); onActivate("Cancel grooming listing"); }} /></> : <><div className="flex flex-wrap gap-2"><PrototypeButton label="Self Groom" onActivate={onActivate} /><PrototypeButton label="Offer for Outside Grooming" onActivate={() => { onSetListed(true); onActivate("Offer for outside grooming"); }} /></div><p className="theme-copy text-xs leading-5">If listed for outside grooming, self grooming becomes unavailable until the listing is cancelled.</p></>}</div> : null}</section>;
 }
 
 function ManageShowsGroup({ entries, isOpen, onToggle, onPull }: { entries: typeof prototypeCurrentShowEntries; isOpen: boolean; onToggle: () => void; onPull: (label: string) => void }) {
