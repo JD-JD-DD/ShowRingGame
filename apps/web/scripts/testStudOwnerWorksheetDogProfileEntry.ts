@@ -9,7 +9,7 @@ const marketService = source("apps/web/server/services/market.service.ts");
 
 assert.ok(dogPage.includes("const canConfigureStudOffer"));
 assert.ok(dogPage.includes('href={`/dogs/${header.dogId}/stud-contract`}'));
-assert.ok(dogPage.includes("Stud Owner Worksheet"));
+assert.ok(dogPage.includes("Stud Worksheet"));
 assert.equal(dogPage.includes("OfferDogAtStudForm"), false);
 assert.equal(dogPage.includes("ManageDogStudListingForm"), false);
 assert.equal(dogPage.includes("list-at-stud"), false);

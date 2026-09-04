@@ -15,6 +15,7 @@
     "test:grooming-listing-acceptance-errors": "tsx scripts/testGroomingListingAcceptanceErrors.ts",
     "test:dog-profile-kennel-run-move": "tsx scripts/testDogProfileKennelRunMove.ts",
     "test:dog-profile-design-prototype": "tsx scripts/testDogProfileDesignPrototype.ts",
+    "test:dog-profile-manage-dog-stage-2a": "tsx scripts/testDogProfileManageDogStage2A.ts",
     "test:deceased-dog-age-presentation": "tsx scripts/testDeceasedDogAgePresentation.ts",
     "test:dog-show-record-title-points": "tsx scripts/testDogShowRecordTitlePoints.ts",
     "test:dog-titles": "tsx scripts/testDogTitles.ts",
