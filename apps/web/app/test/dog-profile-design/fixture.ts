@@ -55,3 +55,9 @@ export const prototypeDog = {
     ["Producer merit", "0 of 3 champion offspring"],
   ] as const,
 } as const;
+
+export const prototypeCurrentShowEntries = [
+  { id: "copper-valley-day-1", showName: "Copper Valley Kennel Club", showDateLabel: "Year 3, Week 4 · 10:00", dayLabel: "Day 1", district: "Mountain District" },
+  { id: "copper-valley-day-2", showName: "Copper Valley Kennel Club", showDateLabel: "Year 3, Week 4 · 10:00", dayLabel: "Day 2", district: "Mountain District" },
+  { id: "northstar-specialty", showName: "Northstar Hound & Scent Specialty", showDateLabel: "Year 3, Week 5 · 09:30", dayLabel: "Day 1", district: "Lakes District" },
+] as const;

@@ -7,12 +7,13 @@ import { useState } from "react";
 import { PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES } from "@/components/dogs/phenotypeHealthPresentation";
 import TraitLine from "@/components/ui/TraitLine";
 
-import { prototypeDog } from "./fixture";
+import { prototypeCurrentShowEntries, prototypeDog } from "./fixture";
 
 export default function DogProfileDesignPrototypePage() {
   const [hasArtwork, setHasArtwork] = useState(true);
   const [showUrgentCare, setShowUrgentCare] = useState(true);
   const [manageDogOpen, setManageDogOpen] = useState(false);
+  const [showEntriesOpen, setShowEntriesOpen] = useState(false);
   const [prototypeNotice, setPrototypeNotice] = useState<string | null>(null);
   const dog = prototypeDog;
 
@@ -76,7 +77,7 @@ export default function DogProfileDesignPrototypePage() {
             <p className="theme-copy mt-3 text-xl">“{dog.callName}”</p>
             <p className="theme-copy mt-5 text-sm leading-7">{dog.lifecycle}</p>
             <div className="relative mt-6 flex flex-wrap gap-3">
-              <PrototypeButton label="Enter Show" onActivate={setPrototypeNotice} primary />
+              <PrototypeButton label="Show Planner" onActivate={setPrototypeNotice} primary />
               <button type="button" aria-expanded={manageDogOpen} aria-controls="manage-dog-panel" onClick={() => setManageDogOpen((current) => !current)} className="theme-secondary-button rounded-xl px-4 py-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Manage Dog</button>
               {manageDogOpen ? (
                 <section id="manage-dog-panel" aria-label="Manage Dog prototype controls" className="theme-panel basis-full rounded-2xl p-5 lg:absolute lg:right-0 lg:top-full lg:z-10 lg:mt-3 lg:w-[min(42rem,calc(100vw-3rem))]">
@@ -89,6 +90,7 @@ export default function DogProfileDesignPrototypePage() {
                     <ManageActionGroup title="Kennel" actions={["Move to another run", "Re-home"]} onActivate={setPrototypeNotice} />
                     <ManageActionGroup title="Care" actions={["Groom"]} onActivate={setPrototypeNotice} />
                     <ManageActionGroup title="Breeding" actions={["Breeding participation"]} onActivate={setPrototypeNotice} />
+                    <div className="sm:col-span-2"><ManageShowsGroup entries={prototypeCurrentShowEntries} isOpen={showEntriesOpen} onToggle={() => setShowEntriesOpen((current) => !current)} onPull={setPrototypeNotice} /></div>
                     <ManageActionGroup title="Market" actions={["List for sale", "Manage listing"]} onActivate={setPrototypeNotice} />
                     <ManageActionGroup title="Private" actions={["Notes"]} onActivate={setPrototypeNotice} />
                   </div>
@@ -142,6 +144,10 @@ function PrototypeButton({ label, onActivate, primary = false }: { label: string
 
 function ManageActionGroup({ title, actions, onActivate }: { title: string; actions: string[]; onActivate: (label: string) => void }) {
   return <section aria-labelledby={`manage-${title.toLowerCase()}-heading`}><h3 id={`manage-${title.toLowerCase()}-heading`} className="theme-label text-xs font-semibold uppercase tracking-[0.16em]">{title}</h3><div className="mt-2 flex flex-wrap gap-2">{actions.map((action) => <PrototypeButton key={action} label={action} onActivate={onActivate} />)}</div></section>;
+}
+
+function ManageShowsGroup({ entries, isOpen, onToggle, onPull }: { entries: typeof prototypeCurrentShowEntries; isOpen: boolean; onToggle: () => void; onPull: (label: string) => void }) {
+  return <section aria-labelledby="manage-shows-heading"><h3 id="manage-shows-heading" className="theme-label text-xs font-semibold uppercase tracking-[0.16em]">Shows</h3><button type="button" aria-expanded={isOpen} aria-controls="prototype-current-entries" onClick={onToggle} className="theme-secondary-button mt-2 inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl px-4 py-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Manage Shows <span className="theme-label text-xs">{entries.length} current entries</span></button>{isOpen ? <div id="prototype-current-entries" className="mt-3 grid gap-2">{entries.map((entry) => <div key={entry.id} className="dog-card flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm"><div className="min-w-0 flex-1"><div className="theme-heading font-semibold">{entry.showName}</div><div className="theme-copy mt-1 text-xs">{entry.showDateLabel} · {entry.dayLabel} · {entry.district}</div></div><PrototypeButton label="Pull entry" onActivate={() => onPull(`Pull entry from ${entry.showName}`)} /></div>)}</div> : null}</section>;
 }
 
 function SummarySection({ title, eyebrow, rows, action }: { title: string; eyebrow: string; rows: Array<{ name: string; value: string; detail?: string; valueClassName?: string }>; action: React.ReactNode }) {

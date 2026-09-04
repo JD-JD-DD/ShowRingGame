@@ -8,6 +8,8 @@ const page = source("apps/web/app/test/dog-profile-design/page.tsx");
 const fixture = source("apps/web/app/test/dog-profile-design/fixture.ts");
 
 assert.match(page, /href="\/breed-art"/, "missing-art state uses the established Breed Art route");
+assert.match(page, /label="Show Planner"/, "hero uses Show Planner for future entry planning");
+assert.doesNotMatch(page, /label="Enter Show"/, "prototype no longer labels the hero action Enter Show");
 assert.match(page, /\{dog\.breed\} · COLOR · \{dog\.sex\}/, "prototype reserves Color in the three-part hero identity line");
 assert.match(page, /Dog Profile Preview/, "prototype uses player-facing preview copy");
 assert.match(page, /Upcoming Dog Profile/, "prototype identifies the upcoming player experience");
@@ -20,6 +22,12 @@ assert.match(page, /PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES/, "prototype reuses t
 assert.match(page, /valueClassName: PHENOTYPE_HEALTH_SEVERITY_TEXT_CLASSES\[severity\]/, "only prototype Health result values receive the established severity class");
 assert.match(page, /className=\{`text-sm font-semibold \$\{row\.valueClassName \?\? "theme-heading"\}`\}/, "health result values use their semantic class instead of the neutral theme-heading class");
 assert.match(page, /<SummarySection title="Show Career".*action=\{<div className="flex flex-wrap gap-2"><PrototypeButton label="View Full Show Record".*<PrototypeButton label="Ribbon Room"/, "Show Career presents the locally mocked Ribbon Room action beside the full record action");
+assert.match(page, /ManageShowsGroup entries=\{prototypeCurrentShowEntries\}/, "Manage Dog includes its dedicated Shows management group");
+assert.match(page, /aria-controls="prototype-current-entries"/, "Manage Shows exposes an accessible current-entry expander");
+assert.match(page, /\{entries\.length\} current entries/, "Manage Shows displays the current-entry count");
+assert.match(fixture, /showName: "Copper Valley Kennel Club"/, "prototype fixture includes fictional current entries");
+assert.match(page, /label="Pull entry"/, "fictional current entries include local Pull entry controls");
+assert.doesNotMatch(page, /showEntry\.service|\/api\/.*show-entry|\/api\/show-entries/, "prototype has no production show-entry service or API dependency");
 assert.doesNotMatch(page, /@\/lib\/db|@\/server\/services|fetch\(/, "prototype has no database, service, or API dependency");
 assert.match(page, /Manage Dog/, "prototype includes the local Manage Dog control");
 assert.match(page, /aria-expanded=\{manageDogOpen\}/, "Manage Dog exposes expanded state");
