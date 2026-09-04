@@ -7,6 +7,7 @@ import BreedDogActionButton from "@/components/dogs/BreedDogActionButton";
 import CallNameEditor from "@/components/dogs/CallNameEditor";
 import DogProfileKennelRunMove from "@/components/dogs/DogProfileKennelRunMove";
 import DogProfileDashboard from "@/components/dogs/DogProfileDashboard";
+import DogProfileReadSections from "@/components/dogs/DogProfileReadSections";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
@@ -552,6 +553,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           </div>
         </section>
 
+        <DogProfileReadSections profile={profile} />
+        {/* Stage 1 compatibility area: preserves existing mutation-heavy controls until Stage 2 relocation. */}
         <DogProfileDashboard
           profile={profile}
           currentEpoch={currentEpoch}
