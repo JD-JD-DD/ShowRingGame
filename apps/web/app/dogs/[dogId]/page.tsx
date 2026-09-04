@@ -19,6 +19,7 @@ import { createPerfTimer, estimateJsonSizeBytes } from "@/lib/perf";
 import { getSessionUserId } from "@/lib/session";
 import { getDogProfile } from "@/server/services/dog.service";
 import { getKennelForUser } from "@/server/services/kennel.service";
+import { getEligibleStandardBreedArtworkCampaigns } from "@/server/services/artCampaign.service";
 
 type DogSearchParams = {
     nameError?: string | string[];
@@ -133,6 +134,18 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   );
 
   if (!profile) notFound();
+
+  const dogBreed = await db.dog.findUnique({
+    where: { id: dogId },
+    select: { breedCode2: true },
+  });
+  const breedArtwork = dogBreed
+    ? (await getEligibleStandardBreedArtworkCampaigns()).find(
+        (campaign) =>
+          campaign.breedCode2 === dogBreed.breedCode2 &&
+          campaign.artworkAssetReference
+      )
+    : null;
 
   const requestedKennelRunId = firstQueryValue(resolvedSearchParams.kennelRunId);
   const validatedKennelRunId =
@@ -250,14 +263,19 @@ export default async function DogPage({ params, searchParams }: PageProps) {
     <main className="dog-page min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
         <section className="dog-panel mb-8 rounded-[28px] px-6 py-6 backdrop-blur">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_540px]">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_540px] lg:items-center">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-[28px] bg-[var(--color-surface-inset)]">
+              {breedArtwork?.artworkAssetReference ? (
+                <img src={breedArtwork.artworkAssetReference} alt={breedArtwork.artworkArtistCredit ? `${header.breedName} artwork by ${breedArtwork.artworkArtistCredit}` : `${header.breedName} breed artwork`} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center px-8 text-center"><p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">Breed Art collection</p><h2 className="theme-heading mt-3 text-3xl font-semibold">Want Breed Art?</h2><p className="theme-copy mt-3 max-w-sm text-sm leading-6">Help fund future original artwork for this breed.</p><Link href="/breed-art" className="theme-primary-button mt-6 rounded-xl px-5 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Explore Breed Art</Link></div>
+              )}
+            </div>
             <div className="max-w-4xl">
               <div className="theme-neutral-badge mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em]">
                 Show Profile
               </div>
-              <div className="text-sm font-medium text-[var(--dog-label)]">
-                {header.breedName}
-              </div>
+              <div className="theme-label text-sm font-semibold uppercase tracking-[0.18em]">{header.breedName} · COLOR · {header.sexLabel}</div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <h1 className="dog-heading text-4xl font-bold tracking-tight sm:text-5xl">
                   {headerDisplayName}
@@ -402,11 +420,11 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     href={`/dogs/${header.dogId}/show-entry`}
                     className="theme-primary-button rounded-2xl px-5 py-3 text-center text-sm font-semibold"
                   >
-                    Show Entry
+                    Show Planner
                   </Link>
                 ) : (
                   <div className="dog-card dog-copy rounded-2xl px-5 py-3 text-center text-sm font-semibold opacity-60">
-                    Show Entry
+                    Show Planner
                   </div>
                 )}
 
