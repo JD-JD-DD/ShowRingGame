@@ -81,8 +81,8 @@ const groomingDecayWorkflow = source(".github/workflows/grooming-decay.yml");
 const lifecycleService = source("apps/web/server/services/lifecycle.service.ts");
 const judgingService = source("apps/web/server/services/judging.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
-const dogProfileDashboard = source(
-  "apps/web/components/dogs/DogProfileDashboard.tsx"
+const dogProfileHealthActions = source(
+  "apps/web/components/dogs/DogProfileHealthActions.tsx"
 );
 const brucellosisScreeningRoute = source(
   "apps/web/app/api/dogs/[dogId]/brucellosis-screening/route.ts"
@@ -798,7 +798,7 @@ assertIncludes(
   "public dog profile DTO carries the already-filtered health impact statement"
 );
 assertIncludes(
-  dogProfileDashboard,
+  dogProfileHealthActions,
   "impactStatement: test.healthImpactStatement",
   "dog profile dashboard passes health impact statements into completed health rows"
 );
@@ -813,22 +813,22 @@ assertDoesNotIncludeAny(
   "standalone dog brucellosis route does not create core health test records"
 );
 assertIncludes(
-  dogProfileDashboard,
+  dogProfileHealthActions,
   "Run Brucellosis Screening",
   "dog profile breeding safety card can run brucellosis screening"
 );
 assertIncludes(
-  dogProfileDashboard,
+  dogProfileHealthActions,
   "Repeat Screening",
   "dog profile breeding safety card can repeat current brucellosis screening"
 );
 assertIncludes(
-  dogProfileDashboard,
+  dogProfileHealthActions,
   "BRUCELLOSIS_TEST_FEE",
   "dog profile breeding safety card shows the shared brucellosis screening cost"
 );
 assertIncludes(
-  dogProfileDashboard,
+  dogProfileHealthActions,
   "formatBreedingSafetyCost",
   "dog profile breeding safety card formats the $75 brucellosis screening cost"
 );

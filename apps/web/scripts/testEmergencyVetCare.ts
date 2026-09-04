@@ -217,8 +217,8 @@ const groomingService = source("apps/web/server/services/grooming.service.ts");
 const rehomeService = source("apps/web/server/services/rehome.service.ts");
 const dogService = source("apps/web/server/services/dog.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
-const dogProfileDashboard = source(
-  "apps/web/components/dogs/DogProfileDashboard.tsx"
+const dogProfilePage = source(
+  "apps/web/app/dogs/[dogId]/page.tsx"
 );
 const emergencyVetCarePanel = source(
   "apps/web/components/dogs/EmergencyVetCarePanel.tsx"
@@ -559,7 +559,7 @@ assertIncludes(
   "dog profile mapper has a scoped emergency care DTO"
 );
 assertIncludes(
-  dogProfileDashboard,
+  dogProfilePage,
   "EmergencyVetCarePanel",
   "dog dashboard renders the emergency vet-care panel"
 );

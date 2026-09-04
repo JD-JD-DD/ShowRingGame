@@ -1,20 +1,23 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import CancelGroomingListingForm from "@/components/dogs/CancelGroomingListingForm";
 import BreedingActiveControl from "@/components/dogs/BreedingActiveControl";
 import BreedDogActionButton from "@/components/dogs/BreedDogActionButton";
 import CallNameEditor from "@/components/dogs/CallNameEditor";
 import DogProfileKennelRunMove from "@/components/dogs/DogProfileKennelRunMove";
-import DogProfileDashboard from "@/components/dogs/DogProfileDashboard";
+import DogProfileGroomingManagement from "@/components/dogs/DogProfileGroomingManagement";
+import DogProfileHealthActions from "@/components/dogs/DogProfileHealthActions";
+import DogProfilePrivatePlanning from "@/components/dogs/DogProfilePrivatePlanning";
 import DogProfileReadSections from "@/components/dogs/DogProfileReadSections";
+import DogProfileShowsManagement from "@/components/dogs/DogProfileShowsManagement";
 import DogStatusBadges from "@/components/dogs/DogStatusBadges";
+import EmergencyVetCarePanel from "@/components/dogs/EmergencyVetCarePanel";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import ManageDogPanel from "@/components/dogs/ManageDogPanel";
 import OfferDogForSaleForm from "@/components/dogs/OfferDogForSaleForm";
 import RegisterDogNameForm from "@/components/dogs/RegisterDogNameForm";
 import RehomeDogForm from "@/components/dogs/RehomeDogForm";
-import ConfirmSubmitButton from "@/components/ui/ConfirmSubmitButton";
+import ReproductiveEmergencyPanel from "@/components/dogs/ReproductiveEmergencyPanel";
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { createPerfTimer, estimateJsonSizeBytes } from "@/lib/perf";
@@ -73,10 +76,6 @@ function formatMoney(amount: number): string {
 
 function formatCondition(value: number): string {
   return value.toFixed(2);
-}
-
-function formatSignedCondition(value: number): string {
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}`;
 }
 
 function badgeClass(tone: string): string {
@@ -371,8 +370,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
               {statusMessage(saleMessage)}
               {statusMessage(saleError, true)}
-              {statusMessage(groomingMessage)}
-              {statusMessage(groomingError, true)}
             </div>
 
             <div className="flex flex-col gap-4 lg:justify-self-end">
@@ -453,21 +450,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                         />
                       </div>
                     }
-                    grooming={
-                      grooming ? (
-                        <div className="dog-copy grid gap-1 text-sm">
-                          <div>
-                            Actions remaining: {grooming.weeklyActionsRemaining} /{" "}
-                            {grooming.weeklyActionLimit}
-                          </div>
-                          <div>
-                            Coat condition: {formatCondition(grooming.currentCoatCondition)}
-                          </div>
-                          <div>Status: {grooming.groomingStatus}</div>
-                        </div>
-                      ) : null
-                    }
-                    shows={null}
+                    grooming={grooming ? <DogProfileGroomingManagement dogId={header.dogId} dogName={header.displayName} grooming={grooming} returnTo={dogPageReturnTo} message={groomingMessage} error={groomingError} /> : null}
+                    shows={<DogProfileShowsManagement dogId={header.dogId} entries={profile.entries} kennelRunId={navigationKennelRunId} showMessage={showMessage} showError={showError} />}
                     stud={
                       canConfigureStudOffer ? (
                         <Link
@@ -497,67 +481,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   />
                 ) : null}
 
-                {viewerContext.canManage && grooming ? (
-                  <details className="group sm:col-span-2">
-                    <summary className="theme-primary-button list-none rounded-2xl px-5 py-3 text-center text-sm font-semibold [&::-webkit-details-marker]:hidden">
-                      Groom Dog
-                    </summary>
-                    <div className="dog-card mt-3 rounded-2xl p-4">
-                      <div className="dog-heading text-sm font-semibold">
-                        Grooming
-                      </div>
-                      <div className="dog-copy mt-3 grid gap-2 text-sm">
-                        <div>
-                          Actions remaining: {grooming.weeklyActionsRemaining} /{" "}
-                          {grooming.weeklyActionLimit}
-                        </div>
-                        <div>
-                          Coat condition:{" "}
-                          {formatCondition(grooming.currentCoatCondition)}
-                        </div>
-                        <div>
-                          Net effect: {formatSignedCondition(grooming.netGroomingEffect)}
-                        </div>
-                        <div>Status: {grooming.groomingStatus}</div>
-                      </div>
-                      <div className="mt-3 grid gap-2">
-                        {grooming.canCancelOutsideGrooming &&
-                        grooming.outsideGroomingListingId ? (
-                          <CancelGroomingListingForm
-                            action={`/api/services/grooming/listings/${grooming.outsideGroomingListingId}/cancel`}
-                            dogName={header.displayName}
-                          />
-                        ) : (
-                          <>
-                            <form action="/api/services/grooming/self-groom" method="post">
-                              <input type="hidden" name="dogId" value={header.dogId} />
-                              <input type="hidden" name="returnTo" value={dogPageReturnTo} />
-                              <button
-                                type="submit"
-                                disabled={!grooming.canGroom}
-                                className="theme-primary-button w-full rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
-                              >
-                                Confirm Groom Dog
-                              </button>
-                            </form>
-                            <form action="/api/services/grooming/list" method="post">
-                              <input type="hidden" name="dogId" value={header.dogId} />
-                              <input type="hidden" name="returnTo" value={dogPageReturnTo} />
-                              <ConfirmSubmitButton
-                                message={`Offer ${header.displayName} for outside grooming?`}
-                                disabled={!grooming.canOfferOutsideGrooming}
-                                className="theme-secondary-button w-full rounded-xl px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
-                              >
-                                Offer for Outside Grooming
-                              </ConfirmSubmitButton>
-                            </form>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </details>
-                ) : null}
-
               </div>
 
               <Link
@@ -583,18 +506,12 @@ export default async function DogPage({ params, searchParams }: PageProps) {
           </div>
         </section>
 
-        <DogProfileReadSections profile={profile} />
-        {/* Stage 1 compatibility area: preserves existing mutation-heavy controls until Stage 2 relocation. */}
-        <DogProfileDashboard
+        {viewerContext.canManage && header.lifecycleState === "ALIVE" && profile.emergencyCare ? <EmergencyVetCarePanel dogId={header.dogId} dogName={header.displayName} emergency={profile.emergencyCare} className="dog-panel mt-8 rounded-[28px] p-6" /> : null}
+        {viewerContext.canManage && header.lifecycleState === "ALIVE" && profile.reproductiveEmergency ? <ReproductiveEmergencyPanel dogName={header.displayName} emergency={profile.reproductiveEmergency} className="dog-panel mt-8 rounded-[28px] p-6" /> : null}
+        <DogProfileReadSections
           profile={profile}
-          currentEpoch={currentEpoch}
-          kennelRunId={navigationKennelRunId}
-          healthMessage={healthMessage}
-          healthError={healthError}
-          notesMessage={notesMessage}
-          notesError={notesError}
-          showMessage={showMessage}
-          showError={showError}
+          healthActions={<DogProfileHealthActions profile={profile} kennelRunId={navigationKennelRunId} canManage={viewerContext.canManage && header.lifecycleState === "ALIVE"} healthMessage={healthMessage} healthError={healthError} />}
+          privatePlanning={<DogProfilePrivatePlanning profile={profile} kennelRunId={navigationKennelRunId} notesMessage={notesMessage} notesError={notesError} />}
         />
       </div>
     </main>

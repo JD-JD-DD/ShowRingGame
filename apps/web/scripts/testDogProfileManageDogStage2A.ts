@@ -20,8 +20,8 @@ assert.match(page, /kennel=\{[\s\S]*<DogProfileKennelRunMove[\s\S]*<RehomeDogFor
 assert.match(page, /breeding=\{[\s\S]*<BreedingActiveControl[\s\S]*<BreedDogActionButton/, "Breeding owns participation and Breed actions");
 assert.match(page, /stud=\{[\s\S]*Stud Worksheet/, "Stud owns the worksheet destination");
 assert.match(page, /market=\{[\s\S]*<OfferDogForSaleForm[\s\S]*<ManageDogListingForm/, "Market owns listing controls");
-assert.match(page, /grooming=\{[\s\S]*Actions remaining:/, "Grooming retains only its current status summary");
-assert.match(page, /shows=\{null\}/, "Shows is structural only in Stage 2A");
+assert.match(page, /grooming=\{[\s\S]*DogProfileGroomingManagement/, "Grooming retains its final component placement");
+assert.match(page, /shows=\{[\s\S]*DogProfileShowsManagement/, "Shows retains its final component placement");
 for (const control of [
   "<CallNameEditor",
   "<RegisterDogNameForm",
