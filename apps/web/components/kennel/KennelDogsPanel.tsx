@@ -18,6 +18,9 @@ import {
 import { filterDogsBySelectedRuns } from "@/components/kennel/kennelDogFiltering";
 import {
   compareKennelRosterHealth,
+  getRosterPhenotypeHealthTest,
+  toRosterHealthPresentation,
+  type RosterPhenotypeHealthByTestCode,
   type RosterHealthPresentation,
   type RosterPhenotypeHealthTest,
 } from "@/components/kennel/kennelRosterHealth";
@@ -93,7 +96,7 @@ type KennelDogDto = {
   visibleCategories: VisibleCategories;
   breedingCardStatus: BreedingCardStatus;
   health: {
-    phenotype: Omit<RosterHealthPresentation, "brucellosis">;
+    phenotype: RosterPhenotypeHealthByTestCode;
     brucellosis: RosterHealthPresentation["brucellosis"];
   };
 };
@@ -540,10 +543,7 @@ function isHealthSortKey(
 }
 
 function healthForSort(dog: KennelDogDto): RosterHealthPresentation {
-  return {
-    ...dog.health.phenotype,
-    brucellosis: dog.health.brucellosis,
-  };
+  return toRosterHealthPresentation(dog.health);
 }
 
 function phenotypeHealthCellText(test: RosterPhenotypeHealthTest): string {
@@ -3106,7 +3106,10 @@ export default function KennelDogsPanel() {
                       case "cardiac":
                       case "thyroid":
                       case "caerEye": {
-                        const test = dog.health.phenotype[columnId];
+                        const test = getRosterPhenotypeHealthTest(
+                          dog.health.phenotype,
+                          columnId
+                        );
 
                         return (
                           <td key={columnId} className="px-2 py-2 text-xs">

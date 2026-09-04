@@ -6,6 +6,18 @@ export type RosterPhenotypeHealthTest = {
   availabilityLabel: string | null;
 };
 
+export type RosterPhenotypeHealthTestCode =
+  | "HIP_DYSPLASIA"
+  | "ELBOW_DYSPLASIA"
+  | "CARDIAC"
+  | "THYROID"
+  | "CAER_EYE";
+
+export type RosterPhenotypeHealthByTestCode = Record<
+  RosterPhenotypeHealthTestCode,
+  RosterPhenotypeHealthTest
+>;
+
 export type RosterBrucellosisScreening = {
   currentStatusLabel: string;
   isCurrentNegative: boolean;
@@ -23,6 +35,17 @@ export type RosterHealthPresentation = {
 };
 
 export type RosterHealthColumnId = keyof RosterHealthPresentation;
+
+const PHENOTYPE_TEST_CODE_BY_COLUMN: Record<
+  Exclude<RosterHealthColumnId, "brucellosis">,
+  RosterPhenotypeHealthTestCode
+> = {
+  hips: "HIP_DYSPLASIA",
+  elbows: "ELBOW_DYSPLASIA",
+  cardiac: "CARDIAC",
+  thyroid: "THYROID",
+  caerEye: "CAER_EYE",
+};
 
 const PHENOTYPE_RANKS: Record<
   Exclude<RosterHealthColumnId, "brucellosis">,
@@ -54,6 +77,27 @@ function brucellosisRank(screening: RosterBrucellosisScreening): number {
   if (screening.isCurrentNegative) return 0;
   if (screening.isPositiveOrInfected) return 3;
   return screening.testedAtEpoch === null ? 2 : 1;
+}
+
+export function getRosterPhenotypeHealthTest(
+  phenotype: RosterPhenotypeHealthByTestCode,
+  column: Exclude<RosterHealthColumnId, "brucellosis">
+): RosterPhenotypeHealthTest {
+  return phenotype[PHENOTYPE_TEST_CODE_BY_COLUMN[column]];
+}
+
+export function toRosterHealthPresentation(args: {
+  phenotype: RosterPhenotypeHealthByTestCode;
+  brucellosis: RosterBrucellosisScreening;
+}): RosterHealthPresentation {
+  return {
+    hips: getRosterPhenotypeHealthTest(args.phenotype, "hips"),
+    elbows: getRosterPhenotypeHealthTest(args.phenotype, "elbows"),
+    cardiac: getRosterPhenotypeHealthTest(args.phenotype, "cardiac"),
+    thyroid: getRosterPhenotypeHealthTest(args.phenotype, "thyroid"),
+    caerEye: getRosterPhenotypeHealthTest(args.phenotype, "caerEye"),
+    brucellosis: args.brucellosis,
+  };
 }
 
 export function compareKennelRosterHealth(args: {

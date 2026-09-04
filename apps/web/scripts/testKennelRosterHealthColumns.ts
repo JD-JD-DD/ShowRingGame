@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   compareKennelRosterHealth,
+  getRosterPhenotypeHealthTest,
+  toRosterHealthPresentation,
+  type RosterPhenotypeHealthByTestCode,
   type RosterHealthPresentation,
 } from "../components/kennel/kennelRosterHealth";
 
@@ -25,6 +28,8 @@ for (const column of ["hips", "elbows", "cardiac", "thyroid", "caerEye", "brucel
 assert.match(panel, /OPTIONAL_COLUMN_IDS\.includes/, "invalid saved visible columns remain rejected");
 assert.match(panel, /SORT_KEYS\.includes/, "invalid saved sort keys remain rejected");
 assert.match(panel, /case "healthStatus"/, "aggregate Health Tests column remains available");
+assert.match(panel, /getRosterPhenotypeHealthTest\(/, "individual health cells use canonical test-code mapping");
+assert.doesNotMatch(panel, /dog\.health\.phenotype\[columnId\]/, "individual health cells do not index API test-code data with display-column IDs");
 assert.match(rosterRoute, /buildRosterPhenotypeHealthPresentation/, "roster maps existing phenotype records into safe presentation");
 assert.match(rosterRoute, /db\.infectiousDiseaseTestRecord\.findMany/, "Brucellosis tests use a bounded set query");
 assert.match(rosterRoute, /db\.dogInfectiousDiseaseStatus\.findMany/, "Brucellosis statuses use a bounded set query");
@@ -44,6 +49,38 @@ function phenotype(resultCode: string | null) {
     availabilityLabel: null,
   };
 }
+
+const phenotypeByTestCode: RosterPhenotypeHealthByTestCode = {
+  HIP_DYSPLASIA: phenotype("EXCELLENT"),
+  ELBOW_DYSPLASIA: phenotype("NORMAL"),
+  CARDIAC: phenotype("NORMAL"),
+  THYROID: phenotype("NORMAL"),
+  CAER_EYE: phenotype("NORMAL"),
+};
+
+for (const [column, testCode] of [
+  ["hips", "HIP_DYSPLASIA"],
+  ["elbows", "ELBOW_DYSPLASIA"],
+  ["cardiac", "CARDIAC"],
+  ["thyroid", "THYROID"],
+  ["caerEye", "CAER_EYE"],
+] as const) {
+  const test = getRosterPhenotypeHealthTest(phenotypeByTestCode, column);
+  assert.equal(test, phenotypeByTestCode[testCode], `${column} resolves its API test-code health value`);
+  assert.equal(test.severity, "green", `${column} health cell can safely read severity`);
+}
+
+const mappedHealthPresentation = toRosterHealthPresentation({
+  phenotype: phenotypeByTestCode,
+  brucellosis: {
+    currentStatusLabel: "Not screened",
+    isCurrentNegative: false,
+    isPositiveOrInfected: false,
+    testedAtEpoch: null,
+  },
+});
+assert.equal(mappedHealthPresentation.hips, phenotypeByTestCode.HIP_DYSPLASIA, "health sorting receives mapped Hips data");
+assert.equal(mappedHealthPresentation.caerEye, phenotypeByTestCode.CAER_EYE, "health sorting receives mapped CAER Eye data");
 
 function health(args: { hips?: string | null; brucellosis?: Partial<RosterHealthPresentation["brucellosis"]> }): RosterHealthPresentation {
   return {
