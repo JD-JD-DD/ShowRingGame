@@ -31,6 +31,10 @@ assert.match(source("apps/web/components/dogs/DogProfileReadSections.tsx"), /Rib
 assert.match(page, /breedName\} · COLOR · \{header\.sexLabel\}/, "hero preserves the approved breed/color/sex identity line");
 assert.match(page, /Registration[\s\S]*Game Age[\s\S]*Owner[\s\S]*Breeder[\s\S]*Kennel Run[\s\S]*Health/, "hero has the approved fact grid");
 assert.match(page, /grid gap-x-8 gap-y-0 border-b/, "hero uses the open two-column document layout");
+assert.match(page, /lg:grid-cols-\[minmax\(0,1fr\)_minmax\(0,1\.05fr\)\]/, "hero uses the prototype desktop two-column breakpoint and proportions");
+assert.match(page, /<div className="order-1">[\s\S]*aspect-\[4\/3\][\s\S]*<div className="order-2 max-w-2xl">/, "media and identity are direct desktop hero siblings");
+assert.match(page, /relative mt-6 flex flex-wrap gap-3/, "hero actions use the prototype-sized wrapping action row");
+assert.match(panel, /lg:absolute lg:right-0 lg:top-full/, "Manage Dog overlays from the action row at desktop widths");
 assert.doesNotMatch(page, /dog-profile-design\/fixture|prototypeCurrentShowEntries/, "production does not import prototype data");
 
 console.log("Dog Profile Manage Dog Stage 2B checks passed.");

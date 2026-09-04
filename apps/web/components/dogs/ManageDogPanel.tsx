@@ -60,15 +60,17 @@ export default function ManageDogPanel({
         <section
           id={panelId}
           aria-label="Manage Dog"
-          className="dog-card grid gap-5 rounded-2xl p-4 sm:col-span-2 sm:grid-cols-2"
+          className="theme-panel basis-full rounded-2xl p-5 lg:absolute lg:right-0 lg:top-full lg:z-10 lg:mt-3 lg:w-[min(42rem,calc(100vw-3rem))]"
         >
-          <ManageDogGroup title="Identity">{identity}</ManageDogGroup>
-          <ManageDogGroup title="Kennel">{kennel}</ManageDogGroup>
-          <ManageDogGroup title="Breeding">{breeding}</ManageDogGroup>
-          <ManageDogGroup title="Grooming">{grooming}</ManageDogGroup>
-          <ManageDogGroup title="Shows">{shows}</ManageDogGroup>
-          <ManageDogGroup title="Stud">{stud}</ManageDogGroup>
-          <ManageDogGroup title="Market">{market}</ManageDogGroup>
+          <div className="grid gap-x-7 gap-y-5 sm:grid-cols-2">
+            <ManageDogGroup title="Identity">{identity}</ManageDogGroup>
+            <ManageDogGroup title="Kennel">{kennel}</ManageDogGroup>
+            <ManageDogGroup title="Breeding">{breeding}</ManageDogGroup>
+            <ManageDogGroup title="Grooming">{grooming}</ManageDogGroup>
+            <div className="sm:col-span-2"><ManageDogGroup title="Shows">{shows}</ManageDogGroup></div>
+            <ManageDogGroup title="Stud">{stud}</ManageDogGroup>
+            <ManageDogGroup title="Market">{market}</ManageDogGroup>
+          </div>
         </section>
       ) : null}
     </>

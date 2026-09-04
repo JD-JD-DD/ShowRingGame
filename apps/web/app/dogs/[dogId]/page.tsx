@@ -261,6 +261,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <div className="flex h-full flex-col items-center justify-center px-8 text-center"><p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">Breed Art collection</p><h2 className="theme-heading mt-3 text-3xl font-semibold">Want Breed Art?</h2><p className="theme-copy mt-3 max-w-sm text-sm leading-6">Help fund future original artwork for this breed.</p><Link href="/breed-art" className="theme-primary-button mt-6 rounded-xl px-5 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Explore Breed Art</Link></div>
               )}
             </div>
+          </div>
           <div className="order-2 max-w-2xl">
               <div className="theme-label text-sm font-semibold uppercase tracking-[0.18em]">{header.breedName} · COLOR · {header.sexLabel}</div>
               <div className="mt-3">
@@ -270,10 +271,8 @@ export default async function DogPage({ params, searchParams }: PageProps) {
               </div>
               {header.callName ? <p className="theme-copy mt-3 text-xl">&quot;{header.callName}&quot;</p> : null}
               <p className="theme-copy mt-5 text-sm leading-7">{header.lifecycleLabel} · {profile.snapshot.showEligibilityLabel} · {profile.snapshot.breedingEligibilityLabel}</p>
-            </div>
 
-            <div className="order-3 max-w-2xl lg:col-start-2">
-              <div className="grid gap-3 sm:grid-cols-2">
+            <div className="relative mt-6 flex flex-wrap gap-3">
                 {actions.canBuyActiveListing && saleListing ? (
                   <form
                     action={`/api/market-dogs/${saleListing.listingId}/buy?from=profile`}
@@ -381,9 +380,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   />
                 ) : null}
 
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
                 {actions.canUseActiveStudListing && studListing ? (
                   <Link
                     href={`/breed?studListingId=${studListing.listingId}`}
@@ -392,7 +388,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                     Use At Stud for {formatMoney(studListing.studFee)}
                   </Link>
                 ) : null}
-              </div>
+            </div>
               {statusMessage(saleMessage)}
               {statusMessage(saleError, true)}
               <dl className="mt-8 grid gap-x-8 gap-y-5 border-y border-[var(--color-border)] py-6 sm:grid-cols-2">
@@ -404,8 +400,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Health</dt><dd className="theme-heading mt-1 text-base font-semibold">{profile.healthTesting.summaryLabel}</dd></div>
               </dl>
             </div>
-
-          </div>
         </section>
 
         {viewerContext.canManage && header.lifecycleState === "ALIVE" && profile.emergencyCare ? <EmergencyVetCarePanel dogId={header.dogId} dogName={header.displayName} emergency={profile.emergencyCare} className="dog-panel mt-8 rounded-[28px] p-6" /> : null}
