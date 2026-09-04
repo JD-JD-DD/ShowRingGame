@@ -6,6 +6,8 @@ import { getKennelForUser } from "@/server/services/kennel.service";
 import {
   publishStudOffer,
   StudOfferPublishError,
+  retirePublishedStudOfferForOwner,
+  StudOfferRetireError,
 } from "@/server/services/studOffer.service";
 import type { EditableStudOfferTerms } from "@showring/rules";
 
@@ -75,6 +77,48 @@ export async function POST(
     console.error("POST /api/dogs/[dogId]/stud-offer failed:", error);
     return NextResponse.json(
       { error: "Unable to publish this Stud Offer. Please try again." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  _: Request,
+  { params }: { params: Promise<{ dogId: string }> }
+) {
+  try {
+    const userId = await getSessionUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const kennel = await getKennelForUser(userId);
+    if (!kennel) {
+      return NextResponse.json({ error: "Kennel not found." }, { status: 404 });
+    }
+
+    const { dogId: rawDogId } = await params;
+    const dogId = rawDogId.trim();
+    if (!dogId) {
+      return NextResponse.json({ error: "Dog is required." }, { status: 400 });
+    }
+
+    const offer = await retirePublishedStudOfferForOwner({
+      dogId,
+      ownerKennelId: kennel.id,
+    });
+    return NextResponse.json({ offerId: offer.offerId, version: offer.version });
+  } catch (error) {
+    if (error instanceof StudOfferRetireError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.code === "NOT_OWNER" ? 403 : 409 }
+      );
+    }
+
+    console.error("DELETE /api/dogs/[dogId]/stud-offer failed:", error);
+    return NextResponse.json(
+      { error: "Unable to take down this Stud Offer. Please try again." },
       { status: 500 }
     );
   }

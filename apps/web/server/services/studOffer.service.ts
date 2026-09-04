@@ -28,6 +28,15 @@ export class StudOfferPublishError extends Error {
   }
 }
 
+export class StudOfferRetireError extends Error {
+  constructor(
+    readonly code: "NOT_OWNER" | "CURRENT_OFFER_MISSING",
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 type StudOfferRetirementClient = Pick<PrismaClient, "studOffer">;
 
 /** Retires only the former owner's public offer when ownership changes. */
@@ -46,6 +55,59 @@ export async function retirePublishedStudOffersForTransferredDog(args: {
     data: { status: "RETIRED" },
   });
   return result.count;
+}
+
+export async function retirePublishedStudOfferForOwner(args: {
+  dogId: string;
+  ownerKennelId: string;
+}): Promise<{ offerId: string; version: number }> {
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "Dog" WHERE "id" = ${args.dogId} FOR UPDATE`;
+
+    const dog = await tx.dog.findUnique({
+      where: { id: args.dogId },
+      select: { ownerKennelId: true },
+    });
+    if (!dog || dog.ownerKennelId !== args.ownerKennelId) {
+      throw new StudOfferRetireError(
+        "NOT_OWNER",
+        "You no longer own this dog."
+      );
+    }
+
+    const publishedOffer = await tx.studOffer.findFirst({
+      where: {
+        sireDogId: args.dogId,
+        ownerKennelId: args.ownerKennelId,
+        status: "PUBLISHED",
+      },
+      select: { id: true, version: true },
+    });
+    if (!publishedOffer) {
+      throw new StudOfferRetireError(
+        "CURRENT_OFFER_MISSING",
+        "This dog does not currently have a published Stud Offer."
+      );
+    }
+
+    const retired = await tx.studOffer.updateMany({
+      where: {
+        id: publishedOffer.id,
+        sireDogId: args.dogId,
+        ownerKennelId: args.ownerKennelId,
+        status: "PUBLISHED",
+      },
+      data: { status: "RETIRED" },
+    });
+    if (retired.count !== 1) {
+      throw new StudOfferRetireError(
+        "CURRENT_OFFER_MISSING",
+        "This Stud Offer is no longer published. Reload the worksheet."
+      );
+    }
+
+    return { offerId: publishedOffer.id, version: publishedOffer.version };
+  });
 }
 
 export async function getCurrentPublishedStudOfferForOwnedDog(args: {

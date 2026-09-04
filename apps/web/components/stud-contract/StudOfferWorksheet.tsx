@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   hasPuppyBack,
@@ -37,6 +38,7 @@ type StudOfferWorksheetProps = {
     breedName: string;
     regNumber: string;
   };
+  hasPublishedOffer: boolean;
   initialOffer: {
     version: number;
     terms: EditableStudOfferTerms;
@@ -391,8 +393,10 @@ export default function StudOfferWorksheet({
   dogName,
   applicableHealthTests,
   sireIdentity,
+  hasPublishedOffer,
   initialOffer,
 }: StudOfferWorksheetProps) {
+  const router = useRouter();
   const loadedTerms = termsForCurrentHealthTests(initialOffer, applicableHealthTests);
   const [terms, setTerms] = useState<EditableStudOfferTerms>(
     loadedTerms
@@ -409,6 +413,9 @@ export default function StudOfferWorksheet({
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishSuccess, setPublishSuccess] = useState(false);
+  const [isTakingDown, setIsTakingDown] = useState(false);
+  const [takeDownError, setTakeDownError] = useState<string | null>(null);
+  const [takeDownSuccess, setTakeDownSuccess] = useState(false);
   const [returnServiceAnswers, setReturnServiceAnswers] = useState({
     noLitterReturnServiceAnswered: Boolean(initialOffer),
     smallLitterReturnThresholdAnswered: Boolean(initialOffer),
@@ -754,6 +761,42 @@ export default function StudOfferWorksheet({
       setPublishError("Unable to publish this Stud Offer. Please try again.");
     } finally {
       setIsPublishing(false);
+    }
+  }
+
+  async function takeDownOffer() {
+    if (isTakingDown) return;
+    const confirmed = window.confirm(
+      "This dog will no longer appear as available at stud. Existing requests and contracts will not be changed."
+    );
+    if (!confirmed) return;
+
+    setIsTakingDown(true);
+    setTakeDownError(null);
+    try {
+      const response = await fetch(`/api/dogs/${sireIdentity.dogId}/stud-offer`, {
+        method: "DELETE",
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok) {
+        const error =
+          payload &&
+          typeof payload === "object" &&
+          "error" in payload &&
+          typeof payload.error === "string"
+            ? payload.error
+            : "Unable to take down this Stud Offer. Please try again.";
+        setTakeDownError(
+          error
+        );
+        return;
+      }
+      setTakeDownSuccess(true);
+      router.refresh();
+    } catch {
+      setTakeDownError("Unable to take down this Stud Offer. Please try again.");
+    } finally {
+      setIsTakingDown(false);
     }
   }
 
@@ -1515,6 +1558,16 @@ export default function StudOfferWorksheet({
                 {publishError}
               </p>
             ) : null}
+            {takeDownError ? (
+              <p className="theme-status-danger rounded-xl p-3 text-sm" role="alert">
+                {takeDownError}
+              </p>
+            ) : null}
+            {takeDownSuccess ? (
+              <p className="theme-status-info rounded-xl p-3 text-sm" role="status">
+                Stud offer taken down.
+              </p>
+            ) : null}
             {publishSuccess ? (
               <div className="theme-status-info rounded-xl p-4" role="status">
                 <p className="font-semibold">{initialOffer ? REVIEW_COPY.updated : REVIEW_COPY.published}</p>
@@ -1536,6 +1589,19 @@ export default function StudOfferWorksheet({
                     : REVIEW_COPY.publish}
               </button>
             )}
+            {hasPublishedOffer ? (
+              <div className="border-t border-white/10 pt-4">
+                <button
+                  type="button"
+                  onClick={takeDownOffer}
+                  disabled={isTakingDown}
+                  aria-busy={isTakingDown}
+                  className="theme-secondary-button rounded-xl px-5 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {isTakingDown ? "Taking Down…" : "Take Down Stud Offer"}
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : (
           <p className="theme-copy mt-5 text-sm">

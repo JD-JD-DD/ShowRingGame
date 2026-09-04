@@ -69,6 +69,7 @@ export default async function StudOfferWorksheetPage({ params }: PageProps) {
             breedName: dog.breed.name,
             regNumber: dog.regNumber,
           }}
+          hasPublishedOffer={currentOffer !== null}
           initialOffer={
             currentOffer
               ? {
