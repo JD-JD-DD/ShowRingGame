@@ -24,5 +24,13 @@ assert.match(planning, /Private Kennel Notes[\s\S]*DogPrivateNotesEditor/, "priv
 assert.match(page, /canManage=\{viewerContext\.canManage && header\.lifecycleState === "ALIVE"\}/, "deceased dogs cannot order health actions");
 assert.match(page, /actions\.canBuyActiveListing && saleListing/, "Buy Dog remains conditional");
 assert.match(page, /actions\.canUseActiveStudListing && studListing/, "Use at Stud remains conditional");
+assert.ok(page.indexOf('aria-label="Kennel run dog navigation"') < page.indexOf('aspect-[4/3]'), "Kennel Run navigation is above the hero media");
+assert.doesNotMatch(page, /Show Profile|DogStatusBadges|Legacy Producer|Health Clear/, "hero removes production-only label and badge clutter");
+assert.doesNotMatch(page, /href=\{`\/dogs\/\$\{header\.dogId\}\/ribbon-room`\}/, "hero no longer duplicates Ribbon Room");
+assert.match(source("apps/web/components/dogs/DogProfileReadSections.tsx"), /Ribbon Room/, "Show Career retains Ribbon Room");
+assert.match(page, /breedName\} · COLOR · \{header\.sexLabel\}/, "hero preserves the approved breed/color/sex identity line");
+assert.match(page, /Registration[\s\S]*Game Age[\s\S]*Owner[\s\S]*Breeder[\s\S]*Kennel Run[\s\S]*Health/, "hero has the approved fact grid");
+assert.match(page, /grid gap-x-8 gap-y-0 border-b/, "hero uses the open two-column document layout");
+assert.doesNotMatch(page, /dog-profile-design\/fixture|prototypeCurrentShowEntries/, "production does not import prototype data");
 
 console.log("Dog Profile Manage Dog Stage 2B checks passed.");

@@ -10,7 +10,6 @@ import DogProfileHealthActions from "@/components/dogs/DogProfileHealthActions";
 import DogProfilePrivatePlanning from "@/components/dogs/DogProfilePrivatePlanning";
 import DogProfileReadSections from "@/components/dogs/DogProfileReadSections";
 import DogProfileShowsManagement from "@/components/dogs/DogProfileShowsManagement";
-import DogStatusBadges from "@/components/dogs/DogStatusBadges";
 import EmergencyVetCarePanel from "@/components/dogs/EmergencyVetCarePanel";
 import ManageDogListingForm from "@/components/dogs/ManageDogListingForm";
 import ManageDogPanel from "@/components/dogs/ManageDogPanel";
@@ -72,25 +71,6 @@ function getRosterDogDisplayName(dog: {
 
 function formatMoney(amount: number): string {
   return `$${amount.toLocaleString()}`;
-}
-
-function formatCondition(value: number): string {
-  return value.toFixed(2);
-}
-
-function badgeClass(tone: string): string {
-  switch (tone) {
-    case "green":
-      return "theme-status-success";
-    case "yellow":
-      return "theme-status-warning";
-    case "red":
-      return "theme-status-danger";
-    case "blue":
-      return "theme-status-info";
-    default:
-      return "theme-neutral-badge";
-  }
 }
 
 function statusMessage(message: string | null, isError = false) {
@@ -263,8 +243,17 @@ export default async function DogPage({ params, searchParams }: PageProps) {
   return (
     <main className="dog-page min-h-screen px-6 py-8">
       <div className="mx-auto max-w-7xl">
-        <section className="dog-panel mb-8 rounded-[28px] px-6 py-6 backdrop-blur">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_540px] lg:items-center">
+        {dogRosterNavigation ? (
+          <nav aria-label="Kennel run dog navigation" className="mb-8 border-b border-[var(--color-border)] pb-5">
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
+              {dogRosterNavigation.previousDog ? <Link href={`/dogs/${dogRosterNavigation.previousDog.id}?kennelRunId=${encodeURIComponent(dogRosterNavigation.kennelRunId)}`} className="theme-card-interactive flex min-h-12 flex-col justify-center rounded-xl px-3 py-2 text-sm font-semibold"><span>&larr; Previous Dog</span><span className="theme-copy mt-0.5 truncate text-xs font-medium">Previous: {dogRosterNavigation.previousDog.displayName}</span></Link> : <span className="flex min-h-12 flex-col justify-center rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 py-2 text-sm font-semibold text-[var(--color-text-disabled)]"><span>&larr; Previous Dog</span><span className="mt-0.5 text-xs font-medium">Previous: None</span></span>}
+              <div className="flex min-h-12 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-inset)] px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Dog {dogRosterNavigation.currentIndex + 1} of {dogRosterNavigation.totalDogs}</div>
+              {dogRosterNavigation.nextDog ? <Link href={`/dogs/${dogRosterNavigation.nextDog.id}?kennelRunId=${encodeURIComponent(dogRosterNavigation.kennelRunId)}`} className="theme-card-interactive flex min-h-12 flex-col justify-center rounded-xl px-3 py-2 text-left text-sm font-semibold sm:text-right"><span>Next Dog &rarr;</span><span className="theme-copy mt-0.5 truncate text-xs font-medium">Next: {dogRosterNavigation.nextDog.displayName}</span></Link> : <span className="flex min-h-12 flex-col justify-center rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 py-2 text-left text-sm font-semibold text-[var(--color-text-disabled)] sm:text-right"><span>Next Dog &rarr;</span><span className="mt-0.5 text-xs font-medium">Next: None</span></span>}
+            </div>
+          </nav>
+        ) : null}
+        <section className="grid gap-x-8 gap-y-0 border-b border-[var(--color-border)] pb-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center">
+          <div className="order-1">
             <div className="relative aspect-[4/3] overflow-hidden rounded-[28px] bg-[var(--color-surface-inset)]">
               {breedArtwork?.artworkAssetReference ? (
                 <img src={breedArtwork.artworkAssetReference} alt={breedArtwork.artworkArtistCredit ? `${header.breedName} artwork by ${breedArtwork.artworkArtistCredit}` : `${header.breedName} breed artwork`} className="h-full w-full object-cover" />
@@ -272,107 +261,18 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <div className="flex h-full flex-col items-center justify-center px-8 text-center"><p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">Breed Art collection</p><h2 className="theme-heading mt-3 text-3xl font-semibold">Want Breed Art?</h2><p className="theme-copy mt-3 max-w-sm text-sm leading-6">Help fund future original artwork for this breed.</p><Link href="/breed-art" className="theme-primary-button mt-6 rounded-xl px-5 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">Explore Breed Art</Link></div>
               )}
             </div>
-            <div className="max-w-4xl">
-              <div className="theme-neutral-badge mb-3 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em]">
-                Show Profile
-              </div>
+          <div className="order-2 max-w-2xl">
               <div className="theme-label text-sm font-semibold uppercase tracking-[0.18em]">{header.breedName} · COLOR · {header.sexLabel}</div>
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <h1 className="dog-heading text-4xl font-bold tracking-tight sm:text-5xl">
+              <div className="mt-3">
+                <h1 className="dog-heading text-4xl font-semibold tracking-tight sm:text-6xl">
                   {headerDisplayName}
                 </h1>
-                <DogStatusBadges
-                  healthStatus={profile.snapshot.healthTestingSummary.badgeStatus}
-                  fullHealthClearance={
-                    profile.snapshot.healthTestingSummary.hasFullClearance
-                  }
-                  isListedForSale={Boolean(saleListing)}
-                  isListedAtStud={profile.snapshot.isListedAtStud}
-                  isPregnant={
-                    profile.activeBreedingAttempt?.breedingStatus === "PREGNANT"
-                  }
-                  size="lg"
-                />
               </div>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                {header.badges.map((badge) =>
-                  badge.href ? (
-                    <Link
-                      key={badge.code}
-                      href={badge.href}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition hover:brightness-110 ${badgeClass(badge.tone)}`}
-                    >
-                      {badge.label}
-                    </Link>
-                  ) : (
-                    <span
-                      key={badge.code}
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${badgeClass(badge.tone)}`}
-                    >
-                      {badge.label}
-                    </span>
-                  )
-                )}
-              </div>
-
-              {dogRosterNavigation ? (
-                <nav
-                  aria-label="Kennel run dog navigation"
-                  className="theme-card mt-4 max-w-3xl rounded-2xl p-2"
-                >
-                  <div className="grid gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
-                    {dogRosterNavigation.previousDog ? (
-                      <Link
-                        href={`/dogs/${dogRosterNavigation.previousDog.id}?kennelRunId=${encodeURIComponent(dogRosterNavigation.kennelRunId)}`}
-                        className="theme-card-interactive flex min-h-12 flex-col justify-center rounded-xl px-3 py-2 text-sm font-semibold"
-                      >
-                        <span>&larr; Previous Dog</span>
-                        <span className="theme-copy mt-0.5 truncate text-xs font-medium">
-                          Previous: {dogRosterNavigation.previousDog.displayName}
-                        </span>
-                      </Link>
-                    ) : (
-                      <span className="flex min-h-12 flex-col justify-center rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 py-2 text-sm font-semibold text-[var(--color-text-disabled)]">
-                        <span>&larr; Previous Dog</span>
-                        <span className="mt-0.5 text-xs font-medium">
-                          Previous: None
-                        </span>
-                      </span>
-                    )}
-
-                    <div className="flex min-h-12 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-inset)] px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">
-                      Dog {dogRosterNavigation.currentIndex + 1} of{" "}
-                      {dogRosterNavigation.totalDogs}
-                    </div>
-
-                    {dogRosterNavigation.nextDog ? (
-                      <Link
-                        href={`/dogs/${dogRosterNavigation.nextDog.id}?kennelRunId=${encodeURIComponent(dogRosterNavigation.kennelRunId)}`}
-                        className="theme-card-interactive flex min-h-12 flex-col justify-center rounded-xl px-3 py-2 text-left text-sm font-semibold sm:text-right"
-                      >
-                        <span>Next Dog &rarr;</span>
-                        <span className="theme-copy mt-0.5 truncate text-xs font-medium">
-                          Next: {dogRosterNavigation.nextDog.displayName}
-                        </span>
-                      </Link>
-                    ) : (
-                      <span className="flex min-h-12 flex-col justify-center rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-subtle)] px-3 py-2 text-left text-sm font-semibold text-[var(--color-text-disabled)] sm:text-right">
-                        <span>Next Dog &rarr;</span>
-                        <span className="mt-0.5 text-xs font-medium">
-                          Next: None
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                </nav>
-              ) : null}
-
-              {statusMessage(saleMessage)}
-              {statusMessage(saleError, true)}
+              {header.callName ? <p className="theme-copy mt-3 text-xl">&quot;{header.callName}&quot;</p> : null}
+              <p className="theme-copy mt-5 text-sm leading-7">{header.lifecycleLabel} · {profile.snapshot.showEligibilityLabel} · {profile.snapshot.breedingEligibilityLabel}</p>
             </div>
 
-            <div className="flex flex-col gap-4 lg:justify-self-end">
+            <div className="order-3 max-w-2xl lg:col-start-2">
               <div className="grid gap-3 sm:grid-cols-2">
                 {actions.canBuyActiveListing && saleListing ? (
                   <form
@@ -483,13 +383,6 @@ export default async function DogPage({ params, searchParams }: PageProps) {
 
               </div>
 
-              <Link
-                href={`/dogs/${header.dogId}/ribbon-room`}
-                className="theme-secondary-button w-full rounded-2xl px-5 py-3 text-center text-sm font-semibold"
-              >
-                Ribbon Room
-              </Link>
-
               <div className="grid gap-3 sm:grid-cols-2">
                 {actions.canUseActiveStudListing && studListing ? (
                   <Link
@@ -500,7 +393,16 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                   </Link>
                 ) : null}
               </div>
-
+              {statusMessage(saleMessage)}
+              {statusMessage(saleError, true)}
+              <dl className="mt-8 grid gap-x-8 gap-y-5 border-y border-[var(--color-border)] py-6 sm:grid-cols-2">
+                <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Registration</dt><dd className="theme-heading mt-1 text-base font-semibold">{header.regNumber}</dd></div>
+                <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Game Age</dt><dd className="theme-heading mt-1 text-base font-semibold">{header.ageLabel}</dd></div>
+                <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Owner</dt><dd className="theme-heading mt-1 text-base font-semibold">{profile.snapshot.owner?.name ?? "Unowned"}</dd></div>
+                <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Breeder</dt><dd className="theme-heading mt-1 text-base font-semibold">{profile.snapshot.breeder?.name ?? (header.originLabel === "Foundation Dog" ? "Foundation" : "Breeder unknown")}</dd></div>
+                <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Kennel Run</dt><dd className="theme-heading mt-1 text-base font-semibold">{profile.currentRun?.name ?? "Unassigned"}</dd></div>
+                <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Health</dt><dd className="theme-heading mt-1 text-base font-semibold">{profile.healthTesting.summaryLabel}</dd></div>
+              </dl>
             </div>
 
           </div>
