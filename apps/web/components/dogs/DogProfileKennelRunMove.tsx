@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type KennelRunOption = {
   id: string;
@@ -16,7 +16,7 @@ type Props = {
   currentRunId: string | null;
   currentRunName: string | null;
   canMove: boolean;
-  children?: ReactNode;
+  initiallyOpen?: boolean;
 };
 
 export default function DogProfileKennelRunMove({
@@ -24,10 +24,10 @@ export default function DogProfileKennelRunMove({
   currentRunId,
   currentRunName,
   canMove,
-  children,
+  initiallyOpen = false,
 }: Props) {
   const [runs, setRuns] = useState<KennelRunOption[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(initiallyOpen);
   const [selectedRunId, setSelectedRunId] = useState("");
   const [displayRunId, setDisplayRunId] = useState(currentRunId);
   const [displayRunName, setDisplayRunName] = useState(currentRunName);
@@ -152,8 +152,6 @@ export default function DogProfileKennelRunMove({
       >
         Move Run
       </button>
-
-      {children}
 
       {isOpen ? (
         <section className="dog-card rounded-2xl p-4 sm:col-span-2">

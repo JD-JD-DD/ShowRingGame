@@ -303,54 +303,16 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 {viewerContext.isOwnedByCurrentKennel &&
                 header.lifecycleState === "ALIVE" ? (
                   <ManageDogPanel
-                    identity={
-                      <div className="space-y-3">
-                        <CallNameEditor
-                          action={`/api/dogs/${header.dogId}/call-name${validatedKennelRunId ? `?kennelRunId=${encodeURIComponent(validatedKennelRunId)}` : ""}`}
-                          callName={header.callName}
-                          canEdit={viewerContext.isOwnedByCurrentKennel}
-                        />
-                        {actions.canName ? (
-                          <RegisterDogNameForm
-                            action={`/api/dogs/${header.dogId}/rename${validatedKennelRunId ? `?kennelRunId=${encodeURIComponent(validatedKennelRunId)}` : ""}`}
-                            nameError={nameError}
-                          />
-                        ) : null}
-                      </div>
-                    }
-                    kennel={
-                      <DogProfileKennelRunMove
-                        dogId={header.dogId}
-                        currentRunId={profile.currentRun?.runId ?? null}
-                        currentRunName={profile.currentRun?.name ?? null}
-                        canMove={canMoveKennelRun}
-                      >
-                        {actions.canRehome && actions.rehomePayout !== null ? (
-                          <RehomeDogForm
-                            action={`/api/dogs/${header.dogId}/rehome`}
-                            dogName={header.displayName}
-                            payout={actions.rehomePayout}
-                          />
-                        ) : null}
-                      </DogProfileKennelRunMove>
-                    }
-                    breeding={
-                      <div className="grid gap-2">
-                        {viewerContext.canManage ? (
-                          <BreedingActiveControl
-                            action={`/api/dogs/${header.dogId}/breeding-active`}
-                            isBreedingActive={actions.isBreedingActive}
-                          />
-                        ) : null}
-                        <BreedDogActionButton
-                          canBreed={actions.canBreed}
-                          breedHref={`/breed?dogId=${header.dogId}`}
-                          unavailableMessage={actions.breedingDisabledReason ?? null}
-                        />
-                      </div>
-                    }
-                    grooming={grooming ? <DogProfileGroomingManagement dogId={header.dogId} dogName={header.displayName} grooming={grooming} returnTo={dogPageReturnTo} message={groomingMessage} error={groomingError} /> : null}
+                    dogName={header.callName ?? header.displayName}
+                    callName={<CallNameEditor action={`/api/dogs/${header.dogId}/call-name${validatedKennelRunId ? `?kennelRunId=${encodeURIComponent(validatedKennelRunId)}` : ""}`} callName={header.callName} canEdit={viewerContext.isOwnedByCurrentKennel} />}
+                    registerName={actions.canName ? <RegisterDogNameForm action={`/api/dogs/${header.dogId}/rename${validatedKennelRunId ? `?kennelRunId=${encodeURIComponent(validatedKennelRunId)}` : ""}`} nameError={nameError} /> : null}
+                    moveRun={<DogProfileKennelRunMove dogId={header.dogId} currentRunId={profile.currentRun?.runId ?? null} currentRunName={profile.currentRun?.name ?? null} canMove={canMoveKennelRun} initiallyOpen />}
+                    rehome={actions.canRehome && actions.rehomePayout !== null ? <RehomeDogForm action={`/api/dogs/${header.dogId}/rehome`} dogName={header.displayName} payout={actions.rehomePayout} /> : null}
+                    breed={<BreedDogActionButton canBreed={actions.canBreed} breedHref={`/breed?dogId=${header.dogId}`} unavailableMessage={actions.breedingDisabledReason ?? null} />}
+                    breedingParticipation={viewerContext.canManage ? <BreedingActiveControl action={`/api/dogs/${header.dogId}/breeding-active`} isBreedingActive={actions.isBreedingActive} /> : null}
+                    grooming={grooming ? <DogProfileGroomingManagement dogId={header.dogId} dogName={header.displayName} grooming={grooming} returnTo={dogPageReturnTo} message={groomingMessage} error={groomingError} initiallyOpen /> : null}
                     shows={<DogProfileShowsManagement dogId={header.dogId} entries={profile.entries} kennelRunId={navigationKennelRunId} showMessage={showMessage} showError={showError} />}
+                    showsCount={profile.entries?.currentEntriesCount ?? 0}
                     stud={
                       canConfigureStudOffer ? (
                         <Link
@@ -361,6 +323,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                         </Link>
                       ) : null
                     }
+                    marketLabel={actions.canOfferForSale ? "List for sale" : "Manage listing"}
                     market={
                       actions.canOfferForSale ? (
                         <OfferDogForSaleForm

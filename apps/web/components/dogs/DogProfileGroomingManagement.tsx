@@ -11,6 +11,7 @@ type Props = {
   returnTo: string;
   message: string | null;
   error: string | null;
+  initiallyOpen?: boolean;
 };
 
 export default function DogProfileGroomingManagement({
@@ -20,9 +21,10 @@ export default function DogProfileGroomingManagement({
   returnTo,
   message,
   error,
+  initiallyOpen = false,
 }: Props) {
   return (
-    <details className="group">
+    <details className="group" open={initiallyOpen}>
       <summary className="theme-secondary-button list-none rounded-xl px-4 py-2.5 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-details-marker]:hidden">
         Manage Grooming
       </summary>

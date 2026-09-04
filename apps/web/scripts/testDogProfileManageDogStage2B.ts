@@ -14,8 +14,15 @@ const planning = source("apps/web/components/dogs/DogProfilePrivatePlanning.tsx"
 assert.doesNotMatch(page, /DogProfileDashboard/, "production profile no longer renders the compatibility dashboard");
 assert.match(panel, /Identity[\s\S]*Kennel[\s\S]*Breeding[\s\S]*Grooming[\s\S]*Shows[\s\S]*Stud[\s\S]*Market/, "Manage Dog groups remain exact");
 assert.doesNotMatch(panel, /Private|Health/, "Manage Dog has no Private or Health group");
+assert.match(panel, /Administrative actions[\s\S]*Manage \{props\.dogName\}[\s\S]*Close/, "Manage Dog opens as the compact administrative directory");
+assert.match(panel, /Edit call name[\s\S]*Register name[\s\S]*Move to another run[\s\S]*Re-home[\s\S]*Breed[\s\S]*Breeding participation[\s\S]*Manage Shows/, "Manage Dog exposes the approved first-level choices");
+assert.match(panel, /const \[selected, setSelected\]/, "one local selection controls the expanded workflow");
+assert.match(panel, /Back/, "an expanded workflow can return to the directory without closing it");
+assert.doesNotMatch(panel, /BreedingActiveControl|DogProfileShowsManagement|DogProfileGroomingManagement|OfferDogForSaleForm|ManageDogListingForm/, "root directory does not directly render heavyweight workflows");
 assert.match(health, /HealthTestingPanel/, "Health retains the real health testing component");
 assert.match(health, /brucellosis-screening/, "Health retains the brucellosis route");
+assert.match(health, /Order Health Tests[\s\S]*aria-expanded[\s\S]*openPanel === "tests"/, "health tests are disclosed on demand");
+assert.doesNotMatch(health, /Breeding Safety Screening/, "brucellosis no longer occupies a permanent health card");
 assert.match(grooming, /Manage Grooming/, "Grooming has its approved management entry point");
 assert.match(grooming, /self-groom[\s\S]*Offer for Outside Grooming/, "Grooming retains real operations");
 assert.match(shows, /currentEntriesCount[\s\S]*Pull entry/, "Shows retains current entries and Pull Entry");
