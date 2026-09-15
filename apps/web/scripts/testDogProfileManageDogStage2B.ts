@@ -13,6 +13,7 @@ const planning = source("apps/web/components/dogs/DogProfilePrivatePlanning.tsx"
 const readSections = source("apps/web/components/dogs/DogProfileReadSections.tsx");
 const dogService = source("apps/web/server/services/dog.service.ts");
 const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
+const healthClearBadge = source("apps/web/components/dogs/HealthClearBadge.tsx");
 
 assert.doesNotMatch(page, /DogProfileDashboard/, "production profile no longer renders the compatibility dashboard");
 assert.match(panel, /Identity[\s\S]*Kennel[\s\S]*Breeding[\s\S]*Grooming[\s\S]*Shows[\s\S]*Stud[\s\S]*Market/, "Manage Dog groups remain exact");
@@ -53,6 +54,10 @@ assert.doesNotMatch(page, /href=\{`\/dogs\/\$\{header\.dogId\}\/ribbon-room`\}/,
 assert.match(readSections, /Ribbon Room/, "Show Career retains Ribbon Room");
 assert.match(page, /breedName\} · COLOR · \{header\.sexLabel\}/, "hero preserves the approved breed/color/sex identity line");
 assert.match(page, /Registration[\s\S]*Game Age[\s\S]*Owner[\s\S]*Breeder[\s\S]*Kennel Run[\s\S]*Health/, "hero has the approved fact grid");
+assert.match(page, /Health<\/dt><dd[^>]*>[\s\S]*profile\.healthTesting\.summaryLabel[\s\S]*profile\.snapshot\.healthTestingSummary\.badgeStatus[\s\S]*<HealthClearBadge[\s\S]*fullClearance=\{profile\.snapshot\.healthTestingSummary\.hasFullClearance\}/, "Health fact retains its text and renders the existing health indicator alongside it");
+assert.doesNotMatch(page, /headerDisplayName[\s\S]{0,500}HealthClearBadge/, "health indicator remains out of the hero name/status area");
+assert.match(healthClearBadge, /title=\{label\}[\s\S]*aria-label=\{label\}/, "health indicator retains an accessible text equivalent");
+assert.doesNotMatch(page, /getPhenotypeHealthBadgeStatus|hasAllGreenPhenotypeHealthTests|healthTests\.find/, "Dog Profile hero does not calculate health status locally");
 assert.match(page, /grid gap-x-8 gap-y-0 border-b/, "hero uses the open two-column document layout");
 assert.match(page, /lg:grid-cols-\[minmax\(0,1fr\)_minmax\(0,1\.05fr\)\]/, "hero uses the prototype desktop two-column breakpoint and proportions");
 assert.match(page, /<div className="order-1">[\s\S]*aspect-\[4\/3\][\s\S]*<div className="order-2 max-w-2xl">/, "media and identity are direct desktop hero siblings");

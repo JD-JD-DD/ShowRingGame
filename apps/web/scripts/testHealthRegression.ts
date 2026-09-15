@@ -91,6 +91,7 @@ const healthTestingPanel = source(
   "apps/web/components/dogs/HealthTestingPanel.tsx"
 );
 const healthClearBadge = source("apps/web/components/dogs/HealthClearBadge.tsx");
+const dogProfilePage = source("apps/web/app/dogs/[dogId]/page.tsx");
 const faqPage = source("apps/web/app/faq/page.tsx");
 const foundationDogService = source(
   "apps/web/server/services/foundationDog.service.ts"
@@ -872,6 +873,21 @@ assertDoesNotIncludeAny(
   `${healthClearBadge}\n${breedingService}\n${faqPage}`,
   ["all " + "four", "All " + "four", "all " + "five", "All " + "five"],
   "player-facing health requirement copy should avoid hardcoded test counts"
+);
+assertIncludes(
+  dogProfilePage,
+  'import HealthClearBadge from "@/components/dogs/HealthClearBadge";',
+  "Dog Profile reuses the established health indicator"
+);
+assertIncludes(
+  dogProfilePage,
+  "profile.snapshot.healthTestingSummary.badgeStatus",
+  "Dog Profile consumes the existing public health badge status"
+);
+assertIncludes(
+  dogProfilePage,
+  "profile.snapshot.healthTestingSummary.hasFullClearance",
+  "Dog Profile preserves the established full-clearance distinction"
 );
 assertIncludes(
   healthBackfill,
