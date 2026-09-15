@@ -53,7 +53,7 @@ assert.equal(
 );
 assert.equal(
   getBreedingEligibilityMessage(coolingDam),
-  "This bitch is resting after a litter. Available to breed in 5 hours.",
+  "Post-whelp recovery. May breed again in 5 hours.",
   "cooldown message uses the shared duration wording"
 );
 
@@ -64,17 +64,17 @@ assert.equal(
 );
 assert.equal(
   formatRealDurationHoursLong(24),
-  "1 day",
+  "1 day 0 hours",
   "real-time cooldown formatter converts 24 hours into 1 day"
 );
 assert.equal(
   formatRealDurationHoursLong(25),
-  "1 day, 1 hour",
+  "1 day 1 hour",
   "real-time cooldown formatter keeps the extra hour after a full day"
 );
 assert.equal(
   formatRealDurationHoursLong(270),
-  "11 days, 6 hours",
+  "11 days 6 hours",
   "real-time cooldown formatter preserves elapsed real hours for long cooldowns"
 );
 
@@ -138,6 +138,16 @@ assert.equal(
   "UNDER_MINIMUM_AGE",
   "underage dogs return the underage reason"
 );
+assert.equal(
+  underageDog.eligibleAtEpoch,
+  currentEpoch + 1,
+  "underage dogs expose their canonical minimum-age availability boundary"
+);
+assert.equal(
+  underageDog.remainingHours,
+  1,
+  "underage dogs expose their canonical remaining duration"
+);
 
 const overageDam = getIndividualBreedingEligibility({
   currentEpoch,
@@ -150,6 +160,11 @@ assert.equal(
   overageDam.reasonCode,
   "OVER_MAXIMUM_DAM_AGE",
   "overage dams return the over-max-dam-age reason"
+);
+assert.equal(
+  overageDam.eligibleAtEpoch,
+  null,
+  "permanent age restrictions do not fabricate an availability boundary"
 );
 
 const overageStud = getIndividualBreedingEligibility({

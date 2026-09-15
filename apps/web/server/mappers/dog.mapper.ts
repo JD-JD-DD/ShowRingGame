@@ -104,6 +104,7 @@ export type DogProfileSnapshotDto = {
   breedingEligibilityLabel: string;
   breedingEligibilityReasonCode?: string | null;
   breedingEligibilityMessage?: string | null;
+  breedingAvailabilityLabel: string | null;
   reproductiveStatus: ReproductiveSnapshotStatusDto;
   groomingLabel: string | null;
   healthTestingSummary: DogProfileHealthSummaryDto;
@@ -537,6 +538,7 @@ export function mapDogProfile(input: DogProfileMapperInput): DogProfileDto {
       breedingEligibilityReasonCode:
         input.snapshot.breedingEligibilityReasonCode,
       breedingEligibilityMessage: input.snapshot.breedingEligibilityMessage,
+      breedingAvailabilityLabel: input.snapshot.breedingAvailabilityLabel,
       reproductiveStatus: input.snapshot.reproductiveStatus
         ? {
             key: input.snapshot.reproductiveStatus.key,

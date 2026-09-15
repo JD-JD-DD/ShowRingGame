@@ -1265,6 +1265,13 @@ export async function getDogProfile(args: {
   const breedingEligibilityMessage = getBreedingEligibilityMessage(
     breedingEligibility
   );
+  const breedingAvailabilityLabel =
+    breedingEligibility.eligibleAtEpoch !== null &&
+    breedingEligibility.eligibleAtEpoch > currentEpoch
+      ? `Available in ${formatRealDurationHoursLong(
+          breedingEligibility.remainingHours
+        )}`
+      : null;
 
   const ownerData = isOwnedByCurrentKennel
     ? await measure("ownerContextQueryMs", () =>
@@ -1726,6 +1733,7 @@ export async function getDogProfile(args: {
           ? null
           : breedingEligibility.reasonCode,
       breedingEligibilityMessage,
+      breedingAvailabilityLabel,
       reproductiveStatus: buildReproductiveSnapshotStatus({
         sex: dog.sex,
         activeBreedingAttempt,

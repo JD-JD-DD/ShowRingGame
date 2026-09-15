@@ -11,6 +11,8 @@ const grooming = source("apps/web/components/dogs/DogProfileGroomingManagement.t
 const shows = source("apps/web/components/dogs/DogProfileShowsManagement.tsx");
 const planning = source("apps/web/components/dogs/DogProfilePrivatePlanning.tsx");
 const readSections = source("apps/web/components/dogs/DogProfileReadSections.tsx");
+const dogService = source("apps/web/server/services/dog.service.ts");
+const dogMapper = source("apps/web/server/mappers/dog.mapper.ts");
 
 assert.doesNotMatch(page, /DogProfileDashboard/, "production profile no longer renders the compatibility dashboard");
 assert.match(panel, /Identity[\s\S]*Kennel[\s\S]*Breeding[\s\S]*Grooming[\s\S]*Shows[\s\S]*Stud[\s\S]*Market/, "Manage Dog groups remain exact");
@@ -28,8 +30,10 @@ assert.match(grooming, /Manage Grooming/, "Grooming has its approved management 
 assert.match(grooming, /self-groom[\s\S]*Offer for Outside Grooming/, "Grooming retains real operations");
 assert.match(shows, /currentEntriesCount[\s\S]*Pull entry/, "Shows retains current entries and Pull Entry");
 assert.match(readSections, /reproductiveStatusLabel[\s\S]*snapshot\.reproductiveStatus\?\.label[\s\S]*reproductiveStatusDetail[\s\S]*snapshot\.reproductiveStatus\?\.detail[\s\S]*snapshot\.breedingEligibilityMessage/, "Breeding presents existing status and authoritative detail with its canonical fallback");
-assert.match(readSections, /Current reproductive status[\s\S]*reproductiveStatusLabel[\s\S]*reproductiveStatusDetail/, "Breeding renders the status above its authoritative remaining-duration detail");
-assert.doesNotMatch(readSections, /STUD_RECOVERY_HOURS|WHELPING_COOLDOWN_HOURS|createdEpoch\s*[-+]|getIndividualBreedingEligibility/, "read sections do not calculate cooldowns locally");
+assert.match(readSections, /Current reproductive status[\s\S]*reproductiveStatusLabel[\s\S]*reproductiveStatusDetail[\s\S]*snapshot\.breedingAvailabilityLabel/, "Breeding renders the status, authoritative detail, and supplied availability countdown together");
+assert.match(dogMapper, /breedingAvailabilityLabel: string \| null/, "Dog Profile DTO carries a presentation-safe breeding availability label");
+assert.match(dogService, /eligibleAtEpoch !== null[\s\S]*eligibleAtEpoch > currentEpoch[\s\S]*formatRealDurationHoursLong\([\s\S]*breedingEligibility\.remainingHours/, "Dog Profile derives availability copy from the canonical future eligibility boundary and duration");
+assert.doesNotMatch(readSections, /STUD_RECOVERY_HOURS|WHELPING_COOLDOWN_HOURS|createdEpoch\s*[-+]|getIndividualBreedingEligibility|formatRealDurationHoursLong|eligibleAtEpoch|remainingHours/, "read sections do not calculate or format cooldowns locally");
 assert.match(readSections, /Breeding History[\s\S]*damHistory\.map[\s\S]*sireHistory\.map/, "Breeding history restores both dam and sire attempts");
 assert.match(readSections, /attempt\.sireUrl/, "dam history preserves the partner link");
 assert.match(readSections, /attempt\.litterUrl/, "breeding history preserves litter links");

@@ -21,6 +21,8 @@ const recoveringMale = getIndividualBreedingEligibility({
 });
 assert.equal(recoveringMale.isEligible, false, "recovering male cannot breed");
 assert.equal(recoveringMale.reasonCode, "STUD_RECOVERY", "recovering male has canonical reason");
+assert.equal(recoveringMale.eligibleAtEpoch, 502, "recovering male exposes its canonical availability boundary");
+assert.equal(recoveringMale.remainingHours, 1, "recovering male exposes its canonical remaining duration");
 assert.equal(
   getBreedingEligibilityMessage(recoveringMale),
   "Stud recovery. May breed again in 1 hour.",
