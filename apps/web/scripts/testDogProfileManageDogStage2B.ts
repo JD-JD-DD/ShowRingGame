@@ -10,6 +10,7 @@ const health = source("apps/web/components/dogs/DogProfileHealthActions.tsx");
 const grooming = source("apps/web/components/dogs/DogProfileGroomingManagement.tsx");
 const shows = source("apps/web/components/dogs/DogProfileShowsManagement.tsx");
 const planning = source("apps/web/components/dogs/DogProfilePrivatePlanning.tsx");
+const readSections = source("apps/web/components/dogs/DogProfileReadSections.tsx");
 
 assert.doesNotMatch(page, /DogProfileDashboard/, "production profile no longer renders the compatibility dashboard");
 assert.match(panel, /Identity[\s\S]*Kennel[\s\S]*Breeding[\s\S]*Grooming[\s\S]*Shows[\s\S]*Stud[\s\S]*Market/, "Manage Dog groups remain exact");
@@ -26,6 +27,15 @@ assert.doesNotMatch(health, /Breeding Safety Screening/, "brucellosis no longer 
 assert.match(grooming, /Manage Grooming/, "Grooming has its approved management entry point");
 assert.match(grooming, /self-groom[\s\S]*Offer for Outside Grooming/, "Grooming retains real operations");
 assert.match(shows, /currentEntriesCount[\s\S]*Pull entry/, "Shows retains current entries and Pull Entry");
+assert.match(readSections, /Current reproductive status[\s\S]*snapshot\.reproductiveStatus\?\.detail/, "Breeding retains its authoritative reproductive status presentation");
+assert.match(readSections, /Breeding History[\s\S]*damHistory\.map[\s\S]*sireHistory\.map/, "Breeding history restores both dam and sire attempts");
+assert.match(readSections, /attempt\.sireUrl/, "dam history preserves the partner link");
+assert.match(readSections, /attempt\.litterUrl/, "breeding history preserves litter links");
+assert.match(readSections, /attempt\.attemptStatusLabel/, "breeding history preserves unsuccessful-attempt facts");
+assert.match(readSections, /attempt\.usingKennelName[\s\S]*attempt\.damUrl/, "sire history preserves mate and kennel context");
+assert.match(readSections, /header\.badges\.filter[\s\S]*badge\.code\.startsWith\("invitational-"\)/, "Show Career filters existing Invitational honors only");
+assert.match(readSections, /Invitational Honors[\s\S]*badge\.href/, "Show Career preserves existing honor links");
+assert.doesNotMatch(readSections, /getIndividualBreedingEligibility|formatRealDurationHoursLong|BreedingAttempt.*findMany/, "read sections do not recalculate cooldowns or query history");
 assert.match(page, /EmergencyVetCarePanel[\s\S]*ReproductiveEmergencyPanel[\s\S]*DogProfileReadSections/, "urgent panels remain outside Manage Dog before read sections");
 assert.match(planning, /Private Kennel Notes[\s\S]*DogPrivateNotesEditor/, "private planning retains notes under its final section");
 assert.match(page, /canManage=\{viewerContext\.canManage && header\.lifecycleState === "ALIVE"\}/, "deceased dogs cannot order health actions");
@@ -34,7 +44,7 @@ assert.match(page, /actions\.canUseActiveStudListing && studListing/, "Use at St
 assert.ok(page.indexOf('aria-label="Kennel run dog navigation"') < page.indexOf('aspect-[4/3]'), "Kennel Run navigation is above the hero media");
 assert.doesNotMatch(page, /Show Profile|DogStatusBadges|Legacy Producer|Health Clear/, "hero removes production-only label and badge clutter");
 assert.doesNotMatch(page, /href=\{`\/dogs\/\$\{header\.dogId\}\/ribbon-room`\}/, "hero no longer duplicates Ribbon Room");
-assert.match(source("apps/web/components/dogs/DogProfileReadSections.tsx"), /Ribbon Room/, "Show Career retains Ribbon Room");
+assert.match(readSections, /Ribbon Room/, "Show Career retains Ribbon Room");
 assert.match(page, /breedName\} · COLOR · \{header\.sexLabel\}/, "hero preserves the approved breed/color/sex identity line");
 assert.match(page, /Registration[\s\S]*Game Age[\s\S]*Owner[\s\S]*Breeder[\s\S]*Kennel Run[\s\S]*Health/, "hero has the approved fact grid");
 assert.match(page, /grid gap-x-8 gap-y-0 border-b/, "hero uses the open two-column document layout");
