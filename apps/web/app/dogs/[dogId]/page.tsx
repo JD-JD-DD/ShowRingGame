@@ -271,7 +271,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 </h1>
               </div>
               {header.callName ? <p className="theme-copy mt-3 text-xl">&quot;{header.callName}&quot;</p> : null}
-              <p className="theme-copy mt-5 text-sm leading-7">{header.lifecycleLabel} · {profile.snapshot.showEligibilityLabel} · {profile.snapshot.breedingEligibilityLabel}</p>
+              <p className="theme-copy mt-5 flex items-center gap-2 text-sm leading-7"><span>{header.lifecycleLabel} · {profile.snapshot.showEligibilityLabel} · {profile.snapshot.breedingEligibilityLabel}</span>{profile.snapshot.healthTestingSummary.badgeStatus ? <HealthClearBadge status={profile.snapshot.healthTestingSummary.badgeStatus} fullClearance={profile.snapshot.healthTestingSummary.hasFullClearance} /> : null}</p>
 
             <div className="relative mt-6 flex flex-wrap gap-3">
                 {actions.canBuyActiveListing && saleListing ? (
@@ -361,7 +361,7 @@ export default async function DogPage({ params, searchParams }: PageProps) {
                 <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Owner</dt><dd className="theme-heading mt-1 text-base font-semibold">{profile.snapshot.owner?.name ?? "Unowned"}</dd></div>
                 <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Breeder</dt><dd className="theme-heading mt-1 text-base font-semibold">{profile.snapshot.breeder?.name ?? (header.originLabel === "Foundation Dog" ? "Foundation" : "Breeder unknown")}</dd></div>
                 <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Kennel Run</dt><dd className="theme-heading mt-1 text-base font-semibold">{profile.currentRun?.name ?? "Unassigned"}</dd></div>
-                <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Health</dt><dd className="theme-heading mt-1 flex items-center gap-2 text-base font-semibold"><span>{profile.healthTesting.summaryLabel}</span>{profile.snapshot.healthTestingSummary.badgeStatus ? <HealthClearBadge status={profile.snapshot.healthTestingSummary.badgeStatus} fullClearance={profile.snapshot.healthTestingSummary.hasFullClearance} /> : null}</dd></div>
+                <div><dt className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Health</dt><dd className="theme-heading mt-1 text-base font-semibold">{profile.healthTesting.summaryLabel}</dd></div>
               </dl>
             </div>
         </section>

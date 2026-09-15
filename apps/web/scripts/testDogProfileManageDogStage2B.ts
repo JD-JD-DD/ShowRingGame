@@ -54,8 +54,10 @@ assert.doesNotMatch(page, /href=\{`\/dogs\/\$\{header\.dogId\}\/ribbon-room`\}/,
 assert.match(readSections, /Ribbon Room/, "Show Career retains Ribbon Room");
 assert.match(page, /breedName\} · COLOR · \{header\.sexLabel\}/, "hero preserves the approved breed/color/sex identity line");
 assert.match(page, /Registration[\s\S]*Game Age[\s\S]*Owner[\s\S]*Breeder[\s\S]*Kennel Run[\s\S]*Health/, "hero has the approved fact grid");
-assert.match(page, /Health<\/dt><dd[^>]*>[\s\S]*profile\.healthTesting\.summaryLabel[\s\S]*profile\.snapshot\.healthTestingSummary\.badgeStatus[\s\S]*<HealthClearBadge[\s\S]*fullClearance=\{profile\.snapshot\.healthTestingSummary\.hasFullClearance\}/, "Health fact retains its text and renders the existing health indicator alongside it");
-assert.doesNotMatch(page, /headerDisplayName[\s\S]{0,500}HealthClearBadge/, "health indicator remains out of the hero name/status area");
+assert.match(page, /\{header\.lifecycleLabel\} · \{profile\.snapshot\.showEligibilityLabel\} · \{profile\.snapshot\.breedingEligibilityLabel\}<\/span>\{profile\.snapshot\.healthTestingSummary\.badgeStatus[\s\S]*<HealthClearBadge[\s\S]*fullClearance=\{profile\.snapshot\.healthTestingSummary\.hasFullClearance\}/, "health indicator renders immediately after the authoritative lifecycle and eligibility status line");
+assert.match(page, /Health<\/dt><dd[^>]*>\{profile\.healthTesting\.summaryLabel\}<\/dd>/, "Health fact retains its text-only summary");
+assert.doesNotMatch(page, /Health<\/dt><dd[^>]*>[^<]*<HealthClearBadge/, "Health fact no longer renders the health indicator");
+assert.doesNotMatch(page, /<h1[^>]*>[\s\S]*HealthClearBadge[\s\S]*<\/h1>/, "health indicator remains out of the hero name area");
 assert.match(healthClearBadge, /title=\{label\}[\s\S]*aria-label=\{label\}/, "health indicator retains an accessible text equivalent");
 assert.doesNotMatch(page, /getPhenotypeHealthBadgeStatus|hasAllGreenPhenotypeHealthTests|healthTests\.find/, "Dog Profile hero does not calculate health status locally");
 assert.match(page, /grid gap-x-8 gap-y-0 border-b/, "hero uses the open two-column document layout");
