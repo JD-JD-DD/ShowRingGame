@@ -27,7 +27,9 @@ assert.doesNotMatch(health, /Breeding Safety Screening/, "brucellosis no longer 
 assert.match(grooming, /Manage Grooming/, "Grooming has its approved management entry point");
 assert.match(grooming, /self-groom[\s\S]*Offer for Outside Grooming/, "Grooming retains real operations");
 assert.match(shows, /currentEntriesCount[\s\S]*Pull entry/, "Shows retains current entries and Pull Entry");
-assert.match(readSections, /Current reproductive status[\s\S]*snapshot\.reproductiveStatus\?\.detail/, "Breeding retains its authoritative reproductive status presentation");
+assert.match(readSections, /reproductiveStatusLabel[\s\S]*snapshot\.reproductiveStatus\?\.label[\s\S]*reproductiveStatusDetail[\s\S]*snapshot\.reproductiveStatus\?\.detail[\s\S]*snapshot\.breedingEligibilityMessage/, "Breeding presents existing status and authoritative detail with its canonical fallback");
+assert.match(readSections, /Current reproductive status[\s\S]*reproductiveStatusLabel[\s\S]*reproductiveStatusDetail/, "Breeding renders the status above its authoritative remaining-duration detail");
+assert.doesNotMatch(readSections, /STUD_RECOVERY_HOURS|WHELPING_COOLDOWN_HOURS|createdEpoch\s*[-+]|getIndividualBreedingEligibility/, "read sections do not calculate cooldowns locally");
 assert.match(readSections, /Breeding History[\s\S]*damHistory\.map[\s\S]*sireHistory\.map/, "Breeding history restores both dam and sire attempts");
 assert.match(readSections, /attempt\.sireUrl/, "dam history preserves the partner link");
 assert.match(readSections, /attempt\.litterUrl/, "breeding history preserves litter links");

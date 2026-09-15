@@ -33,6 +33,10 @@ export default function DogProfileReadSections({
   const hasBreedingHistory =
     breedingAndProduction.damHistory.length > 0 ||
     breedingAndProduction.sireHistory.length > 0;
+  const reproductiveStatusLabel =
+    snapshot.reproductiveStatus?.label ?? snapshot.breedingEligibilityLabel;
+  const reproductiveStatusDetail =
+    snapshot.reproductiveStatus?.detail ?? snapshot.breedingEligibilityMessage;
 
   return (
     <div className="mt-12 space-y-12">
@@ -75,7 +79,7 @@ export default function DogProfileReadSections({
         <section className="border-t border-[var(--color-border)] py-8" aria-labelledby="breeding-heading">
           <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">{breedingAndProduction.productionRoleLabel}</p>
           <h2 id="breeding-heading" className="theme-heading mt-2 text-2xl font-semibold">Breeding &amp; Production</h2>
-          <div className="mt-4"><p className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Current reproductive status</p><p className="theme-copy mt-1 text-sm leading-6">{snapshot.reproductiveStatus?.detail ?? snapshot.breedingEligibilityLabel}</p></div>
+          <div className="mt-4"><p className="theme-label text-xs font-semibold uppercase tracking-[0.14em]">Current reproductive status</p><p className="theme-heading mt-1 text-sm font-semibold">{reproductiveStatusLabel}</p>{reproductiveStatusDetail ? <p className="theme-copy mt-1 text-sm leading-6">{reproductiveStatusDetail}</p> : null}</div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2"><div className="dog-card rounded-xl p-4 text-sm"><div className="theme-copy">Producer merit</div><div className="theme-heading mt-1 font-semibold">{breedingAndProduction.producerMerit.progressLabel}</div></div><div className="dog-card rounded-xl p-4 text-sm"><div className="theme-copy">Champion offspring</div><div className="theme-heading mt-1 font-semibold">{breedingAndProduction.championOffspringCount}</div></div></div>
           {hasBreedingHistory ? <div className="mt-5 border-t border-[var(--color-border)] pt-5"><h3 className="theme-heading text-sm font-semibold">Breeding History</h3><p className="theme-copy mt-1 text-sm">Previous breeding partners</p><div className="mt-3 grid gap-2">{breedingAndProduction.damHistory.map((attempt) => <div key={attempt.attemptId} className="dog-card rounded-xl p-3 text-sm"><span className="theme-copy">Bred to </span><Link href={attempt.sireUrl} className="theme-heading font-semibold underline">{attempt.sireName}</Link><span className="theme-copy"> · {attempt.breedingDateLabel} · {attempt.attemptStatusLabel}</span>{attempt.litterUrl ? <div className="mt-1"><Link href={attempt.litterUrl} className="theme-heading text-xs font-semibold underline">View litter</Link>{attempt.puppyCount !== null ? <span className="theme-copy text-xs"> · {attempt.puppyCount} puppies, {attempt.survivedCount ?? 0} survived</span> : null}</div> : null}</div>)}{breedingAndProduction.sireHistory.map((attempt) => <div key={attempt.attemptId} className="dog-card rounded-xl p-3 text-sm"><span className="theme-copy">{attempt.usingKennelName} bred to </span><Link href={attempt.damUrl} className="theme-heading font-semibold underline">{attempt.damName}</Link><span className="theme-copy"> · {attempt.dateUsedLabel} · {attempt.attemptStatusLabel}</span>{attempt.litterUrl ? <div className="mt-1"><Link href={attempt.litterUrl} className="theme-heading text-xs font-semibold underline">View litter</Link></div> : null}</div>)}</div></div> : null}
           {breedingAndProduction.progeny.length ? <div className="mt-4 grid gap-2">{breedingAndProduction.progeny.map((dog) => <Link key={dog.dogId} href={dog.dogUrl} className="theme-copy text-sm underline">{dog.displayName} · {dog.sexLabel}</Link>)}</div> : null}
