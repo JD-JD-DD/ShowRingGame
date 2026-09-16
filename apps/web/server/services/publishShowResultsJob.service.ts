@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { resumeDraftAnnualChampionshipPointSchedulesForEffectiveYear } from "@/server/services/annualChampionshipPointScheduleBuild.service";
 import {
   ensureAnnualInvitationalShow,
   ensureDueAnnualInvitationalShows,
@@ -11,6 +12,7 @@ import {
   ShowDayFinalizationPhaseError,
 } from "@/server/services/judging.service";
 import { Prisma } from "@prisma/client";
+import { SHOW_YEAR_HOURS } from "@showring/rules";
 
 export const DEFAULT_BLOCK_BATCH_SIZE = 2;
 export const MAX_BLOCK_BATCH_SIZE = 12;
@@ -515,6 +517,13 @@ export async function runPublishShowResultsJob(args: {
         ensureAnnualInvitationalShow({ currentEpoch })
       ))
     : null;
+  const annualScheduleResume = runFinalizers
+    ? await runPhase("resumeAnnualChampionshipPointSchedule", () =>
+        resumeDraftAnnualChampionshipPointSchedulesForEffectiveYear(
+          Math.floor(currentEpoch / SHOW_YEAR_HOURS) + 1
+        )
+      )
+    : null;
   const jobDurationMs = Date.now() - jobStartedAtMs;
   const blockFailureCount = errors.filter((error) => "judgingBlockId" in error)
     .length;
@@ -600,6 +609,7 @@ export async function runPublishShowResultsJob(args: {
       "Future shows are not loaded by the publish job; due queries require epoch <= currentEpoch.",
     invitationalsCreated: invitationalResults.filter((result) => result.created)
       .length,
+    annualScheduleResume,
     durationMs: jobDurationMs,
     phaseDurationsMs,
   };
@@ -621,6 +631,7 @@ export async function runPublishShowResultsJob(args: {
     processedBlocks,
     finalized,
     invitational,
+    annualScheduleResume,
     invitationals: {
       beforeJudging: invitationalsBeforeJudging,
       afterFinalization: invitationalsAfterFinalization,

@@ -10,6 +10,12 @@ import { type Sex } from "@prisma/client";
 
 const SEXES: readonly Sex[] = ["M", "F"];
 
+// Rows are written serially so each persisted schedule remains independently
+// idempotent. At the observed production write rate this stays well below the
+// cron route's 110-second runtime budget while allowing interrupted DRAFTs to
+// resume on a later invocation.
+export const ANNUAL_CHAMPIONSHIP_POINT_SCHEDULE_BUILD_BATCH_SIZE = 200;
+
 type ExpectedKey = { district: number; breedCode2: string; sex: Sex };
 type UnresolvedKey = ExpectedKey & { reason: string };
 
@@ -25,6 +31,10 @@ export type AnnualChampionshipPointScheduleBuildResult = {
   dataQualityFailure: { district: number; breedCode2: string; sex: Sex } | null;
   publishedThisInvocation: boolean;
   alreadyPublished: boolean;
+  rowsBefore: number;
+  rowsAdded: number;
+  rowsRemaining: number;
+  durationMs: number;
 };
 
 function keyOf(key: ExpectedKey): string {
@@ -89,11 +99,12 @@ export async function ensureAnnualChampionshipPointSchedulesForEffectiveYear(arg
   sourceYear: number;
   effectiveYear: number;
 }): Promise<AnnualChampionshipPointScheduleBuildResult> {
+  const startedAtMs = Date.now();
   assertConsecutiveYears(args.sourceYear, args.effectiveYear);
   const publication = await getOrCreateDraftPublication(args.sourceYear, args.effectiveYear);
   const emptyCounts = { LOCAL: 0, PRIOR_PUBLISHED_SCHEDULE: 0, NATIONAL_SAME_BREED_SAME_SEX: 0, MINIMUM_POINT_SCHEDULE: 0 };
   if (publication.status === "PUBLISHED") {
-    return { sourceYear: args.sourceYear, effectiveYear: args.effectiveYear, publicationId: publication.id, publicationStatus: "PUBLISHED", expectedScheduleCount: 0, resolvedScheduleCount: 0, resolutionCounts: emptyCounts, unresolved: [], dataQualityFailure: null, publishedThisInvocation: false, alreadyPublished: true };
+    return { sourceYear: args.sourceYear, effectiveYear: args.effectiveYear, publicationId: publication.id, publicationStatus: "PUBLISHED", expectedScheduleCount: 0, resolvedScheduleCount: 0, resolutionCounts: emptyCounts, unresolved: [], dataQualityFailure: null, publishedThisInvocation: false, alreadyPublished: true, rowsBefore: 0, rowsAdded: 0, rowsRemaining: 0, durationMs: Date.now() - startedAtMs };
   }
 
   const [breeds, observations, priorSchedules, existingSchedules] = await Promise.all([
@@ -108,11 +119,23 @@ export async function ensureAnnualChampionshipPointSchedulesForEffectiveYear(arg
   const resolutionCounts = { ...emptyCounts };
   const unresolved: UnresolvedKey[] = [];
   let resolvedScheduleCount = 0;
+  const rowsBefore = existingSchedules.filter(
+    (schedule) => schedule.publicationId === publication.id
+  ).length;
+  let rowsAdded = 0;
 
   for (const target of expected) {
+    const existing = existingByKey.get(keyOf(target));
+
+    // Validate every persisted row on each resume, but only calculate and
+    // write the next missing keys in canonical order during this invocation.
+    if (!existing && rowsAdded >= ANNUAL_CHAMPIONSHIP_POINT_SCHEDULE_BUILD_BATCH_SIZE) {
+      continue;
+    }
+
     const resolution = resolveAnnualChampionshipPointScheduleSource({ sourceYear: args.sourceYear, targetDistrict: target.district, targetBreedCode2: target.breedCode2, targetSex: target.sex, observations, priorPublishedSchedule: priorByKey.get(keyOf(target)) });
     if (resolution.resolutionType === "DATA_QUALITY_ERROR") {
-      return { sourceYear: args.sourceYear, effectiveYear: args.effectiveYear, publicationId: publication.id, publicationStatus: "DRAFT", expectedScheduleCount: expected.length, resolvedScheduleCount, resolutionCounts, unresolved, dataQualityFailure: target, publishedThisInvocation: false, alreadyPublished: false };
+      return { sourceYear: args.sourceYear, effectiveYear: args.effectiveYear, publicationId: publication.id, publicationStatus: "DRAFT", expectedScheduleCount: expected.length, resolvedScheduleCount, resolutionCounts, unresolved, dataQualityFailure: target, publishedThisInvocation: false, alreadyPublished: false, rowsBefore, rowsAdded, rowsRemaining: expected.length - rowsBefore - rowsAdded, durationMs: Date.now() - startedAtMs };
     }
     if (resolution.resolutionType === "UNRESOLVED") {
       unresolved.push({ ...target, reason: `${resolution.localReason}:${resolution.reason}` });
@@ -120,28 +143,69 @@ export async function ensureAnnualChampionshipPointSchedulesForEffectiveYear(arg
     }
     const data = scheduleDataFromResolution({ publicationId: publication.id, effectiveYear: args.effectiveYear, ...target, resolution });
     if (!data) throw new Error("Annual Championship Point Schedule resolver returned an unsupported result.");
-    const existing = existingByKey.get(keyOf(target));
     if (existing) {
       if (!matchesSchedule(existing as unknown as Record<string, unknown>, data)) throw new Error("Existing DRAFT Annual Championship Point Schedule conflicts with the deterministic build result.");
     } else {
+      let createdThisInvocation = false;
       try {
         await db.annualChampionshipPointSchedule.create({ data });
+        createdThisInvocation = true;
       } catch {
         const concurrent = await db.annualChampionshipPointSchedule.findUnique({ where: { effectiveYear_district_breedCode2_sex: { effectiveYear: args.effectiveYear, ...target } } });
         if (!concurrent || !matchesSchedule(concurrent as unknown as Record<string, unknown>, data)) throw new Error("Concurrent Annual Championship Point Schedule persistence conflict.");
+      }
+      if (createdThisInvocation) {
+        rowsAdded += 1;
       }
     }
     resolutionCounts[resolution.resolutionType] += 1;
     resolvedScheduleCount += 1;
   }
-  if (unresolved.length > 0) return { sourceYear: args.sourceYear, effectiveYear: args.effectiveYear, publicationId: publication.id, publicationStatus: "DRAFT", expectedScheduleCount: expected.length, resolvedScheduleCount, resolutionCounts, unresolved, dataQualityFailure: null, publishedThisInvocation: false, alreadyPublished: false };
+  if (unresolved.length > 0) return { sourceYear: args.sourceYear, effectiveYear: args.effectiveYear, publicationId: publication.id, publicationStatus: "DRAFT", expectedScheduleCount: expected.length, resolvedScheduleCount, resolutionCounts, unresolved, dataQualityFailure: null, publishedThisInvocation: false, alreadyPublished: false, rowsBefore, rowsAdded, rowsRemaining: expected.length - rowsBefore - rowsAdded, durationMs: Date.now() - startedAtMs };
 
   const actualSchedules = await db.annualChampionshipPointSchedule.findMany({ where: { effectiveYear: args.effectiveYear, publicationId: publication.id }, select: { district: true, breedCode2: true, sex: true } });
   const expectedKeys = new Set(expected.map(keyOf));
   const actualKeys = new Set(actualSchedules.map(keyOf));
   const complete = expectedKeys.size === actualKeys.size && [...expectedKeys].every((key) => actualKeys.has(key));
-  if (!complete) throw new Error("Annual Championship Point Schedule publication failed exact canonical completeness validation.");
+  if (!complete) {
+    return {
+      sourceYear: args.sourceYear,
+      effectiveYear: args.effectiveYear,
+      publicationId: publication.id,
+      publicationStatus: "DRAFT",
+      expectedScheduleCount: expected.length,
+      resolvedScheduleCount,
+      resolutionCounts,
+      unresolved: [],
+      dataQualityFailure: null,
+      publishedThisInvocation: false,
+      alreadyPublished: false,
+      rowsBefore,
+      rowsAdded,
+      rowsRemaining: expected.length - actualKeys.size,
+      durationMs: Date.now() - startedAtMs,
+    };
+  }
   const published = await db.annualChampionshipPointSchedulePublication.updateMany({ where: { id: publication.id, status: "DRAFT" }, data: { status: "PUBLISHED", publishedAt: new Date() } });
   const latest = await db.annualChampionshipPointSchedulePublication.findUniqueOrThrow({ where: { id: publication.id } });
-  return { sourceYear: args.sourceYear, effectiveYear: args.effectiveYear, publicationId: publication.id, publicationStatus: latest.status, expectedScheduleCount: expected.length, resolvedScheduleCount, resolutionCounts, unresolved: [], dataQualityFailure: null, publishedThisInvocation: published.count === 1, alreadyPublished: published.count === 0 && latest.status === "PUBLISHED" };
+  return { sourceYear: args.sourceYear, effectiveYear: args.effectiveYear, publicationId: publication.id, publicationStatus: latest.status, expectedScheduleCount: expected.length, resolvedScheduleCount, resolutionCounts, unresolved: [], dataQualityFailure: null, publishedThisInvocation: published.count === 1, alreadyPublished: published.count === 0 && latest.status === "PUBLISHED", rowsBefore, rowsAdded, rowsRemaining: 0, durationMs: Date.now() - startedAtMs };
+}
+
+/** Resumes an existing DRAFT without creating a new publication. */
+export async function resumeDraftAnnualChampionshipPointSchedulesForEffectiveYear(
+  effectiveYear: number
+): Promise<AnnualChampionshipPointScheduleBuildResult | null> {
+  const publication = await db.annualChampionshipPointSchedulePublication.findUnique({
+    where: { effectiveYear },
+    select: { sourceYear: true, effectiveYear: true, status: true },
+  });
+
+  if (!publication || publication.status !== "DRAFT") {
+    return null;
+  }
+
+  return ensureAnnualChampionshipPointSchedulesForEffectiveYear({
+    sourceYear: publication.sourceYear,
+    effectiveYear: publication.effectiveYear,
+  });
 }
