@@ -203,33 +203,27 @@ export function mapBreedingTraits(dog: AttemptForResolution["sire"]) {
   return toRulesDogTraits(dog);
 }
 
-export async function loadPedigreeForCoi(
-  client: Prisma.TransactionClient,
-  parentIds: string[]
-) {
-  const pedigreeById = new Map<
-    string,
-    { id: string; sireId: string | null; damId: string | null }
-  >();
-  let currentIds = [...new Set(parentIds)];
+type PedigreeClosureDog = {
+  id: string;
+  sireId: string | null;
+  damId: string | null;
+};
+
+type PedigreeReadClient = Pick<Prisma.TransactionClient, "dog">;
+
+async function loadPedigreeClosure<TDog extends PedigreeClosureDog>(args: {
+  parentIds: string[];
+  loadFrontier: (dogIds: string[]) => Promise<TDog[]>;
+}) {
+  const pedigreeById = new Map<string, TDog>();
+  let currentIds = [...new Set(args.parentIds)];
 
   for (
     let generation = 0;
     generation < COI_CALCULATION_MAX_GENERATIONS && currentIds.length > 0;
     generation += 1
   ) {
-    const dogs = await client.dog.findMany({
-      where: {
-        id: {
-          in: currentIds,
-        },
-      },
-      select: {
-        id: true,
-        sireId: true,
-        damId: true,
-      },
-    });
+    const dogs = await args.loadFrontier(currentIds);
     const nextIds = new Set<string>();
 
     for (const dog of dogs) {
@@ -244,10 +238,59 @@ export async function loadPedigreeForCoi(
       }
     }
 
-    currentIds = [...nextIds];
+    currentIds = [...nextIds].filter((dogId) => !pedigreeById.has(dogId));
   }
 
   return [...pedigreeById.values()];
+}
+
+export async function loadPedigreeForCoi(
+  client: PedigreeReadClient,
+  parentIds: string[]
+) {
+  return loadPedigreeClosure({
+    parentIds,
+    loadFrontier: (dogIds) =>
+      client.dog.findMany({
+        where: {
+          id: {
+            in: dogIds,
+          },
+        },
+        select: {
+          id: true,
+          sireId: true,
+          damId: true,
+        },
+      }),
+  });
+}
+
+export async function loadPlannerPedigreeClosure(
+  client: PedigreeReadClient,
+  plannerDogIds: string[]
+) {
+  return loadPedigreeClosure({
+    parentIds: plannerDogIds,
+    loadFrontier: (dogIds) =>
+      client.dog.findMany({
+        where: {
+          id: {
+            in: dogIds,
+          },
+        },
+        select: {
+          id: true,
+          callName: true,
+          registeredName: true,
+          regNumber: true,
+          visibleTitlePrefix: true,
+          visibleTitleSuffix: true,
+          sireId: true,
+          damId: true,
+        },
+      }),
+  });
 }
 
 function getAgeHours(currentEpoch: number, birthEpoch: number): number {

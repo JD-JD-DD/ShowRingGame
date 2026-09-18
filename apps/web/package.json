@@ -60,6 +60,7 @@
     "test:art-final-hardening": "tsx scripts/testArtFinalHardening.ts",
     "test:breeding-eligibility": "tsx scripts/testBreedingEligibilityConsistency.ts",
     "test:breeding-eligibility-reasons": "tsx scripts/testBreedingEligibilityReasons.ts",
+    "test:breeding-planner-pedigree-closure": "tsx scripts/testBreedingPlannerPedigreeClosure.ts",
     "test:stud-recovery": "tsx scripts/testStudRecovery.ts",
     "test:stud-recovery-discovery": "tsx scripts/testStudRecoveryDiscovery.ts",
     "test:stud-recovery-presentation": "tsx scripts/testStudRecoveryPresentation.ts",

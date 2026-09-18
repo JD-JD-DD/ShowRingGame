@@ -13,6 +13,7 @@ import {
   getIndividualBreedingEligibility,
   type BreedingEligibilityReasonCode,
 } from "@/server/services/breedingEligibility.service";
+import { loadPlannerPedigreeClosure } from "@/server/services/breeding.service";
 import { hasPendingVeterinaryCareFromRecords } from "@/server/services/emergencyVetCare.service";
 import {
   PLAYER_SALE_LISTING_TYPE,
@@ -938,6 +939,10 @@ export default async function BreedingPlannerPage({
     }),
   });
 
+  const pedigreePlannerDogIds = [...new Set([
+    ...dogs.map((dog) => dog.id),
+    ...publicStudListings.map((listing) => listing.dog.id),
+  ])];
   const pedigree = useOptimizedDirectRoute
     ? await measureBreedingRouteStage({
         timer,
@@ -955,19 +960,7 @@ export default async function BreedingPlannerPage({
         route,
         operation: "pedigree_query",
         execution: "sequential",
-        action: () =>
-          db.dog.findMany({
-            select: {
-              id: true,
-              callName: true,
-              registeredName: true,
-              regNumber: true,
-              visibleTitlePrefix: true,
-              visibleTitleSuffix: true,
-              sireId: true,
-              damId: true,
-            },
-          }),
+        action: () => loadPlannerPedigreeClosure(db, pedigreePlannerDogIds),
         details: (rows) => ({
           rowCount: rows.length,
         }),
