@@ -35,6 +35,8 @@ const GRAND_CHAMPION_MILESTONE_PRESTIGE = [
 
 const GROUP_AWARD_CODES = ["G1", "G2", "G3", "G4"] as const;
 const BIS_AWARD_CODES = ["BIS", "RBIS"] as const;
+// Matches the conservative bounded-read precedent used by championship schedule work.
+const GRAND_CHAMPION_COMPLETION_ENTRY_PAIR_BATCH_SIZE = 200;
 
 type PrestigeTier = {
   label: string;
@@ -54,6 +56,18 @@ type PointAwardRow = {
     kennelId: string;
     handlerUsed: boolean;
   };
+};
+
+export type GrandChampionCompletionPair = {
+  dogId: string;
+  showDayId: string;
+};
+
+type GrandChampionCompletionDog = {
+  id: string;
+  titleProgress: {
+    grandCompletedAtShowDayId: string | null;
+  } | null;
 };
 
 type KennelMeta = {
@@ -281,6 +295,74 @@ export function getGrandChampionMilestonePrestige(grandPoints: number): {
       0
     ),
   };
+}
+
+export function getGrandChampionCompletionPairs(
+  dogs: GrandChampionCompletionDog[]
+): GrandChampionCompletionPair[] {
+  return dogs.flatMap((dog) => {
+    const showDayId = dog.titleProgress?.grandCompletedAtShowDayId;
+
+    return showDayId ? [{ dogId: dog.id, showDayId }] : [];
+  });
+}
+
+export function deduplicateGrandChampionCompletionPairs(
+  pairs: GrandChampionCompletionPair[]
+): GrandChampionCompletionPair[] {
+  return [
+    ...new Map(
+      pairs.map((pair) => [`${pair.dogId}:${pair.showDayId}`, pair])
+    ).values(),
+  ];
+}
+
+async function loadGrandChampionCompletionEntries(
+  requestedPairs: GrandChampionCompletionPair[]
+) {
+  const startedAtMs = Date.now();
+  const completionPairs = deduplicateGrandChampionCompletionPairs(requestedPairs);
+  const entries: Array<{
+    dogId: string;
+    showDayId: string;
+    handlerUsed: boolean;
+  }> = [];
+
+  for (
+    let index = 0;
+    index < completionPairs.length;
+    index += GRAND_CHAMPION_COMPLETION_ENTRY_PAIR_BATCH_SIZE
+  ) {
+    const pairBatch = completionPairs.slice(
+      index,
+      index + GRAND_CHAMPION_COMPLETION_ENTRY_PAIR_BATCH_SIZE
+    );
+    entries.push(
+      ...(await db.showEntry.findMany({
+        where: {
+          OR: pairBatch,
+        },
+        select: {
+          dogId: true,
+          showDayId: true,
+          handlerUsed: true,
+        },
+      }))
+    );
+  }
+
+  console.info("service-perf", {
+    route: "service:kennelPrestige.grandChampionCompletionEntries",
+    requestedExactPairCount: requestedPairs.length,
+    deduplicatedExactPairCount: completionPairs.length,
+    batchCount: Math.ceil(
+      completionPairs.length / GRAND_CHAMPION_COMPLETION_ENTRY_PAIR_BATCH_SIZE
+    ),
+    rowsReturned: entries.length,
+    elapsedMs: Date.now() - startedAtMs,
+  });
+
+  return entries;
 }
 
 function createEmptyAccumulator(): KennelPrestigeAccumulator {
@@ -564,31 +646,10 @@ async function buildKennelPrestigeSummaries(
         },
       }),
     ]);
-  const grandChampionCompletionShowDayIds = [
-    ...new Set(
-      grandChampionDogs
-        .map((dog) => dog.titleProgress?.grandCompletedAtShowDayId)
-        .filter((showDayId): showDayId is string => Boolean(showDayId))
-    ),
-  ];
   const grandChampionCompletionEntries =
-    grandChampionCompletionShowDayIds.length > 0
-      ? await db.showEntry.findMany({
-          where: {
-            dogId: {
-              in: grandChampionDogs.map((dog) => dog.id),
-            },
-            showDayId: {
-              in: grandChampionCompletionShowDayIds,
-            },
-          },
-          select: {
-            dogId: true,
-            showDayId: true,
-            handlerUsed: true,
-          },
-        })
-      : [];
+    await loadGrandChampionCompletionEntries(
+      getGrandChampionCompletionPairs(grandChampionDogs)
+    );
   const grandChampionCompletionEntryByDogAndShowDay = new Map(
     grandChampionCompletionEntries.map((entry) => [
       `${entry.dogId}:${entry.showDayId}`,

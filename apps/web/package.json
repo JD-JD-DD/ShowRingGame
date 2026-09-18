@@ -98,6 +98,7 @@
     "test:grand-champion-promotion-filtering": "tsx scripts/testGrandChampionPromotionFiltering.ts",
     "test:grand-champion-batching": "tsx scripts/testGrandChampionBatching.ts",
     "test:prestige-batching": "tsx scripts/testPrestigeBatching.ts",
+    "test:kennel-prestige-completion-entry-batching": "tsx scripts/testKennelPrestigeCompletionEntryBatching.ts",
     "test:finalizer-concurrency-safety": "tsx scripts/testFinalizerConcurrencySafety.ts",
     "test:finalizer-phase-instrumentation": "tsx scripts/testFinalizerPhaseInstrumentation.ts",
     "test:show-countdowns": "tsx scripts/testShowCountdowns.ts",
