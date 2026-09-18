@@ -99,11 +99,11 @@ const foundationDogService = source(
 const breedingService = source("apps/web/server/services/breeding.service.ts");
 const dogHealth = source("apps/web/lib/dogHealth.ts");
 const healthBackfill = source("apps/web/scripts/backfill-phenotype-health.ts");
-const ensurePhenotypeTruthSection = sectionBetween(
+const resolvePhenotypeTruthSection = sectionBetween(
   healthService,
-  "export async function ensurePhenotypeHealthTruthsForDogs(",
-  "export async function runPhenotypeHealthTestForKennel(",
-  "phenotype health truth batch helper"
+  "async function resolvePhenotypeHealthTruthsForDogs(",
+  "/**\n * Resolves canonical phenotype-health truth for presentation",
+  "phenotype health truth resolver"
 );
 
 const rawTraitFields = [
@@ -261,17 +261,17 @@ assertIncludes(
   "missing hidden truth rows are created through DogHealthConditionTruth"
 );
 assertIncludes(
-  ensurePhenotypeTruthSection,
+  resolvePhenotypeTruthSection,
   "const existingTruthRows = await client.dogHealthConditionTruth.findMany({",
   "hidden truth repair batches existing truth loading across the requested dogs"
 );
 assertIncludes(
-  ensurePhenotypeTruthSection,
+  resolvePhenotypeTruthSection,
   "const dogsById = await loadPhenotypeHealthPedigree(client, uniqueDogIds);",
   "hidden truth repair preloads required pedigree inputs in bounded batches"
 );
 assertDoesNotIncludeAny(
-  ensurePhenotypeTruthSection,
+  resolvePhenotypeTruthSection,
   ["await ensureDogPhenotypeHealthTruths(", "findUnique({\n      where: { id: dogId }"],
   "hidden truth repair should not retain the legacy per-dog read loop"
 );
@@ -454,7 +454,6 @@ for (const [label, fileSource] of [
   ["kennel dog list route", mineDogsRoute],
   ["market listing service", marketService],
   ["stud listing page", studsPage],
-  ["breeding planner page", breedingPlannerPage],
   ["program planner service", programPlannerService],
 ] as const) {
   assertIncludes(
@@ -463,6 +462,16 @@ for (const [label, fileSource] of [
     `${label} loads only display-relevant hidden health truths server-side`
   );
 }
+assertIncludes(
+  breedingPlannerPage,
+  "loadPhenotypeHealthTruthsForDogs(",
+  "breeding planner resolves hidden truth through the read-only health helper"
+);
+assertDoesNotIncludeAny(
+  breedingPlannerPage,
+  ["ensurePhenotypeHealthTruthsForDogs(", "dogHealthConditionTruth.createMany("],
+  "breeding planner does not repair hidden truth rows during rendering"
+);
 assertIncludes(
   foundationDogService,
   "deriveCurrentVisibleCategoriesForDogDisplay",

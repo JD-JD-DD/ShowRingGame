@@ -23,7 +23,7 @@ import {
   type PublicStudReadModel,
 } from "@/server/services/publicStud.service";
 import { hasValidPublishedStudOffer } from "@/server/services/studOfferPresentation.service";
-import { ensurePhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
+import { loadPhenotypeHealthTruthsForDogs } from "@/server/services/healthTest.service";
 import {
   deriveCurrentVisibleCategoriesForDogDisplay,
   DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES,
@@ -211,24 +211,19 @@ async function ensureAndLoadBreedingPlannerHealthTruths(dogIds: string[]) {
     >();
   }
 
-  await ensurePhenotypeHealthTruthsForDogs(db, uniqueDogIds);
-
-  const healthConditionTruths = await db.dogHealthConditionTruth.findMany({
-    where: {
-      dogId: {
-        in: uniqueDogIds,
-      },
-      conditionCode: {
-        in: [...DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES],
-      },
-    },
-    select: {
-      dogId: true,
-      conditionCode: true,
-      geneticLiability: true,
-      environmentModifier: true,
-    },
-  });
+  const truthsByDogId = await loadPhenotypeHealthTruthsForDogs(
+    db,
+    uniqueDogIds
+  );
+  const healthConditionTruths = uniqueDogIds.flatMap((dogId) =>
+    (truthsByDogId.get(dogId) ?? [])
+      .filter((truth) =>
+        DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES.includes(
+          truth.conditionCode as (typeof DISPLAY_HEALTH_EXPRESSION_CONDITION_CODES)[number]
+        )
+      )
+      .map((truth) => ({ dogId, ...truth }))
+  );
 
   return groupHealthConditionTruthsByDog(healthConditionTruths);
 }

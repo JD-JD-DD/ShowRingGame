@@ -12,6 +12,7 @@ import {
 import {
   createDeterministicPhenotypeHealthRandom,
   ensurePhenotypeHealthTruthsForDogs,
+  loadPhenotypeHealthTruthsForDogs,
 } from "../server/services/healthTest.service";
 
 type DogRow = {
@@ -174,17 +175,29 @@ async function main() {
     path.join(repoRoot, "apps/web/app/api/dogs/mine/route.ts"),
     "utf8"
   );
+  const plannerPageSource = readFileSync(
+    path.join(repoRoot, "apps/web/components/breeding/BreedingPlannerPage.tsx"),
+    "utf8"
+  );
+  const resolveSection =
+    healthServiceSource.match(
+      /async function resolvePhenotypeHealthTruthsForDogs[\s\S]*?^}\n\n\/\*\*/m
+    )?.[0] ?? "";
+  const readSection =
+    healthServiceSource.match(
+      /export async function loadPhenotypeHealthTruthsForDogs[\s\S]*?^}\n\nexport async function ensurePhenotypeHealthTruthsForDogs/m
+    )?.[0] ?? "";
   const ensureSection =
     healthServiceSource.match(
       /export async function ensurePhenotypeHealthTruthsForDogs[\s\S]*?^}\n\nexport async function runPhenotypeHealthTestForKennel/m
     )?.[0] ?? "";
 
   assert.ok(
-    ensureSection.includes("const existingTruthRows = await client.dogHealthConditionTruth.findMany({"),
+    resolveSection.includes("const existingTruthRows = await client.dogHealthConditionTruth.findMany({"),
     "batch helper loads existing truth rows in one bounded query"
   );
   assert.ok(
-    ensureSection.includes("const dogsById = await loadPhenotypeHealthPedigree(client, uniqueDogIds);"),
+    resolveSection.includes("const dogsById = await loadPhenotypeHealthPedigree(client, uniqueDogIds);"),
     "batch helper loads required dog and parent inputs ahead of repair"
   );
   assert.ok(
@@ -194,6 +207,22 @@ async function main() {
   assert.ok(
     !ensureSection.includes("findUnique({"),
     "batch helper no longer performs per-dog findUnique reads"
+  );
+  assert.ok(
+    readSection.includes("resolvePhenotypeHealthTruthsForDogs("),
+    "read helper shares canonical phenotype truth resolution"
+  );
+  assert.ok(
+    !readSection.includes("createMany("),
+    "read helper never persists missing truth rows"
+  );
+  assert.ok(
+    plannerPageSource.includes("loadPhenotypeHealthTruthsForDogs("),
+    "planner uses the read-only phenotype truth helper"
+  );
+  assert.ok(
+    !plannerPageSource.includes("ensurePhenotypeHealthTruthsForDogs("),
+    "planner does not invoke the truth repair helper"
   );
   assert.ok(
     mineRouteSource.includes("ensurePhenotypeHealthTruthsForDogs(db, dogIds)"),
@@ -223,6 +252,45 @@ async function main() {
       mineRouteSource.includes(field),
       `kennel roster response shape still includes ${field}`
     );
+  }
+
+  {
+    const fullTruths = buildFoundationTruths("read-only-existing-dog");
+    const client = createFakeHealthClient({
+      dogs: [{ id: "read-only-existing-dog", sireId: null, damId: null, coiPercent: null }],
+      truths: toTruthRows("read-only-existing-dog", fullTruths),
+    });
+
+    const truthsByDogId = await loadPhenotypeHealthTruthsForDogs(
+      client as never,
+      ["read-only-existing-dog"]
+    );
+
+    assert.deepEqual(
+      truthsByDogId.get("read-only-existing-dog"),
+      fullTruths,
+      "read helper preserves existing canonical truth values"
+    );
+    assert.equal(client.truthCreateManyCalls, 0, "read helper does not write complete truth rows");
+  }
+
+  {
+    const client = createFakeHealthClient({
+      dogs: [{ id: "read-only-missing-dog", sireId: null, damId: null, coiPercent: null }],
+    });
+
+    const truthsByDogId = await loadPhenotypeHealthTruthsForDogs(
+      client as never,
+      ["read-only-missing-dog"]
+    );
+
+    assert.deepEqual(
+      truthsByDogId.get("read-only-missing-dog"),
+      buildFoundationTruths("read-only-missing-dog"),
+      "read helper derives missing truth for server-side presentation"
+    );
+    assert.equal(client.truths.length, 0, "read helper leaves missing persisted truth absent");
+    assert.equal(client.truthCreateManyCalls, 0, "read helper never repairs missing truth rows");
   }
 
   {

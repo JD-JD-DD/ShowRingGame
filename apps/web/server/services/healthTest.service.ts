@@ -420,14 +420,25 @@ function resolvePhenotypeHealthTruthsForDog(args: {
   }
 }
 
-export async function ensurePhenotypeHealthTruthsForDogs(
+async function resolvePhenotypeHealthTruthsForDogs(
   client: HealthClient,
   dogIds: string[]
-): Promise<Map<string, PhenotypeHealthTruth[]>> {
+): Promise<{
+  resolvedTruthsByDogId: Map<string, PhenotypeHealthTruth[]>;
+  rowsToCreate: Array<{
+    dogId: string;
+    conditionCode: string;
+    geneticLiability: number;
+    environmentModifier: number;
+  }>;
+}> {
   const uniqueDogIds = [...new Set(dogIds)].filter(Boolean);
 
   if (uniqueDogIds.length === 0) {
-    return new Map();
+    return {
+      resolvedTruthsByDogId: new Map(),
+      rowsToCreate: [],
+    };
   }
 
   const dogsById = await loadPhenotypeHealthPedigree(client, uniqueDogIds);
@@ -470,6 +481,33 @@ export async function ensurePhenotypeHealthTruthsForDogs(
       environmentModifier: truth.environmentModifier,
     }))
   );
+
+  return { resolvedTruthsByDogId, rowsToCreate };
+}
+
+/**
+ * Resolves canonical phenotype-health truth for presentation without repairing
+ * missing persisted rows. Callers receive deterministic derived truth while
+ * keeping player-facing read paths free of domain-maintenance writes.
+ */
+export async function loadPhenotypeHealthTruthsForDogs(
+  client: HealthClient,
+  dogIds: string[]
+): Promise<Map<string, PhenotypeHealthTruth[]>> {
+  const { resolvedTruthsByDogId } = await resolvePhenotypeHealthTruthsForDogs(
+    client,
+    dogIds
+  );
+
+  return resolvedTruthsByDogId;
+}
+
+export async function ensurePhenotypeHealthTruthsForDogs(
+  client: HealthClient,
+  dogIds: string[]
+): Promise<Map<string, PhenotypeHealthTruth[]>> {
+  const { resolvedTruthsByDogId, rowsToCreate } =
+    await resolvePhenotypeHealthTruthsForDogs(client, dogIds);
 
   if (rowsToCreate.length === 0) {
     return resolvedTruthsByDogId;
