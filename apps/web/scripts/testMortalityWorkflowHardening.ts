@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getAccidentIllnessEmergencySourceKey } from "../server/services/emergencyVetCare.service";
 import { resolveInstantiatedAccidentCandidates } from "../server/services/lifecycle.service";
+import { NEONATAL_PUPPY_DEATH_RATE } from "@showring/rules";
 
 const root = process.cwd().endsWith(join("apps", "web"))
   ? join(process.cwd(), "..", "..")
@@ -12,6 +13,12 @@ const source = (path: string) => readFileSync(join(root, path), "utf8");
 const lifecycle = source("apps/web/server/services/lifecycle.service.ts");
 const schema = source("apps/web/prisma/schema.prisma");
 const cron = source("apps/web/app/api/cron/resolve-dog-mortality/route.ts");
+
+assert.equal(
+  NEONATAL_PUPPY_DEATH_RATE,
+  0.03,
+  "the canonical neonatal puppy mortality rate remains 3%"
+);
 
 assert.match(
   lifecycle,
