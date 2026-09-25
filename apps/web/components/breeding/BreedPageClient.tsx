@@ -1706,8 +1706,7 @@ export default function BreedPageClient({
   const [plannerNotice, setPlannerNotice] = useState(initialNotice);
   const isSireFirstWorksheet =
     experience === "worksheet" && worksheetEntryMode === "SIRE_FIRST";
-  const shouldShowPairingState =
-    isSireFirstWorksheet || worksheetSelectionMode !== null;
+  const shouldShowPairingState = worksheetSelectionMode !== null;
   const submitInFlightRef = useRef(false);
   const [isSireLoading, startSireLoadingTransition] = useTransition();
   const eligibleDogs = useMemo(
@@ -1816,10 +1815,15 @@ export default function BreedPageClient({
     () =>
       eligibleDogs
         .filter(
-          (dog) => dog.isOwnedByCurrentKennel && dog.sex === "M"
+          (dog) =>
+            dog.isOwnedByCurrentKennel &&
+            dog.sex === "M" &&
+            (worksheetSelectionMode === "KENNEL_RUN"
+              ? dog.kennelRunId === kennelRunId
+              : dog.breedCode2 === breedCode2)
         )
         .sort((a, b) => b.ageHours - a.ageHours),
-    [eligibleDogs]
+    [breedCode2, eligibleDogs, kennelRunId, worksheetSelectionMode]
   );
   const sireFirstDams = useMemo(() => {
     if (!selectedSire) return [];
@@ -1902,11 +1906,7 @@ export default function BreedPageClient({
     clearWorksheetPairingState();
     setSireSource("ALL");
     setSireSort("RECOMMENDED");
-    setKennelRunId("");
-    setWorksheetSelectionMode(null);
-    setBreedCode2("");
     setWorksheetEntryMode(nextMode);
-    synchronizeWorksheetBreedCode2("");
   }
 
   function chooseBreed(nextBreedCode: string) {
@@ -2232,8 +2232,7 @@ export default function BreedPageClient({
         </section>
       ) : null}
 
-      {!isSireFirstWorksheet ? (
-        <>
+      <>
           <section className="theme-panel relative mt-6 overflow-hidden rounded-[28px] p-6">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-100 to-transparent" />
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -2284,11 +2283,12 @@ export default function BreedPageClient({
       </section>
 
       {worksheetSelectionMode ? (
-        <>
+        !isSireFirstWorksheet ? (
+          <>
           <section className="mt-6 grid gap-6 lg:grid-cols-2">
             <div className="theme-panel rounded-[28px] p-5">
               <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
-                Step 2A
+                Step 2
               </p>
               <h2 className="theme-heading mt-2 text-xl font-semibold">Choose Dam</h2>
               <p className="theme-copy mt-2 text-sm">
@@ -2325,7 +2325,7 @@ export default function BreedPageClient({
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
-                    Step 2B
+                    Step 3
                   </p>
                   <h2 className="theme-heading mt-2 text-xl font-semibold">Choose Sire</h2>
                 </div>
@@ -2414,13 +2414,11 @@ export default function BreedPageClient({
 
           <Shortlist dam={selectedDam} sires={shortlistedSires} pedigree={pedigree} />
         </>
-      ) : null}
-        </>
       ) : (
         <section className="mt-6 grid gap-6 lg:grid-cols-2">
           <div className="theme-panel rounded-[28px] p-5">
             <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
-              Step 1
+              Step 2
             </p>
             <h2 className="theme-heading mt-2 text-xl font-semibold">Choose Sire</h2>
             <p className="theme-copy mt-2 text-sm">
@@ -2448,7 +2446,7 @@ export default function BreedPageClient({
 
           <div className="theme-panel rounded-[28px] p-5">
             <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
-              Step 2
+              Step 3
             </p>
             <h2 className="theme-heading mt-2 text-xl font-semibold">Choose Dam</h2>
             {selectedSire ? (
@@ -2482,7 +2480,8 @@ export default function BreedPageClient({
             )}
           </div>
         </section>
-      )}
+      ) : null}
+      </>
 
       {shouldShowPairingState ? (
         selectedDam && selectedSire ? (

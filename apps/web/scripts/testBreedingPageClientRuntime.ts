@@ -178,6 +178,11 @@ const shortlistSource = section(
   "function Shortlist({",
   "export default function BreedPageClient"
 );
+const chooseWorksheetEntryModeSource = section(
+  client,
+  "function chooseWorksheetEntryMode(nextMode: WorksheetEntryMode)",
+  "function chooseBreed(nextBreedCode: string)"
+);
 const sireFirstSelectionSource = section(
   client,
   "function chooseSireFirst(nextSireId: string)",
@@ -185,8 +190,8 @@ const sireFirstSelectionSource = section(
 );
 const sireFirstBranchSource = section(
   client,
-  ") : (\n        <section className=\"mt-6 grid gap-6 lg:grid-cols-2\">",
-  "\n      )}\n\n      {shouldShowPairingState ?"
+  "Your kennel&apos;s eligible male dogs.",
+  "\n\n      {shouldShowPairingState ?"
 );
 
 assert.ok(
@@ -198,17 +203,23 @@ assert.ok(
   "the worksheet exposes an accessible Dam-first default and explicit Sire-first entry mode"
 );
 assert.ok(
-  client.includes("function chooseWorksheetEntryMode(nextMode: WorksheetEntryMode)") &&
-    client.includes("setSireSource(\"ALL\");") &&
-    client.includes("setSireSort(\"RECOMMENDED\");") &&
-    client.includes("setKennelRunId(\"\");") &&
-    client.includes("setWorksheetSelectionMode(null);") &&
-    client.includes("setBreedCode2(\"\");"),
-  "switching entry modes clears parent, pair, Dam-first source/sort, and incompatible scope state"
+  chooseWorksheetEntryModeSource.includes("clearWorksheetPairingState();") &&
+    chooseWorksheetEntryModeSource.includes("setSireSource(\"ALL\");") &&
+    chooseWorksheetEntryModeSource.includes("setSireSort(\"RECOMMENDED\");") &&
+    !chooseWorksheetEntryModeSource.includes("setKennelRunId") &&
+    !chooseWorksheetEntryModeSource.includes("setWorksheetSelectionMode") &&
+    !chooseWorksheetEntryModeSource.includes("setBreedCode2"),
+  "switching entry modes clears pair-dependent state while preserving the shared scope"
 );
 assert.ok(
-  /const ownedSires = useMemo\([\s\S]*dog\.isOwnedByCurrentKennel && dog\.sex === "M"/.test(client),
-  "Sire-first initial candidates are limited to eligible owned males already supplied to the client"
+  /const ownedSires = useMemo\([\s\S]*dog\.isOwnedByCurrentKennel[\s\S]*dog\.sex === "M"[\s\S]*worksheetSelectionMode === "KENNEL_RUN"[\s\S]*dog\.kennelRunId === kennelRunId[\s\S]*dog\.breedCode2 === breedCode2/.test(client),
+  "Sire-first initial candidates are owned males scoped by the existing breed or kennel-run selection"
+);
+assert.ok(
+  client.indexOf("Choose A Breed Or Kennel Run") <
+    client.indexOf("Your kennel&apos;s eligible male dogs.") &&
+    client.includes("{worksheetSelectionMode ? (\n        !isSireFirstWorksheet ? ("),
+  "both entry modes require the one shared Breed or Kennel Run scope before parent selection"
 );
 assert.ok(
   /const sireFirstDams = useMemo\([\s\S]*dog\.isOwnedByCurrentKennel[\s\S]*dog\.sex === "F"[\s\S]*dog\.breedCode2 === selectedSire\.breedCode2/.test(client),
