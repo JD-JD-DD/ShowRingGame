@@ -2232,7 +2232,6 @@ export default function BreedPageClient({
         </section>
       ) : null}
 
-      <>
           <section className="theme-panel relative mt-6 overflow-hidden rounded-[28px] p-6">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-100 to-transparent" />
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -2452,7 +2451,7 @@ export default function BreedPageClient({
             {selectedSire ? (
               <>
                 <p className="theme-copy mt-2 text-sm">
-                  Your kennel&apos;s eligible females of the same breed as the selected sire.
+                  Your kennel's eligible females of the same breed as the selected sire.
                 </p>
                 <div className="mt-5 space-y-3">
                   {sireFirstDams.length > 0 ? (
@@ -2475,13 +2474,14 @@ export default function BreedPageClient({
               </>
             ) : (
               <div className="theme-card theme-copy mt-5 rounded-xl p-4 text-sm">
-                Select an eligible sire first to view your kennel&apos;s same-breed dams.
+                Select an eligible sire first to view your kennel's same-breed dams.
               </div>
             )}
           </div>
         </section>
-      ) : null}
-      </>
+      )
+    ) : null}
+    
 
       {shouldShowPairingState ? (
         selectedDam && selectedSire ? (
