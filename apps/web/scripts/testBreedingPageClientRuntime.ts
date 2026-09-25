@@ -178,6 +178,71 @@ const shortlistSource = section(
   "function Shortlist({",
   "export default function BreedPageClient"
 );
+const sireFirstSelectionSource = section(
+  client,
+  "function chooseSireFirst(nextSireId: string)",
+  "function toggleShortlist(sireIdToToggle: string)"
+);
+const sireFirstBranchSource = section(
+  client,
+  ") : (\n        <section className=\"mt-6 grid gap-6 lg:grid-cols-2\">",
+  "\n      )}\n\n      {shouldShowPairingState ?"
+);
+
+assert.ok(
+  client.includes('type WorksheetEntryMode = "DAM_FIRST" | "SIRE_FIRST"') &&
+    client.includes('useState<WorksheetEntryMode>("DAM_FIRST")') &&
+    client.includes('role="radiogroup"') &&
+    client.includes('role="radio"') &&
+    client.includes('aria-checked={worksheetEntryMode === mode}'),
+  "the worksheet exposes an accessible Dam-first default and explicit Sire-first entry mode"
+);
+assert.ok(
+  client.includes("function chooseWorksheetEntryMode(nextMode: WorksheetEntryMode)") &&
+    client.includes("setSireSource(\"ALL\");") &&
+    client.includes("setSireSort(\"RECOMMENDED\");") &&
+    client.includes("setKennelRunId(\"\");") &&
+    client.includes("setWorksheetSelectionMode(null);") &&
+    client.includes("setBreedCode2(\"\");"),
+  "switching entry modes clears parent, pair, Dam-first source/sort, and incompatible scope state"
+);
+assert.ok(
+  /const ownedSires = useMemo\([\s\S]*dog\.isOwnedByCurrentKennel && dog\.sex === "M"/.test(client),
+  "Sire-first initial candidates are limited to eligible owned males already supplied to the client"
+);
+assert.ok(
+  /const sireFirstDams = useMemo\([\s\S]*dog\.isOwnedByCurrentKennel[\s\S]*dog\.sex === "F"[\s\S]*dog\.breedCode2 === selectedSire\.breedCode2/.test(client),
+  "Sire-first dam candidates are owned eligible females of the selected sire's breed"
+);
+assert.equal(
+  sireFirstBranchSource.includes("isPublicSire"),
+  false,
+  "Sire-first selection does not use public-stud discovery"
+);
+assert.equal(
+  sireFirstBranchSource.includes("publicStudContractHref"),
+  false,
+  "Sire-first selection does not expose Stud Contract routing"
+);
+assert.equal(
+  sireFirstBranchSource.includes("damMeetsStudRequirements"),
+  false,
+  "Sire-first selection does not apply public-stud requirements"
+);
+assert.ok(
+  sireFirstSelectionSource.includes("if (nextSireId !== sireId) {") &&
+    sireFirstSelectionSource.includes("setDamId(\"\");") &&
+    sireFirstSelectionSource.includes("setShortlistedSireIds([]);") &&
+    sireFirstSelectionSource.includes("setTestDamBrucellosis(false);") &&
+    sireFirstSelectionSource.includes("setTestSireBrucellosis(false);"),
+  "changing the Sire-first parent clears the opposite parent and pair-dependent state"
+);
+assert.ok(
+  client.includes("primaryDogId: selectedSire.id,") &&
+    client.includes("mateDogId: selectedDam.id,") &&
+    client.includes("selectedDam && selectedSire ? (\n          <PairingAnalysis"),
+  "both entry modes converge on the existing semantic pair analysis and submission shape"
+);
 
 assert.equal(
   chooseBreedSource.includes("startSireLoadingTransition"),

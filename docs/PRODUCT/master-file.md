@@ -399,7 +399,7 @@ Architecture: `canonical-services.md`, `data-ownership.md`.
 
 ### Description
 
-Breeding is biological simulation plus long-term kennel strategy. Commercial stud agreements are separate from biological eligibility. Litters preserve parentage and breeder identity even as puppies transfer.
+Breeding is biological simulation plus long-term kennel strategy. Commercial stud agreements are separate from biological eligibility. Plan a Litter may begin with a dam using the existing sire-selection workflow, or with an owned sire followed by an owned same-breed dam; both paths converge on the same biological pairing and breeding workflow. Litters preserve parentage and breeder identity even as puppies transfer.
 
 ### Psychology
 

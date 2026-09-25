@@ -116,6 +116,7 @@ type Props = {
 type SireSource = "ALL" | "OWNED" | "PUBLIC";
 type SireSort = "RECOMMENDED" | "LOWEST_COI" | "HEALTH" | "FEE";
 type WorksheetSelectionMode = "BREED" | "KENNEL_RUN" | null;
+type WorksheetEntryMode = "DAM_FIRST" | "SIRE_FIRST";
 
 const HEALTH_TONES: Record<PhenotypeHealthSeverity, string> = {
   green: "border-emerald-300/35 bg-emerald-500/10 text-emerald-100",
@@ -1676,6 +1677,8 @@ export default function BreedPageClient({
       ? initialBreedCode2 ?? ""
       : initialDog?.breedCode2 ?? "";
   const [breedCode2, setBreedCode2] = useState(initialBreedCode);
+  const [worksheetEntryMode, setWorksheetEntryMode] =
+    useState<WorksheetEntryMode>("DAM_FIRST");
   const [worksheetSelectionMode, setWorksheetSelectionMode] =
     useState<WorksheetSelectionMode>(
       experience === "worksheet" && initialBreedCode ? "BREED" : null
@@ -1701,6 +1704,10 @@ export default function BreedPageClient({
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [plannerNotice, setPlannerNotice] = useState(initialNotice);
+  const isSireFirstWorksheet =
+    experience === "worksheet" && worksheetEntryMode === "SIRE_FIRST";
+  const shouldShowPairingState =
+    isSireFirstWorksheet || worksheetSelectionMode !== null;
   const submitInFlightRef = useRef(false);
   const [isSireLoading, startSireLoadingTransition] = useTransition();
   const eligibleDogs = useMemo(
@@ -1805,6 +1812,27 @@ export default function BreedPageClient({
       );
     });
   }, [breedCode2, eligibleDogs, pedigree, selectedDam, sireSort, sireSource, temporarilyUnavailablePublicStuds]);
+  const ownedSires = useMemo(
+    () =>
+      eligibleDogs
+        .filter(
+          (dog) => dog.isOwnedByCurrentKennel && dog.sex === "M"
+        )
+        .sort((a, b) => b.ageHours - a.ageHours),
+    [eligibleDogs]
+  );
+  const sireFirstDams = useMemo(() => {
+    if (!selectedSire) return [];
+
+    return eligibleDogs
+      .filter(
+        (dog) =>
+          dog.isOwnedByCurrentKennel &&
+          dog.sex === "F" &&
+          dog.breedCode2 === selectedSire.breedCode2
+      )
+      .sort((a, b) => b.ageHours - a.ageHours);
+  }, [eligibleDogs, selectedSire]);
   const freeMates = useMemo(() => {
     if (!anchorDog) return [];
 
@@ -1868,6 +1896,19 @@ export default function BreedPageClient({
     setPlannerNotice(null);
   }
 
+  function chooseWorksheetEntryMode(nextMode: WorksheetEntryMode) {
+    if (nextMode === worksheetEntryMode) return;
+
+    clearWorksheetPairingState();
+    setSireSource("ALL");
+    setSireSort("RECOMMENDED");
+    setKennelRunId("");
+    setWorksheetSelectionMode(null);
+    setBreedCode2("");
+    setWorksheetEntryMode(nextMode);
+    synchronizeWorksheetBreedCode2("");
+  }
+
   function chooseBreed(nextBreedCode: string) {
     if (experience === "worksheet") {
       clearWorksheetPairingState();
@@ -1926,6 +1967,28 @@ export default function BreedPageClient({
         synchronizeWorksheetBreedCode2(nextDam.breedCode2);
       }
     }
+  }
+
+  function chooseSireFirst(nextSireId: string) {
+    setSuccessMessage("");
+    setPlannerNotice(null);
+
+    if (nextSireId !== sireId) {
+      setDamId("");
+      setShortlistedSireIds([]);
+      setTestDamBrucellosis(false);
+      setTestSireBrucellosis(false);
+    }
+
+    setSireId(nextSireId);
+  }
+
+  function chooseSireFirstDam(nextDamId: string) {
+    setSuccessMessage("");
+    setPlannerNotice(null);
+    setDamId(nextDamId);
+    setTestDamBrucellosis(false);
+    setTestSireBrucellosis(false);
   }
 
   function toggleShortlist(sireIdToToggle: string) {
@@ -2140,7 +2203,38 @@ export default function BreedPageClient({
         </div>
       ) : null}
 
-      <section className="theme-panel relative overflow-hidden rounded-[28px] p-6">
+      {experience === "worksheet" ? (
+        <section className="theme-panel rounded-[28px] p-5" aria-label="Litter planning entry mode">
+          <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
+            Start planning
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3" role="radiogroup" aria-label="First parent">
+            {([
+              ["DAM_FIRST", "Start with a Dam"],
+              ["SIRE_FIRST", "Start with a Sire"],
+            ] as const).map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={worksheetEntryMode === mode}
+                onClick={() => chooseWorksheetEntryMode(mode)}
+                className={`rounded-xl border px-4 py-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-sky-300/50 ${
+                  worksheetEntryMode === mode
+                    ? "border-sky-300/50 bg-sky-500/20 text-sky-100"
+                    : "theme-secondary-button"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {!isSireFirstWorksheet ? (
+        <>
+          <section className="theme-panel relative mt-6 overflow-hidden rounded-[28px] p-6">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-100 to-transparent" />
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -2319,30 +2413,97 @@ export default function BreedPageClient({
           </section>
 
           <Shortlist dam={selectedDam} sires={shortlistedSires} pedigree={pedigree} />
-
-          {selectedDam && selectedSire ? (
-            <PairingAnalysis
-              kennelBalance={kennelBalance}
-              currentEpoch={currentEpoch}
-              dam={selectedDam}
-              sire={selectedSire}
-              pedigree={pedigree}
-              testDamBrucellosis={testDamBrucellosis}
-              testSireBrucellosis={testSireBrucellosis}
-              onTestDamBrucellosisChange={setTestDamBrucellosis}
-              onTestSireBrucellosisChange={setTestSireBrucellosis}
-              submitting={submitting}
-              redirecting={redirecting}
-              errorMessage={errorMessage}
-              successMessage={successMessage}
-              onSubmit={handleSubmit}
-            />
-          ) : (
-            <div className="theme-card theme-copy mt-6 rounded-2xl p-5 text-sm">
-              Select a dam and sire to unlock the full pairing preview.
-            </div>
-          )}
         </>
+      ) : (
+        <section className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="theme-panel rounded-[28px] p-5">
+            <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
+              Step 1
+            </p>
+            <h2 className="theme-heading mt-2 text-xl font-semibold">Choose Sire</h2>
+            <p className="theme-copy mt-2 text-sm">
+              Your kennel&apos;s eligible male dogs.
+            </p>
+            <div className="mt-5 space-y-3">
+              {ownedSires.length > 0 ? (
+                ownedSires.map((dog) => (
+                  <DogOptionCard
+                    key={dog.id}
+                    dog={dog}
+                    currentEpoch={currentEpoch}
+                    selected={dog.id === sireId}
+                    onSelect={() => chooseSireFirst(dog.id)}
+                  />
+                ))
+              ) : (
+                <div className="theme-card theme-copy rounded-xl p-4 text-sm">
+                  There are no eligible sires in your kennel.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="theme-panel rounded-[28px] p-5">
+            <p className="theme-label text-xs font-semibold uppercase tracking-[0.18em]">
+              Step 2
+            </p>
+            <h2 className="theme-heading mt-2 text-xl font-semibold">Choose Dam</h2>
+            {selectedSire ? (
+              <>
+                <p className="theme-copy mt-2 text-sm">
+                  Your kennel&apos;s eligible females of the same breed as the selected sire.
+                </p>
+                <div className="mt-5 space-y-3">
+                  {sireFirstDams.length > 0 ? (
+                    sireFirstDams.map((dog) => (
+                      <DogOptionCard
+                        key={dog.id}
+                        dog={dog}
+                        currentEpoch={currentEpoch}
+                        selected={dog.id === damId}
+                        pedigree={pedigree}
+                        onSelect={() => chooseSireFirstDam(dog.id)}
+                      />
+                    ))
+                  ) : (
+                    <div className="theme-card theme-copy rounded-xl p-4 text-sm">
+                      No eligible dams of this breed are currently in your kennel.
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="theme-card theme-copy mt-5 rounded-xl p-4 text-sm">
+                Select an eligible sire first to view your kennel&apos;s same-breed dams.
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {shouldShowPairingState ? (
+        selectedDam && selectedSire ? (
+          <PairingAnalysis
+            kennelBalance={kennelBalance}
+            currentEpoch={currentEpoch}
+            dam={selectedDam}
+            sire={selectedSire}
+            pedigree={pedigree}
+            testDamBrucellosis={testDamBrucellosis}
+            testSireBrucellosis={testSireBrucellosis}
+            onTestDamBrucellosisChange={setTestDamBrucellosis}
+            onTestSireBrucellosisChange={setTestSireBrucellosis}
+            submitting={submitting}
+            redirecting={redirecting}
+            errorMessage={errorMessage}
+            successMessage={successMessage}
+            onSubmit={handleSubmit}
+          />
+        ) : (
+          <div className="theme-card theme-copy mt-6 rounded-2xl p-5 text-sm">
+            Select a dam and sire to unlock the full pairing preview.
+          </div>
+        )
       ) : null}
 
       <div className="mt-6 text-xs text-purple-100/50">
