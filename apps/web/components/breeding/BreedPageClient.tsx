@@ -2414,6 +2414,8 @@ export default function BreedPageClient({
 
           <Shortlist dam={selectedDam} sires={shortlistedSires} pedigree={pedigree} />
         </>
+      ) : null}
+        </>
       ) : (
         <section className="mt-6 grid gap-6 lg:grid-cols-2">
           <div className="theme-panel rounded-[28px] p-5">
