@@ -2434,6 +2434,7 @@ export default function BreedPageClient({
                     dog={dog}
                     currentEpoch={currentEpoch}
                     selected={dog.id === sireId}
+                    pedigree={pedigree}
                     onSelect={() => chooseSireFirst(dog.id)}
                   />
                 ))
