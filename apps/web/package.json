@@ -90,6 +90,7 @@
     "test:judging-automatic-absence": "tsx scripts/testJudgingAutomaticAbsence.ts",
     "test:show-entry-absence-reasons": "tsx scripts/testShowEntryAbsenceReasons.ts",
     "test:show-entry-maintenance": "tsx scripts/testShowEntryMaintenance.ts",
+    "diagnose:my-results-show-entry-query": "tsx scripts/diagnoseMyResultsShowEntryQuery.ts",
     "test:start-up-guide": "tsx scripts/testStartUpGuide.ts",
     "test:grand-champion-credits": "tsx scripts/testGrandChampionCredits.ts",
     "test:ribbon-room-read-model": "tsx scripts/testRibbonRoomReadModel.ts",
