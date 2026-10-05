@@ -41,6 +41,8 @@ function main() {
   assert.match(source, /getFoundationInventoryCreateCount[\s\S]*targetInventory - args\.state\.currentCount/, "minimum replacement count still includes the total inventory deficit");
   assert.match(source, /countUnsoldFoundationFemalesByBreed\(args\.breedCode2, args\.tx\)/, "female count shares the authoritative transaction client");
   assert.match(source, /countUnsoldFoundationMalesByBreed\(args\.breedCode2, args\.tx\)/, "male count shares the authoritative transaction client");
+  assert.match(ensureSource, /console\.warn\("foundation-inventory-maintenance-transient-deficit", \{[\s\S]*currentCount:[\s\S]*currentFemaleCount:[\s\S]*currentMaleCount:[\s\S]*targetInventory,[\s\S]*createdCount,[\s\S]*finalCount,[\s\S]*finalFemaleCount,[\s\S]*finalMaleCount,/, "transient inventory deficits retain their count and target diagnostics at warning level");
+  assert.doesNotMatch(ensureSource, /foundation-inventory-maintenance-incomplete|console\.error\("foundation-inventory-maintenance-transient-deficit"/, "transient inventory deficits are not logged as maintenance failures");
   assert.doesNotMatch(source, /new Map\(|new Mutex|setTimeout\(/, "no in-memory lock or timing workaround was added");
   assert.match(source, /const FOUNDATION_DENSE_TARGET = 2/, "dense target remains 2");
   assert.match(source, /const FOUNDATION_THIN_TARGET = 4/, "thin target remains 4");

@@ -1146,7 +1146,7 @@ export async function ensureFoundationInventoryForBreed(args: {
         finalFemaleCount < FOUNDATION_MIN_ACTIVE_FEMALES ||
         finalMaleCount < FOUNDATION_MIN_ACTIVE_MALES
       ) {
-        console.error("foundation-inventory-maintenance-incomplete", {
+        console.warn("foundation-inventory-maintenance-transient-deficit", {
           breedCode2,
           currentCount: initialState.currentCount,
           currentFemaleCount: initialState.currentFemaleCount,
