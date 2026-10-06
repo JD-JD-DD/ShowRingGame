@@ -110,6 +110,31 @@ assertIncludes(
 );
 assertIncludes(
   showEntryService,
+  'console.info("bulk-show-entry-performance"',
+  "bulk entry emits one aggregate success performance event"
+);
+assertIncludes(
+  showEntryService,
+  "phaseElapsedMs,",
+  "bulk entry includes accumulated phase timings in success and failure logs"
+);
+assertIncludes(
+  showEntryService,
+  "requiredJudgingBlockCount",
+  "bulk entry records aggregate judging-block cardinality without logging block identifiers"
+);
+assertIncludes(
+  showEntryService,
+  "handlerReattributionCount",
+  "bulk entry records aggregate handler reattribution cardinality"
+);
+assertIncludes(
+  showEntryService,
+  "}, { timeout: BULK_SHOW_ENTRY_TRANSACTION_TIMEOUT_MS }).then((result) =>",
+  "success instrumentation runs only after the existing transaction resolves"
+);
+assertIncludes(
+  showEntryService,
   "const BULK_SHOW_ENTRY_TRANSACTION_TIMEOUT_MS = 15_000;",
   "bulk entry declares its localized fifteen-second transaction timeout"
 );

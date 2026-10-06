@@ -163,6 +163,20 @@ type BulkShowEntryTransactionPhase =
   | "COMMIT"
   | "UNKNOWN";
 
+type BulkShowEntryPerformancePhase =
+  | "loadCurrentContext"
+  | "loadExistingEntries"
+  | "weekendConflictAndEmergencyRevalidation"
+  | "eligibilityValidationPreparation"
+  | "affordabilityAndWeekendPlanPreparation"
+  | "handlerPlanLoadingAndCalculation"
+  | "handlerReattributionWrites"
+  | "judgingBlockPrerequisiteReads"
+  | "judgingBlockReconciliationWrites"
+  | "balanceAndWeekendPlanWrites"
+  | "createEntries"
+  | "ledgerWrites";
+
 function getBulkShowEntryPrismaErrorDetails(error: unknown): {
   errorClass: string;
   prismaCode: string | null;
@@ -2258,6 +2272,39 @@ export async function createShowEntriesForCluster(args: {
   const dogIds = [...new Set(selections.map((selection) => selection.dogId))];
   let phase: BulkShowEntryTransactionPhase = "VALIDATE_REQUEST";
   let transactionStartedAt: number | null = null;
+  const phaseElapsedMs: Partial<Record<BulkShowEntryPerformancePhase, number>> = {};
+  let activePerformancePhase: BulkShowEntryPerformancePhase | null = null;
+  let activePerformancePhaseStartedAt: number | null = null;
+  let measuredBreedCount: number | null = scope.type === "BREED" ? 1 : null;
+  let existingEntryRowsReturned = 0;
+  let handlerEntryRowsReturned = 0;
+  let requiredJudgingBlockCount = 0;
+  let existingJudgingBlockCount = 0;
+  let judgingBlockCreateCount = 0;
+  let judgingBlockUpdateCount = 0;
+  let handlerReattributionCount = 0;
+  let entriesCreated = 0;
+  let ledgerRowsCreated = 0;
+
+  const beginPerformancePhase = (nextPhase: BulkShowEntryPerformancePhase) => {
+    const now = Date.now();
+    if (activePerformancePhase && activePerformancePhaseStartedAt != null) {
+      phaseElapsedMs[activePerformancePhase] =
+        (phaseElapsedMs[activePerformancePhase] ?? 0) + now - activePerformancePhaseStartedAt;
+    }
+    activePerformancePhase = nextPhase;
+    activePerformancePhaseStartedAt = now;
+  };
+
+  const finishPerformancePhase = () => {
+    if (!activePerformancePhase || activePerformancePhaseStartedAt == null) {
+      return;
+    }
+    phaseElapsedMs[activePerformancePhase] =
+      (phaseElapsedMs[activePerformancePhase] ?? 0) + Date.now() - activePerformancePhaseStartedAt;
+    activePerformancePhase = null;
+    activePerformancePhaseStartedAt = null;
+  };
 
   try {
   if (scope.type === "BREED" && !scope.breedCode2) {
@@ -2307,6 +2354,7 @@ export async function createShowEntriesForCluster(args: {
 
     transactionStartedAt = Date.now();
     return await db.$transaction(async (tx) => {
+    beginPerformancePhase("loadCurrentContext");
     phase = "LOAD_CONTEXT";
     const cluster = await tx.showCluster.findUnique({
       where: { id: showId },
@@ -2436,7 +2484,9 @@ export async function createShowEntriesForCluster(args: {
     if (dogs.length !== dogIds.length) {
       throw new Error("One or more selected dogs could not be found.");
     }
+    measuredBreedCount = new Set(dogs.map((dog) => dog.breedCode2)).size;
 
+    beginPerformancePhase("loadExistingEntries");
     phase = "LOAD_EXISTING_ENTRIES";
     const existingEntries = await tx.showEntry.findMany({
       where: {
@@ -2448,6 +2498,7 @@ export async function createShowEntriesForCluster(args: {
         showDayId: true,
       },
     });
+    existingEntryRowsReturned = existingEntries.length;
     const existingEntryKeys = new Set(
       existingEntries.map((entry) => `${entry.dogId}:${entry.showDayId}`)
     );
@@ -2462,6 +2513,7 @@ export async function createShowEntriesForCluster(args: {
         breedCode2: true,
       },
     });
+    beginPerformancePhase("weekendConflictAndEmergencyRevalidation");
     const weekendConflictDogIds =
       mode === "ALL_ELIGIBLE"
         ? await getDogIdsWithSameWeekendEntries({
@@ -2501,6 +2553,7 @@ export async function createShowEntriesForCluster(args: {
       ).map((event) => event.dogId)
     );
 
+    beginPerformancePhase("eligibilityValidationPreparation");
     const validSelections: BulkShowEntrySelection[] = [];
     let skippedSelections = 0;
     const skippedSelectionReasonCounts = new Map<ShowEntryErrorCode, number>();
@@ -2637,6 +2690,7 @@ export async function createShowEntriesForCluster(args: {
       });
     }
 
+    beginPerformancePhase("affordabilityAndWeekendPlanPreparation");
     const quote = buildBulkEntryQuote({
       kennelBalance: kennel.balance,
       homeDistrict: kennel.homeDistrict ?? cluster.district,
@@ -2670,6 +2724,7 @@ export async function createShowEntriesForCluster(args: {
       });
     }
 
+    beginPerformancePhase("handlerPlanLoadingAndCalculation");
     phase = "BUILD_HANDLER_PLAN";
     const affectedHandlerGroupKeys = new Set<string>();
     const proposedDogIdsByHandlerGroupKey = new Map<string, Set<string>>();
@@ -2711,6 +2766,7 @@ export async function createShowEntriesForCluster(args: {
         },
       },
     });
+    handlerEntryRowsReturned = existingEntriesForHandlerAttribution.length;
     const existingEntriesByHandlerGroupKey = new Map<
       string,
       typeof existingEntriesForHandlerAttribution
@@ -2730,6 +2786,7 @@ export async function createShowEntriesForCluster(args: {
 
     const handlerUsedByDogIdByGroupKey = new Map<string, Map<string, boolean>>();
 
+    beginPerformancePhase("handlerReattributionWrites");
     phase = "REATTRIBUTE_HANDLERS";
     for (const groupKey of affectedHandlerGroupKeys) {
       const existingEntries = existingEntriesByHandlerGroupKey.get(groupKey) ?? [];
@@ -2769,9 +2826,11 @@ export async function createShowEntriesForCluster(args: {
           data: { handlerUsed },
           select: { id: true },
         });
+        handlerReattributionCount += 1;
       }
     }
 
+    beginPerformancePhase("judgingBlockPrerequisiteReads");
     phase = "ENSURE_JUDGING_BLOCKS";
     const blockIdByDayId = new Map<string, string>();
     const requiredBlockGroups = new Map<
@@ -2791,6 +2850,7 @@ export async function createShowEntriesForCluster(args: {
 
       requiredBlockGroups.set(blockKey, { showDay, breedCode2: dog.breedCode2 });
     }
+    requiredJudgingBlockCount = requiredBlockGroups.size;
 
     const requiredBreedCode2s = [
       ...new Set([...requiredBlockGroups.values()].map((group) => group.breedCode2)),
@@ -2869,6 +2929,7 @@ export async function createShowEntriesForCluster(args: {
         _count: { select: { showResults: true, showAwards: true } },
       },
     });
+    existingJudgingBlockCount = existingBlocks.length;
     const existingBlockByKey = new Map<string, ExistingBreedBlockForEntry>();
     for (const block of existingBlocks) {
       const blockKey = getSelectionBlockKey(block.showDayId, block.breedCode2);
@@ -2891,6 +2952,7 @@ export async function createShowEntriesForCluster(args: {
       );
     }
 
+    beginPerformancePhase("judgingBlockReconciliationWrites");
     for (const [blockKey, group] of requiredBlockGroups) {
       const groupCode = groupCodeByBreedCode2.get(group.breedCode2)!;
       const assignment = assignmentByShowDayAndGroupCode.get(
@@ -2919,10 +2981,17 @@ export async function createShowEntriesForCluster(args: {
       );
 
       if (!existingBlock) {
+        judgingBlockCreateCount += 1;
+      } else if (existingBlock.judgeId !== assignment.judgeId) {
+        judgingBlockUpdateCount += 1;
+      }
+
+      if (!existingBlock) {
         nextBlockOrderByShowDayId.set(group.showDay.id, nextBlockOrder + 1);
       }
     }
 
+    beginPerformancePhase("balanceAndWeekendPlanWrites");
     phase = "UPDATE_BALANCE";
     await tx.kennel.update({
       where: { id: kennel.id },
@@ -2942,8 +3011,9 @@ export async function createShowEntriesForCluster(args: {
       });
     }
 
+    beginPerformancePhase("createEntries");
     phase = "CREATE_ENTRIES";
-    await tx.showEntry
+    const createdEntries = await tx.showEntry
       .createMany({
         data: validSelections.map((selection) => {
           const dog = dogById.get(selection.dogId);
@@ -2982,7 +3052,9 @@ export async function createShowEntriesForCluster(args: {
 
         throw error;
       });
+    entriesCreated = createdEntries.count;
 
+    beginPerformancePhase("ledgerWrites");
     phase = "CREATE_LEDGER";
     const ledgerRows: Prisma.LedgerTransactionCreateManyInput[] = [];
     let runningBalance = kennel.balance;
@@ -3033,9 +3105,11 @@ export async function createShowEntriesForCluster(args: {
     }
 
     if (ledgerRows.length > 0) {
-      await tx.ledgerTransaction.createMany({ data: ledgerRows });
+      const createdLedgerRows = await tx.ledgerTransaction.createMany({ data: ledgerRows });
+      ledgerRowsCreated = createdLedgerRows.count;
     }
 
+    finishPerformancePhase();
     phase = "COMMIT";
     return {
       showId,
@@ -3054,8 +3128,36 @@ export async function createShowEntriesForCluster(args: {
         ...quote,
       },
     };
-    }, { timeout: BULK_SHOW_ENTRY_TRANSACTION_TIMEOUT_MS });
+    }, { timeout: BULK_SHOW_ENTRY_TRANSACTION_TIMEOUT_MS }).then((result) => {
+      console.info("bulk-show-entry-performance", {
+        showId,
+        kennelId,
+        scopeType: scope.type,
+        plannerMode: mode,
+        elapsedMs: Date.now() - requestStartedAt,
+        transactionElapsedMs:
+          transactionStartedAt == null ? null : Date.now() - transactionStartedAt,
+        transactionTimeoutMs: BULK_SHOW_ENTRY_TRANSACTION_TIMEOUT_MS,
+        requestedSelectionCount: selections.length,
+        requestedPairCount: selections.length,
+        uniqueDogCount: dogIds.length,
+        showDayCount: requestShowDayCount,
+        breedCount: measuredBreedCount,
+        existingEntryRowsReturned,
+        handlerEntryRowsReturned,
+        requiredJudgingBlockCount,
+        existingJudgingBlockCount,
+        judgingBlockCreateCount,
+        judgingBlockUpdateCount,
+        handlerReattributionCount,
+        entriesCreated,
+        ledgerRowsCreated,
+        phaseElapsedMs,
+      });
+      return result;
+    });
   } catch (error) {
+    finishPerformancePhase();
     const errorDetails = getBulkShowEntryPrismaErrorDetails(error);
     console.error("[bulk-show-entry-failed]", {
       showId,
@@ -3063,7 +3165,7 @@ export async function createShowEntriesForCluster(args: {
       requestedSelectionCount: selections.length,
       uniqueDogCount: dogIds.length,
       showDayCount: requestShowDayCount,
-      breedCount: scope.type === "BREED" ? 1 : null,
+      breedCount: measuredBreedCount,
       scopeType: scope.type,
       plannerMode: mode,
       phase,
@@ -3071,6 +3173,17 @@ export async function createShowEntriesForCluster(args: {
       transactionElapsedMs:
         transactionStartedAt == null ? null : Date.now() - transactionStartedAt,
       transactionTimeoutMs: BULK_SHOW_ENTRY_TRANSACTION_TIMEOUT_MS,
+      requestedPairCount: selections.length,
+      existingEntryRowsReturned,
+      handlerEntryRowsReturned,
+      requiredJudgingBlockCount,
+      existingJudgingBlockCount,
+      judgingBlockCreateCount,
+      judgingBlockUpdateCount,
+      handlerReattributionCount,
+      entriesCreated,
+      ledgerRowsCreated,
+      phaseElapsedMs,
       ...errorDetails,
     });
     throw error;
