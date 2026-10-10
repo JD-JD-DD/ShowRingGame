@@ -39,7 +39,7 @@ function context(geneticShape: GeneticShape, direction: PopulationDirection): Fo
 function run(name: string, populationContext: FoundationPopulationContextInput) {
   const counts = { neither: 0, hiddenOnly: 0, directionalOnly: 0, both: 0, repairRisk: 0, other: 0 };
   const bySelection = Array.from({ length: 3 }, () => ({ selected: 0, realized: 0, hidden: 0, directional: 0, both: 0, repairRisk: 0 }));
-  let directionalWithoutTargeting = 0, realized = 0, directional = 0, both = 0, emergency = 0;
+  let directionalWithoutTargeting = 0, realized = 0, directional = 0, both = 0;
   for (const seed of SEEDS) for (let index = 0; index < PER_SEED; index += 1) {
     const result = createFoundationDogProfile({ dogId: `${name}-${seed}-${index}`, regNumber: `DF${seed}${index}`.padEnd(11, "0"), breedCode2: "DF", birthEpoch: 1, callName: "Diagnostic", breedBaseline: { breedCode2: "DF", traitMeans: traits }, populationContext, random01: rng(seed * 1_000_003 + index) });
     const target = result.geneticsAnalysis.opportunityTargetCount, observed = result.geneticsAnalysis.observedOpportunityCount;
@@ -58,10 +58,9 @@ function run(name: string, populationContext: FoundationPopulationContextInput) 
     else if (visible) counts.directionalOnly += 1;
     else if (!genetic) counts.neither += 1;
     else counts.other += 1;
-    if (result.plausibilityDiagnostics.usedEmergencyFallback) emergency += 1;
   }
   const total = SEEDS.length * PER_SEED;
-  return { name, seeds: SEEDS, perSeed: PER_SEED, matrix: Object.fromEntries(Object.entries(counts).map(([key, value]) => [key, value / total])), selected: bySelection.map(value => value.selected / total), bySelection: bySelection.map(value => ({ selected: value.selected / total, realized: value.realized / Math.max(1, value.selected), hiddenGeneticDiamond: value.hidden / Math.max(1, value.selected), directionalDiamond: value.directional / Math.max(1, value.selected), both: value.both / Math.max(1, value.selected), repairRisk: value.repairRisk / Math.max(1, value.selected) })), realizedGeneticOpportunity: realized / total, directionalDiamond: directional / total, either: (counts.hiddenOnly + counts.directionalOnly + counts.both) / total, both: both / total, directionalWithoutTargeting: directionalWithoutTargeting / Math.max(1, bySelection[0]!.selected), emergencyFallbackRate: emergency / total };
+  return { name, seeds: SEEDS, perSeed: PER_SEED, matrix: Object.fromEntries(Object.entries(counts).map(([key, value]) => [key, value / total])), selected: bySelection.map(value => value.selected / total), bySelection: bySelection.map(value => ({ selected: value.selected / total, realized: value.realized / Math.max(1, value.selected), hiddenGeneticDiamond: value.hidden / Math.max(1, value.selected), directionalDiamond: value.directional / Math.max(1, value.selected), both: value.both / Math.max(1, value.selected), repairRisk: value.repairRisk / Math.max(1, value.selected) })), realizedGeneticOpportunity: realized / total, directionalDiamond: directional / total, either: (counts.hiddenOnly + counts.directionalOnly + counts.both) / total, both: both / total, directionalWithoutTargeting: directionalWithoutTargeting / Math.max(1, bySelection[0]!.selected) };
 }
 
 const above = context("HEALTHY", "ABOVE"), below = context("HEALTHY", "BELOW");
@@ -86,6 +85,6 @@ assert.equal(report("HEALTHY_BALANCED").directionalDiamond, 0, "balanced populat
 assert.ok(report("ABOVE_BOTTLENECK").directionalDiamond > 0 && report("BELOW_BOTTLENECK").directionalDiamond > 0, "opposite-side diamonds occur in directional bottlenecks");
 assert.ok(report("ONE_NEAR_FIXED").matrix.hiddenOnly > 0 && report("ONE_EFFECTIVELY_FIXED").matrix.hiddenOnly > 0, "ordinary phenotypes can retain realized hidden scarcity opportunities");
 assert.ok(report("COMBINED").matrix.directionalOnly > 0 && report("COMBINED").matrix.both > 0, "directional-only and combined diamonds both emerge without forcing coincidence");
-assert.ok(reports.every(value => value.emergencyFallbackRate < .001 && value.matrix.repairRisk <= .025), "plausibility and repair-risk safety remain intact");
+assert.ok(reports.every(value => value.matrix.repairRisk <= .025), "repair-risk calibration remains intact");
 const severalScarcity = report("SEVERAL_SCARCITY");
 assert.ok(severalScarcity.selected[0] >= .80 && severalScarcity.selected[0] <= .86 && severalScarcity.selected[1] >= .12 && severalScarcity.selected[1] <= .18 && severalScarcity.selected[2] >= .01 && severalScarcity.selected[2] <= .03, "contexts with at least two eligible loci retain the locked 83% / 15% / 2% selection budget");

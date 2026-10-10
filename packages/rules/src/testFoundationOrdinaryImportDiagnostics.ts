@@ -9,7 +9,6 @@ import {
   createResetFoundationPopulationContext,
   decodeGenotype,
   deriveVisibleCategoriesFromTraits,
-  isOrdinaryFoundationPhenotypePlausible,
   type CanonicalGenotype,
   type DogTraits,
   type FoundationPopulationContextInput,
@@ -39,7 +38,6 @@ function report(name: string, populationContext: FoundationPopulationContextInpu
   const categories = dogs.map(dog => Object.values(deriveVisibleCategoriesFromTraits(dog.dog.traits)).slice(0, 5));
   const center = populationContext.phenotypeContext.traits?.head?.center ?? 10;
   const binsByLocus = Array.from({ length: TOTAL_LOCI }, () => new Set<string>());
-  const attempts = dogs.map(dog => dog.plausibilityDiagnostics.candidateAttempts);
   const alleles = dogs.flatMap(dog => decodeGenotype(dog.dog.genotype!).loci.flatMap(pair => pair));
   dogs.forEach(dog => decodeGenotype(dog.dog.genotype!).loci.forEach((alleles, locus) => alleles.forEach(allele => binsByLocus[locus]!.add((Math.round(allele / .5) * .5).toFixed(1)))));
   return {
@@ -61,12 +59,6 @@ function report(name: string, populationContext: FoundationPopulationContextInpu
     meanAlleleBinsPerLocus: binsByLocus.reduce((sum, bins) => sum + bins.size, 0) / TOTAL_LOCI,
     alleleStandardDeviation: standardDeviation(alleles),
     genotypeAmbiguity: new Set(dogs.map(dog => dog.dog.genotype)).size > SAMPLE_SIZE * .99,
-    plausibility: {
-      firstAttemptAcceptance: attempts.filter(attempt => attempt === 1).length / dogs.length,
-      meanCandidateAttempts: attempts.reduce((sum, attempt) => sum + attempt, 0) / dogs.length,
-      retryCapHitRate: attempts.filter(attempt => attempt === 12).length / dogs.length,
-      emergencyFallbackRate: dogs.filter(dog => dog.plausibilityDiagnostics.usedEmergencyFallback).length / dogs.length,
-    },
   };
 }
 
@@ -86,19 +78,20 @@ const broad = report("BROAD", context({ center: 10, variance: 9, belowShare: .5,
 const refined = report("REFINED", context({ center: 10, variance: .25, belowShare: .5, aboveShare: .5 }));
 const fallback = report("FALLBACK", createResetFoundationPopulationContext());
 const priorReset = resetReference();
-const skewedAboveContext = context({ center: 11.2, variance: 1, belowShare: .15, aboveShare: .85 });
-const oppositeSideDiamond: DogTraits = { ...traits, gait: 7.8 };
-const populationRelativeOnly: DogTraits = { ...traits, head: 14.8, forequarters: 14.8, hindquarters: 14.8 };
-const twoExtremeTraits: DogTraits = { ...traits, head: 2, forequarters: 18 };
-const multiTraitExtreme: DogTraits = { head: 2, forequarters: 18, hindquarters: 2.4, gait: 19.6, coat: .8, size: 10, temperament: 10, show_shine: 10, feet: 10, topline: 10 };
-assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: oppositeSideDiamond, populationContext: skewedAboveContext }), true, "a single rare opposite-side trait remains plausible in an above-ideal population");
-assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: populationRelativeOnly, populationContext: context({ center: 10, variance: .25, belowShare: .5, aboveShare: .5 }) }), true, "population-relative departure alone does not reject a candidate");
-assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: twoExtremeTraits, populationContext: skewedAboveContext }), true, "two traits outside 3..17 remain acceptable");
-assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: multiTraitExtreme, populationContext: skewedAboveContext }), true, "mixed high/low profiles with more than two traits outside 5..15 remain acceptable");
+const narrowPopulationExtreme = createFoundationDogProfile({ dogId: "population-extreme", regNumber: "OIEXTREME00", breedCode2: "OI", birthEpoch: 1, callName: "Extreme", breedBaseline: { breedCode2: "OI", traitMeans: traits }, populationContext: context({ center: 10, variance: .25, belowShare: .5, aboveShare: .5 }), random01: () => .999999 });
+let mixedDraw = 0;
+const mixedExtreme = createFoundationDogProfile({ dogId: "mixed-extreme", regNumber: "OIMIXED0000", breedCode2: "OI", birthEpoch: 1, callName: "Mixed", breedBaseline: { breedCode2: "OI", traitMeans: traits }, populationContext: createResetFoundationPopulationContext(), random01: () => {
+  if (mixedDraw++ < 2) return .5;
+  const trait = Math.floor(Math.floor((mixedDraw - 3) / 6) / 8);
+  return trait < 4 ? (trait % 2 === 0 ? .999999 : .000001) : .5;
+} });
+assert.deepEqual(narrowPopulationExtreme.dog.traits, calculatePhenotypeFromGenotype(decodeGenotype(narrowPopulationExtreme.dog.genotype!)), "population-context generation persists genotype-derived traits");
+assert.ok(TRAIT_KEYS.every(trait => narrowPopulationExtreme.dog.traits[trait] > 17), "narrow population context does not reject an extreme generated phenotype");
+assert.deepEqual(mixedExtreme.dog.traits, calculatePhenotypeFromGenotype(decodeGenotype(mixedExtreme.dog.genotype!)), "mixed extreme traits remain genotype-derived");
+assert.ok(mixedExtreme.dog.traits.head > 17 && mixedExtreme.dog.traits.forequarters < 3 && mixedExtreme.dog.traits.hindquarters > 17 && mixedExtreme.dog.traits.gait < 3, "mixed high/low extreme generation is accepted");
 assert.ok(tightMature.twoOrMoreOutside5To15 < priorReset.twoOrMoreOutside5To15, "ordinary imports sharply reduce multi-trait extremes from reset founders");
 assert.ok(fallback.phenotypeClampRate < priorReset.clampRate, "no-context ordinary imports are safer than reset founders");
 assert.ok(skewedAbove.belowIdealShare > .05 && skewedBelow.aboveIdealShare > .05, "skewed populations retain the opposite directional side");
 assert.ok([tightMature, skewedAbove, skewedBelow, broad, refined, fallback].every(report => report.genotypeAmbiguity && report.meanAlleleBinsPerLocus > 10 && report.alleleStandardDeviation > .5), "accepted imports retain substantial hidden genotype diversity");
-assert.ok([tightMature, skewedAbove, skewedBelow, broad, refined, fallback].every(report => report.plausibility.emergencyFallbackRate < .001), "emergency fallback remains exceptional");
 assert.ok(broad.phenotype.head.standardDeviation >= refined.phenotype.head.standardDeviation, "broader population evidence permits at least as much ordinary import variation as refined evidence");
-console.log(JSON.stringify({ methodologyVersion: "gen-09e-foundation-plausibility-calibration-v1", sampleSize: SAMPLE_SIZE, calibration: { alleleSpread: 3.5, maxCandidateAttempts: 12, emergencyAlleleBound: .5 }, priorReset, tightMature, skewedAbove, skewedBelow, broad, refined, fallback }));
+console.log(JSON.stringify({ methodologyVersion: "gen-09e-foundation-generation-calibration-v1", sampleSize: SAMPLE_SIZE, calibration: { alleleSpread: 3.5 }, priorReset, tightMature, skewedAbove, skewedBelow, broad, refined, fallback }));

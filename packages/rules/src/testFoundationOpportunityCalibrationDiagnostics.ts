@@ -5,7 +5,6 @@ import {
   TRAIT_KEYS,
   createFoundationDogProfile,
   decodeGenotype,
-  isOrdinaryFoundationPhenotypePlausible,
   type DogTraits,
   type FoundationPopulationContextInput,
 } from "./index";
@@ -27,19 +26,13 @@ function context(shape: Shape, overrides: Partial<Record<number, Shape>> = {}): 
 
 function run(name: string, populationContext: FoundationPopulationContextInput) {
   const targets = [0, 0, 0], realized = [0, 0, 0, 0], realizedByTarget = Array.from({ length: 3 }, () => [0, 0, 0, 0]);
-  let targetedDogs = 0, targetedRealized = 0, plausible = 0, ordinaryOpportunityDogs = 0, conspicuousOpportunityDogs = 0, clampTraits = 0, traitTotal = 0;
+  let targetedDogs = 0, targetedRealized = 0, ordinaryOpportunityDogs = 0, conspicuousOpportunityDogs = 0, clampTraits = 0, traitTotal = 0;
   const alternativeBinCopies: number[] = [], alternativeCopiesByTarget = [0, 0, 0];
-  const firstAttemptByTarget = [0, 0, 0], attemptsByTarget = [0, 0, 0], retryCapByTarget = [0, 0, 0], emergencyByTarget = [0, 0, 0];
   for (const seed of SEEDS) for (let index = 0; index < PER_SEED; index += 1) {
     const result = createFoundationDogProfile({ dogId: `${name}-${seed}-${index}`, regNumber: `OD${seed}${index}`.padEnd(11, "0"), breedCode2: "OD", birthEpoch: 1, callName: "Diagnostic", breedBaseline: { breedCode2: "OD", traitMeans: traits }, populationContext, random01: rng(seed * 1_000_003 + index) });
     const target = result.geneticsAnalysis.opportunityTargetCount, observed = Math.min(3, result.geneticsAnalysis.observedOpportunityCount);
     targets[target] += 1; realized[observed] += 1; realizedByTarget[target]![observed] += 1;
-    attemptsByTarget[target] += result.plausibilityDiagnostics.candidateAttempts;
-    if (result.plausibilityDiagnostics.candidateAttempts === 1) firstAttemptByTarget[target] += 1;
-    if (result.plausibilityDiagnostics.candidateAttempts === 12) retryCapByTarget[target] += 1;
-    if (result.plausibilityDiagnostics.usedEmergencyFallback) emergencyByTarget[target] += 1;
     if (target > 0) { targetedDogs += 1; if (result.geneticsAnalysis.targetedOpportunityIdentities.some(targeted => result.geneticsAnalysis.observedOpportunityIdentities.some(observation => observation.locus === targeted.locus))) targetedRealized += 1; }
-    if (isOrdinaryFoundationPhenotypePlausible({ traits: result.dog.traits, populationContext })) plausible += 1;
     const outside = TRAIT_KEYS.filter(trait => result.dog.traits[trait] < 5 || result.dog.traits[trait] > 15).length;
     if (observed > 0 && outside < 2) ordinaryOpportunityDogs += 1;
     if (observed > 0 && (result.dog.traits.head < 5 || result.dog.traits.head > 15)) conspicuousOpportunityDogs += 1;
@@ -47,7 +40,7 @@ function run(name: string, populationContext: FoundationPopulationContextInput) 
     TRAIT_KEYS.forEach(trait => { traitTotal += 1; if (result.dog.traits[trait] <= 0 || result.dog.traits[trait] >= 20) clampTraits += 1; });
   }
   const total = SEEDS.length * PER_SEED;
-  return { name, seeds: SEEDS, perSeed: PER_SEED, selection: targets.map(value => value / total), realized: realized.map(value => value / total), realizedBySelection: realizedByTarget.map(values => values.map(value => value / total)), targetedRealization: targetedDogs === 0 ? 0 : targetedRealized / targetedDogs, zeroIncidental: realizedByTarget[0]!.slice(1).reduce((sum, value) => sum + value, 0) / Math.max(1, targets[0]), zeroThreePlus: realizedByTarget[0]![3] / Math.max(1, targets[0]), opportunityPhenotypicallyOrdinary: ordinaryOpportunityDogs / Math.max(1, realized.slice(1).reduce((sum, value) => sum + value, 0)), opportunityHeadConspicuous: conspicuousOpportunityDogs / Math.max(1, realized.slice(1).reduce((sum, value) => sum + value, 0)), plausibilityPass: plausible / total, clampRate: clampTraits / traitTotal, plausibilityBySelection: targets.map((count, target) => ({ firstAttemptAcceptance: firstAttemptByTarget[target]! / Math.max(1, count), meanCandidateAttempts: attemptsByTarget[target]! / Math.max(1, count), retryCapHitRate: retryCapByTarget[target]! / Math.max(1, count), emergencyFallbackRate: emergencyByTarget[target]! / Math.max(1, count) })), locus0AlternativeCopiesPerDog: alternativeBinCopies.reduce((sum, value) => sum + value, 0) / total, locus0AlternativeCopiesBySelection: alternativeCopiesByTarget.map((value, target) => value / Math.max(1, targets[target]!)) };
+  return { name, seeds: SEEDS, perSeed: PER_SEED, selection: targets.map(value => value / total), realized: realized.map(value => value / total), realizedBySelection: realizedByTarget.map(values => values.map(value => value / total)), targetedRealization: targetedDogs === 0 ? 0 : targetedRealized / targetedDogs, zeroIncidental: realizedByTarget[0]!.slice(1).reduce((sum, value) => sum + value, 0) / Math.max(1, targets[0]), zeroThreePlus: realizedByTarget[0]![3] / Math.max(1, targets[0]), opportunityPhenotypicallyOrdinary: ordinaryOpportunityDogs / Math.max(1, realized.slice(1).reduce((sum, value) => sum + value, 0)), opportunityHeadConspicuous: conspicuousOpportunityDogs / Math.max(1, realized.slice(1).reduce((sum, value) => sum + value, 0)), clampRate: clampTraits / traitTotal, locus0AlternativeCopiesPerDog: alternativeBinCopies.reduce((sum, value) => sum + value, 0) / total, locus0AlternativeCopiesBySelection: alternativeCopiesByTarget.map((value, target) => value / Math.max(1, targets[target]!)) };
 }
 
 const healthy: Shape = { components: [{ component: "-1.0", share: .25 }, { component: "-.5", share: .25 }, { component: ".5", share: .25 }, { component: "1.0", share: .25 }] };
@@ -61,7 +54,7 @@ const reports = [
   run("MULTIPLE_SCARCITY", context(nearFixed)),
   run("DIRECTIONALLY_SKEWED", context(healthy, { 0: { ...healthy, below: .85, above: .1 } })),
 ];
-assert.ok(reports.every(report => report.plausibilityPass === 1 && report.clampRate < .001), "all opportunity candidates retain GEN-09C phenotype plausibility with near-zero clamps");
+assert.ok(reports.every(report => report.clampRate < .001), "all opportunity candidates retain near-zero legal-trait clamps");
 assert.ok(reports.slice(1).every(report => report.selection[0]! >= .80 && report.selection[0]! <= .86 && report.selection[1]! >= .12 && report.selection[1]! <= .18 && report.selection[2]! >= .01 && report.selection[2]! <= .03), "eligible contexts retain the locked selection budget");
 assert.equal(reports[0]!.realized.slice(1).reduce((sum, value) => sum + value, 0), 0, "healthy context has no scarcity realization");
 assert.ok(reports[1]!.targetedRealization > reports[1]!.zeroIncidental * 2 && reports[3]!.targetedRealization > reports[3]!.zeroIncidental * 2, "selected single-locus scarcity bias materially exceeds incidental realization without becoming deterministic");

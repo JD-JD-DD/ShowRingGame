@@ -1,6 +1,5 @@
 import { TRAIT_KEYS, type TraitKey } from "../constants/genetics.constants";
 import {
-  isOrdinaryFoundationPhenotypePlausible,
   type FoundationPopulationContextInput,
 } from "../engines/foundationDog.engine";
 import type { DogTraits } from "../engines/dog.engine";
@@ -31,14 +30,13 @@ export function isOrdinaryFoundationPhenotypeDiagnostic(input: {
   traits: DogTraits;
   populationContext: FoundationPopulationContextInput;
 }): boolean {
-  return isOrdinaryFoundationPhenotypePlausible(input) && TRAIT_KEYS.filter(trait => input.traits[trait] < 5 || input.traits[trait] > 15).length < 2;
+  return TRAIT_KEYS.filter(trait => input.traits[trait] < 5 || input.traits[trait] > 15).length < 2;
 }
 
 export function isDirectionalPhenotypeDiamondDiagnostic(input: {
   traits: DogTraits;
   populationContext: FoundationPopulationContextInput;
 }): boolean {
-  if (!isOrdinaryFoundationPhenotypePlausible(input)) return false;
   const qualifying = TRAIT_KEYS.filter(trait => isDirectionalTraitDiagnostic(input, trait));
   if (qualifying.length !== 1) return false;
   return TRAIT_KEYS.filter(trait => trait !== qualifying[0]).every(trait => {

@@ -173,8 +173,6 @@ type OpportunityCandidate = FoundationOpportunityIdentity & { direction: -1 | 0 
 /** GEN-09C ordinary-import calibration; deliberately separate from GEN-06E reset founders. */
 export const ORDINARY_IMPORT_CALIBRATION = {
   ALLELE_SPREAD: 3.5,
-  MAX_CANDIDATE_ATTEMPTS: 12,
-  EMERGENCY_ALLELE_BOUND: 0.5,
 } as const;
 
 function contextLoci(context: FoundationPopulationContextInput | undefined): FoundationLocusDiversityContext[] {
@@ -198,11 +196,6 @@ function contextTraitEvidence(context: FoundationPopulationContextInput | undefi
   return Number.isFinite(evidence.belowShare) && Number.isFinite(evidence.aboveShare) && Number.isFinite(evidence.nearIdealShare)
     ? { belowShare: evidence.belowShare!, aboveShare: evidence.aboveShare!, nearIdealShare: evidence.nearIdealShare! }
     : null;
-}
-
-/** Valid genotype-derived traits have no post-generation phenotype moderation gate. */
-export function isOrdinaryFoundationPhenotypePlausible(_input: { traits: DogTraits; populationContext?: FoundationPopulationContextInput }): boolean {
-  return true;
 }
 
 function traitForLocus(locus: number): TraitKey {
@@ -270,11 +263,6 @@ export type FoundationDogEngineResult = {
   suggestedPrice: number;
   /** Internal/test-only GEN-09C observability; production persistence discards it. */
   geneticsAnalysis: FoundationGeneticsAnalysis;
-  /** Internal/test-only GEN-09E observability; production persistence discards it. */
-  plausibilityDiagnostics: {
-    candidateAttempts: number;
-    usedEmergencyFallback: boolean;
-  };
 };
 
 const FOUNDATION_STANDARD_WEIGHT = 0.60;
@@ -803,27 +791,8 @@ export function createFoundationDogProfile(
     return [populationAllele(), populationAllele()];
   };
   const ordinaryCandidate = (): CanonicalGenotype => ({ geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: TOTAL_LOCI }, (_, locus) => populationAlleles(locus)) });
-  let genotype = ordinaryCandidate();
-  let traits = calculatePhenotypeFromGenotype(genotype);
-  let candidateAttempts = 1;
-  let usedEmergencyFallback = false;
-  const needsOrdinaryPlausibilityRetry = true;
-  for (let attempt = 1; needsOrdinaryPlausibilityRetry && attempt < ORDINARY_IMPORT_CALIBRATION.MAX_CANDIDATE_ATTEMPTS && !isOrdinaryFoundationPhenotypePlausible({ traits }); attempt += 1) {
-    genotype = ordinaryCandidate();
-    traits = calculatePhenotypeFromGenotype(genotype);
-    candidateAttempts += 1;
-  }
-  if (needsOrdinaryPlausibilityRetry && !isOrdinaryFoundationPhenotypePlausible({ traits })) {
-    usedEmergencyFallback = true;
-    genotype = {
-      geneticsVersion: CURRENT_GENETICS_VERSION,
-      loci: Array.from({ length: TOTAL_LOCI }, () => [
-        Math.round((random01() * 2 - 1) * ORDINARY_IMPORT_CALIBRATION.EMERGENCY_ALLELE_BOUND * 1_000_000) / 1_000_000,
-        Math.round((random01() * 2 - 1) * ORDINARY_IMPORT_CALIBRATION.EMERGENCY_ALLELE_BOUND * 1_000_000) / 1_000_000,
-      ] as const),
-    };
-    traits = calculatePhenotypeFromGenotype(genotype);
-  }
+  const genotype = ordinaryCandidate();
+  const traits = calculatePhenotypeFromGenotype(genotype);
   const observedOpportunityIdentities = classifyFoundationOpportunities({ populationContext: input.populationContext, genotype });
   const visibleCategories = deriveVisibleCategoriesFromTraits(traits);
   const suggestedPrice = calculateSuggestedPrice(visibleCategories, qualityBand);
@@ -857,7 +826,6 @@ export function createFoundationDogProfile(
       observedOpportunityIdentities,
       observedOpportunityCount: observedOpportunityIdentities.length,
     },
-    plausibilityDiagnostics: { candidateAttempts, usedEmergencyFallback },
   };
 }
 
