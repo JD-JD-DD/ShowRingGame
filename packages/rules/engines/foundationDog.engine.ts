@@ -177,10 +177,6 @@ export const ORDINARY_IMPORT_CALIBRATION = {
   EMERGENCY_ALLELE_BOUND: 0.5,
   MAX_EXTREME_TRAITS: 1,
   MAX_BROAD_OUTLIER_TRAITS: 2,
-  MAX_RELATIVE_OUTLIER_TRAITS: 2,
-  MAX_MEAN_RELATIVE_DEPARTURE: 2.2,
-  RARE_DIRECTION_MAX_MULTIPLIER: 1.1,
-  OBSERVED_RANGE_GRACE_STANDARD_DEVIATIONS: 1,
 } as const;
 
 function contextLoci(context: FoundationPopulationContextInput | undefined): FoundationLocusDiversityContext[] {
@@ -206,34 +202,13 @@ function contextTraitEvidence(context: FoundationPopulationContextInput | undefi
     : null;
 }
 
-function contextTraitProfile(context: FoundationPopulationContextInput | undefined, trait: TraitKey): FoundationPhenotypeTraitContext | null {
-  const value = context?.phenotypeContext.traits?.[trait];
-  return context?.phenotypeContext.source.mode === "RESET_FALLBACK" || !value ? null : value;
-}
-
-/** GEN-09C profile-level check: contemporary evidence bounds plausibility but never supplies a phenotype target. */
+/** Ordinary imports retain absolute moderation without population-phenotype matching. */
 export function isOrdinaryFoundationPhenotypePlausible(input: { traits: DogTraits; populationContext?: FoundationPopulationContextInput }): boolean {
   const values = TRAIT_KEYS.map(trait => input.traits[trait]);
   const extremeTraits = values.filter(value => value < 3 || value > 17).length;
   const broadOutlierTraits = values.filter(value => value < 5 || value > 15).length;
-  if (extremeTraits > ORDINARY_IMPORT_CALIBRATION.MAX_EXTREME_TRAITS || broadOutlierTraits > ORDINARY_IMPORT_CALIBRATION.MAX_BROAD_OUTLIER_TRAITS) return false;
-  const relativeDepartures = TRAIT_KEYS.flatMap(trait => {
-    const profile = contextTraitProfile(input.populationContext, trait);
-    if (!profile) return [];
-    const scale = Math.max(1, Math.sqrt(profile.variance));
-    const value = input.traits[trait];
-    const below = value < 10;
-    const sideCenter = below ? profile.belowCenter ?? profile.center : value > 10 ? profile.aboveCenter ?? profile.center : profile.center;
-    const sideShare = below ? profile.belowShare : value > 10 ? profile.aboveShare : profile.nearIdealShare;
-    const rarityMultiplier = 1 + Math.max(0, .2 - sideShare) / .2 * (ORDINARY_IMPORT_CALIBRATION.RARE_DIRECTION_MAX_MULTIPLIER - 1);
-    const directionalDeparture = Math.abs(value - sideCenter) / scale * rarityMultiplier;
-    const beyondObservedRange = value < profile.min ? (profile.min - value) / scale : value > profile.max ? (value - profile.max) / scale : 0;
-    return [Math.max(directionalDeparture, Math.max(0, beyondObservedRange - ORDINARY_IMPORT_CALIBRATION.OBSERVED_RANGE_GRACE_STANDARD_DEVIATIONS))];
-  });
-  if (relativeDepartures.length === 0) return true;
-  const relativeOutliers = relativeDepartures.filter(value => value > 3.5).length;
-  const meanRelativeDeparture = average(relativeDepartures);
-  return relativeOutliers <= ORDINARY_IMPORT_CALIBRATION.MAX_RELATIVE_OUTLIER_TRAITS && meanRelativeDeparture <= ORDINARY_IMPORT_CALIBRATION.MAX_MEAN_RELATIVE_DEPARTURE;
+  return extremeTraits <= ORDINARY_IMPORT_CALIBRATION.MAX_EXTREME_TRAITS &&
+    broadOutlierTraits <= ORDINARY_IMPORT_CALIBRATION.MAX_BROAD_OUTLIER_TRAITS;
 }
 
 function traitForLocus(locus: number): TraitKey {
@@ -331,11 +306,6 @@ const PRICE_STEP = 75;
 
 function clampTrait(value: number): number {
   return Math.max(TRAIT_MIN, Math.min(TRAIT_MAX, Math.round(value)));
-}
-
-function average(values: readonly number[]): number {
-  if (values.length === 0) return 0;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 /**
@@ -844,12 +814,12 @@ export function createFoundationDogProfile(
   let candidateAttempts = 1;
   let usedEmergencyFallback = false;
   const needsOrdinaryPlausibilityRetry = true;
-  for (let attempt = 1; needsOrdinaryPlausibilityRetry && attempt < ORDINARY_IMPORT_CALIBRATION.MAX_CANDIDATE_ATTEMPTS && !isOrdinaryFoundationPhenotypePlausible({ traits, populationContext: input.populationContext }); attempt += 1) {
+  for (let attempt = 1; needsOrdinaryPlausibilityRetry && attempt < ORDINARY_IMPORT_CALIBRATION.MAX_CANDIDATE_ATTEMPTS && !isOrdinaryFoundationPhenotypePlausible({ traits }); attempt += 1) {
     genotype = ordinaryCandidate();
     traits = calculatePhenotypeFromGenotype(genotype);
     candidateAttempts += 1;
   }
-  if (needsOrdinaryPlausibilityRetry && !isOrdinaryFoundationPhenotypePlausible({ traits, populationContext: input.populationContext })) {
+  if (needsOrdinaryPlausibilityRetry && !isOrdinaryFoundationPhenotypePlausible({ traits })) {
     usedEmergencyFallback = true;
     genotype = {
       geneticsVersion: CURRENT_GENETICS_VERSION,

@@ -327,7 +327,7 @@ Foundation inventory helps a population recover options under concentration and 
 
 ### Locked Design
 
-Foundation generation preserves useful directional diversity around 10, hidden distinctiveness, relatedness options, and controlled scarcity. It must avoid both elite all-around repair dogs and useless junk. It follows contemporary population quality while lagging elite player stock.
+Foundation generation preserves useful directional diversity around 10, hidden distinctiveness, relatedness options, and controlled scarcity. It must avoid both elite all-around repair dogs and useless junk. Population context influences per-locus allele sampling and weak diversity/opportunity targeting; it must not use similarity to current population phenotype as a post-generation acceptance requirement. Genetically valid directional variation survives generation subject to the current absolute moderation rules. It follows contemporary population quality while lagging elite player stock.
 
 ### Rules
 

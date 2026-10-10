@@ -85,8 +85,10 @@ const fallback = report("FALLBACK", createResetFoundationPopulationContext());
 const priorReset = resetReference();
 const skewedAboveContext = context({ center: 11.2, variance: 1, belowShare: .15, aboveShare: .85 });
 const oppositeSideDiamond: DogTraits = { ...traits, gait: 7.8 };
+const populationRelativeOnly: DogTraits = { ...traits, head: 14.8, forequarters: 14.8, hindquarters: 14.8 };
 const multiTraitExtreme: DogTraits = { head: 2, forequarters: 18, hindquarters: 2.4, gait: 19.6, coat: .8, size: 10, temperament: 10, show_shine: 10, feet: 10, topline: 10 };
 assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: oppositeSideDiamond, populationContext: skewedAboveContext }), true, "a single rare opposite-side trait remains plausible in an above-ideal population");
+assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: populationRelativeOnly, populationContext: context({ center: 10, variance: .25, belowShare: .5, aboveShare: .5 }) }), true, "population-relative departure alone does not reject a candidate that passes absolute moderation");
 assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: multiTraitExtreme, populationContext: skewedAboveContext }), false, "multi-trait extreme profiles are rejected");
 assert.ok(tightMature.twoOrMoreOutside5To15 < priorReset.twoOrMoreOutside5To15, "ordinary imports sharply reduce multi-trait extremes from reset founders");
 assert.ok(fallback.phenotypeClampRate < priorReset.clampRate, "no-context ordinary imports are safer than reset founders");
@@ -94,4 +96,4 @@ assert.ok(skewedAbove.belowIdealShare > .05 && skewedBelow.aboveIdealShare > .05
 assert.ok([tightMature, skewedAbove, skewedBelow, broad, refined, fallback].every(report => report.genotypeAmbiguity && report.meanAlleleBinsPerLocus > 10 && report.alleleStandardDeviation > .5), "accepted imports retain substantial hidden genotype diversity");
 assert.ok([tightMature, skewedAbove, skewedBelow, broad, refined, fallback].every(report => report.plausibility.emergencyFallbackRate < .001), "emergency fallback remains exceptional");
 assert.ok(broad.phenotype.head.standardDeviation >= refined.phenotype.head.standardDeviation, "broader population evidence permits at least as much ordinary import variation as refined evidence");
-console.log(JSON.stringify({ methodologyVersion: "gen-09e-foundation-plausibility-calibration-v1", sampleSize: SAMPLE_SIZE, calibration: { alleleSpread: 3.5, maxCandidateAttempts: 12, emergencyAlleleBound: .5, rareDirectionMaxMultiplier: 1.1, observedRangeGraceStandardDeviations: 1 }, priorReset, tightMature, skewedAbove, skewedBelow, broad, refined, fallback }));
+console.log(JSON.stringify({ methodologyVersion: "gen-09e-foundation-plausibility-calibration-v1", sampleSize: SAMPLE_SIZE, calibration: { alleleSpread: 3.5, maxCandidateAttempts: 12, emergencyAlleleBound: .5 }, priorReset, tightMature, skewedAbove, skewedBelow, broad, refined, fallback }));
