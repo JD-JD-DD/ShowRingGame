@@ -51,15 +51,35 @@ function mapGeneticDiversityContext(source: FoundationContextSource, payload: un
   return { source, payloadVersion: typeof metrics.payloadVersion === "string" ? metrics.payloadVersion : null, componentBinWidth: isFiniteNumber(metrics.componentBinWidth) ? metrics.componentBinWidth : null, overallMeanHomozygosity: isFiniteNumber(metrics.overallMeanHomozygosity) ? metrics.overallMeanHomozygosity : null, fixedLocusCount: isFiniteNumber(metrics.fixedLocusCount) ? metrics.fixedLocusCount : null, nearFixedLocusCount: isFiniteNumber(metrics.nearFixedLocusCount) ? metrics.nearFixedLocusCount : null, loci: loci?.length ? loci : null };
 }
 
+export function resolveFoundationPopulationContextFromSnapshot(args: {
+  breedCode2: string;
+  snapshot: {
+    id: string;
+    gameYear: number;
+    snapshotEpoch: number;
+    backgroundRulesVersion: string;
+    sourceFingerprint: string;
+    usableDogCount: number;
+    kennelCount: number;
+    sourceStatus: string;
+    qualifiesForLiveUpdate: boolean;
+    phenotypeMetricsJson: unknown;
+    genotypeMetricsJson: unknown;
+  } | null;
+}): FoundationPopulationContext {
+  const snapshot = args.snapshot;
+  if (snapshot && isEnriched(snapshot.genotypeMetricsJson) && (snapshot.sourceStatus === "LIVE" ? snapshot.qualifiesForLiveUpdate && snapshot.usableDogCount >= 50 && snapshot.kennelCount >= 5 : snapshot.sourceStatus === "RETAINED_BASELINE")) {
+    const source: FoundationContextSource = { mode: snapshot.sourceStatus as "LIVE" | "RETAINED_BASELINE", snapshotId: snapshot.id, gameYear: snapshot.gameYear, snapshotEpoch: snapshot.snapshotEpoch, rulesVersion: snapshot.backgroundRulesVersion, sourceFingerprint: snapshot.sourceFingerprint, eligibleDogCount: snapshot.usableDogCount, kennelCount: snapshot.kennelCount };
+    return { breedCode2: args.breedCode2, phenotypeContext: mapPhenotypeContext(source, snapshot.phenotypeMetricsJson), geneticDiversityContext: mapGeneticDiversityContext(source, snapshot.genotypeMetricsJson), resetCalibration: FINAL_GENETICS_CALIBRATION };
+  }
+  return { breedCode2: args.breedCode2, ...createResetFoundationPopulationContext(), resetCalibration: FINAL_GENETICS_CALIBRATION };
+}
+
 
 /** Stable snapshot reader only; it never scans living dogs or alters generation. */
 export async function resolveFoundationPopulationContext(breedCode2: string): Promise<FoundationPopulationContext> {
   const snapshot = await db.breedGeneticBackgroundSnapshot.findFirst({ where: { breedCode2, geneticsVersion: CURRENT_GENETICS_VERSION, sourceStatus: { in: ["LIVE", "RETAINED_BASELINE"] } }, orderBy: [{ gameYear: "desc" }, { createdAt: "desc" }] });
-  if (snapshot && isEnriched(snapshot.genotypeMetricsJson) && (snapshot.sourceStatus === "LIVE" ? snapshot.qualifiesForLiveUpdate && snapshot.usableDogCount >= 50 && snapshot.kennelCount >= 5 : true)) {
-    const source: FoundationContextSource = { mode: snapshot.sourceStatus as "LIVE" | "RETAINED_BASELINE", snapshotId: snapshot.id, gameYear: snapshot.gameYear, snapshotEpoch: snapshot.snapshotEpoch, rulesVersion: snapshot.backgroundRulesVersion, sourceFingerprint: snapshot.sourceFingerprint, eligibleDogCount: snapshot.usableDogCount, kennelCount: snapshot.kennelCount };
-    return { breedCode2, phenotypeContext: mapPhenotypeContext(source, snapshot.phenotypeMetricsJson), geneticDiversityContext: mapGeneticDiversityContext(source, snapshot.genotypeMetricsJson), resetCalibration: FINAL_GENETICS_CALIBRATION };
-  }
-  return { breedCode2, ...createResetFoundationPopulationContext(), resetCalibration: FINAL_GENETICS_CALIBRATION };
+  return resolveFoundationPopulationContextFromSnapshot({ breedCode2, snapshot });
 }
 
 export const foundationPopulationContextMapping = { mapPhenotypeContext, mapGeneticDiversityContext };
