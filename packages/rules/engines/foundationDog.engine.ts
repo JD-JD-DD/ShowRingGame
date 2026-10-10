@@ -175,8 +175,6 @@ export const ORDINARY_IMPORT_CALIBRATION = {
   ALLELE_SPREAD: 3.5,
   MAX_CANDIDATE_ATTEMPTS: 12,
   EMERGENCY_ALLELE_BOUND: 0.5,
-  MAX_EXTREME_TRAITS: 1,
-  MAX_BROAD_OUTLIER_TRAITS: 2,
 } as const;
 
 function contextLoci(context: FoundationPopulationContextInput | undefined): FoundationLocusDiversityContext[] {
@@ -202,13 +200,9 @@ function contextTraitEvidence(context: FoundationPopulationContextInput | undefi
     : null;
 }
 
-/** Ordinary imports retain absolute moderation without population-phenotype matching. */
-export function isOrdinaryFoundationPhenotypePlausible(input: { traits: DogTraits; populationContext?: FoundationPopulationContextInput }): boolean {
-  const values = TRAIT_KEYS.map(trait => input.traits[trait]);
-  const extremeTraits = values.filter(value => value < 3 || value > 17).length;
-  const broadOutlierTraits = values.filter(value => value < 5 || value > 15).length;
-  return extremeTraits <= ORDINARY_IMPORT_CALIBRATION.MAX_EXTREME_TRAITS &&
-    broadOutlierTraits <= ORDINARY_IMPORT_CALIBRATION.MAX_BROAD_OUTLIER_TRAITS;
+/** Valid genotype-derived traits have no post-generation phenotype moderation gate. */
+export function isOrdinaryFoundationPhenotypePlausible(_input: { traits: DogTraits; populationContext?: FoundationPopulationContextInput }): boolean {
+  return true;
 }
 
 function traitForLocus(locus: number): TraitKey {

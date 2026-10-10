@@ -327,7 +327,7 @@ Foundation inventory helps a population recover options under concentration and 
 
 ### Locked Design
 
-Foundation generation preserves useful directional diversity around 10, hidden distinctiveness, relatedness options, and controlled scarcity. It must avoid both elite all-around repair dogs and useless junk. Population context influences per-locus allele sampling and weak diversity/opportunity targeting; it must not use similarity to current population phenotype as a post-generation acceptance requirement. Genetically valid directional variation survives generation subject to the current absolute moderation rules. It follows contemporary population quality while lagging elite player stock.
+Foundation generation preserves useful directional diversity around 10, hidden distinctiveness, relatedness options, and controlled scarcity. It must avoid both elite all-around repair dogs and useless junk through natural allele distributions and controlled scarcity, not post-generation phenotype moderation. Population context influences per-locus allele sampling and weak diversity/opportunity targeting; it must not use similarity to current population phenotype as a post-generation acceptance requirement. Rare directional, extreme, asymmetric, and other legal genotype-derived phenotypes survive generation; dogs are not rejected merely for multiple traits far from ideal 10. Allele sampling probability and hard genetic bounds control rarity, and the genotype/phenotype 0..20 trait range remains the legal boundary. It follows contemporary population quality while lagging elite player stock.
 
 ### Rules
 

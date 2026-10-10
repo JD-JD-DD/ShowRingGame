@@ -52,7 +52,10 @@ function report(name: string, populationContext: FoundationPopulationContextInpu
     phenotypeClampRate: allTraits.filter(value => value <= 0 || value >= 20).length / allTraits.length,
     anyBelow3: dogs.filter(dog => TRAIT_KEYS.some(trait => dog.dog.traits[trait] < 3)).length / dogs.length,
     anyAbove17: dogs.filter(dog => TRAIT_KEYS.some(trait => dog.dog.traits[trait] > 17)).length / dogs.length,
+    anyOutside3To17: dogs.filter(dog => TRAIT_KEYS.some(trait => dog.dog.traits[trait] < 3 || dog.dog.traits[trait] > 17)).length / dogs.length,
+    anyOutside5To15: dogs.filter(dog => TRAIT_KEYS.some(trait => dog.dog.traits[trait] < 5 || dog.dog.traits[trait] > 15)).length / dogs.length,
     twoOrMoreOutside5To15: dogs.filter(dog => TRAIT_KEYS.filter(trait => dog.dog.traits[trait] < 5 || dog.dog.traits[trait] > 15).length >= 2).length / dogs.length,
+    threeOrMoreOutside5To15: dogs.filter(dog => TRAIT_KEYS.filter(trait => dog.dog.traits[trait] < 5 || dog.dog.traits[trait] > 15).length >= 3).length / dogs.length,
     visibleCategories: Object.fromEntries(["typeExpression", "structureBalance", "movement", "coatPresentation", "temperamentRingBehavior"].map((category, index) => [category, summary(categories.map(values => values[index]!))])),
     multipleExtremeVisibleCategories: categories.filter(values => values.filter(value => value < 5 || value > 15).length >= 2).length / dogs.length,
     meanAlleleBinsPerLocus: binsByLocus.reduce((sum, bins) => sum + bins.size, 0) / TOTAL_LOCI,
@@ -86,10 +89,12 @@ const priorReset = resetReference();
 const skewedAboveContext = context({ center: 11.2, variance: 1, belowShare: .15, aboveShare: .85 });
 const oppositeSideDiamond: DogTraits = { ...traits, gait: 7.8 };
 const populationRelativeOnly: DogTraits = { ...traits, head: 14.8, forequarters: 14.8, hindquarters: 14.8 };
+const twoExtremeTraits: DogTraits = { ...traits, head: 2, forequarters: 18 };
 const multiTraitExtreme: DogTraits = { head: 2, forequarters: 18, hindquarters: 2.4, gait: 19.6, coat: .8, size: 10, temperament: 10, show_shine: 10, feet: 10, topline: 10 };
 assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: oppositeSideDiamond, populationContext: skewedAboveContext }), true, "a single rare opposite-side trait remains plausible in an above-ideal population");
-assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: populationRelativeOnly, populationContext: context({ center: 10, variance: .25, belowShare: .5, aboveShare: .5 }) }), true, "population-relative departure alone does not reject a candidate that passes absolute moderation");
-assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: multiTraitExtreme, populationContext: skewedAboveContext }), false, "multi-trait extreme profiles are rejected");
+assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: populationRelativeOnly, populationContext: context({ center: 10, variance: .25, belowShare: .5, aboveShare: .5 }) }), true, "population-relative departure alone does not reject a candidate");
+assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: twoExtremeTraits, populationContext: skewedAboveContext }), true, "two traits outside 3..17 remain acceptable");
+assert.equal(isOrdinaryFoundationPhenotypePlausible({ traits: multiTraitExtreme, populationContext: skewedAboveContext }), true, "mixed high/low profiles with more than two traits outside 5..15 remain acceptable");
 assert.ok(tightMature.twoOrMoreOutside5To15 < priorReset.twoOrMoreOutside5To15, "ordinary imports sharply reduce multi-trait extremes from reset founders");
 assert.ok(fallback.phenotypeClampRate < priorReset.clampRate, "no-context ordinary imports are safer than reset founders");
 assert.ok(skewedAbove.belowIdealShare > .05 && skewedBelow.aboveIdealShare > .05, "skewed populations retain the opposite directional side");
