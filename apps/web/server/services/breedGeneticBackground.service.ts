@@ -26,18 +26,33 @@ export function alleleComponentBin(allele: number): string { return (Math.round(
 function weightedQuantile(values: number[], weights: number[], quantile: number) { const ordered=values.map((value,index)=>({value,weight:weights[index]})).sort((a,b)=>a.value-b.value); let total=0; for(const item of ordered){total+=item.weight;if(total>=quantile)return item.value;} return ordered.at(-1)!.value; }
 function componentMetrics(values: number[], weights: number[]) { const bins=new Map<string,number>(); values.forEach((value,index)=>{const bin=alleleComponentBin(value);bins.set(bin,(bins.get(bin)??0)+weights[index]);}); const components=[...bins.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([component,share])=>({component,share})); const dominantShare=Math.max(...components.map(c=>c.share)); const effectiveComponentCount=1/components.reduce((sum,c)=>sum+c.share*c.share,0); return { components, dominantShare, representedComponentCount:components.length, effectiveComponentCount, classification: dominantShare>=EFFECTIVELY_FIXED_COMPONENT_SHARE?"EFFECTIVELY_FIXED":dominantShare>=NEAR_FIXED_COMPONENT_SHARE?"NEAR_FIXED":"DIVERSE" }; }
 
-export async function createBreedGeneticBackgroundSnapshots(args: { gameYear: number; snapshotEpoch: number }) {
+export async function createBreedGeneticBackgroundSnapshots(args: {
+  gameYear: number;
+  snapshotEpoch: number;
+  /** Scheduled retries preserve completed annual truth; the manual path verifies it. */
+  existingSnapshot?: "VERIFY_SOURCE" | "SKIP";
+}) {
   const breeds = await db.breed.findMany({ where: { isActive: true, releaseVersion: { lte: CURRENT_BREED_RELEASE } }, orderBy: { code2: "asc" }, select: { code2: true } });
   const reports = [];
   for (const breed of breeds) {
     const existing = await db.breedGeneticBackgroundSnapshot.findUnique({ where: { breedCode2_gameYear_backgroundRulesVersion: { breedCode2: breed.code2, gameYear: args.gameYear, backgroundRulesVersion: BREED_BACKGROUND_RULES_VERSION } } });
+    if (existing && args.existingSnapshot === "SKIP") {
+      reports.push({ breedCode2: breed.code2, status: "EXISTING" });
+      continue;
+    }
     const rows = await db.dog.findMany({ where: { breedCode2: breed.code2, lifecycleState: "ALIVE", originType: "PLAYER_BRED", isFoundation: false, ownerKennelId: { not: null } }, orderBy: [{ ownerKennelId: "asc" }, { litterId: "asc" }, { id: "asc" }], select: { id:true, ownerKennelId:true, litterId:true, sex:true, birthEpoch:true, genotype:true, geneticsVersion:true, traitHead:true, traitForequarters:true, traitHindquarters:true, traitGait:true, traitCoat:true, traitSize:true, traitTemperament:true, traitShowShine:true, traitFeet:true, traitTopline:true } });
     const eligible = rows.filter(row => isBreedBackgroundReferenceDog(row, args.snapshotEpoch));
     const usable: Array<Candidate & { decoded: ReturnType<typeof decodeGenotype> }> = []; let invalidGenotype = 0;
     for (const row of eligible) { try { if (row.geneticsVersion !== CURRENT_GENETICS_VERSION || !row.genotype) throw new Error(); usable.push({ ...row, decoded: decodeGenotype(row.genotype) }); } catch { invalidGenotype += 1; } }
     const kennels = new Set(usable.map(d=>d.ownerKennelId!)); const cohorts = usable.map(d=>d.litterId ?? `root:${d.id}`); const qualifies = usable.length >= MIN_DOGS && kennels.size >= MIN_KENNELS;
     const fingerprint = hash(JSON.stringify(usable.map(d=>[d.id,d.ownerKennelId,d.litterId,d.genotype,TRAIT_KEYS.map(t=>toRulesDogTraits(d)[t])] )));
-    if (existing) { if (existing.sourceFingerprint !== fingerprint) throw new Error(`GEN-05 source conflict for ${breed.code2} year ${args.gameYear}.`); reports.push({ breedCode2: breed.code2, status: "EXISTING" }); continue; }
+    if (existing) {
+      if (existing.sourceFingerprint !== fingerprint) {
+        throw new Error(`GEN-05 source conflict for ${breed.code2} year ${args.gameYear}.`);
+      }
+      reports.push({ breedCode2: breed.code2, status: "EXISTING" });
+      continue;
+    }
     const prior = await db.breedGeneticBackgroundSnapshot.findFirst({ where: { breedCode2: breed.code2 }, orderBy: [{ gameYear:"desc" }, { createdAt:"desc" }] });
     const kennelGroups = usable.map(d=>d.ownerKennelId!); const cohortGroups = cohorts;
     const kennelSizes = new Map<string,number>(); kennelGroups.forEach(k=>kennelSizes.set(k,(kennelSizes.get(k)??0)+1));

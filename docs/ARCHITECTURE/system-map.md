@@ -110,12 +110,13 @@ The active schema is `apps/web/prisma/schema.prisma`; migrations are under `apps
 
 ## 12. Scheduled and Background Work
 
-Scheduling is route-driven and Vercel Cron is visibly configured in `apps/web/vercel.json`. Configured paths include mortality resolution, show-block judging, show-result finalization, breeding progression, stud-contract lifecycle processing, art-payment reconciliation and replay, emergency-vet processing, and show-schedule maintenance. Handlers use cron/job authorization checks and call services where traceable.
+Scheduling is route-driven and Vercel Cron is visibly configured in `apps/web/vercel.json`. Configured paths include mortality resolution, show-block judging, show-result finalization, annual breed-genetic-background maintenance, breeding progression, stud-contract lifecycle processing, art-payment reconciliation and replay, emergency-vet processing, and show-schedule maintenance. Handlers use cron/job authorization checks and call services where traceable.
 
 | Entry family | Broad purpose | Readily visible service path |
 | --- | --- | --- |
 | `api/cron/resolve-dog-mortality` | due mortality progression | `lifecycle.service` |
 | `api/cron/judge-show-blocks`, `finalize-show-results` | judging and publication/finalization | `showJudgingJob.service`, `publishShowResultsJob.service` |
+| `api/cron/maintain-breed-genetic-background` | completed-Invitational annual genetic-background snapshots | `breedGeneticBackgroundProgression.service` → `breedGeneticBackground.service` |
 | `api/cron/resolve-breeding-progress` | due breeding resolution | `breeding.service` |
 | `api/cron/process-stud-contract-lifecycle` | contract deadlines/transfers/reconciliation | `studContractLifecycle.service` |
 | `api/cron/reconcile-art-payments`, `replay-art-payment-events` | payment reconciliation/replay | art-payment runner services |

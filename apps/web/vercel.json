@@ -18,6 +18,10 @@
       "schedule": "*/2 * * * *"
     },
     {
+      "path": "/api/cron/maintain-breed-genetic-background",
+      "schedule": "29 */6 * * *"
+    },
+    {
       "path": "/api/cron/resolve-breeding-progress",
       "schedule": "0 * * * *"
     },

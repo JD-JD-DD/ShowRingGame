@@ -23,6 +23,7 @@ This registry records major application-service authority and orchestration boun
 | Care | emergency/reproductive | care/resolution/treatment services | MUTATION, BATCH RESOLVER | APIs, jobs | Dog, ledger, breeding | HIGH |
 | Grooming | listing/accept/action | grooming service | MUTATION, READ | APIs/jobs/dog UI | Dog, care, ledger | HIGH |
 | Foundation | inventory/purchase | foundationDog service | ORCHESTRATOR, MUTATION | market API/cron | breed/genetics/market | HIGH |
+| Genetics | annual breed-background snapshot progression | `maintainDueBreedGeneticBackgroundSnapshots` → `createBreedGeneticBackgroundSnapshots` | BATCH RESOLVER | authorized cron | completed Invitational, BreedGeneticBackgroundSnapshot | HIGH |
 | Showing | schedule | showSchedule service | MUTATION, BATCH RESOLVER | routes/jobs/pages | calendar, Prisma | HIGH |
 | Showing | entry | showEntry service | MUTATION, READ, CALCULATION | APIs/planner | eligibility, economy, Dog | HIGH |
 | Judging | evaluation/finalization | judging + publish job services | ORCHESTRATOR, MUTATION, BATCH | cron/jobs | rules, results, titles | HIGH |

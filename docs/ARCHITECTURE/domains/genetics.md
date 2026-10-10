@@ -18,7 +18,7 @@ See [domains.md](../domains.md) for complete boundaries.
 - **Services:** breeding puppy-generation and foundation-generation integrations.
 - **Persistence:** dog phenotype/genetics version data, pedigree relations, breed/background and judging-profile records where released.
 - **Primary mutation routes:** canonical puppy creation and foundation generation only.
-- **Scheduled progression:** annual/versioned breed-background processing where activated.
+- **Scheduled progression:** authorized periodic maintenance discovers completed Invitational clusters and delegates annual/versioned breed-background snapshots to the canonical snapshot service.
 - **Presentation/read models:** dog/pedigree and player-facing conformation category mappers.
 
 ## Lifecycle / Flow

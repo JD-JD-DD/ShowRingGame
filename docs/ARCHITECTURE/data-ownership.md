@@ -138,7 +138,7 @@ Rules constants and service-produced catalog options are derived/reference views
 
 ### Authoritative read and mutation paths
 
-`breed.service.ts`, judging-profile/background services, and their consumers are the observed read/write landmarks. The foundation-inventory cron reads released breed codes.
+`breed.service.ts`, judging-profile/background services, and their consumers are the observed read/write landmarks. The completed-Invitational genetic-background progression cron delegates to the canonical snapshot service; the foundation-inventory cron reads released breed codes.
 
 ### Transaction / atomicity boundary
 

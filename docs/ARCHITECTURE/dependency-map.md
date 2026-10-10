@@ -32,9 +32,9 @@ Administration & Operations → authorized interfaces into domain services
 | --- | --- | --- | --- | --- |
 | Accounts & Authentication | Kennels, API orchestration, Support | user/session identity | session helpers and `getKennelForUser` route pattern | HIGH |
 | Kennels | Dogs, player domains, messaging, support | playable identity, ownership, organization | `kennel.service` imported broadly by routes | HIGH |
-| Calendar & Game Time | Lifecycle, Breeding, Health, Grooming, Showing, Stud Services | current epoch, conversion, templates | `gameClock`/rules imports and cron calls | HIGH |
+| Calendar & Game Time | Lifecycle, Breeding, Genetics & Pedigree, Health, Grooming, Showing, Stud Services | current epoch, conversion, templates | `gameClock`/rules imports and cron calls | HIGH |
 | Breeds & Catalog | Dogs, Genetics, Showing, Judging, Market | breed/profile/catalog data | breed services and released-code consumers | HIGH |
-| Genetics & Pedigree | Dogs, Breeding, Health, Judging | genotype/traits/COI outputs | engines plus phenotype/genetics service imports | MEDIUM |
+| Genetics & Pedigree | Dogs, Breeding, Foundation, Health, Judging | genotype/traits/COI outputs and versioned breed-background snapshots | engines plus phenotype/genetics services and completed-Invitational progression | MEDIUM |
 | Dogs | specialized gameplay domains | identity/state/profile inputs | `Dog` model and dog services across flows | HIGH |
 | Health & Care | Breeding, Stud Services, Market, Judging | safety/test/care status | health service imports in those services | HIGH |
 | Breeding | Litters, Dogs, Stud Services | attempt, eligibility, whelping outcomes | breeding-to-litter/contract service calls | HIGH |
