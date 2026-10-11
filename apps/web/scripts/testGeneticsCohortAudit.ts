@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { CURRENT_GENETICS_VERSION, calculatePhenotypeFromGenotype, decodeGenotype, encodeGenotype } from "@showring/rules";
+import { buildGeneticsCohortAudit, compareGeneticsCohortAudits, type AuditDogInput } from "./auditGeneticsCohort";
+
+const genotype = encodeGenotype({ geneticsVersion: CURRENT_GENETICS_VERSION, loci: Array.from({ length: 40 }, (_, index) => [index % 2 ? -.5 : .5, index % 3 ? .5 : -1] as const) });
+const traits = calculatePhenotypeFromGenotype(decodeGenotype(genotype));
+const fields = ["traitHead", "traitForequarters", "traitHindquarters", "traitGait", "traitCoat", "traitSize", "traitTemperament", "traitShowShine", "traitFeet", "traitTopline"] as const;
+const dog = (id: string, sex: "M" | "F") => Object.assign({ id, regNumber: `RG-${id}`, callName: id, registeredName: `Test ${id}`, breedCode2: "ZZ", sex, originType: "FOUNDATION" as const, ownerKennelId: "kennel", ownerKennel: { id: "kennel", name: "Test" }, sireId: null, damId: null, litterId: null, birthEpoch: 0, lifecycleState: "ALIVE", genotype, geneticsVersion: CURRENT_GENETICS_VERSION }, Object.fromEntries(fields.map((field, index) => [field, { toString: () => String(traits[["head", "forequarters", "hindquarters", "gait", "coat", "size", "temperament", "show_shine", "feet", "topline"][index] as keyof typeof traits]) }])));
+const audit = buildGeneticsCohortAudit({ options: { breed: "ZZ", cohort: "fixture" }, dogs: [dog("a", "M"), dog("b", "F")] as AuditDogInput[] });
+assert.equal(audit.schemaVersion, "genetics-cohort-audit-v1");
+assert.equal(audit.integrity.status, "VALID");
+assert.equal(audit.metrics.cohortDogCount, 2);
+assert.equal(audit.loci.length, 40);
+assert.ok(audit.rareComponents.length > 0);
+assert.ok(audit.metrics.pairwise?.p50 !== undefined);
+const comparison = compareGeneticsCohortAudits(audit, { ...audit, metrics: { ...audit.metrics, cohortDogCount: 1 } });
+assert.equal(comparison.cohortDogCount.absoluteChange, 1, "comparison reports deterministic metric deltas");
+const source = readFileSync(new URL("./auditGeneticsCohort.ts", import.meta.url), "utf8");
+assert.ok(source.includes("decodeGenotype") && source.includes("calculatePhenotypeFromGenotype") && source.includes("alleleComponentBin"), "audit must consume canonical genotype and component helpers");
+assert.ok(!/\.create\(|\.update\(|\.delete\(|\.upsert\(/.test(source), "audit script must not contain Prisma mutation calls");
+console.log("Genetics cohort audit regression passed.");

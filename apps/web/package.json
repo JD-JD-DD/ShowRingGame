@@ -7,6 +7,8 @@
     "build": "prisma migrate deploy && prisma generate && next build",
     "start": "next start",
     "test:genetics-full-loop": "tsx scripts/testGeneticsFullPopulationLoop.ts",
+    "audit:genetics-cohort": "tsx scripts/auditGeneticsCohort.ts",
+    "test:genetics-cohort-audit": "tsx scripts/testGeneticsCohortAudit.ts",
     "lint": "eslint",
     "test:game-time-format": "tsx scripts/testGameTimeFormat.ts",
     "test:architecture-guardrails": "tsx scripts/testArchitectureGuardrails.ts",
