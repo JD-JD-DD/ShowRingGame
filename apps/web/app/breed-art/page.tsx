@@ -35,6 +35,7 @@ export default async function BreedArtFundingPage() {
           <p className="theme-heading text-2xl font-semibold"><span className="block text-4xl">{new Intl.NumberFormat().format(summary.drawingCompleteCount)}</span>drawings complete</p>
         </div>
       </section>
+      <Link href="#completed-art" className="theme-secondary-button mt-4 inline-flex rounded-xl px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">See the {new Intl.NumberFormat().format(summary.drawingCompleteCount)} Completed Breed Artwork{summary.drawingCompleteCount === 1 ? "" : "s"} <span aria-hidden="true">↓</span></Link>
 
       <section className="mt-10" aria-labelledby="help-finish-heading">
         <h2 id="help-finish-heading" className="theme-heading text-2xl font-semibold">Help Finish a Breed</h2>

@@ -7,7 +7,7 @@ function supporterLabel(count: number) {
 }
 
 export default function CompletedArtworkGallery({ campaigns }: { campaigns: ArtCampaignReadDto[] }) {
-  return <section className="mt-12" aria-labelledby="completed-artwork-heading">
+  return <section id="completed-art" className="mt-12" aria-labelledby="completed-artwork-heading">
     <h2 id="completed-artwork-heading" className="theme-heading text-2xl font-semibold">Completed Artwork</h2>
     <p className="theme-copy mt-2">Browse breed artwork completed through the ShowRing Breed Art Fund.</p>
     {campaigns.length ? <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
