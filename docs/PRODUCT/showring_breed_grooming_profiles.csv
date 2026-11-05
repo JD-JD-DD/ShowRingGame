@@ -1,0 +1,315 @@
+breed,breed_code,group,difficulty,coat_profile,breed_size
+Bergamasco Sheepdog,BP,Herding,10,Corded/Specialized,LARGE
+Komondor,KM,Herding,10,Corded/Specialized,LARGE
+Puli,PU,Herding,10,Corded/Specialized,MEDIUM
+Bearded Collie,VC,Herding,9,Long/Silky,MEDIUM
+Old English Sheepdog,OE,Herding,9,Trimmed/Scissored,LARGE
+Spanish Water Dog,WA,Herding,9,Corded/Specialized,MEDIUM
+Bouvier des Flandres,BV,Herding,8,Trimmed/Scissored,LARGE
+Briard,BR,Herding,8,Rough/Rustic,LARGE
+Finnish Lapphund,FL,Herding,8,Double/Plush,MEDIUM
+Polish Lowland Sheepdog,PG,Herding,8,Rough/Rustic,MEDIUM
+Schapendoes,HP,Herding,8,Rough/Rustic,MEDIUM
+South Russian Ovcharka,SR,Herding,8,Rough/Rustic,LARGE
+Swedish Lapphund,WI,Herding,8,Double/Plush,MEDIUM
+Australian Shepherd,AS,Herding,7,Double/Plush,LARGE
+Basque Shepherd,AA,Herding,7,Double/Plush,LARGE
+Belgian Laekenois,LK,Herding,7,Rough/Rustic,LARGE
+Belgian Sheepdog,AY,Herding,7,Double/Plush,LARGE
+Belgian Tervuren,AV,Herding,7,Double/Plush,LARGE
+Berger Picard,PJ,Herding,7,Rough/Rustic,LARGE
+Bohemian Shepherd,OM,Herding,7,Double/Plush,MEDIUM
+Bouvier des Ardennes,BA,Herding,7,Rough/Rustic,LARGE
+Catalan Sheepdog,CP,Herding,7,Rough/Rustic,MEDIUM
+Collie,OL,Herding,7,Double/Plush,LARGE
+Croatian Sheepdog,RN,Herding,7,Rough/Rustic,MEDIUM
+German Shepherd Dog,GM,Herding,7,Double/Plush,LARGE
+Icelandic Sheepdog,IC,Herding,7,Double/Plush,MEDIUM
+Miniature American Shepherd,MA,Herding,7,Double/Plush,MEDIUM
+Portuguese Sheepdog,OT,Herding,7,Rough/Rustic,MEDIUM
+Pumi,PX,Herding,7,Rough/Rustic,SMALL
+Pyrenean Shepherd,PY,Herding,7,Rough/Rustic,SMALL
+Shetland Sheepdog,SS,Herding,7,Double/Plush,SMALL
+White Swiss Shepherd,WS,Herding,7,Double/Plush,LARGE
+Barbado da Terceira,AO,Herding,6,Rough/Rustic,LARGE
+Beauceron,BE,Herding,6,Routine,LARGE
+Border Collie,BC,Herding,6,Routine,MEDIUM
+Dutch Shepherd,DS,Herding,6,Routine,LARGE
+Lapponian Herder,LI,Herding,6,Double/Plush,LARGE
+Mudi,MI,Herding,6,Rough/Rustic,SMALL
+Nenets Herding Laika,LN,Herding,6,Double/Plush,LARGE
+Norwegian Buhund,NR,Herding,6,Double/Plush,MEDIUM
+Australian Cattle Dog,YY,Herding,5,Routine,MEDIUM
+Australian Kelpie,AI,Herding,5,Routine,MEDIUM
+Australian Stumpy Tail Cattle Dog,AQ,Herding,5,Routine,MEDIUM
+Azores Cattle Dog,AC,Herding,5,Routine,LARGE
+Belgian Malinois,BM,Herding,5,Routine,LARGE
+Calupoh,LO,Herding,5,Routine,LARGE
+Cardigan Welsh Corgi,WC,Herding,5,Routine,MEDIUM
+Pembroke Welsh Corgi,PW,Herding,5,Routine,MEDIUM
+Slovensky Cuvac,LV,Herding,5,Double/Plush,LARGE
+Swedish Vallhund,SV,Herding,5,Routine,SMALL
+Working Kelpie,WK,Herding,5,Routine,MEDIUM
+Canaan Dog,CG,Herding,4,Minimal/Natural,MEDIUM
+Catahoula Leopard Dog,LD,Herding,4,Minimal/Natural,LARGE
+Lancashire Heeler,LH,Herding,4,Minimal/Natural,TOY
+Afghan Hound,AF,Hound,10,Long/Silky,LARGE
+Black Norwegian Elkhound,BN,Hound,7,Double/Plush,LARGE
+Norwegian Elkhound,NE,Hound,7,Double/Plush,LARGE
+Otterhound,OH,Hound,7,Rough/Rustic,GIANT
+Borzoi,BZ,Hound,6,Long/Silky,LARGE
+Finnish Spitz,FS,Hound,6,Double/Plush,SMALL
+Grand Basset Griffon Vendeen,GV,Hound,6,Rough/Rustic,MEDIUM
+Irish Wolfhound,IW,Hound,6,Rough/Rustic,GIANT
+Karelian Bear Dog,KD,Hound,6,Double/Plush,MEDIUM
+Petit Basset Griffon Vendeen,PV,Hound,6,Rough/Rustic,MEDIUM
+Scottish Deerhound,SD,Hound,6,Rough/Rustic,LARGE
+Silken Windhound,RD,Hound,6,Long/Silky,MEDIUM
+Basset Fauve de Bretagne,FV,Hound,5,Rough/Rustic,MEDIUM
+Bloodhound,BL,Hound,5,Routine,GIANT
+Dachshund,DH,Hound,5,Routine,SMALL
+Kishu Ken,KI,Hound,5,Double/Plush,MEDIUM
+Norrbottenspets,NB,Hound,5,Routine,SMALL
+Saluki,SL,Hound,5,Long/Silky,MEDIUM
+Shikoku Ken,HI,Hound,5,Double/Plush,MEDIUM
+American Leopard Hound,AL,Hound,4,Minimal/Natural,LARGE
+Artois Hound,AR,Hound,4,Minimal/Natural,LARGE
+Basset Hound,BH,Hound,4,Minimal/Natural,LARGE
+Bavarian Mountain Scent Hound,MS,Hound,4,Minimal/Natural,LARGE
+Grand Bleu de Gascogne,GB,Hound,4,Minimal/Natural,LARGE
+Hanoverian Scenthound,HA,Hound,4,Minimal/Natural,LARGE
+Mountain Cur,MC,Hound,4,Minimal/Natural,MEDIUM
+Treeing Tennessee Brindle,TN,Hound,4,Minimal/Natural,MEDIUM
+American English Coonhound,EC,Hound,3,Minimal/Natural,LARGE
+American Foxhound,AX,Hound,3,Minimal/Natural,LARGE
+Beagle,BG,Hound,3,Minimal/Natural,MEDIUM
+Black and Tan Coonhound,BT,Hound,3,Minimal/Natural,LARGE
+Bluetick Coonhound,BK,Hound,3,Minimal/Natural,LARGE
+Drever,DR,Hound,3,Minimal/Natural,MEDIUM
+English Foxhound,EX,Hound,3,Minimal/Natural,LARGE
+Halden Hound,HH,Hound,3,Minimal/Natural,LARGE
+Hamiltonstovare,HS,Hound,3,Minimal/Natural,LARGE
+Harrier,HR,Hound,3,Minimal/Natural,LARGE
+Hygen Hound,HY,Hound,3,Minimal/Natural,LARGE
+Plott,LP,Hound,3,Minimal/Natural,LARGE
+Porcelaine,PO,Hound,3,Minimal/Natural,LARGE
+Portuguese Podengo,PZ,Hound,3,Minimal/Natural,MEDIUM
+Portuguese Podengo Pequeno,QQ,Hound,3,Minimal/Natural,SMALL
+Redbone Coonhound,RB,Hound,3,Minimal/Natural,LARGE
+Rhodesian Ridgeback,RR,Hound,3,Minimal/Natural,LARGE
+Segugio Italiano,EI,Hound,3,Minimal/Natural,LARGE
+Slovensky Kopov,LE,Hound,3,Minimal/Natural,MEDIUM
+Transylvania Hound,TH,Hound,3,Minimal/Natural,LARGE
+Treeing Walker Coonhound,TW,Hound,3,Minimal/Natural,LARGE
+Azawakh,AZ,Hound,2,Minimal/Natural,MEDIUM
+Basenji,BJ,Hound,2,Minimal/Natural,SMALL
+Cirneco dell'Etna,CE,Hound,2,Minimal/Natural,SMALL
+Greyhound,GH,Hound,2,Minimal/Natural,LARGE
+Ibizan Hound,IH,Hound,2,Minimal/Natural,MEDIUM
+Pharaoh Hound,PH,Hound,2,Minimal/Natural,MEDIUM
+Podenco Andaluz,PA,Hound,2,Minimal/Natural,MEDIUM
+Podenco Canario,PC,Hound,2,Minimal/Natural,LARGE
+Sloughi,SG,Hound,2,Minimal/Natural,LARGE
+Whippet,WP,Hound,2,Minimal/Natural,MEDIUM
+Bichon Frise,ZF,Non-Sporting,9,Trimmed/Scissored,SMALL
+Coton de Tulear,CU,Non-Sporting,9,Long/Silky,SMALL
+Lhasa Apso,LA,Non-Sporting,9,Long/Silky,SMALL
+Lowchen,LW,Non-Sporting,9,Trimmed/Scissored,SMALL
+Poodle Miniature,PM,Non-Sporting,9,Trimmed/Scissored,SMALL
+Poodle Standard,PS,Non-Sporting,9,Trimmed/Scissored,LARGE
+American Eskimo Dog,AE,Non-Sporting,8,Double/Plush,MEDIUM
+Chow Chow,CO,Non-Sporting,8,Double/Plush,LARGE
+Eurasier,EU,Non-Sporting,8,Double/Plush,LARGE
+Keeshond,KH,Non-Sporting,8,Double/Plush,MEDIUM
+Tibetan Terrier,TT,Non-Sporting,8,Long/Silky,SMALL
+Alaskan Klee Kai,KK,Non-Sporting,7,Double/Plush,SMALL
+German Spitz,GG,Non-Sporting,7,Double/Plush,SMALL
+Japanese Akitainu,JA,Non-Sporting,7,Double/Plush,LARGE
+Japanese Spitz,JS,Non-Sporting,7,Double/Plush,SMALL
+Tibetan Spaniel,TS,Non-Sporting,7,Long/Silky,TOY
+Kromfohrlander,KR,Non-Sporting,6,Rough/Rustic,SMALL
+Thai Bangkaew Dog,TA,Non-Sporting,6,Double/Plush,MEDIUM
+Chinese Shar-Pei,ZX,Non-Sporting,5,Routine,LARGE
+Korean Jindo,JD,Non-Sporting,5,Double/Plush,LARGE
+Norwegian Lundehund,NL,Non-Sporting,5,Routine,SMALL
+Schipperke,SK,Non-Sporting,5,Double/Plush,SMALL
+Shiba Inu,SI,Non-Sporting,5,Double/Plush,SMALL
+Taiwan Dog,TD,Non-Sporting,5,Routine,MEDIUM
+Bulldog,BD,Non-Sporting,4,Minimal/Natural,MEDIUM
+French Bulldog,FB,Non-Sporting,4,Minimal/Natural,MEDIUM
+Thai Ridgeback,TR,Non-Sporting,4,Minimal/Natural,LARGE
+Boston Terrier,BS,Non-Sporting,3,Minimal/Natural,SMALL
+Carolina Dog,CD,Non-Sporting,3,Minimal/Natural,MEDIUM
+Dalmatian,DL,Non-Sporting,3,Minimal/Natural,LARGE
+New Guinea Singing Dog,NG,Non-Sporting,3,Minimal/Natural,MEDIUM
+Peruvian Inca Orchid,PQ,Non-Sporting,3,Minimal/Natural,SMALL
+Xoloitzcuintli,XL,Non-Sporting,3,Minimal/Natural,MEDIUM
+Barbet,TG,Sporting,9,Rough/Rustic,MEDIUM
+Lagotto Romagnolo,LG,Sporting,9,Trimmed/Scissored,MEDIUM
+Cocker Spaniel,QK,Sporting,8,Trimmed/Scissored,SMALL
+English Cocker Spaniel,EG,Sporting,8,Long/Silky,MEDIUM
+English Springer Spaniel,ER,Sporting,8,Long/Silky,MEDIUM
+Irish Water Spaniel,UW,Sporting,8,Trimmed/Scissored,LARGE
+American Water Spaniel,AW,Sporting,7,Rough/Rustic,MEDIUM
+Boykin Spaniel,YK,Sporting,7,Routine,MEDIUM
+Clumber Spaniel,CL,Sporting,7,Long/Silky,LARGE
+Curly-Coated Retriever,CR,Sporting,7,Rough/Rustic,LARGE
+English Setter,ES,Sporting,7,Long/Silky,LARGE
+Field Spaniel,FD,Sporting,7,Long/Silky,MEDIUM
+Flat-Coated Retriever,FR,Sporting,7,Routine,LARGE
+German Longhaired Pointer,GL,Sporting,7,Long/Silky,LARGE
+Golden Retriever,GR,Sporting,7,Routine,LARGE
+Gordon Setter,GS,Sporting,7,Long/Silky,LARGE
+Irish Red and White Setter,RW,Sporting,7,Long/Silky,MEDIUM
+Irish Setter,IS,Sporting,7,Long/Silky,LARGE
+Pont-Audemer Spaniel,PI,Sporting,7,Rough/Rustic,MEDIUM
+Spinone Italiano,SP,Sporting,7,Rough/Rustic,LARGE
+Sussex Spaniel,SU,Sporting,7,Long/Silky,MEDIUM
+Welsh Springer Spaniel,WE,Sporting,7,Long/Silky,MEDIUM
+Wetterhoun,WR,Sporting,7,Rough/Rustic,LARGE
+Wirehaired Pointing Griffon,WG,Sporting,7,Rough/Rustic,LARGE
+Blue Picardy Spaniel,LU,Sporting,6,Long/Silky,MEDIUM
+Brittany,BY,Sporting,6,Routine,MEDIUM
+Chesapeake Bay Retriever,CB,Sporting,6,Routine,LARGE
+Deutscher Wachtelhund,DW,Sporting,6,Long/Silky,MEDIUM
+Drentsche Patrijshond,DE,Sporting,6,Long/Silky,LARGE
+French Spaniel,FE,Sporting,6,Long/Silky,LARGE
+German Wirehaired Pointer,GW,Sporting,6,Rough/Rustic,LARGE
+Large Munsterlander,LM,Sporting,6,Long/Silky,LARGE
+Nederlandse Kooikerhondje,ND,Sporting,6,Long/Silky,SMALL
+Nova Scotia Duck Tolling Retriever,DT,Sporting,6,Routine,MEDIUM
+Pudelpointer,UD,Sporting,6,Rough/Rustic,LARGE
+Small Munsterlander,SM,Sporting,6,Long/Silky,MEDIUM
+Stabyhoun,TY,Sporting,6,Long/Silky,MEDIUM
+Wirehaired Vizsla,WV,Sporting,6,Rough/Rustic,LARGE
+Bracco Italiano,BI,Sporting,5,Routine,LARGE
+Labrador Retriever,LR,Sporting,5,Routine,LARGE
+Braque Francais Pyrenean,FP,Sporting,4,Minimal/Natural,MEDIUM
+Braque Saint-Germain,RI,Sporting,4,Minimal/Natural,MEDIUM
+Braque du Bourbonnais,RQ,Sporting,4,Minimal/Natural,MEDIUM
+Old Danish Pointer,OD,Sporting,4,Minimal/Natural,LARGE
+Portuguese Pointer,OR,Sporting,4,Minimal/Natural,MEDIUM
+German Shorthaired Pointer,GP,Sporting,3,Minimal/Natural,LARGE
+Pointer,PT,Sporting,3,Minimal/Natural,LARGE
+Slovakian Wirehaired Pointer,OV,Sporting,3,Rough/Rustic,LARGE
+Vizsla,VZ,Sporting,3,Minimal/Natural,MEDIUM
+Weimaraner,WM,Sporting,3,Minimal/Natural,LARGE
+Bedlington Terrier,BO,Terrier,9,Trimmed/Scissored,SMALL
+Kerry Blue Terrier,KB,Terrier,9,Trimmed/Scissored,MEDIUM
+Soft Coated Wheaten Terrier,SN,Terrier,9,Trimmed/Scissored,MEDIUM
+Skye Terrier,SJ,Terrier,8,Long/Silky,MEDIUM
+Airedale Terrier,AT,Terrier,7,Hand-Stripped,LARGE
+Cesky Terrier,CY,Terrier,7,Trimmed/Scissored,SMALL
+Dandie Dinmont Terrier,DD,Terrier,7,Hand-Stripped,SMALL
+Lakeland Terrier,LT,Terrier,7,Hand-Stripped,SMALL
+Miniature Schnauzer,MZ,Terrier,7,Hand-Stripped,SMALL
+Scottish Terrier,SC,Terrier,7,Hand-Stripped,SMALL
+Sealyham Terrier,SE,Terrier,7,Hand-Stripped,SMALL
+Welsh Terrier,WT,Terrier,7,Hand-Stripped,SMALL
+West Highland White Terrier,WH,Terrier,7,Hand-Stripped,SMALL
+Wire Fox Terrier,WF,Terrier,7,Hand-Stripped,SMALL
+Australian Terrier,AU,Terrier,6,Hand-Stripped,SMALL
+Border Terrier,TB,Terrier,6,Hand-Stripped,SMALL
+Cairn Terrier,CT,Terrier,6,Hand-Stripped,SMALL
+Glen of Imaal Terrier,GI,Terrier,6,Hand-Stripped,MEDIUM
+Irish Terrier,IT,Terrier,6,Hand-Stripped,MEDIUM
+Norfolk Terrier,NT,Terrier,6,Hand-Stripped,SMALL
+Norwich Terrier,NW,Terrier,6,Hand-Stripped,SMALL
+Jagdterrier,JG,Terrier,5,Routine,SMALL
+Lucas Terrier,LC,Terrier,5,Rough/Rustic,SMALL
+Brazilian Terrier,RZ,Terrier,4,Minimal/Natural,SMALL
+Parson Russell Terrier,PR,Terrier,4,Minimal/Natural,SMALL
+American Pit Bull Terrier,PB,Terrier,3,Minimal/Natural,MEDIUM
+American Staffordshire Terrier,ST,Terrier,3,Minimal/Natural,LARGE
+Bull Terrier,BU,Terrier,3,Minimal/Natural,LARGE
+Japanese Terrier,JT,Terrier,3,Minimal/Natural,SMALL
+Manchester Terrier,MT,Terrier,3,Minimal/Natural,SMALL
+Miniature Bull Terrier,MB,Terrier,3,Minimal/Natural,SMALL
+Rat Terrier,RA,Terrier,3,Minimal/Natural,SMALL
+Russell Terrier,RU,Terrier,3,Minimal/Natural,SMALL
+Smooth Fox Terrier,XF,Terrier,3,Minimal/Natural,SMALL
+Staffordshire Bull Terrier,SB,Terrier,3,Minimal/Natural,MEDIUM
+Teddy Roosevelt Terrier,TE,Terrier,3,Minimal/Natural,SMALL
+Toy Fox Terrier,TF,Terrier,3,Minimal/Natural,TOY
+American Hairless Terrier,AH,Terrier,2,Minimal/Natural,SMALL
+Biewer Terrier,BW,Toy,9,Long/Silky,TOY
+Bolognese,ZB,Toy,9,Long/Silky,TOY
+Havanese,HV,Toy,9,Long/Silky,TOY
+Maltese,ML,Toy,9,Long/Silky,TOY
+Pekingese,PK,Toy,9,Long/Silky,SMALL
+Russian Tsvetnaya Bolonka,RE,Toy,9,Long/Silky,TOY
+Shih Tzu,SZ,Toy,9,Long/Silky,SMALL
+Silky Terrier,SQ,Toy,9,Long/Silky,TOY
+Toy Poodle,TP,Toy,9,Trimmed/Scissored,TOY
+Yorkshire Terrier,YT,Toy,9,Long/Silky,TOY
+Cavalier King Charles Spaniel,CK,Toy,8,Long/Silky,SMALL
+English Toy Spaniel,ET,Toy,8,Long/Silky,TOY
+Japanese Chin,JC,Toy,8,Long/Silky,TOY
+Pomeranian,PE,Toy,8,Double/Plush,TOY
+Affenpinscher,AP,Toy,7,Hand-Stripped,TOY
+Brussels Griffon,BQ,Toy,7,Hand-Stripped,TOY
+Papillon,PP,Toy,7,Long/Silky,TOY
+Phalene,PL,Toy,7,Long/Silky,TOY
+Volpino Italiano,VI,Toy,7,Double/Plush,TOY
+Chinese Crested,CI,Toy,4,Minimal/Natural,TOY
+Pug,UG,Toy,4,Minimal/Natural,SMALL
+Russian Toy,RS,Toy,4,Minimal/Natural,TOY
+Toy Manchester Terrier,TC,Toy,3,Minimal/Natural,TOY
+Chihuahua,CH,Toy,2,Minimal/Natural,TOY
+Italian Greyhound,IG,Toy,2,Minimal/Natural,TOY
+Miniature Pinscher,MP,Toy,2,Minimal/Natural,TOY
+Portuguese Water Dog,WD,Working,9,Trimmed/Scissored,MEDIUM
+Alaskan Malamute,AM,Working,8,Double/Plush,LARGE
+Bernese Mountain Dog,MD,Working,8,Double/Plush,GIANT
+Black Russian Terrier,QR,Working,8,Trimmed/Scissored,GIANT
+Canadian Eskimo Dog,CM,Working,8,Double/Plush,LARGE
+Caucasian Shepherd,CS,Working,8,Double/Plush,GIANT
+Great Pyrenees,GY,Working,8,Double/Plush,GIANT
+Leonberger,LB,Working,8,Double/Plush,GIANT
+Newfoundland,NF,Working,8,Double/Plush,GIANT
+Romanian Mioritic Shepherd Dog,RH,Working,8,Double/Plush,GIANT
+Saint Bernard,SA,Working,8,Double/Plush,GIANT
+Samoyed,SY,Working,8,Double/Plush,MEDIUM
+Siberian Husky,SH,Working,8,Double/Plush,MEDIUM
+Tibetan Mastiff,TM,Working,8,Double/Plush,GIANT
+Yakutian Laika,YL,Working,8,Double/Plush,MEDIUM
+Akita,AK,Working,7,Double/Plush,GIANT
+Central Asian Shepherd,CA,Working,7,Double/Plush,GIANT
+Chinook,CN,Working,7,Double/Plush,LARGE
+Estrela Mountain Dog,EM,Working,7,Double/Plush,GIANT
+Giant Schnauzer,GZ,Working,7,Hand-Stripped,LARGE
+Hovawart,HO,Working,7,Double/Plush,LARGE
+Kuvasz,KU,Working,7,Double/Plush,GIANT
+Pyrenean Mastiff,PN,Working,7,Double/Plush,GIANT
+Spanish Mastiff,PF,Working,7,Routine,GIANT
+Standard Schnauzer,ZS,Working,7,Hand-Stripped,MEDIUM
+Anatolian Shepherd,AN,Working,6,Routine,GIANT
+Fila Brasileiro,FA,Working,6,Routine,GIANT
+Greater Swiss Mountain Dog,SW,Working,6,Routine,GIANT
+Hokkaido,HK,Working,6,Double/Plush,LARGE
+Kangal Dog,KG,Working,6,Routine,GIANT
+Neapolitan Mastiff,NM,Working,6,Routine,GIANT
+Rafeiro do Alentejo,RF,Working,6,Routine,GIANT
+Romanian Carpathian Shepherd,RM,Working,6,Double/Plush,LARGE
+Tornjak,TO,Working,6,Double/Plush,LARGE
+Appenzeller Sennenhund,AD,Working,5,Routine,LARGE
+Boerboel,BB,Working,5,Routine,GIANT
+Broholmer,RO,Working,5,Routine,GIANT
+Bullmastiff,BF,Working,5,Routine,GIANT
+Cane Corso,CC,Working,5,Routine,GIANT
+Czechoslovakian Vlciak,VL,Working,5,Double/Plush,LARGE
+Danish-Swedish Farmdogs,FW,Working,5,Routine,SMALL
+Dogue de Bordeaux,DB,Working,5,Routine,GIANT
+Entlebucher Mountain Dog,EN,Working,5,Routine,LARGE
+Kai Ken,KN,Working,5,Double/Plush,MEDIUM
+Mastiff,MF,Working,5,Routine,GIANT
+Perro de Presa Canario,PD,Working,5,Routine,GIANT
+Saarloos Wolfdog,SF,Working,5,Double/Plush,LARGE
+Tosa Inu,TI,Working,5,Routine,GIANT
+American Bulldog,AB,Working,4,Minimal/Natural,LARGE
+Dogo Argentino,DA,Working,4,Minimal/Natural,LARGE
+Great Dane,GD,Working,4,Minimal/Natural,GIANT
+Rottweiler,RT,Working,4,Minimal/Natural,GIANT
+Boxer,BX,Working,3,Minimal/Natural,LARGE
+Doberman Pinscher,DP,Working,3,Minimal/Natural,LARGE
+German Pinscher,GN,Working,3,Minimal/Natural,MEDIUM
