@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
 import { hasAllGreenPhenotypeHealthTests } from "@/lib/dogHealth";
 import { CONFORMATION_CHAMPION_OF_RECORD_TITLE_CODES } from "@/lib/dogTitles";
+import { createPerfTimer } from "@/lib/perf";
 import { SHOW_YEAR_HOURS } from "@showring/rules";
 
 const CHAMPION_TITLE_CODE = "CH";
@@ -123,6 +124,19 @@ export type KennelPrestigeLeaderboardRow = {
 
 type KennelPrestigeOptions = {
   breedCode2?: string | null;
+};
+
+type KennelPrestigeBuildPerformance = {
+  eligibleKennelCount: number;
+  championDogCount: number;
+  championHealthTestRecordCount: number;
+  historicalPointAwardCount: number;
+  majorAwardCount: number;
+  annualPrestigeStatCount: number;
+  grandChampionCount: number;
+  grandChampionCompletionEntryCount: number;
+  grandChampionCompletionEntryBatchCount: number;
+  inMemoryPrestigeCalculationMs: number;
 };
 
 function getPrestigeTier(score: number): PrestigeTier {
@@ -447,26 +461,29 @@ function finalizeSummary(
 
 async function buildKennelPrestigeSummaries(
   options: KennelPrestigeOptions = {},
-  kennelIds?: string[]
+  kennelIds?: string[],
+  perf = createPerfTimer({ route: "service:kennelPrestige.summaries" })
 ) {
   const currentYear = Math.floor(getCurrentEpoch() / SHOW_YEAR_HOURS) + 1;
   const breedCode2 = options.breedCode2?.trim().toUpperCase() || null;
   const kennelFilter = kennelIds?.length ? { id: { in: kennelIds } } : {};
-  const kennels = await db.kennel.findMany({
-    where: {
-      isNpc: false,
-      userId: {
-        not: null,
+  const kennels = await perf.measure("eligibleKennelLookupMs", () =>
+    db.kennel.findMany({
+      where: {
+        isNpc: false,
+        userId: {
+          not: null,
+        },
+        ...kennelFilter,
       },
-      ...kennelFilter,
-    },
-    orderBy: [{ name: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-    },
-  });
+      orderBy: [{ name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+      },
+    })
+  );
 
   const kennelMetaById = new Map(kennels.map((kennel) => [kennel.id, kennel]));
   const playerKennelIds = kennels.map((kennel) => kennel.id);
@@ -479,7 +496,23 @@ async function buildKennelPrestigeSummaries(
   }
 
   if (playerKennelIds.length === 0) {
-    return { currentYear, kennelMetaById, summariesByKennelId };
+    return {
+      currentYear,
+      kennelMetaById,
+      summariesByKennelId,
+      performance: {
+        eligibleKennelCount: 0,
+        championDogCount: 0,
+        championHealthTestRecordCount: 0,
+        historicalPointAwardCount: 0,
+        majorAwardCount: 0,
+        annualPrestigeStatCount: 0,
+        grandChampionCount: 0,
+        grandChampionCompletionEntryCount: 0,
+        grandChampionCompletionEntryBatchCount: 0,
+        inMemoryPrestigeCalculationMs: 0,
+      } satisfies KennelPrestigeBuildPerformance,
+    };
   }
 
   const [
@@ -490,7 +523,7 @@ async function buildKennelPrestigeSummaries(
     grandChampionDogs,
   ] =
     await Promise.all([
-      db.dog.findMany({
+      perf.measure("championDogsAndHealthTestsMs", () => db.dog.findMany({
         where: {
           ...(breedCode2 ? { breedCode2 } : {}),
           breederKennelId: {
@@ -522,8 +555,8 @@ async function buildKennelPrestigeSummaries(
             },
           },
         },
-      }),
-      db.showAward.findMany({
+      })),
+      perf.measure("historicalChampionPointAwardsMs", () => db.showAward.findMany({
         where: {
           ...(breedCode2 ? { breedCode2 } : {}),
           pointsAwarded: {
@@ -564,8 +597,8 @@ async function buildKennelPrestigeSummaries(
             },
           },
         },
-      }),
-      db.showAward.findMany({
+      })),
+      perf.measure("majorAwardsMs", () => db.showAward.findMany({
         where: {
           ...(breedCode2 ? { breedCode2 } : {}),
           awardCode: {
@@ -585,8 +618,8 @@ async function buildKennelPrestigeSummaries(
             },
           },
         },
-      }),
-      db.dogYearlyPrestigeStat.findMany({
+      })),
+      perf.measure("currentYearPrestigeStatsMs", () => db.dogYearlyPrestigeStat.findMany({
         where: {
           gameYear: currentYear,
           ...(breedCode2 ? { breedCode2 } : {}),
@@ -618,8 +651,8 @@ async function buildKennelPrestigeSummaries(
             },
           },
         },
-      }),
-      db.dog.findMany({
+      })),
+      perf.measure("grandChampionDogsMs", () => db.dog.findMany({
         where: {
           ...(breedCode2 ? { breedCode2 } : {}),
           ownerKennelId: {
@@ -644,11 +677,14 @@ async function buildKennelPrestigeSummaries(
             },
           },
         },
-      }),
+      })),
     ]);
+  const grandChampionCompletionPairs = getGrandChampionCompletionPairs(
+    grandChampionDogs
+  );
   const grandChampionCompletionEntries =
-    await loadGrandChampionCompletionEntries(
-      getGrandChampionCompletionPairs(grandChampionDogs)
+    await perf.measure("grandChampionCompletionEntryLookupMs", () =>
+      loadGrandChampionCompletionEntries(grandChampionCompletionPairs)
     );
   const grandChampionCompletionEntryByDogAndShowDay = new Map(
     grandChampionCompletionEntries.map((entry) => [
@@ -656,6 +692,8 @@ async function buildKennelPrestigeSummaries(
       entry,
     ])
   );
+
+  const inMemoryPrestigeCalculationStartedAtMs = Date.now();
 
   for (const dog of championDogs) {
     if (!dog.breederKennelId) {
@@ -842,7 +880,27 @@ async function buildKennelPrestigeSummaries(
     }
   }
 
-  return { currentYear, kennelMetaById, summariesByKennelId };
+  const performance: KennelPrestigeBuildPerformance = {
+    eligibleKennelCount: kennels.length,
+    championDogCount: championDogs.length,
+    championHealthTestRecordCount: championDogs.reduce(
+      (count, dog) => count + dog.healthTests.length,
+      0
+    ),
+    historicalPointAwardCount: pointAwards.length,
+    majorAwardCount: majorAwards.length,
+    annualPrestigeStatCount: currentYearStats.length,
+    grandChampionCount: grandChampionDogs.length,
+    grandChampionCompletionEntryCount: grandChampionCompletionEntries.length,
+    grandChampionCompletionEntryBatchCount: Math.ceil(
+      deduplicateGrandChampionCompletionPairs(grandChampionCompletionPairs)
+        .length / GRAND_CHAMPION_COMPLETION_ENTRY_PAIR_BATCH_SIZE
+    ),
+    inMemoryPrestigeCalculationMs:
+      Date.now() - inMemoryPrestigeCalculationStartedAtMs,
+  };
+
+  return { currentYear, kennelMetaById, summariesByKennelId, performance };
 }
 
 export async function getKennelPrestigeSummary(
@@ -860,8 +918,9 @@ export async function getKennelPrestigeSummaries(
   if (uniqueKennelIds.length === 0) {
     return new Map();
   }
-  const { currentYear, summariesByKennelId } =
-    await buildKennelPrestigeSummaries(options, uniqueKennelIds);
+  const perf = createPerfTimer({ route: "service:kennelPrestige.summaries" });
+  const { currentYear, summariesByKennelId, performance } =
+    await buildKennelPrestigeSummaries(options, uniqueKennelIds, perf);
   const summaries = new Map<string, KennelPrestigeSummary>();
 
   for (const kennelId of uniqueKennelIds) {
@@ -874,6 +933,14 @@ export async function getKennelPrestigeSummaries(
     );
   }
 
+  perf.log({
+    operation: "summaries",
+    breedFilterApplied: Boolean(options.breedCode2?.trim()),
+    requestedKennelCount: uniqueKennelIds.length,
+    returnedSummaryCount: summaries.size,
+    ...performance,
+  });
+
   return summaries;
 }
 
@@ -882,11 +949,13 @@ export async function getKennelPrestigeLeaderboard(args: {
   take?: number;
 } = {}): Promise<KennelPrestigeLeaderboardRow[]> {
   const take = args.take ?? 10;
-  const { currentYear, kennelMetaById, summariesByKennelId } =
+  const perf = createPerfTimer({ route: "service:kennelPrestige.leaderboard" });
+  const { currentYear, kennelMetaById, summariesByKennelId, performance } =
     await buildKennelPrestigeSummaries({
       breedCode2: args.breedCode2,
-    });
-  const rows = [...summariesByKennelId.entries()]
+    }, undefined, perf);
+  const leaderboard = await perf.measure("inMemoryLeaderboardRankingMs", async () => {
+    const rows = [...summariesByKennelId.entries()]
     .map(([kennelId, accumulator]) => {
       const kennel = kennelMetaById.get(kennelId);
 
@@ -909,17 +978,28 @@ export async function getKennelPrestigeLeaderboard(args: {
     )
     .filter((row) => row.prestige.score >= 1);
 
-  return rows
-    .sort(
-      (a, b) =>
-        b.prestige.score - a.prestige.score ||
-        b.prestige.categories.breeding - a.prestige.categories.breeding ||
-        b.prestige.categories.show - a.prestige.categories.show ||
-        a.kennel.name.localeCompare(b.kennel.name)
-    )
-    .slice(0, take)
-    .map((row, index) => ({
-      ...row,
-      rank: index + 1,
-    }));
+    return rows
+      .sort(
+        (a, b) =>
+          b.prestige.score - a.prestige.score ||
+          b.prestige.categories.breeding - a.prestige.categories.breeding ||
+          b.prestige.categories.show - a.prestige.categories.show ||
+          a.kennel.name.localeCompare(b.kennel.name)
+      )
+      .slice(0, take)
+      .map((row, index) => ({
+        ...row,
+        rank: index + 1,
+      }));
+  });
+
+  perf.log({
+    operation: "leaderboard",
+    breedFilterApplied: Boolean(args.breedCode2?.trim()),
+    requestedTake: take,
+    returnedLeaderboardRowCount: leaderboard.length,
+    ...performance,
+  });
+
+  return leaderboard;
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
 import { db } from "@/lib/db";
+import { createPerfTimer } from "@/lib/perf";
 import {
   getKennelPrestigeLeaderboard,
   type KennelPrestigeLeaderboardRow,
@@ -94,33 +95,48 @@ function LeaderboardTable({
 }
 
 export default async function KennelTopTenPage({ searchParams }: PageProps) {
+  const perf = createPerfTimer({ route: "/kennels/top-ten" });
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const breedQuery = firstQueryValue(resolvedSearchParams.breed)
     ?.trim()
     .toUpperCase();
-  const breeds = await db.breed.findMany({
-    where: {
-      isActive: true,
-      releaseVersion: {
-        lte: CURRENT_BREED_RELEASE,
+  const breeds = await perf.measure("activeBreedLookupMs", () =>
+    db.breed.findMany({
+      where: {
+        isActive: true,
+        releaseVersion: {
+          lte: CURRENT_BREED_RELEASE,
+        },
       },
-    },
-    orderBy: [{ name: "asc" }],
-    select: {
-      code2: true,
-      name: true,
-      groupName: true,
-    },
-  });
+      orderBy: [{ name: "asc" }],
+      select: {
+        code2: true,
+        name: true,
+        groupName: true,
+      },
+    })
+  );
   const selectedBreed =
     breeds.find((breed) => breed.code2 === breedQuery) ?? null;
-  const overallRows = await getKennelPrestigeLeaderboard({ take: 10 });
+  const overallRows = await perf.measure("overallLeaderboardMs", () =>
+    getKennelPrestigeLeaderboard({ take: 10 })
+  );
   const breedRows = selectedBreed
-    ? await getKennelPrestigeLeaderboard({
-        breedCode2: selectedBreed.code2,
-        take: 10,
-      })
+    ? await perf.measure("breedLeaderboardMs", () =>
+        getKennelPrestigeLeaderboard({
+          breedCode2: selectedBreed.code2,
+          take: 10,
+        })
+      )
     : [];
+
+  perf.log({
+    breedFilterRequested: Boolean(breedQuery),
+    selectedBreedCode: selectedBreed?.code2 ?? null,
+    activeBreedCount: breeds.length,
+    overallLeaderboardRowCount: overallRows.length,
+    breedLeaderboardRowCount: breedRows.length,
+  });
 
   return (
     <main className="rankings-page min-h-screen px-6 py-8">
