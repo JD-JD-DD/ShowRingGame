@@ -24,6 +24,11 @@ enum AnnualChampionshipPointScheduleResolutionType {
   MINIMUM_POINT_SCHEDULE
 }
 
+enum KennelPrestigeLeaderboardScope {
+  OVERALL
+  BREED
+}
+
 enum DogLifecycleState {
   ALIVE
   DECEASED
@@ -714,6 +719,7 @@ model Kennel {
   serviceProfile           KennelServiceProfile?
   plannerTags              DogPlannerTag[]
   renameHistory            KennelRenameHistory[]
+  prestigeLeaderboardEntries KennelPrestigeLeaderboardEntry[]
 
   @@index([userId])
   @@index([homeDistrict])
@@ -756,6 +762,7 @@ model Breed {
   geneticBackgroundSnapshots BreedGeneticBackgroundSnapshot[]
   judgingProfiles   BreedJudgingProfile[]
   annualChampionshipPointSchedules AnnualChampionshipPointSchedule[]
+  prestigeLeaderboardEntries KennelPrestigeLeaderboardEntry[]
   artCampaigns      ArtCampaign[]
 
   @@index([releaseVersion])
@@ -956,6 +963,49 @@ model AnnualChampionshipPointSchedule {
   publication AnnualChampionshipPointSchedulePublication @relation(fields: [publicationId], references: [id])
 
   @@unique([effectiveYear, district, breedCode2, sex])
+}
+
+/// Current derived Top Ten Kennels read model. A database check constraint
+/// limits this table to its one canonical singleton row (id = 1).
+model KennelPrestigeLeaderboardState {
+  id                    Int      @id @default(1)
+  lastCalculatedAt      DateTime?
+  lastCalculatedEpoch   Int?
+  nextRefreshAt         DateTime?
+  refreshClaimToken     String?
+  refreshClaimedAt      DateTime?
+  refreshClaimExpiresAt DateTime?
+  lastRefreshFailedAt   DateTime?
+  lastRefreshError      String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  entries KennelPrestigeLeaderboardEntry[]
+}
+
+/// Current derived Top Ten row. Presentation values are captured together so
+/// the page reads one complete, internally consistent publication.
+model KennelPrestigeLeaderboardEntry {
+  id                 String                        @id @default(cuid())
+  leaderboardStateId Int
+  scope              KennelPrestigeLeaderboardScope
+  breedCode2         String?
+  rank               Int
+  kennelId           String
+  kennelName         String
+  kennelSlug         String
+  prestigeScore      Int
+  tierLabel          String
+  championsBred      Int
+  bestInShowWins     Int
+  createdAt          DateTime                      @default(now())
+
+  leaderboardState KennelPrestigeLeaderboardState @relation(fields: [leaderboardStateId], references: [id], onDelete: Cascade)
+  breed            Breed?                         @relation(fields: [breedCode2], references: [code2], onDelete: Restrict)
+  kennel           Kennel                         @relation(fields: [kennelId], references: [id], onDelete: Restrict)
+
+  @@index([leaderboardStateId, scope, breedCode2, rank])
+  @@index([kennelId])
 }
 
 model BreedGeneticBackgroundSnapshot {

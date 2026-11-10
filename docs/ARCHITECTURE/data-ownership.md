@@ -46,6 +46,7 @@ Durable shared configuration, such as `Breed` records and persisted judging prof
 | Show event/entry | Showing | EVENT, CURRENT_STATE, SNAPSHOT | `ShowCluster`, `ShowDay`, `ShowEntry` | schedule/entry services | show pages/judging | high | HIGH |
 | Results/awards | Judging; Championships | HISTORICAL, SNAPSHOT | `ShowResult`, `ShowAward` | judging/finalization services | titles/results UI | very high | HIGH |
 | Titles/points/prestige | Championships, Titles & Prestige | CURRENT_STATE, HISTORICAL, SNAPSHOT | progress, credits, annual schedules | title/grand-champion/point services | dogs/results/ribbon UI | high | HIGH |
+| Current kennel prestige leaderboard | Championships, Titles & Prestige | DERIVED_READ_MODEL, CURRENT_STATE | current leaderboard state and entries | leaderboard publication service | Top Ten Kennels page | low; replaceable derived presentation | HIGH |
 | Health/care | Health & Care | EVENT, CURRENT_STATE, SNAPSHOT | test/truth/disease/emergency records | health/care services/jobs | breeding/market/judging/dogs | high | HIGH |
 | Ledger/balance | Economy & Ledger | LEDGER, CURRENT_STATE | `LedgerTransaction`, `Kennel.balance` | feature services | ledger UI/features | very high | MEDIUM |
 | Listings/transfers | Market & Rehoming | CURRENT_STATE, HISTORICAL | `DogListing` | market/foundation/rehome services | market/dog/litter pages | high | HIGH |
@@ -371,6 +372,10 @@ HIGH for records/writers; MEDIUM for summary-cache authority.
 ### Follow-up for later stages
 
 Determine whether DogTitleProgress and yearly prestige models are authoritative summaries or replaceable caches.
+
+### Current kennel prestige leaderboard read model
+
+`KennelPrestigeLeaderboardState` and `KennelPrestigeLeaderboardEntry` hold one replaceable, current derived leaderboard publication. They do not replace award, title, health, or prestige authority. A successful writer replaces all entries and advances successful-calculation/scheduling metadata in one transaction; incomplete or failed work must leave the prior current entries readable. The state row also holds durable future refresh-claim/lease recovery fields. Entries capture the player-facing values required by the Top Ten page for a consistent current publication.
 
 ## 10. Health, Infectious Disease, and Emergency Care
 

@@ -103,6 +103,7 @@
     "test:grand-champion-batching": "tsx scripts/testGrandChampionBatching.ts",
     "test:prestige-batching": "tsx scripts/testPrestigeBatching.ts",
     "test:kennel-prestige-completion-entry-batching": "tsx scripts/testKennelPrestigeCompletionEntryBatching.ts",
+    "test:kennel-prestige-leaderboard-persistence": "tsx scripts/testKennelPrestigeLeaderboardPersistence.ts",
     "test:finalizer-concurrency-safety": "tsx scripts/testFinalizerConcurrencySafety.ts",
     "test:finalizer-phase-instrumentation": "tsx scripts/testFinalizerPhaseInstrumentation.ts",
     "test:show-countdowns": "tsx scripts/testShowCountdowns.ts",
