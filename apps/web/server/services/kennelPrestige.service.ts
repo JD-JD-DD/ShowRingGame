@@ -581,6 +581,7 @@ async function buildKennelPrestigeSummaries(
           },
         },
         select: {
+          breedCode2: true,
           dogId: true,
           showDayId: true,
           pointsAwarded: true,
@@ -611,6 +612,7 @@ async function buildKennelPrestigeSummaries(
           },
         },
         select: {
+          breedCode2: true,
           awardCode: true,
           showEntry: {
             select: {
@@ -666,6 +668,7 @@ async function buildKennelPrestigeSummaries(
         },
         select: {
           id: true,
+          breedCode2: true,
           ownerKennelId: true,
           titleProgress: {
             select: {
@@ -692,6 +695,10 @@ async function buildKennelPrestigeSummaries(
       entry,
     ])
   );
+
+  return calculateKennelPrestigeSummariesFromLoadedData();
+
+  function calculateKennelPrestigeSummariesFromLoadedData() {
 
   const inMemoryPrestigeCalculationStartedAtMs = Date.now();
 
@@ -900,7 +907,8 @@ async function buildKennelPrestigeSummaries(
       Date.now() - inMemoryPrestigeCalculationStartedAtMs,
   };
 
-  return { currentYear, kennelMetaById, summariesByKennelId, performance };
+    return { currentYear, kennelMetaById, summariesByKennelId, performance };
+  }
 }
 
 export async function getKennelPrestigeSummary(

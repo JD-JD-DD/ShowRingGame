@@ -91,6 +91,71 @@ assert.ok(
   "prestige does not infer handling from handler-fee ledger rows"
 );
 
+// Characterize the public calculation boundary before its internal pipeline is
+// mechanically extracted. These checks intentionally exercise only observable
+// contracts and source-level query/attribution invariants; they do not create
+// a competing prestige calculator in the test suite.
+assert.match(
+  kennelPrestigeService,
+  /export async function getKennelPrestigeSummary\([\s\S]*getKennelPrestigeSummaries\(\[kennelId\], options\)/,
+  "single-kennel summaries remain delegated to the canonical batch calculation"
+);
+assert.match(
+  kennelPrestigeService,
+  /export async function getKennelPrestigeLeaderboard\([\s\S]*buildKennelPrestigeSummaries\(\{[\s\S]*breedCode2: args\.breedCode2/,
+  "overall and breed leaderboard calls retain the same canonical build path"
+);
+assert.match(
+  kennelPrestigeService,
+  /\.\.\.\(breedCode2 \? \{ breedCode2 \} : \{\}\),/,
+  "breed-filtered calculations continue applying their filter at the Prisma query boundary"
+);
+assert.match(
+  kennelPrestigeService,
+  /historicalChampionPointAwardsMs[\s\S]*select: \{[\s\S]*breedCode2: true,[\s\S]*dogId: true/,
+  "historical point awards retain their canonical ShowAward breed attribution"
+);
+assert.match(
+  kennelPrestigeService,
+  /majorAwardsMs[\s\S]*select: \{[\s\S]*breedCode2: true,[\s\S]*awardCode: true/,
+  "major awards retain their canonical ShowAward breed attribution"
+);
+assert.match(
+  kennelPrestigeService,
+  /grandChampionDogsMs[\s\S]*select: \{[\s\S]*id: true,[\s\S]*breedCode2: true,[\s\S]*ownerKennelId: true/,
+  "Grand Champion dogs retain their canonical Dog breed attribution"
+);
+assert.match(
+  kennelPrestigeService,
+  /championsBred \* 120[\s\S]*championProducingLitters \* 35/,
+  "champion breeding and champion-producing-litter credits remain distinct"
+);
+assert.match(
+  kennelPrestigeService,
+  /hasAllGreenPhenotypeHealthTests\(dog\.healthTests, dog\.breedCode2\)/,
+  "health qualification remains breed-aware"
+);
+assert.match(
+  kennelPrestigeService,
+  /summariesByKennelId\.get\(award\.showEntry\.kennelId\)/,
+  "historical championship and award credit remains attributed to the entry kennel"
+);
+assert.match(
+  kennelPrestigeService,
+  /ownerKennelId[\s\S]*breederKennelId[\s\S]*currentAllBreedTopTenOwned[\s\S]*currentAllBreedTopTenBred/,
+  "current-year all-breed credits retain separate owner and breeder attribution"
+);
+assert.match(
+  kennelPrestigeService,
+  /bestInShowWins \* 90[\s\S]*reserveBestInShowWins \* 60[\s\S]*groupOneWins \* 35/,
+  "BIS, RBIS, and group-award scoring remains characterized"
+);
+assert.match(
+  kennelPrestigeService,
+  /b\.prestige\.score - a\.prestige\.score[\s\S]*b\.prestige\.categories\.breeding - a\.prestige\.categories\.breeding[\s\S]*b\.prestige\.categories\.show - a\.prestige\.categories\.show[\s\S]*a\.kennel\.name\.localeCompare/,
+  "leaderboard ties remain ordered by breeding, show, then kennel name"
+);
+
 assert.deepEqual(getGrandChampionMilestonePrestige(99), {
   milestoneCount: 0,
   prestige: 0,
