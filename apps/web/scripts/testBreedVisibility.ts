@@ -152,8 +152,8 @@ async function main() {
   const kennelTopTenPage = source("apps/web/app/kennels/top-ten/page.tsx");
   assertIncludes(
     kennelTopTenPage,
-    "isActive: true",
-    "kennel top-ten breed selector filters active breeds"
+    "Breed-specific rankings are temporarily unavailable",
+    "kennel top-ten keeps its temporarily disabled breed selector explicit"
   );
 
   const seedSource = source("apps/web/prisma/seed.ts");

@@ -106,6 +106,7 @@
     "test:kennel-prestige-source-partition": "tsx scripts/testKennelPrestigeSourcePartition.ts",
     "test:kennel-prestige-leaderboard-persistence": "tsx scripts/testKennelPrestigeLeaderboardPersistence.ts",
     "test:kennel-prestige-leaderboard-scheduled-refresh": "tsx scripts/testKennelPrestigeLeaderboardScheduledRefresh.ts",
+    "test:kennel-prestige-leaderboard-page": "tsx scripts/testKennelPrestigeLeaderboardPage.ts",
     "test:finalizer-concurrency-safety": "tsx scripts/testFinalizerConcurrencySafety.ts",
     "test:finalizer-phase-instrumentation": "tsx scripts/testFinalizerPhaseInstrumentation.ts",
     "test:show-countdowns": "tsx scripts/testShowCountdowns.ts",

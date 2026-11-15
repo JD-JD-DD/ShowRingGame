@@ -1,13 +1,12 @@
 import Link from "next/link";
 
-import { BreedSelectOptions } from "@/components/breeds/BreedSelectOptions";
-import { db } from "@/lib/db";
+import { dateToEpoch, epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { createPerfTimer } from "@/lib/perf";
+import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
 import {
-  getKennelPrestigeLeaderboard,
-  type KennelPrestigeLeaderboardRow,
-} from "@/server/services/kennelPrestige.service";
-import { CURRENT_BREED_RELEASE } from "@showring/rules";
+  getCurrentKennelPrestigeLeaderboardState,
+  listCurrentKennelPrestigeLeaderboardEntries,
+} from "@/server/services/kennelPrestigeLeaderboard.service";
 
 export const dynamic = "force-dynamic";
 
@@ -17,36 +16,29 @@ type PageProps = {
   }>;
 };
 
+type PublishedOverallLeaderboardRow = {
+  rank: number;
+  kennelId: string;
+  kennelName: string;
+  kennelSlug: string;
+  prestigeScore: number;
+  tierLabel: string;
+  championsBred: number;
+  bestInShowWins: number;
+};
+
 function firstQueryValue(value: string | string[] | undefined): string | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
 }
 
-function buildBreedHref(breedCode2: string): string {
-  const params = new URLSearchParams();
-
-  if (breedCode2) {
-    params.set("breed", breedCode2);
-  }
-
-  return `/kennels/top-ten${params.size > 0 ? `?${params.toString()}` : ""}`;
-}
-
-function LeaderboardTable({
-  title,
-  description,
-  rows,
-}: {
-  title: string;
-  description: string;
-  rows: KennelPrestigeLeaderboardRow[];
-}) {
+function LeaderboardTable({ rows }: { rows: PublishedOverallLeaderboardRow[] }) {
   return (
     <section className="theme-panel overflow-hidden rounded-[28px]">
       <div className="border-b border-[var(--color-border)] px-6 py-5">
-        <h2 className="theme-heading text-2xl font-bold">{title}</h2>
+        <h2 className="theme-heading text-2xl font-bold">Top Ten Overall</h2>
         <p className="theme-copy mt-2 text-sm leading-6">
-          {description}
+          All-breed kennel prestige across the whole show game.
         </p>
       </div>
 
@@ -58,8 +50,8 @@ function LeaderboardTable({
         <div className="divide-y divide-[var(--color-border)]">
           {rows.map((row) => (
             <Link
-              key={`${title}:${row.kennel.id}`}
-              href={`/kennels/${row.kennel.slug}`}
+              key={row.kennelId}
+              href={`/kennels/${row.kennelSlug}`}
               className="grid grid-cols-[3.5rem_minmax(0,1fr)_6rem] gap-4 px-6 py-4 text-sm transition hover:bg-[var(--color-surface-subtle)] md:grid-cols-[4rem_minmax(0,1fr)_9rem_8rem]"
             >
               <div className="self-center text-2xl font-black text-fuchsia-100">
@@ -67,10 +59,10 @@ function LeaderboardTable({
               </div>
               <div className="min-w-0">
                 <div className="theme-heading truncate text-lg font-bold">
-                  {row.kennel.name}
+                  {row.kennelName}
                 </div>
                 <div className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-fuchsia-100/70">
-                  {row.prestige.tier.label}
+                  {row.tierLabel}
                 </div>
               </div>
               <div className="self-center text-right">
@@ -78,13 +70,13 @@ function LeaderboardTable({
                   Score
                 </div>
                 <div className="theme-heading text-xl font-bold">
-                  {row.prestige.score.toLocaleString()}
+                  {row.prestigeScore.toLocaleString()}
                 </div>
               </div>
               <div className="theme-copy hidden self-center text-right text-xs md:block">
-                {row.prestige.metrics.championsBred} bred CH
+                {row.championsBred} bred CH
                 <br />
-                {row.prestige.metrics.bestInShowWins} BIS
+                {row.bestInShowWins} BIS
               </div>
             </Link>
           ))}
@@ -100,42 +92,39 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
   const breedQuery = firstQueryValue(resolvedSearchParams.breed)
     ?.trim()
     .toUpperCase();
-  const breeds = await perf.measure("activeBreedLookupMs", () =>
-    db.breed.findMany({
-      where: {
-        isActive: true,
-        releaseVersion: {
-          lte: CURRENT_BREED_RELEASE,
-        },
-      },
-      orderBy: [{ name: "asc" }],
-      select: {
-        code2: true,
-        name: true,
-        groupName: true,
-      },
-    })
+  const [state, entries] = await perf.measure("publishedSnapshotReadMs", () =>
+    Promise.all([
+      getCurrentKennelPrestigeLeaderboardState(),
+      listCurrentKennelPrestigeLeaderboardEntries({ scope: "OVERALL" }),
+    ])
   );
-  const selectedBreed =
-    breeds.find((breed) => breed.code2 === breedQuery) ?? null;
-  const overallRows = await perf.measure("overallLeaderboardMs", () =>
-    getKennelPrestigeLeaderboard({ take: 10 })
-  );
-  const breedRows = selectedBreed
-    ? await perf.measure("breedLeaderboardMs", () =>
-        getKennelPrestigeLeaderboard({
-          breedCode2: selectedBreed.code2,
-          take: 10,
-        })
-      )
-    : [];
+  const hasPublishedSnapshot =
+    state?.lastCalculatedAt != null && state.lastCalculatedEpoch != null;
+  const overallRows: PublishedOverallLeaderboardRow[] = entries.map((entry) => ({
+    rank: entry.rank,
+    kennelId: entry.kennelId,
+    kennelName: entry.kennelName,
+    kennelSlug: entry.kennelSlug,
+    prestigeScore: entry.prestigeScore,
+    tierLabel: entry.tierLabel,
+    championsBred: entry.championsBred,
+    bestInShowWins: entry.bestInShowWins,
+  }));
+  const nextUpdateIsPending =
+    !state?.nextRefreshAt ||
+    state.nextRefreshAt.getTime() <= epochToDate(getCurrentEpoch()).getTime();
+  const lastCalculatedGameTime = state && state.lastCalculatedEpoch !== null
+    ? formatShowCalendarLabel(state.lastCalculatedEpoch!)
+    : null;
+  const nextUpdateGameTime =
+    state?.nextRefreshAt && !nextUpdateIsPending
+      ? formatShowCalendarLabel(dateToEpoch(state.nextRefreshAt))
+      : null;
 
   perf.log({
-    breedFilterRequested: Boolean(breedQuery),
-    selectedBreedCode: selectedBreed?.code2 ?? null,
-    activeBreedCount: breeds.length,
+    publishedSnapshotExists: hasPublishedSnapshot,
     overallLeaderboardRowCount: overallRows.length,
-    breedLeaderboardRowCount: breedRows.length,
+    breedFilterRequested: Boolean(breedQuery),
   });
 
   return (
@@ -151,9 +140,8 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
                 Kennel Top Ten
               </h1>
               <p className="theme-copy mt-4 max-w-3xl text-sm leading-7">
-                Compare kennels by overall prestige and by breed-specific
-                prestige earned through champions, show wins, Top Ten standing,
-                and health-tested excellence.
+                Compare kennels by overall prestige earned through champions,
+                show wins, Top Ten standing, and health-tested excellence.
               </p>
             </div>
 
@@ -169,17 +157,41 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
         </header>
 
         <div className="grid gap-8 xl:grid-cols-2">
-          <LeaderboardTable
-            title="Top Ten Overall"
-            description="All-breed kennel prestige across the whole show game."
-            rows={overallRows}
-          />
+          <div className="grid gap-4">
+            {hasPublishedSnapshot ? <LeaderboardTable rows={overallRows} /> : (
+              <section className="theme-panel overflow-hidden rounded-[28px]" aria-live="polite">
+                <div className="border-b border-[var(--color-border)] px-6 py-5">
+                  <h2 className="theme-heading text-2xl font-bold">Top Ten Overall</h2>
+                </div>
+                <div className="theme-copy px-6 py-6 text-sm">
+                  Rankings are being prepared. Please check back after the next update.
+                </div>
+              </section>
+            )}
+
+            {hasPublishedSnapshot ? (
+              <section className="theme-card rounded-[24px] p-4" aria-live="polite">
+                <div className="theme-copy text-xs leading-6">
+                  <div>
+                    Last calculated: {lastCalculatedGameTime}
+                  </div>
+                  <div>
+                    {nextUpdateIsPending
+                      ? "Next update: Pending"
+                      : `Next update due: ${nextUpdateGameTime}`}
+                  </div>
+                  {state?.refreshClaimToken ? <div>Updating rankings in the background.</div> : null}
+                </div>
+              </section>
+            ) : null}
+          </div>
+
           <div className="grid gap-4">
             <section className="theme-card rounded-[24px] p-4">
               <div className="theme-label mb-3 text-xs font-semibold uppercase tracking-[0.18em]">
                 Breed
               </div>
-              <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <div>
                   <label
                     htmlFor="breed"
@@ -190,68 +202,32 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
                   <select
                     id="breed"
                     name="breed"
-                    defaultValue={selectedBreed?.code2 ?? ""}
+                    disabled
+                    aria-describedby="breed-ranking-status"
                     className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none"
                   >
-                    <option value="">Choose a breed...</option>
-                    <BreedSelectOptions options={breeds} />
+                    <option>Breed-specific rankings unavailable</option>
                   </select>
                 </div>
-
                 <button
-                  type="submit"
+                  type="button"
+                  disabled
                   className="theme-primary-button rounded-xl px-5 py-2.5 text-sm font-semibold"
                 >
                   View Breed
                 </button>
-
-                {selectedBreed ? (
-                  <Link
-                    href="/kennels/top-ten"
-                    className="theme-secondary-button rounded-xl px-5 py-2.5 text-center text-sm font-semibold"
-                  >
-                    Clear
-                  </Link>
-                ) : null}
-              </form>
+              </div>
+              <p id="breed-ranking-status" className="theme-copy mt-3 text-sm leading-6">
+                Breed-specific rankings are temporarily unavailable while we update the leaderboard system.
+              </p>
+              {breedQuery ? (
+                <p className="theme-copy mt-2 text-sm leading-6" role="status">
+                  Showing Overall standings. Breed-specific standings are temporarily unavailable.
+                </p>
+              ) : null}
             </section>
-
-            {selectedBreed ? (
-              <LeaderboardTable
-                title={`${selectedBreed.name} Top Ten`}
-                description={`Kennel prestige earned specifically through ${selectedBreed.name}s.`}
-                rows={breedRows}
-              />
-            ) : (
-              <section className="theme-panel overflow-hidden rounded-[28px]">
-                <div className="border-b border-[var(--color-border)] px-6 py-5">
-                  <h2 className="theme-heading text-2xl font-bold">
-                    Breed Top Ten
-                  </h2>
-                  <p className="theme-copy mt-2 text-sm leading-6">
-                    Choose a breed to view breed-specific kennel prestige
-                    rankings.
-                  </p>
-                </div>
-                <div className="theme-copy px-6 py-6 text-sm">
-                  Select a breed to load that breed&apos;s kennel rankings.
-                </div>
-              </section>
-            )}
           </div>
         </div>
-
-        {selectedBreed ? (
-          <div className="theme-copy mt-6 text-center text-xs">
-            Direct link:{" "}
-            <Link
-              href={buildBreedHref(selectedBreed.code2)}
-              className="theme-accent-link"
-            >
-              {buildBreedHref(selectedBreed.code2)}
-            </Link>
-          </div>
-        ) : null}
       </div>
     </main>
   );
