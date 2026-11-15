@@ -375,7 +375,7 @@ Determine whether DogTitleProgress and yearly prestige models are authoritative 
 
 ### Current kennel prestige leaderboard read model
 
-`KennelPrestigeLeaderboardState` and `KennelPrestigeLeaderboardEntry` hold one replaceable, current derived leaderboard publication. They do not replace award, title, health, or prestige authority. A successful writer replaces all entries and advances successful-calculation/scheduling metadata in one transaction; incomplete or failed work must leave the prior current entries readable. The state row also holds durable future refresh-claim/lease recovery fields. Entries capture the player-facing values required by the Top Ten page for a consistent current publication.
+`KennelPrestigeLeaderboardState` and `KennelPrestigeLeaderboardEntry` hold one replaceable, current derived leaderboard publication. They do not replace award, title, health, or prestige authority. A successful writer replaces all entries and advances successful-calculation/scheduling metadata in one transaction; incomplete or failed work must leave the prior current entries readable. The state row also holds durable refresh-claim/lease recovery fields. Entries capture the player-facing values required by the Top Ten page for a consistent current publication.
 
 ## 10. Health, Infectious Disease, and Emergency Care
 

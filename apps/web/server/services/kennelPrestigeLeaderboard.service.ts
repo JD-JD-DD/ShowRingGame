@@ -1,5 +1,8 @@
+import { randomUUID } from "node:crypto";
+
 import { db } from "@/lib/db";
 import { getCurrentEpoch } from "@/lib/gameClock";
+import { createPerfTimer } from "@/lib/perf";
 import {
   getKennelPrestigeLeaderboard,
   type KennelPrestigeLeaderboardRow,
@@ -7,6 +10,7 @@ import {
 
 export const CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID = 1;
 const OVERALL_LEADERBOARD_REFRESH_INTERVAL_MS = 7 * 60 * 60 * 1000;
+const OVERALL_LEADERBOARD_REFRESH_LEASE_MS = 10 * 60 * 1000;
 
 export type KennelPrestigeLeaderboardEntryInput = {
   scope: "OVERALL" | "BREED";
@@ -29,6 +33,20 @@ export type KennelPrestigeLeaderboardPublicationInput = {
 };
 
 type LeaderboardDatabase = Pick<typeof db, "$transaction">;
+type LeaderboardStateClient = Pick<typeof db, "kennelPrestigeLeaderboardState">;
+
+export type OverallKennelPrestigeLeaderboardRefreshResult =
+  | { outcome: "published" }
+  | { outcome: "not_due" }
+  | { outcome: "running" }
+  | { outcome: "claim_lost" }
+  | { outcome: "failed" };
+
+class KennelPrestigeLeaderboardClaimLostError extends Error {
+  constructor() {
+    super("The leaderboard refresh claim is no longer active.");
+  }
+}
 
 function entryKey(entry: KennelPrestigeLeaderboardEntryInput): string {
   return `${entry.scope}:${entry.breedCode2 ?? ""}:${entry.rank}`;
@@ -94,16 +112,34 @@ export async function listCurrentKennelPrestigeLeaderboardEntries(args: {
 export async function replaceCurrentKennelPrestigeLeaderboard(args: {
   database?: LeaderboardDatabase;
   publication: KennelPrestigeLeaderboardPublicationInput;
+  refreshClaimToken?: string;
+  refreshClaimCheckedAt?: Date;
 }) {
   assertValidKennelPrestigeLeaderboardEntries(args.publication.entries);
   const database = args.database ?? db;
 
   return database.$transaction(async (tx) => {
-    await tx.kennelPrestigeLeaderboardState.upsert({
-      where: { id: CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID },
-      create: { id: CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID },
-      update: {},
-    });
+    if (args.refreshClaimToken) {
+      const claimCheckedAt = args.refreshClaimCheckedAt ?? new Date();
+      const claim = await tx.kennelPrestigeLeaderboardState.updateMany({
+        where: {
+          id: CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID,
+          refreshClaimToken: args.refreshClaimToken,
+          refreshClaimExpiresAt: { gt: claimCheckedAt },
+        },
+        data: { refreshClaimedAt: claimCheckedAt },
+      });
+
+      if (claim.count !== 1) {
+        throw new KennelPrestigeLeaderboardClaimLostError();
+      }
+    } else {
+      await tx.kennelPrestigeLeaderboardState.upsert({
+        where: { id: CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID },
+        create: { id: CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID },
+        update: {},
+      });
+    }
 
     await tx.kennelPrestigeLeaderboardEntry.deleteMany({
       where: { leaderboardStateId: CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID },
@@ -148,6 +184,10 @@ export async function publishCurrentOverallKennelPrestigeLeaderboard(
     }) => Promise<KennelPrestigeLeaderboardRow[]>;
     currentEpoch?: () => number;
     now?: () => Date;
+    replaceLeaderboard?: (args: {
+      database?: LeaderboardDatabase;
+      publication: KennelPrestigeLeaderboardPublicationInput;
+    }) => Promise<unknown>;
   } = {}
 ) {
   const rows = await (args.calculateLeaderboard ?? getKennelPrestigeLeaderboard)(
@@ -155,7 +195,7 @@ export async function publishCurrentOverallKennelPrestigeLeaderboard(
   );
   const calculatedAt = (args.now ?? (() => new Date()))();
 
-  return replaceCurrentKennelPrestigeLeaderboard({
+  return (args.replaceLeaderboard ?? replaceCurrentKennelPrestigeLeaderboard)({
     database: args.database,
     publication: {
       calculatedAt,
@@ -177,4 +217,151 @@ export async function publishCurrentOverallKennelPrestigeLeaderboard(
       })),
     },
   });
+}
+
+async function tryClaimDueOverallKennelPrestigeLeaderboardRefresh(args: {
+  stateClient: LeaderboardStateClient;
+  now: Date;
+  claimToken: string;
+}) {
+  await args.stateClient.kennelPrestigeLeaderboardState.upsert({
+    where: { id: CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID },
+    create: { id: CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID },
+    update: {},
+  });
+
+  const leaseExpiresAt = new Date(
+    args.now.getTime() + OVERALL_LEADERBOARD_REFRESH_LEASE_MS
+  );
+  const claim = await args.stateClient.kennelPrestigeLeaderboardState.updateMany({
+    where: {
+      id: CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID,
+      OR: [{ nextRefreshAt: null }, { nextRefreshAt: { lte: args.now } }],
+      AND: [
+        {
+          OR: [
+            { refreshClaimToken: null },
+            { refreshClaimExpiresAt: { lte: args.now } },
+          ],
+        },
+      ],
+    },
+    data: {
+      refreshClaimToken: args.claimToken,
+      refreshClaimedAt: args.now,
+      refreshClaimExpiresAt: leaseExpiresAt,
+    },
+  });
+
+  if (claim.count === 1) {
+    return { outcome: "claimed" as const };
+  }
+
+  const state = await getCurrentKennelPrestigeLeaderboardState(args.stateClient);
+  if (
+    state?.refreshClaimToken &&
+    state.refreshClaimExpiresAt &&
+    state.refreshClaimExpiresAt > args.now
+  ) {
+    return { outcome: "running" as const };
+  }
+
+  return { outcome: "not_due" as const };
+}
+
+async function recordOverallKennelPrestigeLeaderboardRefreshFailure(args: {
+  stateClient: LeaderboardStateClient;
+  claimToken: string;
+  failedAt: Date;
+}) {
+  return args.stateClient.kennelPrestigeLeaderboardState.updateMany({
+    where: {
+      id: CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID,
+      refreshClaimToken: args.claimToken,
+    },
+    data: {
+      refreshClaimToken: null,
+      refreshClaimedAt: null,
+      refreshClaimExpiresAt: null,
+      lastRefreshFailedAt: args.failedAt,
+      lastRefreshError: "Overall leaderboard refresh failed.",
+    },
+  });
+}
+
+/**
+ * Claims and refreshes a due Overall leaderboard without holding a transaction
+ * during canonical prestige calculation. Publication is fenced by the claim.
+ */
+export async function refreshDueOverallKennelPrestigeLeaderboard(
+  args: {
+    database?: LeaderboardDatabase;
+    stateClient?: LeaderboardStateClient;
+    calculateLeaderboard?: (args: {
+      take?: number;
+      breedCode2?: string | null;
+    }) => Promise<KennelPrestigeLeaderboardRow[]>;
+    currentEpoch?: () => number;
+    now?: () => Date;
+    createClaimToken?: () => string;
+  } = {}
+): Promise<OverallKennelPrestigeLeaderboardRefreshResult> {
+  const perf = createPerfTimer({
+    route: "service:kennelPrestigeLeaderboard.refreshDueOverall",
+  });
+  const stateClient = args.stateClient ?? db;
+  const now = args.now ?? (() => new Date());
+  const claimToken = (args.createClaimToken ?? randomUUID)();
+  const claimNow = now();
+
+  try {
+    const claim = await perf.measure("refreshClaimMs", () =>
+      tryClaimDueOverallKennelPrestigeLeaderboardRefresh({
+        stateClient,
+        now: claimNow,
+        claimToken,
+      })
+    );
+    if (claim.outcome !== "claimed") {
+      perf.log({ outcome: claim.outcome, claimAcquired: false });
+      return claim;
+    }
+
+    try {
+      await perf.measure("calculationAndPublicationMs", () =>
+        publishCurrentOverallKennelPrestigeLeaderboard({
+          database: args.database,
+          calculateLeaderboard: args.calculateLeaderboard,
+          currentEpoch: args.currentEpoch,
+          now,
+          replaceLeaderboard: ({ database, publication }) =>
+            replaceCurrentKennelPrestigeLeaderboard({
+              database,
+              publication,
+              refreshClaimToken: claimToken,
+              refreshClaimCheckedAt: now(),
+            }),
+        })
+      );
+      perf.log({ outcome: "published", claimAcquired: true });
+      return { outcome: "published" };
+    } catch (error) {
+      if (error instanceof KennelPrestigeLeaderboardClaimLostError) {
+        perf.log({ outcome: "claim_lost", claimAcquired: true });
+        return { outcome: "claim_lost" };
+      }
+
+      const failure = await recordOverallKennelPrestigeLeaderboardRefreshFailure({
+        stateClient,
+        claimToken,
+        failedAt: now(),
+      });
+      const outcome = failure.count === 1 ? "failed" : "claim_lost";
+      perf.log({ outcome, claimAcquired: true });
+      return { outcome };
+    }
+  } catch {
+    perf.log({ outcome: "failed", claimAcquired: false });
+    return { outcome: "failed" };
+  }
 }

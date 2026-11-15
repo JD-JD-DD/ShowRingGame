@@ -8,6 +8,7 @@ import {
   getCurrentKennelPrestigeLeaderboardState,
   listCurrentKennelPrestigeLeaderboardEntries,
   publishCurrentOverallKennelPrestigeLeaderboard,
+  refreshDueOverallKennelPrestigeLeaderboard,
   replaceCurrentKennelPrestigeLeaderboard,
   type KennelPrestigeLeaderboardEntryInput,
 } from "../server/services/kennelPrestigeLeaderboard.service";
@@ -28,6 +29,46 @@ type State = {
 type Entry = KennelPrestigeLeaderboardEntryInput & {
   leaderboardStateId: number;
 };
+
+function matchesStateWhere(state: State, where: Record<string, unknown>): boolean {
+  if (where.id !== undefined && state.id !== where.id) return false;
+  if (
+    where.refreshClaimToken !== undefined &&
+    state.refreshClaimToken !== where.refreshClaimToken
+  ) {
+    return false;
+  }
+
+  const dateMatches = (
+    value: Date | null,
+    condition: unknown
+  ): boolean => {
+    if (condition === null) return value === null;
+    if (!condition || typeof condition !== "object") return true;
+    const typedCondition = condition as { gt?: Date; lte?: Date };
+    if (typedCondition.gt && (!value || value <= typedCondition.gt)) return false;
+    if (typedCondition.lte && (!value || value > typedCondition.lte)) return false;
+    return true;
+  };
+
+  if (!dateMatches(state.refreshClaimExpiresAt, where.refreshClaimExpiresAt)) {
+    return false;
+  }
+  if (!dateMatches(state.nextRefreshAt, where.nextRefreshAt)) return false;
+  if (
+    Array.isArray(where.OR) &&
+    !where.OR.some((condition) => matchesStateWhere(state, condition as Record<string, unknown>))
+  ) {
+    return false;
+  }
+  if (
+    Array.isArray(where.AND) &&
+    !where.AND.every((condition) => matchesStateWhere(state, condition as Record<string, unknown>))
+  ) {
+    return false;
+  }
+  return true;
+}
 
 function entry(
   overrides: Partial<KennelPrestigeLeaderboardEntryInput> = {}
@@ -72,6 +113,17 @@ function fixtureDatabase() {
       update: async ({ data }: { data: Partial<State> }) => {
         state = { ...(state as State), ...data };
         return state;
+      },
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: Record<string, unknown>;
+        data: Partial<State>;
+      }) => {
+        if (!state || !matchesStateWhere(state, where)) return { count: 0 };
+        state = { ...state, ...data };
+        return { count: 1 };
       },
     },
     kennelPrestigeLeaderboardEntry: {
@@ -118,6 +170,7 @@ function fixtureDatabase() {
       failCreateMany = value;
     },
     entries: () => entries,
+    state: () => state,
   };
 }
 
@@ -475,6 +528,192 @@ async function main() {
     beforeFailedCalculation,
     "a failed atomic replacement preserves the previous publication"
   );
+
+  const initialRefreshFixture = fixtureDatabase();
+  let refreshClock = new Date("2026-11-15T12:00:00.000Z");
+  let initialRefreshCalculations = 0;
+  const initialRefresh = await refreshDueOverallKennelPrestigeLeaderboard({
+    database: initialRefreshFixture.database as never,
+    stateClient: initialRefreshFixture.client as never,
+    calculateLeaderboard: async (args) => {
+      initialRefreshCalculations += 1;
+      assert.deepEqual(args, { take: 10 });
+      return [canonicalRow()];
+    },
+    currentEpoch: () => 9001,
+    now: () => refreshClock,
+    createClaimToken: () => "initial-claim",
+  });
+  assert.deepEqual(initialRefresh, { outcome: "published" });
+  assert.equal(initialRefreshCalculations, 1, "initial state is claimed and calculated once");
+  assert.equal(initialRefreshFixture.state()?.refreshClaimToken, null, "successful publication clears its claim");
+  assert.deepEqual(
+    initialRefreshFixture.state()?.nextRefreshAt,
+    new Date("2026-11-15T19:00:00.000Z"),
+    "successful due refresh advances the seven-hour schedule"
+  );
+
+  refreshClock = new Date("2026-11-15T12:01:00.000Z");
+  const notDue = await refreshDueOverallKennelPrestigeLeaderboard({
+    database: initialRefreshFixture.database as never,
+    stateClient: initialRefreshFixture.client as never,
+    calculateLeaderboard: async () => {
+      throw new Error("not-due calculation should not run");
+    },
+    now: () => refreshClock,
+    createClaimToken: () => "not-due-claim",
+  });
+  assert.deepEqual(notDue, { outcome: "not_due" });
+
+  refreshClock = new Date("2026-11-15T19:00:00.000Z");
+  const dueAtNextRefresh = await refreshDueOverallKennelPrestigeLeaderboard({
+    database: initialRefreshFixture.database as never,
+    stateClient: initialRefreshFixture.client as never,
+    calculateLeaderboard: async () => {
+      initialRefreshCalculations += 1;
+      return [canonicalRow()];
+    },
+    currentEpoch: () => 9002,
+    now: () => refreshClock,
+    createClaimToken: () => "due-at-next-refresh-claim",
+  });
+  assert.deepEqual(dueAtNextRefresh, { outcome: "published" });
+  assert.equal(initialRefreshCalculations, 2, "refresh becomes due at nextRefreshAt");
+
+  const concurrentFixture = fixtureDatabase();
+  refreshClock = new Date("2026-11-15T12:00:00.000Z");
+  let resolveFirstCalculation: (() => void) | undefined;
+  let notifyFirstCalculationStarted: (() => void) | undefined;
+  const firstCalculationStarted = new Promise<void>((resolve) => {
+    notifyFirstCalculationStarted = resolve;
+  });
+  const firstCalculationCanFinish = new Promise<void>((resolve) => {
+    resolveFirstCalculation = resolve;
+  });
+  let concurrentCalculationCount = 0;
+  const firstWorker = refreshDueOverallKennelPrestigeLeaderboard({
+    database: concurrentFixture.database as never,
+    stateClient: concurrentFixture.client as never,
+    calculateLeaderboard: async () => {
+      concurrentCalculationCount += 1;
+      notifyFirstCalculationStarted?.();
+      await firstCalculationCanFinish;
+      return [canonicalRow()];
+    },
+    currentEpoch: () => 9002,
+    now: () => refreshClock,
+    createClaimToken: () => "first-worker-claim",
+  });
+  await firstCalculationStarted;
+  const secondWorker = await refreshDueOverallKennelPrestigeLeaderboard({
+    database: concurrentFixture.database as never,
+    stateClient: concurrentFixture.client as never,
+    calculateLeaderboard: async () => {
+      concurrentCalculationCount += 1;
+      return [canonicalRow()];
+    },
+    now: () => refreshClock,
+    createClaimToken: () => "second-worker-claim",
+  });
+  assert.deepEqual(secondWorker, { outcome: "running" });
+  assert.equal(concurrentCalculationCount, 1, "only the claimed worker calculates");
+  resolveFirstCalculation?.();
+  assert.deepEqual(await firstWorker, { outcome: "published" });
+
+  const staleFixture = fixtureDatabase();
+  refreshClock = new Date("2026-11-15T12:00:00.000Z");
+  let resolveStaleCalculation: (() => void) | undefined;
+  let notifyStaleCalculationStarted: (() => void) | undefined;
+  const staleCalculationStarted = new Promise<void>((resolve) => {
+    notifyStaleCalculationStarted = resolve;
+  });
+  const staleCalculationCanFinish = new Promise<void>((resolve) => {
+    resolveStaleCalculation = resolve;
+  });
+  const staleWorker = refreshDueOverallKennelPrestigeLeaderboard({
+    database: staleFixture.database as never,
+    stateClient: staleFixture.client as never,
+    calculateLeaderboard: async () => {
+      notifyStaleCalculationStarted?.();
+      await staleCalculationCanFinish;
+      return [canonicalRow({ kennel: { id: "stale", name: "Stale Kennel", slug: "stale" } })];
+    },
+    currentEpoch: () => 9003,
+    now: () => refreshClock,
+    createClaimToken: () => "stale-worker-claim",
+  });
+  await staleCalculationStarted;
+  refreshClock = new Date("2026-11-15T12:11:00.000Z");
+  const recoveryWorker = await refreshDueOverallKennelPrestigeLeaderboard({
+    database: staleFixture.database as never,
+    stateClient: staleFixture.client as never,
+    calculateLeaderboard: async () => [
+      canonicalRow({ kennel: { id: "recovered", name: "Recovered Kennel", slug: "recovered" } }),
+    ],
+    currentEpoch: () => 9004,
+    now: () => refreshClock,
+    createClaimToken: () => "recovery-worker-claim",
+  });
+  assert.deepEqual(recoveryWorker, { outcome: "published" });
+  resolveStaleCalculation?.();
+  assert.deepEqual(await staleWorker, { outcome: "claim_lost" });
+  assert.equal(
+    staleFixture.entries()[0]?.kennelId,
+    "recovered",
+    "a stale worker cannot overwrite a recovered publication"
+  );
+  assert.equal(staleFixture.state()?.refreshClaimToken, null, "a stale worker cannot alter the newer claim");
+
+  const failureFixture = fixtureDatabase();
+  await replaceCurrentKennelPrestigeLeaderboard({
+    database: failureFixture.database as never,
+    publication: firstPublication,
+  });
+  refreshClock = new Date("2026-11-15T15:00:00.000Z");
+  const entriesBeforeRefreshFailure = failureFixture.entries();
+  const failedRefresh = await refreshDueOverallKennelPrestigeLeaderboard({
+    database: failureFixture.database as never,
+    stateClient: failureFixture.client as never,
+    calculateLeaderboard: async () => {
+      throw new Error("controlled refresh calculation failure");
+    },
+    now: () => refreshClock,
+    createClaimToken: () => "failed-refresh-claim",
+  });
+  assert.deepEqual(failedRefresh, { outcome: "failed" });
+  assert.deepEqual(failureFixture.entries(), entriesBeforeRefreshFailure, "failed refresh preserves standings");
+  assert.equal(failureFixture.state()?.lastCalculatedEpoch, 7520, "failed refresh keeps successful metadata");
+  assert.deepEqual(failureFixture.state()?.nextRefreshAt, firstPublication.nextRefreshAt, "failed refresh does not advance next refresh");
+  assert.equal(failureFixture.state()?.refreshClaimToken, null, "failed refresh releases its claim");
+  assert.equal(failureFixture.state()?.lastRefreshError, "Overall leaderboard refresh failed.");
+
+  const retriedRefresh = await refreshDueOverallKennelPrestigeLeaderboard({
+    database: failureFixture.database as never,
+    stateClient: failureFixture.client as never,
+    calculateLeaderboard: async () => [canonicalRow()],
+    currentEpoch: () => 9005,
+    now: () => refreshClock,
+    createClaimToken: () => "retry-refresh-claim",
+  });
+  assert.deepEqual(retriedRefresh, { outcome: "published" }, "a failed refresh is immediately retryable");
+
+  const databaseFailureFixture = fixtureDatabase();
+  await replaceCurrentKennelPrestigeLeaderboard({
+    database: databaseFailureFixture.database as never,
+    publication: firstPublication,
+  });
+  databaseFailureFixture.setFailCreateMany(true);
+  const databaseFailure = await refreshDueOverallKennelPrestigeLeaderboard({
+    database: databaseFailureFixture.database as never,
+    stateClient: databaseFailureFixture.client as never,
+    calculateLeaderboard: async () => [canonicalRow()],
+    currentEpoch: () => 9006,
+    now: () => refreshClock,
+    createClaimToken: () => "database-failure-claim",
+  });
+  assert.deepEqual(databaseFailure, { outcome: "failed" });
+  assert.equal(databaseFailureFixture.entries()[0]?.kennelId, "kennel-one", "database failure preserves prior publication");
+  assert.equal(databaseFailureFixture.state()?.lastCalculatedEpoch, 7520, "database failure does not record success");
   console.log("Kennel prestige leaderboard persistence checks passed.");
 }
 
