@@ -7,9 +7,11 @@ import {
   assertValidKennelPrestigeLeaderboardEntries,
   getCurrentKennelPrestigeLeaderboardState,
   listCurrentKennelPrestigeLeaderboardEntries,
+  publishCurrentOverallKennelPrestigeLeaderboard,
   replaceCurrentKennelPrestigeLeaderboard,
   type KennelPrestigeLeaderboardEntryInput,
 } from "../server/services/kennelPrestigeLeaderboard.service";
+import type { KennelPrestigeLeaderboardRow } from "../server/services/kennelPrestige.service";
 
 type State = {
   id: number;
@@ -119,7 +121,67 @@ function fixtureDatabase() {
   };
 }
 
+function canonicalRow(
+  overrides: Partial<KennelPrestigeLeaderboardRow> = {}
+): KennelPrestigeLeaderboardRow {
+  return {
+    rank: 1,
+    kennel: {
+      id: "canonical-kennel-one",
+      name: "Canonical First Kennel",
+      slug: "canonical-first-kennel",
+    },
+    prestige: {
+      score: 725,
+      tier: {
+        label: "Established Kennel",
+        nextLabel: "Respected Kennel",
+        nextScore: 750,
+      },
+      currentYear: 12,
+      categories: {
+        breeding: 300,
+        show: 225,
+        legacy: 100,
+        care: 100,
+      },
+      metrics: {
+        championsBred: 2,
+        championProducingLitters: 1,
+        championsFinishedOwnerHandled: 1,
+        championsFinishedWithHandler: 1,
+        grandChampionsCompletedOwnerHandled: 0,
+        grandChampionsCompletedWithHandler: 0,
+        grandChampionsCompletedHandlingUnknown: 0,
+        grandChampionMilestoneTitles: 0,
+        grandChampionMilestonePrestige: 0,
+        allGreenChampionsBred: 1,
+        currentBreedTopTenOwned: 0,
+        currentBreedTopTenBred: 0,
+        currentAllBreedTopTenOwned: 1,
+        currentAllBreedTopTenBred: 1,
+        currentBreedNumberOnes: 0,
+        currentAllBreedNumberOnes: 0,
+        bestInShowWins: 1,
+        reserveBestInShowWins: 0,
+        groupOneWins: 1,
+        groupPlacements: 2,
+      },
+    },
+    ...overrides,
+  };
+}
+
 async function main() {
+  const leaderboardPublicationService = readFileSync(
+    join(
+      process.cwd(),
+      "server",
+      "services",
+      "kennelPrestigeLeaderboard.service.ts"
+    ),
+    "utf8"
+  );
   const migrationSql = readFileSync(
     join(
       process.cwd(),
@@ -136,6 +198,11 @@ async function main() {
   assert.match(migrationSql, /"scope" = 'OVERALL' AND "breedCode2" IS NULL/);
   assert.match(migrationSql, /CREATE UNIQUE INDEX "KennelPrestigeLeaderboardEntry_overall_rank_key"/);
   assert.match(migrationSql, /CREATE UNIQUE INDEX "KennelPrestigeLeaderboardEntry_breed_rank_key"/);
+  assert.doesNotMatch(
+    leaderboardPublicationService,
+    /kennelPrestigeSourcePartition|calculateKennelPrestigeSummariesFromLoadedData/,
+    "Overall publication does not use unfinished all-scopes scaffolding"
+  );
 
   const fixture = fixtureDatabase();
   const firstPublication = {
@@ -257,6 +324,156 @@ async function main() {
         entry({ scope: "BREED", breedCode2: null }),
       ]),
     /require a breed code/
+  );
+
+  const publicationFixture = fixtureDatabase();
+  await replaceCurrentKennelPrestigeLeaderboard({
+    database: publicationFixture.database as never,
+    publication: firstPublication,
+  });
+  const canonicalRows = [
+    canonicalRow({ rank: 4 }),
+    canonicalRow({
+      rank: 7,
+      kennel: {
+        id: "canonical-kennel-two",
+        name: "Canonical Second Kennel",
+        slug: "canonical-second-kennel",
+      },
+      prestige: {
+        ...canonicalRow().prestige,
+        score: 650,
+        tier: { label: "Rising Kennel", nextLabel: "Established Kennel", nextScore: 300 },
+        metrics: {
+          ...canonicalRow().prestige.metrics,
+          championsBred: 3,
+          bestInShowWins: 2,
+        },
+      },
+    }),
+  ];
+  let canonicalCalls = 0;
+  const calculatedAt = new Date("2026-11-15T12:00:00.000Z");
+  await publishCurrentOverallKennelPrestigeLeaderboard({
+    database: publicationFixture.database as never,
+    calculateLeaderboard: async (args) => {
+      canonicalCalls += 1;
+      assert.deepEqual(args, { take: 10 });
+      return canonicalRows;
+    },
+    currentEpoch: () => 8123,
+    now: () => calculatedAt,
+  });
+  assert.equal(canonicalCalls, 1, "publication invokes the canonical leaderboard once");
+  assert.deepEqual(
+    publicationFixture.entries().map((candidate) => ({
+      scope: candidate.scope,
+      breedCode2: candidate.breedCode2,
+      rank: candidate.rank,
+      kennelId: candidate.kennelId,
+      kennelName: candidate.kennelName,
+      kennelSlug: candidate.kennelSlug,
+      prestigeScore: candidate.prestigeScore,
+      tierLabel: candidate.tierLabel,
+      championsBred: candidate.championsBred,
+      bestInShowWins: candidate.bestInShowWins,
+    })),
+    [
+      {
+        scope: "OVERALL",
+        breedCode2: null,
+        rank: 4,
+        kennelId: "canonical-kennel-one",
+        kennelName: "Canonical First Kennel",
+        kennelSlug: "canonical-first-kennel",
+        prestigeScore: 725,
+        tierLabel: "Established Kennel",
+        championsBred: 2,
+        bestInShowWins: 1,
+      },
+      {
+        scope: "OVERALL",
+        breedCode2: null,
+        rank: 7,
+        kennelId: "canonical-kennel-two",
+        kennelName: "Canonical Second Kennel",
+        kennelSlug: "canonical-second-kennel",
+        prestigeScore: 650,
+        tierLabel: "Rising Kennel",
+        championsBred: 3,
+        bestInShowWins: 2,
+      },
+    ],
+    "publication preserves canonical order, ranks, identities, scores, tiers, and displayed metrics"
+  );
+  assert.equal(
+    (await getCurrentKennelPrestigeLeaderboardState(publicationFixture.client as never))
+      ?.lastCalculatedEpoch,
+    8123,
+    "publication records the canonical game epoch"
+  );
+  assert.deepEqual(
+    (await getCurrentKennelPrestigeLeaderboardState(publicationFixture.client as never))
+      ?.lastCalculatedAt,
+    calculatedAt,
+    "publication records the successful calculation timestamp"
+  );
+  assert.deepEqual(
+    (await getCurrentKennelPrestigeLeaderboardState(publicationFixture.client as never))
+      ?.nextRefreshAt,
+    new Date("2026-11-15T19:00:00.000Z"),
+    "publication sets the seven-real-hour next refresh"
+  );
+
+  const beforeFailedCalculation = publicationFixture.entries();
+  await assert.rejects(
+    () =>
+      publishCurrentOverallKennelPrestigeLeaderboard({
+        database: publicationFixture.database as never,
+        calculateLeaderboard: async () => {
+          throw new Error("controlled calculation failure");
+        },
+      }),
+    /controlled calculation failure/
+  );
+  assert.deepEqual(
+    publicationFixture.entries(),
+    beforeFailedCalculation,
+    "a failed calculation does not start a replacement"
+  );
+
+  await assert.rejects(
+    () =>
+      publishCurrentOverallKennelPrestigeLeaderboard({
+        database: publicationFixture.database as never,
+        calculateLeaderboard: async () => [
+          canonicalRow({ rank: 1 }),
+          canonicalRow({ rank: 1 }),
+        ],
+      }),
+    /must be unique/
+  );
+  assert.deepEqual(
+    publicationFixture.entries(),
+    beforeFailedCalculation,
+    "invalid mapped entries do not start a replacement"
+  );
+
+  publicationFixture.setFailCreateMany(true);
+  await assert.rejects(
+    () =>
+      publishCurrentOverallKennelPrestigeLeaderboard({
+        database: publicationFixture.database as never,
+        calculateLeaderboard: async () => canonicalRows,
+        currentEpoch: () => 8130,
+        now: () => calculatedAt,
+      }),
+    /controlled entry write failure/
+  );
+  assert.deepEqual(
+    publicationFixture.entries(),
+    beforeFailedCalculation,
+    "a failed atomic replacement preserves the previous publication"
   );
   console.log("Kennel prestige leaderboard persistence checks passed.");
 }

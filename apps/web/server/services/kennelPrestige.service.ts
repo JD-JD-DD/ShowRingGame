@@ -139,6 +139,31 @@ type KennelPrestigeBuildPerformance = {
   inMemoryPrestigeCalculationMs: number;
 };
 
+/**
+ * Compile-time contract for the future module-level calculation boundary.
+ * Per-invocation accumulators and litter sets are intentionally excluded:
+ * they must be freshly created by each calculation invocation.
+ */
+type KennelPrestigeLoadedCalculationInput<
+  ChampionDog,
+  PointAward,
+  MajorAward,
+  AnnualStat,
+  GrandChampionDog,
+  CompletionEntry
+> = {
+  currentYear: number;
+  kennels: KennelMeta[];
+  championDogs: ChampionDog[];
+  pointAwards: PointAward[];
+  majorAwards: MajorAward[];
+  currentYearStats: AnnualStat[];
+  grandChampionDogs: GrandChampionDog[];
+  grandChampionCompletionEntries: CompletionEntry[];
+  grandChampionCompletionPairs: GrandChampionCompletionPair[];
+  grandChampionCompletionEntryByDogAndShowDay: Map<string, CompletionEntry>;
+};
+
 function getPrestigeTier(score: number): PrestigeTier {
   const tiers = [
     { min: 0, label: "New Kennel" },
@@ -696,9 +721,21 @@ async function buildKennelPrestigeSummaries(
     ])
   );
 
+  type ExistingLoadedCalculationInput = KennelPrestigeLoadedCalculationInput<
+    (typeof championDogs)[number],
+    (typeof pointAwards)[number],
+    (typeof majorAwards)[number],
+    (typeof currentYearStats)[number],
+    (typeof grandChampionDogs)[number],
+    (typeof grandChampionCompletionEntries)[number]
+  >;
+
   return calculateKennelPrestigeSummariesFromLoadedData();
 
-  function calculateKennelPrestigeSummariesFromLoadedData() {
+  function calculateKennelPrestigeSummariesFromLoadedData(
+    _loadedInput?: ExistingLoadedCalculationInput
+  ) {
+  void _loadedInput;
 
   const inMemoryPrestigeCalculationStartedAtMs = Date.now();
 

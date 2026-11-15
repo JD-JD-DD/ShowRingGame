@@ -1,6 +1,12 @@
 import { db } from "@/lib/db";
+import { getCurrentEpoch } from "@/lib/gameClock";
+import {
+  getKennelPrestigeLeaderboard,
+  type KennelPrestigeLeaderboardRow,
+} from "@/server/services/kennelPrestige.service";
 
 export const CURRENT_KENNEL_PRESTIGE_LEADERBOARD_ID = 1;
+const OVERALL_LEADERBOARD_REFRESH_INTERVAL_MS = 7 * 60 * 60 * 1000;
 
 export type KennelPrestigeLeaderboardEntryInput = {
   scope: "OVERALL" | "BREED";
@@ -125,5 +131,50 @@ export async function replaceCurrentKennelPrestigeLeaderboard(args: {
         lastRefreshError: null,
       },
     });
+  });
+}
+
+/**
+ * Calculates and publishes the current Overall Top Ten as one replacement
+ * publication. This is intentionally callable by a future scheduled worker;
+ * it does not schedule itself or serve player requests.
+ */
+export async function publishCurrentOverallKennelPrestigeLeaderboard(
+  args: {
+    database?: LeaderboardDatabase;
+    calculateLeaderboard?: (args: {
+      take?: number;
+      breedCode2?: string | null;
+    }) => Promise<KennelPrestigeLeaderboardRow[]>;
+    currentEpoch?: () => number;
+    now?: () => Date;
+  } = {}
+) {
+  const rows = await (args.calculateLeaderboard ?? getKennelPrestigeLeaderboard)(
+    { take: 10 }
+  );
+  const calculatedAt = (args.now ?? (() => new Date()))();
+
+  return replaceCurrentKennelPrestigeLeaderboard({
+    database: args.database,
+    publication: {
+      calculatedAt,
+      calculatedEpoch: (args.currentEpoch ?? getCurrentEpoch)(),
+      nextRefreshAt: new Date(
+        calculatedAt.getTime() + OVERALL_LEADERBOARD_REFRESH_INTERVAL_MS
+      ),
+      entries: rows.map((row) => ({
+        scope: "OVERALL",
+        breedCode2: null,
+        rank: row.rank,
+        kennelId: row.kennel.id,
+        kennelName: row.kennel.name,
+        kennelSlug: row.kennel.slug,
+        prestigeScore: row.prestige.score,
+        tierLabel: row.prestige.tier.label,
+        championsBred: row.prestige.metrics.championsBred,
+        bestInShowWins: row.prestige.metrics.bestInShowWins,
+      })),
+    },
   });
 }
