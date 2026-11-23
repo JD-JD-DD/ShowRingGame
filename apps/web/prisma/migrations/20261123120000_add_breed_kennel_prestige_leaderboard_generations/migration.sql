@@ -50,8 +50,8 @@ CREATE TABLE "BreedKennelPrestigeLeaderboardEntry" (
 CREATE UNIQUE INDEX "BreedKennelPrestigeLeaderboardState_publishedGenerationId_key" ON "BreedKennelPrestigeLeaderboardState"("publishedGenerationId");
 CREATE UNIQUE INDEX "BreedKennelPrestigeLeaderboardState_workingGenerationId_key" ON "BreedKennelPrestigeLeaderboardState"("workingGenerationId");
 CREATE INDEX "BreedKennelPrestigeLeaderboardManifestBreed_generationId_groupCode_breedCode2_idx" ON "BreedKennelPrestigeLeaderboardManifestBreed"("generationId", "groupCode", "breedCode2");
-CREATE UNIQUE INDEX "BreedKennelPrestigeLeaderboardEntry_generationId_breedCode2_rank_key" ON "BreedKennelPrestigeLeaderboardEntry"("generationId", "breedCode2", "rank");
-CREATE INDEX "BreedKennelPrestigeLeaderboardEntry_generationId_breedCode2_rank_idx" ON "BreedKennelPrestigeLeaderboardEntry"("generationId", "breedCode2", "rank");
+CREATE UNIQUE INDEX "BKPL_entry_gen_breed_rank_uq" ON "BreedKennelPrestigeLeaderboardEntry"("generationId", "breedCode2", "rank");
+CREATE INDEX "BKPL_entry_gen_breed_rank_idx" ON "BreedKennelPrestigeLeaderboardEntry"("generationId", "breedCode2", "rank");
 CREATE INDEX "BreedKennelPrestigeLeaderboardEntry_kennelId_idx" ON "BreedKennelPrestigeLeaderboardEntry"("kennelId");
 
 ALTER TABLE "BreedKennelPrestigeLeaderboardState" ADD CONSTRAINT "BreedKennelPrestigeLeaderboardState_publishedGenerationId_fkey" FOREIGN KEY ("publishedGenerationId") REFERENCES "BreedKennelPrestigeLeaderboardGeneration"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

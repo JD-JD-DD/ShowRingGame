@@ -1080,8 +1080,8 @@ model BreedKennelPrestigeLeaderboardEntry {
   breed      Breed                                     @relation(fields: [breedCode2], references: [code2], onDelete: Restrict)
   kennel     Kennel                                    @relation(fields: [kennelId], references: [id], onDelete: Restrict)
 
-  @@unique([generationId, breedCode2, rank])
-  @@index([generationId, breedCode2, rank])
+  @@unique([generationId, breedCode2, rank], map: "BKPL_entry_gen_breed_rank_uq")
+  @@index([generationId, breedCode2, rank], map: "BKPL_entry_gen_breed_rank_idx")
   @@index([kennelId])
 }
 
