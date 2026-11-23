@@ -1050,6 +1050,7 @@ model BreedKennelPrestigeLeaderboardManifestBreed {
   groupCode          ShowGroupCode
   completedAt        DateTime?
   completionClaimToken String?
+  completionClaimExpiresAt DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

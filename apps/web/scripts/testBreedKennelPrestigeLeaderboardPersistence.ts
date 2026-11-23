@@ -12,6 +12,10 @@ const migration = readFileSync(
   resolve(root, "prisma/migrations/20261123120000_add_breed_kennel_prestige_leaderboard_generations/migration.sql"),
   "utf8"
 );
+const claimLeaseMigration = readFileSync(
+  resolve(root, "prisma/migrations/20261124120000_add_breed_leaderboard_claim_expiration/migration.sql"),
+  "utf8"
+);
 const service = readFileSync(
   resolve(root, "server/services/breedKennelPrestigeLeaderboard.service.ts"),
   "utf8"
@@ -44,11 +48,17 @@ assert.match(schema, /model BreedKennelPrestigeLeaderboardManifestBreed/);
 assert.match(schema, /model BreedKennelPrestigeLeaderboardEntry/);
 assert.match(migration, /BreedKennelPrestigeLeaderboardState_singleton_check/);
 assert.match(migration, /"rank" > 0 AND "rank" <= 10/);
+assert.match(claimLeaseMigration, /ADD COLUMN "completionClaimExpiresAt" TIMESTAMP\(3\)/);
 assert.match(migration, /UNIQUE INDEX "BreedKennelPrestigeLeaderboardEntry_generationId_breedCode2_rank_key"/);
 assert.match(service, /manifestBreeds: \{ createMany: \{ data: args\.manifest \} \}/);
 assert.match(service, /completionClaimToken: args\.claimToken/);
+assert.match(service, /BREED_KENNEL_PRESTIGE_LEADERBOARD_CLAIM_LEASE_MS = 10 \* 60 \* 1000/);
+assert.match(service, /completionClaimExpiresAt: \{ lte: now \}/);
+assert.match(service, /completionClaimExpiresAt: \{ gt: now \}/);
+assert.match(service, /releaseWorkingBreedKennelPrestigeLeaderboardBreedClaim/);
+assert.match(service, /completionClaimToken: null, completionClaimExpiresAt: null/);
 assert.match(service, /deleteMany\(\{[\s\S]*generationId: args\.generationId, breedCode2: args\.breedCode2/);
-assert.match(service, /completedAt: args\.completedAt \?\? new Date\(\)/);
+assert.match(service, /completedAt: args\.completedAt \?\? now/);
 assert.match(service, /Cannot publish an incomplete breed leaderboard generation/);
 assert.match(service, /workingGenerationId: args\.generationId/);
 assert.match(service, /take: 10/);

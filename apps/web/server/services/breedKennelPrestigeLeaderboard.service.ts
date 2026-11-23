@@ -5,6 +5,8 @@ import {
 } from "@showring/rules";
 
 export const CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID = 1;
+// Matches the bounded Overall refresh lease while remaining independent of it.
+export const BREED_KENNEL_PRESTIGE_LEADERBOARD_CLAIM_LEASE_MS = 10 * 60 * 1000;
 
 export type BreedLeaderboardManifestInput = {
   breedCode2: string;
@@ -93,6 +95,42 @@ export async function claimWorkingBreedKennelPrestigeLeaderboardBreed(args: {
   generationId: string;
   breedCode2: string;
   claimToken: string;
+  now?: Date;
+  database?: Pick<typeof db, "breedKennelPrestigeLeaderboardManifestBreed">;
+}) {
+  const now = args.now ?? new Date();
+  return (args.database ?? db).breedKennelPrestigeLeaderboardManifestBreed.updateMany({
+    where: {
+      generationId: args.generationId,
+      breedCode2: args.breedCode2,
+      completedAt: null,
+      generation: {
+        workingState: {
+          is: {
+            id: CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID,
+            workingGenerationId: args.generationId,
+          },
+        },
+      },
+      OR: [
+        { completionClaimToken: null },
+        { completionClaimExpiresAt: null },
+        { completionClaimExpiresAt: { lte: now } },
+      ],
+    },
+    data: {
+      completionClaimToken: args.claimToken,
+      completionClaimExpiresAt: new Date(
+        now.getTime() + BREED_KENNEL_PRESTIGE_LEADERBOARD_CLAIM_LEASE_MS
+      ),
+    },
+  });
+}
+
+export async function releaseWorkingBreedKennelPrestigeLeaderboardBreedClaim(args: {
+  generationId: string;
+  breedCode2: string;
+  claimToken: string;
   database?: Pick<typeof db, "breedKennelPrestigeLeaderboardManifestBreed">;
 }) {
   return (args.database ?? db).breedKennelPrestigeLeaderboardManifestBreed.updateMany({
@@ -100,9 +138,17 @@ export async function claimWorkingBreedKennelPrestigeLeaderboardBreed(args: {
       generationId: args.generationId,
       breedCode2: args.breedCode2,
       completedAt: null,
-      OR: [{ completionClaimToken: null }, { completionClaimToken: args.claimToken }],
+      completionClaimToken: args.claimToken,
+      generation: {
+        workingState: {
+          is: {
+            id: CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID,
+            workingGenerationId: args.generationId,
+          },
+        },
+      },
     },
-    data: { completionClaimToken: args.claimToken },
+    data: { completionClaimToken: null, completionClaimExpiresAt: null },
   });
 }
 
@@ -113,24 +159,34 @@ export async function completeWorkingBreedKennelPrestigeLeaderboardBreed(args: {
   claimToken: string;
   entries: BreedLeaderboardEntryInput[];
   completedAt?: Date;
+  now?: Date;
   database?: BreedLeaderboardDatabase;
 }) {
   assertBreedLeaderboardEntries(args.entries);
   const database = args.database ?? db;
+  const now = args.now ?? new Date();
   return database.$transaction(async (tx) => {
-    const active = await tx.breedKennelPrestigeLeaderboardState.findUnique({
-      where: { id: CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID },
-    });
-    if (active?.workingGenerationId !== args.generationId) {
-      throw new Error("Breed leaderboard generation is not the active working generation.");
-    }
     const completed = await tx.breedKennelPrestigeLeaderboardManifestBreed.updateMany({
       where: {
         generationId: args.generationId,
         breedCode2: args.breedCode2,
+        completedAt: null,
         completionClaimToken: args.claimToken,
+        completionClaimExpiresAt: { gt: now },
+        generation: {
+          workingState: {
+            is: {
+              id: CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID,
+              workingGenerationId: args.generationId,
+            },
+          },
+        },
       },
-      data: { completedAt: args.completedAt ?? new Date() },
+      data: {
+        completedAt: args.completedAt ?? now,
+        completionClaimToken: null,
+        completionClaimExpiresAt: null,
+      },
     });
     if (completed.count !== 1) throw new Error("Breed leaderboard completion claim was lost.");
     await tx.breedKennelPrestigeLeaderboardEntry.deleteMany({
