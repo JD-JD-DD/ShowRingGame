@@ -206,3 +206,21 @@ export async function getCurrentWorkingBreedKennelPrestigeLeaderboardGeneration(
     ? client.breedKennelPrestigeLeaderboardGeneration.findUnique({ where: { id: state.workingGenerationId }, include: { manifestBreeds: { orderBy: [{ groupCode: "asc" }, { breedCode2: "asc" }] } } })
     : null;
 }
+
+/** Removes only generations no longer referenced by either current pointer. */
+export async function cleanupInactiveBreedKennelPrestigeLeaderboardGenerations(
+  database: BreedLeaderboardDatabase = db
+) {
+  return database.$transaction(async (tx) => {
+    const state = await tx.breedKennelPrestigeLeaderboardState.findUnique({
+      where: { id: CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID },
+    });
+    const activeGenerationIds = [
+      state?.publishedGenerationId,
+      state?.workingGenerationId,
+    ].filter((value): value is string => Boolean(value));
+    return tx.breedKennelPrestigeLeaderboardGeneration.deleteMany({
+      where: activeGenerationIds.length ? { id: { notIn: activeGenerationIds } } : {},
+    });
+  });
+}

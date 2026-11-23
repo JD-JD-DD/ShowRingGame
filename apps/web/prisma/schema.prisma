@@ -725,6 +725,7 @@ model Kennel {
   plannerTags              DogPlannerTag[]
   renameHistory            KennelRenameHistory[]
   prestigeLeaderboardEntries KennelPrestigeLeaderboardEntry[]
+  breedPrestigeLeaderboardEntries BreedKennelPrestigeLeaderboardEntry[]
 
   @@index([userId])
   @@index([homeDistrict])
@@ -768,6 +769,8 @@ model Breed {
   judgingProfiles   BreedJudgingProfile[]
   annualChampionshipPointSchedules AnnualChampionshipPointSchedule[]
   prestigeLeaderboardEntries KennelPrestigeLeaderboardEntry[]
+  breedPrestigeLeaderboardManifestBreeds BreedKennelPrestigeLeaderboardManifestBreed[]
+  breedPrestigeLeaderboardEntries BreedKennelPrestigeLeaderboardEntry[]
   artCampaigns      ArtCampaign[]
 
   @@index([releaseVersion])
