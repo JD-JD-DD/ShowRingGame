@@ -105,6 +105,7 @@
     "test:kennel-prestige-completion-entry-batching": "tsx scripts/testKennelPrestigeCompletionEntryBatching.ts",
     "test:kennel-prestige-source-partition": "tsx scripts/testKennelPrestigeSourcePartition.ts",
     "test:released-breed-group-discovery": "tsx scripts/testReleasedBreedGroupDiscovery.ts",
+    "test:breed-kennel-prestige-leaderboard-persistence": "tsx scripts/testBreedKennelPrestigeLeaderboardPersistence.ts",
     "test:kennel-prestige-leaderboard-persistence": "tsx scripts/testKennelPrestigeLeaderboardPersistence.ts",
     "test:kennel-prestige-leaderboard-scheduled-refresh": "tsx scripts/testKennelPrestigeLeaderboardScheduledRefresh.ts",
     "test:kennel-prestige-leaderboard-page": "tsx scripts/testKennelPrestigeLeaderboardPage.ts",

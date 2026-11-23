@@ -29,6 +29,11 @@ enum KennelPrestigeLeaderboardScope {
   BREED
 }
 
+enum BreedKennelPrestigeLeaderboardGenerationStatus {
+  WORKING
+  PUBLISHED
+}
+
 enum DogLifecycleState {
   ALIVE
   DECEASED
@@ -1005,6 +1010,74 @@ model KennelPrestigeLeaderboardEntry {
   kennel           Kennel                         @relation(fields: [kennelId], references: [id], onDelete: Restrict)
 
   @@index([leaderboardStateId, scope, breedCode2, rank])
+  @@index([kennelId])
+}
+
+/// Independent, replaceable publication pointer for breed-specific kennel
+/// prestige. It intentionally does not share Overall leaderboard state.
+model BreedKennelPrestigeLeaderboardState {
+  id                    Int      @id @default(1)
+  publishedGenerationId String?  @unique
+  workingGenerationId   String?  @unique
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  publishedGeneration BreedKennelPrestigeLeaderboardGeneration? @relation("BreedLeaderboardPublishedGeneration", fields: [publishedGenerationId], references: [id], onDelete: Restrict)
+  workingGeneration   BreedKennelPrestigeLeaderboardGeneration? @relation("BreedLeaderboardWorkingGeneration", fields: [workingGenerationId], references: [id], onDelete: Restrict)
+}
+
+/// One current published or resumable working breed leaderboard generation.
+model BreedKennelPrestigeLeaderboardGeneration {
+  id          String                                           @id @default(cuid())
+  status      BreedKennelPrestigeLeaderboardGenerationStatus @default(WORKING)
+  createdAt   DateTime                                         @default(now())
+  publishedAt DateTime?
+  updatedAt   DateTime                                         @updatedAt
+
+  manifestBreeds BreedKennelPrestigeLeaderboardManifestBreed[]
+  entries        BreedKennelPrestigeLeaderboardEntry[]
+  publishedState BreedKennelPrestigeLeaderboardState? @relation("BreedLeaderboardPublishedGeneration")
+  workingState   BreedKennelPrestigeLeaderboardState? @relation("BreedLeaderboardWorkingGeneration")
+}
+
+/// Frozen eligible-breed membership and resumable per-breed completion state.
+model BreedKennelPrestigeLeaderboardManifestBreed {
+  generationId       String
+  breedCode2         String
+  groupCode          ShowGroupCode
+  completedAt        DateTime?
+  completionClaimToken String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  generation BreedKennelPrestigeLeaderboardGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  breed      Breed                                     @relation(fields: [breedCode2], references: [code2], onDelete: Restrict)
+
+  @@id([generationId, breedCode2])
+  @@index([generationId, groupCode, breedCode2])
+}
+
+/// Unpublished or published Top Ten rows, scoped only by their generation.
+model BreedKennelPrestigeLeaderboardEntry {
+  id              String   @id @default(cuid())
+  generationId    String
+  breedCode2      String
+  rank            Int
+  kennelId        String
+  kennelName      String
+  kennelSlug      String
+  prestigeScore   Int
+  tierLabel       String
+  championsBred   Int
+  bestInShowWins  Int
+  createdAt       DateTime @default(now())
+
+  generation BreedKennelPrestigeLeaderboardGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  breed      Breed                                     @relation(fields: [breedCode2], references: [code2], onDelete: Restrict)
+  kennel     Kennel                                    @relation(fields: [kennelId], references: [id], onDelete: Restrict)
+
+  @@unique([generationId, breedCode2, rank])
+  @@index([generationId, breedCode2, rank])
   @@index([kennelId])
 }
 
