@@ -26,19 +26,19 @@ assert.match(
   /listCurrentKennelPrestigeLeaderboardEntries\(\{ scope: "OVERALL" \}\)/
 );
 assert.match(pageSource, /publishedSnapshotReadMs/);
+assert.match(pageSource, /breedPublishedSnapshotReadMs/);
+assert.match(pageSource, /getReleasedBreedsGroupedByCanonicalShowGroup/);
+assert.match(pageSource, /getCurrentPublishedBreedKennelPrestigeLeaderboardState/);
+assert.match(pageSource, /listCurrentPublishedBreedKennelPrestigeLeaderboardEntries\(\{ breedCode2: selectedBreed\.code2 \}\)/);
 assert.match(pageSource, /publishedSnapshotExists/);
 assert.doesNotMatch(
   pageSource,
   /getKennelPrestigeLeaderboard|buildKennelPrestigeSummaries|showAward|championDogsAndHealthTestsMs/
 );
-assert.match(pageSource, /disabled\s*aria-describedby="breed-ranking-status"/);
-assert.match(
-  pageSource,
-  /Breed-specific rankings are temporarily unavailable while we update the leaderboard system\./
-);
-assert.match(pageSource, /Showing Overall standings\. Breed-specific standings are temporarily unavailable\./);
-assert.match(pageSource, /formatShowCalendarLabel\(state\.lastCalculatedEpoch!\)/);
-assert.match(pageSource, /dateToEpoch\(state\.nextRefreshAt\)/);
+assert.doesNotMatch(pageSource, /temporarily unavailable/);
+assert.match(pageSource, /<form action="\/kennels\/top-ten" method="get"/);
+assert.match(pageSource, /dateToEpoch\(breedState\.publishedAt\)/);
+assert.match(pageSource, /dateToEpoch\(breedState\.nextRefreshAt\)/);
 assert.match(pageSource, /Next update: Pending/);
 assert.match(pageSource, /Rankings are being prepared\. Please check back after the next update\./);
 assert.match(pageSource, /No kennel prestige has been earned here yet\./);

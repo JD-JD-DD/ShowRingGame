@@ -3,6 +3,8 @@ import Link from "next/link";
 import { dateToEpoch, epochToDate, getCurrentEpoch } from "@/lib/gameClock";
 import { createPerfTimer } from "@/lib/perf";
 import { formatShowCalendarLabel } from "@/lib/showCalendarLabels";
+import { getReleasedBreedsGroupedByCanonicalShowGroup } from "@/server/services/breed.service";
+import { getCurrentPublishedBreedKennelPrestigeLeaderboardState, listCurrentPublishedBreedKennelPrestigeLeaderboardEntries } from "@/server/services/breedKennelPrestigeLeaderboard.service";
 import {
   getCurrentKennelPrestigeLeaderboardState,
   listCurrentKennelPrestigeLeaderboardEntries,
@@ -32,19 +34,19 @@ function firstQueryValue(value: string | string[] | undefined): string | null {
   return value ?? null;
 }
 
-function LeaderboardTable({ rows }: { rows: PublishedOverallLeaderboardRow[] }) {
+function LeaderboardTable({ rows, title = "Top Ten Overall", description = "All-breed kennel prestige across the whole show game.", empty = "No kennel prestige has been earned here yet." }: { rows: PublishedOverallLeaderboardRow[]; title?: string; description?: string; empty?: string }) {
   return (
     <section className="theme-panel overflow-hidden rounded-[28px]">
       <div className="border-b border-[var(--color-border)] px-6 py-5">
-        <h2 className="theme-heading text-2xl font-bold">Top Ten Overall</h2>
+        <h2 className="theme-heading text-2xl font-bold">{title}</h2>
         <p className="theme-copy mt-2 text-sm leading-6">
-          All-breed kennel prestige across the whole show game.
+          {description}
         </p>
       </div>
 
       {rows.length === 0 ? (
         <div className="theme-copy px-6 py-6 text-sm">
-          No kennel prestige has been earned here yet.
+          {empty}
         </div>
       ) : (
         <div className="divide-y divide-[var(--color-border)]">
@@ -92,7 +94,11 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
   const breedQuery = firstQueryValue(resolvedSearchParams.breed)
     ?.trim()
     .toUpperCase();
-  const [state, entries] = await perf.measure("publishedSnapshotReadMs", () =>
+  const groups = await getReleasedBreedsGroupedByCanonicalShowGroup();
+  const breeds = groups.flatMap((group) => group.breeds);
+  const selectedBreed = breedQuery ? breeds.find((breed) => breed.code2 === breedQuery) ?? null : null;
+  const invalidBreed = Boolean(breedQuery && !selectedBreed);
+  const [state, entries] = selectedBreed ? [null, []] : await perf.measure("publishedSnapshotReadMs", () =>
     Promise.all([
       getCurrentKennelPrestigeLeaderboardState(),
       listCurrentKennelPrestigeLeaderboardEntries({ scope: "OVERALL" }),
@@ -120,11 +126,24 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
     state?.nextRefreshAt && !nextUpdateIsPending
       ? formatShowCalendarLabel(dateToEpoch(state.nextRefreshAt))
       : null;
+  const [breedState, breedEntries] = selectedBreed
+    ? await perf.measure("breedPublishedSnapshotReadMs", () => Promise.all([
+      getCurrentPublishedBreedKennelPrestigeLeaderboardState(),
+      listCurrentPublishedBreedKennelPrestigeLeaderboardEntries({ breedCode2: selectedBreed.code2 }),
+    ]))
+    : [null, []];
+  const breedRows: PublishedOverallLeaderboardRow[] = breedEntries;
+  const breedPublished = Boolean(breedState?.publishedGenerationId);
+  const breedLastUpdated = breedState?.publishedAt ? formatShowCalendarLabel(dateToEpoch(breedState.publishedAt)) : null;
+  const breedNextUpdate = breedState?.nextRefreshAt ? formatShowCalendarLabel(dateToEpoch(breedState.nextRefreshAt)) : null;
 
   perf.log({
     publishedSnapshotExists: hasPublishedSnapshot,
     overallLeaderboardRowCount: overallRows.length,
     breedFilterRequested: Boolean(breedQuery),
+    requestedRankingScope: selectedBreed ? "breed" : "overall",
+    breedPublishedSnapshotExists: breedPublished,
+    breedLeaderboardRowCount: breedRows.length,
   });
 
   return (
@@ -158,7 +177,7 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
 
         <div className="grid gap-8 xl:grid-cols-2">
           <div className="grid gap-4">
-            {hasPublishedSnapshot ? <LeaderboardTable rows={overallRows} /> : (
+            {selectedBreed ? (breedPublished ? <><LeaderboardTable rows={breedRows} title={`Top Ten ${selectedBreed.name}`} description="Published breed-specific kennel prestige standings." empty={`No kennel prestige has been earned for ${selectedBreed.name} yet.`} /><section className="theme-card rounded-[24px] p-4" aria-live="polite"><div className="theme-copy text-xs leading-6"><div>Last updated: {breedLastUpdated ?? "Pending"}</div><div>Next refresh begins: {breedNextUpdate ?? "Pending"}</div></div></section></> : <section className="theme-panel overflow-hidden rounded-[28px]" aria-live="polite"><div className="theme-copy px-6 py-6 text-sm">Breed-specific rankings are being prepared. Please check back after the first update.</div></section>) : invalidBreed ? <section className="theme-panel overflow-hidden rounded-[28px]" role="status"><div className="theme-copy px-6 py-6 text-sm">The selected breed is unavailable. Showing Overall standings.</div></section> : hasPublishedSnapshot ? <LeaderboardTable rows={overallRows} /> : (
               <section className="theme-panel overflow-hidden rounded-[28px]" aria-live="polite">
                 <div className="border-b border-[var(--color-border)] px-6 py-5">
                   <h2 className="theme-heading text-2xl font-bold">Top Ten Overall</h2>
@@ -191,7 +210,7 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
               <div className="theme-label mb-3 text-xs font-semibold uppercase tracking-[0.18em]">
                 Breed
               </div>
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <form action="/kennels/top-ten" method="get" className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <div>
                   <label
                     htmlFor="breed"
@@ -202,27 +221,25 @@ export default async function KennelTopTenPage({ searchParams }: PageProps) {
                   <select
                     id="breed"
                     name="breed"
-                    disabled
-                    aria-describedby="breed-ranking-status"
+                    defaultValue={selectedBreed?.code2 ?? ""}
                     className="theme-control w-full rounded-xl px-3 py-2 text-sm outline-none"
                   >
-                    <option>Breed-specific rankings unavailable</option>
+                    <option value="">Overall</option>{groups.flatMap((group) => group.breeds).map((breed) => <option key={breed.code2} value={breed.code2}>{breed.name}</option>)}
                   </select>
                 </div>
                 <button
-                  type="button"
-                  disabled
+                  type="submit"
                   className="theme-primary-button rounded-xl px-5 py-2.5 text-sm font-semibold"
                 >
-                  View Breed
+                  View rankings
                 </button>
-              </div>
+              </form>
               <p id="breed-ranking-status" className="theme-copy mt-3 text-sm leading-6">
-                Breed-specific rankings are temporarily unavailable while we update the leaderboard system.
+                {selectedBreed ? `Showing ${selectedBreed.name} standings.` : "Choose a breed or return to Overall standings."}
               </p>
-              {breedQuery ? (
+              {invalidBreed ? (
                 <p className="theme-copy mt-2 text-sm leading-6" role="status">
-                  Showing Overall standings. Breed-specific standings are temporarily unavailable.
+                  Showing Overall standings.
                 </p>
               ) : null}
             </section>

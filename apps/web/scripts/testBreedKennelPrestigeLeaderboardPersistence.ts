@@ -54,6 +54,8 @@ assert.match(migration, /UNIQUE INDEX "BKPL_entry_gen_breed_rank_uq"/);
 assert.match(migration, /INDEX "BKPL_entry_gen_breed_rank_idx"/);
 assert.match(service, /BREED_KENNEL_PRESTIGE_LEADERBOARD_REFRESH_INTERVAL_MS = 7 \* 60 \* 60 \* 1000/);
 assert.match(service, /nextRefreshAt: new Date\(publishedAt\.getTime\(\) \+ BREED_KENNEL_PRESTIGE_LEADERBOARD_REFRESH_INTERVAL_MS\)/);
+assert.match(service, /include: \{ publishedGeneration: \{ select: \{ publishedAt: true \} \} \}/);
+assert.match(service, /publishedAt: publishedGeneration\?\.publishedAt \?\? null/);
 assert.match(service, /workingGenerationId: null/);
 assert.match(service, /activated\.count !== 1/);
 assert.match(service, /manifestBreeds: \{ createMany: \{ data: args\.manifest \} \}/);

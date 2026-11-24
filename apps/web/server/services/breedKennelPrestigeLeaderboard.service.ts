@@ -265,9 +265,13 @@ export async function publishCompleteBreedKennelPrestigeLeaderboardGeneration(ar
 export async function getCurrentPublishedBreedKennelPrestigeLeaderboardState(
   client: Pick<typeof db, "breedKennelPrestigeLeaderboardState"> = db
 ) {
-  return client.breedKennelPrestigeLeaderboardState.findUnique({
+  const state = await client.breedKennelPrestigeLeaderboardState.findUnique({
     where: { id: CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID },
+    include: { publishedGeneration: { select: { publishedAt: true } } },
   });
+  if (!state) return null;
+  const { publishedGeneration, ...stateFields } = state;
+  return { ...stateFields, publishedAt: publishedGeneration?.publishedAt ?? null };
 }
 
 export async function listCurrentPublishedBreedKennelPrestigeLeaderboardEntries(args: {
