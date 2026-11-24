@@ -7,6 +7,18 @@ import { processBreedKennelPrestigeLeaderboardBatch } from "@/server/services/br
 
 export type BreedKennelPrestigeLeaderboardOperation = "process" | "publish";
 
+export type BreedKennelPrestigeLeaderboardOrchestrationResult = {
+  operation: BreedKennelPrestigeLeaderboardOperation;
+  outcome: string;
+  generationId: string | null;
+  completed: number;
+  remaining: number;
+  publicationOutcome: string;
+  durationMs: number;
+  workerOutcome?: string;
+  batchDurationMs?: number;
+};
+
 type OrchestrationDependencies = {
   processBatch?: typeof processBreedKennelPrestigeLeaderboardBatch;
   getWorkingGeneration?: typeof getCurrentWorkingBreedKennelPrestigeLeaderboardGeneration;
@@ -28,7 +40,7 @@ export function createBreedKennelPrestigeLeaderboardOrchestrator(
 
   return async function orchestrateBreedKennelPrestigeLeaderboard(
     operation: BreedKennelPrestigeLeaderboardOperation
-  ) {
+  ): Promise<BreedKennelPrestigeLeaderboardOrchestrationResult> {
     const startedAtMs = Date.now();
     try {
       if (operation === "process") {
@@ -109,3 +121,37 @@ export function createBreedKennelPrestigeLeaderboardOrchestrator(
 
 export const orchestrateBreedKennelPrestigeLeaderboard =
   createBreedKennelPrestigeLeaderboardOrchestrator();
+
+type CronRunnerDependencies = {
+  orchestrate?: (operation: BreedKennelPrestigeLeaderboardOperation) => Promise<BreedKennelPrestigeLeaderboardOrchestrationResult>;
+  getPublishedState?: typeof getCurrentPublishedBreedKennelPrestigeLeaderboardState;
+};
+
+export function createBreedKennelPrestigeLeaderboardCronRunner(
+  dependencies: CronRunnerDependencies = {}
+) {
+  const orchestrate = dependencies.orchestrate ?? orchestrateBreedKennelPrestigeLeaderboard;
+  const getPublishedState = dependencies.getPublishedState ?? getCurrentPublishedBreedKennelPrestigeLeaderboardState;
+
+  return async function runBreedKennelPrestigeLeaderboardCron() {
+    const startedAtMs = Date.now();
+    const processing = await orchestrate("process");
+    const publication = processing.outcome === "generation_calculation_complete"
+      ? await orchestrate("publish")
+      : null;
+    const publishedState = await getPublishedState();
+    const result = {
+      outcome: publication?.outcome ?? processing.outcome,
+      generationId: publication?.generationId ?? processing.generationId,
+      processing,
+      publication,
+      nextRefreshAt: publishedState?.nextRefreshAt?.toISOString() ?? null,
+      durationMs: Date.now() - startedAtMs,
+    };
+    console.info("breed-kennel-prestige-leaderboard-cron", result);
+    return result;
+  };
+}
+
+export const runBreedKennelPrestigeLeaderboardCron =
+  createBreedKennelPrestigeLeaderboardCronRunner();

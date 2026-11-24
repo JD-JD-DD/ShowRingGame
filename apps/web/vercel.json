@@ -26,6 +26,10 @@
       "schedule": "47 * * * *"
     },
     {
+      "path": "/api/cron/process-breed-kennel-prestige-leaderboard",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/resolve-breeding-progress",
       "schedule": "0 * * * *"
     },

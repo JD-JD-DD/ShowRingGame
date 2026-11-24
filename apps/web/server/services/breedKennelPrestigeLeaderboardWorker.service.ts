@@ -4,6 +4,7 @@ import { createPerfTimer } from "@/lib/perf";
 import { getReleasedBreedsGroupedByCanonicalShowGroup } from "@/server/services/breed.service";
 import {
   claimWorkingBreedKennelPrestigeLeaderboardBreed,
+  BreedKennelPrestigeLeaderboardNotDueError,
   completeWorkingBreedKennelPrestigeLeaderboardBreed,
   createWorkingBreedKennelPrestigeLeaderboardGeneration,
   getCurrentWorkingBreedKennelPrestigeLeaderboardGeneration,
@@ -12,6 +13,8 @@ import {
 import { getKennelPrestigeLeaderboard } from "@/server/services/kennelPrestige.service";
 
 export const DEFAULT_BREED_KENNEL_PRESTIGE_BATCH_SIZE = 1;
+const BREED_KENNEL_PRESTIGE_APPROACHING_EXECUTION_LIMIT_MS = 4 * 60 * 1000;
+const BREED_KENNEL_PRESTIGE_APPROACHING_CLAIM_LEASE_MS = 9 * 60 * 1000;
 
 export async function processBreedKennelPrestigeLeaderboardBatch(args: {
   maxBreeds?: number;
@@ -23,11 +26,13 @@ export async function processBreedKennelPrestigeLeaderboardBatch(args: {
   let initialized = false;
   if (!generation) {
     const groups = await getReleasedBreedsGroupedByCanonicalShowGroup();
+    let notDue = false;
     try {
-      await createWorkingBreedKennelPrestigeLeaderboardGeneration({ manifest: groups.flatMap((group) => group.breeds.map((breed) => ({ breedCode2: breed.code2, groupCode: group.groupCode }))) });
+      await createWorkingBreedKennelPrestigeLeaderboardGeneration({ manifest: groups.flatMap((group) => group.breeds.map((breed) => ({ breedCode2: breed.code2, groupCode: group.groupCode }))), now: args.now?.() ?? new Date() });
       initialized = true;
-    } catch { /* a concurrent initializer won */ }
+    } catch (error) { notDue = error instanceof BreedKennelPrestigeLeaderboardNotDueError; /* a concurrent initializer won */ }
     generation = await getCurrentWorkingBreedKennelPrestigeLeaderboardGeneration();
+    if (!generation && notDue) return { outcome: "not_due" as const, initialized, attempted: 0, completed: 0, remaining: 0 };
   }
   if (!generation) return { outcome: "no_working_generation" as const, initialized, attempted: 0, completed: 0, remaining: 0 };
   let attempted = 0; let completed = 0; let conflicts = 0; let failures = 0;
@@ -40,7 +45,16 @@ export async function processBreedKennelPrestigeLeaderboardBatch(args: {
     try {
       const rows = await getKennelPrestigeLeaderboard({ breedCode2: manifest.breedCode2, take: 10 });
       await completeWorkingBreedKennelPrestigeLeaderboardBreed({ generationId: generation.id, breedCode2: manifest.breedCode2, claimToken: token, now: args.now?.() ?? new Date(), entries: rows.map((row) => ({ rank: row.rank, kennelId: row.kennel.id, kennelName: row.kennel.name, kennelSlug: row.kennel.slug, prestigeScore: row.prestige.score, tierLabel: row.prestige.tier.label, championsBred: row.prestige.metrics.championsBred, bestInShowWins: row.prestige.metrics.bestInShowWins })) });
-      completed += 1; console.info("breed-kennel-prestige-leaderboard-breed", { generationId: generation.id, groupCode: manifest.groupCode, breedCode2: manifest.breedCode2, calculationDurationMs: Date.now() - started });
+      completed += 1;
+      const calculationDurationMs = Date.now() - started;
+      console.info("breed-kennel-prestige-leaderboard-breed", {
+        generationId: generation.id,
+        groupCode: manifest.groupCode,
+        breedCode2: manifest.breedCode2,
+        calculationDurationMs,
+        approachingExecutionLimit: calculationDurationMs >= BREED_KENNEL_PRESTIGE_APPROACHING_EXECUTION_LIMIT_MS,
+        approachingClaimLease: calculationDurationMs >= BREED_KENNEL_PRESTIGE_APPROACHING_CLAIM_LEASE_MS,
+      });
     } catch { failures += 1; await releaseWorkingBreedKennelPrestigeLeaderboardBreedClaim({ generationId: generation.id, breedCode2: manifest.breedCode2, claimToken: token }); }
   }
   const remaining = generation.manifestBreeds.filter((breed) => !breed.completedAt).length - completed;

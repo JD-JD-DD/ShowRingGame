@@ -7,6 +7,13 @@ import {
 export const CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID = 1;
 // Matches the bounded Overall refresh lease while remaining independent of it.
 export const BREED_KENNEL_PRESTIGE_LEADERBOARD_CLAIM_LEASE_MS = 10 * 60 * 1000;
+export const BREED_KENNEL_PRESTIGE_LEADERBOARD_REFRESH_INTERVAL_MS = 7 * 60 * 60 * 1000;
+
+export class BreedKennelPrestigeLeaderboardNotDueError extends Error {
+  constructor() {
+    super("The breed leaderboard refresh is not due.");
+  }
+}
 
 export type BreedLeaderboardManifestInput = {
   breedCode2: string;
@@ -61,6 +68,7 @@ export function assertBreedLeaderboardEntries(entries: BreedLeaderboardEntryInpu
 export async function createWorkingBreedKennelPrestigeLeaderboardGeneration(args: {
   manifest: BreedLeaderboardManifestInput[];
   generationId?: string;
+  now?: Date;
   database?: BreedLeaderboardDatabase;
 }) {
   assertManifest(args.manifest);
@@ -77,16 +85,33 @@ export async function createWorkingBreedKennelPrestigeLeaderboardGeneration(args
     if (state.workingGenerationId) {
       throw new Error("A breed leaderboard working generation already exists.");
     }
+    if (state.nextRefreshAt && state.nextRefreshAt > (args.now ?? new Date())) {
+      throw new BreedKennelPrestigeLeaderboardNotDueError();
+    }
     const generation = await tx.breedKennelPrestigeLeaderboardGeneration.create({
       data: {
         ...(args.generationId ? { id: args.generationId } : {}),
         manifestBreeds: { createMany: { data: args.manifest } },
       },
     });
-    await tx.breedKennelPrestigeLeaderboardState.update({
-      where: { id: CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID },
+    const activated = await tx.breedKennelPrestigeLeaderboardState.updateMany({
+      where: {
+        id: CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID,
+        workingGenerationId: null,
+        OR: [{ nextRefreshAt: null }, { nextRefreshAt: { lte: args.now ?? new Date() } }],
+      },
       data: { workingGenerationId: generation.id },
     });
+    if (activated.count !== 1) {
+      await tx.breedKennelPrestigeLeaderboardGeneration.delete({ where: { id: generation.id } });
+      const latestState = await tx.breedKennelPrestigeLeaderboardState.findUniqueOrThrow({
+        where: { id: CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID },
+      });
+      if (latestState.nextRefreshAt && latestState.nextRefreshAt > (args.now ?? new Date())) {
+        throw new BreedKennelPrestigeLeaderboardNotDueError();
+      }
+      throw new Error("A breed leaderboard working generation already exists.");
+    }
     return generation;
   });
 }
@@ -217,14 +242,19 @@ export async function publishCompleteBreedKennelPrestigeLeaderboardGeneration(ar
       where: { generationId: args.generationId, completedAt: null },
     });
     if (incomplete) throw new Error("Cannot publish an incomplete breed leaderboard generation.");
+    const publishedAt = args.publishedAt ?? new Date();
     const moved = await tx.breedKennelPrestigeLeaderboardState.updateMany({
       where: { id: CURRENT_BREED_KENNEL_PRESTIGE_LEADERBOARD_STATE_ID, workingGenerationId: args.generationId },
-      data: { publishedGenerationId: args.generationId, workingGenerationId: null },
+      data: {
+        publishedGenerationId: args.generationId,
+        workingGenerationId: null,
+        nextRefreshAt: new Date(publishedAt.getTime() + BREED_KENNEL_PRESTIGE_LEADERBOARD_REFRESH_INTERVAL_MS),
+      },
     });
     if (moved.count !== 1) throw new Error("Breed leaderboard publication claim was lost.");
     await tx.breedKennelPrestigeLeaderboardGeneration.update({
       where: { id: args.generationId },
-      data: { status: "PUBLISHED", publishedAt: args.publishedAt ?? new Date() },
+      data: { status: "PUBLISHED", publishedAt },
     });
     if (state.publishedGenerationId && state.publishedGenerationId !== args.generationId) {
       await tx.breedKennelPrestigeLeaderboardGeneration.delete({ where: { id: state.publishedGenerationId } });

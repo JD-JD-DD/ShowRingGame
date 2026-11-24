@@ -7,7 +7,7 @@ import { createBreedKennelPrestigeLeaderboardOrchestrator } from "../server/serv
 
 const root = process.cwd();
 const routeSource = readFileSync(resolve(root, "app/api/jobs/process-breed-kennel-prestige-leaderboard/route.ts"), "utf8");
-const vercelConfig = readFileSync(resolve(root, "vercel.json"), "utf8");
+const vercelConfig = JSON.parse(readFileSync(resolve(root, "vercel.json"), "utf8")) as { crons: Array<{ path: string }> };
 const completeGeneration = { id: "generation-complete", manifestBreeds: [{ breedCode2: "AA", completedAt: new Date() }] } as never;
 const incompleteGeneration = { id: "generation-incomplete", manifestBreeds: [{ breedCode2: "AA", completedAt: null }] } as never;
 
@@ -77,7 +77,7 @@ async function main() {
   assert.match(routeSource, /export const dynamic = "force-dynamic"/);
   assert.match(routeSource, /isAuthorizedJobRequest/);
   assert.doesNotMatch(routeSource, /maxBreeds|generationId|breedCode2/);
-  assert.doesNotMatch(vercelConfig, /process-breed-kennel-prestige-leaderboard/);
+  assert.equal(vercelConfig.crons.some((cron) => cron.path === "/api/jobs/process-breed-kennel-prestige-leaderboard"), false, "the manual POST endpoint is not scheduled");
   console.log("Breed kennel prestige leaderboard orchestration checks passed.");
 }
 

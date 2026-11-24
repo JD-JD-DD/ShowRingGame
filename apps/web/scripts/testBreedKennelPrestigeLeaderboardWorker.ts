@@ -10,5 +10,9 @@ assert.match(source, /for \(const manifest of generation\.manifestBreeds\.filter
 assert.match(source, /if \(attempted >= maxBreeds\) break/);
 assert.match(source, /claimWorkingBreedKennelPrestigeLeaderboardBreed/);
 assert.match(source, /completeWorkingBreedKennelPrestigeLeaderboardBreed/);
+assert.match(source, /BreedKennelPrestigeLeaderboardNotDueError/);
+assert.match(source, /outcome: "not_due"/);
+assert.match(source, /approachingExecutionLimit/);
+assert.match(source, /approachingClaimLease/);
 assert.doesNotMatch(source, /publishCompleteBreedKennelPrestigeLeaderboardGeneration/);
 console.log("Breed kennel prestige leaderboard worker checks passed.");

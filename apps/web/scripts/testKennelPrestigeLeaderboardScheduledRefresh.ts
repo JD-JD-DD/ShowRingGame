@@ -118,6 +118,7 @@ async function main() {
       { path: "/api/cron/finalize-show-results", schedule: "*/2 * * * *" },
       { path: "/api/cron/maintain-breed-genetic-background", schedule: "29 */6 * * *" },
       { path: "/api/cron/refresh-kennel-prestige-leaderboard", schedule: "47 * * * *" },
+      { path: "/api/cron/process-breed-kennel-prestige-leaderboard", schedule: "* * * * *" },
       { path: "/api/cron/resolve-breeding-progress", schedule: "0 * * * *" },
       { path: "/api/cron/process-stud-contract-lifecycle", schedule: "*/5 * * * *" },
       { path: "/api/cron/reconcile-art-payments", schedule: "*/5 * * * *" },
