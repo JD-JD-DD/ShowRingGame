@@ -15,11 +15,10 @@ showringgame/
 ├─ docs/                   product and engineering documentation
 ├─ scripts/                root seed and focused judging utility
 ├─ package.json            pnpm workspace root
-├─ pnpm-workspace.yaml     apps/* and packages/* workspace boundaries
-└─ prisma.config.ts        root Prisma configuration (references root paths not present in this checkout)
+└─ pnpm-workspace.yaml     apps/* and packages/* workspace boundaries
 ```
 
-`apps/web` is the `web` workspace and depends on `@showring/rules` through the workspace protocol. It contains its own Prisma schema, migrations, and Prisma configuration. Root package metadata also declares a Prisma configuration, but its referenced `prisma/` paths were not found; the active application-local Prisma layout is the one visible from the web workspace.
+`apps/web` is the `web` workspace and depends on `@showring/rules` through the workspace protocol. Its Prisma configuration is the canonical CLI configuration, alongside the active schema and migrations. Run Prisma CLI commands from `apps/web` so they resolve this configuration.
 
 ## 3. Runtime / Application Flow
 
@@ -167,13 +166,12 @@ Resend password reset helper → Resend email API
 - Some server pages read Prisma directly while also using services and rules helpers.
 - Scheduled work is represented through both `api/cron` and `api/jobs` route families; only a subset is visible in checked-in Vercel Cron configuration.
 - Gameplay-related logic is structurally distributed across rules engines/constants, server services, shared library helpers, route handlers, and presentation layers.
-- The root Prisma configuration references root paths absent from this checkout, while the web workspace contains a complete local Prisma schema and migrations layout.
+- The web workspace contains the canonical Prisma configuration, schema, and migrations layout.
 
 ## 18. Unknowns
 
 - **UNKNOWN:** deployment scheduling or other invocation mechanisms for cron/job handlers not listed in `apps/web/vercel.json`.
 - **UNKNOWN:** whether a conventional test framework configuration exists outside the inspected package metadata and focused TypeScript harnesses.
 - **UNKNOWN:** whether declared Vercel analytics packages are active at runtime; the inspected Speed Insights import is commented out.
-- **UNKNOWN:** why the root Prisma configuration points to absent root `prisma/` paths, or whether it is used by another environment.
 
 No individual implementation has been classified in this Stage 1 map.

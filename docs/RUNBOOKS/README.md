@@ -16,4 +16,4 @@ Future runbooks use this structure:
 ## Related architecture/design references
 ```
 
-Stage 8 creates this framework only; no detailed runbook is added.
+See [Database connection deployment](database-connections.md) for the pooled runtime and direct migration configuration.

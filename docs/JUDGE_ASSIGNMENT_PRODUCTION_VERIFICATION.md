@@ -1,6 +1,6 @@
 # Judge assignment production verification
 
-The production build command in `apps/web/package.json` runs `prisma migrate deploy`, then `prisma generate`, then `next build`. It requires `DATABASE_URL`. Vercel Cron is the recurring scheduler for `/api/jobs/maintain-show-schedule` every 30 minutes and authenticates with `CRON_SECRET`. The GitHub workflow is manual fallback only and continues to use `SHOWRING_JOBS_BASE_URL` and `SHOWRING_JOBS_SECRET`.
+The production build command in `apps/web/package.json` runs `prisma migrate deploy`, then `prisma generate`, then `next build`. It requires `DATABASE_URL` and `DIRECT_URL`; see [database connection deployment](RUNBOOKS/database-connections.md). Vercel Cron is the recurring scheduler for `/api/jobs/maintain-show-schedule` every 30 minutes and authenticates with `CRON_SECRET`. The GitHub workflow is manual fallback only and continues to use `SHOWRING_JOBS_BASE_URL` and `SHOWRING_JOBS_SECRET`.
 
 Vercel Cron logs are available in the Vercel dashboard's Cron Jobs/Runtime Logs views. Successful maintenance summaries include schedule counts plus `assignmentPlansCreated`, `assignmentPlansRepaired`, and `assignmentPlansUnchanged`.
 

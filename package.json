@@ -26,8 +26,5 @@
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.3.1",
     "pg": "^8.20.0"
-  },
-  "prisma": {
-    "seed": "ts-node prisma/seed.ts"
   }
 }
